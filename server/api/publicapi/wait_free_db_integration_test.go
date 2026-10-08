@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectproto"
 	"github.com/google/uuid"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
@@ -73,7 +74,7 @@ func errorInfoReason(err error) (string, map[string]string) {
 		return "", nil
 	}
 	for _, detail := range connectErr.Details() {
-		value, valueErr := detail.Value()
+		value, valueErr := connectproto.UnmarshalErrorDetail(detail)
 		if valueErr != nil {
 			continue
 		}
@@ -156,40 +157,31 @@ func newWaitFreeFixtureOn(t *testing.T, env *publicDBEnv, episodeCount int) wait
 }
 
 func (f waitFreeFixture) useTicket(episodeID uuid.UUID) (*publirav1.UseTicketResponse, error) {
-	resp, err := f.env.waitFreeClient().UseTicket(context.Background(), newBearerRequest(
-		&publirav1.UseTicketRequest{Tenant: tenantContext(f.tenant), EpisodeId: episodeID.String()},
-		f.token,
-	))
+	resp, err := f.env.waitFreeClient().UseTicket(testutil.WithBearer(context.Background(), f.token), &publirav1.UseTicketRequest{Tenant: tenantContext(f.tenant), EpisodeId: episodeID.String()})
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg, nil
+	return resp, nil
 }
 
 func (f waitFreeFixture) ticketState(t *testing.T) *publirav1.GetMyTicketStateResponse {
 	t.Helper()
 
-	resp, err := f.env.waitFreeClient().GetMyTicketState(context.Background(), newBearerRequest(
-		&publirav1.GetMyTicketStateRequest{Tenant: tenantContext(f.tenant), SeriesId: f.series.ID.String()},
-		f.token,
-	))
+	resp, err := f.env.waitFreeClient().GetMyTicketState(testutil.WithBearer(context.Background(), f.token), &publirav1.GetMyTicketStateRequest{Tenant: tenantContext(f.tenant), SeriesId: f.series.ID.String()})
 	if err != nil {
 		t.Fatalf("GetMyTicketState: %v", err)
 	}
-	return resp.Msg
+	return resp
 }
 
 func (f waitFreeFixture) episodeAccess(t *testing.T, episode testutil.Episode) *publirav1.GetEpisodeDetailResponse {
 	t.Helper()
 
-	resp, err := f.env.catalogClient().GetEpisodeDetail(context.Background(), newBearerRequest(
-		&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(f.tenant), PublicId: episode.PublicID},
-		f.token,
-	))
+	resp, err := f.env.catalogClient().GetEpisodeDetail(testutil.WithBearer(context.Background(), f.token), &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(f.tenant), PublicId: episode.PublicID})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	return resp.Msg
+	return resp
 }
 
 // A used ticket opens the episode for the access period and starts the
@@ -348,13 +340,13 @@ func TestDBUseTicketRefusesTheExcludedLatestEpisodes(t *testing.T) {
 	f.env.PG.SeedEpisode(t, f.tenant.ID, f.series.ID, testutil.EpisodeSeed{PublicID: "EPISODEDRAFT", Title: "Draft", OrderIndex: 5, Price: 300})
 	setSeriesWaitFree(t, f.env, f.tenant.ID, f.series.ID, true, 23, 72, 2)
 
-	detail, err := f.env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(
+	detail, err := f.env.catalogClient().GetSeriesDetail(context.Background(),
 		&publirav1.GetSeriesDetailRequest{Tenant: tenantContext(f.tenant), PublicId: f.series.PublicID},
-	))
+	)
 	if err != nil {
 		t.Fatalf("GetSeriesDetail: %v", err)
 	}
-	rule := detail.Msg.WaitFree
+	rule := detail.WaitFree
 	if rule == nil || rule.RechargeHours != 23 || rule.AccessHours != 72 || rule.ExcludedLatestCount != 2 {
 		t.Fatalf("wait_free = %+v, want 23h recharge, 72h access, 2 excluded", rule)
 	}
@@ -409,9 +401,9 @@ func TestDBUseTicketRefusals(t *testing.T) {
 	}
 
 	t.Run("a guest", func(t *testing.T) {
-		_, err := f.env.waitFreeClient().UseTicket(context.Background(), connect.NewRequest(
+		_, err := f.env.waitFreeClient().UseTicket(context.Background(),
 			&publirav1.UseTicketRequest{Tenant: tenantContext(f.tenant), EpisodeId: f.episodes[0].ID.String()},
-		))
+		)
 		assertWaitFreeRefusal(t, err, connect.CodeUnauthenticated, "")
 	})
 
@@ -479,19 +471,16 @@ func TestDBWaitFreeRuleIsSilentWhileOff(t *testing.T) {
 	f := newWaitFreeFixture(t, 1)
 	seriesDetail := func(t *testing.T) *publirav1.GetSeriesDetailResponse {
 		t.Helper()
-		resp, err := f.env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(
+		resp, err := f.env.catalogClient().GetSeriesDetail(context.Background(),
 			&publirav1.GetSeriesDetailRequest{Tenant: tenantContext(f.tenant), PublicId: f.series.PublicID},
-		))
+		)
 		if err != nil {
 			t.Fatalf("GetSeriesDetail: %v", err)
 		}
-		return resp.Msg
+		return resp
 	}
 	stateErr := func() error {
-		_, err := f.env.waitFreeClient().GetMyTicketState(context.Background(), newBearerRequest(
-			&publirav1.GetMyTicketStateRequest{Tenant: tenantContext(f.tenant), SeriesId: f.series.ID.String()},
-			f.token,
-		))
+		_, err := f.env.waitFreeClient().GetMyTicketState(testutil.WithBearer(context.Background(), f.token), &publirav1.GetMyTicketStateRequest{Tenant: tenantContext(f.tenant), SeriesId: f.series.ID.String()})
 		return err
 	}
 
@@ -558,19 +547,16 @@ func TestDBGetMyTicketStateListsOnlyEpisodesTheSurfaceShows(t *testing.T) {
 		t.Fatalf("open tickets on the web = %v, want only %s", state.OpenTickets, f.episodes[0].ID)
 	}
 
-	resp, err := f.env.waitFreeClient().GetMyTicketState(context.Background(), newBearerRequest(
-		&publirav1.GetMyTicketStateRequest{
-			Tenant:   tenantContext(f.tenant),
-			SeriesId: f.series.ID.String(),
-			Surface:  publirattypesv1.ClientSurface_CLIENT_SURFACE_APP,
-		},
-		f.token,
-	))
+	resp, err := f.env.waitFreeClient().GetMyTicketState(testutil.WithBearer(context.Background(), f.token), &publirav1.GetMyTicketStateRequest{
+		Tenant:   tenantContext(f.tenant),
+		SeriesId: f.series.ID.String(),
+		Surface:  publirattypesv1.ClientSurface_CLIENT_SURFACE_APP,
+	})
 	if err != nil {
 		t.Fatalf("GetMyTicketState in the app: %v", err)
 	}
 	var got []string
-	for _, ticket := range resp.Msg.OpenTickets {
+	for _, ticket := range resp.OpenTickets {
 		got = append(got, ticket.EpisodeId)
 	}
 	slices.Sort(got)

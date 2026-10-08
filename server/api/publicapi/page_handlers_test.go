@@ -3,16 +3,17 @@ package publicapi
 import (
 	"context"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -37,30 +38,30 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 			uuid.Must(uuid.NewV7()), pageID, tenantID, "ja", "Privacy Policy", versionID, now, now,
 		))
 
-	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListPublishedPages(context.Background(), connect.NewRequest(&publirav1.ListPublishedPagesRequest{
+	client := publirav1connect.NewPublicPagesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedPages(context.Background(), &publirav1.ListPublishedPagesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Locale: "en",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedPages: %v", err)
 	}
 
-	if len(resp.Msg.Pages) != 1 {
-		t.Fatalf("pages count = %d, want 1", len(resp.Msg.Pages))
+	if len(resp.Pages) != 1 {
+		t.Fatalf("pages count = %d, want 1", len(resp.Pages))
 	}
-	if resp.Msg.Pages[0].Slug != "/privacy" {
-		t.Fatalf("page slug = %q, want /privacy", resp.Msg.Pages[0].Slug)
+	if resp.Pages[0].Slug != "/privacy" {
+		t.Fatalf("page slug = %q, want /privacy", resp.Pages[0].Slug)
 	}
-	if resp.Msg.Pages[0].PublishedVersionId != versionID.String() {
-		t.Fatalf("published version id = %q, want %q", resp.Msg.Pages[0].PublishedVersionId, versionID.String())
+	if resp.Pages[0].PublishedVersionId != versionID.String() {
+		t.Fatalf("published version id = %q, want %q", resp.Pages[0].PublishedVersionId, versionID.String())
 	}
-	if !resp.Msg.Pages[0].DisplayInFooter {
+	if !resp.Pages[0].DisplayInFooter {
 		t.Fatalf("display_in_footer = false, want true")
 	}
 	// The page has no English translation, so it is listed in the one served.
-	if resp.Msg.Pages[0].Locale != "ja" {
-		t.Fatalf("locale = %q, want the served ja", resp.Msg.Pages[0].Locale)
+	if resp.Pages[0].Locale != "ja" {
+		t.Fatalf("locale = %q, want the served ja", resp.Pages[0].Locale)
 	}
 
 	assertPublicExpectations(t, mock)
@@ -82,15 +83,15 @@ func TestPagesListPublishedPageSlugsSuccess(t *testing.T) {
 			AddRow("/login").
 			AddRow("/series"))
 
-	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListPublishedPageSlugs(context.Background(), connect.NewRequest(&publirav1.ListPublishedPageSlugsRequest{
+	client := publirav1connect.NewPublicPagesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedPageSlugs(context.Background(), &publirav1.ListPublishedPageSlugsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedPageSlugs: %v", err)
 	}
 
-	if got := strings.Join(resp.Msg.Slugs, ","); got != "/legal/terms,/series" {
+	if got := strings.Join(resp.Slugs, ","); got != "/legal/terms,/series" {
 		t.Fatalf("slugs = %q, want /legal/terms,/series", got)
 	}
 
@@ -120,27 +121,27 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 			versionID, pageID, int32(2), "# Privacy", nil, "published", nil, now, now, "{en,ja}",
 		))
 
-	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+	client := publirav1connect.NewPublicPagesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetPublishedPage(context.Background(), &publirav1.GetPublishedPageRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Slug:   "privacy",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedPage: %v", err)
 	}
-	if resp.Msg.Page == nil || resp.Msg.Page.Slug != "/privacy" {
-		t.Fatalf("page = %+v, want slug /privacy", resp.Msg.Page)
+	if resp.Page == nil || resp.Page.Slug != "/privacy" {
+		t.Fatalf("page = %+v, want slug /privacy", resp.Page)
 	}
-	if resp.Msg.Version == nil || resp.Msg.Version.ContentMarkdown != "# Privacy" {
-		t.Fatalf("version = %+v, want markdown", resp.Msg.Version)
+	if resp.Version == nil || resp.Version.ContentMarkdown != "# Privacy" {
+		t.Fatalf("version = %+v, want markdown", resp.Version)
 	}
-	if want := retitledAt.Format("2006-01-02T15:04:05Z07:00"); resp.Msg.Page.UpdatedAt != want {
-		t.Fatalf("updated_at = %q, want the translation's %q", resp.Msg.Page.UpdatedAt, want)
+	if want := retitledAt.Format("2006-01-02T15:04:05Z07:00"); resp.Page.UpdatedAt != want {
+		t.Fatalf("updated_at = %q, want the translation's %q", resp.Page.UpdatedAt, want)
 	}
-	if resp.Msg.Page.Locale != "ja" {
-		t.Fatalf("locale = %q, want ja", resp.Msg.Page.Locale)
+	if resp.Page.Locale != "ja" {
+		t.Fatalf("locale = %q, want ja", resp.Page.Locale)
 	}
-	if got := strings.Join(resp.Msg.PublishedLocales, ","); got != "en,ja" {
+	if got := strings.Join(resp.PublishedLocales, ","); got != "en,ja" {
 		t.Fatalf("published_locales = %q, want en,ja", got)
 	}
 
@@ -151,12 +152,12 @@ func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 	t.Run("empty-slug", func(t *testing.T) {
 		// Validation fails before tenant lookup when slug is empty.
 		testServer, _ := newTestPublicServer(t)
-		client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
+		client := publirav1connect.NewPublicPagesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 
-		_, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+		_, err := client.GetPublishedPage(context.Background(), &publirav1.GetPublishedPageRequest{
 			Tenant: &publirattypesv1.TenantContext{TenantId: "00000000-0000-7000-8000-000000000001"},
 			Slug:   " ",
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 		}
@@ -168,12 +169,12 @@ func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 		tenantID := uuid.Must(uuid.NewV7())
 		expectTenantLookup(mock, tenantID, "TENANT", time.Now().UTC())
 
-		client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
-		_, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+		client := publirav1connect.NewPublicPagesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+		_, err := client.GetPublishedPage(context.Background(), &publirav1.GetPublishedPageRequest{
 			Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			Slug:   "privacy",
 			Locale: "xx",
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 		}
@@ -193,11 +194,11 @@ func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 				"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at", "published_locales",
 			}))
 
-		client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
-		_, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+		client := publirav1connect.NewPublicPagesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+		_, err := client.GetPublishedPage(context.Background(), &publirav1.GetPublishedPageRequest{
 			Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			Slug:   "missing",
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeNotFound)
 		}
@@ -215,11 +216,11 @@ func TestPagesGetPublishedPageDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs("ja", tenantID, "/privacy").
 		WillReturnError(errors.New(`pq: relation "pages" does not exist`))
 
-	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+	client := publirav1connect.NewPublicPagesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetPublishedPage(context.Background(), &publirav1.GetPublishedPageRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Slug:   "privacy",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetPublishedPage code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -239,11 +240,11 @@ func TestPagesGetPublishedPagePreservesContextCanceled(t *testing.T) {
 		WithArgs("ja", tenantID, "/privacy").
 		WillReturnError(context.Canceled)
 
-	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+	client := publirav1connect.NewPublicPagesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetPublishedPage(context.Background(), &publirav1.GetPublishedPageRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Slug:   "privacy",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeCanceled {
 		t.Fatalf("GetPublishedPage code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
 	}

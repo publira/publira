@@ -1,9 +1,7 @@
 package publicapi
 
 import (
-	"errors"
-
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/pagination"
@@ -17,7 +15,7 @@ import (
 func callingSurface(surface publirattypesv1.ClientSurface) (string, error) {
 	stored, err := protomapper.ClientSurfaceToStored(surface)
 	if err != nil {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("surface is not supported"))
+		return "", connect.NewError(connect.CodeInvalidArgument, "surface is not supported")
 	}
 	return stored, nil
 }

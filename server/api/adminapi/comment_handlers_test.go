@@ -7,7 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
@@ -22,12 +23,6 @@ import (
 // The creator mark is read by the page query itself. Each test below states
 // every statement one page runs, so a lookup per comment added beside the page
 // query is an unexpected query and fails it.
-
-func newCommentModerationMockRequest[T any](tenantID uuid.UUID, message *T) *connect.Request[T] {
-	request := connect.NewRequest(message)
-	request.Header().Set("Authorization", "Bearer "+issueTestAdminToken(tenantID.String(), testUserPublicID, auth.RoleTenantAdmin))
-	return request
-}
 
 func expectCommentRetentionDefaults(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformRetentionConfig)).
@@ -92,18 +87,18 @@ func TestListCommentsReadsTheCreatorMarkWithThePage(t *testing.T) {
 		WillReturnRows(rows)
 	expectCommentRetentionDefaults(mock, tenantID)
 
-	client := publiraadminv1connect.NewAdminCommentServiceClient(testServer.Client(), testServer.URL)
-	res, err := client.ListComments(context.Background(), newCommentModerationMockRequest(tenantID, &publiraadminv1.ListCommentsRequest{
+	client := publiraadminv1connect.NewAdminCommentServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	res, err := client.ListComments(testutil.WithBearer(context.Background(), issueTestAdminToken(tenantID.String(), testUserPublicID, auth.RoleTenantAdmin)), &publiraadminv1.ListCommentsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListComments: %v", err)
 	}
-	if got := len(res.Msg.Comments); got != 3 {
+	if got := len(res.Comments); got != 3 {
 		t.Fatalf("comments = %d, want 3", got)
 	}
-	assertAdminCommentCreator(t, "the author's", res.Msg.Comments[0], creator)
-	for _, comment := range res.Msg.Comments[1:] {
+	assertAdminCommentCreator(t, "the author's", res.Comments[0], creator)
+	for _, comment := range res.Comments[1:] {
 		assertAdminCommentCreator(t, "a reader's", comment, testutil.Creator{})
 	}
 
@@ -145,18 +140,18 @@ func TestListCommentReportsReadsTheCreatorMarkWithThePage(t *testing.T) {
 		WillReturnRows(rows)
 	expectCommentRetentionDefaults(mock, tenantID)
 
-	client := publiraadminv1connect.NewAdminCommentServiceClient(testServer.Client(), testServer.URL)
-	res, err := client.ListCommentReports(context.Background(), newCommentModerationMockRequest(tenantID, &publiraadminv1.ListCommentReportsRequest{
+	client := publiraadminv1connect.NewAdminCommentServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	res, err := client.ListCommentReports(testutil.WithBearer(context.Background(), issueTestAdminToken(tenantID.String(), testUserPublicID, auth.RoleTenantAdmin)), &publiraadminv1.ListCommentReportsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListCommentReports: %v", err)
 	}
-	if got := len(res.Msg.Reports); got != 3 {
+	if got := len(res.Reports); got != 3 {
 		t.Fatalf("reports = %d, want 3", got)
 	}
-	assertAdminCommentCreator(t, "the author's reported", res.Msg.Reports[0].Comment, creator)
-	for _, report := range res.Msg.Reports[1:] {
+	assertAdminCommentCreator(t, "the author's reported", res.Reports[0].Comment, creator)
+	for _, report := range res.Reports[1:] {
 		assertAdminCommentCreator(t, "a reader's reported", report.Comment, testutil.Creator{})
 	}
 

@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
-
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -30,14 +28,14 @@ func TestDBSearchPublishedCreatorsMatchesPartOfTheName(t *testing.T) {
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, matching.ID, "")
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, profileOnly.ID, "Artist")
 
-	resp, err := env.catalogClient().SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	resp, err := env.catalogClient().SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "saku",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if got := creatorPublicIDs(resp.Msg.Creators); len(got) != 1 || got[0] != "CREATORMATCH" {
+	if got := creatorPublicIDs(resp.Creators); len(got) != 1 || got[0] != "CREATORMATCH" {
 		t.Fatalf("creators = %v, want only the name match", got)
 	}
 }
@@ -56,25 +54,25 @@ func TestDBSearchPublishedCreatorsMatchesNonASCIINameCaseInsensitively(t *testin
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, recased.ID, "")
 
 	client := env.catalogClient()
-	japaneseHit, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	japaneseHit, err := client.SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "漱石",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedCreators for a Japanese name: %v", err)
 	}
-	if got := creatorPublicIDs(japaneseHit.Msg.Creators); len(got) != 1 || got[0] != "CREATORJP001" {
+	if got := creatorPublicIDs(japaneseHit.Creators); len(got) != 1 || got[0] != "CREATORJP001" {
 		t.Fatalf("creators = %v, want the Japanese name found by part of it", got)
 	}
 
-	recasedHit, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	recasedHit, err := client.SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "natsume",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedCreators for a recased name: %v", err)
 	}
-	if got := creatorPublicIDs(recasedHit.Msg.Creators); len(got) != 1 || got[0] != "CREATORUP001" {
+	if got := creatorPublicIDs(recasedHit.Creators); len(got) != 1 || got[0] != "CREATORUP001" {
 		t.Fatalf("creators = %v, want the uppercase name found by a lowercase query", got)
 	}
 }
@@ -100,14 +98,14 @@ func TestDBSearchPublishedCreatorsRequiresAPublishedSeries(t *testing.T) {
 	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, onlyDraft.ID, "")
 	env.PG.SeedSeriesCreator(t, tenant.ID, future.ID, onlyFuture.ID, "")
 
-	resp, err := env.catalogClient().SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	resp, err := env.catalogClient().SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "Sakura",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if got := creatorPublicIDs(resp.Msg.Creators); len(got) != 1 || got[0] != "CREATORPUB01" {
+	if got := creatorPublicIDs(resp.Creators); len(got) != 1 || got[0] != "CREATORPUB01" {
 		t.Fatalf("creators = %v, want only the creator of a currently published series", got)
 	}
 }
@@ -122,14 +120,14 @@ func TestDBSearchPublishedCreatorsEscapesIlikeMetacharacters(t *testing.T) {
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, literal.ID, "")
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, other.ID, "Artist")
 
-	resp, err := env.catalogClient().SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	resp, err := env.catalogClient().SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "100%",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if got := creatorPublicIDs(resp.Msg.Creators); len(got) != 1 || got[0] != "CREATORPCT01" {
+	if got := creatorPublicIDs(resp.Creators); len(got) != 1 || got[0] != "CREATORPCT01" {
 		t.Fatalf("creators = %v, want only the literal 100%% name", got)
 	}
 }
@@ -145,14 +143,14 @@ func TestDBSearchPublishedCreatorsExcludesAnotherTenant(t *testing.T) {
 	env.PG.SeedSeriesCreator(t, first.ID, mineSeries.ID, mine.ID, "")
 	env.PG.SeedSeriesCreator(t, second.ID, theirSeries.ID, theirs.ID, "")
 
-	resp, err := env.catalogClient().SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	resp, err := env.catalogClient().SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(first),
 		Query:  "Shared Name",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if got := creatorPublicIDs(resp.Msg.Creators); len(got) != 1 || got[0] != "CREATORA0001" {
+	if got := creatorPublicIDs(resp.Creators); len(got) != 1 || got[0] != "CREATORA0001" {
 		t.Fatalf("creators = %v, want only tenant A's hit", got)
 	}
 }
@@ -170,44 +168,44 @@ func TestDBSearchPublishedCreatorsPagesForwardAndBack(t *testing.T) {
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, yuki.ID, "")
 
 	client := env.catalogClient()
-	firstPage, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	firstPage, err := client.SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "Ink",
 		Limit:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedCreators page 1: %v", err)
 	}
-	if got := creatorPublicIDs(firstPage.Msg.Creators); len(got) != 2 || got[0] != "CREATORAKIRA" || got[1] != "CREATORMIKA0" {
+	if got := creatorPublicIDs(firstPage.Creators); len(got) != 2 || got[0] != "CREATORAKIRA" || got[1] != "CREATORMIKA0" {
 		t.Fatalf("page 1 = %v, want Akira then Mika", got)
 	}
-	if firstPage.Msg.NextToken == "" {
+	if firstPage.NextToken == "" {
 		t.Fatal("page 1 next_token is empty, want a token for the remaining creator")
 	}
 
-	secondPage, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	secondPage, err := client.SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "Ink",
 		Limit:  2,
-		Token:  firstPage.Msg.NextToken,
-	}))
+		Token:  firstPage.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedCreators page 2: %v", err)
 	}
-	if got := creatorPublicIDs(secondPage.Msg.Creators); len(got) != 1 || got[0] != "CREATORYUKI0" {
+	if got := creatorPublicIDs(secondPage.Creators); len(got) != 1 || got[0] != "CREATORYUKI0" {
 		t.Fatalf("page 2 = %v, want Yuki alone", got)
 	}
 
-	backAgain, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	backAgain, err := client.SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "Ink",
 		Limit:  2,
-		Token:  secondPage.Msg.PreviousToken,
-	}))
+		Token:  secondPage.PreviousToken,
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedCreators back to page 1: %v", err)
 	}
-	if got := creatorPublicIDs(backAgain.Msg.Creators); len(got) != 2 || got[0] != "CREATORAKIRA" || got[1] != "CREATORMIKA0" {
+	if got := creatorPublicIDs(backAgain.Creators); len(got) != 2 || got[0] != "CREATORAKIRA" || got[1] != "CREATORMIKA0" {
 		t.Fatalf("page 1 revisited = %v, want Akira then Mika again", got)
 	}
 }
@@ -221,14 +219,14 @@ func TestDBSearchPublishedLabelsMatchesPartOfTheName(t *testing.T) {
 	_ = env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESMOON01", Title: "Moon Story", Published: true, LabelID: matching.ID})
 	_ = env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESDAY001", Title: "Day Story", Published: true, LabelID: other.ID})
 
-	resp, err := env.catalogClient().SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	resp, err := env.catalogClient().SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "moonl",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels: %v", err)
 	}
-	if got := labelPublicIDs(resp.Msg.Labels); len(got) != 1 || got[0] != "LABELMATCH1" {
+	if got := labelPublicIDs(resp.Labels); len(got) != 1 || got[0] != "LABELMATCH1" {
 		t.Fatalf("labels = %v, want only the name match", got)
 	}
 }
@@ -245,25 +243,25 @@ func TestDBSearchPublishedLabelsMatchesNonASCIINameCaseInsensitively(t *testing.
 	_ = env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESUP0001", Title: "Recased Label Story", Published: true, LabelID: recased.ID})
 
 	client := env.catalogClient()
-	japaneseHit, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	japaneseHit, err := client.SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "コミック",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels for a Japanese name: %v", err)
 	}
-	if got := labelPublicIDs(japaneseHit.Msg.Labels); len(got) != 1 || got[0] != "LABELJP0001" {
+	if got := labelPublicIDs(japaneseHit.Labels); len(got) != 1 || got[0] != "LABELJP0001" {
 		t.Fatalf("labels = %v, want the Japanese name found by part of it", got)
 	}
 
-	recasedHit, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	recasedHit, err := client.SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "monthly",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels for a recased name: %v", err)
 	}
-	if got := labelPublicIDs(recasedHit.Msg.Labels); len(got) != 1 || got[0] != "LABELUP0001" {
+	if got := labelPublicIDs(recasedHit.Labels); len(got) != 1 || got[0] != "LABELUP0001" {
 		t.Fatalf("labels = %v, want the uppercase name found by a lowercase query", got)
 	}
 }
@@ -290,17 +288,17 @@ func TestDBSearchPublishedLabelsRequireAPublishedSeries(t *testing.T) {
 		LabelID:     onlyFuture.ID,
 	})
 
-	resp, err := env.catalogClient().SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	resp, err := env.catalogClient().SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "Comics",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels: %v", err)
 	}
-	if got := labelPublicIDs(resp.Msg.Labels); len(got) != 1 || got[0] != "LABELPUB001" {
+	if got := labelPublicIDs(resp.Labels); len(got) != 1 || got[0] != "LABELPUB001" {
 		t.Fatalf("labels = %v, want only the label holding a currently published series", got)
 	}
-	if got := resp.Msg.Labels[0].GetPublishedSeriesCount(); got != 1 {
+	if got := resp.Labels[0].GetPublishedSeriesCount(); got != 1 {
 		t.Fatalf("published_series_count = %d, want 1", got)
 	}
 }
@@ -314,14 +312,14 @@ func TestDBSearchPublishedLabelsEscapesIlikeMetacharacters(t *testing.T) {
 	_ = env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESPCT001", Title: "Literal Story", Published: true, LabelID: literal.ID})
 	_ = env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESOTH001", Title: "Other Story", Published: true, LabelID: other.ID})
 
-	resp, err := env.catalogClient().SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	resp, err := env.catalogClient().SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "100%",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels: %v", err)
 	}
-	if got := labelPublicIDs(resp.Msg.Labels); len(got) != 1 || got[0] != "LABELPCT001" {
+	if got := labelPublicIDs(resp.Labels); len(got) != 1 || got[0] != "LABELPCT001" {
 		t.Fatalf("labels = %v, want only the literal 100%% name", got)
 	}
 }
@@ -335,14 +333,14 @@ func TestDBSearchPublishedLabelsExcludesAnotherTenant(t *testing.T) {
 	_ = env.PG.SeedSeries(t, first.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Tenant A Series", Published: true, LabelID: mine.ID})
 	_ = env.PG.SeedSeries(t, second.ID, testutil.SeriesSeed{PublicID: "SERIESB00001", Title: "Tenant B Series", Published: true, LabelID: theirs.ID})
 
-	resp, err := env.catalogClient().SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	resp, err := env.catalogClient().SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: tenantContext(first),
 		Query:  "Shared Name",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels: %v", err)
 	}
-	if got := labelPublicIDs(resp.Msg.Labels); len(got) != 1 || got[0] != "LABELA00001" {
+	if got := labelPublicIDs(resp.Labels); len(got) != 1 || got[0] != "LABELA00001" {
 		t.Fatalf("labels = %v, want only tenant A's hit", got)
 	}
 }
@@ -359,44 +357,44 @@ func TestDBSearchPublishedLabelsPagesForwardAndBack(t *testing.T) {
 	_ = env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESZETA01", Title: "Zeta Story", Published: true, LabelID: zeta.ID})
 
 	client := env.catalogClient()
-	firstPage, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	firstPage, err := client.SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "Comics",
 		Limit:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels page 1: %v", err)
 	}
-	if got := labelPublicIDs(firstPage.Msg.Labels); len(got) != 2 || got[0] != "LABELALPHA1" || got[1] != "LABELBETA01" {
+	if got := labelPublicIDs(firstPage.Labels); len(got) != 2 || got[0] != "LABELALPHA1" || got[1] != "LABELBETA01" {
 		t.Fatalf("page 1 = %v, want Alpha then Beta", got)
 	}
-	if firstPage.Msg.NextToken == "" {
+	if firstPage.NextToken == "" {
 		t.Fatal("page 1 next_token is empty, want a token for the remaining label")
 	}
 
-	secondPage, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	secondPage, err := client.SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "Comics",
 		Limit:  2,
-		Token:  firstPage.Msg.NextToken,
-	}))
+		Token:  firstPage.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels page 2: %v", err)
 	}
-	if got := labelPublicIDs(secondPage.Msg.Labels); len(got) != 1 || got[0] != "LABELZETA01" {
+	if got := labelPublicIDs(secondPage.Labels); len(got) != 1 || got[0] != "LABELZETA01" {
 		t.Fatalf("page 2 = %v, want Zeta alone", got)
 	}
 
-	backAgain, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	backAgain, err := client.SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: tenantContext(tenant),
 		Query:  "Comics",
 		Limit:  2,
-		Token:  secondPage.Msg.PreviousToken,
-	}))
+		Token:  secondPage.PreviousToken,
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels back to page 1: %v", err)
 	}
-	if got := labelPublicIDs(backAgain.Msg.Labels); len(got) != 2 || got[0] != "LABELALPHA1" || got[1] != "LABELBETA01" {
+	if got := labelPublicIDs(backAgain.Labels); len(got) != 2 || got[0] != "LABELALPHA1" || got[1] != "LABELBETA01" {
 		t.Fatalf("page 1 revisited = %v, want Alpha then Beta again", got)
 	}
 }

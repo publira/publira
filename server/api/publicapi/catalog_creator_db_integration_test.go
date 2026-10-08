@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -62,21 +62,21 @@ func TestDBListPublishedCreatorsReturnsOnlyCreatorsWithPublishedSeries(t *testin
 	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, onlyDraft.ID, "")
 	env.PG.SeedSeriesCreator(t, tenant.ID, future.ID, onlyFuture.ID, "")
 
-	resp, err := env.catalogClient().ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	resp, err := env.catalogClient().ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedCreators: %v", err)
 	}
-	got := creatorPublicIDs(resp.Msg.Creators)
+	got := creatorPublicIDs(resp.Creators)
 	if len(got) != 1 || got[0] != "CREATORPUB01" {
 		t.Fatalf("creators = %v, want only CREATORPUB01", got)
 	}
-	if resp.Msg.Creators[0].PublishedSeriesCount != 1 {
-		t.Fatalf("published_series_count = %d, want 1", resp.Msg.Creators[0].PublishedSeriesCount)
+	if resp.Creators[0].PublishedSeriesCount != 1 {
+		t.Fatalf("published_series_count = %d, want 1", resp.Creators[0].PublishedSeriesCount)
 	}
-	if resp.Msg.Creators[0].ProfileText != "Writes published work" {
-		t.Fatalf("profile_text = %q, want the seeded profile", resp.Msg.Creators[0].ProfileText)
+	if resp.Creators[0].ProfileText != "Writes published work" {
+		t.Fatalf("profile_text = %q, want the seeded profile", resp.Creators[0].ProfileText)
 	}
 }
 
@@ -92,20 +92,20 @@ func TestDBListPublishedCreatorsExcludesAnotherTenantsCreators(t *testing.T) {
 	env.PG.SeedSeriesCreator(t, second.ID, theirSeries.ID, theirs.ID, "")
 
 	client := env.catalogClient()
-	listed, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	listed, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: tenantContext(first),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedCreators for tenant A: %v", err)
 	}
-	if got := creatorPublicIDs(listed.Msg.Creators); len(got) != 1 || got[0] != "CREATORA0001" {
+	if got := creatorPublicIDs(listed.Creators); len(got) != 1 || got[0] != "CREATORA0001" {
 		t.Fatalf("tenant A creators = %v, want only CREATORA0001", got)
 	}
 
-	_, err = client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	_, err = client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   tenantContext(first),
 		PublicId: theirs.PublicID,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetPublishedCreatorDetail across tenants code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
@@ -128,50 +128,50 @@ func TestDBListPublishedCreatorsPagesForwardAndBack(t *testing.T) {
 	}
 
 	client := env.catalogClient()
-	firstPage, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	firstPage, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Limit:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedCreators page 1: %v", err)
 	}
-	if got := creatorPublicIDs(firstPage.Msg.Creators); len(got) != 2 || got[0] != "CREATORAKIRA" || got[1] != "CREATORMIKA0" {
+	if got := creatorPublicIDs(firstPage.Creators); len(got) != 2 || got[0] != "CREATORAKIRA" || got[1] != "CREATORMIKA0" {
 		t.Fatalf("page 1 = %v, want Akira then Mika", got)
 	}
-	if firstPage.Msg.NextToken == "" {
+	if firstPage.NextToken == "" {
 		t.Fatal("page 1 next_token is empty, want a token for the remaining creator")
 	}
-	if firstPage.Msg.PreviousToken != "" {
-		t.Fatalf("page 1 previous_token = %q, want empty on the first page", firstPage.Msg.PreviousToken)
+	if firstPage.PreviousToken != "" {
+		t.Fatalf("page 1 previous_token = %q, want empty on the first page", firstPage.PreviousToken)
 	}
 
-	secondPage, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	secondPage, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Limit:  2,
-		Token:  firstPage.Msg.NextToken,
-	}))
+		Token:  firstPage.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedCreators page 2: %v", err)
 	}
-	if got := creatorPublicIDs(secondPage.Msg.Creators); len(got) != 1 || got[0] != "CREATORYUKI0" {
+	if got := creatorPublicIDs(secondPage.Creators); len(got) != 1 || got[0] != "CREATORYUKI0" {
 		t.Fatalf("page 2 = %v, want Yuki alone", got)
 	}
-	if secondPage.Msg.NextToken != "" {
-		t.Fatalf("page 2 next_token = %q, want empty at the end of the list", secondPage.Msg.NextToken)
+	if secondPage.NextToken != "" {
+		t.Fatalf("page 2 next_token = %q, want empty at the end of the list", secondPage.NextToken)
 	}
-	if secondPage.Msg.PreviousToken == "" {
+	if secondPage.PreviousToken == "" {
 		t.Fatal("page 2 previous_token is empty, want a token back to the first page")
 	}
 
-	backAgain, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	backAgain, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: tenantContext(tenant),
 		Limit:  2,
-		Token:  secondPage.Msg.PreviousToken,
-	}))
+		Token:  secondPage.PreviousToken,
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedCreators back to page 1: %v", err)
 	}
-	if got := creatorPublicIDs(backAgain.Msg.Creators); len(got) != 2 || got[0] != "CREATORAKIRA" || got[1] != "CREATORMIKA0" {
+	if got := creatorPublicIDs(backAgain.Creators); len(got) != 2 || got[0] != "CREATORAKIRA" || got[1] != "CREATORMIKA0" {
 		t.Fatalf("page 1 revisited = %v, want Akira then Mika again", got)
 	}
 }
@@ -192,25 +192,25 @@ func TestDBGetPublishedCreatorDetailListsPublishedSeriesByTitle(t *testing.T) {
 	env.PG.SeedSeriesCreator(t, tenant.ID, alpha.ID, creator.ID, "")
 	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, creator.ID, "")
 
-	resp, err := env.catalogClient().GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	resp, err := env.catalogClient().GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: creator.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedCreatorDetail: %v", err)
 	}
-	if resp.Msg.Creator.Name != "Mika" || resp.Msg.Creator.ProfileText != "Writes two stories" {
-		t.Fatalf("creator = %+v, want Mika with the seeded profile", resp.Msg.Creator)
+	if resp.Creator.Name != "Mika" || resp.Creator.ProfileText != "Writes two stories" {
+		t.Fatalf("creator = %+v, want Mika with the seeded profile", resp.Creator)
 	}
-	if resp.Msg.Creator.PublishedSeriesCount != 2 {
-		t.Fatalf("published_series_count = %d, want 2 (draft excluded)", resp.Msg.Creator.PublishedSeriesCount)
+	if resp.Creator.PublishedSeriesCount != 2 {
+		t.Fatalf("published_series_count = %d, want 2 (draft excluded)", resp.Creator.PublishedSeriesCount)
 	}
-	got := seriesPublicIDs(resp.Msg.Series)
+	got := seriesPublicIDs(resp.Series)
 	if len(got) != 2 || got[0] != "SERIESALPHA1" || got[1] != "SERIESZETA01" {
 		t.Fatalf("series = %v, want Alpha then Zeta", got)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty when every series fits in one page", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty when every series fits in one page", resp.PreviousToken, resp.NextToken)
 	}
 }
 
@@ -232,56 +232,56 @@ func TestDBGetPublishedCreatorDetailPagesForwardAndBack(t *testing.T) {
 	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, creator.ID, "")
 
 	client := env.catalogClient()
-	firstPage, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	firstPage, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: creator.PublicID,
 		Limit:    2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedCreatorDetail page 1: %v", err)
 	}
-	if got := seriesPublicIDs(firstPage.Msg.Series); len(got) != 2 || got[0] != "SERIESALPHA1" || got[1] != "SERIESBETA01" {
+	if got := seriesPublicIDs(firstPage.Series); len(got) != 2 || got[0] != "SERIESALPHA1" || got[1] != "SERIESBETA01" {
 		t.Fatalf("page 1 = %v, want Alpha then Beta", got)
 	}
-	if firstPage.Msg.Creator.PublishedSeriesCount != 3 {
-		t.Fatalf("published_series_count = %d, want 3 (draft excluded)", firstPage.Msg.Creator.PublishedSeriesCount)
+	if firstPage.Creator.PublishedSeriesCount != 3 {
+		t.Fatalf("published_series_count = %d, want 3 (draft excluded)", firstPage.Creator.PublishedSeriesCount)
 	}
-	if firstPage.Msg.NextToken == "" {
+	if firstPage.NextToken == "" {
 		t.Fatal("page 1 next_token is empty, want a token for the remaining series")
 	}
-	if firstPage.Msg.PreviousToken != "" {
-		t.Fatalf("page 1 previous_token = %q, want empty on the first page", firstPage.Msg.PreviousToken)
+	if firstPage.PreviousToken != "" {
+		t.Fatalf("page 1 previous_token = %q, want empty on the first page", firstPage.PreviousToken)
 	}
 
-	secondPage, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	secondPage, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: creator.PublicID,
 		Limit:    2,
-		Token:    firstPage.Msg.NextToken,
-	}))
+		Token:    firstPage.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedCreatorDetail page 2: %v", err)
 	}
-	if got := seriesPublicIDs(secondPage.Msg.Series); len(got) != 1 || got[0] != "SERIESZETA01" {
+	if got := seriesPublicIDs(secondPage.Series); len(got) != 1 || got[0] != "SERIESZETA01" {
 		t.Fatalf("page 2 = %v, want Zeta alone", got)
 	}
-	if secondPage.Msg.NextToken != "" {
-		t.Fatalf("page 2 next_token = %q, want empty at the end of the list", secondPage.Msg.NextToken)
+	if secondPage.NextToken != "" {
+		t.Fatalf("page 2 next_token = %q, want empty at the end of the list", secondPage.NextToken)
 	}
-	if secondPage.Msg.PreviousToken == "" {
+	if secondPage.PreviousToken == "" {
 		t.Fatal("page 2 previous_token is empty, want a token back to the first page")
 	}
 
-	backAgain, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	backAgain, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: creator.PublicID,
 		Limit:    2,
-		Token:    secondPage.Msg.PreviousToken,
-	}))
+		Token:    secondPage.PreviousToken,
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedCreatorDetail back to page 1: %v", err)
 	}
-	if got := seriesPublicIDs(backAgain.Msg.Series); len(got) != 2 || got[0] != "SERIESALPHA1" || got[1] != "SERIESBETA01" {
+	if got := seriesPublicIDs(backAgain.Series); len(got) != 2 || got[0] != "SERIESALPHA1" || got[1] != "SERIESBETA01" {
 		t.Fatalf("page 1 revisited = %v, want Alpha then Beta again", got)
 	}
 }
@@ -304,10 +304,10 @@ func TestDBGetPublishedCreatorDetailHidesCreatorsWithoutPublishedSeries(t *testi
 
 	client := env.catalogClient()
 	for _, publicID := range []string{draftOnly.PublicID, futureOnly.PublicID, "MISSING00001"} {
-		_, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+		_, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: publicID,
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("GetPublishedCreatorDetail %s code = %v, want not_found (err=%v)", publicID, connect.CodeOf(err), err)
 		}

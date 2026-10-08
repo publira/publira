@@ -7,7 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
@@ -194,21 +195,21 @@ func TestListEpisodeCommentsReadsTheCreatorMarkWithThePage(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedEpisodeCommentsByCreatedAtDesc)).
 		WillReturnRows(rows)
 
-	client := publirav1connect.NewCommentServiceClient(testServer.Client(), testServer.URL)
-	res, err := client.ListEpisodeComments(context.Background(), connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{
+	client := publirav1connect.NewCommentServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	res, err := client.ListEpisodeComments(context.Background(), &publirav1.ListEpisodeCommentsRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: episodeID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListEpisodeComments: %v", err)
 	}
-	if got := len(res.Msg.Comments); got != 3 {
+	if got := len(res.Comments); got != 3 {
 		t.Fatalf("comments = %d, want 3", got)
 	}
-	if got := res.Msg.Comments[0].Creator; got == nil || got.Id != creatorID.String() || got.PublicId != "CREATOR00001" || got.Name != "Pen Name" {
+	if got := res.Comments[0].Creator; got == nil || got.Id != creatorID.String() || got.PublicId != "CREATOR00001" || got.Name != "Pen Name" {
 		t.Fatalf("author's comment creator = %v, want Pen Name", got)
 	}
-	for _, comment := range res.Msg.Comments[1:] {
+	for _, comment := range res.Comments[1:] {
 		if comment.Creator != nil {
 			t.Fatalf("reader's comment %s creator = %v, want none", comment.PublicId, comment.Creator)
 		}

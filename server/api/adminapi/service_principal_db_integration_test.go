@@ -5,7 +5,8 @@ import (
 	"slices"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/auth"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -15,12 +16,6 @@ import (
 
 const testWebServiceToken = "test-web-service-token"
 
-func newServiceRequest[T any](bearer string, msg *T) *connect.Request[T] {
-	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+bearer)
-	return req
-}
-
 func TestDBServiceTokenReadsTheGenresOfTheTenantItNames(t *testing.T) {
 	env := newAdminDBEnvWithServiceToken(t, auth.NewServiceToken(testWebServiceToken))
 	tenantA := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
@@ -29,13 +24,13 @@ func TestDBServiceTokenReadsTheGenresOfTheTenantItNames(t *testing.T) {
 	env.PG.SeedGenre(t, tenantB.Tenant.ID, testutil.GenreSeed{Name: "Mystery", Slug: "mystery"})
 	client := env.genreClient()
 
-	listed, err := client.ListGenres(context.Background(), newServiceRequest(testWebServiceToken, &publiraadminv1.ListGenresRequest{
+	listed, err := client.ListGenres(testutil.WithBearer(context.Background(), testWebServiceToken), &publiraadminv1.ListGenresRequest{
 		Tenant: tenantA.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListGenres: %v", err)
 	}
-	if got := genreNames(listed.Msg.Genres); !slices.Equal(got, []string{"Fantasy"}) {
+	if got := genreNames(listed.Genres); !slices.Equal(got, []string{"Fantasy"}) {
 		t.Fatalf("genres = %v, want only tenant A's", got)
 	}
 
@@ -58,65 +53,65 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 	tenantCtx := tenant.tenantContext()
 
 	httpClient, url := env.Server.Client(), env.Server.URL
-	seriesClient := publiraadminv1connect.NewAdminSeriesServiceClient(httpClient, url)
-	creatorClient := publiraadminv1connect.NewAdminCreatorServiceClient(httpClient, url)
-	labelClient := publiraadminv1connect.NewAdminLabelServiceClient(httpClient, url)
-	dashboardClient := publiraadminv1connect.NewAdminDashboardServiceClient(httpClient, url)
+	seriesClient := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
+	creatorClient := publiraadminv1connect.NewAdminCreatorServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
+	labelClient := publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
+	dashboardClient := publiraadminv1connect.NewAdminDashboardServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
 
 	reads := map[string]func(context.Context) error{
 		publiraadminv1connect.AdminGenreServiceListGenresProcedure: func(ctx context.Context) error {
-			_, err := env.genreClient().ListGenres(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.ListGenresRequest{Tenant: tenantCtx}))
+			_, err := env.genreClient().ListGenres(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.ListGenresRequest{Tenant: tenantCtx})
 			return err
 		},
 		publiraadminv1connect.AdminCreatorRoleServiceListCreatorRolesProcedure: func(ctx context.Context) error {
-			_, err := env.creatorRoleClient().ListCreatorRoles(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.ListCreatorRolesRequest{Tenant: tenantCtx}))
+			_, err := env.creatorRoleClient().ListCreatorRoles(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.ListCreatorRolesRequest{Tenant: tenantCtx})
 			return err
 		},
 		publiraadminv1connect.AdminCreatorServiceListCreatorsProcedure: func(ctx context.Context) error {
-			_, err := creatorClient.ListCreators(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.ListCreatorsRequest{Tenant: tenantCtx}))
+			_, err := creatorClient.ListCreators(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.ListCreatorsRequest{Tenant: tenantCtx})
 			return err
 		},
 		publiraadminv1connect.AdminLabelServiceListLabelsProcedure: func(ctx context.Context) error {
-			_, err := labelClient.ListLabels(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.ListLabelsRequest{Tenant: tenantCtx}))
+			_, err := labelClient.ListLabels(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.ListLabelsRequest{Tenant: tenantCtx})
 			return err
 		},
 		publiraadminv1connect.AdminLabelServiceGetLabelProcedure: func(ctx context.Context) error {
-			_, err := labelClient.GetLabel(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetLabelRequest{Tenant: tenantCtx, PublicId: label.PublicID}))
+			_, err := labelClient.GetLabel(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.GetLabelRequest{Tenant: tenantCtx, PublicId: label.PublicID})
 			return err
 		},
 		publiraadminv1connect.AdminSeriesServiceListSeriesProcedure: func(ctx context.Context) error {
-			_, err := seriesClient.ListSeries(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.ListSeriesRequest{Tenant: tenantCtx}))
+			_, err := seriesClient.ListSeries(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.ListSeriesRequest{Tenant: tenantCtx})
 			return err
 		},
 		publiraadminv1connect.AdminSeriesServiceGetSeriesProcedure: func(ctx context.Context) error {
-			_, err := seriesClient.GetSeries(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetSeriesRequest{Tenant: tenantCtx, PublicId: series.PublicID}))
+			_, err := seriesClient.GetSeries(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.GetSeriesRequest{Tenant: tenantCtx, PublicId: series.PublicID})
 			return err
 		},
 		publiraadminv1connect.AdminSeriesServiceListEpisodesProcedure: func(ctx context.Context) error {
-			_, err := seriesClient.ListEpisodes(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.ListEpisodesRequest{Tenant: tenantCtx, SeriesId: series.ID.String()}))
+			_, err := seriesClient.ListEpisodes(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.ListEpisodesRequest{Tenant: tenantCtx, SeriesId: series.ID.String()})
 			return err
 		},
 		publiraadminv1connect.AdminSeriesServiceGetEpisodeProcedure: func(ctx context.Context) error {
-			_, err := seriesClient.GetEpisode(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetEpisodeRequest{Tenant: tenantCtx, SeriesPublicId: series.PublicID, PublicId: episode.PublicID}))
+			_, err := seriesClient.GetEpisode(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.GetEpisodeRequest{Tenant: tenantCtx, SeriesPublicId: series.PublicID, PublicId: episode.PublicID})
 			return err
 		},
 		publiraadminv1connect.AdminSeriesServiceListEpisodeCreditsProcedure: func(ctx context.Context) error {
-			_, err := seriesClient.ListEpisodeCredits(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.ListEpisodeCreditsRequest{Tenant: tenantCtx, EpisodeId: episode.ID.String()}))
+			_, err := seriesClient.ListEpisodeCredits(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.ListEpisodeCreditsRequest{Tenant: tenantCtx, EpisodeId: episode.ID.String()})
 			return err
 		},
 		publiraadminv1connect.AdminSeriesServiceListEpisodeFreeWindowsProcedure: func(ctx context.Context) error {
-			_, err := seriesClient.ListEpisodeFreeWindows(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.ListEpisodeFreeWindowsRequest{
+			_, err := seriesClient.ListEpisodeFreeWindows(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.ListEpisodeFreeWindowsRequest{
 				Tenant: tenantCtx,
 				Scope:  &publiraadminv1.ListEpisodeFreeWindowsRequest_SeriesId{SeriesId: series.ID.String()},
-			}))
+			})
 			return err
 		},
 		publiraadminv1connect.AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure: func(ctx context.Context) error {
-			_, err := seriesClient.GetSeriesWaitFreeSettings(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetSeriesWaitFreeSettingsRequest{Tenant: tenantCtx, SeriesId: series.ID.String()}))
+			_, err := seriesClient.GetSeriesWaitFreeSettings(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.GetSeriesWaitFreeSettingsRequest{Tenant: tenantCtx, SeriesId: series.ID.String()})
 			return err
 		},
 		publiraadminv1connect.AdminDashboardServiceGetDashboardProcedure: func(ctx context.Context) error {
-			_, err := dashboardClient.GetDashboard(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetDashboardRequest{Tenant: tenantCtx}))
+			_, err := dashboardClient.GetDashboard(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.GetDashboardRequest{Tenant: tenantCtx})
 			return err
 		},
 	}
@@ -144,19 +139,19 @@ func TestDBServiceTokenIsRefusedOutsideTheAllowlist(t *testing.T) {
 
 	calls := map[string]func(context.Context) error{
 		"a write": func(ctx context.Context) error {
-			_, err := env.genreClient().CreateGenre(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.CreateGenreRequest{Tenant: tenantCtx, Name: "Fantasy"}))
+			_, err := env.genreClient().CreateGenre(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.CreateGenreRequest{Tenant: tenantCtx, Name: "Fantasy"})
 			return err
 		},
 		"a read that requires the tenant admin role": func(ctx context.Context) error {
-			_, err := env.tenantSettingsClient().GetTenantTimezone(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetTenantTimezoneRequest{Tenant: tenantCtx}))
+			_, err := env.tenantSettingsClient().GetTenantTimezone(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.GetTenantTimezoneRequest{Tenant: tenantCtx})
 			return err
 		},
 		"a read whose answer depends on the caller's role": func(ctx context.Context) error {
-			_, err := publiraadminv1connect.NewAdminCreatorServiceClient(env.Server.Client(), env.Server.URL).GetCreator(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.GetCreatorRequest{Tenant: tenantCtx, PublicId: creator.PublicID}))
+			_, err := publiraadminv1connect.NewAdminCreatorServiceClient(connect.NewClient(connecthttp.NewTransport(env.Server.Client(), env.Server.URL))).GetCreator(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.GetCreatorRequest{Tenant: tenantCtx, PublicId: creator.PublicID})
 			return err
 		},
 		"a read that signs per-user media tokens": func(ctx context.Context) error {
-			_, err := env.seriesClient().ListEpisodeImages(ctx, newServiceRequest(testWebServiceToken, &publiraadminv1.ListEpisodeImagesRequest{Tenant: tenantCtx, EpisodeId: episode.ID.String()}))
+			_, err := env.seriesClient().ListEpisodeImages(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.ListEpisodeImagesRequest{Tenant: tenantCtx, EpisodeId: episode.ID.String()})
 			return err
 		},
 	}
@@ -186,11 +181,11 @@ func TestDBServiceTokenIsUnauthenticatedUnlessItIsTheConfiguredOne(t *testing.T)
 			tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 			client := env.genreClient()
 
-			_, err := client.ListGenres(t.Context(), newServiceRequest(tt.bearer, &publiraadminv1.ListGenresRequest{Tenant: tenant.tenantContext()}))
+			_, err := client.ListGenres(testutil.WithBearer(t.Context(), tt.bearer), &publiraadminv1.ListGenresRequest{Tenant: tenant.tenantContext()})
 			if code := connect.CodeOf(err); code != connect.CodeUnauthenticated {
 				t.Fatalf("ListGenres code = %v, want %v", code, connect.CodeUnauthenticated)
 			}
-			_, err = client.CreateGenre(t.Context(), newServiceRequest(tt.bearer, &publiraadminv1.CreateGenreRequest{Tenant: tenant.tenantContext(), Name: "Fantasy"}))
+			_, err = client.CreateGenre(testutil.WithBearer(t.Context(), tt.bearer), &publiraadminv1.CreateGenreRequest{Tenant: tenant.tenantContext(), Name: "Fantasy"})
 			if code := connect.CodeOf(err); code != connect.CodeUnauthenticated {
 				t.Fatalf("CreateGenre code = %v, want %v", code, connect.CodeUnauthenticated)
 			}

@@ -13,9 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
+
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
@@ -57,20 +59,20 @@ func newCapturingCheckoutProvider() *capturingCheckoutProvider {
 
 // paymentWebhookRequest is the request web-host makes for a provider's
 // delivery.
-func paymentWebhookRequest(tenantID, provider string, payload []byte, headers http.Header) *connect.Request[publirav1.ProcessPaymentWebhookRequest] {
+func paymentWebhookRequest(tenantID, provider string, payload []byte, headers http.Header) *publirav1.ProcessPaymentWebhookRequest {
 	forwarded := make(map[string]string, len(headers))
 	for name := range headers {
 		forwarded[strings.ToLower(name)] = headers.Get(name)
 	}
-	return connect.NewRequest(&publirav1.ProcessPaymentWebhookRequest{
+	return &publirav1.ProcessPaymentWebhookRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID},
 		Provider: provider,
 		Payload:  payload,
 		Headers:  forwarded,
-	})
+	}
 }
 
-func stripeWebhookRequest(tenantID string, payload []byte, headers http.Header) *connect.Request[publirav1.ProcessPaymentWebhookRequest] {
+func stripeWebhookRequest(tenantID string, payload []byte, headers http.Header) *publirav1.ProcessPaymentWebhookRequest {
 	return paymentWebhookRequest(tenantID, stripe.ID, payload, headers)
 }
 
@@ -186,11 +188,11 @@ func TestStartEpisodeCheckoutRefusesWhenTenantSettingsMissing(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-	_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	_, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
 		EpisodeId: uuid.NewString(),
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, tenantID.String()))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
 	}
@@ -212,11 +214,11 @@ func TestStartEpisodeCheckoutRefusesWhenTenantDomainMissing(t *testing.T) {
 			AddRow(tenantID, "TENANT", "", "Tenant", nil, now, "active", nil, "UTC", "ja"))
 	expectAuthSession(env.mock, tenantID, userID, now)
 
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-	_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	_, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
 		EpisodeId: uuid.NewString(),
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, tenantID.String()))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
 	}
@@ -279,12 +281,12 @@ func TestStartEpisodeCheckoutRefusesASurfaceThatMayNotSellTheEpisode(t *testing.
 			expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 			expectPurchasableEpisode(env.mock, tenantID, episodeID, tc.surface, tc.purchaseAvailability)
 
-			client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-			_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+			client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+			_, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
 				EpisodeId: episodeID.String(),
 				Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Client:    tc.client,
-			}, tenantID.String()))
+			})
 			if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 				t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
 			}
@@ -314,17 +316,17 @@ func TestStartEpisodeCheckoutSellsAnAppOnlyEpisodeInTheApp(t *testing.T) {
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
 
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-	resp, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	resp, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
 		EpisodeId: episodeID.String(),
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Client:    publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
-	}, tenantID.String()))
+	})
 	if err != nil {
 		t.Fatalf("StartEpisodeCheckout: %v", err)
 	}
-	if resp.Msg.CheckoutUrl != "https://checkout.stripe.test/cs_test" {
-		t.Fatalf("checkout_url = %q", resp.Msg.CheckoutUrl)
+	if resp.CheckoutUrl != "https://checkout.stripe.test/cs_test" {
+		t.Fatalf("checkout_url = %q", resp.CheckoutUrl)
 	}
 	assertPublicExpectations(t, env.mock)
 }
@@ -340,12 +342,12 @@ func TestStartEpisodeCheckoutRefusesTheAppOfATenantSellingThroughTheStore(t *tes
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteStore)
 
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-	_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	_, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
 		EpisodeId: uuid.NewString(),
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Client:    publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
-	}, tenantID.String()))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
 	}
@@ -373,12 +375,12 @@ func TestStartEpisodeCheckoutSellsOnTheWebOfATenantWhoseAppSellsThroughTheStore(
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
 
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-	if _, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	if _, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
 		EpisodeId: episodeID.String(),
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Client:    publirav1.StartEpisodeCheckoutRequest_CLIENT_WEB,
-	}, tenantID.String())); err != nil {
+	}); err != nil {
 		t.Fatalf("StartEpisodeCheckout: %v", err)
 	}
 	assertPublicExpectations(t, env.mock)
@@ -401,17 +403,17 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
 
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-	resp, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	resp, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
 		EpisodeId: episodeID.String(),
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Client:    publirav1.StartEpisodeCheckoutRequest_CLIENT_WEB,
-	}, tenantID.String()))
+	})
 	if err != nil {
 		t.Fatalf("StartEpisodeCheckout: %v", err)
 	}
-	if resp.Msg.CheckoutUrl != "https://checkout.stripe.test/cs_test" {
-		t.Fatalf("checkout_url = %q", resp.Msg.CheckoutUrl)
+	if resp.CheckoutUrl != "https://checkout.stripe.test/cs_test" {
+		t.Fatalf("checkout_url = %q", resp.CheckoutUrl)
 	}
 	if env.checkout.secretKey != testCheckoutSecretKey {
 		t.Fatalf("checkout secret = %q, want tenant secret", env.checkout.secretKey)
@@ -444,12 +446,12 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
 
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
-	_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	_, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
 		EpisodeId: episodeID.String(),
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Client:    publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
-	}, tenantID.String()))
+	})
 	if err != nil {
 		t.Fatalf("StartEpisodeCheckout: %v", err)
 	}
@@ -473,7 +475,7 @@ func TestProcessPaymentWebhookRefusesWhenTenantSettingsMissing(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 
 	payload, header := stripetest.SignedEvent(t, testOtherWebhookSecret, "ping", map[string]any{"object": "checkout.session"})
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	_, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenantID.String(), payload, header))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ProcessPaymentWebhook code = %v, want failed_precondition", connect.CodeOf(err))
@@ -492,7 +494,7 @@ func TestProcessPaymentWebhookRejectsOtherTenantSigningSecret(t *testing.T) {
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 
 	payload, header := stripetest.SignedEvent(t, testOtherWebhookSecret, "ping", map[string]any{"id": "cs_other"})
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	_, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenantID.String(), payload, header))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ProcessPaymentWebhook code = %v, want invalid_argument", connect.CodeOf(err))
@@ -514,7 +516,7 @@ func TestProcessPaymentWebhookAcceptsTenantSigningSecret(t *testing.T) {
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 
 	payload, header := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "ping", map[string]any{"id": "cs_ok"})
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	_, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenantID.String(), payload, header))
 	if err != nil {
 		t.Fatalf("ProcessPaymentWebhook: %v", err)
@@ -528,7 +530,7 @@ func TestProcessPaymentWebhookAnswersNotFoundForAnUnregisteredProvider(t *testin
 	tenantID := uuid.Must(uuid.NewV7())
 
 	payload, header := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "ping", map[string]any{"id": "cs_unknown"})
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	_, err := client.ProcessPaymentWebhook(context.Background(), paymentWebhookRequest(tenantID.String(), "unknown", payload, header))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ProcessPaymentWebhook code = %v, want not_found", connect.CodeOf(err))
@@ -547,8 +549,8 @@ func TestProcessPaymentWebhookReadsTheSignatureHeaderWhateverItsCase(t *testing.
 
 	payload, header := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "ping", map[string]any{"id": "cs_case"})
 	req := stripeWebhookRequest(tenantID.String(), payload, nil)
-	req.Msg.Headers = map[string]string{"STRIPE-SIGNATURE": header.Get(stripe.SignatureHeader)}
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	req.Headers = map[string]string{"STRIPE-SIGNATURE": header.Get(stripe.SignatureHeader)}
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	if _, err := client.ProcessPaymentWebhook(context.Background(), req); err != nil {
 		t.Fatalf("ProcessPaymentWebhook: %v", err)
 	}
@@ -573,7 +575,7 @@ func TestProcessPaymentWebhookDecryptFailureDoesNotFulfillPurchase(t *testing.T)
 		"currency":       "jpy",
 		"payment_status": "paid",
 	})
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	_, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenantID.String(), payload, header))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ProcessPaymentWebhook code = %v, want failed_precondition", connect.CodeOf(err))
@@ -605,7 +607,7 @@ func TestProcessPaymentWebhookRejectsCheckoutTenantMismatch(t *testing.T) {
 			stripe.MetadataPrice:     "500",
 		},
 	})
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	_, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(pathTenantID.String(), payload, header))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ProcessPaymentWebhook code = %v, want invalid_argument", connect.CodeOf(err))

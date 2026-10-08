@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -43,20 +43,20 @@ func recordIDArg(raw, field string) (uuid.UUID, error) {
 // validateDistinctPublicIDs holds a list of public IDs to.
 func recordIDsArg(raw []string, field, noun string) ([]uuid.UUID, error) {
 	if len(raw) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s are required", field))
+		return nil, connect.Errorf(connect.CodeInvalidArgument, "%s are required", field)
 	}
 	ids := make([]uuid.UUID, 0, len(raw))
 	seen := make(map[uuid.UUID]struct{}, len(raw))
 	for _, value := range raw {
 		if strings.TrimSpace(value) == "" {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s contains empty value", field))
+			return nil, connect.Errorf(connect.CodeInvalidArgument, "%s contains empty value", field)
 		}
 		id, err := recordIDArg(value, field)
 		if err != nil {
 			return nil, err
 		}
 		if _, ok := seen[id]; ok {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s contains duplicate %s", field, noun))
+			return nil, connect.Errorf(connect.CodeInvalidArgument, "%s contains duplicate %s", field, noun)
 		}
 		seen[id] = struct{}{}
 		ids = append(ids, id)
@@ -91,7 +91,7 @@ func reorderIDs(order, expected reorderList, noun string) ([]string, []string, e
 		return nil, nil, err
 	}
 	if !samePublicIDSet(orderIDs, expectedIDs) {
-		return nil, nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s must be a permutation of %s", order.field, expected.field))
+		return nil, nil, connect.Errorf(connect.CodeInvalidArgument, "%s must be a permutation of %s", order.field, expected.field)
 	}
 	return orderIDs, expectedIDs, nil
 }

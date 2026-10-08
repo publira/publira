@@ -4,16 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -38,10 +39,10 @@ func labelNames(labels []*publirav1.PublishedLabel) []string {
 	return names
 }
 
-func newLabelListRequest(tenantID uuid.UUID) *connect.Request[publirav1.ListPublishedLabelsRequest] {
-	return connect.NewRequest(&publirav1.ListPublishedLabelsRequest{
+func newLabelListRequest(tenantID uuid.UUID) *publirav1.ListPublishedLabelsRequest {
+	return &publirav1.ListPublishedLabelsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
+	}
 }
 
 func TestCatalogListPublishedLabelsFirstPageReportsNextToken(t *testing.T) {
@@ -61,20 +62,20 @@ func TestCatalogListPublishedLabelsFirstPageReportsNextToken(t *testing.T) {
 		WithArgs("web", tenantID, false, uuid.NullUUID{}, false, sqlmock.AnyArg(), int32(3)).
 		WillReturnRows(rows)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := newLabelListRequest(tenantID)
-	req.Msg.Limit = 2
+	req.Limit = 2
 	resp, err := client.ListPublishedLabels(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListPublishedLabels: %v", err)
 	}
-	if got := labelNames(resp.Msg.Labels); !slices.Equal(got, []string{"Label 0", "Label 1"}) {
+	if got := labelNames(resp.Labels); !slices.Equal(got, []string{"Label 0", "Label 1"}) {
 		t.Fatalf("labels = %v, want the first page only", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	next, err := pagination.Decode(resp.Msg.NextToken)
+	next, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -99,13 +100,13 @@ func TestCatalogListPublishedLabelsCarriesPublishedSeriesCount(t *testing.T) {
 		WithArgs("web", tenantID, false, uuid.NullUUID{}, false, sqlmock.AnyArg(), defaultLabelPageSize+1).
 		WillReturnRows(rows)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.ListPublishedLabels(context.Background(), newLabelListRequest(tenantID))
 	if err != nil {
 		t.Fatalf("ListPublishedLabels: %v", err)
 	}
-	got := make([]int32, 0, len(resp.Msg.Labels))
-	for _, label := range resp.Msg.Labels {
+	got := make([]int32, 0, len(resp.Labels))
+	for _, label := range resp.Labels {
 		got = append(got, label.PublishedSeriesCount)
 	}
 	if !slices.Equal(got, []int32{4, 0}) {
@@ -132,21 +133,21 @@ func TestCatalogListPublishedLabelsFollowsPreviousTokenBackwards(t *testing.T) {
 		WithArgs("web", tenantID, false, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
 		WillReturnRows(rows)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := newLabelListRequest(tenantID)
-	req.Msg.Limit = 2
-	req.Msg.Token = onWeb(pagination.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID))
+	req.Limit = 2
+	req.Token = onWeb(pagination.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID))
 	resp, err := client.ListPublishedLabels(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListPublishedLabels: %v", err)
 	}
-	if got := labelNames(resp.Msg.Labels); !slices.Equal(got, []string{"Newer", "Older"}) {
+	if got := labelNames(resp.Labels); !slices.Equal(got, []string{"Newer", "Older"}) {
 		t.Fatalf("labels = %v, want the backward page restored to descending order", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	next, err := pagination.Decode(resp.Msg.NextToken)
+	next, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -170,20 +171,20 @@ func TestCatalogListPublishedLabelsEmptyPageKeepsAWayBack(t *testing.T) {
 		WithArgs("web", tenantID, false, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), defaultLabelPageSize+1).
 		WillReturnRows(labelColumns())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := newLabelListRequest(tenantID)
-	req.Msg.Token = onWeb(pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID))
+	req.Token = onWeb(pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID))
 	resp, err := client.ListPublishedLabels(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListPublishedLabels: %v", err)
 	}
-	if len(resp.Msg.Labels) != 0 {
-		t.Fatalf("labels count = %d, want 0", len(resp.Msg.Labels))
+	if len(resp.Labels) != 0 {
+		t.Fatalf("labels count = %d, want 0", len(resp.Labels))
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on an emptied page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on an emptied page", resp.NextToken)
 	}
-	previous, err := pagination.Decode(resp.Msg.PreviousToken)
+	previous, err := pagination.Decode(resp.PreviousToken)
 	if err != nil {
 		t.Fatalf("decode previous_token: %v", err)
 	}
@@ -201,9 +202,9 @@ func TestCatalogListPublishedLabelsRejectsBrokenToken(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := newLabelListRequest(tenantID)
-	req.Msg.Token = "not-a-token"
+	req.Token = "not-a-token"
 	_, err := client.ListPublishedLabels(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListPublishedLabels code = %v, want invalid_argument", connect.CodeOf(err))
@@ -224,15 +225,15 @@ func TestCatalogListPublishedLabelsReadsTheAppSurface(t *testing.T) {
 		WithArgs("app", tenantID, false, uuid.NullUUID{}, false, sqlmock.AnyArg(), int32(2)).
 		WillReturnRows(rows)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := newLabelListRequest(tenantID)
-	req.Msg.Limit = 1
-	req.Msg.Surface = publirattypesv1.ClientSurface_CLIENT_SURFACE_APP
+	req.Limit = 1
+	req.Surface = publirattypesv1.ClientSurface_CLIENT_SURFACE_APP
 	resp, err := client.ListPublishedLabels(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListPublishedLabels: %v", err)
 	}
-	next, err := pagination.Decode(resp.Msg.NextToken)
+	next, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -250,10 +251,10 @@ func TestCatalogListPublishedLabelsRejectsATokenFromAnotherSurface(t *testing.T)
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := newLabelListRequest(tenantID)
-	req.Msg.Surface = publirattypesv1.ClientSurface_CLIENT_SURFACE_APP
-	req.Msg.Token = onWeb(pagination.EncodeTimeUUID(pagination.Forward, now, uuid.Must(uuid.NewV7())))
+	req.Surface = publirattypesv1.ClientSurface_CLIENT_SURFACE_APP
+	req.Token = onWeb(pagination.EncodeTimeUUID(pagination.Forward, now, uuid.Must(uuid.NewV7())))
 	_, err := client.ListPublishedLabels(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListPublishedLabels code = %v, want invalid_argument", connect.CodeOf(err))
@@ -274,15 +275,15 @@ func TestCatalogListPublishedLabelsBindsTheTokenToHasPublishedSeries(t *testing.
 		WithArgs("web", tenantID, true, uuid.NullUUID{}, false, sqlmock.AnyArg(), int32(2)).
 		WillReturnRows(rows)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := newLabelListRequest(tenantID)
-	req.Msg.Limit = 1
-	req.Msg.HasPublishedSeries = true
+	req.Limit = 1
+	req.HasPublishedSeries = true
 	resp, err := client.ListPublishedLabels(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListPublishedLabels: %v", err)
 	}
-	next, err := pagination.Decode(resp.Msg.NextToken)
+	next, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -321,10 +322,10 @@ func TestCatalogListPublishedLabelsRejectsATokenFromTheOtherFilter(t *testing.T)
 			tenantID := uuid.Must(uuid.NewV7())
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 
-			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 			req := newLabelListRequest(tenantID)
-			req.Msg.HasPublishedSeries = tc.hasPublishedSeries
-			req.Msg.Token = tc.token
+			req.HasPublishedSeries = tc.hasPublishedSeries
+			req.Token = tc.token
 			_, err := client.ListPublishedLabels(context.Background(), req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("ListPublishedLabels code = %v, want invalid_argument", connect.CodeOf(err))
@@ -350,7 +351,7 @@ func TestCatalogListPublishedLabelsVariantLookupErrorIsReturned(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListLabelImageVariantsByImageIDs)).
 		WillReturnError(errors.New(`pq: relation "label_image_variants" does not exist`))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	_, err := client.ListPublishedLabels(context.Background(), newLabelListRequest(tenantID))
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ListPublishedLabels code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
@@ -390,31 +391,31 @@ func TestCatalogGetPublishedLabelDetailSuccess(t *testing.T) {
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetPublishedLabelDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetPublishedLabelDetail(context.Background(), &publirav1.GetPublishedLabelDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "LABEL000001",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedLabelDetail: %v", err)
 	}
-	if resp.Msg.Label == nil || resp.Msg.Label.PublicId != "LABEL000001" {
-		t.Fatalf("label = %+v, want LABEL000001", resp.Msg.Label)
+	if resp.Label == nil || resp.Label.PublicId != "LABEL000001" {
+		t.Fatalf("label = %+v, want LABEL000001", resp.Label)
 	}
-	if resp.Msg.Label.Name != "Weekly Jump" {
-		t.Fatalf("name = %q, want Weekly Jump", resp.Msg.Label.Name)
+	if resp.Label.Name != "Weekly Jump" {
+		t.Fatalf("name = %q, want Weekly Jump", resp.Label.Name)
 	}
-	if resp.Msg.Label.PublishedSeriesCount != 1 {
-		t.Fatalf("published_series_count = %d, want 1", resp.Msg.Label.PublishedSeriesCount)
+	if resp.Label.PublishedSeriesCount != 1 {
+		t.Fatalf("published_series_count = %d, want 1", resp.Label.PublishedSeriesCount)
 	}
-	if len(resp.Msg.Series) != 1 || resp.Msg.Series[0].PublicId != "SERIESPUB" {
-		t.Fatalf("series = %+v, want SERIESPUB", resp.Msg.Series)
+	if len(resp.Series) != 1 || resp.Series[0].PublicId != "SERIESPUB" {
+		t.Fatalf("series = %+v, want SERIESPUB", resp.Series)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty when every series fits in one page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty when every series fits in one page", resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -434,19 +435,19 @@ func TestCatalogGetPublishedLabelDetailReturnsLabelWithNoSeries(t *testing.T) {
 		WithArgs(labelID, tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetPublishedLabelDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetPublishedLabelDetail(context.Background(), &publirav1.GetPublishedLabelDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "LABELEMPTY1",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedLabelDetail: %v", err)
 	}
-	if resp.Msg.Label == nil || resp.Msg.Label.PublicId != "LABELEMPTY1" {
-		t.Fatalf("label = %+v, want LABELEMPTY1", resp.Msg.Label)
+	if resp.Label == nil || resp.Label.PublicId != "LABELEMPTY1" {
+		t.Fatalf("label = %+v, want LABELEMPTY1", resp.Label)
 	}
-	if len(resp.Msg.Series) != 0 {
-		t.Fatalf("series count = %d, want 0", len(resp.Msg.Series))
+	if len(resp.Series) != 0 {
+		t.Fatalf("series count = %d, want 0", len(resp.Series))
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -461,11 +462,11 @@ func TestCatalogGetPublishedLabelDetailNotFound(t *testing.T) {
 		WithArgs("web", tenantID, "MISSING00001").
 		WillReturnRows(labelDetailColumns())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetPublishedLabelDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetPublishedLabelDetail(context.Background(), &publirav1.GetPublishedLabelDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "MISSING00001",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("error = %v, want not_found", err)
 	}
@@ -493,24 +494,24 @@ func TestCatalogGetPublishedLabelDetailFirstPageReportsNextToken(t *testing.T) {
 			AddRow(ids[0], "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
 			AddRow(ids[1], "SERIESBETA0", "Beta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetPublishedLabelDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetPublishedLabelDetail(context.Background(), &publirav1.GetPublishedLabelDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "LABEL000001",
 		Limit:    2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedLabelDetail: %v", err)
 	}
-	if got := len(resp.Msg.Series); got != 2 {
+	if got := len(resp.Series); got != 2 {
 		t.Fatalf("series count = %d, want the over-fetched row dropped", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
 	wantToken := webToken(pagination.Forward, "title_asc", "Beta", ids[1].String())
-	if resp.Msg.NextToken != wantToken {
-		t.Fatalf("next_token = %q, want the last returned title cursor", resp.Msg.NextToken)
+	if resp.NextToken != wantToken {
+		t.Fatalf("next_token = %q, want the last returned title cursor", resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -527,12 +528,12 @@ func TestCatalogGetPublishedLabelDetailRejectsInvalidToken(t *testing.T) {
 		WillReturnRows(labelDetailColumns().
 			AddRow(labelID, "LABEL000001", "Weekly Jump", nil, nil, int32(1)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetPublishedLabelDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetPublishedLabelDetail(context.Background(), &publirav1.GetPublishedLabelDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "LABEL000001",
 		Token:    "not-a-token",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
 	}

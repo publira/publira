@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/adminapi"
@@ -74,7 +75,7 @@ func (e *publicDBEnv) openAdminCommentConsole(t *testing.T, tenant testutil.Tena
 
 	console := e.openAdminConsole(t, tenant, staff)
 	return adminCommentConsole{
-		client: publiraadminv1connect.NewAdminCommentServiceClient(console.server.Client(), console.server.URL),
+		client: publiraadminv1connect.NewAdminCommentServiceClient(connect.NewClient(connecthttp.NewTransport(console.server.Client(), console.server.URL))),
 		token:  console.token,
 	}
 }
@@ -143,13 +144,12 @@ func (e *publicDBEnv) hideComment(t *testing.T, tenant testutil.Tenant, staff te
 	t.Helper()
 
 	console := e.openAdminCommentConsole(t, tenant, staff)
-	req := connect.NewRequest(&publiraadminv1.HideCommentRequest{
+	req := &publiraadminv1.HideCommentRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		CommentId: e.commentID(t, tenant, publicID),
 		Reason:    "Removed for this test.",
-	})
-	req.Header().Set("Authorization", "Bearer "+console.token)
-	if _, err := console.client.HideComment(context.Background(), req); err != nil {
+	}
+	if _, err := console.client.HideComment(testutil.WithBearer(context.Background(), console.token), req); err != nil {
 		t.Fatalf("HideComment %s: %v", publicID, err)
 	}
 }
@@ -162,15 +162,15 @@ func (e *publicDBEnv) postComment(
 ) (*publirav1.MyEpisodeComment, error) {
 	t.Helper()
 
-	res, err := e.commentClient().PostEpisodeComment(context.Background(), newBearerRequest(&publirav1.PostEpisodeCommentRequest{
+	res, err := e.commentClient().PostEpisodeComment(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.PostEpisodeCommentRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episodeID,
 		Body:      body,
-	}, tokenFor(t, tenant, member)))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return res.Msg.Comment, nil
+	return res.Comment, nil
 }
 
 func (e *publicDBEnv) mustPostComment(
@@ -199,16 +199,16 @@ func (e *publicDBEnv) listComments(
 ) *publirav1.ListEpisodeCommentsResponse {
 	t.Helper()
 
-	res, err := e.commentClient().ListEpisodeComments(context.Background(), connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{
+	res, err := e.commentClient().ListEpisodeComments(context.Background(), &publirav1.ListEpisodeCommentsRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episodeID,
 		Limit:     limit,
 		Token:     token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListEpisodeComments: %v", err)
 	}
-	return res.Msg
+	return res
 }
 
 func (e *publicDBEnv) listMyComments(
@@ -219,14 +219,14 @@ func (e *publicDBEnv) listMyComments(
 ) []*publirav1.MyEpisodeComment {
 	t.Helper()
 
-	res, err := e.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
+	res, err := e.commentClient().ListMyEpisodeComments(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.ListMyEpisodeCommentsRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episodeID,
-	}, tokenFor(t, tenant, member)))
+	})
 	if err != nil {
 		t.Fatalf("ListMyEpisodeComments: %v", err)
 	}
-	return res.Msg.Comments
+	return res.Comments
 }
 
 func commentPublicIDs(comments []*publirav1.EpisodeComment) []string {
@@ -432,11 +432,11 @@ func TestDBPostEpisodeCommentRequiresAnActiveSession(t *testing.T) {
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
 
-	_, err := env.commentClient().PostEpisodeComment(context.Background(), connect.NewRequest(&publirav1.PostEpisodeCommentRequest{
+	_, err := env.commentClient().PostEpisodeComment(context.Background(), &publirav1.PostEpisodeCommentRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episode.ID.String(),
 		Body:      "Anonymous.",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("PostEpisodeComment without a session error = %v, want unauthenticated", err)
 	}
@@ -499,10 +499,10 @@ func TestDBWithdrawEpisodeCommentIsTheAuthorsOwn(t *testing.T) {
 	comment := env.mustPostComment(t, tenant, author, episode.ID.String(), "I will take this down.")
 
 	withdraw := func(member testutil.TenantUser, publicID string) error {
-		_, err := env.commentClient().WithdrawEpisodeComment(context.Background(), newBearerRequest(&publirav1.WithdrawEpisodeCommentRequest{
+		_, err := env.commentClient().WithdrawEpisodeComment(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.WithdrawEpisodeCommentRequest{
 			Tenant:    tenantContext(tenant),
 			CommentId: publicID,
-		}, tokenFor(t, tenant, member)))
+		})
 		return err
 	}
 
@@ -557,10 +557,10 @@ func TestDBEpisodeCommentsAreTenantIsolated(t *testing.T) {
 	}
 
 	// The other tenant cannot reach the episode the comment is on either.
-	_, err := env.commentClient().ListEpisodeComments(context.Background(), connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{
+	_, err := env.commentClient().ListEpisodeComments(context.Background(), &publirav1.ListEpisodeCommentsRequest{
 		Tenant:    tenantContext(second),
 		EpisodeId: firstEpisode.ID.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ListEpisodeComments across tenants error = %v, want not_found", err)
 	}
@@ -568,10 +568,10 @@ func TestDBEpisodeCommentsAreTenantIsolated(t *testing.T) {
 		t.Fatalf("PostEpisodeComment across tenants error = %v, want not_found", err)
 	}
 
-	_, err = env.commentClient().WithdrawEpisodeComment(context.Background(), newBearerRequest(&publirav1.WithdrawEpisodeCommentRequest{
+	_, err = env.commentClient().WithdrawEpisodeComment(testutil.WithBearer(context.Background(), tokenFor(t, second, secondMember)), &publirav1.WithdrawEpisodeCommentRequest{
 		Tenant:    tenantContext(second),
 		CommentId: comment.Id,
-	}, tokenFor(t, second, secondMember)))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("WithdrawEpisodeComment across tenants error = %v, want not_found", err)
 	}
@@ -644,28 +644,28 @@ func TestDBEpisodeCommentTokensStayOnTheirEpisode(t *testing.T) {
 	if public.NextToken == "" {
 		t.Fatal("public list has no next_token, want a second page")
 	}
-	mine, err := env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
+	mine, err := env.commentClient().ListMyEpisodeComments(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.ListMyEpisodeCommentsRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episode.ID.String(),
 		Limit:     1,
-	}, tokenFor(t, tenant, member)))
+	})
 	if err != nil {
 		t.Fatalf("ListMyEpisodeComments: %v", err)
 	}
-	if mine.Msg.NextToken == "" {
+	if mine.NextToken == "" {
 		t.Fatal("own list has no next_token, want a second page")
 	}
-	mineNext, err := env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
+	mineNext, err := env.commentClient().ListMyEpisodeComments(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.ListMyEpisodeCommentsRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episode.ID.String(),
 		Limit:     1,
-		Token:     mine.Msg.NextToken,
-	}, tokenFor(t, tenant, member)))
+		Token:     mine.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("ListMyEpisodeComments next page: %v", err)
 	}
-	if len(mineNext.Msg.Comments) != 1 || mineNext.Msg.Comments[0].PublicId == mine.Msg.Comments[0].PublicId {
-		t.Fatalf("own second page = %v, want the other pending comment", myCommentPublicIDs(mineNext.Msg.Comments))
+	if len(mineNext.Comments) != 1 || mineNext.Comments[0].PublicId == mine.Comments[0].PublicId {
+		t.Fatalf("own second page = %v, want the other pending comment", myCommentPublicIDs(mineNext.Comments))
 	}
 
 	recovery := pagination.NewListKey("created_at_desc").
@@ -673,40 +673,40 @@ func TestDBEpisodeCommentTokensStayOnTheirEpisode(t *testing.T) {
 		EncodeTimeUUIDRecovery(pagination.Backward, time.Now().UTC(), uuid.Must(uuid.NewV7()))
 	// The two lists of one episode hold different rows, so neither takes the
 	// other's token.
-	if _, err := env.commentClient().ListEpisodeComments(context.Background(), connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{
+	if _, err := env.commentClient().ListEpisodeComments(context.Background(), &publirav1.ListEpisodeCommentsRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episode.ID.String(),
-		Token:     mine.Msg.NextToken,
-	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		Token:     mine.NextToken,
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListEpisodeComments with the own list's token error = %v, want invalid_argument", err)
 	}
-	if _, err := env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
+	if _, err := env.commentClient().ListMyEpisodeComments(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.ListMyEpisodeCommentsRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episode.ID.String(),
 		Token:     public.NextToken,
-	}, tokenFor(t, tenant, member))); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListMyEpisodeComments with the public list's token error = %v, want invalid_argument", err)
 	}
 
 	for name, token := range map[string]string{
 		"public boundary": public.NextToken,
-		"own boundary":    mine.Msg.NextToken,
+		"own boundary":    mine.NextToken,
 		"recovery":        recovery,
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := env.commentClient().ListEpisodeComments(context.Background(), connect.NewRequest(&publirav1.ListEpisodeCommentsRequest{
+			_, err := env.commentClient().ListEpisodeComments(context.Background(), &publirav1.ListEpisodeCommentsRequest{
 				Tenant:    tenantContext(tenant),
 				EpisodeId: other.ID.String(),
 				Token:     token,
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("ListEpisodeComments on another episode error = %v, want invalid_argument", err)
 			}
-			_, err = env.commentClient().ListMyEpisodeComments(context.Background(), newBearerRequest(&publirav1.ListMyEpisodeCommentsRequest{
+			_, err = env.commentClient().ListMyEpisodeComments(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.ListMyEpisodeCommentsRequest{
 				Tenant:    tenantContext(tenant),
 				EpisodeId: other.ID.String(),
 				Token:     token,
-			}, tokenFor(t, tenant, member)))
+			})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("ListMyEpisodeComments on another episode error = %v, want invalid_argument", err)
 			}
@@ -723,12 +723,12 @@ func (e *publicDBEnv) reportComment(
 ) error {
 	t.Helper()
 
-	_, err := e.commentClient().ReportEpisodeComment(context.Background(), newBearerRequest(&publirav1.ReportEpisodeCommentRequest{
+	_, err := e.commentClient().ReportEpisodeComment(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reporter)), &publirav1.ReportEpisodeCommentRequest{
 		Tenant:    tenantContext(tenant),
 		CommentId: commentID,
 		Reason:    reason,
 		Note:      "It has nothing to do with the episode.",
-	}, tokenFor(t, tenant, reporter)))
+	})
 	return err
 }
 
@@ -851,11 +851,11 @@ func TestDBReportEpisodeCommentRequiresAReasonAndASession(t *testing.T) {
 		t.Fatalf("report with no reason error = %v, want invalid_argument", err)
 	}
 
-	_, err := env.commentClient().ReportEpisodeComment(context.Background(), connect.NewRequest(&publirav1.ReportEpisodeCommentRequest{
+	_, err := env.commentClient().ReportEpisodeComment(context.Background(), &publirav1.ReportEpisodeCommentRequest{
 		Tenant:    tenantContext(tenant),
 		CommentId: comment.Id,
 		Reason:    publirav1.CommentReportReason_COMMENT_REPORT_REASON_SPAM,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("report without a session error = %v, want unauthenticated", err)
 	}

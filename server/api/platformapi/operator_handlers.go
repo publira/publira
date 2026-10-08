@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -112,11 +113,11 @@ func getOperatorRowToProto(row dbmodels.GetPlatformOperatorByIDRow) *publiraspla
 func parseOperatorID(raw string) (uuid.UUID, error) {
 	id := strings.TrimSpace(raw)
 	if id == "" {
-		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("operator_id is required"))
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, "operator_id is required")
 	}
 	parsed, err := uuid.Parse(id)
 	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("operator_id is not an identifier"))
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, "operator_id is not an identifier")
 	}
 	return parsed, nil
 }
@@ -131,29 +132,29 @@ func createOperatorPassword() (string, error) {
 
 func ensurePlatformSuperAdmin(role string) error {
 	if role != rolePlatformSuperAdmin {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("platform super admin role required"))
+		return connect.NewError(connect.CodePermissionDenied, "platform super admin role required")
 	}
 	return nil
 }
 
 func (s *platformServer) ListOperators(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.ListOperatorsRequest],
-) (*connect.Response[publirasplatformv1.ListOperatorsResponse], error) {
-	if _, err := s.requirePlatformActor(ctx, req.Header()); err != nil {
+	req *publirasplatformv1.ListOperatorsRequest,
+) (*publirasplatformv1.ListOperatorsResponse, error) {
+	if _, err := s.requirePlatformActor(ctx, rpcmiddleware.RequestHeader(ctx)); err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultOperatorListLimit, maxOperatorListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultOperatorListLimit, maxOperatorListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -184,7 +185,7 @@ func (s *platformServer) ListOperators(
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
 		resp.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }
 
 func (s *platformServer) operatorPage(
@@ -223,35 +224,35 @@ func (s *platformServer) operatorPage(
 
 func (s *platformServer) GetOperator(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.GetOperatorRequest],
-) (*connect.Response[publirasplatformv1.GetOperatorResponse], error) {
-	if _, err := s.requirePlatformActor(ctx, req.Header()); err != nil {
+	req *publirasplatformv1.GetOperatorRequest,
+) (*publirasplatformv1.GetOperatorResponse, error) {
+	if _, err := s.requirePlatformActor(ctx, rpcmiddleware.RequestHeader(ctx)); err != nil {
 		return nil, err
 	}
 
-	publicID := strings.TrimSpace(req.Msg.PublicId)
+	publicID := strings.TrimSpace(req.PublicId)
 	if publicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "public_id is required")
 	}
 
 	operator, err := s.queriesFor(ctx).GetPlatformOperatorByPublicID(ctx, publicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("operator not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "operator not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get operator", err, "public_id", publicID)
 	}
 
-	return connect.NewResponse(&publirasplatformv1.GetOperatorResponse{
+	return &publirasplatformv1.GetOperatorResponse{
 		Operator: getOperatorRowToProto(dbmodels.GetPlatformOperatorByIDRow(operator)),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) CreateOperator(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.CreateOperatorRequest],
-) (*connect.Response[publirasplatformv1.CreateOperatorResponse], error) {
-	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
+	req *publirasplatformv1.CreateOperatorRequest,
+) (*publirasplatformv1.CreateOperatorResponse, error) {
+	actor, err := s.requirePlatformWriteActor(ctx, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -259,20 +260,20 @@ func (s *platformServer) CreateOperator(
 		return nil, err
 	}
 
-	name := strings.TrimSpace(req.Msg.Name)
+	name := strings.TrimSpace(req.Name)
 	if name == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "name is required")
 	}
-	email := strings.TrimSpace(strings.ToLower(req.Msg.Email))
+	email := strings.TrimSpace(strings.ToLower(req.Email))
 	if email == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "email is required")
 	}
 	if _, err := mail.ParseAddress(email); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid email address")
 	}
-	role, ok := normalizePlatformOperatorRole(req.Msg.Role)
+	role, ok := normalizePlatformOperatorRole(req.Role)
 	if !ok {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid role"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid role")
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -291,15 +292,15 @@ func (s *platformServer) CreateOperator(
 
 		password, err := createOperatorPassword()
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 		}
 		passwordHash, err := auth.HashPassword(password)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 		}
 		userID, err := uuid.NewV7()
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 		}
 		user, err = publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.PlatformUser, error) {
 			return txq.CreatePlatformUser(ctx, dbmodels.CreatePlatformUserParams{
@@ -312,7 +313,7 @@ func (s *platformServer) CreateOperator(
 		})
 		if err != nil {
 			if dberr.IsUniqueViolation(err) {
-				return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+				return nil, connect.NewError(connect.CodeAlreadyExists, "email already exists")
 			}
 			return nil, s.internalDBError(ctx, "failed to create platform user", err)
 		}
@@ -323,7 +324,7 @@ func (s *platformServer) CreateOperator(
 		return nil, s.internalDBError(ctx, "failed to list platform user roles", err, "platform_user_id", user.ID.String())
 	}
 	if len(roles) > 0 {
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("operator already exists"))
+		return nil, connect.NewError(connect.CodeAlreadyExists, "operator already exists")
 	}
 
 	_, err = txq.CreatePlatformUserRole(ctx, dbmodels.CreatePlatformUserRoleParams{
@@ -333,7 +334,7 @@ func (s *platformServer) CreateOperator(
 	})
 	if err != nil {
 		if dberr.IsUniqueViolation(err) {
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("operator role already exists"))
+			return nil, connect.NewError(connect.CodeAlreadyExists, "operator role already exists")
 		}
 		return nil, s.internalDBError(ctx, "failed to create platform user role", err, "platform_user_id", user.ID.String())
 	}
@@ -353,19 +354,19 @@ func (s *platformServer) CreateOperator(
 		TargetType:          "operator",
 		TargetID:            operator.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publirasplatformv1.CreateOperatorResponse{
+	return &publirasplatformv1.CreateOperatorResponse{
 		Operator: getOperatorRowToProto(operator),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) UpdateOperatorRole(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.UpdateOperatorRoleRequest],
-) (*connect.Response[publirasplatformv1.UpdateOperatorRoleResponse], error) {
-	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
+	req *publirasplatformv1.UpdateOperatorRoleRequest,
+) (*publirasplatformv1.UpdateOperatorRoleResponse, error) {
+	actor, err := s.requirePlatformWriteActor(ctx, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -373,13 +374,13 @@ func (s *platformServer) UpdateOperatorRole(
 		return nil, err
 	}
 
-	operatorID, err := parseOperatorID(req.Msg.OperatorId)
+	operatorID, err := parseOperatorID(req.OperatorId)
 	if err != nil {
 		return nil, err
 	}
-	role, ok := normalizePlatformOperatorRole(req.Msg.Role)
+	role, ok := normalizePlatformOperatorRole(req.Role)
 	if !ok {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid role"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid role")
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -393,12 +394,12 @@ func (s *platformServer) UpdateOperatorRole(
 	operator, err := txq.GetPlatformOperatorByID(ctx, operatorID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("operator not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "operator not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get operator", err, "platform_user_id", operatorID.String())
 	}
 	if operator.ID == actor.UserID && role != rolePlatformSuperAdmin {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot demote yourself"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "cannot demote yourself")
 	}
 
 	if err := txq.DeletePlatformUserRolesByPlatformUserID(ctx, operator.ID); err != nil {
@@ -428,19 +429,19 @@ func (s *platformServer) UpdateOperatorRole(
 		TargetType:          "operator",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publirasplatformv1.UpdateOperatorRoleResponse{
+	return &publirasplatformv1.UpdateOperatorRoleResponse{
 		Operator: getOperatorRowToProto(updated),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) SuspendOperator(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.SuspendOperatorRequest],
-) (*connect.Response[publirasplatformv1.SuspendOperatorResponse], error) {
-	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
+	req *publirasplatformv1.SuspendOperatorRequest,
+) (*publirasplatformv1.SuspendOperatorResponse, error) {
+	actor, err := s.requirePlatformWriteActor(ctx, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -448,7 +449,7 @@ func (s *platformServer) SuspendOperator(
 		return nil, err
 	}
 
-	operatorID, err := parseOperatorID(req.Msg.OperatorId)
+	operatorID, err := parseOperatorID(req.OperatorId)
 	if err != nil {
 		return nil, err
 	}
@@ -464,15 +465,15 @@ func (s *platformServer) SuspendOperator(
 	operator, err := txq.GetPlatformOperatorByID(ctx, operatorID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("operator not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "operator not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get operator", err, "platform_user_id", operatorID.String())
 	}
 	if operator.ID == actor.UserID {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot suspend yourself"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "cannot suspend yourself")
 	}
 	if operator.Status != userStatusActive {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("operator is not active"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "operator is not active")
 	}
 
 	updatedUser, err := txq.UpdatePlatformUserStatusByID(ctx, dbmodels.UpdatePlatformUserStatusByIDParams{
@@ -501,19 +502,19 @@ func (s *platformServer) SuspendOperator(
 		TargetType:          "operator",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publirasplatformv1.SuspendOperatorResponse{
+	return &publirasplatformv1.SuspendOperatorResponse{
 		Operator: getOperatorRowToProto(updated),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) UnsuspendOperator(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.UnsuspendOperatorRequest],
-) (*connect.Response[publirasplatformv1.UnsuspendOperatorResponse], error) {
-	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
+	req *publirasplatformv1.UnsuspendOperatorRequest,
+) (*publirasplatformv1.UnsuspendOperatorResponse, error) {
+	actor, err := s.requirePlatformWriteActor(ctx, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -521,7 +522,7 @@ func (s *platformServer) UnsuspendOperator(
 		return nil, err
 	}
 
-	operatorID, err := parseOperatorID(req.Msg.OperatorId)
+	operatorID, err := parseOperatorID(req.OperatorId)
 	if err != nil {
 		return nil, err
 	}
@@ -537,12 +538,12 @@ func (s *platformServer) UnsuspendOperator(
 	operator, err := txq.GetPlatformOperatorByID(ctx, operatorID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("operator not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "operator not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get operator", err, "platform_user_id", operatorID.String())
 	}
 	if operator.Status != userStatusSuspended {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("operator is not suspended"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "operator is not suspended")
 	}
 
 	_, err = txq.UpdatePlatformUserStatusByID(ctx, dbmodels.UpdatePlatformUserStatusByIDParams{
@@ -568,19 +569,19 @@ func (s *platformServer) UnsuspendOperator(
 		TargetType:          "operator",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publirasplatformv1.UnsuspendOperatorResponse{
+	return &publirasplatformv1.UnsuspendOperatorResponse{
 		Operator: getOperatorRowToProto(updated),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) DeactivateOperator(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.DeactivateOperatorRequest],
-) (*connect.Response[publirasplatformv1.DeactivateOperatorResponse], error) {
-	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
+	req *publirasplatformv1.DeactivateOperatorRequest,
+) (*publirasplatformv1.DeactivateOperatorResponse, error) {
+	actor, err := s.requirePlatformWriteActor(ctx, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -588,7 +589,7 @@ func (s *platformServer) DeactivateOperator(
 		return nil, err
 	}
 
-	operatorID, err := parseOperatorID(req.Msg.OperatorId)
+	operatorID, err := parseOperatorID(req.OperatorId)
 	if err != nil {
 		return nil, err
 	}
@@ -604,15 +605,15 @@ func (s *platformServer) DeactivateOperator(
 	operator, err := txq.GetPlatformOperatorByID(ctx, operatorID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("operator not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "operator not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get operator", err, "platform_user_id", operatorID.String())
 	}
 	if operator.ID == actor.UserID {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot deactivate yourself"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "cannot deactivate yourself")
 	}
 	if operator.Status == userStatusInactive {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("operator is already inactive"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "operator is already inactive")
 	}
 
 	updatedUser, err := txq.UpdatePlatformUserStatusByID(ctx, dbmodels.UpdatePlatformUserStatusByIDParams{
@@ -641,10 +642,10 @@ func (s *platformServer) DeactivateOperator(
 		TargetType:          "operator",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publirasplatformv1.DeactivateOperatorResponse{
+	return &publirasplatformv1.DeactivateOperatorResponse{
 		Operator: getOperatorRowToProto(updated),
-	}), nil
+	}, nil
 }

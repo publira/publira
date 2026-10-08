@@ -2,10 +2,9 @@ package adminapi
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -13,6 +12,7 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 func tenantEmailRejectionSettingsToProto(settings emailrejection.Settings) *publiraadminv1.TenantEmailRejectionSettings {
@@ -38,9 +38,9 @@ func (s *adminServer) disposableDomainListAvailable(ctx context.Context) (bool, 
 
 func (s *adminServer) GetTenantEmailRejectionSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantEmailRejectionSettingsRequest],
-) (*connect.Response[publiraadminv1.GetTenantEmailRejectionSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.GetTenantEmailRejectionSettingsRequest,
+) (*publiraadminv1.GetTenantEmailRejectionSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -55,17 +55,17 @@ func (s *adminServer) GetTenantEmailRejectionSettings(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.GetTenantEmailRejectionSettingsResponse{
+	return &publiraadminv1.GetTenantEmailRejectionSettingsResponse{
 		Settings:                      tenantEmailRejectionSettingsToProto(settings),
 		DisposableDomainListAvailable: available,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) UpdateTenantEmailRejectionSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantEmailRejectionSettingsRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantEmailRejectionSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantEmailRejectionSettingsRequest,
+) (*publiraadminv1.UpdateTenantEmailRejectionSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -73,12 +73,12 @@ func (s *adminServer) UpdateTenantEmailRejectionSettings(
 	if err != nil {
 		return nil, err
 	}
-	if req.Msg.Settings == nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("settings is required"))
+	if req.Settings == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "settings is required")
 	}
 	input := emailrejection.Settings{
-		RejectDisposableDomains: req.Msg.Settings.GetRejectDisposableDomains(),
-		Entries:                 req.Msg.Settings.GetEntries(),
+		RejectDisposableDomains: req.Settings.GetRejectDisposableDomains(),
+		Entries:                 req.Settings.GetEntries(),
 	}
 	// Validated before the transaction, so a list with a typo costs no write.
 	if _, err := emailrejection.NormalizeEntries(input.Entries); err != nil {
@@ -105,7 +105,7 @@ func (s *adminServer) UpdateTenantEmailRejectionSettings(
 		TargetID:    tenant.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
 		Reason:      emailRejectionSettingsAuditReason(settings),
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to audit tenant email rejection settings", err, "tenant_id", tenant.ID.String())
 	}
@@ -117,10 +117,10 @@ func (s *adminServer) UpdateTenantEmailRejectionSettings(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.UpdateTenantEmailRejectionSettingsResponse{
+	return &publiraadminv1.UpdateTenantEmailRejectionSettingsResponse{
 		Settings:                      tenantEmailRejectionSettingsToProto(settings),
 		DisposableDomainListAvailable: available,
-	}), nil
+	}, nil
 }
 
 // emailRejectionSettingsAuditReason names the switch and how long the list

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
@@ -76,16 +76,16 @@ func platformPolicyFromProto(policy *publirasplatformv1.PlatformPolicy) platform
 
 func (s *platformServer) GetPlatformPolicy(
 	ctx context.Context,
-	_ *connect.Request[publirasplatformv1.GetPlatformPolicyRequest],
-) (*connect.Response[publirasplatformv1.GetPlatformPolicyResponse], error) {
+	_ *publirasplatformv1.GetPlatformPolicyRequest,
+) (*publirasplatformv1.GetPlatformPolicyResponse, error) {
 	policy, revision, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read platform policy", err)
 	}
-	return connect.NewResponse(&publirasplatformv1.GetPlatformPolicyResponse{
+	return &publirasplatformv1.GetPlatformPolicyResponse{
 		Policy:   platformPolicyToProto(policy),
 		Revision: revision,
-	}), nil
+	}, nil
 }
 
 // platformPolicyError maps what platformpolicy refuses to this API's codes,
@@ -95,21 +95,21 @@ func (s *platformServer) platformPolicyError(ctx context.Context, err error) err
 		return connectErr
 	}
 	if errors.Is(err, platformpolicy.ErrConflict) {
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	}
 	return s.internalDBError(ctx, "failed to save platform policy", err)
 }
 
 func (s *platformServer) UpdatePlatformPolicy(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.UpdatePlatformPolicyRequest],
-) (*connect.Response[publirasplatformv1.UpdatePlatformPolicyResponse], error) {
-	if req.Msg.GetPolicy() == nil {
+	req *publirasplatformv1.UpdatePlatformPolicyRequest,
+) (*publirasplatformv1.UpdatePlatformPolicyResponse, error) {
+	if req.GetPolicy() == nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("policy is required"), platformpolicy.FieldPolicy)
 	}
-	expectedRevision := req.Msg.GetExpectedRevision()
+	expectedRevision := req.GetExpectedRevision()
 	params := platformpolicy.SaveParams{
-		Policy:           platformPolicyFromProto(req.Msg.GetPolicy()),
+		Policy:           platformPolicyFromProto(req.GetPolicy()),
 		ExpectedRevision: &expectedRevision,
 	}
 	// wait_free_ticket_use reached the policy after the console screens that
@@ -118,7 +118,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 	// stored value is read here and the save is held to expected_revision, so
 	// a value another operator saved since the caller's read is refused with
 	// the rest of the stale request rather than written back over.
-	if req.Msg.GetPolicy().GetWaitFreeTicketUse() == nil {
+	if req.GetPolicy().GetWaitFreeTicketUse() == nil {
 		stored, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read platform policy", err)
@@ -128,7 +128,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 	if err := params.Validate(); err != nil {
 		return nil, s.platformPolicyError(ctx, err)
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -137,8 +137,8 @@ func (s *platformServer) UpdatePlatformPolicy(
 	if err != nil {
 		return nil, s.platformPolicyError(ctx, err)
 	}
-	return connect.NewResponse(&publirasplatformv1.UpdatePlatformPolicyResponse{
+	return &publirasplatformv1.UpdatePlatformPolicyResponse{
 		Policy:   platformPolicyToProto(platformpolicy.FromConfig(updated)),
 		Revision: updated.Revision,
-	}), nil
+	}, nil
 }

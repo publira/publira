@@ -5,172 +5,179 @@
 package publiraadminv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AdminFcmSettingsServiceName is the fully-qualified name of the AdminFcmSettingsService service.
 	AdminFcmSettingsServiceName = "publira.admin.v1.AdminFcmSettingsService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AdminFcmSettingsServiceGetTenantFcmSettingsProcedure is the fully-qualified name of the
+	// AdminFcmSettingsServiceGetTenantFcmSettingsProcedure is the procedure name of the
 	// AdminFcmSettingsService's GetTenantFcmSettings RPC.
 	AdminFcmSettingsServiceGetTenantFcmSettingsProcedure = "/publira.admin.v1.AdminFcmSettingsService/GetTenantFcmSettings"
-	// AdminFcmSettingsServiceSaveTenantFcmCredentialsProcedure is the fully-qualified name of the
+	// AdminFcmSettingsServiceSaveTenantFcmCredentialsProcedure is the procedure name of the
 	// AdminFcmSettingsService's SaveTenantFcmCredentials RPC.
 	AdminFcmSettingsServiceSaveTenantFcmCredentialsProcedure = "/publira.admin.v1.AdminFcmSettingsService/SaveTenantFcmCredentials"
-	// AdminFcmSettingsServiceDeleteTenantFcmCredentialsProcedure is the fully-qualified name of the
+	// AdminFcmSettingsServiceDeleteTenantFcmCredentialsProcedure is the procedure name of the
 	// AdminFcmSettingsService's DeleteTenantFcmCredentials RPC.
 	AdminFcmSettingsServiceDeleteTenantFcmCredentialsProcedure = "/publira.admin.v1.AdminFcmSettingsService/DeleteTenantFcmCredentials"
+)
+
+var (
+	adminFcmSettingsServiceGetTenantFcmSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_fcm_proto.Services().ByName("AdminFcmSettingsService").Methods().ByName("GetTenantFcmSettings"),
+			Procedure:  AdminFcmSettingsServiceGetTenantFcmSettingsProcedure,
+		}
+	})
+	adminFcmSettingsServiceSaveTenantFcmCredentialsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_fcm_proto.Services().ByName("AdminFcmSettingsService").Methods().ByName("SaveTenantFcmCredentials"),
+			Procedure:  AdminFcmSettingsServiceSaveTenantFcmCredentialsProcedure,
+		}
+	})
+	adminFcmSettingsServiceDeleteTenantFcmCredentialsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_fcm_proto.Services().ByName("AdminFcmSettingsService").Methods().ByName("DeleteTenantFcmCredentials"),
+			Procedure:  AdminFcmSettingsServiceDeleteTenantFcmCredentialsProcedure,
+		}
+	})
 )
 
 // AdminFcmSettingsServiceClient is a client for the publira.admin.v1.AdminFcmSettingsService
 // service.
 type AdminFcmSettingsServiceClient interface {
 	// Minimum role: tenant_admin.
-	GetTenantFcmSettings(context.Context, *connect.Request[v1.GetTenantFcmSettingsRequest]) (*connect.Response[v1.GetTenantFcmSettingsResponse], error)
+	GetTenantFcmSettings(context.Context, *v1.GetTenantFcmSettingsRequest) (*v1.GetTenantFcmSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	SaveTenantFcmCredentials(context.Context, *connect.Request[v1.SaveTenantFcmCredentialsRequest]) (*connect.Response[v1.SaveTenantFcmCredentialsResponse], error)
+	SaveTenantFcmCredentials(context.Context, *v1.SaveTenantFcmCredentialsRequest) (*v1.SaveTenantFcmCredentialsResponse, error)
 	// Minimum role: tenant_admin.
-	DeleteTenantFcmCredentials(context.Context, *connect.Request[v1.DeleteTenantFcmCredentialsRequest]) (*connect.Response[v1.DeleteTenantFcmCredentialsResponse], error)
+	DeleteTenantFcmCredentials(context.Context, *v1.DeleteTenantFcmCredentialsRequest) (*v1.DeleteTenantFcmCredentialsResponse, error)
 }
 
 // NewAdminFcmSettingsServiceClient constructs a client for the
-// publira.admin.v1.AdminFcmSettingsService service. By default, it uses the Connect protocol with
-// the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To use
-// the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewAdminFcmSettingsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdminFcmSettingsServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	adminFcmSettingsServiceMethods := v1.File_publira_admin_v1_fcm_proto.Services().ByName("AdminFcmSettingsService").Methods()
-	return &adminFcmSettingsServiceClient{
-		getTenantFcmSettings: connect.NewClient[v1.GetTenantFcmSettingsRequest, v1.GetTenantFcmSettingsResponse](
-			httpClient,
-			baseURL+AdminFcmSettingsServiceGetTenantFcmSettingsProcedure,
-			connect.WithSchema(adminFcmSettingsServiceMethods.ByName("GetTenantFcmSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		saveTenantFcmCredentials: connect.NewClient[v1.SaveTenantFcmCredentialsRequest, v1.SaveTenantFcmCredentialsResponse](
-			httpClient,
-			baseURL+AdminFcmSettingsServiceSaveTenantFcmCredentialsProcedure,
-			connect.WithSchema(adminFcmSettingsServiceMethods.ByName("SaveTenantFcmCredentials")),
-			connect.WithClientOptions(opts...),
-		),
-		deleteTenantFcmCredentials: connect.NewClient[v1.DeleteTenantFcmCredentialsRequest, v1.DeleteTenantFcmCredentialsResponse](
-			httpClient,
-			baseURL+AdminFcmSettingsServiceDeleteTenantFcmCredentialsProcedure,
-			connect.WithSchema(adminFcmSettingsServiceMethods.ByName("DeleteTenantFcmCredentials")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// adminFcmSettingsServiceClient implements AdminFcmSettingsServiceClient.
-type adminFcmSettingsServiceClient struct {
-	getTenantFcmSettings       *connect.Client[v1.GetTenantFcmSettingsRequest, v1.GetTenantFcmSettingsResponse]
-	saveTenantFcmCredentials   *connect.Client[v1.SaveTenantFcmCredentialsRequest, v1.SaveTenantFcmCredentialsResponse]
-	deleteTenantFcmCredentials *connect.Client[v1.DeleteTenantFcmCredentialsRequest, v1.DeleteTenantFcmCredentialsResponse]
-}
-
-// GetTenantFcmSettings calls publira.admin.v1.AdminFcmSettingsService.GetTenantFcmSettings.
-func (c *adminFcmSettingsServiceClient) GetTenantFcmSettings(ctx context.Context, req *connect.Request[v1.GetTenantFcmSettingsRequest]) (*connect.Response[v1.GetTenantFcmSettingsResponse], error) {
-	return c.getTenantFcmSettings.CallUnary(ctx, req)
-}
-
-// SaveTenantFcmCredentials calls publira.admin.v1.AdminFcmSettingsService.SaveTenantFcmCredentials.
-func (c *adminFcmSettingsServiceClient) SaveTenantFcmCredentials(ctx context.Context, req *connect.Request[v1.SaveTenantFcmCredentialsRequest]) (*connect.Response[v1.SaveTenantFcmCredentialsResponse], error) {
-	return c.saveTenantFcmCredentials.CallUnary(ctx, req)
-}
-
-// DeleteTenantFcmCredentials calls
-// publira.admin.v1.AdminFcmSettingsService.DeleteTenantFcmCredentials.
-func (c *adminFcmSettingsServiceClient) DeleteTenantFcmCredentials(ctx context.Context, req *connect.Request[v1.DeleteTenantFcmCredentialsRequest]) (*connect.Response[v1.DeleteTenantFcmCredentialsResponse], error) {
-	return c.deleteTenantFcmCredentials.CallUnary(ctx, req)
+// publira.admin.v1.AdminFcmSettingsService service. Multiple service clients may share a single
+// connect.Client.
+func NewAdminFcmSettingsServiceClient(client *connect.Client) AdminFcmSettingsServiceClient {
+	return &adminFcmSettingsServiceClient{client: client}
 }
 
 // AdminFcmSettingsServiceHandler is an implementation of the
 // publira.admin.v1.AdminFcmSettingsService service.
 type AdminFcmSettingsServiceHandler interface {
 	// Minimum role: tenant_admin.
-	GetTenantFcmSettings(context.Context, *connect.Request[v1.GetTenantFcmSettingsRequest]) (*connect.Response[v1.GetTenantFcmSettingsResponse], error)
+	GetTenantFcmSettings(context.Context, *v1.GetTenantFcmSettingsRequest) (*v1.GetTenantFcmSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	SaveTenantFcmCredentials(context.Context, *connect.Request[v1.SaveTenantFcmCredentialsRequest]) (*connect.Response[v1.SaveTenantFcmCredentialsResponse], error)
+	SaveTenantFcmCredentials(context.Context, *v1.SaveTenantFcmCredentialsRequest) (*v1.SaveTenantFcmCredentialsResponse, error)
 	// Minimum role: tenant_admin.
-	DeleteTenantFcmCredentials(context.Context, *connect.Request[v1.DeleteTenantFcmCredentialsRequest]) (*connect.Response[v1.DeleteTenantFcmCredentialsResponse], error)
+	DeleteTenantFcmCredentials(context.Context, *v1.DeleteTenantFcmCredentialsRequest) (*v1.DeleteTenantFcmCredentialsResponse, error)
 }
 
-// NewAdminFcmSettingsServiceHandler builds an HTTP handler from the service implementation. It
-// returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewAdminFcmSettingsServiceHandler(svc AdminFcmSettingsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	adminFcmSettingsServiceMethods := v1.File_publira_admin_v1_fcm_proto.Services().ByName("AdminFcmSettingsService").Methods()
-	adminFcmSettingsServiceGetTenantFcmSettingsHandler := connect.NewUnaryHandler(
-		AdminFcmSettingsServiceGetTenantFcmSettingsProcedure,
-		svc.GetTenantFcmSettings,
-		connect.WithSchema(adminFcmSettingsServiceMethods.ByName("GetTenantFcmSettings")),
-		connect.WithHandlerOptions(opts...),
+// RegisterAdminFcmSettingsServiceHandler registers svc as the
+// publira.admin.v1.AdminFcmSettingsService implementation on server.
+func RegisterAdminFcmSettingsServiceHandler(server *connect.Server, svc AdminFcmSettingsServiceHandler) {
+	adapter := adminFcmSettingsServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: adminFcmSettingsServiceGetTenantFcmSettingsSpec(), Handler: adapter.getTenantFcmSettings},
+		connect.Method{Spec: adminFcmSettingsServiceSaveTenantFcmCredentialsSpec(), Handler: adapter.saveTenantFcmCredentials},
+		connect.Method{Spec: adminFcmSettingsServiceDeleteTenantFcmCredentialsSpec(), Handler: adapter.deleteTenantFcmCredentials},
 	)
-	adminFcmSettingsServiceSaveTenantFcmCredentialsHandler := connect.NewUnaryHandler(
-		AdminFcmSettingsServiceSaveTenantFcmCredentialsProcedure,
-		svc.SaveTenantFcmCredentials,
-		connect.WithSchema(adminFcmSettingsServiceMethods.ByName("SaveTenantFcmCredentials")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminFcmSettingsServiceDeleteTenantFcmCredentialsHandler := connect.NewUnaryHandler(
-		AdminFcmSettingsServiceDeleteTenantFcmCredentialsProcedure,
-		svc.DeleteTenantFcmCredentials,
-		connect.WithSchema(adminFcmSettingsServiceMethods.ByName("DeleteTenantFcmCredentials")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.admin.v1.AdminFcmSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case AdminFcmSettingsServiceGetTenantFcmSettingsProcedure:
-			adminFcmSettingsServiceGetTenantFcmSettingsHandler.ServeHTTP(w, r)
-		case AdminFcmSettingsServiceSaveTenantFcmCredentialsProcedure:
-			adminFcmSettingsServiceSaveTenantFcmCredentialsHandler.ServeHTTP(w, r)
-		case AdminFcmSettingsServiceDeleteTenantFcmCredentialsProcedure:
-			adminFcmSettingsServiceDeleteTenantFcmCredentialsHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedAdminFcmSettingsServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminFcmSettingsServiceHandler struct{}
 
-func (UnimplementedAdminFcmSettingsServiceHandler) GetTenantFcmSettings(context.Context, *connect.Request[v1.GetTenantFcmSettingsRequest]) (*connect.Response[v1.GetTenantFcmSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminFcmSettingsService.GetTenantFcmSettings is not implemented"))
+func (UnimplementedAdminFcmSettingsServiceHandler) GetTenantFcmSettings(context.Context, *v1.GetTenantFcmSettingsRequest) (*v1.GetTenantFcmSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminFcmSettingsService.GetTenantFcmSettings is not implemented")
 }
 
-func (UnimplementedAdminFcmSettingsServiceHandler) SaveTenantFcmCredentials(context.Context, *connect.Request[v1.SaveTenantFcmCredentialsRequest]) (*connect.Response[v1.SaveTenantFcmCredentialsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminFcmSettingsService.SaveTenantFcmCredentials is not implemented"))
+func (UnimplementedAdminFcmSettingsServiceHandler) SaveTenantFcmCredentials(context.Context, *v1.SaveTenantFcmCredentialsRequest) (*v1.SaveTenantFcmCredentialsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminFcmSettingsService.SaveTenantFcmCredentials is not implemented")
 }
 
-func (UnimplementedAdminFcmSettingsServiceHandler) DeleteTenantFcmCredentials(context.Context, *connect.Request[v1.DeleteTenantFcmCredentialsRequest]) (*connect.Response[v1.DeleteTenantFcmCredentialsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminFcmSettingsService.DeleteTenantFcmCredentials is not implemented"))
+func (UnimplementedAdminFcmSettingsServiceHandler) DeleteTenantFcmCredentials(context.Context, *v1.DeleteTenantFcmCredentialsRequest) (*v1.DeleteTenantFcmCredentialsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminFcmSettingsService.DeleteTenantFcmCredentials is not implemented")
+}
+
+type adminFcmSettingsServiceClient struct {
+	client *connect.Client
+}
+
+func (c *adminFcmSettingsServiceClient) GetTenantFcmSettings(ctx context.Context, req *v1.GetTenantFcmSettingsRequest) (*v1.GetTenantFcmSettingsResponse, error) {
+	var res v1.GetTenantFcmSettingsResponse
+	if err := c.client.CallUnary(ctx, adminFcmSettingsServiceGetTenantFcmSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminFcmSettingsServiceClient) SaveTenantFcmCredentials(ctx context.Context, req *v1.SaveTenantFcmCredentialsRequest) (*v1.SaveTenantFcmCredentialsResponse, error) {
+	var res v1.SaveTenantFcmCredentialsResponse
+	if err := c.client.CallUnary(ctx, adminFcmSettingsServiceSaveTenantFcmCredentialsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminFcmSettingsServiceClient) DeleteTenantFcmCredentials(ctx context.Context, req *v1.DeleteTenantFcmCredentialsRequest) (*v1.DeleteTenantFcmCredentialsResponse, error) {
+	var res v1.DeleteTenantFcmCredentialsResponse
+	if err := c.client.CallUnary(ctx, adminFcmSettingsServiceDeleteTenantFcmCredentialsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type adminFcmSettingsServiceHandler struct {
+	svc AdminFcmSettingsServiceHandler
+}
+
+func (h adminFcmSettingsServiceHandler) getTenantFcmSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantFcmSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantFcmSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminFcmSettingsServiceHandler) saveTenantFcmCredentials(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SaveTenantFcmCredentialsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SaveTenantFcmCredentials(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminFcmSettingsServiceHandler) deleteTenantFcmCredentials(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteTenantFcmCredentialsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteTenantFcmCredentials(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

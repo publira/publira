@@ -5,17 +5,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -56,12 +57,6 @@ func expectAuthSession(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, now tim
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_member"))
 }
 
-func newAuthedPublicRequest[T any](msg *T, tenantID string) *connect.Request[T] {
-	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+issueTestPublicToken(tenantID))
-	return req
-}
-
 func announcementColumns() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
 		"id", "tenant_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until", "is_read", "read_at",
@@ -99,13 +94,13 @@ func newAnnouncementClient(
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
-	return publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL), mock
+	return publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))), mock
 }
 
-func newListAnnouncementsRequest(tenantID uuid.UUID) *connect.Request[publirav1.ListAnnouncementsRequest] {
-	return newAuthedPublicRequest(&publirav1.ListAnnouncementsRequest{
+func newListAnnouncementsRequest(tenantID uuid.UUID) *publirav1.ListAnnouncementsRequest {
+	return &publirav1.ListAnnouncementsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, tenantID.String())
+	}
 }
 
 func announcementTitles(items []*publirav1.AnnouncementItem) []string {
@@ -128,23 +123,23 @@ func TestAuthListAnnouncementsSuccess(t *testing.T) {
 		WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "New Episode", now))
 
 	req := newListAnnouncementsRequest(tenantID)
-	req.Msg.Limit = -1
-	resp, err := client.ListAnnouncements(context.Background(), req)
+	req.Limit = -1
+	resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), req)
 	if err != nil {
 		t.Fatalf("ListAnnouncements: %v", err)
 	}
 
-	if len(resp.Msg.Announcements) != 1 {
-		t.Fatalf("announcements count = %d, want 1", len(resp.Msg.Announcements))
+	if len(resp.Announcements) != 1 {
+		t.Fatalf("announcements count = %d, want 1", len(resp.Announcements))
 	}
-	if resp.Msg.Announcements[0].LinkUrl != "/series/S001/episodes/E001" {
-		t.Fatalf("link_url = %q, want /series/S001/episodes/E001", resp.Msg.Announcements[0].LinkUrl)
+	if resp.Announcements[0].LinkUrl != "/series/S001/episodes/E001" {
+		t.Fatalf("link_url = %q, want /series/S001/episodes/E001", resp.Announcements[0].LinkUrl)
 	}
-	if !resp.Msg.Announcements[0].IsRead {
+	if !resp.Announcements[0].IsRead {
 		t.Fatalf("is_read = false, want true")
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty", resp.PreviousToken, resp.NextToken)
 	}
 
 	assertPublicExpectations(t, mock)
@@ -168,18 +163,18 @@ func TestAuthListAnnouncementsFirstPageReportsNextToken(t *testing.T) {
 		))
 
 	req := newListAnnouncementsRequest(tenantID)
-	req.Msg.Limit = 2
-	resp, err := client.ListAnnouncements(context.Background(), req)
+	req.Limit = 2
+	resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), req)
 	if err != nil {
 		t.Fatalf("ListAnnouncements: %v", err)
 	}
-	if got := announcementTitles(resp.Msg.Announcements); !slices.Equal(got, []string{"first", "second"}) {
+	if got := announcementTitles(resp.Announcements); !slices.Equal(got, []string{"first", "second"}) {
 		t.Fatalf("titles = %v, want the over-fetched row dropped", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -204,17 +199,17 @@ func TestAuthListAnnouncementsFollowsNextToken(t *testing.T) {
 		WillReturnRows(addAnnouncementRow(announcementColumns(), uuid.Must(uuid.NewV7()), tenantID, "last", now.Add(-2*time.Minute)))
 
 	req := newListAnnouncementsRequest(tenantID)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
-	resp, err := client.ListAnnouncements(context.Background(), req)
+	req.Limit = 2
+	req.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), req)
 	if err != nil {
 		t.Fatalf("ListAnnouncements: %v", err)
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the page the client came from")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 
 	assertPublicExpectations(t, mock)
@@ -236,19 +231,19 @@ func TestAuthListAnnouncementsFollowsPreviousTokenBackwards(t *testing.T) {
 		))
 
 	req := newListAnnouncementsRequest(tenantID)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
-	resp, err := client.ListAnnouncements(context.Background(), req)
+	req.Limit = 2
+	req.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), req)
 	if err != nil {
 		t.Fatalf("ListAnnouncements: %v", err)
 	}
-	if got := announcementTitles(resp.Msg.Announcements); !slices.Equal(got, []string{"newer", "older"}) {
+	if got := announcementTitles(resp.Announcements); !slices.Equal(got, []string{"newer", "older"}) {
 		t.Fatalf("titles = %v, want backward page restored to descending order", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 
@@ -292,15 +287,15 @@ func TestAuthListAnnouncementsEmptyPageKeepsAWayBack(t *testing.T) {
 				WillReturnRows(announcementColumns())
 
 			req := newListAnnouncementsRequest(tenantID)
-			req.Msg.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
-			resp, err := client.ListAnnouncements(context.Background(), req)
+			req.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
+			resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), req)
 			if err != nil {
 				t.Fatalf("ListAnnouncements: %v", err)
 			}
-			recoveryToken := resp.Msg.PreviousToken
+			recoveryToken := resp.PreviousToken
 			recoveryDirection := pagination.Backward
 			if test.direction == pagination.Backward {
-				recoveryToken = resp.Msg.NextToken
+				recoveryToken = resp.NextToken
 				recoveryDirection = pagination.Forward
 			}
 			wantRecoveryToken := pagination.EncodeTimeUUIDRecovery(recoveryDirection, now, boundaryID)
@@ -321,12 +316,12 @@ func TestAuthListAnnouncementsEmptyPageKeepsAWayBack(t *testing.T) {
 				WillReturnRows(recoveryRows)
 
 			recoveryReq := newListAnnouncementsRequest(tenantID)
-			recoveryReq.Msg.Token = recoveryToken
-			recovered, err := client.ListAnnouncements(context.Background(), recoveryReq)
+			recoveryReq.Token = recoveryToken
+			recovered, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), recoveryReq)
 			if err != nil {
 				t.Fatalf("ListAnnouncements recovery: %v", err)
 			}
-			if got := announcementTitles(recovered.Msg.Announcements); !slices.Equal(got, test.wantRecoveredTitles) {
+			if got := announcementTitles(recovered.Announcements); !slices.Equal(got, test.wantRecoveredTitles) {
 				t.Fatalf("recovered titles = %v, want %v", got, test.wantRecoveredTitles)
 			}
 
@@ -369,18 +364,18 @@ func TestAuthListAnnouncementsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 				WillReturnRows(announcementColumns())
 
 			req := newListAnnouncementsRequest(tenantID)
-			req.Msg.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
-			resp, err := client.ListAnnouncements(context.Background(), req)
+			req.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
+			resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), req)
 			if err != nil {
 				t.Fatalf("ListAnnouncements: %v", err)
 			}
-			if len(resp.Msg.Announcements) != 0 {
-				t.Fatalf("announcements = %v, want an empty page", announcementTitles(resp.Msg.Announcements))
+			if len(resp.Announcements) != 0 {
+				t.Fatalf("announcements = %v, want an empty page", announcementTitles(resp.Announcements))
 			}
-			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+			if resp.PreviousToken != "" || resp.NextToken != "" {
 				t.Fatalf(
 					"previous_token = %q / next_token = %q, want both empty once recovery also came back empty",
-					resp.Msg.PreviousToken, resp.Msg.NextToken,
+					resp.PreviousToken, resp.NextToken,
 				)
 			}
 
@@ -411,8 +406,8 @@ func TestAuthListAnnouncementsInvalidToken(t *testing.T) {
 			client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
 			req := newListAnnouncementsRequest(tenantID)
-			req.Msg.Token = token
-			_, err := client.ListAnnouncements(context.Background(), req)
+			req.Token = token
+			_, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("ListAnnouncements code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 			}
@@ -437,23 +432,23 @@ func TestAuthGetAnnouncement(t *testing.T) {
 			WithArgs(userID, announcementID, tenantID).
 			WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "New Episode", now))
 
-		resp, err := client.GetAnnouncement(context.Background(), newAuthedPublicRequest(&publirav1.GetAnnouncementRequest{
+		resp, err := client.GetAnnouncement(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.GetAnnouncementRequest{
 			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			AnnouncementId: announcementID.String(),
-		}, tenantID.String()))
+		})
 		if err != nil {
 			t.Fatalf("GetAnnouncement: %v", err)
 		}
-		if resp.Msg.Announcement == nil {
+		if resp.Announcement == nil {
 			t.Fatal("announcement is nil")
 		}
-		if resp.Msg.Announcement.Id != announcementID.String() {
-			t.Fatalf("id = %q, want %q", resp.Msg.Announcement.Id, announcementID)
+		if resp.Announcement.Id != announcementID.String() {
+			t.Fatalf("id = %q, want %q", resp.Announcement.Id, announcementID)
 		}
-		if resp.Msg.Announcement.LinkUrl != "/series/S001/episodes/E001" {
-			t.Fatalf("link_url = %q, want /series/S001/episodes/E001", resp.Msg.Announcement.LinkUrl)
+		if resp.Announcement.LinkUrl != "/series/S001/episodes/E001" {
+			t.Fatalf("link_url = %q, want /series/S001/episodes/E001", resp.Announcement.LinkUrl)
 		}
-		if !resp.Msg.Announcement.IsRead {
+		if !resp.Announcement.IsRead {
 			t.Fatalf("is_read = false, want true")
 		}
 
@@ -466,10 +461,10 @@ func TestAuthGetAnnouncement(t *testing.T) {
 		now := time.Now().UTC()
 		client, mock := newAnnouncementClient(t, tenantID, userID, now)
 
-		_, err := client.GetAnnouncement(context.Background(), newAuthedPublicRequest(&publirav1.GetAnnouncementRequest{
+		_, err := client.GetAnnouncement(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.GetAnnouncementRequest{
 			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			AnnouncementId: "not-a-uuid",
-		}, tenantID.String()))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 		}
@@ -488,10 +483,10 @@ func TestAuthGetAnnouncement(t *testing.T) {
 			WithArgs(userID, announcementID, tenantID).
 			WillReturnRows(announcementColumns())
 
-		_, err := client.GetAnnouncement(context.Background(), newAuthedPublicRequest(&publirav1.GetAnnouncementRequest{
+		_, err := client.GetAnnouncement(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.GetAnnouncementRequest{
 			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			AnnouncementId: announcementID.String(),
-		}, tenantID.String()))
+		})
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeNotFound)
 		}
@@ -513,10 +508,10 @@ func TestAuthGetAnnouncement(t *testing.T) {
 			WithArgs(userID, announcementID, tenantID).
 			WillReturnError(errors.New(`pq: relation "announcements" does not exist`))
 
-		_, err := client.GetAnnouncement(context.Background(), newAuthedPublicRequest(&publirav1.GetAnnouncementRequest{
+		_, err := client.GetAnnouncement(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.GetAnnouncementRequest{
 			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			AnnouncementId: announcementID.String(),
-		}, tenantID.String()))
+		})
 		if connect.CodeOf(err) != connect.CodeInternal {
 			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 		}
@@ -544,15 +539,15 @@ func TestAuthMarkAnnouncementAsRead(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"announcement_id", "user_id", "read_at", "tenant_id"}).
 				AddRow(announcementID, userID, now, tenantID))
 
-		client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-		resp, err := client.MarkAnnouncementAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkAnnouncementAsReadRequest{
+		client := publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+		resp, err := client.MarkAnnouncementAsRead(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.MarkAnnouncementAsReadRequest{
 			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			AnnouncementId: announcementID.String(),
-		}, tenantID.String()))
+		})
 		if err != nil {
 			t.Fatalf("MarkAnnouncementAsRead: %v", err)
 		}
-		if !resp.Msg.Marked {
+		if !resp.Marked {
 			t.Fatalf("marked = false, want true")
 		}
 
@@ -569,11 +564,11 @@ func TestAuthMarkAnnouncementAsRead(t *testing.T) {
 		expectTenantLookup(mock, tenantID, "TENANT", now)
 		expectAuthSession(mock, tenantID, userID, now)
 
-		client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-		_, err := client.MarkAnnouncementAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkAnnouncementAsReadRequest{
+		client := publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+		_, err := client.MarkAnnouncementAsRead(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.MarkAnnouncementAsReadRequest{
 			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			AnnouncementId: "not-a-uuid",
-		}, tenantID.String()))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 		}
@@ -595,11 +590,11 @@ func TestAuthMarkAnnouncementAsRead(t *testing.T) {
 			WithArgs(announcementID, tenantID, userID).
 			WillReturnRows(sqlmock.NewRows([]string{"announcement_id", "user_id", "read_at", "tenant_id"}))
 
-		client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-		_, err := client.MarkAnnouncementAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkAnnouncementAsReadRequest{
+		client := publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+		_, err := client.MarkAnnouncementAsRead(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.MarkAnnouncementAsReadRequest{
 			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			AnnouncementId: announcementID.String(),
-		}, tenantID.String()))
+		})
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeNotFound)
 		}
@@ -621,15 +616,15 @@ func TestAuthMarkAllAnnouncementsAsRead(t *testing.T) {
 		WithArgs(tenantID, userID).
 		WillReturnResult(sqlmock.NewResult(0, 3))
 
-	client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.MarkAllAnnouncementsAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkAllAnnouncementsAsReadRequest{
+	client := publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.MarkAllAnnouncementsAsRead(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.MarkAllAnnouncementsAsReadRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, tenantID.String()))
+	})
 	if err != nil {
 		t.Fatalf("MarkAllAnnouncementsAsRead: %v", err)
 	}
-	if resp.Msg.MarkedCount != 3 {
-		t.Fatalf("marked_count = %d, want 3", resp.Msg.MarkedCount)
+	if resp.MarkedCount != 3 {
+		t.Fatalf("marked_count = %d, want 3", resp.MarkedCount)
 	}
 
 	assertPublicExpectations(t, mock)

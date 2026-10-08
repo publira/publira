@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // The reader's own address comes back from the two RPCs that answer with their
@@ -16,23 +17,19 @@ func TestDBOwnAccountCarriesTheReadersEmail(t *testing.T) {
 	client := env.authClient()
 	token := tokenFor(t, tenant, reader)
 
-	me, err := client.GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)}, token,
-	))
+	me, err := client.GetMe(testutil.WithBearer(context.Background(), token), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)})
 	if err != nil {
 		t.Fatalf("GetMe: %v", err)
 	}
-	if me.Msg.User.Email != "member@tenant-a.example.com" {
-		t.Fatalf("email from GetMe = %q, want member@tenant-a.example.com", me.Msg.User.Email)
+	if me.User.Email != "member@tenant-a.example.com" {
+		t.Fatalf("email from GetMe = %q, want member@tenant-a.example.com", me.User.Email)
 	}
 
-	updated, err := client.UpdateMe(context.Background(), newBearerRequest(
-		&publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Renamed"}, token,
-	))
+	updated, err := client.UpdateMe(testutil.WithBearer(context.Background(), token), &publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Renamed"})
 	if err != nil {
 		t.Fatalf("UpdateMe: %v", err)
 	}
-	if updated.Msg.User.Email != "member@tenant-a.example.com" {
-		t.Fatalf("email from UpdateMe = %q, want member@tenant-a.example.com", updated.Msg.User.Email)
+	if updated.User.Email != "member@tenant-a.example.com" {
+		t.Fatalf("email from UpdateMe = %q, want member@tenant-a.example.com", updated.User.Email)
 	}
 }

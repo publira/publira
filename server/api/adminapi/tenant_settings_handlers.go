@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -32,26 +32,26 @@ func tenantTimezoneRevalidateTags(tenantID string) []string {
 
 func (s *adminServer) GetTenantTimezone(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantTimezoneRequest],
-) (*connect.Response[publiraadminv1.GetTenantTimezoneResponse], error) {
+	req *publiraadminv1.GetTenantTimezoneRequest,
+) (*publiraadminv1.GetTenantTimezoneResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.GetTenantTimezoneResponse{
+	return &publiraadminv1.GetTenantTimezoneResponse{
 		Timezone: tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) UpdateTenantTimezone(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantTimezoneRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantTimezoneResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantTimezoneRequest,
+) (*publiraadminv1.UpdateTenantTimezoneResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -59,9 +59,9 @@ func (s *adminServer) UpdateTenantTimezone(
 		return nil, err
 	}
 
-	timezone, err := tenanttz.Normalize(req.Msg.Timezone)
+	timezone, err := tenanttz.Normalize(req.Timezone)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
 	var updated dbmodels.Tenant
@@ -72,7 +72,7 @@ func (s *adminServer) UpdateTenantTimezone(
 		})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
+				return nil, connect.NewError(connect.CodeNotFound, "tenant not found")
 			}
 			return nil, s.internalDBError(ctx, "failed to update tenant timezone", err, "tenant_id", tenant.ID.String())
 		}
@@ -82,9 +82,9 @@ func (s *adminServer) UpdateTenantTimezone(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.UpdateTenantTimezoneResponse{
+	return &publiraadminv1.UpdateTenantTimezoneResponse{
 		Timezone: tenanttz.Resolve(updated.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
-	}), nil
+	}, nil
 }
 
 // tenantDefaultLocaleRevalidateTags lists the public site caches that render
@@ -95,12 +95,12 @@ func tenantDefaultLocaleRevalidateTags(tenantID string) []string {
 
 func (s *adminServer) GetTenantDefaultLocale(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantDefaultLocaleRequest],
-) (*connect.Response[publiraadminv1.GetTenantDefaultLocaleResponse], error) {
+	req *publiraadminv1.GetTenantDefaultLocaleRequest,
+) (*publiraadminv1.GetTenantDefaultLocaleResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -110,16 +110,16 @@ func (s *adminServer) GetTenantDefaultLocale(
 		return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
 	}
 
-	return connect.NewResponse(&publiraadminv1.GetTenantDefaultLocaleResponse{
+	return &publiraadminv1.GetTenantDefaultLocaleResponse{
 		DefaultLocale: defaultLocale,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) UpdateTenantDefaultLocale(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantDefaultLocaleRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantDefaultLocaleResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantDefaultLocaleRequest,
+) (*publiraadminv1.UpdateTenantDefaultLocaleResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -127,9 +127,9 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 		return nil, err
 	}
 
-	defaultLocale, err := locale.Normalize(req.Msg.DefaultLocale)
+	defaultLocale, err := locale.Normalize(req.DefaultLocale)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
 	var updated dbmodels.Tenant
@@ -140,7 +140,7 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 		})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
+				return nil, connect.NewError(connect.CodeNotFound, "tenant not found")
 			}
 			return nil, s.internalDBError(ctx, "failed to update tenant default locale", err, "tenant_id", tenant.ID.String())
 		}
@@ -157,9 +157,9 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 		return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
 	}
 
-	return connect.NewResponse(&publiraadminv1.UpdateTenantDefaultLocaleResponse{
+	return &publiraadminv1.UpdateTenantDefaultLocaleResponse{
 		DefaultLocale: savedLocale,
-	}), nil
+	}, nil
 }
 
 // tenantCommentSettingsRevalidateTags names the public site caches that decide
@@ -212,12 +212,12 @@ func commentAutoHideReportThresholdFromStored(stored int32) (uint32, error) {
 
 func (s *adminServer) GetTenantCommentSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantCommentSettingsRequest],
-) (*connect.Response[publiraadminv1.GetTenantCommentSettingsResponse], error) {
+	req *publiraadminv1.GetTenantCommentSettingsRequest,
+) (*publiraadminv1.GetTenantCommentSettingsResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -227,10 +227,10 @@ func (s *adminServer) GetTenantCommentSettings(
 		if errors.Is(err, sql.ErrNoRows) {
 			// A tenant with no config row has chosen nothing about commenting,
 			// which is the answer the columns' own defaults give too.
-			return connect.NewResponse(&publiraadminv1.GetTenantCommentSettingsResponse{
+			return &publiraadminv1.GetTenantCommentSettingsResponse{
 				AutoHideReportThreshold: defaultCommentAutoHideReportThreshold,
 				CommentMode:             publirattypesv1.CommentMode_COMMENT_MODE_DISABLED,
-			}), nil
+			}, nil
 		}
 		return nil, s.internalDBError(ctx, "failed to get tenant comment settings", err, "tenant_id", tenant.ID.String())
 	}
@@ -244,17 +244,17 @@ func (s *adminServer) GetTenantCommentSettings(
 		return nil, s.internalError(ctx, "tenant comment auto hide report threshold is out of range", err, "tenant_id", tenant.ID.String())
 	}
 
-	return connect.NewResponse(&publiraadminv1.GetTenantCommentSettingsResponse{
+	return &publiraadminv1.GetTenantCommentSettingsResponse{
 		AutoHideReportThreshold: threshold,
 		CommentMode:             mode,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) UpdateTenantCommentSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantCommentSettingsRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantCommentSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantCommentSettingsRequest,
+) (*publiraadminv1.UpdateTenantCommentSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -262,12 +262,12 @@ func (s *adminServer) UpdateTenantCommentSettings(
 		return nil, err
 	}
 
-	stored, err := protomapper.CommentModeToStored(req.Msg.CommentMode)
+	stored, err := protomapper.CommentModeToStored(req.CommentMode)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
-	if req.Msg.AutoHideReportThreshold > maxCommentAutoHideReportThreshold {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("auto hide report threshold must be at most %d", maxCommentAutoHideReportThreshold))
+	if req.AutoHideReportThreshold > maxCommentAutoHideReportThreshold {
+		return nil, connect.Errorf(connect.CodeInvalidArgument, "auto hide report threshold must be at most %d", maxCommentAutoHideReportThreshold)
 	}
 
 	// An upsert rather than an update: commenting can be the first thing a
@@ -277,7 +277,7 @@ func (s *adminServer) UpdateTenantCommentSettings(
 	var updated dbmodels.TenantConfig
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
 		row, err := s.queriesFor(txCtx).UpsertTenantCommentSettings(txCtx, dbmodels.UpsertTenantCommentSettingsParams{
-			CommentAutoHideReportThreshold: int32(req.Msg.AutoHideReportThreshold),
+			CommentAutoHideReportThreshold: int32(req.AutoHideReportThreshold),
 			CommentMode:                    stored,
 			TenantID:                       tenant.ID,
 		})
@@ -301,10 +301,10 @@ func (s *adminServer) UpdateTenantCommentSettings(
 		return nil, s.internalError(ctx, "tenant comment auto hide report threshold is out of range", err, "tenant_id", tenant.ID.String())
 	}
 
-	return connect.NewResponse(&publiraadminv1.UpdateTenantCommentSettingsResponse{
+	return &publiraadminv1.UpdateTenantCommentSettingsResponse{
 		AutoHideReportThreshold: savedThreshold,
 		CommentMode:             saved,
-	}), nil
+	}, nil
 }
 
 // tenantAgeVerificationRevalidateTags names the public site caches that decide
@@ -324,12 +324,12 @@ func tenantAgeVerificationRevalidateTags(tenantID string) []string {
 
 func (s *adminServer) GetTenantAgeVerification(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantAgeVerificationRequest],
-) (*connect.Response[publiraadminv1.GetTenantAgeVerificationResponse], error) {
+	req *publiraadminv1.GetTenantAgeVerificationRequest,
+) (*publiraadminv1.GetTenantAgeVerificationResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -340,9 +340,9 @@ func (s *adminServer) GetTenantAgeVerification(
 			// A tenant with no config row has chosen nothing about age
 			// verification, which is the answer the column's own default gives
 			// too.
-			return connect.NewResponse(&publiraadminv1.GetTenantAgeVerificationResponse{
+			return &publiraadminv1.GetTenantAgeVerificationResponse{
 				AgeVerification: publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE,
-			}), nil
+			}, nil
 		}
 		return nil, s.internalDBError(ctx, "failed to get tenant age verification", err, "tenant_id", tenant.ID.String())
 	}
@@ -352,16 +352,16 @@ func (s *adminServer) GetTenantAgeVerification(
 		return nil, s.internalError(ctx, "tenant age verification is not a supported rule", err, "tenant_id", tenant.ID.String())
 	}
 
-	return connect.NewResponse(&publiraadminv1.GetTenantAgeVerificationResponse{
+	return &publiraadminv1.GetTenantAgeVerificationResponse{
 		AgeVerification: rule,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) UpdateTenantAgeVerification(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantAgeVerificationRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantAgeVerificationResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantAgeVerificationRequest,
+) (*publiraadminv1.UpdateTenantAgeVerificationResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -369,9 +369,9 @@ func (s *adminServer) UpdateTenantAgeVerification(
 		return nil, err
 	}
 
-	stored, err := protomapper.AgeVerificationToStored(req.Msg.AgeVerification)
+	stored, err := protomapper.AgeVerificationToStored(req.AgeVerification)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
 	var updated dbmodels.TenantConfig
@@ -396,7 +396,7 @@ func (s *adminServer) UpdateTenantAgeVerification(
 		return nil, s.internalError(ctx, "tenant age verification is not a supported rule", err, "tenant_id", tenant.ID.String())
 	}
 
-	return connect.NewResponse(&publiraadminv1.UpdateTenantAgeVerificationResponse{
+	return &publiraadminv1.UpdateTenantAgeVerificationResponse{
 		AgeVerification: saved,
-	}), nil
+	}, nil
 }

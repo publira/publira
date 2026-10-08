@@ -2,9 +2,9 @@ package adminapi
 
 import (
 	"context"
-	"errors"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -48,10 +48,10 @@ func (s *adminServer) requireTenantAuditor(ctx context.Context) (rpcmiddleware.S
 func requireTenantLevel(ctx context.Context, level, refusal string) (rpcmiddleware.SessionContext, error) {
 	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
 	if !ok {
-		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, errors.New("session context is unavailable"))
+		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, "session context is unavailable")
 	}
 	if !auth.TenantRoleAtLeast(sessionCtx.Role, level) {
-		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodePermissionDenied, errors.New(refusal))
+		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodePermissionDenied, refusal)
 	}
 	return sessionCtx, nil
 }
@@ -61,6 +61,6 @@ func requireTenantLevel(ctx context.Context, level, refusal string) (rpcmiddlewa
 // interceptor every other service is mounted with does. AdminAuthService has
 // no such interceptor because signing in is one of its RPCs, so the ones that
 // act on the tenant's data call this before their level's helper.
-func (s *adminServer) withOperatorSession(ctx context.Context, req connect.AnyRequest) (context.Context, error) {
-	return rpcmiddleware.BuildAdminSessionContext(s.authenticateSession)(ctx, req)
+func (s *adminServer) withOperatorSession(ctx context.Context, req proto.Message) (context.Context, error) {
+	return rpcmiddleware.BuildAdminSessionContext(s.authenticateSession)(ctx, connect.Spec{}, req)
 }

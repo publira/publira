@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/platformpolicy"
@@ -18,10 +18,10 @@ func TestDBAdminRequestPasswordResetStopsAtTheLimit(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
 	requestReset := func() error {
-		_, err := env.authClient().RequestPasswordReset(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
+		_, err := env.authClient().RequestPasswordReset(context.Background(), &publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
 			Tenant: tenant.tenantContext(),
 			Email:  tenant.User.Email,
-		}))
+		})
 		return err
 	}
 

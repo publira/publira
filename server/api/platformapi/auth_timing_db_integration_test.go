@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
@@ -17,12 +18,12 @@ import (
 func TestDBRequestPasswordResetTakesAsLongForARegisteredAddressAsForAnUnknownOne(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	requestReset := func(email string) error {
-		_, err := authClient.RequestPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
+		_, err := authClient.RequestPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
 			Email: email,
-		}))
+		})
 		return err
 	}
 	testutil.AssertIndistinguishableTimings(t,

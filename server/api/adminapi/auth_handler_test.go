@@ -3,19 +3,21 @@ package adminapi
 import (
 	"context"
 	"database/sql"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func expectAdminTenantByDomains(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time, defaultLocale string) {
@@ -31,18 +33,18 @@ func TestAdminGetTenantByDomainReturnsDefaultLocale(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectAdminTenantByDomains(mock, tenantID, time.Now(), "en")
 
-	client := publiraadminv1connect.NewAdminAuthServiceClient(ts.Client(), ts.URL)
-	resp, err := client.GetTenantByDomain(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceGetTenantByDomainRequest{
+	client := publiraadminv1connect.NewAdminAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.GetTenantByDomain(context.Background(), &publiraadminv1.AdminAuthServiceGetTenantByDomainRequest{
 		Domains: []string{"admin.tenant.example.com"},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantByDomain: %v", err)
 	}
-	if resp.Msg.TenantId != tenantID.String() {
-		t.Fatalf("tenant_id = %q, want %s", resp.Msg.TenantId, tenantID)
+	if resp.TenantId != tenantID.String() {
+		t.Fatalf("tenant_id = %q, want %s", resp.TenantId, tenantID)
 	}
-	if resp.Msg.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
+	if resp.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.DefaultLocale)
 	}
 	assertExpectations(t, mock)
 }
@@ -65,10 +67,10 @@ func TestAdminGetTenantByDomainFailsOnAnUnusableStoredLocale(t *testing.T) {
 			ts, mock := newTestAdminServer(t)
 			expectAdminTenantByDomains(mock, uuid.Must(uuid.NewV7()), time.Now(), tt.stored)
 
-			client := publiraadminv1connect.NewAdminAuthServiceClient(ts.Client(), ts.URL)
-			_, err := client.GetTenantByDomain(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceGetTenantByDomainRequest{
+			client := publiraadminv1connect.NewAdminAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			_, err := client.GetTenantByDomain(context.Background(), &publiraadminv1.AdminAuthServiceGetTenantByDomainRequest{
 				Domains: []string{"admin.tenant.example.com"},
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeInternal {
 				t.Fatalf("GetTenantByDomain code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 			}
@@ -103,28 +105,27 @@ func TestAdminRequestPasswordResetRecordsTheRequestWithoutLookingUpTheAddress(t 
 			"key", outbox.StatusPending, int32(0), time.Now(), nil, time.Now(), time.Now(), nil,
 		))
 
-	client := publiraadminv1connect.NewAdminAuthServiceClient(ts.Client(), ts.URL)
-	resp, err := client.RequestPasswordReset(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
+	client := publiraadminv1connect.NewAdminAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.RequestPasswordReset(context.Background(), &publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Email:  "admin@tenant.example",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RequestPasswordReset: %v", err)
 	}
-	if !resp.Msg.Requested {
+	if !resp.Requested {
 		t.Fatal("requested = false, want true")
 	}
 	assertExpectations(t, mock)
 }
 
-func newUpdateTenantConfigRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest] {
-	req := connect.NewRequest(&publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest{
+func newUpdateTenantConfigRequest(tenantID uuid.UUID) *publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest {
+	req := &publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest{
 		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		CopyrightText:   "© Tenant",
 		SiteDescription: "A tenant that exists only in a test",
 		SiteTagline:     "Read on",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 	return req
 }
 
@@ -152,13 +153,13 @@ func TestUpdateTenantConfigRecordsItsInvalidationBeforeCommitting(t *testing.T) 
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 
-	client := publiraadminv1connect.NewAdminAuthServiceClient(ts.Client(), ts.URL)
-	resp, err := client.UpdateTenantConfig(context.Background(), newUpdateTenantConfigRequest(tenantID, sessionToken))
+	client := publiraadminv1connect.NewAdminAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.UpdateTenantConfig(testutil.WithBearer(context.Background(), sessionToken), newUpdateTenantConfigRequest(tenantID))
 	if err != nil {
 		t.Fatalf("UpdateTenantConfig: %v", err)
 	}
-	if resp.Msg.CopyrightText != "© Tenant" || resp.Msg.SiteTagline != "Read on" {
-		t.Fatalf("tenant config = %+v, want the values just written", resp.Msg)
+	if resp.CopyrightText != "© Tenant" || resp.SiteTagline != "Read on" {
+		t.Fatalf("tenant config = %+v, want the values just written", resp)
 	}
 	revalidations.waitForTags(t, []string{"tenant:" + tenantID.String() + ":site"})
 	assertExpectations(t, mock)
@@ -186,8 +187,8 @@ func TestUpdateTenantConfigRecordsItsInvalidationWhenItCreatesTheRow(t *testing.
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 
-	client := publiraadminv1connect.NewAdminAuthServiceClient(ts.Client(), ts.URL)
-	if _, err := client.UpdateTenantConfig(context.Background(), newUpdateTenantConfigRequest(tenantID, sessionToken)); err != nil {
+	client := publiraadminv1connect.NewAdminAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	if _, err := client.UpdateTenantConfig(testutil.WithBearer(context.Background(), sessionToken), newUpdateTenantConfigRequest(tenantID)); err != nil {
 		t.Fatalf("UpdateTenantConfig: %v", err)
 	}
 	revalidations.waitForTags(t, []string{"tenant:" + tenantID.String() + ":site"})
@@ -214,8 +215,8 @@ func TestUpdateTenantConfigRollsBackWhenItsInvalidationCannotBeRecorded(t *testi
 		WillReturnError(sql.ErrConnDone)
 	mock.ExpectRollback()
 
-	client := publiraadminv1connect.NewAdminAuthServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantConfig(context.Background(), newUpdateTenantConfigRequest(tenantID, sessionToken))
+	client := publiraadminv1connect.NewAdminAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantConfig(testutil.WithBearer(context.Background(), sessionToken), newUpdateTenantConfigRequest(tenantID))
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("UpdateTenantConfig code = %v, want internal", connect.CodeOf(err))
 	}

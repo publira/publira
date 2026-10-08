@@ -5,8 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectproto"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
+
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestNewFieldViolationError(t *testing.T) {
@@ -17,7 +20,7 @@ func TestNewFieldViolationError(t *testing.T) {
 	if len(err.Details()) != 1 {
 		t.Fatalf("details = %d, want 1", len(err.Details()))
 	}
-	detail, detailErr := err.Details()[0].Value()
+	detail, detailErr := connectproto.UnmarshalErrorDetail(err.Details()[0])
 	if detailErr != nil {
 		t.Fatalf("detail Value(): %v", detailErr)
 	}
@@ -32,7 +35,7 @@ func TestNewFieldViolationError(t *testing.T) {
 
 func TestNewFieldViolationErrorWithReason(t *testing.T) {
 	err := NewFieldViolationErrorWithReason(connect.CodeInvalidArgument, errors.New("reserved slug"), "slug", FieldReasonPageSlugReserved)
-	detail, detailErr := err.Details()[0].Value()
+	detail, detailErr := connectproto.UnmarshalErrorDetail(err.Details()[0])
 	if detailErr != nil {
 		t.Fatalf("detail Value(): %v", detailErr)
 	}
@@ -51,7 +54,7 @@ func TestNewFieldViolationErrorWithReason(t *testing.T) {
 
 func TestNewErrorInfoError(t *testing.T) {
 	err := NewErrorInfoError(connect.CodeFailedPrecondition, errors.New("invitation canceled"), ReasonInvitationCanceled)
-	detail, detailErr := err.Details()[0].Value()
+	detail, detailErr := connectproto.UnmarshalErrorDetail(err.Details()[0])
 	if detailErr != nil {
 		t.Fatalf("detail Value(): %v", detailErr)
 	}
@@ -74,7 +77,7 @@ func TestNewErrorInfoErrorWithMetadata(t *testing.T) {
 		ReasonCreatorRoleInUse,
 		map[string]string{MetadataCreditCount: "3"},
 	)
-	detail, detailErr := err.Details()[0].Value()
+	detail, detailErr := connectproto.UnmarshalErrorDetail(err.Details()[0])
 	if detailErr != nil {
 		t.Fatalf("detail Value(): %v", detailErr)
 	}
@@ -91,14 +94,15 @@ func TestNewErrorInfoErrorWithMetadata(t *testing.T) {
 }
 
 func TestNewRateLimitedErrorSaysHowLongToWait(t *testing.T) {
-	err := NewRateLimitedError(1500 * time.Millisecond)
+	ctx, info := testutil.NewServerContext(t.Context())
+	err := NewRateLimitedError(ctx, 1500*time.Millisecond)
 
 	if err.Code() != connect.CodeResourceExhausted {
 		t.Fatalf("Code() = %v, want %v", err.Code(), connect.CodeResourceExhausted)
 	}
 	// Rounded up, so a caller who waits exactly what they were told is past the
 	// window rather than back inside it.
-	if got := err.Meta().Get("Retry-After"); got != "2" {
+	if got := info.ResponseHeader().Get("Retry-After"); got != "2" {
 		t.Fatalf("Retry-After = %q, want 2 seconds", got)
 	}
 }
@@ -106,9 +110,12 @@ func TestNewRateLimitedErrorSaysHowLongToWait(t *testing.T) {
 // A refusal that has no window left to report says only that the caller is out
 // of allowance, rather than telling them to come back in no time at all.
 func TestNewRateLimitedErrorOmitsAnEmptyWait(t *testing.T) {
-	err := NewRateLimitedError(0)
+	ctx, info := testutil.NewServerContext(t.Context())
+	if err := NewRateLimitedError(ctx, 0); err.Code() != connect.CodeResourceExhausted {
+		t.Fatalf("Code() = %v, want %v", err.Code(), connect.CodeResourceExhausted)
+	}
 
-	if got := err.Meta().Get("Retry-After"); got != "" {
+	if got := info.ResponseHeader().Get("Retry-After"); got != "" {
 		t.Fatalf("Retry-After = %q, want it unset", got)
 	}
 }

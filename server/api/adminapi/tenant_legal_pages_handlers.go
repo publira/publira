@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -56,12 +56,12 @@ func (s *adminServer) readTenantLegalPages(ctx context.Context, tenant dbmodels.
 
 func (s *adminServer) GetTenantLegalPages(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantLegalPagesRequest],
-) (*connect.Response[publiraadminv1.GetTenantLegalPagesResponse], error) {
+	req *publiraadminv1.GetTenantLegalPagesRequest,
+) (*publiraadminv1.GetTenantLegalPagesResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (s *adminServer) GetTenantLegalPages(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get tenant legal pages", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetTenantLegalPagesResponse{Pages: tenantLegalPagesFromRow(row)}), nil
+	return &publiraadminv1.GetTenantLegalPagesResponse{Pages: tenantLegalPagesFromRow(row)}, nil
 }
 
 // resolveLegalPage turns a requested page id into the value stored for one
@@ -110,9 +110,9 @@ func (s *adminServer) resolveLegalPage(
 
 func (s *adminServer) UpdateTenantLegalPages(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantLegalPagesRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantLegalPagesResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantLegalPagesRequest,
+) (*publiraadminv1.UpdateTenantLegalPagesResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -124,11 +124,11 @@ func (s *adminServer) UpdateTenantLegalPages(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get tenant legal pages", err, "tenant_id", tenant.ID.String())
 	}
-	termsPageID, err := s.resolveLegalPage(ctx, tenant, req.Msg.GetTermsPageId(), current.TermsPageID, "terms_page_id")
+	termsPageID, err := s.resolveLegalPage(ctx, tenant, req.GetTermsPageId(), current.TermsPageID, "terms_page_id")
 	if err != nil {
 		return nil, err
 	}
-	privacyPageID, err := s.resolveLegalPage(ctx, tenant, req.Msg.GetPrivacyPageId(), current.PrivacyPageID, "privacy_page_id")
+	privacyPageID, err := s.resolveLegalPage(ctx, tenant, req.GetPrivacyPageId(), current.PrivacyPageID, "privacy_page_id")
 	if err != nil {
 		return nil, err
 	}
@@ -150,5 +150,5 @@ func (s *adminServer) UpdateTenantLegalPages(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get tenant legal pages", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.UpdateTenantLegalPagesResponse{Pages: tenantLegalPagesFromRow(updated)}), nil
+	return &publiraadminv1.UpdateTenantLegalPagesResponse{Pages: tenantLegalPagesFromRow(updated)}, nil
 }

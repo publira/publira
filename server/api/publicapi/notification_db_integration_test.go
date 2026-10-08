@@ -6,11 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestDBMemberNotificationsListUnreadAndMark(t *testing.T) {
@@ -25,64 +26,64 @@ func TestDBMemberNotificationsListUnreadAndMark(t *testing.T) {
 
 	client := env.notificationClient()
 	token := tokenFor(t, tenant, member)
-	list, err := client.ListNotifications(context.Background(), newBearerRequest(&publirav1.ListNotificationsRequest{
+	list, err := client.ListNotifications(testutil.WithBearer(context.Background(), token), &publirav1.ListNotificationsRequest{
 		Tenant: tenantContext(tenant),
-	}, token))
+	})
 	if err != nil {
 		t.Fatalf("ListNotifications: %v", err)
 	}
-	if len(list.Msg.Notifications) != 2 {
-		t.Fatalf("list count = %d, want 2", len(list.Msg.Notifications))
+	if len(list.Notifications) != 2 {
+		t.Fatalf("list count = %d, want 2", len(list.Notifications))
 	}
-	if list.Msg.Notifications[0].NotificationType != "episode_published" {
-		t.Fatalf("type = %q, want episode_published", list.Msg.Notifications[0].NotificationType)
+	if list.Notifications[0].NotificationType != "episode_published" {
+		t.Fatalf("type = %q, want episode_published", list.Notifications[0].NotificationType)
 	}
-	if list.Msg.Notifications[0].Payload == "" || list.Msg.Notifications[0].Payload == "null" {
-		t.Fatalf("payload = %q, want JSON object", list.Msg.Notifications[0].Payload)
+	if list.Notifications[0].Payload == "" || list.Notifications[0].Payload == "null" {
+		t.Fatalf("payload = %q, want JSON object", list.Notifications[0].Payload)
 	}
-	if list.Msg.Notifications[0].IsRead {
+	if list.Notifications[0].IsRead {
 		t.Fatal("first item is read, want unread")
 	}
 
-	unread, err := client.CountUnreadNotifications(context.Background(), newBearerRequest(&publirav1.CountUnreadNotificationsRequest{
+	unread, err := client.CountUnreadNotifications(testutil.WithBearer(context.Background(), token), &publirav1.CountUnreadNotificationsRequest{
 		Tenant: tenantContext(tenant),
-	}, token))
+	})
 	if err != nil {
 		t.Fatalf("CountUnreadNotifications: %v", err)
 	}
-	if unread.Msg.UnreadCount != 2 {
-		t.Fatalf("unread = %d, want 2", unread.Msg.UnreadCount)
+	if unread.UnreadCount != 2 {
+		t.Fatalf("unread = %d, want 2", unread.UnreadCount)
 	}
 
-	marked, err := client.MarkNotificationAsRead(context.Background(), newBearerRequest(&publirav1.MarkNotificationAsReadRequest{
+	marked, err := client.MarkNotificationAsRead(testutil.WithBearer(context.Background(), token), &publirav1.MarkNotificationAsReadRequest{
 		Tenant:         tenantContext(tenant),
 		NotificationId: mine.String(),
-	}, token))
+	})
 	if err != nil {
 		t.Fatalf("MarkNotificationAsRead: %v", err)
 	}
-	if !marked.Msg.Marked {
+	if !marked.Marked {
 		t.Fatal("marked = false, want true")
 	}
 
-	unread, err = client.CountUnreadNotifications(context.Background(), newBearerRequest(&publirav1.CountUnreadNotificationsRequest{
+	unread, err = client.CountUnreadNotifications(testutil.WithBearer(context.Background(), token), &publirav1.CountUnreadNotificationsRequest{
 		Tenant: tenantContext(tenant),
-	}, token))
+	})
 	if err != nil {
 		t.Fatalf("CountUnreadNotifications after mark: %v", err)
 	}
-	if unread.Msg.UnreadCount != 1 {
-		t.Fatalf("unread after mark = %d, want 1", unread.Msg.UnreadCount)
+	if unread.UnreadCount != 1 {
+		t.Fatalf("unread after mark = %d, want 1", unread.UnreadCount)
 	}
 
-	all, err := client.MarkAllNotificationsAsRead(context.Background(), newBearerRequest(&publirav1.MarkAllNotificationsAsReadRequest{
+	all, err := client.MarkAllNotificationsAsRead(testutil.WithBearer(context.Background(), token), &publirav1.MarkAllNotificationsAsReadRequest{
 		Tenant: tenantContext(tenant),
-	}, token))
+	})
 	if err != nil {
 		t.Fatalf("MarkAllNotificationsAsRead: %v", err)
 	}
-	if all.Msg.MarkedCount != 1 {
-		t.Fatalf("marked_count = %d, want 1", all.Msg.MarkedCount)
+	if all.MarkedCount != 1 {
+		t.Fatalf("marked_count = %d, want 1", all.MarkedCount)
 	}
 }
 
@@ -101,28 +102,28 @@ func TestDBMemberNotificationsHideOtherUsersTenantsAndPlatformRows(t *testing.T)
 
 	client := env.notificationClient()
 	token := tokenFor(t, first, member)
-	list, err := client.ListNotifications(context.Background(), newBearerRequest(&publirav1.ListNotificationsRequest{
+	list, err := client.ListNotifications(testutil.WithBearer(context.Background(), token), &publirav1.ListNotificationsRequest{
 		Tenant: tenantContext(first),
-	}, token))
+	})
 	if err != nil {
 		t.Fatalf("ListNotifications: %v", err)
 	}
-	if len(list.Msg.Notifications) != 1 || list.Msg.Notifications[0].Id != mine.String() {
-		t.Fatalf("list = %+v, want only %s", list.Msg.Notifications, mine)
+	if len(list.Notifications) != 1 || list.Notifications[0].Id != mine.String() {
+		t.Fatalf("list = %+v, want only %s", list.Notifications, mine)
 	}
 
-	_, err = client.MarkNotificationAsRead(context.Background(), newBearerRequest(&publirav1.MarkNotificationAsReadRequest{
+	_, err = client.MarkNotificationAsRead(testutil.WithBearer(context.Background(), token), &publirav1.MarkNotificationAsReadRequest{
 		Tenant:         tenantContext(first),
 		NotificationId: theirs.String(),
-	}, token))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("mark other user code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
 
-	_, err = client.MarkNotificationAsRead(context.Background(), newBearerRequest(&publirav1.MarkNotificationAsReadRequest{
+	_, err = client.MarkNotificationAsRead(testutil.WithBearer(context.Background(), token), &publirav1.MarkNotificationAsReadRequest{
 		Tenant:         tenantContext(first),
 		NotificationId: foreignID.String(),
-	}, token))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("mark other tenant code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
@@ -145,24 +146,24 @@ func TestDBMemberNotificationsDoNotMixWithAnnouncements(t *testing.T) {
 	}
 
 	token := tokenFor(t, tenant, member)
-	notifications, err := env.notificationClient().ListNotifications(context.Background(), newBearerRequest(&publirav1.ListNotificationsRequest{
+	notifications, err := env.notificationClient().ListNotifications(testutil.WithBearer(context.Background(), token), &publirav1.ListNotificationsRequest{
 		Tenant: tenantContext(tenant),
-	}, token))
+	})
 	if err != nil {
 		t.Fatalf("ListNotifications: %v", err)
 	}
-	if len(notifications.Msg.Notifications) != 1 {
-		t.Fatalf("notification count = %d, want 1", len(notifications.Msg.Notifications))
+	if len(notifications.Notifications) != 1 {
+		t.Fatalf("notification count = %d, want 1", len(notifications.Notifications))
 	}
 
-	announcements, err := env.authClient().ListAnnouncements(context.Background(), newBearerRequest(&publirav1.ListAnnouncementsRequest{
+	announcements, err := env.authClient().ListAnnouncements(testutil.WithBearer(context.Background(), token), &publirav1.ListAnnouncementsRequest{
 		Tenant: tenantContext(tenant),
-	}, token))
+	})
 	if err != nil {
 		t.Fatalf("ListAnnouncements: %v", err)
 	}
-	if len(announcements.Msg.Announcements) != 1 || announcements.Msg.Announcements[0].Id != announcementID.String() {
-		t.Fatalf("announcements = %+v, want only the announcement row", announcements.Msg.Announcements)
+	if len(announcements.Announcements) != 1 || announcements.Announcements[0].Id != announcementID.String() {
+		t.Fatalf("announcements = %+v, want only the announcement row", announcements.Announcements)
 	}
 }
 

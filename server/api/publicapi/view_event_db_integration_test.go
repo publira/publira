@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -76,25 +76,25 @@ func (e *publicDBEnv) seedPublishedEpisode(t *testing.T, tenant testutil.Tenant)
 	return series, episode
 }
 
-func episodeViewRequest(tenant testutil.Tenant, id string) *connect.Request[publirav1.RecordContentViewRequest] {
-	return connect.NewRequest(&publirav1.RecordContentViewRequest{
+func episodeViewRequest(tenant testutil.Tenant, id string) *publirav1.RecordContentViewRequest {
+	return &publirav1.RecordContentViewRequest{
 		Tenant: tenantContext(tenant),
 		Target: episodeViewTarget(id),
-	})
+	}
 }
 
-func seriesViewRequest(tenant testutil.Tenant, id string) *connect.Request[publirav1.RecordContentViewRequest] {
-	return connect.NewRequest(&publirav1.RecordContentViewRequest{
+func seriesViewRequest(tenant testutil.Tenant, id string) *publirav1.RecordContentViewRequest {
+	return &publirav1.RecordContentViewRequest{
 		Tenant: tenantContext(tenant),
 		Target: seriesViewTarget(id),
-	})
+	}
 }
 
-func episodeDetailRequest(tenant testutil.Tenant, publicID string) *connect.Request[publirav1.GetEpisodeDetailRequest] {
-	return connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+func episodeDetailRequest(tenant testutil.Tenant, publicID string) *publirav1.GetEpisodeDetailRequest {
+	return &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: publicID,
-	})
+	}
 }
 
 func TestDBEpisodeViewEventMintsAnActorAndRecordsOneRowPerBucket(t *testing.T) {
@@ -103,21 +103,22 @@ func TestDBEpisodeViewEventMintsAnActorAndRecordsOneRowPerBucket(t *testing.T) {
 	series, episode := env.seedPublishedEpisode(t, tenant)
 	client := env.contentViewClient()
 
-	first, err := client.RecordContentView(context.Background(), episodeViewRequest(tenant, episode.ID.String()))
+	firstCtx, firstCall := testutil.NewClientContext(context.Background())
+	_, err := client.RecordContentView(firstCtx, episodeViewRequest(tenant, episode.ID.String()))
 	if err != nil {
 		t.Fatalf("first RecordContentView: %v", err)
 	}
-	anonymousID := mintedAnonymousID(t, first.Header())
+	anonymousID := mintedAnonymousID(t, firstCall.ResponseHeader())
 
 	// The same reader coming back inside the debounce window is the case the
 	// partial unique index exists for.
 	second := episodeViewRequest(tenant, episode.ID.String())
-	second.Header().Set("Cookie", anonymousIDCookieName+"="+anonymousID.String())
-	secondResp, err := client.RecordContentView(context.Background(), second)
+	secondRespCtx, secondRespCall := testutil.NewClientContext(testutil.WithRequestHeader(context.Background(), "Cookie", anonymousIDCookieName+"="+anonymousID.String()))
+	_, err = client.RecordContentView(secondRespCtx, second)
 	if err != nil {
 		t.Fatalf("second RecordContentView: %v", err)
 	}
-	if got := secondResp.Header().Values("Set-Cookie"); len(got) != 0 {
+	if got := secondRespCall.ResponseHeader().Values("Set-Cookie"); len(got) != 0 {
 		t.Fatalf("Set-Cookie on the second view = %v, want the existing identifier reused", got)
 	}
 
@@ -164,11 +165,10 @@ func TestDBEpisodeViewEventAttributesASignedInReaderToTheirUser(t *testing.T) {
 	token := tokenFor(t, tenant, member)
 
 	req := episodeViewRequest(tenant, episode.ID.String())
-	req.Header().Set("Authorization", "Bearer "+token)
 	// A member may well be carrying an anonymous cookie from before they signed
 	// in; the member is the actor either way.
-	req.Header().Set("Cookie", anonymousIDCookieName+"="+uuid.Must(uuid.NewV7()).String())
-	if _, err := env.contentViewClient().RecordContentView(context.Background(), req); err != nil {
+	ctx := testutil.WithRequestHeader(context.Background(), "Cookie", anonymousIDCookieName+"="+uuid.Must(uuid.NewV7()).String())
+	if _, err := env.contentViewClient().RecordContentView(testutil.WithBearer(ctx, token), req); err != nil {
 		t.Fatalf("RecordContentView: %v", err)
 	}
 
@@ -201,8 +201,7 @@ func TestDBEpisodeViewEventConcurrentViewsWithOneCookieCollapseToOneRow(t *testi
 		go func() {
 			defer wg.Done()
 			req := episodeViewRequest(tenant, episode.ID.String())
-			req.Header().Set("Cookie", anonymousIDCookieName+"="+anonymousID.String())
-			_, errs[i] = client.RecordContentView(context.Background(), req)
+			_, errs[i] = client.RecordContentView(testutil.WithRequestHeader(context.Background(), "Cookie", anonymousIDCookieName+"="+anonymousID.String()), req)
 		}()
 	}
 	wg.Wait()
@@ -223,11 +222,12 @@ func TestDBSeriesViewEventIsRecordedForTheSeriesTarget(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series, _ := env.seedPublishedEpisode(t, tenant)
 
-	resp, err := env.contentViewClient().RecordContentView(context.Background(), seriesViewRequest(tenant, series.ID.String()))
+	respCtx, respCall := testutil.NewClientContext(context.Background())
+	_, err := env.contentViewClient().RecordContentView(respCtx, seriesViewRequest(tenant, series.ID.String()))
 	if err != nil {
 		t.Fatalf("RecordContentView: %v", err)
 	}
-	anonymousID := mintedAnonymousID(t, resp.Header())
+	anonymousID := mintedAnonymousID(t, respCall.ResponseHeader())
 
 	events := env.contentEvents(t, tenant.ID)
 	if len(events) != 1 {
@@ -288,10 +288,10 @@ func TestDBRepeatedDetailReadsRecordNoViewEvents(t *testing.T) {
 		if _, err := client.GetEpisodeDetail(context.Background(), episodeDetailRequest(tenant, episode.PublicID)); err != nil {
 			t.Fatalf("GetEpisodeDetail: %v", err)
 		}
-		if _, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		if _, err := client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: series.PublicID,
-		})); err != nil {
+		}); err != nil {
 			t.Fatalf("GetSeriesDetail: %v", err)
 		}
 	}

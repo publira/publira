@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -133,23 +133,23 @@ func mapPlatformNotificationFromRow(row platformNotificationPageRow) *publiraspl
 
 func (s *platformServer) ListNotifications(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.ListNotificationsRequest],
-) (*connect.Response[publirasplatformv1.ListNotificationsResponse], error) {
+	req *publirasplatformv1.ListNotificationsRequest,
+) (*publirasplatformv1.ListNotificationsResponse, error) {
 	actor, err := s.requirePlatformNotificationActor(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultNotificationListLimit, maxNotificationListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultNotificationListLimit, maxNotificationListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -181,13 +181,13 @@ func (s *platformServer) ListNotifications(
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *platformServer) CountUnreadNotifications(
 	ctx context.Context,
-	_ *connect.Request[publirasplatformv1.CountUnreadNotificationsRequest],
-) (*connect.Response[publirasplatformv1.CountUnreadNotificationsResponse], error) {
+	_ *publirasplatformv1.CountUnreadNotificationsRequest,
+) (*publirasplatformv1.CountUnreadNotificationsResponse, error) {
 	actor, err := s.requirePlatformNotificationActor(ctx)
 	if err != nil {
 		return nil, err
@@ -198,21 +198,21 @@ func (s *platformServer) CountUnreadNotifications(
 		return nil, s.internalDBError(ctx, "failed to count unread notifications", err, "platform_user_id", actor.UserID.String())
 	}
 
-	return connect.NewResponse(&publirasplatformv1.CountUnreadNotificationsResponse{UnreadCount: unread}), nil
+	return &publirasplatformv1.CountUnreadNotificationsResponse{UnreadCount: unread}, nil
 }
 
 func (s *platformServer) MarkNotificationAsRead(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.MarkNotificationAsReadRequest],
-) (*connect.Response[publirasplatformv1.MarkNotificationAsReadResponse], error) {
+	req *publirasplatformv1.MarkNotificationAsReadRequest,
+) (*publirasplatformv1.MarkNotificationAsReadResponse, error) {
 	actor, err := s.requirePlatformNotificationActor(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	notificationID, parseErr := uuid.Parse(strings.TrimSpace(req.Msg.NotificationId))
+	notificationID, parseErr := uuid.Parse(strings.TrimSpace(req.NotificationId))
 	if parseErr != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("notification_id is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "notification_id is invalid")
 	}
 
 	_, err = s.queriesFor(ctx).MarkPlatformNotificationAsRead(ctx, dbmodels.MarkPlatformNotificationAsReadParams{
@@ -221,18 +221,18 @@ func (s *platformServer) MarkNotificationAsRead(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("notification not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "notification not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to mark notification as read", err, "platform_user_id", actor.UserID.String())
 	}
 
-	return connect.NewResponse(&publirasplatformv1.MarkNotificationAsReadResponse{Marked: true}), nil
+	return &publirasplatformv1.MarkNotificationAsReadResponse{Marked: true}, nil
 }
 
 func (s *platformServer) MarkAllNotificationsAsRead(
 	ctx context.Context,
-	_ *connect.Request[publirasplatformv1.MarkAllNotificationsAsReadRequest],
-) (*connect.Response[publirasplatformv1.MarkAllNotificationsAsReadResponse], error) {
+	_ *publirasplatformv1.MarkAllNotificationsAsReadRequest,
+) (*publirasplatformv1.MarkAllNotificationsAsReadResponse, error) {
 	actor, err := s.requirePlatformNotificationActor(ctx)
 	if err != nil {
 		return nil, err
@@ -247,12 +247,12 @@ func (s *platformServer) MarkAllNotificationsAsRead(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publirasplatformv1.MarkAllNotificationsAsReadResponse{MarkedCount: markedCount}), nil
+	return &publirasplatformv1.MarkAllNotificationsAsReadResponse{MarkedCount: markedCount}, nil
 }
 
 func notificationMarkedCount(marked int64) (int32, error) {
 	if marked < 0 || marked > math.MaxInt32 {
-		return 0, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+		return 0, connect.NewError(connect.CodeInternal, "internal server error")
 	}
 	return int32(marked), nil
 }

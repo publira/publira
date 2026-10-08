@@ -3,18 +3,20 @@ package publicapi
 import (
 	"context"
 	"database/sql"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 type episodeReadFixture struct {
@@ -23,6 +25,9 @@ type episodeReadFixture struct {
 	tenantID uuid.UUID
 	userID   uuid.UUID
 	now      time.Time
+	// call is the CallInfo of the fixture's latest RPC, which carries the
+	// response headers.
+	call *connect.CallInfo
 }
 
 func newEpisodeReadFixture(t *testing.T) *episodeReadFixture {
@@ -30,7 +35,7 @@ func newEpisodeReadFixture(t *testing.T) *episodeReadFixture {
 
 	testServer, mock := newTestPublicServer(t)
 	fixture := &episodeReadFixture{
-		client:   publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL),
+		client:   publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))),
 		mock:     mock,
 		tenantID: uuid.Must(uuid.NewV7()),
 		userID:   uuid.Must(uuid.NewV7()),
@@ -41,11 +46,13 @@ func newEpisodeReadFixture(t *testing.T) *episodeReadFixture {
 	return fixture
 }
 
-func (f *episodeReadFixture) mark(episodeID string) (*connect.Response[publirav1.MarkEpisodeAsReadResponse], error) {
-	return f.client.MarkEpisodeAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkEpisodeAsReadRequest{
+func (f *episodeReadFixture) mark(episodeID string) (*publirav1.MarkEpisodeAsReadResponse, error) {
+	ctx, call := testutil.NewClientContext(testutil.WithBearer(context.Background(), issueTestPublicToken(f.tenantID.String())))
+	f.call = call
+	return f.client.MarkEpisodeAsRead(ctx, &publirav1.MarkEpisodeAsReadRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
 		EpisodeId: episodeID,
-	}, f.tenantID.String()))
+	})
 }
 
 // expectMark stands in for a stored read and the analytics event that follows
@@ -70,10 +77,10 @@ func TestMarkEpisodeAsReadStoresTheFirstReadAndReturnsPrivateResponse(t *testing
 	if err != nil {
 		t.Fatalf("MarkEpisodeAsRead: %v", err)
 	}
-	if got, want := response.Msg.ReadAt, fixture.now.Format(time.RFC3339Nano); got != want {
+	if got, want := response.ReadAt, fixture.now.Format(time.RFC3339Nano); got != want {
 		t.Fatalf("read_at = %q, want %q", got, want)
 	}
-	if got := response.Header().Get("Cache-Control"); got != "private, no-store" {
+	if got := fixture.call.ResponseHeader().Get("Cache-Control"); got != "private, no-store" {
 		t.Fatalf("Cache-Control = %q, want private, no-store", got)
 	}
 	assertPublicExpectations(t, fixture.mock)
@@ -107,12 +114,12 @@ func TestMarkEpisodeAsReadRequiresASession(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now().UTC())
-	client := publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 
-	_, err := client.MarkEpisodeAsRead(context.Background(), connect.NewRequest(&publirav1.MarkEpisodeAsReadRequest{
+	_, err := client.MarkEpisodeAsRead(context.Background(), &publirav1.MarkEpisodeAsReadRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: uuid.NewString(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("MarkEpisodeAsRead without a bearer error = %v, want unauthenticated", err)
 	}

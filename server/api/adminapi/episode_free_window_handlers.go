@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -133,7 +133,7 @@ func parseFreeWindowPeriod(startsAt, endsAt string, now time.Time) (freeWindowPe
 var errFreeWindowOverlap = errors.New("the period overlaps a free window this episode already has")
 
 func freeWindowOverlapError() error {
-	return connect.NewError(connect.CodeFailedPrecondition, errFreeWindowOverlap)
+	return connect.NewError(connect.CodeFailedPrecondition, errFreeWindowOverlap.Error()).WithCause(errFreeWindowOverlap)
 }
 
 // createdByUserID names the staff member who scheduled the window, when the
@@ -194,20 +194,20 @@ func (s *adminServer) recordOpenFreeWindow(ctx context.Context, q *dbmodels.Quer
 
 func (s *adminServer) CreateEpisodeFreeWindow(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreateEpisodeFreeWindowRequest],
-) (*connect.Response[publiraadminv1.CreateEpisodeFreeWindowResponse], error) {
+	req *publiraadminv1.CreateEpisodeFreeWindowRequest,
+) (*publiraadminv1.CreateEpisodeFreeWindowResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	period, err := parseFreeWindowPeriod(req.Msg.StartsAt, req.Msg.EndsAt, time.Now())
+	period, err := parseFreeWindowPeriod(req.StartsAt, req.EndsAt, time.Now())
 	if err != nil {
 		return nil, err
 	}
-	episodeID, err := parseRecordID(req.Msg.EpisodeId, "episode_id")
+	episodeID, err := parseRecordID(req.EpisodeId, "episode_id")
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +224,7 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 
 	windowID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -276,34 +276,34 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 		"episode_free_window_created",
 		"episode_free_window",
 		created.PublicID,
-		auditlog.ClientIPFromHeader(req.Header()),
+		auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	)
 
-	return connect.NewResponse(&publiraadminv1.CreateEpisodeFreeWindowResponse{
+	return &publiraadminv1.CreateEpisodeFreeWindowResponse{
 		FreeWindow: freeWindowFromGetRow(row),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) CreateSeriesFreeWindows(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreateSeriesFreeWindowsRequest],
-) (*connect.Response[publiraadminv1.CreateSeriesFreeWindowsResponse], error) {
+	req *publiraadminv1.CreateSeriesFreeWindowsRequest,
+) (*publiraadminv1.CreateSeriesFreeWindowsResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	period, err := parseFreeWindowPeriod(req.Msg.StartsAt, req.Msg.EndsAt, time.Now())
+	period, err := parseFreeWindowPeriod(req.StartsAt, req.EndsAt, time.Now())
 	if err != nil {
 		return nil, err
 	}
-	seriesID, err := parseRecordID(req.Msg.SeriesId, "series_id")
+	seriesID, err := parseRecordID(req.SeriesId, "series_id")
 	if err != nil {
 		return nil, err
 	}
-	namedEpisodeIDs, err := seriesFreeWindowEpisodes(req.Msg.EpisodeIds)
+	namedEpisodeIDs, err := seriesFreeWindowEpisodes(req.EpisodeIds)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +337,7 @@ func (s *adminServer) CreateSeriesFreeWindows(
 		return nil, s.internalDBError(ctx, "failed to list episodes for create series free windows", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
 	}
 	if len(episodes) == 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("series has no episodes"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "series has no episodes")
 	}
 	episodes, err = selectSeriesFreeWindowEpisodes(episodes, namedEpisodeIDs)
 	if err != nil {
@@ -350,7 +350,7 @@ func (s *adminServer) CreateSeriesFreeWindows(
 	for _, episode := range episodes {
 		windowID, idErr := uuid.NewV7()
 		if idErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, idErr)
+			return nil, connect.NewError(connect.CodeInternal, idErr.Error()).WithCause(idErr)
 		}
 		created, createErr := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.CreateEpisodeFreeWindowRow, error) {
 			return q.CreateEpisodeFreeWindow(ctx, dbmodels.CreateEpisodeFreeWindowParams{
@@ -401,10 +401,10 @@ func (s *adminServer) CreateSeriesFreeWindows(
 		"series_free_windows_created",
 		"series",
 		series.PublicID,
-		auditlog.ClientIPFromHeader(req.Header()),
+		auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	)
 
-	return connect.NewResponse(&publiraadminv1.CreateSeriesFreeWindowsResponse{FreeWindows: windows}), nil
+	return &publiraadminv1.CreateSeriesFreeWindowsResponse{FreeWindows: windows}, nil
 }
 
 // freeWindowListScope is the one episode or series ListEpisodeFreeWindows
@@ -439,7 +439,7 @@ func parseFreeWindowListScope(req *publiraadminv1.ListEpisodeFreeWindowsRequest)
 	default:
 		// A list of every window of the tenant is not something the console
 		// shows, so the scope is required rather than optional.
-		return freeWindowListScope{}, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_id or series_id is required"))
+		return freeWindowListScope{}, connect.NewError(connect.CodeInvalidArgument, "episode_id or series_id is required")
 	}
 }
 
@@ -527,24 +527,24 @@ func (s *adminServer) freeWindowPage(
 
 func (s *adminServer) ListEpisodeFreeWindows(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListEpisodeFreeWindowsRequest],
-) (*connect.Response[publiraadminv1.ListEpisodeFreeWindowsResponse], error) {
+	req *publiraadminv1.ListEpisodeFreeWindowsRequest,
+) (*publiraadminv1.ListEpisodeFreeWindowsResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	scope, err := parseFreeWindowListScope(req.Msg)
+	scope, err := parseFreeWindowListScope(req)
 	if err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultFreeWindowListLimit, maxFreeWindowListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultFreeWindowListLimit, maxFreeWindowListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
@@ -588,21 +588,21 @@ func (s *adminServer) ListEpisodeFreeWindows(
 		res.NextToken = scope.listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *adminServer) DeleteEpisodeFreeWindow(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.DeleteEpisodeFreeWindowRequest],
-) (*connect.Response[publiraadminv1.DeleteEpisodeFreeWindowResponse], error) {
+	req *publiraadminv1.DeleteEpisodeFreeWindowRequest,
+) (*publiraadminv1.DeleteEpisodeFreeWindowResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	windowID, err := parseRecordID(req.Msg.FreeWindowId, "free_window_id")
+	windowID, err := parseRecordID(req.FreeWindowId, "free_window_id")
 	if err != nil {
 		return nil, err
 	}
@@ -615,7 +615,7 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 		})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeNotFound, errors.New("free window not found"))
+				return nil, connect.NewError(connect.CodeNotFound, "free window not found")
 			}
 			return nil, s.internalDBError(ctx, "failed to delete episode free window", err, "tenant_id", tenant.ID.String(), "free_window_id", windowID.String())
 		}
@@ -644,10 +644,10 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 		"episode_free_window_deleted",
 		"episode_free_window",
 		deleted.PublicID,
-		auditlog.ClientIPFromHeader(req.Header()),
+		auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	)
 
-	return connect.NewResponse(&publiraadminv1.DeleteEpisodeFreeWindowResponse{}), nil
+	return &publiraadminv1.DeleteEpisodeFreeWindowResponse{}, nil
 }
 
 func freeWindowFromGetRow(row dbmodels.GetEpisodeFreeWindowByIDForTenantRow) *publiraadminv1.AdminEpisodeFreeWindow {

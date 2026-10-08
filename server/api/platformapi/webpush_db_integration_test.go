@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
@@ -30,7 +31,7 @@ func newWebPushClient(t *testing.T, pg *testutil.PostgresEnv, encryptor emailset
 	api := newAPI(db, dbmodels.New(db), slog.Default(), encryptor, nil, testutil.TokenManager(), droppingRecorder{}, openMailGuard(), &recordingTester{})
 	ts := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(ts.Close)
-	return publirasplatformv1connect.NewPlatformWebPushSettingsServiceClient(ts.Client(), ts.URL)
+	return publirasplatformv1connect.NewPlatformWebPushSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 }
 
 func getWebPushSettings(
@@ -39,11 +40,11 @@ func getWebPushSettings(
 	operator testutil.PlatformOperator,
 ) *publirasplatformv1.PlatformWebPushSettings {
 	t.Helper()
-	resp, err := client.GetPlatformWebPushSettings(context.Background(), authedStorageRequest(operator, &publirasplatformv1.GetPlatformWebPushSettingsRequest{}))
+	resp, err := client.GetPlatformWebPushSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformWebPushSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformWebPushSettings: %v", err)
 	}
-	return resp.Msg.GetSettings()
+	return resp.GetSettings()
 }
 
 func updateWebPushSubject(
@@ -52,14 +53,14 @@ func updateWebPushSubject(
 	subject string,
 	revision int64,
 ) (*publirasplatformv1.PlatformWebPushSettings, error) {
-	resp, err := client.UpdatePlatformWebPushSubject(context.Background(), authedStorageRequest(operator, &publirasplatformv1.UpdatePlatformWebPushSubjectRequest{
+	resp, err := client.UpdatePlatformWebPushSubject(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformWebPushSubjectRequest{
 		Subject:          subject,
 		ExpectedRevision: revision,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg.GetSettings(), nil
+	return resp.GetSettings(), nil
 }
 
 func storedVAPIDPrivateKey(t *testing.T, pg *testutil.PostgresEnv) string {
@@ -320,7 +321,7 @@ func TestDBGetPlatformWebPushSettingsWithoutEncryptionKeys(t *testing.T) {
 	client := newWebPushClient(t, pg, nil)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 
-	_, err := client.GetPlatformWebPushSettings(context.Background(), authedStorageRequest(operator, &publirasplatformv1.GetPlatformWebPushSettingsRequest{}))
+	_, err := client.GetPlatformWebPushSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformWebPushSettingsRequest{})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("GetPlatformWebPushSettings code = %v, want failed_precondition", connect.CodeOf(err))
 	}

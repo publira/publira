@@ -5,22 +5,25 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+	"connectrpc.com/connect/v2/connectproto"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 type smtpTesterStub struct {
@@ -76,7 +79,7 @@ func TestGetPlatformEmailSettingsDatabaseErrorIsHidden(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformSMTPConfig)).
 		WillReturnError(errors.New(`pq: relation "platform_smtp_configs" does not exist`))
 
-	_, err := server.GetPlatformEmailSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformEmailSettingsRequest{}))
+	_, err := server.GetPlatformEmailSettings(context.Background(), &publirasplatformv1.GetPlatformEmailSettingsRequest{})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetPlatformEmailSettings code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -106,18 +109,18 @@ func TestUpdatePlatformEmailSettingsKeepsExistingPassword(t *testing.T) {
 	expectOperatorAuditLogInsert(mock)
 	mock.ExpectCommit()
 
-	resp, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(emailUpdateRequest(3)))
+	resp, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), emailUpdateRequest(3))
 	if err != nil {
 		t.Fatalf("UpdatePlatformEmailSettings: %v", err)
 	}
-	if !resp.Msg.Settings.HasPassword {
+	if !resp.Settings.HasPassword {
 		t.Fatal("settings.has_password = false, want true")
 	}
-	if resp.Msg.Settings.ReplyTo != "reply@example.com" {
-		t.Fatalf("settings.reply_to = %q, want reply@example.com", resp.Msg.Settings.ReplyTo)
+	if resp.Settings.ReplyTo != "reply@example.com" {
+		t.Fatalf("settings.reply_to = %q, want reply@example.com", resp.Settings.ReplyTo)
 	}
-	if resp.Msg.Settings.Revision != 4 {
-		t.Fatalf("settings.revision = %d, want 4", resp.Msg.Settings.Revision)
+	if resp.Settings.Revision != 4 {
+		t.Fatalf("settings.revision = %d, want 4", resp.Settings.Revision)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -132,7 +135,7 @@ func TestUpdatePlatformEmailSettingsRejectsAStaleRevision(t *testing.T) {
 			AddRow(true, "smtp.example.com", 587, "mailer", "enc:v1:k1:nonce:replaced", "starttls", "no-reply@example.com", "reply@example.com", now, now, 4))
 	mock.ExpectRollback()
 
-	_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(emailUpdateRequest(3)))
+	_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), emailUpdateRequest(3))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UpdatePlatformEmailSettings code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -159,12 +162,12 @@ func TestUpdatePlatformEmailSettingsCreatesTheRowForRevisionZero(t *testing.T) {
 	req := emailUpdateRequest(0)
 	req.PasswordUpdateMode = publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE
 	req.Password = "new-secret"
-	resp, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(req))
+	resp, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), req)
 	if err != nil {
 		t.Fatalf("UpdatePlatformEmailSettings: %v", err)
 	}
-	if resp.Msg.Settings.Revision != 1 {
-		t.Fatalf("settings.revision = %d, want 1", resp.Msg.Settings.Revision)
+	if resp.Settings.Revision != 1 {
+		t.Fatalf("settings.revision = %d, want 1", resp.Settings.Revision)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -181,7 +184,7 @@ func TestUpdatePlatformEmailSettingsRejectsARevisionWhenNoRowExists(t *testing.T
 	req := emailUpdateRequest(2)
 	req.PasswordUpdateMode = publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE
 	req.Password = "new-secret"
-	_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(req))
+	_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), req)
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UpdatePlatformEmailSettings code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -200,7 +203,7 @@ func TestUpdatePlatformEmailSettingsReportsALostInsertRaceAsAConflict(t *testing
 	req := emailUpdateRequest(0)
 	req.PasswordUpdateMode = publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE
 	req.Password = "new-secret"
-	_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(req))
+	_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), req)
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UpdatePlatformEmailSettings code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -210,7 +213,7 @@ func TestUpdatePlatformEmailSettingsReportsALostInsertRaceAsAConflict(t *testing
 func TestUpdatePlatformEmailSettingsRejectsANegativeRevision(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(emailUpdateRequest(-1)))
+	_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), emailUpdateRequest(-1))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdatePlatformEmailSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
@@ -233,7 +236,7 @@ func TestSendPlatformSmtpTestEmailWithoutSecretManagerReportsUnavailable(t *test
 		Role:   "platform_operator",
 		Email:  "operator@example.com",
 	})
-	_, err := server.SendPlatformSmtpTestEmail(ctx, connect.NewRequest(&publirasplatformv1.SendPlatformSmtpTestEmailRequest{
+	_, err := server.SendPlatformSmtpTestEmail(ctx, &publirasplatformv1.SendPlatformSmtpTestEmailRequest{
 		RecipientType:      publirasplatformv1.TestEmailRecipientType_TEST_EMAIL_RECIPIENT_TYPE_SELF,
 		Host:               "smtp.example.com",
 		Port:               587,
@@ -241,7 +244,7 @@ func TestSendPlatformSmtpTestEmailWithoutSecretManagerReportsUnavailable(t *test
 		PasswordUpdateMode: publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
 		Encryption:         "starttls",
 		FromAddress:        "no-reply@example.com",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("SendPlatformSmtpTestEmail code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -266,7 +269,7 @@ func TestSendPlatformSmtpTestEmailUsesRequestSettings(t *testing.T) {
 		Role:   "platform_operator",
 		Email:  "operator@example.com",
 	})
-	resp, err := server.SendPlatformSmtpTestEmail(ctx, connect.NewRequest(&publirasplatformv1.SendPlatformSmtpTestEmailRequest{
+	resp, err := server.SendPlatformSmtpTestEmail(ctx, &publirasplatformv1.SendPlatformSmtpTestEmailRequest{
 		RecipientType:      publirasplatformv1.TestEmailRecipientType_TEST_EMAIL_RECIPIENT_TYPE_SELF,
 		Host:               "smtp.test.example",
 		Port:               465,
@@ -276,12 +279,12 @@ func TestSendPlatformSmtpTestEmailUsesRequestSettings(t *testing.T) {
 		Encryption:         "tls",
 		FromAddress:        "no-reply@test.example",
 		ReplyTo:            "support@test.example",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SendPlatformSmtpTestEmail: %v", err)
 	}
-	if resp.Msg.RecipientEmail != "operator@example.com" {
-		t.Fatalf("recipient_email = %q, want operator@example.com", resp.Msg.RecipientEmail)
+	if resp.RecipientEmail != "operator@example.com" {
+		t.Fatalf("recipient_email = %q, want operator@example.com", resp.RecipientEmail)
 	}
 	if tester.recipient != "operator@example.com" {
 		t.Fatalf("tester.recipient = %q, want operator@example.com", tester.recipient)
@@ -300,8 +303,8 @@ func TestGetPlatformEmailSettingsRejectsNonPlatformRole(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, "tenant_admin", now)
 
-	client := publirasplatformv1connect.NewPlatformEmailSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.GetPlatformEmailSettings(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetPlatformEmailSettingsRequest{}))
+	client := publirasplatformv1connect.NewPlatformEmailSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.GetPlatformEmailSettings(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.GetPlatformEmailSettingsRequest{})
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("GetPlatformEmailSettings code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -332,7 +335,7 @@ func TestPlatformEmailSettingsRPCsNameTheRefusedField(t *testing.T) {
 			server, mock := newOperatorHandlerTestServer(t)
 			req := emailUpdateRequest(0)
 			tc.update(req)
-			_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), connect.NewRequest(req))
+			_, err := server.UpdatePlatformEmailSettings(newEmailSettingsActorContext(), req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("code = %v, want invalid_argument (err = %v)", connect.CodeOf(err), err)
 			}
@@ -345,7 +348,7 @@ func TestPlatformEmailSettingsRPCsNameTheRefusedField(t *testing.T) {
 		server, mock := newOperatorHandlerTestServer(t)
 		server.tester = &smtpTesterStub{}
 		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformSMTPConfig)).WillReturnError(sql.ErrNoRows)
-		_, err := server.SendPlatformSmtpTestEmail(newEmailSettingsActorContext(), connect.NewRequest(&publirasplatformv1.SendPlatformSmtpTestEmailRequest{
+		_, err := server.SendPlatformSmtpTestEmail(newEmailSettingsActorContext(), &publirasplatformv1.SendPlatformSmtpTestEmailRequest{
 			RecipientType:      publirasplatformv1.TestEmailRecipientType_TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
 			RecipientEmail:     "nobody",
 			Host:               "smtp.example.com",
@@ -355,7 +358,7 @@ func TestPlatformEmailSettingsRPCsNameTheRefusedField(t *testing.T) {
 			Password:           "new-secret",
 			Encryption:         "starttls",
 			FromAddress:        "no-reply@example.com",
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("code = %v, want invalid_argument (err = %v)", connect.CodeOf(err), err)
 		}
@@ -372,7 +375,7 @@ func TestSendPlatformSmtpTestEmailReportsTheFailureReason(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformSMTPConfig)).WillReturnError(sql.ErrNoRows)
 	expectOperatorAuditLogInsert(mock)
 
-	_, err := server.SendPlatformSmtpTestEmail(newEmailSettingsActorContext(), connect.NewRequest(&publirasplatformv1.SendPlatformSmtpTestEmailRequest{
+	_, err := server.SendPlatformSmtpTestEmail(newEmailSettingsActorContext(), &publirasplatformv1.SendPlatformSmtpTestEmailRequest{
 		RecipientType:      publirasplatformv1.TestEmailRecipientType_TEST_EMAIL_RECIPIENT_TYPE_SELF,
 		Host:               "smtp.example.com",
 		Port:               587,
@@ -381,7 +384,7 @@ func TestSendPlatformSmtpTestEmailReportsTheFailureReason(t *testing.T) {
 		Password:           "wrong-secret",
 		Encryption:         "starttls",
 		FromAddress:        "no-reply@example.com",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("code = %v, want failed_precondition (err = %v)", connect.CodeOf(err), err)
 	}
@@ -394,7 +397,7 @@ func TestSendPlatformSmtpTestEmailReportsTheFailureReason(t *testing.T) {
 	}
 	var reason string
 	for _, detail := range connectErr.Details() {
-		if value, err := detail.Value(); err == nil {
+		if value, err := connectproto.UnmarshalErrorDetail(detail); err == nil {
 			if info, ok := value.(*errdetails.ErrorInfo); ok {
 				reason = info.GetReason()
 			}

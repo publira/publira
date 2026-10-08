@@ -4,11 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // createDBEpisodeWithPages creates an episode of the series and gives it the
@@ -16,15 +17,15 @@ import (
 func createDBEpisodeWithPages(t *testing.T, env *adminDBEnv, tenant adminDBTenant, seriesPublicID string, pages int) string {
 	t.Helper()
 
-	created, err := env.seriesClient().CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+	created, err := env.seriesClient().CreateEpisode(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: env.seriesID(t, seriesPublicID),
 		Title:    "Chapter One",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
-	publicID := created.Msg.Episode.PublicId
+	publicID := created.Episode.PublicId
 
 	var episodeID uuid.UUID
 	if err := env.PG.DB.QueryRowContext(context.Background(), "SELECT id FROM episodes WHERE public_id = $1", publicID).Scan(&episodeID); err != nil {
@@ -39,15 +40,15 @@ func createDBEpisodeWithPages(t *testing.T, env *adminDBEnv, tenant adminDBTenan
 func getDBEpisode(t *testing.T, env *adminDBEnv, tenant adminDBTenant, seriesPublicID, publicID string) *publiraadminv1.GetEpisodeResponse {
 	t.Helper()
 
-	got, err := env.seriesClient().GetEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetEpisodeRequest{
+	got, err := env.seriesClient().GetEpisode(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetEpisodeRequest{
 		Tenant:         tenant.tenantContext(),
 		SeriesPublicId: seriesPublicID,
 		PublicId:       publicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisode: %v", err)
 	}
-	return got.Msg
+	return got
 }
 
 func assertEpisodeLayout(t *testing.T, episode *publirattypesv1.Episode, direction publirattypesv1.ReadingDirection, spreadStartIndex int32) {
@@ -65,15 +66,15 @@ func TestDBSeriesLayoutDefaultsToTheHardCodedViewerLayout(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	seriesPublicID := createDBSeries(t, env.seriesClient(), tenant, "Default Layout")
 
-	series, err := env.seriesClient().GetSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{
+	series, err := env.seriesClient().GetSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetSeriesRequest{
 		Tenant:   tenant.tenantContext(),
 		PublicId: seriesPublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeries: %v", err)
 	}
-	if series.Msg.ReadingDirection != publirattypesv1.ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT || series.Msg.SpreadStartIndex != 1 {
-		t.Fatalf("series layout = %s from %d, want RIGHT_TO_LEFT from 1", series.Msg.ReadingDirection, series.Msg.SpreadStartIndex)
+	if series.ReadingDirection != publirattypesv1.ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT || series.SpreadStartIndex != 1 {
+		t.Fatalf("series layout = %s from %d, want RIGHT_TO_LEFT from 1", series.ReadingDirection, series.SpreadStartIndex)
 	}
 
 	episodePublicID := createDBEpisodeWithPages(t, env, tenant, seriesPublicID, 2)
@@ -94,62 +95,62 @@ func TestDBEpisodeLayoutFollowsItsSeriesUnlessOverridden(t *testing.T) {
 	following := createDBEpisodeWithPages(t, env, tenant, seriesPublicID, 4)
 	overriding := createDBEpisodeWithPages(t, env, tenant, seriesPublicID, 4)
 
-	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+	updated, err := client.UpdateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateSeriesRequest{
 		Tenant:           tenant.tenantContext(),
 		SeriesId:         env.seriesID(t, seriesPublicID),
 		Title:            "Left To Right",
 		ReadingDirection: publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT.Enum(),
 		SpreadStartIndex: new(int32),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
 	}
-	if updated.Msg.ReadingDirection != publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT || updated.Msg.SpreadStartIndex != 0 {
-		t.Fatalf("updated series layout = %s from %d, want LEFT_TO_RIGHT from 0", updated.Msg.ReadingDirection, updated.Msg.SpreadStartIndex)
+	if updated.ReadingDirection != publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT || updated.SpreadStartIndex != 0 {
+		t.Fatalf("updated series layout = %s from %d, want LEFT_TO_RIGHT from 0", updated.ReadingDirection, updated.SpreadStartIndex)
 	}
 
 	spreadStartIndex := int32(2)
-	overridden, err := client.UpdateEpisodeLayout(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodeLayoutRequest{
+	overridden, err := client.UpdateEpisodeLayout(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateEpisodeLayoutRequest{
 		Tenant:           tenant.tenantContext(),
 		EpisodeId:        env.episodeID(t, overriding),
 		SpreadStartIndex: &spreadStartIndex,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateEpisodeLayout: %v", err)
 	}
 	// Only the index is overridden, so the direction still comes from the series.
-	assertEpisodeLayout(t, overridden.Msg.Episode, publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT, 2)
-	if overridden.Msg.SpreadStartIndex == nil || *overridden.Msg.SpreadStartIndex != 2 {
-		t.Fatalf("stored spread_start_index override = %v, want 2", overridden.Msg.SpreadStartIndex)
+	assertEpisodeLayout(t, overridden.Episode, publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT, 2)
+	if overridden.SpreadStartIndex == nil || *overridden.SpreadStartIndex != 2 {
+		t.Fatalf("stored spread_start_index override = %v, want 2", overridden.SpreadStartIndex)
 	}
 
 	assertEpisodeLayout(t, getDBEpisode(t, env, tenant, seriesPublicID, following).Episode, publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT, 0)
 
 	// Editing the series again reaches the episode that follows it and leaves
 	// the override alone.
-	if _, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+	if _, err := client.UpdateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateSeriesRequest{
 		Tenant:           tenant.tenantContext(),
 		SeriesId:         env.seriesID(t, seriesPublicID),
 		Title:            "Left To Right",
 		ReadingDirection: publirattypesv1.ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT.Enum(),
 		SpreadStartIndex: new(int32),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("UpdateSeries again: %v", err)
 	}
 	assertEpisodeLayout(t, getDBEpisode(t, env, tenant, seriesPublicID, following).Episode, publirattypesv1.ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT, 0)
 	assertEpisodeLayout(t, getDBEpisode(t, env, tenant, seriesPublicID, overriding).Episode, publirattypesv1.ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT, 2)
 
 	// Leaving both fields empty returns the episode to following the series.
-	cleared, err := client.UpdateEpisodeLayout(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodeLayoutRequest{
+	cleared, err := client.UpdateEpisodeLayout(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateEpisodeLayoutRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, overriding),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateEpisodeLayout clearing: %v", err)
 	}
-	assertEpisodeLayout(t, cleared.Msg.Episode, publirattypesv1.ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT, 0)
-	if cleared.Msg.ReadingDirection != publirattypesv1.ReadingDirection_READING_DIRECTION_UNSPECIFIED || cleared.Msg.SpreadStartIndex != nil {
-		t.Fatalf("cleared overrides = %s, %v, want none", cleared.Msg.ReadingDirection, cleared.Msg.SpreadStartIndex)
+	assertEpisodeLayout(t, cleared.Episode, publirattypesv1.ReadingDirection_READING_DIRECTION_RIGHT_TO_LEFT, 0)
+	if cleared.ReadingDirection != publirattypesv1.ReadingDirection_READING_DIRECTION_UNSPECIFIED || cleared.SpreadStartIndex != nil {
+		t.Fatalf("cleared overrides = %s, %v, want none", cleared.ReadingDirection, cleared.SpreadStartIndex)
 	}
 }
 
@@ -197,7 +198,7 @@ func TestDBLayoutRejectsInvalidValues(t *testing.T) {
 	for _, tc := range episodeCases {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.req.Tenant = tenant.tenantContext()
-			_, err := client.UpdateEpisodeLayout(context.Background(), newAdminDBRequest(tenant, tc.req))
+			_, err := client.UpdateEpisodeLayout(testutil.WithBearer(context.Background(), tenant.token()), tc.req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdateEpisodeLayout code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
@@ -209,11 +210,11 @@ func TestDBLayoutRejectsInvalidValues(t *testing.T) {
 	}
 
 	// The last page itself is a valid place for pairing to start.
-	if _, err := client.UpdateEpisodeLayout(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodeLayoutRequest{
+	if _, err := client.UpdateEpisodeLayout(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateEpisodeLayoutRequest{
 		Tenant:           tenant.tenantContext(),
 		EpisodeId:        env.episodeID(t, episodePublicID),
 		SpreadStartIndex: int32Ptr(2),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("UpdateEpisodeLayout on the last page: %v", err)
 	}
 
@@ -229,7 +230,7 @@ func TestDBLayoutRejectsInvalidValues(t *testing.T) {
 			tc.req.Tenant = tenant.tenantContext()
 			tc.req.SeriesId = env.seriesID(t, seriesPublicID)
 			tc.req.Title = "Refusals"
-			_, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, tc.req))
+			_, err := client.UpdateSeries(testutil.WithBearer(context.Background(), tenant.token()), tc.req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
@@ -243,11 +244,11 @@ func TestDBUpdateEpisodeLayoutOfAnotherTenantReturnsNotFound(t *testing.T) {
 	seriesPublicID := createDBSeries(t, env.seriesClient(), owner, "Owned")
 	episodePublicID := createDBEpisodeWithPages(t, env, owner, seriesPublicID, 1)
 
-	_, err := env.seriesClient().UpdateEpisodeLayout(context.Background(), newAdminDBRequest(other, &publiraadminv1.UpdateEpisodeLayoutRequest{
+	_, err := env.seriesClient().UpdateEpisodeLayout(testutil.WithBearer(context.Background(), other.token()), &publiraadminv1.UpdateEpisodeLayoutRequest{
 		Tenant:           other.tenantContext(),
 		EpisodeId:        env.episodeID(t, episodePublicID),
 		ReadingDirection: publirattypesv1.ReadingDirection_READING_DIRECTION_LEFT_TO_RIGHT,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("UpdateEpisodeLayout code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}

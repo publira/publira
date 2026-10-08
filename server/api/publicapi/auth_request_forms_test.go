@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
@@ -42,7 +43,7 @@ func newRequestFormClient(t *testing.T) (publirav1connect.AuthServiceClient, sql
 		newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), openMailGuard(), nil),
 	))
 	t.Cleanup(server.Close)
-	return publirav1connect.NewAuthServiceClient(server.Client(), server.URL), mock
+	return publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(server.Client(), server.URL))), mock
 }
 
 // expectNoEmailRejection answers a tenant that refuses no address. The sign-up
@@ -78,16 +79,16 @@ func TestCreateUserRecordsTheRequestWithoutLookingUpTheAddress(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	expectReaderAuthRequest(mock, tenantID, outbox.EventTypeReaderSignupRequest)
 
-	resp, err := client.CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+	resp, err := client.CreateUser(context.Background(), &publirav1.CreateUserRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Name:     "Newcomer",
 		Email:    "newcomer@tenant.example",
 		Password: "newcomer-password",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
-	if !resp.Msg.Accepted {
+	if !resp.Accepted {
 		t.Fatal("accepted = false, want true")
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -101,14 +102,14 @@ func TestRequestPasswordResetRecordsTheRequestWithoutLookingUpTheAddress(t *test
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	expectReaderAuthRequest(mock, tenantID, outbox.EventTypeReaderPasswordResetRequest)
 
-	resp, err := client.RequestPasswordReset(context.Background(), connect.NewRequest(&publirav1.RequestPasswordResetRequest{
+	resp, err := client.RequestPasswordReset(context.Background(), &publirav1.RequestPasswordResetRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Email:  "member@tenant.example",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RequestPasswordReset: %v", err)
 	}
-	if !resp.Msg.Requested {
+	if !resp.Requested {
 		t.Fatal("requested = false, want true")
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -122,14 +123,14 @@ func TestRequestEmailVerificationRecordsTheRequestWithoutLookingUpTheAddress(t *
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	expectReaderAuthRequest(mock, tenantID, outbox.EventTypeReaderEmailVerificationRequest)
 
-	resp, err := client.RequestEmailVerification(context.Background(), connect.NewRequest(&publirav1.RequestEmailVerificationRequest{
+	resp, err := client.RequestEmailVerification(context.Background(), &publirav1.RequestEmailVerificationRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Email:  "pending@tenant.example",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RequestEmailVerification: %v", err)
 	}
-	if !resp.Msg.Requested {
+	if !resp.Requested {
 		t.Fatal("requested = false, want true")
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {

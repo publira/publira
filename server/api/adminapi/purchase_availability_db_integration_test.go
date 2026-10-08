@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 const (
@@ -20,14 +21,14 @@ const (
 func updateDBTenantPurchaseSettings(t *testing.T, env *adminDBEnv, tenant adminDBTenant, settings *publiraadminv1.TenantPurchaseSettings) *publiraadminv1.TenantPurchaseSettings {
 	t.Helper()
 
-	updated, err := env.tenantSettingsClient().UpdateTenantPurchaseSettings(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantPurchaseSettingsRequest{
+	updated, err := env.tenantSettingsClient().UpdateTenantPurchaseSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateTenantPurchaseSettingsRequest{
 		Tenant:   tenant.tenantContext(),
 		Settings: settings,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateTenantPurchaseSettings: %v", err)
 	}
-	return updated.Msg.Settings
+	return updated.Settings
 }
 
 // A tenant that has saved nothing sells on both surfaces and lists no app; what
@@ -39,11 +40,11 @@ func TestDBTenantPurchaseSettingsAreStoredAndReadBack(t *testing.T) {
 	client := env.tenantSettingsClient()
 	ctx := context.Background()
 
-	initial, err := client.GetTenantPurchaseSettings(ctx, newAdminDBRequest(tenant, &publiraadminv1.GetTenantPurchaseSettingsRequest{Tenant: tenant.tenantContext()}))
+	initial, err := client.GetTenantPurchaseSettings(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.GetTenantPurchaseSettingsRequest{Tenant: tenant.tenantContext()})
 	if err != nil {
 		t.Fatalf("GetTenantPurchaseSettings: %v", err)
 	}
-	if got := initial.Msg.Settings; got.PurchaseAvailability != purchaseAll || got.AppStoreUrl != "" || got.GooglePlayUrl != "" {
+	if got := initial.Settings; got.PurchaseAvailability != purchaseAll || got.AppStoreUrl != "" || got.GooglePlayUrl != "" {
 		t.Fatalf("initial settings = %v, want ALL and no listings", got)
 	}
 
@@ -57,12 +58,12 @@ func TestDBTenantPurchaseSettingsAreStoredAndReadBack(t *testing.T) {
 		saved.GooglePlayUrl != "https://play.google.com/store/apps/details?id=com.example.reader" {
 		t.Fatalf("saved settings = %v, want APP with both listings trimmed", saved)
 	}
-	read, err := client.GetTenantPurchaseSettings(ctx, newAdminDBRequest(tenant, &publiraadminv1.GetTenantPurchaseSettingsRequest{Tenant: tenant.tenantContext()}))
+	read, err := client.GetTenantPurchaseSettings(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.GetTenantPurchaseSettingsRequest{Tenant: tenant.tenantContext()})
 	if err != nil {
 		t.Fatalf("GetTenantPurchaseSettings after save: %v", err)
 	}
-	if read.Msg.Settings.PurchaseAvailability != purchaseApp || read.Msg.Settings.AppStoreUrl != saved.AppStoreUrl || read.Msg.Settings.GooglePlayUrl != saved.GooglePlayUrl {
-		t.Fatalf("read settings = %v, want %v", read.Msg.Settings, saved)
+	if read.Settings.PurchaseAvailability != purchaseApp || read.Settings.AppStoreUrl != saved.AppStoreUrl || read.Settings.GooglePlayUrl != saved.GooglePlayUrl {
+		t.Fatalf("read settings = %v, want %v", read.Settings, saved)
 	}
 
 	for _, invalid := range []*publiraadminv1.TenantPurchaseSettings{
@@ -71,10 +72,10 @@ func TestDBTenantPurchaseSettingsAreStoredAndReadBack(t *testing.T) {
 		{PurchaseAvailability: purchaseWeb, AppStoreUrl: "https://apps.apple.com/app/my app"},
 		{PurchaseAvailability: publirattypesv1.SurfaceAvailability(99)},
 	} {
-		_, err := client.UpdateTenantPurchaseSettings(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantPurchaseSettingsRequest{
+		_, err := client.UpdateTenantPurchaseSettings(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateTenantPurchaseSettingsRequest{
 			Tenant:   tenant.tenantContext(),
 			Settings: invalid,
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("UpdateTenantPurchaseSettings(%v) code = %v, want invalid_argument (err=%v)", invalid, connect.CodeOf(err), err)
 		}
@@ -112,118 +113,118 @@ func TestDBEpisodePurchaseAvailabilityResolvesThroughTheSeriesAndTheTenant(t *te
 	updateDBTenantPurchaseSettings(t, env, tenant, &publiraadminv1.TenantPurchaseSettings{PurchaseAvailability: purchaseApp})
 	assertEpisode("an app-only tenant", purchaseNil, purchaseApp)
 
-	series, err := client.UpdateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+	series, err := client.UpdateSeries(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateSeriesRequest{
 		Tenant:               tenant.tenantContext(),
 		SeriesId:             env.seriesID(t, seriesPublicID),
 		Title:                "Sold Apart",
 		PurchaseAvailability: purchaseAll.Enum(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
 	}
-	if series.Msg.PurchaseAvailability != purchaseAll {
-		t.Fatalf("series override = %s, want ALL", series.Msg.PurchaseAvailability)
+	if series.PurchaseAvailability != purchaseAll {
+		t.Fatalf("series override = %s, want ALL", series.PurchaseAvailability)
 	}
 	assertEpisode("a series selling on both surfaces", purchaseNil, purchaseAll)
 
-	kept, err := client.UpdateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+	kept, err := client.UpdateSeries(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateSeriesRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: env.seriesID(t, seriesPublicID),
 		Title:    "Sold Apart, Retitled",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateSeries without purchase availability: %v", err)
 	}
-	if kept.Msg.PurchaseAvailability != purchaseAll {
-		t.Fatalf("series override after an update that omits it = %s, want ALL", kept.Msg.PurchaseAvailability)
+	if kept.PurchaseAvailability != purchaseAll {
+		t.Fatalf("series override after an update that omits it = %s, want ALL", kept.PurchaseAvailability)
 	}
 
-	overridden, err := client.UpdateEpisodePurchaseAvailability(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest{
+	overridden, err := client.UpdateEpisodePurchaseAvailability(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest{
 		Tenant:               tenant.tenantContext(),
 		EpisodeId:            env.episodeID(t, episodePublicID),
 		PurchaseAvailability: purchaseWeb,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateEpisodePurchaseAvailability: %v", err)
 	}
-	if overridden.Msg.PurchaseAvailability != purchaseWeb || overridden.Msg.Episode.PurchaseAvailability != purchaseWeb {
-		t.Fatalf("overridden episode = %s, %s, want WEB, WEB", overridden.Msg.PurchaseAvailability, overridden.Msg.Episode.PurchaseAvailability)
+	if overridden.PurchaseAvailability != purchaseWeb || overridden.Episode.PurchaseAvailability != purchaseWeb {
+		t.Fatalf("overridden episode = %s, %s, want WEB, WEB", overridden.PurchaseAvailability, overridden.Episode.PurchaseAvailability)
 	}
 	assertEpisode("an episode replacing its series", purchaseWeb, purchaseWeb)
 
-	cleared, err := client.UpdateEpisodePurchaseAvailability(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest{
+	cleared, err := client.UpdateEpisodePurchaseAvailability(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, episodePublicID),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateEpisodePurchaseAvailability clearing: %v", err)
 	}
-	if cleared.Msg.PurchaseAvailability != purchaseNil || cleared.Msg.Episode.PurchaseAvailability != purchaseAll {
-		t.Fatalf("cleared episode = %s, %s, want UNSPECIFIED, ALL", cleared.Msg.PurchaseAvailability, cleared.Msg.Episode.PurchaseAvailability)
+	if cleared.PurchaseAvailability != purchaseNil || cleared.Episode.PurchaseAvailability != purchaseAll {
+		t.Fatalf("cleared episode = %s, %s, want UNSPECIFIED, ALL", cleared.PurchaseAvailability, cleared.Episode.PurchaseAvailability)
 	}
 
 	// Returning the series to following the tenant takes its episodes with it.
-	followed, err := client.UpdateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+	followed, err := client.UpdateSeries(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateSeriesRequest{
 		Tenant:               tenant.tenantContext(),
 		SeriesId:             env.seriesID(t, seriesPublicID),
 		Title:                "Sold Apart",
 		PurchaseAvailability: purchaseNil.Enum(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateSeries clearing purchase availability: %v", err)
 	}
-	if followed.Msg.PurchaseAvailability != purchaseNil {
-		t.Fatalf("series override after clearing = %s, want UNSPECIFIED", followed.Msg.PurchaseAvailability)
+	if followed.PurchaseAvailability != purchaseNil {
+		t.Fatalf("series override after clearing = %s, want UNSPECIFIED", followed.PurchaseAvailability)
 	}
-	got, err := client.GetSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{Tenant: tenant.tenantContext(), PublicId: seriesPublicID}))
+	got, err := client.GetSeries(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.GetSeriesRequest{Tenant: tenant.tenantContext(), PublicId: seriesPublicID})
 	if err != nil {
 		t.Fatalf("GetSeries: %v", err)
 	}
-	if got.Msg.PurchaseAvailability != purchaseNil {
-		t.Fatalf("GetSeries override = %s, want UNSPECIFIED", got.Msg.PurchaseAvailability)
+	if got.PurchaseAvailability != purchaseNil {
+		t.Fatalf("GetSeries override = %s, want UNSPECIFIED", got.PurchaseAvailability)
 	}
 	assertEpisode("a series following the tenant again", purchaseNil, purchaseApp)
 
-	created, err := client.CreateEpisode(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+	created, err := client.CreateEpisode(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateEpisodeRequest{
 		Tenant:               tenant.tenantContext(),
 		SeriesId:             env.seriesID(t, seriesPublicID),
 		Title:                "Chapter Two",
 		PurchaseAvailability: purchaseWeb,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
-	if created.Msg.PurchaseAvailability != purchaseWeb || created.Msg.Episode.PurchaseAvailability != purchaseWeb {
-		t.Fatalf("created episode override, resolved = %s, %s, want WEB, WEB", created.Msg.PurchaseAvailability, created.Msg.Episode.PurchaseAvailability)
+	if created.PurchaseAvailability != purchaseWeb || created.Episode.PurchaseAvailability != purchaseWeb {
+		t.Fatalf("created episode override, resolved = %s, %s, want WEB, WEB", created.PurchaseAvailability, created.Episode.PurchaseAvailability)
 	}
-	inheriting, err := client.CreateEpisode(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+	inheriting, err := client.CreateEpisode(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateEpisodeRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: env.seriesID(t, seriesPublicID),
 		Title:    "Chapter Three",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisode following its series: %v", err)
 	}
-	if inheriting.Msg.PurchaseAvailability != purchaseNil || inheriting.Msg.Episode.PurchaseAvailability != purchaseApp {
-		t.Fatalf("created episode following its series = %s, %s, want UNSPECIFIED, APP", inheriting.Msg.PurchaseAvailability, inheriting.Msg.Episode.PurchaseAvailability)
+	if inheriting.PurchaseAvailability != purchaseNil || inheriting.Episode.PurchaseAvailability != purchaseApp {
+		t.Fatalf("created episode following its series = %s, %s, want UNSPECIFIED, APP", inheriting.PurchaseAvailability, inheriting.Episode.PurchaseAvailability)
 	}
-	createdSeries, err := client.CreateSeries(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+	createdSeries, err := client.CreateSeries(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateSeriesRequest{
 		Tenant:               tenant.tenantContext(),
 		Title:                "Web Sales",
 		PurchaseAvailability: purchaseWeb,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
 	}
-	if createdSeries.Msg.PurchaseAvailability != purchaseWeb {
-		t.Fatalf("created series override = %s, want WEB", createdSeries.Msg.PurchaseAvailability)
+	if createdSeries.PurchaseAvailability != purchaseWeb {
+		t.Fatalf("created series override = %s, want WEB", createdSeries.PurchaseAvailability)
 	}
 
-	_, err = client.UpdateEpisodePurchaseAvailability(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest{
+	_, err = client.UpdateEpisodePurchaseAvailability(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest{
 		Tenant:               tenant.tenantContext(),
 		EpisodeId:            env.episodeID(t, episodePublicID),
 		PurchaseAvailability: publirattypesv1.SurfaceAvailability(99),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateEpisodePurchaseAvailability with an unknown value code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
@@ -235,11 +236,11 @@ func TestDBPurchaseAvailabilityOfAnotherTenantIsUntouched(t *testing.T) {
 	seriesPublicID := createDBSeries(t, env.seriesClient(), owner, "Owned")
 	episodePublicID := createDBEpisodeWithPages(t, env, owner, seriesPublicID, 1)
 
-	_, err := env.seriesClient().UpdateEpisodePurchaseAvailability(context.Background(), newAdminDBRequest(other, &publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest{
+	_, err := env.seriesClient().UpdateEpisodePurchaseAvailability(testutil.WithBearer(context.Background(), other.token()), &publiraadminv1.UpdateEpisodePurchaseAvailabilityRequest{
 		Tenant:               other.tenantContext(),
 		EpisodeId:            env.episodeID(t, episodePublicID),
 		PurchaseAvailability: purchaseApp,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("UpdateEpisodePurchaseAvailability code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}

@@ -5,16 +5,17 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -28,7 +29,7 @@ func tenantFcmColumns() []string {
 func newFcmClient(t *testing.T, logs *bytes.Buffer) (publiraadminv1connect.AdminFcmSettingsServiceClient, sqlmock.Sqlmock) {
 	t.Helper()
 	ts, mock := newPaymentAdminServer(t, logs)
-	return publiraadminv1connect.NewAdminFcmSettingsServiceClient(ts.Client(), ts.URL), mock
+	return publiraadminv1connect.NewAdminFcmSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))), mock
 }
 
 func TestGetTenantFcmSettingsDescribesTheKeyWithoutReturningIt(t *testing.T) {
@@ -45,13 +46,13 @@ func TestGetTenantFcmSettingsDescribesTheKeyWithoutReturningIt(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(tenantFcmColumns()).
 			AddRow(tenantID, "tenant-a", "push@tenant-a.iam.gserviceaccount.com", "enc:v1:k1:sealed-key", now, now))
 
-	resp, err := client.GetTenantFcmSettings(context.Background(), withBearer(&publiraadminv1.GetTenantFcmSettingsRequest{
+	resp, err := client.GetTenantFcmSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.GetTenantFcmSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantFcmSettings: %v", err)
 	}
-	settings := resp.Msg.Settings
+	settings := resp.Settings
 	if !settings.Configured || settings.ProjectId != "tenant-a" || settings.ClientEmail != "push@tenant-a.iam.gserviceaccount.com" || settings.UpdatedAt == "" {
 		t.Fatalf("settings = %+v", settings)
 	}
@@ -73,13 +74,13 @@ func TestGetTenantFcmSettingsIsUnconfiguredWithoutARow(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
-	resp, err := client.GetTenantFcmSettings(context.Background(), withBearer(&publiraadminv1.GetTenantFcmSettingsRequest{
+	resp, err := client.GetTenantFcmSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.GetTenantFcmSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantFcmSettings: %v", err)
 	}
-	if settings := resp.Msg.Settings; settings.Configured || settings.ProjectId != "" || settings.ClientEmail != "" || settings.UpdatedAt != "" {
+	if settings := resp.Settings; settings.Configured || settings.ProjectId != "" || settings.ClientEmail != "" || settings.UpdatedAt != "" {
 		t.Fatalf("settings = %+v, want unconfigured", settings)
 	}
 	assertExpectations(t, mock)
@@ -91,13 +92,13 @@ func TestFcmCredentialChangesRejectEditorRole(t *testing.T) {
 	keyJSON := testutil.ServiceAccountJSON(t, "tenant-a", "push@tenant-a.iam.gserviceaccount.com")
 	for name, call := range map[string]func(publiraadminv1connect.AdminFcmSettingsServiceClient, *publirattypesv1.TenantContext, string) error{
 		"save": func(client publiraadminv1connect.AdminFcmSettingsServiceClient, tenant *publirattypesv1.TenantContext, token string) error {
-			_, err := client.SaveTenantFcmCredentials(context.Background(), withBearer(&publiraadminv1.SaveTenantFcmCredentialsRequest{
+			_, err := client.SaveTenantFcmCredentials(testutil.WithBearer(context.Background(), token), &publiraadminv1.SaveTenantFcmCredentialsRequest{
 				Tenant: tenant, ProjectId: "tenant-a", ServiceAccountJson: keyJSON,
-			}, token))
+			})
 			return err
 		},
 		"delete": func(client publiraadminv1connect.AdminFcmSettingsServiceClient, tenant *publirattypesv1.TenantContext, token string) error {
-			_, err := client.DeleteTenantFcmCredentials(context.Background(), withBearer(&publiraadminv1.DeleteTenantFcmCredentialsRequest{Tenant: tenant}, token))
+			_, err := client.DeleteTenantFcmCredentials(testutil.WithBearer(context.Background(), token), &publiraadminv1.DeleteTenantFcmCredentialsRequest{Tenant: tenant})
 			return err
 		},
 	} {
@@ -141,11 +142,11 @@ func TestSaveTenantFcmCredentialsRefusesAnInvalidKey(t *testing.T) {
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-			_, err := client.SaveTenantFcmCredentials(context.Background(), withBearer(&publiraadminv1.SaveTenantFcmCredentialsRequest{
+			_, err := client.SaveTenantFcmCredentials(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.SaveTenantFcmCredentialsRequest{
 				Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				ProjectId:          tc.projectID,
 				ServiceAccountJson: tc.keyJSON,
-			}, sessionToken))
+			})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("code = %v, want invalid_argument", connect.CodeOf(err))
 			}
@@ -173,18 +174,18 @@ func TestSaveTenantFcmCredentialsSealsTheKeyAndAudits(t *testing.T) {
 			AddRow(tenantID, "tenant-a", "push@tenant-a.iam.gserviceaccount.com", "enc:v1:k1:sealed-key", now, now))
 	expectAdminAuditLogInsert(mock)
 
-	resp, err := client.SaveTenantFcmCredentials(context.Background(), withBearer(&publiraadminv1.SaveTenantFcmCredentialsRequest{
+	resp, err := client.SaveTenantFcmCredentials(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.SaveTenantFcmCredentialsRequest{
 		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		ProjectId:          "tenant-a",
 		ServiceAccountJson: keyJSON,
-	}, sessionToken))
+	})
 	if err != nil {
 		t.Fatalf("SaveTenantFcmCredentials: %v", err)
 	}
-	if settings := resp.Msg.Settings; !settings.Configured || settings.ProjectId != "tenant-a" {
+	if settings := resp.Settings; !settings.Configured || settings.ProjectId != "tenant-a" {
 		t.Fatalf("settings = %+v", settings)
 	}
-	if strings.Contains(resp.Msg.String()+logs.String(), "PRIVATE KEY") {
+	if strings.Contains(resp.String()+logs.String(), "PRIVATE KEY") {
 		t.Fatal("the response or the logs carry the key")
 	}
 	assertExpectations(t, mock)
@@ -203,14 +204,14 @@ func TestDeleteTenantFcmCredentialsAnswersUnconfigured(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectAdminAuditLogInsert(mock)
 
-	resp, err := client.DeleteTenantFcmCredentials(context.Background(), withBearer(&publiraadminv1.DeleteTenantFcmCredentialsRequest{
+	resp, err := client.DeleteTenantFcmCredentials(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.DeleteTenantFcmCredentialsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err != nil {
 		t.Fatalf("DeleteTenantFcmCredentials: %v", err)
 	}
-	if resp.Msg.Settings.Configured {
-		t.Fatalf("settings = %+v, want unconfigured", resp.Msg.Settings)
+	if resp.Settings.Configured {
+		t.Fatalf("settings = %+v, want unconfigured", resp.Settings)
 	}
 	assertExpectations(t, mock)
 }

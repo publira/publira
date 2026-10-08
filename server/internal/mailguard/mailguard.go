@@ -22,12 +22,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"log/slog"
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/emailaddress"
 	"github.com/publira/publira/server/internal/platformpolicy"
@@ -83,26 +82,26 @@ func NewDefault() *Guard {
 // The origin is charged first. Its allowance is the one a stranger runs out of,
 // and charging it first is what keeps them from spending the mailbox allowance
 // of every address they name on the way there.
-func (g *Guard) Allow(ctx context.Context, req connect.AnyRequest, scope, address string) error {
+func (g *Guard) Allow(ctx context.Context, scope, address string) error {
 	policy, err := g.resolve(ctx, scope)
 	if err != nil {
 		return err
 	}
-	_, err = g.charge(ctx, req, policy, scope, address)
+	_, err = g.charge(ctx, policy, scope, address)
 	return err
 }
 
 // AllowEach charges every address as Allow does, for a request that mails all
 // of them or none. When one is refused, everything the request spent is given
 // back, since none of its mail is sent.
-func (g *Guard) AllowEach(ctx context.Context, req connect.AnyRequest, scope string, addresses []string) error {
+func (g *Guard) AllowEach(ctx context.Context, scope string, addresses []string) error {
 	policy, err := g.resolve(ctx, scope)
 	if err != nil {
 		return err
 	}
 	var spent []ratelimit.Decision
 	for _, address := range addresses {
-		decisions, err := g.charge(ctx, req, policy, scope, address)
+		decisions, err := g.charge(ctx, policy, scope, address)
 		spent = append(spent, decisions...)
 		if err != nil {
 			for _, decision := range spent {
@@ -118,20 +117,20 @@ func (g *Guard) resolve(ctx context.Context, scope string) (platformpolicy.Polic
 	policy, err := g.policy.Policy(ctx)
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to resolve the mail rate limit", "scope", scope, "error", err)
-		return platformpolicy.Policy{}, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+		return platformpolicy.Policy{}, connect.NewError(connect.CodeInternal, "internal server error")
 	}
 	return policy, nil
 }
 
 // charge spends the origin's and then the mailbox's allowance, and returns what
 // it charged alongside its answer.
-func (g *Guard) charge(ctx context.Context, req connect.AnyRequest, policy platformpolicy.Policy, scope, address string) ([]ratelimit.Decision, error) {
+func (g *Guard) charge(ctx context.Context, policy platformpolicy.Policy, scope, address string) ([]ratelimit.Decision, error) {
 	var spent []ratelimit.Decision
 	for _, charge := range []struct {
 		subject string
 		rules   []ratelimit.Rule
 	}{
-		{sourceSubject(source(req)), Rules(policy.MailRequestsPerSource)},
+		{sourceSubject(requestmeta.ClientSourceFromContext(ctx)), Rules(policy.MailRequestsPerSource)},
 		{addressSubject(scope, address), Rules(policy.MailRequestsPerAddress)},
 	} {
 		decision, err := g.limiter.Allow(ctx, charge.subject, charge.rules...)
@@ -141,10 +140,10 @@ func (g *Guard) charge(ctx context.Context, req connect.AnyRequest, policy platf
 			// be reached, so nothing is left here that sending the mail anyway
 			// would be the safe answer to.
 			g.logger.ErrorContext(ctx, "failed to charge the mail rate limit", "scope", scope, "error", err)
-			return spent, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+			return spent, connect.NewError(connect.CodeInternal, "internal server error")
 		}
 		if !decision.Allowed {
-			return spent, rpcerrors.NewRateLimitedError(decision.RetryAfter)
+			return spent, rpcerrors.NewRateLimitedError(ctx, decision.RetryAfter)
 		}
 	}
 	return spent, nil
@@ -174,12 +173,6 @@ func addressSubject(scope, address string) string {
 // tenant on the platform and the console alongside them.
 func sourceSubject(source string) string {
 	return "mail.source:" + source
-}
-
-// source names where a request came from, which is the same question the
-// reader-writable RPCs ask of a caller who is signed in to no account.
-func source(req connect.AnyRequest) string {
-	return requestmeta.ClientSource(req.Header(), req.Peer().Addr)
 }
 
 // Rules pairs an hourly burst with a daily budget. The hour is what a person

@@ -3,16 +3,16 @@ package publicapi
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -31,29 +31,29 @@ const (
 // the rows that name it.
 func (s *apiServer) ListMyFollowUpdates(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListMyFollowUpdatesRequest],
-) (*connect.Response[publirav1.ListMyFollowUpdatesResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.ListMyFollowUpdatesRequest,
+) (*publirav1.ListMyFollowUpdatesResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.scopeFollowUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultFollowUpdatePageSize, maxFollowUpdatePageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultFollowUpdatePageSize, maxFollowUpdatePageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -112,7 +112,7 @@ func (s *apiServer) ListMyFollowUpdates(
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 
-	return noStorePrivateResponse(res), nil
+	return noStorePrivateResponse(ctx, res), nil
 }
 
 // followUpdatePage runs the keyset scan in the direction the cursor asks for.

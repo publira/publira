@@ -3,18 +3,20 @@ package adminapi
 import (
 	"context"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // The whole point of the transaction is the order of the statements in it: the
@@ -68,22 +70,21 @@ func TestReplaceEpisodeCreditsLocksTheEpisodeBeforeReadingItsCredits(t *testing.
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.ReplaceEpisodeCreditsRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.ReplaceEpisodeCreditsRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: episodeID.String(),
 		CreatorCredits: []*publiraadminv1.EpisodeCreatorCredit{
 			{CreatorId: creatorID.String(), RoleId: roleID.String()},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.ReplaceEpisodeCredits(context.Background(), req)
+	resp, err := client.ReplaceEpisodeCredits(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ReplaceEpisodeCredits: %v", err)
 	}
-	if len(resp.Msg.Creators) != 1 || resp.Msg.Creators[0].PublicId != "CREATOR001" {
-		t.Fatalf("creators = %v, want the one credit the request named", resp.Msg.Creators)
+	if len(resp.Creators) != 1 || resp.Creators[0].PublicId != "CREATOR001" {
+		t.Fatalf("creators = %v, want the one credit the request named", resp.Creators)
 	}
 	assertExpectations(t, mock)
 }
@@ -138,17 +139,16 @@ func TestReplaceEpisodeCreditsRollsBackWhenTheCacheInvalidationCannotBeRecorded(
 		WillReturnError(errors.New("outbox is unavailable"))
 	mock.ExpectRollback()
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.ReplaceEpisodeCreditsRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.ReplaceEpisodeCreditsRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: episodeID.String(),
 		CreatorCredits: []*publiraadminv1.EpisodeCreatorCredit{
 			{CreatorId: creatorID.String(), RoleId: roleID.String()},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.ReplaceEpisodeCredits(context.Background(), req); err == nil {
+	if _, err := client.ReplaceEpisodeCredits(testutil.WithBearer(context.Background(), sessionToken), req); err == nil {
 		t.Fatal("ReplaceEpisodeCredits() error = nil, want the unrecordable invalidation reported")
 	} else if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ReplaceEpisodeCredits() code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
@@ -167,18 +167,17 @@ func TestReplaceEpisodeCreditsRefusesCreditSharesAboveOneWholeEpisode(t *testing
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.ReplaceEpisodeCreditsRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.ReplaceEpisodeCreditsRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: testEpisodeID.String(),
 		CreatorCredits: []*publiraadminv1.EpisodeCreatorCredit{
 			{CreatorId: episodeTestID(11).String(), RoleId: episodeTestID(21).String(), ShareBps: 6000},
 			{CreatorId: episodeTestID(12).String(), RoleId: episodeTestID(21).String(), ShareBps: 5000},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.ReplaceEpisodeCredits(context.Background(), req)
+	_, err := client.ReplaceEpisodeCredits(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ReplaceEpisodeCredits code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}

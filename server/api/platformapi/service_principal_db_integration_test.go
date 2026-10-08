@@ -4,12 +4,14 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/auth"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/tenanttz"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 const testWebServiceToken = "test-web-service-token"
@@ -18,23 +20,23 @@ func TestDBServiceTokenReadsTheTenantList(t *testing.T) {
 	ts, pg := newDBIntegrationEnvWithServiceToken(t, auth.NewServiceToken(testWebServiceToken))
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	listed, err := client.ListTenants(t.Context(), newDBBearerRequest(testWebServiceToken, publirasplatformv1.ListTenantsRequest{}))
+	listed, err := client.ListTenants(testutil.WithBearer(t.Context(), testWebServiceToken), &publirasplatformv1.ListTenantsRequest{})
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
 	}
-	if len(listed.Msg.Tenants) != 1 || listed.Msg.Tenants[0].PublicId != tenant.PublicID {
-		t.Fatalf("tenants = %v, want the one seeded tenant", listed.Msg.Tenants)
+	if len(listed.Tenants) != 1 || listed.Tenants[0].PublicId != tenant.PublicID {
+		t.Fatalf("tenants = %v, want the one seeded tenant", listed.Tenants)
 	}
 
 	// An operator's session keeps working beside the token.
-	listed, err = client.ListTenants(t.Context(), newDBAuthedRequest(operator, publirasplatformv1.ListTenantsRequest{}))
+	listed, err = client.ListTenants(testutil.WithBearer(t.Context(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListTenantsRequest{})
 	if err != nil {
 		t.Fatalf("ListTenants by the operator: %v", err)
 	}
-	if len(listed.Msg.Tenants) != 1 {
-		t.Fatalf("tenants read by the operator = %d, want 1", len(listed.Msg.Tenants))
+	if len(listed.Tenants) != 1 {
+		t.Fatalf("tenants read by the operator = %d, want 1", len(listed.Tenants))
 	}
 }
 
@@ -48,78 +50,78 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 
 	httpClient, url := ts.Client(), ts.URL
-	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(httpClient, url)
-	policy := publirasplatformv1connect.NewPlatformPolicyServiceClient(httpClient, url)
-	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(httpClient, url)
-	email := publirasplatformv1connect.NewPlatformEmailSettingsServiceClient(httpClient, url)
-	storage := publirasplatformv1connect.NewPlatformStorageSettingsServiceClient(httpClient, url)
-	search := publirasplatformv1connect.NewPlatformSearchSettingsServiceClient(httpClient, url)
-	dashboard := publirasplatformv1connect.NewPlatformDashboardServiceClient(httpClient, url)
-	operators := publirasplatformv1connect.NewPlatformOperatorServiceClient(httpClient, url)
-	users := publirasplatformv1connect.NewPlatformUserServiceClient(httpClient, url)
+	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
+	policy := publirasplatformv1connect.NewPlatformPolicyServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
+	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
+	email := publirasplatformv1connect.NewPlatformEmailSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
+	storage := publirasplatformv1connect.NewPlatformStorageSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
+	search := publirasplatformv1connect.NewPlatformSearchSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
+	dashboard := publirasplatformv1connect.NewPlatformDashboardServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
+	operators := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
+	users := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url)))
 	// A migrated database carries no settings row, which the read answers as
 	// an error rather than as settings nobody saved.
 	seedPlatformSettings(t, settings, operator, tenanttz.Default, "en")
 
 	reads := map[string]func(context.Context) error{
 		publirasplatformv1connect.PlatformTenantServiceListTenantsProcedure: func(ctx context.Context) error {
-			_, err := tenants.ListTenants(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.ListTenantsRequest{}))
+			_, err := tenants.ListTenants(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.ListTenantsRequest{})
 			return err
 		},
 		publirasplatformv1connect.PlatformTenantServiceGetTenantProcedure: func(ctx context.Context) error {
-			_, err := tenants.GetTenant(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetTenantRequest{PublicId: tenant.PublicID}))
+			_, err := tenants.GetTenant(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.GetTenantRequest{PublicId: tenant.PublicID})
 			return err
 		},
 		publirasplatformv1connect.PlatformTenantServiceListTenantMembersProcedure: func(ctx context.Context) error {
-			_, err := tenants.ListTenantMembers(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.ListTenantMembersRequest{TenantId: tenant.ID.String()}))
+			_, err := tenants.ListTenantMembers(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.ListTenantMembersRequest{TenantId: tenant.ID.String()})
 			return err
 		},
 		publirasplatformv1connect.PlatformTenantServiceListTenantAdminInvitationsProcedure: func(ctx context.Context) error {
-			_, err := tenants.ListTenantAdminInvitations(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.ListTenantAdminInvitationsRequest{TenantId: tenant.ID.String()}))
+			_, err := tenants.ListTenantAdminInvitations(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.ListTenantAdminInvitationsRequest{TenantId: tenant.ID.String()})
 			return err
 		},
 		publirasplatformv1connect.PlatformPolicyServiceGetPlatformPolicyProcedure: func(ctx context.Context) error {
-			_, err := policy.GetPlatformPolicy(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetPlatformPolicyRequest{}))
+			_, err := policy.GetPlatformPolicy(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.GetPlatformPolicyRequest{})
 			return err
 		},
 		publirasplatformv1connect.PlatformPolicyServiceGetPlatformRetentionDefaultsProcedure: func(ctx context.Context) error {
-			_, err := policy.GetPlatformRetentionDefaults(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetPlatformRetentionDefaultsRequest{}))
+			_, err := policy.GetPlatformRetentionDefaults(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.GetPlatformRetentionDefaultsRequest{})
 			return err
 		},
 		publirasplatformv1connect.PlatformSettingsServiceGetPlatformSettingsProcedure: func(ctx context.Context) error {
-			_, err := settings.GetPlatformSettings(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetPlatformSettingsRequest{}))
+			_, err := settings.GetPlatformSettings(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.GetPlatformSettingsRequest{})
 			return err
 		},
 		publirasplatformv1connect.PlatformEmailSettingsServiceGetPlatformEmailSettingsProcedure: func(ctx context.Context) error {
-			_, err := email.GetPlatformEmailSettings(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetPlatformEmailSettingsRequest{}))
+			_, err := email.GetPlatformEmailSettings(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.GetPlatformEmailSettingsRequest{})
 			return err
 		},
 		publirasplatformv1connect.PlatformStorageSettingsServiceGetPlatformStorageSettingsProcedure: func(ctx context.Context) error {
-			_, err := storage.GetPlatformStorageSettings(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetPlatformStorageSettingsRequest{}))
+			_, err := storage.GetPlatformStorageSettings(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.GetPlatformStorageSettingsRequest{})
 			return err
 		},
 		publirasplatformv1connect.PlatformSearchSettingsServiceGetPlatformSearchSettingsProcedure: func(ctx context.Context) error {
-			_, err := search.GetPlatformSearchSettings(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetPlatformSearchSettingsRequest{}))
+			_, err := search.GetPlatformSearchSettings(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.GetPlatformSearchSettingsRequest{})
 			return err
 		},
 		publirasplatformv1connect.PlatformDashboardServiceGetDashboardSummaryProcedure: func(ctx context.Context) error {
-			_, err := dashboard.GetDashboardSummary(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetDashboardSummaryRequest{}))
+			_, err := dashboard.GetDashboardSummary(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.GetDashboardSummaryRequest{})
 			return err
 		},
 		publirasplatformv1connect.PlatformOperatorServiceListOperatorsProcedure: func(ctx context.Context) error {
-			_, err := operators.ListOperators(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.ListOperatorsRequest{}))
+			_, err := operators.ListOperators(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.ListOperatorsRequest{})
 			return err
 		},
 		publirasplatformv1connect.PlatformOperatorServiceGetOperatorProcedure: func(ctx context.Context) error {
-			_, err := operators.GetOperator(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetOperatorRequest{PublicId: operator.PublicID}))
+			_, err := operators.GetOperator(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.GetOperatorRequest{PublicId: operator.PublicID})
 			return err
 		},
 		publirasplatformv1connect.PlatformUserServiceListEndUsersProcedure: func(ctx context.Context) error {
-			_, err := users.ListEndUsers(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.ListEndUsersRequest{}))
+			_, err := users.ListEndUsers(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.ListEndUsersRequest{})
 			return err
 		},
 		publirasplatformv1connect.PlatformUserServiceGetEndUserProcedure: func(ctx context.Context) error {
-			_, err := users.GetEndUser(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetEndUserRequest{PublicId: endUser.PublicID}))
+			_, err := users.GetEndUser(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.GetEndUserRequest{PublicId: endUser.PublicID})
 			return err
 		},
 	}
@@ -144,23 +146,23 @@ func TestDBServiceTokenIsRefusedOutsideTheAllowlist(t *testing.T) {
 
 	calls := map[string]func(context.Context) error{
 		"creating a tenant": func(ctx context.Context) error {
-			_, err := publirasplatformv1connect.NewPlatformTenantServiceClient(httpClient, url).CreateTenant(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.CreateTenantRequest{
+			_, err := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url))).CreateTenant(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.CreateTenantRequest{
 				DefaultLocale: "en",
 				Name:          "Tenant B",
 				Domain:        "tenant-b.example.com",
-			}))
+			})
 			return err
 		},
 		"updating the platform policy": func(ctx context.Context) error {
-			_, err := publirasplatformv1connect.NewPlatformPolicyServiceClient(httpClient, url).UpdatePlatformPolicy(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.UpdatePlatformPolicyRequest{}))
+			_, err := publirasplatformv1connect.NewPlatformPolicyServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url))).UpdatePlatformPolicy(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.UpdatePlatformPolicyRequest{})
 			return err
 		},
 		"a read that stores the key pair it generates": func(ctx context.Context) error {
-			_, err := publirasplatformv1connect.NewPlatformWebPushSettingsServiceClient(httpClient, url).GetPlatformWebPushSettings(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.GetPlatformWebPushSettingsRequest{}))
+			_, err := publirasplatformv1connect.NewPlatformWebPushSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url))).GetPlatformWebPushSettings(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.GetPlatformWebPushSettingsRequest{})
 			return err
 		},
 		"a read of the caller's own notifications": func(ctx context.Context) error {
-			_, err := publirasplatformv1connect.NewPlatformNotificationServiceClient(httpClient, url).ListNotifications(ctx, newDBBearerRequest(testWebServiceToken, publirasplatformv1.ListNotificationsRequest{}))
+			_, err := publirasplatformv1connect.NewPlatformNotificationServiceClient(connect.NewClient(connecthttp.NewTransport(httpClient, url))).ListNotifications(testutil.WithBearer(ctx, testWebServiceToken), &publirasplatformv1.ListNotificationsRequest{})
 			return err
 		},
 	}
@@ -191,17 +193,17 @@ func TestDBServiceTokenIsUnauthenticatedUnlessItIsTheConfiguredOne(t *testing.T)
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			ts, _ := newDBIntegrationEnvWithServiceToken(t, tt.configured)
-			client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+			client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-			_, err := client.ListTenants(t.Context(), newDBBearerRequest(tt.bearer, publirasplatformv1.ListTenantsRequest{}))
+			_, err := client.ListTenants(testutil.WithBearer(t.Context(), tt.bearer), &publirasplatformv1.ListTenantsRequest{})
 			if code := connect.CodeOf(err); code != connect.CodeUnauthenticated {
 				t.Fatalf("ListTenants code = %v, want %v", code, connect.CodeUnauthenticated)
 			}
-			_, err = client.CreateTenant(t.Context(), newDBBearerRequest(tt.bearer, publirasplatformv1.CreateTenantRequest{
+			_, err = client.CreateTenant(testutil.WithBearer(t.Context(), tt.bearer), &publirasplatformv1.CreateTenantRequest{
 				DefaultLocale: "en",
 				Name:          "Tenant B",
 				Domain:        "tenant-b.example.com",
-			}))
+			})
 			if code := connect.CodeOf(err); code != connect.CodeUnauthenticated {
 				t.Fatalf("CreateTenant code = %v, want %v", code, connect.CodeUnauthenticated)
 			}

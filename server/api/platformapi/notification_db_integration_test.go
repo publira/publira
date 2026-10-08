@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -24,43 +25,43 @@ func TestDBPlatformNotificationsListUnreadAndMark(t *testing.T) {
 	insertOperatorNotification(t, pg, operator.ID, "episode_publish_failed", "episode:E002", `{"episode_id":"E002"}`)
 	insertOperatorNotification(t, pg, other.ID, "episode_publish_failed", "episode:E003", `{"episode_id":"E003"}`)
 
-	client := publirasplatformv1connect.NewPlatformNotificationServiceClient(server.Client(), server.URL)
-	list, err := client.ListNotifications(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListNotificationsRequest{}))
+	client := publirasplatformv1connect.NewPlatformNotificationServiceClient(connect.NewClient(connecthttp.NewTransport(server.Client(), server.URL)))
+	list, err := client.ListNotifications(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListNotificationsRequest{})
 	if err != nil {
 		t.Fatalf("ListNotifications: %v", err)
 	}
-	if len(list.Msg.Notifications) != 2 {
-		t.Fatalf("list count = %d, want 2", len(list.Msg.Notifications))
+	if len(list.Notifications) != 2 {
+		t.Fatalf("list count = %d, want 2", len(list.Notifications))
 	}
 
-	unread, err := client.CountUnreadNotifications(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CountUnreadNotificationsRequest{}))
+	unread, err := client.CountUnreadNotifications(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CountUnreadNotificationsRequest{})
 	if err != nil {
 		t.Fatalf("CountUnreadNotifications: %v", err)
 	}
-	if unread.Msg.UnreadCount != 2 {
-		t.Fatalf("unread = %d, want 2", unread.Msg.UnreadCount)
+	if unread.UnreadCount != 2 {
+		t.Fatalf("unread = %d, want 2", unread.UnreadCount)
 	}
 
-	if _, err := client.MarkNotificationAsRead(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.MarkNotificationAsReadRequest{
+	if _, err := client.MarkNotificationAsRead(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.MarkNotificationAsReadRequest{
 		NotificationId: mine.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("MarkNotificationAsRead: %v", err)
 	}
 
-	unread, err = client.CountUnreadNotifications(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CountUnreadNotificationsRequest{}))
+	unread, err = client.CountUnreadNotifications(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CountUnreadNotificationsRequest{})
 	if err != nil {
 		t.Fatalf("CountUnreadNotifications after mark: %v", err)
 	}
-	if unread.Msg.UnreadCount != 1 {
-		t.Fatalf("unread after mark = %d, want 1", unread.Msg.UnreadCount)
+	if unread.UnreadCount != 1 {
+		t.Fatalf("unread after mark = %d, want 1", unread.UnreadCount)
 	}
 
-	all, err := client.MarkAllNotificationsAsRead(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.MarkAllNotificationsAsReadRequest{}))
+	all, err := client.MarkAllNotificationsAsRead(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.MarkAllNotificationsAsReadRequest{})
 	if err != nil {
 		t.Fatalf("MarkAllNotificationsAsRead: %v", err)
 	}
-	if all.Msg.MarkedCount != 1 {
-		t.Fatalf("marked_count = %d, want 1", all.Msg.MarkedCount)
+	if all.MarkedCount != 1 {
+		t.Fatalf("marked_count = %d, want 1", all.MarkedCount)
 	}
 }
 
@@ -75,25 +76,25 @@ func TestDBPlatformNotificationsHideOtherOperatorsAndTenantRows(t *testing.T) {
 	theirs := insertOperatorNotification(t, pg, other.ID, "episode_publish_failed", "episode:theirs", `{"episode_id":"theirs"}`)
 	memberRow := insertTenantNotificationForPlatformTest(t, pg, tenant.ID, member.ID, "episode_published", "episode:member", `{"episode_id":"member"}`)
 
-	client := publirasplatformv1connect.NewPlatformNotificationServiceClient(server.Client(), server.URL)
-	list, err := client.ListNotifications(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListNotificationsRequest{}))
+	client := publirasplatformv1connect.NewPlatformNotificationServiceClient(connect.NewClient(connecthttp.NewTransport(server.Client(), server.URL)))
+	list, err := client.ListNotifications(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListNotificationsRequest{})
 	if err != nil {
 		t.Fatalf("ListNotifications: %v", err)
 	}
-	if len(list.Msg.Notifications) != 1 || list.Msg.Notifications[0].Id != mine.String() {
-		t.Fatalf("list = %+v, want only %s", list.Msg.Notifications, mine)
+	if len(list.Notifications) != 1 || list.Notifications[0].Id != mine.String() {
+		t.Fatalf("list = %+v, want only %s", list.Notifications, mine)
 	}
 
-	_, err = client.MarkNotificationAsRead(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.MarkNotificationAsReadRequest{
+	_, err = client.MarkNotificationAsRead(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.MarkNotificationAsReadRequest{
 		NotificationId: theirs.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("mark other operator code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
 
-	_, err = client.MarkNotificationAsRead(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.MarkNotificationAsReadRequest{
+	_, err = client.MarkNotificationAsRead(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.MarkNotificationAsReadRequest{
 		NotificationId: memberRow.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("mark tenant notification code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}

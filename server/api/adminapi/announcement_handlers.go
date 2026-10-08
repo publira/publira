@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/pinnedannouncements"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/revalidate"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -117,9 +118,9 @@ func (s *adminServer) announcementPage(
 
 func (s *adminServer) ListAnnouncements(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListAnnouncementsRequest],
-) (*connect.Response[publiraadminv1.ListAnnouncementsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ListAnnouncementsRequest,
+) (*publiraadminv1.ListAnnouncementsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -127,16 +128,16 @@ func (s *adminServer) ListAnnouncements(
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultAnnouncementListLimit, maxAnnouncementListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultAnnouncementListLimit, maxAnnouncementListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -173,14 +174,14 @@ func (s *adminServer) ListAnnouncements(
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *adminServer) CreateAnnouncement(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreateAnnouncementRequest],
-) (*connect.Response[publiraadminv1.CreateAnnouncementResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.CreateAnnouncementRequest,
+) (*publiraadminv1.CreateAnnouncementResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -189,25 +190,25 @@ func (s *adminServer) CreateAnnouncement(
 		return nil, err
 	}
 
-	title := strings.TrimSpace(req.Msg.Title)
+	title := strings.TrimSpace(req.Title)
 	if title == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("title is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "title is required")
 	}
-	body := strings.TrimSpace(req.Msg.Body)
+	body := strings.TrimSpace(req.Body)
 	if body == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("body is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "body is required")
 	}
-	linkURL := strings.TrimSpace(req.Msg.LinkUrl)
+	linkURL := strings.TrimSpace(req.LinkUrl)
 	if !isValidAnnouncementLinkURL(linkURL) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("link_url must start with / or http(s)://"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "link_url must start with / or http(s)://")
 	}
 
-	pinned := req.Msg.Pinned
+	pinned := req.Pinned
 	pinnedUntil := sql.NullTime{}
 	if pinned {
-		pinnedUntil, err = parsePinnedUntil(req.Msg.PinnedUntil, time.Now())
+		pinnedUntil, err = parsePinnedUntil(req.PinnedUntil, time.Now())
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 		}
 	}
 
@@ -231,12 +232,12 @@ func (s *adminServer) CreateAnnouncement(
 		TargetType:  "announcement",
 		TargetID:    created.Id,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publiraadminv1.CreateAnnouncementResponse{
+	return &publiraadminv1.CreateAnnouncementResponse{
 		Announcement: created,
-	}), nil
+	}, nil
 }
 
 // announcementContent is what one CreateAnnouncement call writes.
@@ -341,9 +342,9 @@ func enqueueAnnouncementNotification(
 // take the announcement out of the list its readers were pointed at.
 func (s *adminServer) UnpinAnnouncement(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UnpinAnnouncementRequest],
-) (*connect.Response[publiraadminv1.UnpinAnnouncementResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UnpinAnnouncementRequest,
+) (*publiraadminv1.UnpinAnnouncementResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -352,9 +353,9 @@ func (s *adminServer) UnpinAnnouncement(
 		return nil, err
 	}
 
-	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.Msg.AnnouncementId))
+	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.AnnouncementId))
 	if parseErr != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("announcement_id is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "announcement_id is invalid")
 	}
 
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
@@ -363,7 +364,7 @@ func (s *adminServer) UnpinAnnouncement(
 			TenantID: tenant.ID,
 		}); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeNotFound, errors.New("announcement not found"))
+				return nil, connect.NewError(connect.CodeNotFound, "announcement not found")
 			}
 			return nil, s.internalDBError(ctx, "failed to unpin announcement", err, "tenant_id", tenant.ID.String(), "announcement_id", announcementID.String())
 		}
@@ -380,8 +381,8 @@ func (s *adminServer) UnpinAnnouncement(
 		TargetType:  "announcement",
 		TargetID:    announcementID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publiraadminv1.UnpinAnnouncementResponse{}), nil
+	return &publiraadminv1.UnpinAnnouncementResponse{}, nil
 }

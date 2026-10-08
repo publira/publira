@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -143,7 +143,7 @@ func (s *adminServer) resolveCreatorCredits(
 	// refused without a second query.
 	for _, id := range creatorIDs {
 		if _, ok := creators[id]; !ok {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator not found"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "creator not found")
 		}
 	}
 
@@ -165,7 +165,7 @@ func (s *adminServer) resolveCreatorCredits(
 		creator := creators[creatorIDs[index]]
 		role, ok := roles[roleIDs[index]]
 		if !ok {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator role not found"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "creator role not found")
 		}
 		pair := [2]uuid.UUID{creator.ID, role.ID}
 		if _, ok := seenPairs[pair]; ok {

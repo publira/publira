@@ -7,11 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestDBPlatformAuditorCannotWritePlatformSettings(t *testing.T) {
@@ -22,10 +24,10 @@ func TestDBPlatformAuditorCannotWritePlatformSettings(t *testing.T) {
 	beforeTimezone, beforeFound := dbPlatformDefaultTimezone(t, queries)
 	beforeAuditLogs := dbPlatformAuditLogCount(t, pg.DB)
 
-	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(server.Client(), server.URL)
-	_, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(auditor, publirasplatformv1.UpdatePlatformSettingsRequest{
+	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(server.Client(), server.URL)))
+	_, err := client.UpdatePlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(auditor)), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: "UTC",
-	}))
+	})
 	if got := connect.CodeOf(err); got != connect.CodePermissionDenied {
 		t.Fatalf("UpdatePlatformSettings code = %v, want permission_denied (err=%v)", got, err)
 	}

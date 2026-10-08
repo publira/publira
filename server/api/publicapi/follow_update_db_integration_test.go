@@ -6,19 +6,19 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func followUpdateRequest(tenant testutil.Tenant, token string, limit int32, pageToken string) *connect.Request[publirav1.ListMyFollowUpdatesRequest] {
-	return newBearerRequest(&publirav1.ListMyFollowUpdatesRequest{
+func followUpdateRequest(tenant testutil.Tenant, limit int32, pageToken string) *publirav1.ListMyFollowUpdatesRequest {
+	return &publirav1.ListMyFollowUpdatesRequest{
 		Tenant: tenantContext(tenant),
 		Limit:  limit,
 		Token:  pageToken,
-	}, token)
+	}
 }
 
 func followUpdateEpisodePublicIDs(updates []*publirav1.FollowUpdate) []string {
@@ -76,39 +76,40 @@ func TestDBFollowServiceListsNewEpisodesOfFollowedSeriesAndCreators(t *testing.T
 	}
 
 	client := env.followClient()
-	response, err := client.ListMyFollowUpdates(ctx, followUpdateRequest(tenant, tokenFor(t, tenant, member), 0, ""))
+	responseCtx, responseCall := testutil.NewClientContext(testutil.WithBearer(ctx, tokenFor(t, tenant, member)))
+	response, err := client.ListMyFollowUpdates(responseCtx, followUpdateRequest(tenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyFollowUpdates: %v", err)
 	}
-	if response.Header().Get("Cache-Control") != "private, no-store" {
-		t.Fatalf("Cache-Control = %q, want private, no-store", response.Header().Get("Cache-Control"))
+	if responseCall.ResponseHeader().Get("Cache-Control") != "private, no-store" {
+		t.Fatalf("Cache-Control = %q, want private, no-store", responseCall.ResponseHeader().Get("Cache-Control"))
 	}
 
 	want := []string{newest.PublicID, guest.PublicID, older.PublicID}
-	if got := followUpdateEpisodePublicIDs(response.Msg.Updates); !slices.Equal(got, want) {
+	if got := followUpdateEpisodePublicIDs(response.Updates); !slices.Equal(got, want) {
 		t.Fatalf("episodes = %v, want %v", got, want)
 	}
-	if got := response.Msg.Updates[0].GetSeries().GetPublicId(); got != followedSeries.PublicID {
+	if got := response.Updates[0].GetSeries().GetPublicId(); got != followedSeries.PublicID {
 		t.Fatalf("series of the newest update = %q, want %q", got, followedSeries.PublicID)
 	}
-	if got := response.Msg.Updates[1].GetSeries().GetTitle(); got != "Guest series" {
+	if got := response.Updates[1].GetSeries().GetTitle(); got != "Guest series" {
 		t.Fatalf("series title of the guest update = %q, want %q", got, "Guest series")
 	}
-	if got := response.Msg.Updates[0].GetEpisode().GetPublishedAt(); got == "" {
+	if got := response.Updates[0].GetEpisode().GetPublishedAt(); got == "" {
 		t.Fatal("the newest update carries no published_at")
 	}
 
-	if _, err := client.ListMyFollowUpdates(ctx, connect.NewRequest(&publirav1.ListMyFollowUpdatesRequest{Tenant: tenantContext(tenant)})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+	if _, err := client.ListMyFollowUpdates(ctx, &publirav1.ListMyFollowUpdatesRequest{Tenant: tenantContext(tenant)}); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("anonymous ListMyFollowUpdates code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
 
 	otherMember := env.PG.SeedTenantUser(t, tenant.ID, "OTHERFOLU", "other-follow-u@example.com", "Other Member", "tenant_member")
-	empty, err := client.ListMyFollowUpdates(ctx, followUpdateRequest(tenant, tokenFor(t, tenant, otherMember), 0, ""))
+	empty, err := client.ListMyFollowUpdates(testutil.WithBearer(ctx, tokenFor(t, tenant, otherMember)), followUpdateRequest(tenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyFollowUpdates for a member who follows nothing: %v", err)
 	}
-	if len(empty.Msg.Updates) != 0 {
-		t.Fatalf("a member who follows nothing got %d updates", len(empty.Msg.Updates))
+	if len(empty.Updates) != 0 {
+		t.Fatalf("a member who follows nothing got %d updates", len(empty.Updates))
 	}
 }
 
@@ -130,33 +131,33 @@ func TestDBFollowServicePagesThroughFollowUpdates(t *testing.T) {
 	client := env.followClient()
 	token := tokenFor(t, tenant, member)
 
-	page1, err := client.ListMyFollowUpdates(ctx, followUpdateRequest(tenant, token, 1, ""))
+	page1, err := client.ListMyFollowUpdates(testutil.WithBearer(ctx, token), followUpdateRequest(tenant, 1, ""))
 	if err != nil {
 		t.Fatalf("ListMyFollowUpdates page 1: %v", err)
 	}
-	if got := followUpdateEpisodePublicIDs(page1.Msg.Updates); !slices.Equal(got, []string{second.PublicID}) {
+	if got := followUpdateEpisodePublicIDs(page1.Updates); !slices.Equal(got, []string{second.PublicID}) {
 		t.Fatalf("page 1 = %v, want the newest episode", got)
 	}
-	if page1.Msg.NextToken == "" || page1.Msg.PreviousToken != "" {
-		t.Fatalf("page 1 tokens = (%q, %q), want empty previous and non-empty next", page1.Msg.PreviousToken, page1.Msg.NextToken)
+	if page1.NextToken == "" || page1.PreviousToken != "" {
+		t.Fatalf("page 1 tokens = (%q, %q), want empty previous and non-empty next", page1.PreviousToken, page1.NextToken)
 	}
 
-	page2, err := client.ListMyFollowUpdates(ctx, followUpdateRequest(tenant, token, 1, page1.Msg.NextToken))
+	page2, err := client.ListMyFollowUpdates(testutil.WithBearer(ctx, token), followUpdateRequest(tenant, 1, page1.NextToken))
 	if err != nil {
 		t.Fatalf("ListMyFollowUpdates page 2: %v", err)
 	}
-	if got := followUpdateEpisodePublicIDs(page2.Msg.Updates); !slices.Equal(got, []string{first.PublicID}) {
+	if got := followUpdateEpisodePublicIDs(page2.Updates); !slices.Equal(got, []string{first.PublicID}) {
 		t.Fatalf("page 2 = %v, want the older episode", got)
 	}
-	if page2.Msg.PreviousToken == "" || page2.Msg.NextToken != "" {
-		t.Fatalf("page 2 tokens = (%q, %q), want non-empty previous and empty next", page2.Msg.PreviousToken, page2.Msg.NextToken)
+	if page2.PreviousToken == "" || page2.NextToken != "" {
+		t.Fatalf("page 2 tokens = (%q, %q), want non-empty previous and empty next", page2.PreviousToken, page2.NextToken)
 	}
 
-	back, err := client.ListMyFollowUpdates(ctx, followUpdateRequest(tenant, token, 1, page2.Msg.PreviousToken))
+	back, err := client.ListMyFollowUpdates(testutil.WithBearer(ctx, token), followUpdateRequest(tenant, 1, page2.PreviousToken))
 	if err != nil {
 		t.Fatalf("ListMyFollowUpdates previous page: %v", err)
 	}
-	if got := followUpdateEpisodePublicIDs(back.Msg.Updates); !slices.Equal(got, []string{second.PublicID}) {
+	if got := followUpdateEpisodePublicIDs(back.Updates); !slices.Equal(got, []string{second.PublicID}) {
 		t.Fatalf("previous page = %v, want the newest episode", got)
 	}
 
@@ -168,18 +169,18 @@ func TestDBFollowServicePagesThroughFollowUpdates(t *testing.T) {
 	if _, err := env.PG.DB.ExecContext(ctx, "DELETE FROM episode_listings WHERE episode_id = $1", second.ID); err != nil {
 		t.Fatalf("remove the newest listing: %v", err)
 	}
-	recovered, err := client.ListMyFollowUpdates(ctx, followUpdateRequest(tenant, token, 1, page1.Msg.NextToken))
+	recovered, err := client.ListMyFollowUpdates(testutil.WithBearer(ctx, token), followUpdateRequest(tenant, 1, page1.NextToken))
 	if err != nil {
 		t.Fatalf("ListMyFollowUpdates after the boundary moved: %v", err)
 	}
-	if len(recovered.Msg.Updates) != 0 {
-		t.Fatalf("emptied page = %v, want no updates", followUpdateEpisodePublicIDs(recovered.Msg.Updates))
+	if len(recovered.Updates) != 0 {
+		t.Fatalf("emptied page = %v, want no updates", followUpdateEpisodePublicIDs(recovered.Updates))
 	}
-	if recovered.Msg.PreviousToken == "" || recovered.Msg.NextToken != "" {
-		t.Fatalf("emptied page tokens = (%q, %q), want a recovery token towards the previous page only", recovered.Msg.PreviousToken, recovered.Msg.NextToken)
+	if recovered.PreviousToken == "" || recovered.NextToken != "" {
+		t.Fatalf("emptied page tokens = (%q, %q), want a recovery token towards the previous page only", recovered.PreviousToken, recovered.NextToken)
 	}
 
-	if _, err := client.ListMyFollowUpdates(ctx, followUpdateRequest(tenant, token, 1, "not-a-token")); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.ListMyFollowUpdates(testutil.WithBearer(ctx, token), followUpdateRequest(tenant, 1, "not-a-token")); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("malformed token code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 }

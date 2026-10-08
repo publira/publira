@@ -3,11 +3,10 @@ package adminapi
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -134,7 +133,7 @@ func parseAuditLogTimeFilter(name, value string) (sql.NullTime, error) {
 
 	parsed, err := time.Parse(time.RFC3339, trimmed)
 	if err != nil {
-		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, errors.New(name+" must be RFC3339"))
+		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, name+" must be RFC3339")
 	}
 
 	return sql.NullTime{Time: parsed.UTC(), Valid: true}, nil
@@ -142,45 +141,45 @@ func parseAuditLogTimeFilter(name, value string) (sql.NullTime, error) {
 
 func (s *adminServer) ListAuditLogs(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListAuditLogsRequest],
-) (*connect.Response[publiraadminv1.ListAuditLogsResponse], error) {
+	req *publiraadminv1.ListAuditLogsRequest,
+) (*publiraadminv1.ListAuditLogsResponse, error) {
 	if _, err := s.requireTenantAdmin(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultAuditLogPageSize, maxAuditLogPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultAuditLogPageSize, maxAuditLogPageSize)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 
-	createdFrom, err := parseAuditLogTimeFilter("created_from", req.Msg.CreatedFrom)
+	createdFrom, err := parseAuditLogTimeFilter("created_from", req.CreatedFrom)
 	if err != nil {
 		return nil, err
 	}
 
-	createdTo, err := parseAuditLogTimeFilter("created_to", req.Msg.CreatedTo)
+	createdTo, err := parseAuditLogTimeFilter("created_to", req.CreatedTo)
 	if err != nil {
 		return nil, err
 	}
 
 	if createdFrom.Valid && createdTo.Valid && !createdFrom.Time.Before(createdTo.Time) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("created_from must be before created_to"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "created_from must be before created_to")
 	}
 
 	filters := auditLogQueryFilters{
 		tenantID: tenant.ID,
 		actorUserPublicID: sql.NullString{
-			String: strings.TrimSpace(req.Msg.ActorUserPublicId),
-			Valid:  strings.TrimSpace(req.Msg.ActorUserPublicId) != "",
+			String: strings.TrimSpace(req.ActorUserPublicId),
+			Valid:  strings.TrimSpace(req.ActorUserPublicId) != "",
 		},
 		action: sql.NullString{
-			String: strings.TrimSpace(req.Msg.Action),
-			Valid:  strings.TrimSpace(req.Msg.Action) != "",
+			String: strings.TrimSpace(req.Action),
+			Valid:  strings.TrimSpace(req.Action) != "",
 		},
 		createdFrom: createdFrom,
 		createdTo:   createdTo,
@@ -251,5 +250,5 @@ func (s *adminServer) ListAuditLogs(
 		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/platformsearch"
@@ -79,20 +79,20 @@ func (s *platformServer) searchSettingsError(ctx context.Context, err error) err
 		return connectErr
 	}
 	if errors.Is(err, platformsearch.ErrConflict) {
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	}
 	// The engine's own error stays in the log: it can name the URL.
 	if errors.Is(err, platformsearch.ErrAnalysisUnchecked) {
 		s.logger.WarnContext(ctx, "the search engine could not check the analysis", "error", err)
-		return connect.NewError(connect.CodeUnavailable, platformsearch.ErrAnalysisUnchecked)
+		return connect.NewError(connect.CodeUnavailable, platformsearch.ErrAnalysisUnchecked.Error()).WithCause(platformsearch.ErrAnalysisUnchecked)
 	}
 	return s.internalDBError(ctx, "failed to access platform search config", err)
 }
 
 func (s *platformServer) GetPlatformSearchSettings(
 	ctx context.Context,
-	_ *connect.Request[publirasplatformv1.GetPlatformSearchSettingsRequest],
-) (*connect.Response[publirasplatformv1.GetPlatformSearchSettingsResponse], error) {
+	_ *publirasplatformv1.GetPlatformSearchSettingsRequest,
+) (*publirasplatformv1.GetPlatformSearchSettingsResponse, error) {
 	row, found, err := platformsearch.Get(ctx, s.queriesFor(ctx))
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get platform search config", err)
@@ -104,33 +104,33 @@ func (s *platformServer) GetPlatformSearchSettings(
 	if found {
 		stored = platformsearch.FromConfig(row)
 	}
-	return connect.NewResponse(&publirasplatformv1.GetPlatformSearchSettingsResponse{
+	return &publirasplatformv1.GetPlatformSearchSettingsResponse{
 		Settings: platformSearchSettingsToProto(stored),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) UpdatePlatformSearchSettings(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.UpdatePlatformSearchSettingsRequest],
-) (*connect.Response[publirasplatformv1.UpdatePlatformSearchSettingsResponse], error) {
-	expectedRevision := req.Msg.GetExpectedRevision()
+	req *publirasplatformv1.UpdatePlatformSearchSettingsRequest,
+) (*publirasplatformv1.UpdatePlatformSearchSettingsResponse, error) {
+	expectedRevision := req.GetExpectedRevision()
 	params := platformsearch.SaveParams{
 		Settings: platformsearch.Settings{
-			Engine:   searchEngineFromProto(req.Msg.GetEngine()),
-			URL:      req.Msg.GetUrl(),
-			Index:    req.Msg.GetIndex(),
-			Username: req.Msg.GetUsername(),
+			Engine:   searchEngineFromProto(req.GetEngine()),
+			URL:      req.GetUrl(),
+			Index:    req.GetIndex(),
+			Username: req.GetUsername(),
 		},
-		SecretMode:       secretupdate.Mode(req.Msg.GetPasswordUpdateMode()),
-		Password:         req.Msg.GetPassword(),
-		AnalysisMode:     platformsearch.AnalysisMode(req.Msg.GetAnalysisUpdateMode()),
-		Analysis:         req.Msg.GetAnalysis(),
+		SecretMode:       secretupdate.Mode(req.GetPasswordUpdateMode()),
+		Password:         req.GetPassword(),
+		AnalysisMode:     platformsearch.AnalysisMode(req.GetAnalysisUpdateMode()),
+		Analysis:         req.GetAnalysis(),
 		ExpectedRevision: &expectedRevision,
 	}
 	if err := params.Validate(); err != nil {
 		return nil, s.searchSettingsError(ctx, err)
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -139,16 +139,16 @@ func (s *platformServer) UpdatePlatformSearchSettings(
 	if err != nil {
 		return nil, s.searchSettingsError(ctx, err)
 	}
-	return connect.NewResponse(&publirasplatformv1.UpdatePlatformSearchSettingsResponse{
+	return &publirasplatformv1.UpdatePlatformSearchSettingsResponse{
 		Settings: searchSettingsFromRow(saved),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) TestPlatformSearchConnection(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.TestPlatformSearchConnectionRequest],
-) (*connect.Response[publirasplatformv1.TestPlatformSearchConnectionResponse], error) {
-	actor, err := s.auditActor(ctx, req)
+	req *publirasplatformv1.TestPlatformSearchConnectionRequest,
+) (*publirasplatformv1.TestPlatformSearchConnectionResponse, error) {
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -156,22 +156,22 @@ func (s *platformServer) TestPlatformSearchConnection(
 	tester := platformsearch.Tester{Secrets: s.encryptor, Probe: s.searchProbe, Recorder: s.recorder}
 	result, err := tester.Test(ctx, s.queriesFor(ctx), actor, platformsearch.TestParams{
 		Settings: platformsearch.Settings{
-			Engine:   searchEngineFromProto(req.Msg.GetEngine()),
-			URL:      req.Msg.GetUrl(),
-			Username: req.Msg.GetUsername(),
+			Engine:   searchEngineFromProto(req.GetEngine()),
+			URL:      req.GetUrl(),
+			Username: req.GetUsername(),
 		},
-		SecretMode: secretupdate.Mode(req.Msg.GetPasswordUpdateMode()),
-		Password:   req.Msg.GetPassword(),
+		SecretMode: secretupdate.Mode(req.GetPasswordUpdateMode()),
+		Password:   req.GetPassword(),
 	})
 	if err != nil {
 		return nil, s.searchSettingsError(ctx, err)
 	}
-	return connect.NewResponse(&publirasplatformv1.TestPlatformSearchConnectionResponse{
+	return &publirasplatformv1.TestPlatformSearchConnectionResponse{
 		Succeeded:                 result.Succeeded(),
 		Reason:                    result.Reason,
 		Product:                   result.Product,
 		Version:                   result.Version,
 		AnalysisKuromojiInstalled: result.KuromojiPresent,
 		AnalysisIcuInstalled:      result.ICUPresent,
-	}), nil
+	}, nil
 }

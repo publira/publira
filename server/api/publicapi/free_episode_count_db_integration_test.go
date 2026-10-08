@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -33,18 +33,18 @@ func seedSeriesWithEpisodes(t *testing.T, env *publicDBEnv, tenant testutil.Tena
 func freeEpisodeCountOfListedSeries(t *testing.T, env *publicDBEnv, tenant testutil.Tenant, publicID string) int32 {
 	t.Helper()
 
-	resp, err := env.catalogClient().ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	resp, err := env.catalogClient().ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
-	for _, series := range resp.Msg.Series {
+	for _, series := range resp.Series {
 		if series.PublicId == publicID {
 			return series.FreeEpisodeCount
 		}
 	}
-	t.Fatalf("series %s = %v, want it listed", publicID, seriesPublicIDs(resp.Msg.Series))
+	t.Fatalf("series %s = %v, want it listed", publicID, seriesPublicIDs(resp.Series))
 	return 0
 }
 
@@ -69,15 +69,15 @@ func TestDBPublishedSeriesCountsTheEpisodesAReaderCanOpenForNothing(t *testing.T
 
 	// The detail page counts by the same rule as the list, so a card and the
 	// page it leads to cannot disagree about how much is free.
-	detail, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	detail, err := env.catalogClient().GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: series.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeriesDetail: %v", err)
 	}
-	if detail.Msg.Series.FreeEpisodeCount != 1 {
-		t.Fatalf("detail free_episode_count = %d, want 1", detail.Msg.Series.FreeEpisodeCount)
+	if detail.Series.FreeEpisodeCount != 1 {
+		t.Fatalf("detail free_episode_count = %d, want 1", detail.Series.FreeEpisodeCount)
 	}
 
 	// A priced episode inside an open window is free right now, so it counts
@@ -128,31 +128,31 @@ func TestDBListPublishedSeriesKeepsOnlyTheSeriesWithAFreeEpisode(t *testing.T) {
 	)
 
 	client := env.catalogClient()
-	unfiltered, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	unfiltered, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries without the filter: %v", err)
 	}
-	if got := len(unfiltered.Msg.Series); got != 3 {
-		t.Fatalf("series without the filter = %v, want all three", seriesPublicIDs(unfiltered.Msg.Series))
+	if got := len(unfiltered.Series); got != 3 {
+		t.Fatalf("series without the filter = %v, want all three", seriesPublicIDs(unfiltered.Series))
 	}
 	// The filter and the count answer the same question, so the series the
 	// filter drops is the one the count reports nothing for.
-	for _, series := range unfiltered.Msg.Series {
+	for _, series := range unfiltered.Series {
 		if series.PublicId == "SERIESPAID01" && series.FreeEpisodeCount != 0 {
 			t.Fatalf("SERIESPAID01 free_episode_count = %d, want 0", series.FreeEpisodeCount)
 		}
 	}
 
-	filtered, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	filtered, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant:          tenantContext(tenant),
 		HasFreeEpisodes: true,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries with the filter: %v", err)
 	}
-	got := seriesPublicIDs(filtered.Msg.Series)
+	got := seriesPublicIDs(filtered.Series)
 	want := []string{"SERIESWIND01", "SERIESFREE01"}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("filtered series = %v, want %v (newest first)", got, want)
@@ -185,57 +185,57 @@ func TestDBListPublishedSeriesPagesTheFilteredListForwardAndBack(t *testing.T) {
 	}
 
 	client := env.catalogClient()
-	firstPage, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	firstPage, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant:          tenantContext(tenant),
 		HasFreeEpisodes: true,
 		Limit:           2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("filtered page 1: %v", err)
 	}
-	if got := seriesPublicIDs(firstPage.Msg.Series); len(got) != 2 || got[0] != "SERIESFREE03" || got[1] != "SERIESFREE02" {
+	if got := seriesPublicIDs(firstPage.Series); len(got) != 2 || got[0] != "SERIESFREE03" || got[1] != "SERIESFREE02" {
 		t.Fatalf("filtered page 1 = %v, want the two newest free series", got)
 	}
-	if firstPage.Msg.NextToken == "" {
+	if firstPage.NextToken == "" {
 		t.Fatal("filtered page 1 next_token is empty, want a token for the remaining series")
 	}
 
-	secondPage, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	secondPage, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant:          tenantContext(tenant),
 		HasFreeEpisodes: true,
 		Limit:           2,
-		Token:           firstPage.Msg.NextToken,
-	}))
+		Token:           firstPage.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("filtered page 2: %v", err)
 	}
-	if got := seriesPublicIDs(secondPage.Msg.Series); len(got) != 1 || got[0] != "SERIESFREE01" {
+	if got := seriesPublicIDs(secondPage.Series); len(got) != 1 || got[0] != "SERIESFREE01" {
 		t.Fatalf("filtered page 2 = %v, want the oldest free series alone (the paid series is filtered out)", got)
 	}
-	if secondPage.Msg.PreviousToken == "" {
+	if secondPage.PreviousToken == "" {
 		t.Fatal("filtered page 2 previous_token is empty, want a token back to the first page")
 	}
 
-	backAgain, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	backAgain, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant:          tenantContext(tenant),
 		HasFreeEpisodes: true,
 		Limit:           2,
-		Token:           secondPage.Msg.PreviousToken,
-	}))
+		Token:           secondPage.PreviousToken,
+	})
 	if err != nil {
 		t.Fatalf("filtered page 1 revisited: %v", err)
 	}
-	if got := seriesPublicIDs(backAgain.Msg.Series); len(got) != 2 || got[0] != "SERIESFREE03" || got[1] != "SERIESFREE02" {
+	if got := seriesPublicIDs(backAgain.Series); len(got) != 2 || got[0] != "SERIESFREE03" || got[1] != "SERIESFREE02" {
 		t.Fatalf("filtered page 1 revisited = %v, want the two newest free series again", got)
 	}
 
 	// The same token in the unfiltered list points at a page that list does not
 	// have: the series between the boundary and the next free one are back.
-	if _, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	if _, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
 		Limit:  2,
-		Token:  firstPage.Msg.NextToken,
-	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		Token:  firstPage.NextToken,
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("filtered token in the unfiltered list code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 }

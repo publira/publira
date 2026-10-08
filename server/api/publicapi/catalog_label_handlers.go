@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -31,26 +31,26 @@ func publishedLabelFromRow(row dbmodels.GetPublishedLabelByPublicIDRow) *publira
 
 func (s *apiServer) GetPublishedLabelDetail(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetPublishedLabelDetailRequest],
-) (*connect.Response[publirav1.GetPublishedLabelDetailResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.GetPublishedLabelDetailRequest,
+) (*publirav1.GetPublishedLabelDetailResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 	row, err := s.queriesFor(ctx).GetPublishedLabelByPublicID(ctx, dbmodels.GetPublishedLabelByPublicIDParams{
 		TenantID: tenant.ID,
 		Surface:  surface,
-		PublicID: req.Msg.PublicId,
+		PublicID: req.PublicId,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "label not found")
 		}
-		return nil, s.internalDBError(ctx, "failed to get published label", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get published label", err, "tenant_id", tenant.ID.String(), "public_id", req.PublicId)
 	}
 
 	label := publishedLabelFromRow(row)
@@ -69,19 +69,19 @@ func (s *apiServer) GetPublishedLabelDetail(
 		tenant.ID,
 		surface,
 		row.ID,
-		req.Msg.Limit,
-		req.Msg.Token,
+		req.Limit,
+		req.Token,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return connect.NewResponse(&publirav1.GetPublishedLabelDetailResponse{
+	return &publirav1.GetPublishedLabelDetailResponse{
 		Label:         label,
 		Series:        series,
 		PreviousToken: previousToken,
 		NextToken:     nextToken,
-	}), nil
+	}, nil
 }
 
 // publishedLabelSeriesPage is the related-series half of GetPublishedLabelDetail.
@@ -99,7 +99,7 @@ func (s *apiServer) publishedLabelSeriesPage(
 	limit := pagination.NormalizeLimit(requestedLimit, defaultSeriesPageSize, maxSeriesPageSize)
 	cursor, err := decodeSurfaceToken(token, surface)
 	if err != nil {
-		return nil, "", "", connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, "", "", connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys seriesCursorKeys
 	if !cursor.IsZero() {

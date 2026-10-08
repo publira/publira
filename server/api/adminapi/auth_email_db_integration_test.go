@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -61,14 +61,14 @@ func TestDBAdminRequestPasswordResetEnqueuesTheEmail(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
-	resp, err := env.authClient().RequestPasswordReset(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
+	resp, err := env.authClient().RequestPasswordReset(context.Background(), &publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
 		Tenant: tenant.tenantContext(),
 		Email:  tenant.User.Email,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RequestPasswordReset: %v", err)
 	}
-	if !resp.Msg.Requested {
+	if !resp.Requested {
 		t.Fatal("RequestPasswordReset returned requested = false")
 	}
 	requests := env.pendingOutboxEvents(t, outbox.EventTypeAdminPasswordResetRequest)
@@ -117,12 +117,12 @@ func TestDBAdminRequestEmailChangeKeepsOneRequestUnderConcurrentRequests(t *test
 
 	for range testutil.ConcurrentBursts {
 		testutil.RunConcurrently(t, testutil.ConcurrentRequests, func() error {
-			_, err := client.RequestEmailChange(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
+			_, err := client.RequestEmailChange(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
 				Tenant:          tenant.tenantContext(),
 				CurrentEmail:    tenant.User.Email,
 				NewEmail:        "moved@tenant-a.example.com",
 				CurrentPassword: testutil.SeededPassword,
-			}))
+			})
 			return err
 		})
 		// Every burst is checked on its own: the next burst would replace the
@@ -168,12 +168,12 @@ func TestDBAdminRequestEmailChangeEndsWhenThePasswordChangesWhileItWaits(t *test
 
 	errs := make(chan error, 1)
 	go func() {
-		_, err := env.authClient().RequestEmailChange(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
+		_, err := env.authClient().RequestEmailChange(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
 			Tenant:          tenant.tenantContext(),
 			CurrentEmail:    tenant.User.Email,
 			NewEmail:        "moved@tenant-a.example.com",
 			CurrentPassword: testutil.SeededPassword,
-		}))
+		})
 		errs <- err
 	}()
 	testutil.WaitForBlockedBackend(t, env.PG.DB)
@@ -213,16 +213,16 @@ func TestDBAdminRequestEmailChangeEnqueuesOneEmailPerSide(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
-	resp, err := env.authClient().RequestEmailChange(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
+	resp, err := env.authClient().RequestEmailChange(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
 		Tenant:          tenant.tenantContext(),
 		CurrentEmail:    tenant.User.Email,
 		NewEmail:        "moved@tenant-a.example.com",
 		CurrentPassword: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RequestEmailChange: %v", err)
 	}
-	if !resp.Msg.Requested {
+	if !resp.Requested {
 		t.Fatal("RequestEmailChange returned requested = false")
 	}
 
@@ -264,12 +264,12 @@ func TestDBAdminConfirmEmailChangeEnqueuesTheNoticeWithTheNewAddress(t *testing.
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.authClient()
 
-	if _, err := client.RequestEmailChange(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
+	if _, err := client.RequestEmailChange(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
 		Tenant:          tenant.tenantContext(),
 		CurrentEmail:    tenant.User.Email,
 		NewEmail:        "moved@tenant-a.example.com",
 		CurrentPassword: testutil.SeededPassword,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RequestEmailChange: %v", err)
 	}
 
@@ -280,14 +280,14 @@ func TestDBAdminConfirmEmailChangeEnqueuesTheNoticeWithTheNewAddress(t *testing.
 			t.Fatalf("decode payload: %v", err)
 		}
 		tokenID = uuid.MustParse(payload.TokenID)
-		confirmed, err := client.ConfirmEmailChange(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceConfirmEmailChangeRequest{
+		confirmed, err := client.ConfirmEmailChange(context.Background(), &publiraadminv1.AdminAuthServiceConfirmEmailChangeRequest{
 			Tenant: tenant.tenantContext(),
 			Token:  payload.Token,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("ConfirmEmailChange: %v", err)
 		}
-		if !confirmed.Msg.Confirmed {
+		if !confirmed.Confirmed {
 			t.Fatal("ConfirmEmailChange returned confirmed = false")
 		}
 	}

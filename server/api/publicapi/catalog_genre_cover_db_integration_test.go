@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/contentranking"
@@ -92,25 +91,25 @@ func TestDBListPublishedGenresFeaturesTheLeaderboardThenTheNewestSeries(t *testi
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			resp, err := env.catalogClient().ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
+			resp, err := env.catalogClient().ListPublishedGenres(context.Background(), &publirav1.ListPublishedGenresRequest{
 				Tenant:  tenantContext(tenant),
 				Surface: tc.surface,
-			}))
+			})
 			if err != nil {
 				t.Fatalf("ListPublishedGenres: %v", err)
 			}
-			if len(resp.Msg.Genres) != 3 {
-				t.Fatalf("genres = %v, want three", resp.Msg.Genres)
+			if len(resp.Genres) != 3 {
+				t.Fatalf("genres = %v, want three", resp.Genres)
 			}
-			if got := featuredSeriesPublicIDs(resp.Msg.Genres[0]); !slices.Equal(got, tc.fantasy) {
+			if got := featuredSeriesPublicIDs(resp.Genres[0]); !slices.Equal(got, tc.fantasy) {
 				t.Fatalf("Fantasy featured_series = %v, want %v", got, tc.fantasy)
 			}
 			// Unscored, so the four newest.
 			wantMystery := []string{"MYSTERY00005", "MYSTERY00004", "MYSTERY00003", "MYSTERY00002"}
-			if got := featuredSeriesPublicIDs(resp.Msg.Genres[1]); !slices.Equal(got, wantMystery) {
+			if got := featuredSeriesPublicIDs(resp.Genres[1]); !slices.Equal(got, wantMystery) {
 				t.Fatalf("Mystery featured_series = %v, want %v", got, wantMystery)
 			}
-			if got := resp.Msg.Genres[2]; got.Name != "Empty" || len(got.FeaturedSeries) != 0 {
+			if got := resp.Genres[2]; got.Name != "Empty" || len(got.FeaturedSeries) != 0 {
 				t.Fatalf("Empty genre = %v, want its row with no featured series", got)
 			}
 		})

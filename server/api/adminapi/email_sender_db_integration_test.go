@@ -4,23 +4,27 @@ import (
 	"context"
 	"testing"
 
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func (e *adminDBEnv) emailSettingsClient() publiraadminv1connect.AdminEmailSettingsServiceClient {
-	return publiraadminv1connect.NewAdminEmailSettingsServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminEmailSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func getDBEmailSender(t *testing.T, env *adminDBEnv, tenant adminDBTenant) string {
 	t.Helper()
-	resp, err := env.emailSettingsClient().GetTenantEmailSender(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantEmailSenderRequest{
+	resp, err := env.emailSettingsClient().GetTenantEmailSender(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetTenantEmailSenderRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantEmailSender: %v", err)
 	}
-	return resp.Msg.FromAddress
+	return resp.FromAddress
 }
 
 // savePlatformSMTP stores the platform relay as the platform console would,
@@ -37,7 +41,7 @@ func savePlatformSMTP(t *testing.T, env *adminDBEnv, fromAddress string) {
 
 func saveTenantSMTP(t *testing.T, env *adminDBEnv, tenant adminDBTenant, overrideEnabled bool, fromAddress string) {
 	t.Helper()
-	if _, err := env.emailSettingsClient().UpdateTenantEmailSettings(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantEmailSettingsRequest{
+	if _, err := env.emailSettingsClient().UpdateTenantEmailSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateTenantEmailSettingsRequest{
 		Tenant:              tenant.tenantContext(),
 		SmtpOverrideEnabled: overrideEnabled,
 		Host:                "smtp.tenant.example.com",
@@ -47,7 +51,7 @@ func saveTenantSMTP(t *testing.T, env *adminDBEnv, tenant adminDBTenant, overrid
 		Password:            "tenant-password",
 		Encryption:          "starttls",
 		FromAddress:         fromAddress,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("UpdateTenantEmailSettings: %v", err)
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -43,17 +43,17 @@ func (s *apiServer) scopeEpisodeReadUser(ctx context.Context, userID uuid.UUID) 
 // episode was unpublished or the member's access was revoked.
 func (s *apiServer) MarkEpisodeAsRead(
 	ctx context.Context,
-	req *connect.Request[publirav1.MarkEpisodeAsReadRequest],
-) (*connect.Response[publirav1.MarkEpisodeAsReadResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.MarkEpisodeAsReadRequest,
+) (*publirav1.MarkEpisodeAsReadResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	episodeID, err := requestRecordID("episode_id", req.Msg.EpisodeId)
+	episodeID, err := requestRecordID("episode_id", req.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (s *apiServer) MarkEpisodeAsRead(
 	if errors.Is(err, sql.ErrNoRows) {
 		// Publication, surface, tenant, and entitlement failures deliberately
 		// share one response so this member cannot probe for unavailable episode IDs.
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		return nil, connect.NewError(connect.CodeNotFound, "episode not found")
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to mark episode as read", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -84,7 +84,7 @@ func (s *apiServer) MarkEpisodeAsRead(
 
 	s.projectEpisodeCompleteEvent(ctx, read)
 
-	return noStorePrivateResponse(&publirav1.MarkEpisodeAsReadResponse{
+	return noStorePrivateResponse(ctx, &publirav1.MarkEpisodeAsReadResponse{
 		ReadAt: read.ReadAt.UTC().Format(time.RFC3339Nano),
 	}), nil
 }
@@ -132,29 +132,29 @@ func (s *apiServer) projectEpisodeCompleteEvent(ctx context.Context, read dbmode
 // pair exists to keep out of the keyset scan.
 func (s *apiServer) ListMyEpisodeReads(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListMyEpisodeReadsRequest],
-) (*connect.Response[publirav1.ListMyEpisodeReadsResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.ListMyEpisodeReadsRequest,
+) (*publirav1.ListMyEpisodeReadsResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.scopeEpisodeReadUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultEpisodeReadPageSize, maxEpisodeReadPageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultEpisodeReadPageSize, maxEpisodeReadPageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -193,7 +193,7 @@ func (s *apiServer) ListMyEpisodeReads(
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 
-	return noStorePrivateResponse(res), nil
+	return noStorePrivateResponse(ctx, res), nil
 }
 
 // episodeReadPage runs the keyset scan in the direction the cursor asks for.

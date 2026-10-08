@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -178,67 +179,60 @@ func tokenFor(t *testing.T, tenant testutil.Tenant, user testutil.TenantUser) st
 	return token
 }
 
-// newBearerRequest sends the request as a signed-in member of the tenant.
-func newBearerRequest[T any](msg *T, token string) *connect.Request[T] {
-	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+token)
-	return req
-}
-
 func (e *publicDBEnv) catalogClient() publirav1connect.CatalogServiceClient {
-	return publirav1connect.NewCatalogServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) episodeReadClient() publirav1connect.EpisodeReadServiceClient {
-	return publirav1connect.NewEpisodeReadServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) contentViewClient() publirav1connect.ContentViewServiceClient {
-	return publirav1connect.NewContentViewServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewContentViewServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) followClient() publirav1connect.FollowServiceClient {
-	return publirav1connect.NewFollowServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewFollowServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) ratingClient() publirav1connect.RatingServiceClient {
-	return publirav1connect.NewRatingServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewRatingServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) waitFreeClient() publirav1connect.WaitFreeServiceClient {
-	return publirav1connect.NewWaitFreeServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewWaitFreeServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) commentClient() publirav1connect.CommentServiceClient {
-	return publirav1connect.NewCommentServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewCommentServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) contactClient() publirav1connect.ContactServiceClient {
-	return publirav1connect.NewContactServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewContactServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) purchaseClient() publirav1connect.PurchaseServiceClient {
-	return publirav1connect.NewPurchaseServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) authClient() publirav1connect.AuthServiceClient {
-	return publirav1connect.NewAuthServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) notificationClient() publirav1connect.NotificationServiceClient {
-	return publirav1connect.NewNotificationServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewNotificationServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) pagesClient() publirav1connect.PublicPagesServiceClient {
-	return publirav1connect.NewPublicPagesServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewPublicPagesServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) tenantAPIClient() publirav1connect.TenantServiceClient {
-	return publirav1connect.NewTenantServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *publicDBEnv) domainClient() publirav1connect.DomainServiceClient {
-	return publirav1connect.NewDomainServiceClient(e.Server.Client(), e.Server.URL)
+	return publirav1connect.NewDomainServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 // withTenantConn hands fn a publira_public connection scoped to one tenant, the

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 
@@ -50,13 +50,13 @@ func seedMobileAppAssociation(
 func getDBMobileAppAssociation(t *testing.T, env *publicDBEnv, tenant testutil.Tenant) *publirav1.GetTenantMobileAppAssociationResponse {
 	t.Helper()
 
-	resp, err := env.tenantAPIClient().GetTenantMobileAppAssociation(context.Background(), connect.NewRequest(&publirav1.GetTenantMobileAppAssociationRequest{
+	resp, err := env.tenantAPIClient().GetTenantMobileAppAssociation(context.Background(), &publirav1.GetTenantMobileAppAssociationRequest{
 		Tenant: tenantContext(tenant),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantMobileAppAssociation: %v", err)
 	}
-	return resp.Msg
+	return resp
 }
 
 // Each tenant reads back only the apps it configured, with every fingerprint
@@ -98,9 +98,9 @@ func TestDBGetTenantMobileAppAssociationRejectsAnUnknownTenant(t *testing.T) {
 	env := newPublicDBEnv(t)
 	env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
-	_, err := env.tenantAPIClient().GetTenantMobileAppAssociation(context.Background(), connect.NewRequest(&publirav1.GetTenantMobileAppAssociationRequest{
+	_, err := env.tenantAPIClient().GetTenantMobileAppAssociation(context.Background(), &publirav1.GetTenantMobileAppAssociationRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: uuid.Must(uuid.NewV7()).String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}

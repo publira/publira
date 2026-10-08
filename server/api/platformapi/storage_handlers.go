@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/platformstorage"
@@ -77,15 +77,15 @@ func (s *platformServer) storageSettingsError(ctx context.Context, err error) er
 		return connectErr
 	}
 	if errors.Is(err, platformstorage.ErrConflict) {
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	}
 	return s.internalDBError(ctx, "failed to access platform storage config", err)
 }
 
 func (s *platformServer) GetPlatformStorageSettings(
 	ctx context.Context,
-	_ *connect.Request[publirasplatformv1.GetPlatformStorageSettingsRequest],
-) (*connect.Response[publirasplatformv1.GetPlatformStorageSettingsResponse], error) {
+	_ *publirasplatformv1.GetPlatformStorageSettingsRequest,
+) (*publirasplatformv1.GetPlatformStorageSettingsResponse, error) {
 	config, found, err := platformstorage.Get(ctx, s.queriesFor(ctx))
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get platform storage config", err)
@@ -96,25 +96,25 @@ func (s *platformServer) GetPlatformStorageSettings(
 	if found {
 		settings = platformStorageSettingsToProto(config)
 	}
-	return connect.NewResponse(&publirasplatformv1.GetPlatformStorageSettingsResponse{Settings: settings}), nil
+	return &publirasplatformv1.GetPlatformStorageSettingsResponse{Settings: settings}, nil
 }
 
 func (s *platformServer) UpdatePlatformStorageSettings(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.UpdatePlatformStorageSettingsRequest],
-) (*connect.Response[publirasplatformv1.UpdatePlatformStorageSettingsResponse], error) {
-	expectedRevision := req.Msg.GetExpectedRevision()
+	req *publirasplatformv1.UpdatePlatformStorageSettingsRequest,
+) (*publirasplatformv1.UpdatePlatformStorageSettingsResponse, error) {
+	expectedRevision := req.GetExpectedRevision()
 	params := platformstorage.SaveParams{
-		Settings:         storageSettingsFromRequest(req.Msg),
-		AccessKeyID:      req.Msg.GetAccessKeyId(),
-		SecretMode:       secretupdate.Mode(req.Msg.GetSecretAccessKeyUpdateMode()),
-		SecretAccessKey:  req.Msg.GetSecretAccessKey(),
+		Settings:         storageSettingsFromRequest(req),
+		AccessKeyID:      req.GetAccessKeyId(),
+		SecretMode:       secretupdate.Mode(req.GetSecretAccessKeyUpdateMode()),
+		SecretAccessKey:  req.GetSecretAccessKey(),
 		ExpectedRevision: &expectedRevision,
 	}
 	if err := params.Validate(); err != nil {
 		return nil, s.storageSettingsError(ctx, err)
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -123,34 +123,34 @@ func (s *platformServer) UpdatePlatformStorageSettings(
 	if err != nil {
 		return nil, s.storageSettingsError(ctx, err)
 	}
-	return connect.NewResponse(&publirasplatformv1.UpdatePlatformStorageSettingsResponse{
+	return &publirasplatformv1.UpdatePlatformStorageSettingsResponse{
 		Settings: platformStorageSettingsToProto(saved),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) TestPlatformStorageConnection(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.TestPlatformStorageConnectionRequest],
-) (*connect.Response[publirasplatformv1.TestPlatformStorageConnectionResponse], error) {
-	actor, err := s.auditActor(ctx, req)
+	req *publirasplatformv1.TestPlatformStorageConnectionRequest,
+) (*publirasplatformv1.TestPlatformStorageConnectionResponse, error) {
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if s.storageTester == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("storage connection tester is unavailable"))
+		return nil, connect.NewError(connect.CodeInternal, "storage connection tester is unavailable")
 	}
 
 	tester := platformstorage.Tester{Encryptor: s.encryptor, Store: s.storageTester, Recorder: s.recorder}
 	checks, err := tester.Test(ctx, s.queriesFor(ctx), actor, platformstorage.TestParams{
-		Settings:        storageSettingsFromRequest(req.Msg),
-		AccessKeyID:     req.Msg.GetAccessKeyId(),
-		SecretMode:      secretupdate.Mode(req.Msg.GetSecretAccessKeyUpdateMode()),
-		SecretAccessKey: req.Msg.GetSecretAccessKey(),
+		Settings:        storageSettingsFromRequest(req),
+		AccessKeyID:     req.GetAccessKeyId(),
+		SecretMode:      secretupdate.Mode(req.GetSecretAccessKeyUpdateMode()),
+		SecretAccessKey: req.GetSecretAccessKey(),
 	})
 	if err != nil {
 		return nil, s.storageSettingsError(ctx, err)
 	}
-	return connect.NewResponse(&publirasplatformv1.TestPlatformStorageConnectionResponse{
+	return &publirasplatformv1.TestPlatformStorageConnectionResponse{
 		Checks: platformStorageChecksToProto(checks),
-	}), nil
+	}, nil
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -34,16 +34,16 @@ func retentionPeriodsFromProto(periods *publirattypesv1.RetentionPeriods) retent
 
 func (s *platformServer) GetPlatformRetentionDefaults(
 	ctx context.Context,
-	_ *connect.Request[publirasplatformv1.GetPlatformRetentionDefaultsRequest],
-) (*connect.Response[publirasplatformv1.GetPlatformRetentionDefaultsResponse], error) {
+	_ *publirasplatformv1.GetPlatformRetentionDefaultsRequest,
+) (*publirasplatformv1.GetPlatformRetentionDefaultsResponse, error) {
 	defaults, revision, err := retention.ReadDefaults(ctx, s.queriesFor(ctx))
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read platform retention defaults", err)
 	}
-	return connect.NewResponse(&publirasplatformv1.GetPlatformRetentionDefaultsResponse{
+	return &publirasplatformv1.GetPlatformRetentionDefaultsResponse{
 		Defaults: retentionPeriodsToProto(defaults),
 		Revision: revision,
-	}), nil
+	}, nil
 }
 
 // platformRetentionError maps what retention refuses to this API's codes,
@@ -53,27 +53,27 @@ func (s *platformServer) platformRetentionError(ctx context.Context, err error) 
 		return connectErr
 	}
 	if errors.Is(err, retention.ErrDefaultsConflict) {
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	}
 	return s.internalDBError(ctx, "failed to save platform retention defaults", err)
 }
 
 func (s *platformServer) UpdatePlatformRetentionDefaults(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.UpdatePlatformRetentionDefaultsRequest],
-) (*connect.Response[publirasplatformv1.UpdatePlatformRetentionDefaultsResponse], error) {
-	if req.Msg.GetDefaults() == nil {
+	req *publirasplatformv1.UpdatePlatformRetentionDefaultsRequest,
+) (*publirasplatformv1.UpdatePlatformRetentionDefaultsResponse, error) {
+	if req.GetDefaults() == nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("defaults is required"), retention.FieldDefaults)
 	}
-	expectedRevision := req.Msg.GetExpectedRevision()
+	expectedRevision := req.GetExpectedRevision()
 	params := retention.SaveDefaultsParams{
-		Defaults:         retentionPeriodsFromProto(req.Msg.GetDefaults()),
+		Defaults:         retentionPeriodsFromProto(req.GetDefaults()),
 		ExpectedRevision: &expectedRevision,
 	}
 	if err := params.Validate(); err != nil {
 		return nil, s.platformRetentionError(ctx, err)
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +82,8 @@ func (s *platformServer) UpdatePlatformRetentionDefaults(
 	if err != nil {
 		return nil, s.platformRetentionError(ctx, err)
 	}
-	return connect.NewResponse(&publirasplatformv1.UpdatePlatformRetentionDefaultsResponse{
+	return &publirasplatformv1.UpdatePlatformRetentionDefaultsResponse{
 		Defaults: retentionPeriodsToProto(retention.FromPlatformConfig(updated)),
 		Revision: updated.Revision,
-	}), nil
+	}, nil
 }

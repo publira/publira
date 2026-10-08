@@ -4,21 +4,24 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+	"connectrpc.com/connect/v2/connectproto"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/tenanttz"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestListTenantsReturnsEmptyList(t *testing.T) {
@@ -32,13 +35,13 @@ func TestListTenantsReturnsEmptyList(t *testing.T) {
 		WithArgs(sql.NullString{String: "", Valid: true}, sql.NullString{String: "", Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()))
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.ListTenants(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListTenantsRequest{}))
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.ListTenants(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.ListTenantsRequest{})
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
 	}
-	if len(resp.Msg.Tenants) != 0 {
-		t.Fatalf("tenant count = %d, want 0", len(resp.Msg.Tenants))
+	if len(resp.Tenants) != 0 {
+		t.Fatalf("tenant count = %d, want 0", len(resp.Tenants))
 	}
 	assertIntegrationExpectations(t, mock)
 }
@@ -50,10 +53,10 @@ func TestCreateTenantRejectsEmptyDomain(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	req := validIntegrationCreateTenantRequest()
 	req.Domain = ""
-	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(req))
+	_, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -66,10 +69,10 @@ func TestCreateTenantRejectsEmptyName(t *testing.T) {
 	now := time.Now()
 	expectIntegrationAuth(mock, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), integrationPlatformRole, now)
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	req := validIntegrationCreateTenantRequest()
 	req.Name = "  "
-	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(req))
+	_, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -87,10 +90,10 @@ func TestCreateTenantRejectsInvalidInitialAdminEmails(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	req := validIntegrationCreateTenantRequest()
 	req.InitialAdminEmails = []string{"invalid-email"}
-	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(req))
+	_, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -124,13 +127,13 @@ func TestCreateTenantRetriesDuplicatePublicID(t *testing.T) {
 	expectIntegrationAuditLogInsert(mock)
 	mock.ExpectCommit()
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Duplicate Tenant", Domain: "dup.example.com", DefaultLocale: "ja"}))
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.CreateTenantRequest{Name: "Duplicate Tenant", Domain: "dup.example.com", DefaultLocale: "ja"})
 	if err != nil {
 		t.Fatalf("CreateTenant: %v", err)
 	}
-	if resp.Msg.Tenant.PublicId != "4ERDqTx5YB8m" {
-		t.Fatalf("tenant.public_id = %q, want 4ERDqTx5YB8m", resp.Msg.Tenant.PublicId)
+	if resp.Tenant.PublicId != "4ERDqTx5YB8m" {
+		t.Fatalf("tenant.public_id = %q, want 4ERDqTx5YB8m", resp.Tenant.PublicId)
 	}
 	assertRetriedWithFreshPublicIDs(t, attempted, 2)
 	assertIntegrationExpectations(t, mock)
@@ -157,8 +160,8 @@ func TestCreateTenantPublicIDAttemptsExhaustedIsInternal(t *testing.T) {
 	}
 	mock.ExpectRollback()
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Duplicate Tenant", Domain: "dup.example.com", DefaultLocale: "ja"}))
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.CreateTenantRequest{Name: "Duplicate Tenant", Domain: "dup.example.com", DefaultLocale: "ja"})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("CreateTenant code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 	}
@@ -183,8 +186,8 @@ func TestCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 		WillReturnError(duplicateDomainError())
 	mock.ExpectRollback()
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Domain Duplicate Tenant", Domain: "existing.example.com", DefaultLocale: "ja"}))
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.CreateTenantRequest{Name: "Domain Duplicate Tenant", Domain: "existing.example.com", DefaultLocale: "ja"})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
 	}
@@ -209,8 +212,8 @@ func TestCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 		WillReturnError(duplicateAdminDomainError())
 	mock.ExpectRollback()
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Subdomain Duplicate Tenant", Domain: "sub001.example.com", AdminDomain: "admin.sub001.example.com", DefaultLocale: "ja"}))
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.CreateTenantRequest{Name: "Subdomain Duplicate Tenant", Domain: "sub001.example.com", AdminDomain: "admin.sub001.example.com", DefaultLocale: "ja"})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
 	}
@@ -241,13 +244,13 @@ func TestCreateTenantStoresRequestedLocale(t *testing.T) {
 	expectIntegrationAuditLogInsert(mock)
 	mock.ExpectCommit()
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "English Tenant", Domain: "en.example.com", DefaultLocale: "  en  "}))
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.CreateTenantRequest{Name: "English Tenant", Domain: "en.example.com", DefaultLocale: "  en  "})
 	if err != nil {
 		t.Fatalf("CreateTenant: %v", err)
 	}
-	if resp.Msg.Tenant.PublicId != "4ERDqTx5YB8m" {
-		t.Fatalf("tenant.public_id = %q, want 4ERDqTx5YB8m", resp.Msg.Tenant.PublicId)
+	if resp.Tenant.PublicId != "4ERDqTx5YB8m" {
+		t.Fatalf("tenant.public_id = %q, want 4ERDqTx5YB8m", resp.Tenant.PublicId)
 	}
 	assertIntegrationExpectations(t, mock)
 }
@@ -272,12 +275,12 @@ func TestCreateTenantRejectsMissingOrUnsupportedLocale(t *testing.T) {
 			now := time.Now()
 			expectIntegrationAuth(mock, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), integrationPlatformRole, now)
 
-			client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-			_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{
+			client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			_, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.CreateTenantRequest{
 				Name:          "New Tenant",
 				Domain:        "new.example.com",
 				DefaultLocale: tt.defaultLocale,
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("CreateTenant code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
@@ -302,13 +305,13 @@ func TestSuspendTenantSuccess(t *testing.T) {
 	expectIntegrationAuditLogInsert(mock)
 	mock.ExpectCommit()
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.SuspendTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.SuspendTenantRequest{TenantId: id.String()}))
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.SuspendTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.SuspendTenantRequest{TenantId: id.String()})
 	if err != nil {
 		t.Fatalf("SuspendTenant: %v", err)
 	}
-	if resp.Msg.Tenant.Status != "suspended" {
-		t.Fatalf("tenant.status = %q, want suspended", resp.Msg.Tenant.Status)
+	if resp.Tenant.Status != "suspended" {
+		t.Fatalf("tenant.status = %q, want suspended", resp.Tenant.Status)
 	}
 	assertIntegrationExpectations(t, mock)
 }
@@ -327,8 +330,8 @@ func TestSuspendTenantNotFound(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	mock.ExpectRollback()
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.SuspendTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.SuspendTenantRequest{TenantId: missing.String()}))
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.SuspendTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.SuspendTenantRequest{TenantId: missing.String()})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("SuspendTenant code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -350,20 +353,20 @@ func TestResumeTenantSuccess(t *testing.T) {
 	expectIntegrationAuditLogInsert(mock)
 	mock.ExpectCommit()
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.ResumeTenant(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ResumeTenantRequest{TenantId: id.String()}))
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.ResumeTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.ResumeTenantRequest{TenantId: id.String()})
 	if err != nil {
 		t.Fatalf("ResumeTenant: %v", err)
 	}
-	if resp.Msg.Tenant.Status != "active" {
-		t.Fatalf("tenant.status = %q, want active", resp.Msg.Tenant.Status)
+	if resp.Tenant.Status != "active" {
+		t.Fatalf("tenant.status = %q, want active", resp.Tenant.Status)
 	}
 	assertIntegrationExpectations(t, mock)
 }
 
 func TestPlatformTenantRequiresSession(t *testing.T) {
 	ts, _ := newIntegrationTestServer(t)
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	_, err := client.ListTenants(context.Background(), newIntegrationRequest(publirasplatformv1.ListTenantsRequest{}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("ListTenants code = %v, want unauthenticated", connect.CodeOf(err))
@@ -377,8 +380,8 @@ func TestPlatformTenantRejectsNonPlatformRole(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, "tenant_admin", now)
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.ListTenants(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListTenantsRequest{}))
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.ListTenants(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.ListTenantsRequest{})
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("ListTenants code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -394,7 +397,7 @@ func assertFieldViolation(t *testing.T, err error, field string) {
 		t.Fatalf("error type = %T, want *connect.Error", err)
 	}
 	for _, detail := range rpcError.Details() {
-		value, detailErr := detail.Value()
+		value, detailErr := connectproto.UnmarshalErrorDetail(detail)
 		if detailErr != nil {
 			t.Fatalf("detail: %v", detailErr)
 		}

@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -47,7 +48,7 @@ func TestDBProcessPaymentWebhookIsolatesTenantSigningSecrets(t *testing.T) {
 	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.New(slog.NewTextHandler(&logs, nil)), readerGuards{}, nil, nil)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
-	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	payload, headerA := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "ping", map[string]any{"id": "cs_a"})
 	if _, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenantA.ID.String(), payload, headerA)); err != nil {
@@ -107,11 +108,11 @@ func TestDBStartEpisodeCheckoutRefusesDisabledTenantSettings(t *testing.T) {
 		t.Fatalf("issue token: %v", err)
 	}
 
-	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)
-	_, err = client.StartEpisodeCheckout(context.Background(), newBearerRequest(&publirav1.StartEpisodeCheckoutRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err = client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), token), &publirav1.StartEpisodeCheckoutRequest{
 		EpisodeId: uuid.NewString(),
 		Tenant:    tenantContext(tenant),
-	}, token))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
 	}
@@ -142,7 +143,7 @@ func TestDBProcessPaymentWebhookProjectsPurchaseEventIdempotently(t *testing.T) 
 	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil, nil)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
-	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	payload, signature := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "checkout.session.completed", map[string]any{
 		"id":             "cs_purchase_projection",
@@ -231,7 +232,7 @@ func TestDBProcessPaymentWebhookCreatesADelayedPurchaseOnceItIsPaid(t *testing.T
 	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil, nil)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
-	client := publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL)
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	session := func(paymentStatus string) map[string]any {
 		return map[string]any{

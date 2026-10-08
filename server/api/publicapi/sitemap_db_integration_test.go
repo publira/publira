@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/pagination"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -32,11 +32,11 @@ func sitemapKey(entry *publirav1.SitemapEntry) string {
 func listSitemapEntries(t *testing.T, env *publicDBEnv, req *publirav1.ListSitemapEntriesRequest) *publirav1.ListSitemapEntriesResponse {
 	t.Helper()
 
-	resp, err := env.catalogClient().ListSitemapEntries(context.Background(), connect.NewRequest(req))
+	resp, err := env.catalogClient().ListSitemapEntries(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListSitemapEntries: %v", err)
 	}
-	return resp.Msg
+	return resp
 }
 
 // seedSitemapCatalog seeds one tenant with an entry of every kind the web
@@ -164,10 +164,10 @@ func TestDBListSitemapEntriesRefusesATokenNamingNoKind(t *testing.T) {
 	tenant := seedSitemapCatalog(t, env)
 
 	token := pagination.Encode(pagination.Forward, "7", "019d008d-184d-7d31-a78a-89728a746e38")
-	_, err := env.catalogClient().ListSitemapEntries(context.Background(), connect.NewRequest(&publirav1.ListSitemapEntriesRequest{
+	_, err := env.catalogClient().ListSitemapEntries(context.Background(), &publirav1.ListSitemapEntriesRequest{
 		Tenant: tenantContext(tenant),
 		Token:  token,
-	}))
+	})
 	var connectErr *connect.Error
 	if !errors.As(err, &connectErr) || connectErr.Code() != connect.CodeInvalidArgument {
 		t.Fatalf("err = %v, want invalid_argument", err)

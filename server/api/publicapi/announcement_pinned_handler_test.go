@@ -4,15 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -44,15 +45,15 @@ func TestAuthGetPinnedAnnouncementAnswersWithoutASession(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(pinnedAnnouncementRow(announcementID, tenantID, now, sql.NullTime{Time: until, Valid: true}))
 
-	client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetPinnedAnnouncement(context.Background(), connect.NewRequest(&publirav1.GetPinnedAnnouncementRequest{
+	client := publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetPinnedAnnouncement(context.Background(), &publirav1.GetPinnedAnnouncementRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPinnedAnnouncement: %v", err)
 	}
 
-	item := resp.Msg.Announcement
+	item := resp.Announcement
 	if item == nil {
 		t.Fatal("announcement = nil, want the pinned row")
 	}
@@ -84,15 +85,15 @@ func TestAuthGetPinnedAnnouncementIsEmptyWhenNothingIsPinned(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
-	client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetPinnedAnnouncement(context.Background(), connect.NewRequest(&publirav1.GetPinnedAnnouncementRequest{
+	client := publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetPinnedAnnouncement(context.Background(), &publirav1.GetPinnedAnnouncementRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPinnedAnnouncement: %v", err)
 	}
-	if resp.Msg.Announcement != nil {
-		t.Fatalf("announcement = %v, want none", resp.Msg.Announcement)
+	if resp.Announcement != nil {
+		t.Fatalf("announcement = %v, want none", resp.Announcement)
 	}
 
 	assertPublicExpectations(t, mock)
@@ -129,18 +130,18 @@ func TestAuthListAnnouncementsAnswersAVisitorWithNoSession(t *testing.T) {
 		WithArgs(uuid.NullUUID{}, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(guestAnnouncementRow(announcementID, tenantID, "New Episode", now))
 
-	client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListAnnouncements(context.Background(), connect.NewRequest(&publirav1.ListAnnouncementsRequest{
+	client := publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListAnnouncements(context.Background(), &publirav1.ListAnnouncementsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListAnnouncements: %v", err)
 	}
-	if len(resp.Msg.Announcements) != 1 {
-		t.Fatalf("announcements = %d, want 1", len(resp.Msg.Announcements))
+	if len(resp.Announcements) != 1 {
+		t.Fatalf("announcements = %d, want 1", len(resp.Announcements))
 	}
 
-	item := resp.Msg.Announcements[0]
+	item := resp.Announcements[0]
 	if item.IsRead {
 		t.Fatal("is_read = true, want false: a visitor with no session has no read state")
 	}

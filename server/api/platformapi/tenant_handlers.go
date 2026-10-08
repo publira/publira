@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -51,15 +51,15 @@ func tenantToProto(t dbmodels.Tenant, platformDefaultTimezone func() string) *pu
 
 func (s *platformServer) ListTenants(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.ListTenantsRequest],
-) (*connect.Response[publirasplatformv1.ListTenantsResponse], error) {
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultListLimit, maxListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	req *publirasplatformv1.ListTenantsRequest,
+) (*publirasplatformv1.ListTenantsResponse, error) {
+	limit := pagination.NormalizeLimit(req.Limit, defaultListLimit, maxListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
-	filterName := strings.TrimSpace(req.Msg.Name)
-	filterStatus := strings.TrimSpace(req.Msg.Status)
+	filterName := strings.TrimSpace(req.Name)
+	filterStatus := strings.TrimSpace(req.Status)
 	listKey := pagination.NewListKey("created_at_desc").
 		Value("name", filterName).
 		Value("status", filterStatus)
@@ -99,7 +99,7 @@ func (s *platformServer) ListTenants(
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
 		resp.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }
 
 func (s *platformServer) tenantPage(
@@ -133,39 +133,39 @@ func (s *platformServer) tenantPage(
 
 func (s *platformServer) GetTenant(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.GetTenantRequest],
-) (*connect.Response[publirasplatformv1.GetTenantResponse], error) {
-	tenant, err := platformtenants.Get(ctx, s.queriesFor(ctx), req.Msg.PublicId)
+	req *publirasplatformv1.GetTenantRequest,
+) (*publirasplatformv1.GetTenantResponse, error) {
+	tenant, err := platformtenants.Get(ctx, s.queriesFor(ctx), req.PublicId)
 	if err != nil {
-		return nil, s.tenantError(ctx, "failed to get tenant", err, "public_id", req.Msg.PublicId)
+		return nil, s.tenantError(ctx, "failed to get tenant", err, "public_id", req.PublicId)
 	}
 
-	return connect.NewResponse(&publirasplatformv1.GetTenantResponse{
+	return &publirasplatformv1.GetTenantResponse{
 		Tenant: tenantToProto(tenant, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) CreateTenant(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.CreateTenantRequest],
-) (*connect.Response[publirasplatformv1.CreateTenantResponse], error) {
+	req *publirasplatformv1.CreateTenantRequest,
+) (*publirasplatformv1.CreateTenantResponse, error) {
 	creation, err := platformtenants.CreateParams{
-		Name:               req.Msg.Name,
-		Domain:             req.Msg.Domain,
-		AdminDomain:        req.Msg.AdminDomain,
-		DefaultLocale:      req.Msg.DefaultLocale,
-		InitialAdminEmails: req.Msg.InitialAdminEmails,
+		Name:               req.Name,
+		Domain:             req.Domain,
+		AdminDomain:        req.AdminDomain,
+		DefaultLocale:      req.DefaultLocale,
+		InitialAdminEmails: req.InitialAdminEmails,
 	}.Validate()
 	if err != nil {
 		return nil, s.tenantError(ctx, "invalid create tenant request", err)
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
 	// A new tenant has no users yet, so every initial administrator is sent an
 	// invitation, and each one is charged before the tenant is written.
-	if err := s.mail.AllowEach(ctx, req, mailguard.PlatformScope, creation.InitialAdminEmails()); err != nil {
+	if err := s.mail.AllowEach(ctx, mailguard.PlatformScope, creation.InitialAdminEmails()); err != nil {
 		return nil, err
 	}
 
@@ -183,9 +183,9 @@ func (s *platformServer) CreateTenant(
 		return nil, s.internalDBError(ctx, "failed to commit create tenant", err, "tenant_id", created.Tenant.ID.String())
 	}
 
-	return connect.NewResponse(&publirasplatformv1.CreateTenantResponse{
+	return &publirasplatformv1.CreateTenantResponse{
 		Tenant: tenantToProto(created.Tenant, func() string { return created.Tenant.Timezone }),
-	}), nil
+	}, nil
 }
 
 // tenantError maps what platformtenants and tenantmembers refuse to this
@@ -203,15 +203,15 @@ func (s *platformServer) tenantError(ctx context.Context, msg string, err error,
 	case errors.Is(err, platformtenants.ErrNoChange),
 		errors.Is(err, errUserOrEmailRequired),
 		errors.Is(err, errUserAndEmailBothSet):
-		return connect.NewError(connect.CodeInvalidArgument, err)
+		return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	case errors.Is(err, platformtenants.ErrNotFound),
 		errors.Is(err, tenantmembers.ErrMemberNotFound),
 		errors.Is(err, tenantmembers.ErrInvitationNotFound):
-		return connect.NewError(connect.CodeNotFound, err)
+		return connect.NewError(connect.CodeNotFound, err.Error()).WithCause(err)
 	case errors.Is(err, tenantmembers.ErrAlreadyMember), errors.Is(err, tenantmembers.ErrRoleAlreadyHeld):
-		return connect.NewError(connect.CodeAlreadyExists, err)
+		return connect.NewError(connect.CodeAlreadyExists, err.Error()).WithCause(err)
 	case errors.Is(err, tenantmembers.ErrInvitationAccepted), errors.Is(err, tenantmembers.ErrInvitationWasCanceled):
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	default:
 		return s.internalDBError(ctx, msg, err, keyvals...)
 	}
@@ -219,38 +219,38 @@ func (s *platformServer) tenantError(ctx context.Context, msg string, err error,
 
 func (s *platformServer) SuspendTenant(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.SuspendTenantRequest],
-) (*connect.Response[publirasplatformv1.SuspendTenantResponse], error) {
-	tenant, err := s.setTenantStatus(ctx, req, req.Msg.TenantId, platformtenants.Suspend, "suspend tenant")
+	req *publirasplatformv1.SuspendTenantRequest,
+) (*publirasplatformv1.SuspendTenantResponse, error) {
+	tenant, err := s.setTenantStatus(ctx, req.TenantId, platformtenants.Suspend, "suspend tenant")
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publirasplatformv1.SuspendTenantResponse{
+	return &publirasplatformv1.SuspendTenantResponse{
 		Tenant: tenantToProto(tenant, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) ResumeTenant(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.ResumeTenantRequest],
-) (*connect.Response[publirasplatformv1.ResumeTenantResponse], error) {
-	tenant, err := s.setTenantStatus(ctx, req, req.Msg.TenantId, platformtenants.Resume, "resume tenant")
+	req *publirasplatformv1.ResumeTenantRequest,
+) (*publirasplatformv1.ResumeTenantResponse, error) {
+	tenant, err := s.setTenantStatus(ctx, req.TenantId, platformtenants.Resume, "resume tenant")
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publirasplatformv1.ResumeTenantResponse{
+	return &publirasplatformv1.ResumeTenantResponse{
 		Tenant: tenantToProto(tenant, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
-	}), nil
+	}, nil
 }
 
 type tenantStatusChange func(context.Context, *sql.Tx, *slog.Logger, auditlog.PlatformActor, uuid.UUID) (dbmodels.Tenant, error)
 
-func (s *platformServer) setTenantStatus(ctx context.Context, req connect.AnyRequest, rawID string, change tenantStatusChange, what string) (dbmodels.Tenant, error) {
+func (s *platformServer) setTenantStatus(ctx context.Context, rawID string, change tenantStatusChange, what string) (dbmodels.Tenant, error) {
 	tenantID, err := platformtenants.ParseID(rawID)
 	if err != nil {
 		return dbmodels.Tenant{}, s.tenantError(ctx, "invalid "+what+" request", err)
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return dbmodels.Tenant{}, err
 	}
@@ -273,23 +273,23 @@ func (s *platformServer) setTenantStatus(ctx context.Context, req connect.AnyReq
 
 func (s *platformServer) UpdateTenant(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.UpdateTenantRequest],
-) (*connect.Response[publirasplatformv1.UpdateTenantResponse], error) {
-	tenantID, err := platformtenants.ParseID(req.Msg.TenantId)
+	req *publirasplatformv1.UpdateTenantRequest,
+) (*publirasplatformv1.UpdateTenantResponse, error) {
+	tenantID, err := platformtenants.ParseID(req.TenantId)
 	if err != nil {
 		return nil, s.tenantError(ctx, "invalid update tenant request", err)
 	}
 	// The request replaces all three, so an admin_domain left empty clears it.
 	change, err := platformtenants.UpdateParams{
 		ID:          tenantID,
-		Name:        &req.Msg.Name,
-		Domain:      &req.Msg.Domain,
-		AdminDomain: &req.Msg.AdminDomain,
+		Name:        &req.Name,
+		Domain:      &req.Domain,
+		AdminDomain: &req.AdminDomain,
 	}.Validate()
 	if err != nil {
 		return nil, s.tenantError(ctx, "invalid update tenant request", err)
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -308,9 +308,9 @@ func (s *platformServer) UpdateTenant(
 		return nil, s.internalDBError(ctx, "failed to commit update tenant", err, "tenant_id", tenantID.String())
 	}
 
-	return connect.NewResponse(&publirasplatformv1.UpdateTenantResponse{
+	return &publirasplatformv1.UpdateTenantResponse{
 		Tenant: tenantToProto(tenant, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
-	}), nil
+	}, nil
 }
 
 func tenantMemberToProto(member tenantmembers.Member) *publirasplatformv1.TenantMember {
@@ -327,17 +327,17 @@ func tenantMemberToProto(member tenantmembers.Member) *publirasplatformv1.Tenant
 
 func (s *platformServer) ListTenantMembers(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.ListTenantMembersRequest],
-) (*connect.Response[publirasplatformv1.ListTenantMembersResponse], error) {
-	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.Msg.TenantId, req.Header())
+	req *publirasplatformv1.ListTenantMembersRequest,
+) (*publirasplatformv1.ListTenantMembersResponse, error) {
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.TenantId, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultListLimit, maxListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultListLimit, maxListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	listKey := pagination.NewListKey("created_at_desc").Value("tenant_id", tenantID.String())
 	var keys pagination.TimeUUIDKeys
@@ -390,30 +390,30 @@ func (s *platformServer) ListTenantMembers(
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
 		resp.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }
 
 func (s *platformServer) AddTenantMember(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.AddTenantMemberRequest],
-) (*connect.Response[publirasplatformv1.AddTenantMemberResponse], error) {
-	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.Msg.TenantId, req.Header())
+	req *publirasplatformv1.AddTenantMemberRequest,
+) (*publirasplatformv1.AddTenantMemberResponse, error) {
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.TenantId, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	userID, err := parseUserID(req.Msg.UserId)
+	userID, err := parseUserID(req.UserId)
 	if err != nil {
 		return nil, s.tenantError(ctx, "invalid add tenant member request", err)
 	}
 	params := tenantmembers.AddParams{
 		UserID: userID,
-		Email:  req.Msg.Email,
-		Role:   req.Msg.Role,
+		Email:  req.Email,
+		Role:   req.Role,
 	}
 	if err := params.Validate(); err != nil {
 		return nil, s.tenantError(ctx, "invalid add tenant member request", addMemberRefusal(err))
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -438,9 +438,9 @@ func (s *platformServer) AddTenantMember(
 		return nil, s.internalDBError(ctx, "failed to commit add tenant member", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
-	return connect.NewResponse(&publirasplatformv1.AddTenantMemberResponse{
+	return &publirasplatformv1.AddTenantMemberResponse{
 		Member: tenantMemberToProto(member),
-	}), nil
+	}, nil
 }
 
 // UpdateTenantMemberRole and RemoveTenantMember do not keep a tenant_admin in
@@ -448,24 +448,24 @@ func (s *platformServer) AddTenantMember(
 // has to be able to take the role from a compromised last administrator.
 func (s *platformServer) UpdateTenantMemberRole(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.UpdateTenantMemberRoleRequest],
-) (*connect.Response[publirasplatformv1.UpdateTenantMemberRoleResponse], error) {
-	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.Msg.TenantId, req.Header())
+	req *publirasplatformv1.UpdateTenantMemberRoleRequest,
+) (*publirasplatformv1.UpdateTenantMemberRoleResponse, error) {
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.TenantId, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	userID, err := requireUserID(req.Msg.UserId)
+	userID, err := requireUserID(req.UserId)
 	if err != nil {
 		return nil, s.tenantError(ctx, "invalid update tenant member role request", err)
 	}
 	params := tenantmembers.UpdateRoleParams{
 		UserID: userID,
-		Role:   req.Msg.Role,
+		Role:   req.Role,
 	}
 	if err := params.Validate(); err != nil {
 		return nil, s.tenantError(ctx, "invalid update tenant member role request", err)
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -490,20 +490,20 @@ func (s *platformServer) UpdateTenantMemberRole(
 		return nil, s.internalDBError(ctx, "failed to commit update tenant member role", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
-	return connect.NewResponse(&publirasplatformv1.UpdateTenantMemberRoleResponse{
+	return &publirasplatformv1.UpdateTenantMemberRoleResponse{
 		Member: tenantMemberToProto(member),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) RemoveTenantMember(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.RemoveTenantMemberRequest],
-) (*connect.Response[publirasplatformv1.RemoveTenantMemberResponse], error) {
-	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.Msg.TenantId, req.Header())
+	req *publirasplatformv1.RemoveTenantMemberRequest,
+) (*publirasplatformv1.RemoveTenantMemberResponse, error) {
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.TenantId, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	userID, err := requireUserID(req.Msg.UserId)
+	userID, err := requireUserID(req.UserId)
 	if err != nil {
 		return nil, s.tenantError(ctx, "invalid remove tenant member request", err)
 	}
@@ -511,7 +511,7 @@ func (s *platformServer) RemoveTenantMember(
 	if err := params.Validate(); err != nil {
 		return nil, s.tenantError(ctx, "invalid remove tenant member request", err)
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -536,10 +536,10 @@ func (s *platformServer) RemoveTenantMember(
 		return nil, s.internalDBError(ctx, "failed to commit remove tenant member", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
-	return connect.NewResponse(&publirasplatformv1.RemoveTenantMemberResponse{
+	return &publirasplatformv1.RemoveTenantMemberResponse{
 		UserId:       member.UserID.String(),
 		UserPublicId: member.PublicID,
-	}), nil
+	}, nil
 }
 
 // parseUserID parses the user_id a member request names, which AddTenantMember

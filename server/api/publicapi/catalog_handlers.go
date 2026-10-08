@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -21,6 +21,7 @@ import (
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/publishedseries"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -44,7 +45,7 @@ var seriesOrders = map[publirav1.SeriesOrder]publishedseries.Order{
 func resolveSeriesOrder(requested publirav1.SeriesOrder) (publishedseries.Order, error) {
 	order, ok := seriesOrders[requested]
 	if !ok {
-		return publishedseries.Order{}, connect.NewError(connect.CodeInvalidArgument, errors.New("order is not supported"))
+		return publishedseries.Order{}, connect.NewError(connect.CodeInvalidArgument, "order is not supported")
 	}
 	return order, nil
 }
@@ -89,7 +90,7 @@ func (s *apiServer) resolveSeriesFilters(
 			PublicID: req.genrePublicID,
 		}); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return publishedseries.Filter{}, connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
+				return publishedseries.Filter{}, connect.NewError(connect.CodeNotFound, "genre not found")
 			}
 			return publishedseries.Filter{}, s.internalDBError(ctx, "failed to resolve the genre filter", err, "tenant_id", tenantID.String())
 		}
@@ -102,7 +103,7 @@ func (s *apiServer) resolveSeriesFilters(
 			Slug:     req.tagSlug,
 		}); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return publishedseries.Filter{}, connect.NewError(connect.CodeNotFound, errors.New("tag not found"))
+				return publishedseries.Filter{}, connect.NewError(connect.CodeNotFound, "tag not found")
 			}
 			return publishedseries.Filter{}, s.internalDBError(ctx, "failed to resolve the tag filter", err, "tenant_id", tenantID.String())
 		}
@@ -115,7 +116,7 @@ func (s *apiServer) resolveSeriesFilters(
 	if req.status != publirattypesv1.SeriesStatus_SERIES_STATUS_UNSPECIFIED {
 		status, err := protomapper.SeriesStatusToStored(req.status)
 		if err != nil {
-			return publishedseries.Filter{}, connect.NewError(connect.CodeInvalidArgument, errors.New("status is not supported"))
+			return publishedseries.Filter{}, connect.NewError(connect.CodeInvalidArgument, "status is not supported")
 		}
 		filters.Status = sql.NullString{String: status, Valid: true}
 	}
@@ -123,7 +124,7 @@ func (s *apiServer) resolveSeriesFilters(
 	if req.weekday != nil {
 		weekday := *req.weekday
 		if weekday < 0 || weekday > 6 {
-			return publishedseries.Filter{}, connect.NewError(connect.CodeInvalidArgument, errors.New("weekday must be an EXTRACT(DOW) number from 0 to 6"))
+			return publishedseries.Filter{}, connect.NewError(connect.CodeInvalidArgument, "weekday must be an EXTRACT(DOW) number from 0 to 6")
 		}
 		filters.Weekday = sql.NullInt16{Int16: int16(weekday), Valid: true}
 	}
@@ -181,7 +182,7 @@ func encodeSeriesRecoveryToken(direction pagination.Direction, order publishedse
 // rather than reinterpreted: its keys point into a page that does not exist in
 // the requested list.
 func decodeSeriesCursorKeys(cursor pagination.Cursor, order publishedseries.Order, filters publishedseries.Filter) (seriesCursorKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	invalid := connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	if len(cursor.Keys) != 3 && len(cursor.Keys) != 4 {
 		return seriesCursorKeys{}, invalid
 	}
@@ -190,7 +191,7 @@ func decodeSeriesCursorKeys(cursor pagination.Cursor, order publishedseries.Orde
 		return seriesCursorKeys{}, invalid
 	}
 	if cursor.Keys[0] != publishedseries.ListKey(order, filters) {
-		return seriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another order or filter"))
+		return seriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, "token was issued for another order or filter")
 	}
 
 	seriesID, err := uuid.Parse(cursor.Keys[2])
@@ -458,7 +459,7 @@ func (s *apiServer) publishedSeriesItems(
 	for _, row := range rows {
 		item, err := publishedSeriesFromRow(row)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 		}
 		if row.EyeCatchImageID.Valid {
 			imageIDs = append(imageIDs, row.EyeCatchImageID.UUID)
@@ -672,23 +673,23 @@ func (s *apiServer) labelPage(
 
 func (s *apiServer) ListPublishedLabels(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListPublishedLabelsRequest],
-) (*connect.Response[publirav1.ListPublishedLabelsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ListPublishedLabelsRequest,
+) (*publirav1.ListPublishedLabelsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultLabelPageSize, maxLabelPageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultLabelPageSize, maxLabelPageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
-	hasPublishedSeries := req.Msg.HasPublishedSeries
+	hasPublishedSeries := req.HasPublishedSeries
 	listKey := labelListKey(hasPublishedSeries)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
@@ -736,39 +737,39 @@ func (s *apiServer) ListPublishedLabels(
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *apiServer) ListPublishedSeries(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListPublishedSeriesRequest],
-) (*connect.Response[publirav1.ListPublishedSeriesResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ListPublishedSeriesRequest,
+) (*publirav1.ListPublishedSeriesResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	order, err := resolveSeriesOrder(req.Msg.Order)
+	order, err := resolveSeriesOrder(req.Order)
 	if err != nil {
 		return nil, err
 	}
 	filters, err := s.resolveSeriesFilters(ctx, tenant.ID, seriesFilterRequest{
-		hasFreeEpisodes: req.Msg.HasFreeEpisodes,
-		genrePublicID:   req.Msg.GenrePublicId,
-		tagSlug:         req.Msg.TagSlug,
-		status:          req.Msg.Status,
-		weekday:         req.Msg.Weekday,
+		hasFreeEpisodes: req.HasFreeEpisodes,
+		genrePublicID:   req.GenrePublicId,
+		tagSlug:         req.TagSlug,
+		status:          req.Status,
+		weekday:         req.Weekday,
 	})
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultSeriesPageSize, maxSeriesPageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultSeriesPageSize, maxSeriesPageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys seriesCursorKeys
 	if !cursor.IsZero() {
@@ -823,55 +824,55 @@ func (s *apiServer) ListPublishedSeries(
 		res.NextToken = encodeSeriesRecoveryToken(pagination.Forward, order, filters, keys)
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *apiServer) GetSeriesDetail(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetSeriesDetailRequest],
-) (*connect.Response[publirav1.GetSeriesDetailResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.GetSeriesDetailRequest,
+) (*publirav1.GetSeriesDetailResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queriesFor(ctx).GetSeriesDetail(ctx, dbmodels.GetSeriesDetailParams{PublicID: req.Msg.PublicId, TenantID: tenant.ID, Surface: surface})
+	row, err := s.queriesFor(ctx).GetSeriesDetail(ctx, dbmodels.GetSeriesDetailParams{PublicID: req.PublicId, TenantID: tenant.ID, Surface: surface})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "series not found")
 		}
-		return nil, s.internalDBError(ctx, "failed to get series detail", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get series detail", err, "tenant_id", tenant.ID.String(), "public_id", req.PublicId)
 	}
 	if !row.IsPublished || !row.PublishedAt.Valid || row.PublishedAt.Time.After(time.Now()) {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("series is not published"))
+		return nil, connect.NewError(connect.CodePermissionDenied, "series is not published")
 	}
 
 	creators := make([]creatorJSON, 0)
 	if len(row.Creators) > 0 {
 		if err := json.Unmarshal(row.Creators, &creators); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 		}
 	}
 	episodes := make([]episodeJSON, 0)
 	if len(row.Episodes) > 0 {
 		if err := json.Unmarshal(row.Episodes, &episodes); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 		}
 	}
 	genres, err := seriesGenresFromJSON(row.Genres)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	tags, err := seriesTagsFromJSON(row.Tags)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	requiredMinimumAge, err := s.requiredMinimumAgeForSeries(ctx, tenant.ID, row.AgeRating)
 	if err != nil {
-		return nil, s.internalError(ctx, "failed to resolve the tenant age rule for a series", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+		return nil, s.internalError(ctx, "failed to resolve the tenant age rule for a series", err, "tenant_id", tenant.ID.String(), "public_id", req.PublicId)
 	}
 	storedCommentMode, err := s.effectiveCommentMode(ctx, tenant.ID, row.CommentMode)
 	if err != nil {
@@ -881,17 +882,17 @@ func (s *apiServer) GetSeriesDetail(
 	// section gets one answer instead of the two it would have to combine.
 	commentMode, err := protomapper.CommentModeFromStored(storedCommentMode)
 	if err != nil {
-		return nil, s.internalError(ctx, "series comment mode is not a supported mode", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+		return nil, s.internalError(ctx, "series comment mode is not a supported mode", err, "tenant_id", tenant.ID.String(), "public_id", req.PublicId)
 	}
 	rating, err := s.queriesFor(ctx).GetSeriesRating(ctx, dbmodels.GetSeriesRatingParams{
 		TenantID: tenant.ID,
 		SeriesID: row.ID,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to get the series rating", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get the series rating", err, "tenant_id", tenant.ID.String(), "public_id", req.PublicId)
 	}
 
-	res := connect.NewResponse(&publirav1.GetSeriesDetailResponse{
+	res := &publirav1.GetSeriesDetailResponse{
 		RequiredMinimumAge: int32(requiredMinimumAge),
 		CommentMode:        commentMode,
 		Series: &publirattypesv1.Series{
@@ -906,26 +907,26 @@ func (s *apiServer) GetSeriesDetail(
 			RatingCount:      rating.RatingCount,
 		},
 		Episodes: make([]*publirattypesv1.Episode, 0, len(episodes)),
-	})
+	}
 	if row.Synopsis.Valid {
-		res.Msg.Series.Synopsis = row.Synopsis.String
+		res.Series.Synopsis = row.Synopsis.String
 	}
 	if row.Status.Valid {
 		status, statusErr := protomapper.SeriesStatusFromStored(row.Status.String)
 		if statusErr != nil {
-			return nil, s.internalError(ctx, "series listing holds a value this build does not know", statusErr, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+			return nil, s.internalError(ctx, "series listing holds a value this build does not know", statusErr, "tenant_id", tenant.ID.String(), "public_id", req.PublicId)
 		}
-		res.Msg.Series.Status = status
+		res.Series.Status = status
 	}
 	if row.AgeRating.Valid {
 		ageRating, ageRatingErr := protomapper.SeriesAgeRatingFromStored(row.AgeRating.String)
 		if ageRatingErr != nil {
-			return nil, s.internalError(ctx, "series listing holds a value this build does not know", ageRatingErr, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+			return nil, s.internalError(ctx, "series listing holds a value this build does not know", ageRatingErr, "tenant_id", tenant.ID.String(), "public_id", req.PublicId)
 		}
-		res.Msg.Series.AgeRating = ageRating
+		res.Series.AgeRating = ageRating
 	}
 	if row.EyeCatchImageUpdatedAt.Valid {
-		res.Msg.Series.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+		res.Series.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
 	}
 
 	// Fill in the label.
@@ -935,20 +936,20 @@ func (s *apiServer) GetSeriesDetail(
 			Name:     row.LabelName.String,
 		}
 
-		res.Msg.Series.Label = label
+		res.Series.Label = label
 	}
 	if row.EyeCatchImageID.Valid {
 		variants, err := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
 		if err == nil && len(variants) > 0 {
 			if imageVariants, ok := variants[row.EyeCatchImageID.UUID]; ok {
-				res.Msg.Series.EyeCatchImageVariants = imageVariants
+				res.Series.EyeCatchImageVariants = imageVariants
 			}
 		}
 	}
 
-	res.Msg.Series.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
+	res.Series.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
 	for _, creator := range creators {
-		res.Msg.Series.Creators = append(res.Msg.Series.Creators, creatorFromJSON(creator))
+		res.Series.Creators = append(res.Series.Creators, creatorFromJSON(creator))
 	}
 	for _, episode := range episodes {
 		item := &publirattypesv1.Episode{
@@ -976,7 +977,7 @@ func (s *apiServer) GetSeriesDetail(
 		if episode.FreeUntil != nil {
 			item.FreeUntil = episode.FreeUntil.UTC().Format(time.RFC3339)
 		}
-		res.Msg.Episodes = append(res.Msg.Episodes, item)
+		res.Episodes = append(res.Episodes, item)
 	}
 
 	waitFree, offersWaitFree, err := s.seriesWaitFreeRule(ctx, tenant.ID, row.ID)
@@ -984,11 +985,11 @@ func (s *apiServer) GetSeriesDetail(
 		return nil, err
 	}
 	if offersWaitFree {
-		episodeIDs := make([]string, 0, len(res.Msg.Episodes))
-		for _, episode := range res.Msg.Episodes {
+		episodeIDs := make([]string, 0, len(res.Episodes))
+		for _, episode := range res.Episodes {
 			episodeIDs = append(episodeIDs, episode.Id)
 		}
-		res.Msg.WaitFree = waitFreeRuleFor(waitFree, episodeIDs)
+		res.WaitFree = waitFreeRuleFor(waitFree, episodeIDs)
 	}
 
 	return res, nil
@@ -996,22 +997,22 @@ func (s *apiServer) GetSeriesDetail(
 
 func (s *apiServer) GetEpisodeDetail(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetEpisodeDetailRequest],
-) (*connect.Response[publirav1.GetEpisodeDetailResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.GetEpisodeDetailRequest,
+) (*publirav1.GetEpisodeDetailResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queriesFor(ctx).GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{TenantID: tenant.ID, PublicID: publicIDKey(req.Msg.PublicId), Surface: surface})
+	row, err := s.queriesFor(ctx).GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{TenantID: tenant.ID, PublicID: publicIDKey(req.PublicId), Surface: surface})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
 		}
-		return nil, s.internalDBError(ctx, "failed to get episode detail", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get episode detail", err, "tenant_id", tenant.ID.String(), "public_id", req.PublicId)
 	}
 
 	// How old this series makes a reader be, decided before anything about the
@@ -1019,7 +1020,7 @@ func (s *apiServer) GetEpisodeDetail(
 	// rule does not cover, which is the ordinary read and costs no extra query.
 	requiredMinimumAge, err := s.requiredMinimumAgeForSeries(ctx, tenant.ID, row.SeriesAgeRating)
 	if err != nil {
-		return nil, s.internalError(ctx, "failed to resolve the tenant age rule for a series", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+		return nil, s.internalError(ctx, "failed to resolve the tenant age rule for a series", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
 	}
 
 	access := publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED
@@ -1035,12 +1036,12 @@ func (s *apiServer) GetEpisodeDetail(
 	// rule reads the birth date off it even for a body that costs nothing.
 	var reader dbmodels.User
 	hasReader := false
-	if _, hasBearer := auth.BearerTokenFromHeader(req.Header()); hasBearer {
+	if _, hasBearer := auth.BearerTokenFromHeader(rpcmiddleware.RequestHeader(ctx)); hasBearer {
 		// Optional auth: an invalid session reads as a guest. The RPC fails on
 		// Internal only where the session is what gates the body — a paid
 		// episode, or one the tenant's age rule covers — because a body that is
 		// free and unrated must stay readable when attribution breaks.
-		session, authErr := s.authenticateAccessToken(ctx, req.Msg.Tenant, req.Header())
+		session, authErr := s.authenticateAccessToken(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 		if authErr != nil {
 			if (!freeToEveryone || requiredMinimumAge > 0) && connect.CodeOf(authErr) == connect.CodeInternal {
 				return nil, authErr
@@ -1048,7 +1049,7 @@ func (s *apiServer) GetEpisodeDetail(
 			// A gated body stays closed and the view stays anonymous; log for operational tracing.
 			slog.InfoContext(ctx, "episode detail: bearer session rejected, continuing without it",
 				"tenant_id", tenant.ID,
-				"episode_public_id", req.Msg.PublicId,
+				"episode_public_id", req.PublicId,
 				"code", connect.CodeOf(authErr).String(),
 			)
 		} else {
@@ -1062,7 +1063,7 @@ func (s *apiServer) GetEpisodeDetail(
 	// three states below are never reached.
 	clearsAgeGate, err := s.readerClearsMinimumAge(ctx, tenant, requiredMinimumAge, reader.BirthDate)
 	if err != nil {
-		return nil, s.internalError(ctx, "failed to check the reader against the tenant age rule", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+		return nil, s.internalError(ctx, "failed to check the reader against the tenant age rule", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
 	}
 
 	switch {
@@ -1077,10 +1078,10 @@ func (s *apiServer) GetEpisodeDetail(
 		if tokenErr != nil {
 			s.logger.ErrorContext(ctx, "failed to issue free episode media token",
 				"tenant_id", tenant.ID.String(),
-				"episode_public_id", req.Msg.PublicId,
+				"episode_public_id", req.PublicId,
 				"error", tokenErr,
 			)
-			return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+			return nil, connect.NewError(connect.CodeInternal, "internal server error")
 		}
 		mediaToken = token
 	case hasReader:
@@ -1090,12 +1091,12 @@ func (s *apiServer) GetEpisodeDetail(
 			EpisodeID: row.ID,
 		})
 		if grantErr != nil && !errors.Is(grantErr, sql.ErrNoRows) {
-			return nil, s.internalDBError(ctx, "failed to check episode content access", grantErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+			return nil, s.internalDBError(ctx, "failed to check episode content access", grantErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
 		}
 		if grantErr == nil {
 			source, sourceErr := episodeEntitlementSourceFromGrantKind(grantKind)
 			if sourceErr != nil {
-				return nil, s.internalError(ctx, "episode grant holds a kind this build does not know", sourceErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+				return nil, s.internalError(ctx, "episode grant holds a kind this build does not know", sourceErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
 			}
 			access = publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED
 			entitlementSource = source
@@ -1114,10 +1115,10 @@ func (s *apiServer) GetEpisodeDetail(
 			if tokenErr != nil {
 				s.logger.ErrorContext(ctx, "failed to issue episode media token",
 					"tenant_id", tenant.ID.String(),
-					"episode_public_id", req.Msg.PublicId,
+					"episode_public_id", req.PublicId,
 					"error", tokenErr,
 				)
-				return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+				return nil, connect.NewError(connect.CodeInternal, "internal server error")
 			}
 			mediaToken = token
 		}
@@ -1125,7 +1126,7 @@ func (s *apiServer) GetEpisodeDetail(
 
 	series, err := protomapper.SeriesFromGetPublishedEpisodeForTenantRow(row)
 	if err != nil {
-		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
 	}
 	if row.SeriesEyeCatchImageID.Valid {
 		// The artwork only decorates the neighbour links; the helper has logged
@@ -1161,13 +1162,13 @@ func (s *apiServer) GetEpisodeDetail(
 	}
 	previousEpisode, nextEpisode, err := episodeNeighborsFromRows(neighborRows, creditsByEpisodeID)
 	if err != nil {
-		return nil, s.internalError(ctx, "episode neighbour holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+		return nil, s.internalError(ctx, "episode neighbour holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
 	}
 	var nextFreeEpisode *publirav1.EpisodeNeighbor
 	if hasNextFree {
 		nextFreeEpisode, err = episodeNeighborFromNextFreeRow(nextFreeRow, creditsByEpisodeID)
 		if err != nil {
-			return nil, s.internalError(ctx, "next free episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+			return nil, s.internalError(ctx, "next free episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
 		}
 	}
 
@@ -1179,13 +1180,13 @@ func (s *apiServer) GetEpisodeDetail(
 		SeriesReadingDirection: row.SeriesReadingDirection,
 		SeriesSpreadStartIndex: row.SeriesSpreadStartIndex,
 	}); err != nil {
-		return nil, s.internalError(ctx, "episode layout holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+		return nil, s.internalError(ctx, "episode layout holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
 	}
 	episode.PurchaseAvailability, err = protomapper.SurfaceAvailabilityFromStored(row.PurchaseAvailability)
 	if err != nil {
-		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
 	}
-	res := connect.NewResponse(&publirav1.GetEpisodeDetailResponse{
+	res := &publirav1.GetEpisodeDetailResponse{
 		Episode:           episode,
 		Series:            series,
 		Images:            make([]*publirattypesv1.EpisodeImage, 0),
@@ -1195,18 +1196,18 @@ func (s *apiServer) GetEpisodeDetail(
 		EntitlementSource: entitlementSource,
 		PreviewImages:     make([]*publirattypesv1.EpisodeImage, 0),
 		NextFreeEpisode:   nextFreeEpisode,
-	})
-	res.Msg.FreeUntil = episode.FreeUntil
+	}
+	res.FreeUntil = episode.FreeUntil
 	if includeImages {
 		images, listErr := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, row.ID)
 		if listErr != nil {
-			return nil, s.internalDBError(ctx, "failed to list episode images", listErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+			return nil, s.internalDBError(ctx, "failed to list episode images", listErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
 		}
-		res.Msg.Images = make([]*publirattypesv1.EpisodeImage, 0, len(images))
+		res.Images = make([]*publirattypesv1.EpisodeImage, 0, len(images))
 		for _, image := range images {
 			mapped := protomapper.EpisodeImageFromEpisodeImage(image)
 			mapped.ImageUrl = auth.WithMediaTokenQuery(mapped.ImageUrl, mediaToken)
-			res.Msg.Images = append(res.Msg.Images, mapped)
+			res.Images = append(res.Images, mapped)
 		}
 	}
 	// A withheld body is answered with the preview of its opening pages, a
@@ -1218,11 +1219,11 @@ func (s *apiServer) GetEpisodeDetail(
 			PageCount: imageproc.EpisodePreviewPageCount,
 		})
 		if listErr != nil {
-			return nil, s.internalDBError(ctx, "failed to list episode preview images", listErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+			return nil, s.internalDBError(ctx, "failed to list episode preview images", listErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
 		}
-		res.Msg.PreviewImages = make([]*publirattypesv1.EpisodeImage, 0, len(previews))
+		res.PreviewImages = make([]*publirattypesv1.EpisodeImage, 0, len(previews))
 		for _, preview := range previews {
-			res.Msg.PreviewImages = append(res.Msg.PreviewImages, protomapper.EpisodePreviewImageFromRow(preview))
+			res.PreviewImages = append(res.PreviewImages, protomapper.EpisodePreviewImageFromRow(preview))
 		}
 	}
 

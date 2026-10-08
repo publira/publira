@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/creatorroles"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -77,19 +77,19 @@ func TestDBCreateEpisodeBakesTheSeriesCredits(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant, series, _ := seedCreditedSeries(t, env)
 
-	created, err := env.seriesClient().CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+	created, err := env.seriesClient().CreateEpisode(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: series.ID.String(),
 		Title:    "Chapter One",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
 
-	listed, err := env.seriesClient().ListEpisodeCredits(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodeCreditsRequest{
+	listed, err := env.seriesClient().ListEpisodeCredits(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListEpisodeCreditsRequest{
 		Tenant:    tenant.tenantContext(),
-		EpisodeId: created.Msg.Episode.Id,
-	}))
+		EpisodeId: created.Episode.Id,
+	})
 	if err != nil {
 		t.Fatalf("ListEpisodeCredits: %v", err)
 	}
@@ -98,10 +98,10 @@ func TestDBCreateEpisodeBakesTheSeriesCredits(t *testing.T) {
 		"Ren Takahashi / " + creatorroles.Defaults[1].Name,
 		"Yuki Mori / " + creatorroles.Defaults[2].Name,
 	}
-	if got := creditedNames(listed.Msg.Creators); !slices.Equal(got, want) {
+	if got := creditedNames(listed.Creators); !slices.Equal(got, want) {
 		t.Fatalf("baked credits = %v, want %v", got, want)
 	}
-	for name, source := range creditSources(t, env, created.Msg.Episode.PublicId) {
+	for name, source := range creditSources(t, env, created.Episode.PublicId) {
 		if source != "series" {
 			t.Fatalf("credit of %q has source %q, want series", name, source)
 		}
@@ -114,31 +114,31 @@ func TestDBEditingTheSeriesLeavesAnAlreadyCreatedEpisodeCredited(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant, series, _ := seedCreditedSeries(t, env)
 
-	created, err := env.seriesClient().CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+	created, err := env.seriesClient().CreateEpisode(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: series.ID.String(),
 		Title:    "Chapter One",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
 
 	// The artist changes: the series is re-credited to one person alone.
 	successor := env.PG.SeedCreator(t, tenant.Tenant.ID, testutil.CreatorSeed{Name: "Hana Kubo"})
-	_, err = env.seriesClient().UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+	_, err = env.seriesClient().UpdateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateSeriesRequest{
 		Tenant:         tenant.tenantContext(),
 		SeriesId:       series.ID.String(),
 		Title:          "Long Running Series",
 		CreatorCredits: env.creatorCredits(t, tenant, successor.ID.String()),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
 	}
 
-	listed, err := env.seriesClient().ListEpisodeCredits(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodeCreditsRequest{
+	listed, err := env.seriesClient().ListEpisodeCredits(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListEpisodeCreditsRequest{
 		Tenant:    tenant.tenantContext(),
-		EpisodeId: created.Msg.Episode.Id,
-	}))
+		EpisodeId: created.Episode.Id,
+	})
 	if err != nil {
 		t.Fatalf("ListEpisodeCredits: %v", err)
 	}
@@ -147,27 +147,27 @@ func TestDBEditingTheSeriesLeavesAnAlreadyCreatedEpisodeCredited(t *testing.T) {
 		"Ren Takahashi / " + creatorroles.Defaults[1].Name,
 		"Yuki Mori / " + creatorroles.Defaults[2].Name,
 	}
-	if got := creditedNames(listed.Msg.Creators); !slices.Equal(got, shipped) {
+	if got := creditedNames(listed.Creators); !slices.Equal(got, shipped) {
 		t.Fatalf("credits of the episode published before the change = %v, want the three it shipped with, %v", got, shipped)
 	}
 
-	next, err := env.seriesClient().CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+	next, err := env.seriesClient().CreateEpisode(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: series.ID.String(),
 		Title:    "Chapter Two",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisode after the change: %v", err)
 	}
-	afterwards, err := env.seriesClient().ListEpisodeCredits(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodeCreditsRequest{
+	afterwards, err := env.seriesClient().ListEpisodeCredits(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListEpisodeCreditsRequest{
 		Tenant:    tenant.tenantContext(),
-		EpisodeId: next.Msg.Episode.Id,
-	}))
+		EpisodeId: next.Episode.Id,
+	})
 	if err != nil {
 		t.Fatalf("ListEpisodeCredits after the change: %v", err)
 	}
 	want := []string{"Hana Kubo / " + creatorroles.Defaults[0].Name}
-	if got := creditedNames(afterwards.Msg.Creators); !slices.Equal(got, want) {
+	if got := creditedNames(afterwards.Creators); !slices.Equal(got, want) {
 		t.Fatalf("credits of the episode created after the change = %v, want %v", got, want)
 	}
 }
@@ -179,26 +179,26 @@ func TestDBReplaceEpisodeCreditsKeepsTheBakedRowsAndAddsTheGuest(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant, series, _ := seedCreditedSeries(t, env)
 
-	created, err := env.seriesClient().CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+	created, err := env.seriesClient().CreateEpisode(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: series.ID.String(),
 		Title:    "Chapter One",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
-	listed, err := env.seriesClient().ListEpisodeCredits(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodeCreditsRequest{
+	listed, err := env.seriesClient().ListEpisodeCredits(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListEpisodeCreditsRequest{
 		Tenant:    tenant.tenantContext(),
-		EpisodeId: created.Msg.Episode.Id,
-	}))
+		EpisodeId: created.Episode.Id,
+	})
 	if err != nil {
 		t.Fatalf("ListEpisodeCredits: %v", err)
 	}
 
 	supervisor := env.PG.SeedCreator(t, tenant.Tenant.ID, testutil.CreatorSeed{Name: "Kaoru Ito"})
 	supervisorRole := env.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[3].Name)
-	credits := make([]*publiraadminv1.EpisodeCreatorCredit, 0, len(listed.Msg.CreatorCredits)+1)
-	for _, credit := range listed.Msg.CreatorCredits {
+	credits := make([]*publiraadminv1.EpisodeCreatorCredit, 0, len(listed.CreatorCredits)+1)
+	for _, credit := range listed.CreatorCredits {
 		credits = append(credits, &publiraadminv1.EpisodeCreatorCredit{
 			CreatorId: credit.GetCreatorId(),
 			RoleId:    credit.GetRoleId(),
@@ -209,11 +209,11 @@ func TestDBReplaceEpisodeCreditsKeepsTheBakedRowsAndAddsTheGuest(t *testing.T) {
 		RoleId:    supervisorRole.ID.String(),
 	})
 
-	replaced, err := env.seriesClient().ReplaceEpisodeCredits(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReplaceEpisodeCreditsRequest{
+	replaced, err := env.seriesClient().ReplaceEpisodeCredits(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ReplaceEpisodeCreditsRequest{
 		Tenant:         tenant.tenantContext(),
-		EpisodeId:      created.Msg.Episode.Id,
+		EpisodeId:      created.Episode.Id,
 		CreatorCredits: credits,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ReplaceEpisodeCredits: %v", err)
 	}
@@ -223,11 +223,11 @@ func TestDBReplaceEpisodeCreditsKeepsTheBakedRowsAndAddsTheGuest(t *testing.T) {
 		"Yuki Mori / " + creatorroles.Defaults[2].Name,
 		"Kaoru Ito / " + creatorroles.Defaults[3].Name,
 	}
-	if got := creditedNames(replaced.Msg.Creators); !slices.Equal(got, want) {
+	if got := creditedNames(replaced.Creators); !slices.Equal(got, want) {
 		t.Fatalf("credits after the replace = %v, want %v", got, want)
 	}
 
-	sources := creditSources(t, env, created.Msg.Episode.PublicId)
+	sources := creditSources(t, env, created.Episode.PublicId)
 	for _, name := range []string{"Aoi Sakura", "Ren Takahashi", "Yuki Mori"} {
 		if sources[name] != "series" {
 			t.Fatalf("credit of %q has source %q, want the baked row to stay baked", name, sources[name])
@@ -244,23 +244,23 @@ func TestDBReplaceEpisodeCreditsWithAnEmptyListClearsThem(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant, series, _ := seedCreditedSeries(t, env)
 
-	created, err := env.seriesClient().CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+	created, err := env.seriesClient().CreateEpisode(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: series.ID.String(),
 		Title:    "Chapter One",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
 
-	replaced, err := env.seriesClient().ReplaceEpisodeCredits(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReplaceEpisodeCreditsRequest{
+	replaced, err := env.seriesClient().ReplaceEpisodeCredits(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ReplaceEpisodeCreditsRequest{
 		Tenant:    tenant.tenantContext(),
-		EpisodeId: created.Msg.Episode.Id,
-	}))
+		EpisodeId: created.Episode.Id,
+	})
 	if err != nil {
 		t.Fatalf("ReplaceEpisodeCredits: %v", err)
 	}
-	if got := creditedNames(replaced.Msg.Creators); len(got) != 0 {
+	if got := creditedNames(replaced.Creators); len(got) != 0 {
 		t.Fatalf("credits after clearing = %v, want none", got)
 	}
 }
@@ -271,19 +271,19 @@ func TestDBReplaceEpisodeCreditsRefusesAnotherTenantsEpisode(t *testing.T) {
 	tenant, series, _ := seedCreditedSeries(t, env)
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
 
-	created, err := env.seriesClient().CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+	created, err := env.seriesClient().CreateEpisode(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: series.ID.String(),
 		Title:    "Chapter One",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
 
-	_, err = env.seriesClient().ReplaceEpisodeCredits(context.Background(), newAdminDBRequest(other, &publiraadminv1.ReplaceEpisodeCreditsRequest{
+	_, err = env.seriesClient().ReplaceEpisodeCredits(testutil.WithBearer(context.Background(), other.token()), &publiraadminv1.ReplaceEpisodeCreditsRequest{
 		Tenant:    other.tenantContext(),
-		EpisodeId: created.Msg.Episode.Id,
-	}))
+		EpisodeId: created.Episode.Id,
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ReplaceEpisodeCredits across tenants: err = %v, want not_found", err)
 	}
@@ -295,32 +295,32 @@ func TestDBDeleteCreatorRoleRefusesARoleOnlyAnEpisodeStillNames(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant, series, creators := seedCreditedSeries(t, env)
 
-	_, err := env.seriesClient().CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+	_, err := env.seriesClient().CreateEpisode(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: series.ID.String(),
 		Title:    "Chapter One",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
 
 	// The series lets every role but the leading one go; the episode keeps all
 	// three, because it was created before the change.
-	_, err = env.seriesClient().UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+	_, err = env.seriesClient().UpdateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateSeriesRequest{
 		Tenant:         tenant.tenantContext(),
 		SeriesId:       series.ID.String(),
 		Title:          "Long Running Series",
 		CreatorCredits: env.creatorCredits(t, tenant, creators[0].ID.String()),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
 	}
 
 	artistRole := env.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[1].Name)
-	_, err = env.creatorRoleClient().DeleteCreatorRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteCreatorRoleRequest{
+	_, err = env.creatorRoleClient().DeleteCreatorRole(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.DeleteCreatorRoleRequest{
 		Tenant:        tenant.tenantContext(),
 		CreatorRoleId: artistRole.ID.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeleteCreatorRole: err = %v, want failed_precondition because an episode still credits it", err)
 	}

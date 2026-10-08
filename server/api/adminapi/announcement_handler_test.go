@@ -5,22 +5,24 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func announcementColumns() *sqlmock.Rows {
@@ -68,14 +70,13 @@ func newAnnouncementClient(
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
-	return publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+	return publiraadminv1connect.NewAdminAnnouncementServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))), mock, sessionToken
 }
 
-func newAnnouncementRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListAnnouncementsRequest] {
-	req := connect.NewRequest(&publiraadminv1.ListAnnouncementsRequest{
+func newAnnouncementRequest(tenantID uuid.UUID) *publiraadminv1.ListAnnouncementsRequest {
+	req := &publiraadminv1.ListAnnouncementsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 	return req
 }
 
@@ -90,15 +91,14 @@ func TestCreateAnnouncementRefusesATenantAuditor(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantAuditor)
 
-	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
+	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateAnnouncementRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:  "Maintenance Notice",
 		Body:   "Maintenance starts today at 25:00.",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.CreateAnnouncement(context.Background(), req)
+	_, err := client.CreateAnnouncement(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("CreateAnnouncement code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -128,15 +128,14 @@ func TestCreateAnnouncementForEveryoneQueuesOneNotificationEvent(t *testing.T) {
 
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
+	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateAnnouncementRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:  "Update",
 		Body:   "Body",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.CreateAnnouncement(context.Background(), req); err != nil {
+	if _, err := client.CreateAnnouncement(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("CreateAnnouncement: %v", err)
 	}
 
@@ -183,15 +182,15 @@ func TestListAnnouncementsSuccess(t *testing.T) {
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "Notice", "Body", "/announcements", now))
 
-	resp, err := client.ListAnnouncements(context.Background(), newAnnouncementRequest(tenantID, sessionToken))
+	resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), sessionToken), newAnnouncementRequest(tenantID))
 	if err != nil {
 		t.Fatalf("ListAnnouncements: %v", err)
 	}
-	if len(resp.Msg.Announcements) != 1 {
-		t.Fatalf("announcements count = %d, want 1", len(resp.Msg.Announcements))
+	if len(resp.Announcements) != 1 {
+		t.Fatalf("announcements count = %d, want 1", len(resp.Announcements))
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty", resp.PreviousToken, resp.NextToken)
 	}
 
 	assertExpectations(t, mock)
@@ -214,19 +213,19 @@ func TestListAnnouncementsFirstPageReportsNextToken(t *testing.T) {
 			ids[2], tenantID, "Third", "body", "", now.Add(-2*time.Minute),
 		))
 
-	req := newAnnouncementRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	resp, err := client.ListAnnouncements(context.Background(), req)
+	req := newAnnouncementRequest(tenantID)
+	req.Limit = 2
+	resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListAnnouncements: %v", err)
 	}
-	if len(resp.Msg.Announcements) != 2 {
-		t.Fatalf("announcements count = %d, want the over-fetched row dropped", len(resp.Msg.Announcements))
+	if len(resp.Announcements) != 2 {
+		t.Fatalf("announcements count = %d, want the over-fetched row dropped", len(resp.Announcements))
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -257,14 +256,14 @@ func TestListAnnouncementsFollowsNextToken(t *testing.T) {
 		).
 		WillReturnRows(addAnnouncementRow(announcementColumns(), lastID, tenantID, "Last", "body", "", lastAt))
 
-	req := newAnnouncementRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
-	resp, err := client.ListAnnouncements(context.Background(), req)
+	req := newAnnouncementRequest(tenantID)
+	req.Limit = 2
+	req.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListAnnouncements: %v", err)
 	}
-	prev, err := pagination.Decode(resp.Msg.PreviousToken)
+	prev, err := pagination.Decode(resp.PreviousToken)
 	if err != nil {
 		t.Fatalf("decode previous_token: %v", err)
 	}
@@ -272,8 +271,8 @@ func TestListAnnouncementsFollowsNextToken(t *testing.T) {
 	if prev.Direction != pagination.Backward || !slices.Equal(prev.Keys, wantPrev) {
 		t.Fatalf("previous_token = %+v, want backward keys %v", prev, wantPrev)
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -303,24 +302,24 @@ func TestListAnnouncementsFollowsPreviousTokenBackwards(t *testing.T) {
 			newerID, tenantID, "Newer", "body", "", newerAt,
 		))
 
-	req := newAnnouncementRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
-	resp, err := client.ListAnnouncements(context.Background(), req)
+	req := newAnnouncementRequest(tenantID)
+	req.Limit = 2
+	req.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListAnnouncements: %v", err)
 	}
-	titles := make([]string, 0, len(resp.Msg.Announcements))
-	for _, item := range resp.Msg.Announcements {
+	titles := make([]string, 0, len(resp.Announcements))
+	for _, item := range resp.Announcements {
 		titles = append(titles, item.Title)
 	}
 	if !slices.Equal(titles, []string{"Newer", "Older"}) {
 		t.Fatalf("titles = %v, want backward page restored to descending order", titles)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	next, err := pagination.Decode(resp.Msg.NextToken)
+	next, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -375,18 +374,18 @@ func TestListAnnouncementsEmptyPageKeepsAWayBack(t *testing.T) {
 				).
 				WillReturnRows(announcementColumns())
 
-			req := newAnnouncementRequest(tenantID, sessionToken)
-			req.Msg.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
-			resp, err := client.ListAnnouncements(context.Background(), req)
+			req := newAnnouncementRequest(tenantID)
+			req.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
+			resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err != nil {
 				t.Fatalf("ListAnnouncements: %v", err)
 			}
-			recoveryToken := resp.Msg.PreviousToken
-			otherToken := resp.Msg.NextToken
+			recoveryToken := resp.PreviousToken
+			otherToken := resp.NextToken
 			recoveryDirection := pagination.Backward
 			if test.direction == pagination.Backward {
-				recoveryToken = resp.Msg.NextToken
-				otherToken = resp.Msg.PreviousToken
+				recoveryToken = resp.NextToken
+				otherToken = resp.PreviousToken
 				recoveryDirection = pagination.Forward
 			}
 			if otherToken != "" {
@@ -417,14 +416,14 @@ func TestListAnnouncementsEmptyPageKeepsAWayBack(t *testing.T) {
 				).
 				WillReturnRows(recoveryRows)
 
-			recoveryReq := newAnnouncementRequest(tenantID, sessionToken)
-			recoveryReq.Msg.Token = recoveryToken
-			recovered, err := client.ListAnnouncements(context.Background(), recoveryReq)
+			recoveryReq := newAnnouncementRequest(tenantID)
+			recoveryReq.Token = recoveryToken
+			recovered, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), sessionToken), recoveryReq)
 			if err != nil {
 				t.Fatalf("ListAnnouncements recovery: %v", err)
 			}
-			titles := make([]string, 0, len(recovered.Msg.Announcements))
-			for _, item := range recovered.Msg.Announcements {
+			titles := make([]string, 0, len(recovered.Announcements))
+			for _, item := range recovered.Announcements {
 				titles = append(titles, item.Title)
 			}
 			if !slices.Equal(titles, test.wantRecoveredTitles) {
@@ -474,19 +473,19 @@ func TestListAnnouncementsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 				).
 				WillReturnRows(announcementColumns())
 
-			req := newAnnouncementRequest(tenantID, sessionToken)
-			req.Msg.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
-			resp, err := client.ListAnnouncements(context.Background(), req)
+			req := newAnnouncementRequest(tenantID)
+			req.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
+			resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err != nil {
 				t.Fatalf("ListAnnouncements: %v", err)
 			}
-			if len(resp.Msg.Announcements) != 0 {
-				t.Fatalf("announcements = %d rows, want an empty page", len(resp.Msg.Announcements))
+			if len(resp.Announcements) != 0 {
+				t.Fatalf("announcements = %d rows, want an empty page", len(resp.Announcements))
 			}
-			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+			if resp.PreviousToken != "" || resp.NextToken != "" {
 				t.Fatalf(
 					"previous_token = %q / next_token = %q, want both empty once recovery also came back empty",
-					resp.Msg.PreviousToken, resp.Msg.NextToken,
+					resp.PreviousToken, resp.NextToken,
 				)
 			}
 			assertExpectations(t, mock)
@@ -499,10 +498,10 @@ func TestListAnnouncementsInvalidToken(t *testing.T) {
 	actorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
-	req := newAnnouncementRequest(tenantID, sessionToken)
-	req.Msg.Token = "not-a-valid-token"
+	req := newAnnouncementRequest(tenantID)
+	req.Token = "not-a-valid-token"
 
-	_, err := client.ListAnnouncements(context.Background(), req)
+	_, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListAnnouncements code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -522,7 +521,7 @@ func TestListAnnouncementsDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "announcements" does not exist`))
 
-	_, err := client.ListAnnouncements(context.Background(), newAnnouncementRequest(tenantID, sessionToken))
+	_, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), sessionToken), newAnnouncementRequest(tenantID))
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ListAnnouncements code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}

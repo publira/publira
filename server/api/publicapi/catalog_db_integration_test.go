@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auth"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -67,20 +67,20 @@ func TestDBListPublishedSeriesReturnsOnlyPublishedSeries(t *testing.T) {
 		PublishedAt: time.Now().Add(24 * time.Hour),
 	})
 
-	resp, err := env.catalogClient().ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	resp, err := env.catalogClient().ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
 
-	got := seriesPublicIDs(resp.Msg.Series)
+	got := seriesPublicIDs(resp.Series)
 	want := []string{"SERIESNEW001", "SERIESOLD001"}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("series = %v, want %v (newest first, drafts and future publications excluded)", got, want)
 	}
-	if resp.Msg.Series[1].Synopsis != "The older of the two visible series." {
-		t.Fatalf("synopsis = %q, want the seeded listing text", resp.Msg.Series[1].Synopsis)
+	if resp.Series[1].Synopsis != "The older of the two visible series." {
+		t.Fatalf("synopsis = %q, want the seeded listing text", resp.Series[1].Synopsis)
 	}
 }
 
@@ -92,21 +92,21 @@ func TestDBListPublishedSeriesExcludesAnotherTenantsSeries(t *testing.T) {
 	env.PG.SeedSeries(t, second.ID, testutil.SeriesSeed{PublicID: "SERIESB00001", Title: "Tenant B Series", Published: true})
 
 	client := env.catalogClient()
-	mine, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	mine, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(first),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries for tenant A: %v", err)
 	}
-	if got := seriesPublicIDs(mine.Msg.Series); len(got) != 1 || got[0] != "SERIESA00001" {
+	if got := seriesPublicIDs(mine.Series); len(got) != 1 || got[0] != "SERIESA00001" {
 		t.Fatalf("tenant A series = %v, want only SERIESA00001", got)
 	}
 
 	// The detail lookup is a different query and has to draw the same line.
-	_, err = client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	_, err = client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   tenantContext(first),
 		PublicId: "SERIESB00001",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetSeriesDetail across tenants code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
@@ -127,52 +127,52 @@ func TestDBListPublishedSeriesPagesForwardAndBack(t *testing.T) {
 	}
 
 	client := env.catalogClient()
-	firstPage, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	firstPage, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
 		Limit:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries page 1: %v", err)
 	}
-	if got := seriesPublicIDs(firstPage.Msg.Series); len(got) != 2 || got[0] != "SERIESPAGE03" || got[1] != "SERIESPAGE02" {
+	if got := seriesPublicIDs(firstPage.Series); len(got) != 2 || got[0] != "SERIESPAGE03" || got[1] != "SERIESPAGE02" {
 		t.Fatalf("page 1 = %v, want the two newest series", got)
 	}
-	if firstPage.Msg.NextToken == "" {
+	if firstPage.NextToken == "" {
 		t.Fatal("page 1 next_token is empty, want a token for the remaining series")
 	}
-	if firstPage.Msg.PreviousToken != "" {
-		t.Fatalf("page 1 previous_token = %q, want empty on the first page", firstPage.Msg.PreviousToken)
+	if firstPage.PreviousToken != "" {
+		t.Fatalf("page 1 previous_token = %q, want empty on the first page", firstPage.PreviousToken)
 	}
 
-	secondPage, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	secondPage, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
 		Limit:  2,
-		Token:  firstPage.Msg.NextToken,
-	}))
+		Token:  firstPage.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries page 2: %v", err)
 	}
-	if got := seriesPublicIDs(secondPage.Msg.Series); len(got) != 1 || got[0] != "SERIESPAGE01" {
+	if got := seriesPublicIDs(secondPage.Series); len(got) != 1 || got[0] != "SERIESPAGE01" {
 		t.Fatalf("page 2 = %v, want the oldest series alone", got)
 	}
-	if secondPage.Msg.NextToken != "" {
-		t.Fatalf("page 2 next_token = %q, want empty at the end of the list", secondPage.Msg.NextToken)
+	if secondPage.NextToken != "" {
+		t.Fatalf("page 2 next_token = %q, want empty at the end of the list", secondPage.NextToken)
 	}
 	// Without this the request below would be a plain first-page request, and the
 	// assertion on it would hold whether or not paging backwards works.
-	if secondPage.Msg.PreviousToken == "" {
+	if secondPage.PreviousToken == "" {
 		t.Fatal("page 2 previous_token is empty, want a token back to the first page")
 	}
 
-	backAgain, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	backAgain, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
 		Limit:  2,
-		Token:  secondPage.Msg.PreviousToken,
-	}))
+		Token:  secondPage.PreviousToken,
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries back to page 1: %v", err)
 	}
-	if got := seriesPublicIDs(backAgain.Msg.Series); len(got) != 2 || got[0] != "SERIESPAGE03" || got[1] != "SERIESPAGE02" {
+	if got := seriesPublicIDs(backAgain.Series); len(got) != 2 || got[0] != "SERIESPAGE03" || got[1] != "SERIESPAGE02" {
 		t.Fatalf("page 1 revisited = %v, want the two newest series again", got)
 	}
 }
@@ -217,19 +217,19 @@ func TestDBGetSeriesDetailListsOnlyPublishedEpisodes(t *testing.T) {
 		PublishedAt: time.Now().Add(24 * time.Hour),
 	})
 
-	resp, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	resp, err := env.catalogClient().GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: series.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeriesDetail: %v", err)
 	}
-	got := episodePublicIDs(resp.Msg.Episodes)
+	got := episodePublicIDs(resp.Episodes)
 	if len(got) != 2 || got[0] != "EPISODEPUB01" || got[1] != "EPISODEPUB02" {
 		t.Fatalf("episodes = %v, want only the two published ones in order", got)
 	}
-	if resp.Msg.Episodes[1].Price != 300 {
-		t.Fatalf("second episode price = %d, want 300", resp.Msg.Episodes[1].Price)
+	if resp.Episodes[1].Price != 300 {
+		t.Fatalf("second episode price = %d, want 300", resp.Episodes[1].Price)
 	}
 }
 
@@ -249,40 +249,40 @@ func TestDBPublishedSeriesListAndDetailAgreeOnTheListingMetadata(t *testing.T) {
 		AgeRating:        "r15",
 	})
 
-	listed, err := env.catalogClient().ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	listed, err := env.catalogClient().ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
-	if len(listed.Msg.Series) != 1 || listed.Msg.Series[0].PublicId != series.PublicID {
-		t.Fatalf("series = %v, want the single seeded %s", seriesPublicIDs(listed.Msg.Series), series.PublicID)
+	if len(listed.Series) != 1 || listed.Series[0].PublicId != series.PublicID {
+		t.Fatalf("series = %v, want the single seeded %s", seriesPublicIDs(listed.Series), series.PublicID)
 	}
-	if listed.Msg.Series[0].Status != publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED {
-		t.Fatalf("listed status = %s, want COMPLETED", listed.Msg.Series[0].Status)
+	if listed.Series[0].Status != publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED {
+		t.Fatalf("listed status = %s, want COMPLETED", listed.Series[0].Status)
 	}
-	if want := []int32{2, 6}; !slices.Equal(listed.Msg.Series[0].ScheduleWeekdays, want) {
-		t.Fatalf("listed schedule_weekdays = %v, want %v", listed.Msg.Series[0].ScheduleWeekdays, want)
+	if want := []int32{2, 6}; !slices.Equal(listed.Series[0].ScheduleWeekdays, want) {
+		t.Fatalf("listed schedule_weekdays = %v, want %v", listed.Series[0].ScheduleWeekdays, want)
 	}
-	if listed.Msg.Series[0].AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
-		t.Fatalf("listed age_rating = %s, want R15", listed.Msg.Series[0].AgeRating)
+	if listed.Series[0].AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
+		t.Fatalf("listed age_rating = %s, want R15", listed.Series[0].AgeRating)
 	}
 
-	detail, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	detail, err := env.catalogClient().GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: series.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeriesDetail: %v", err)
 	}
-	if detail.Msg.Series.Status != listed.Msg.Series[0].Status {
-		t.Fatalf("detail status = %s, list says %s", detail.Msg.Series.Status, listed.Msg.Series[0].Status)
+	if detail.Series.Status != listed.Series[0].Status {
+		t.Fatalf("detail status = %s, list says %s", detail.Series.Status, listed.Series[0].Status)
 	}
-	if !slices.Equal(detail.Msg.Series.ScheduleWeekdays, listed.Msg.Series[0].ScheduleWeekdays) {
-		t.Fatalf("detail schedule_weekdays = %v, list says %v", detail.Msg.Series.ScheduleWeekdays, listed.Msg.Series[0].ScheduleWeekdays)
+	if !slices.Equal(detail.Series.ScheduleWeekdays, listed.Series[0].ScheduleWeekdays) {
+		t.Fatalf("detail schedule_weekdays = %v, list says %v", detail.Series.ScheduleWeekdays, listed.Series[0].ScheduleWeekdays)
 	}
-	if detail.Msg.Series.AgeRating != listed.Msg.Series[0].AgeRating {
-		t.Fatalf("detail age_rating = %s, list says %s", detail.Msg.Series.AgeRating, listed.Msg.Series[0].AgeRating)
+	if detail.Series.AgeRating != listed.Series[0].AgeRating {
+		t.Fatalf("detail age_rating = %s, list says %s", detail.Series.AgeRating, listed.Series[0].AgeRating)
 	}
 }
 
@@ -300,21 +300,21 @@ func TestDBGetSeriesDetailCarriesTheListingMetadata(t *testing.T) {
 		AgeRating:        "r18",
 	})
 
-	resp, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	resp, err := env.catalogClient().GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: series.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeriesDetail: %v", err)
 	}
-	if resp.Msg.Series.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS {
-		t.Fatalf("status = %s, want HIATUS", resp.Msg.Series.Status)
+	if resp.Series.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS {
+		t.Fatalf("status = %s, want HIATUS", resp.Series.Status)
 	}
-	if want := []int32{1, 4}; !slices.Equal(resp.Msg.Series.ScheduleWeekdays, want) {
-		t.Fatalf("schedule_weekdays = %v, want %v", resp.Msg.Series.ScheduleWeekdays, want)
+	if want := []int32{1, 4}; !slices.Equal(resp.Series.ScheduleWeekdays, want) {
+		t.Fatalf("schedule_weekdays = %v, want %v", resp.Series.ScheduleWeekdays, want)
 	}
-	if resp.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18 {
-		t.Fatalf("age_rating = %s, want R18", resp.Msg.Series.AgeRating)
+	if resp.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18 {
+		t.Fatalf("age_rating = %s, want R18", resp.Series.AgeRating)
 	}
 }
 
@@ -339,14 +339,14 @@ func TestDBGetSeriesDetailCarriesTheEffectiveCommentMode(t *testing.T) {
 
 	seriesCommentMode := func(publicID string) publirattypesv1.CommentMode {
 		t.Helper()
-		resp, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		resp, err := env.catalogClient().GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: publicID,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("GetSeriesDetail %s: %v", publicID, err)
 		}
-		return resp.Msg.CommentMode
+		return resp.CommentMode
 	}
 
 	if got := seriesCommentMode(following.PublicID); got != publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE {
@@ -364,15 +364,15 @@ func TestDBGetSeriesDetailCarriesTheEffectiveCommentMode(t *testing.T) {
 		Title:     "Unconfigured Story",
 		Published: true,
 	})
-	resp, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	resp, err := env.catalogClient().GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   tenantContext(quiet),
 		PublicId: quietSeries.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeriesDetail on a tenant with no config row: %v", err)
 	}
-	if resp.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
-		t.Fatalf("comment_mode of a tenant that has saved nothing = %s, want DISABLED", resp.Msg.CommentMode)
+	if resp.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
+		t.Fatalf("comment_mode of a tenant that has saved nothing = %s, want DISABLED", resp.CommentMode)
 	}
 }
 
@@ -394,20 +394,20 @@ func TestDBGetEpisodeDetailCarriesTheSeriesAgeRating(t *testing.T) {
 		Price:    0,
 	})
 
-	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: "EPISODEPUB01",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	if resp.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
-		t.Fatalf("age_rating = %s, want R15", resp.Msg.Series.AgeRating)
+	if resp.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
+		t.Fatalf("age_rating = %s, want R15", resp.Series.AgeRating)
 	}
 	// The rating says who the series is for and nothing about entitlement: a
 	// free body is still free until reader age verification lands.
-	if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
-		t.Fatalf("access = %s, want FREE", resp.Msg.Access)
+	if resp.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
+		t.Fatalf("access = %s, want FREE", resp.Access)
 	}
 }
 
@@ -425,10 +425,10 @@ func TestDBGetSeriesDetailRefusesUnpublishedSeries(t *testing.T) {
 
 	client := env.catalogClient()
 	for _, publicID := range []string{draft.PublicID, embargoed.PublicID} {
-		_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		_, err := client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: publicID,
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodePermissionDenied {
 			t.Fatalf("GetSeriesDetail %s code = %v, want permission_denied (err=%v)", publicID, connect.CodeOf(err), err)
 		}
@@ -455,10 +455,10 @@ func TestDBGetEpisodeDetailHidesEpisodesThatAreNotPubliclyReadable(t *testing.T)
 
 	client := env.catalogClient()
 	for _, publicID := range []string{draftEpisode.PublicID, hiddenBySeries.PublicID} {
-		_, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		_, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: publicID,
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("GetEpisodeDetail %s code = %v, want not_found (err=%v)", publicID, connect.CodeOf(err), err)
 		}
@@ -478,28 +478,28 @@ func TestDBGetEpisodeDetailServesFreeEpisodeImages(t *testing.T) {
 	env.PG.SeedEpisodeImage(t, tenant.ID, episode.ID, 1)
 	env.PG.SeedEpisodeImage(t, tenant.ID, episode.ID, 2)
 
-	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: episode.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
-		t.Fatalf("access = %v, want free", resp.Msg.Access)
+	if resp.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
+		t.Fatalf("access = %v, want free", resp.Access)
 	}
-	if len(resp.Msg.Images) != 2 {
-		t.Fatalf("images = %d, want both pages of a free episode", len(resp.Msg.Images))
+	if len(resp.Images) != 2 {
+		t.Fatalf("images = %d, want both pages of a free episode", len(resp.Images))
 	}
-	if resp.Msg.Series.PublicId != series.PublicID {
-		t.Fatalf("series public_id = %q, want %q", resp.Msg.Series.PublicId, series.PublicID)
+	if resp.Series.PublicId != series.PublicID {
+		t.Fatalf("series public_id = %q, want %q", resp.Series.PublicId, series.PublicID)
 	}
 
 	// The reader of a free body may hold no credential at all, so the key
 	// material for its pages travels in the URL. Both pages carry the same one:
 	// it is scoped to the episode, not to the reader or the page.
-	tokens := make([]string, 0, len(resp.Msg.Images))
-	for _, image := range resp.Msg.Images {
+	tokens := make([]string, 0, len(resp.Images))
+	for _, image := range resp.Images {
 		parsed, parseErr := url.Parse(image.ImageUrl)
 		if parseErr != nil {
 			t.Fatalf("image url %q: %v", image.ImageUrl, parseErr)
@@ -550,42 +550,42 @@ func TestDBGetEpisodeDetailWithholdsPaidPagesUntilEntitled(t *testing.T) {
 		return &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID}
 	}
 
-	anonymous, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(request()))
+	anonymous, err := client.GetEpisodeDetail(context.Background(), request())
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail anonymous: %v", err)
 	}
-	if anonymous.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
-		t.Fatalf("anonymous access = %v, want locked", anonymous.Msg.Access)
+	if anonymous.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+		t.Fatalf("anonymous access = %v, want locked", anonymous.Access)
 	}
-	if len(anonymous.Msg.Images) != 0 {
-		t.Fatalf("anonymous images = %d, want none", len(anonymous.Msg.Images))
+	if len(anonymous.Images) != 0 {
+		t.Fatalf("anonymous images = %d, want none", len(anonymous.Images))
 	}
 
-	signedIn, err := client.GetEpisodeDetail(context.Background(), newBearerRequest(request(), tokenFor(t, tenant, browser)))
+	signedIn, err := client.GetEpisodeDetail(testutil.WithBearer(context.Background(), tokenFor(t, tenant, browser)), request())
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail as a signed-in non-buyer: %v", err)
 	}
-	if signedIn.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
-		t.Fatalf("non-buyer access = %v, want locked", signedIn.Msg.Access)
+	if signedIn.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+		t.Fatalf("non-buyer access = %v, want locked", signedIn.Access)
 	}
-	if len(signedIn.Msg.Images) != 0 {
-		t.Fatalf("non-buyer images = %d, want none", len(signedIn.Msg.Images))
+	if len(signedIn.Images) != 0 {
+		t.Fatalf("non-buyer images = %d, want none", len(signedIn.Images))
 	}
 
 	env.PG.SeedPurchase(t, tenant.ID, buyer.ID, episode.ID, episode.Price)
 
-	entitled, err := client.GetEpisodeDetail(context.Background(), newBearerRequest(request(), tokenFor(t, tenant, buyer)))
+	entitled, err := client.GetEpisodeDetail(testutil.WithBearer(context.Background(), tokenFor(t, tenant, buyer)), request())
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail as the buyer: %v", err)
 	}
-	if entitled.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
-		t.Fatalf("buyer access = %v, want entitled", entitled.Msg.Access)
+	if entitled.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
+		t.Fatalf("buyer access = %v, want entitled", entitled.Access)
 	}
-	if entitled.Msg.EntitlementSource != publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_PURCHASE {
-		t.Fatalf("buyer entitlement source = %v, want purchase", entitled.Msg.EntitlementSource)
+	if entitled.EntitlementSource != publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_PURCHASE {
+		t.Fatalf("buyer entitlement source = %v, want purchase", entitled.EntitlementSource)
 	}
-	if len(entitled.Msg.Images) != 1 {
-		t.Fatalf("buyer images = %d, want the page they paid for", len(entitled.Msg.Images))
+	if len(entitled.Images) != 1 {
+		t.Fatalf("buyer images = %d, want the page they paid for", len(entitled.Images))
 	}
 }
 
@@ -635,14 +635,14 @@ func TestDBGetEpisodeDetailNamesThePublishedEpisodesEitherSide(t *testing.T) {
 	client := env.catalogClient()
 	detailOf := func(t *testing.T, publicID string) *publirav1.GetEpisodeDetailResponse {
 		t.Helper()
-		resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: publicID,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("GetEpisodeDetail %s: %v", publicID, err)
 		}
-		return resp.Msg
+		return resp
 	}
 
 	// The paid episode in the middle: the draft before it and the scheduled one
@@ -718,14 +718,14 @@ func TestDBGetEpisodeDetailMarksANeighborInAFreeWindowAsFree(t *testing.T) {
 	})
 	env.PG.SeedEpisodeFreeWindow(t, tenant.ID, openWindow.ID, time.Now().Add(-time.Hour), time.Now().Add(time.Hour))
 
-	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: "EPISODEONE01",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	next := resp.Msg.NextEpisode
+	next := resp.NextEpisode
 	if next.GetPublicId() != "EPISODETWO02" {
 		t.Fatalf("next_episode = %q, want EPISODETWO02", next.GetPublicId())
 	}
@@ -738,15 +738,15 @@ func TestDBGetEpisodeDetailMarksANeighborInAFreeWindowAsFree(t *testing.T) {
 
 	// The identically priced episode outside the window is the control: without
 	// one, a link to it stays paid.
-	fromTheOtherSide, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	fromTheOtherSide, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: "EPISODETWO02",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	if fromTheOtherSide.Msg.NextEpisode.GetIsFree() {
-		t.Fatalf("next_episode is_free = %t, want a priced episode with no window to stay paid", fromTheOtherSide.Msg.NextEpisode.GetIsFree())
+	if fromTheOtherSide.NextEpisode.GetIsFree() {
+		t.Fatalf("next_episode is_free = %t, want a priced episode with no window to stay paid", fromTheOtherSide.NextEpisode.GetIsFree())
 	}
 }
 
@@ -772,14 +772,14 @@ func TestDBGetEpisodeDetailFollowsAReorderedSeries(t *testing.T) {
 	client := env.catalogClient()
 	neighborsOf := func(t *testing.T, publicID string) (string, string) {
 		t.Helper()
-		resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: publicID,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("GetEpisodeDetail %s: %v", publicID, err)
 		}
-		return resp.Msg.PreviousEpisode.GetPublicId(), resp.Msg.NextEpisode.GetPublicId()
+		return resp.PreviousEpisode.GetPublicId(), resp.NextEpisode.GetPublicId()
 	}
 
 	previous, next := neighborsOf(t, "EPISODETWO02")
@@ -831,23 +831,23 @@ func TestDBEpisodeNeighborsAgreeWithTheSeriesDetailOrder(t *testing.T) {
 	}
 
 	client := env.catalogClient()
-	seriesDetail, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	seriesDetail, err := client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: series.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeriesDetail: %v", err)
 	}
-	listed := episodePublicIDs(seriesDetail.Msg.Episodes)
+	listed := episodePublicIDs(seriesDetail.Episodes)
 	if len(listed) != 4 {
 		t.Fatalf("episodes = %v, want all four published episodes", listed)
 	}
 
 	for index, publicID := range listed {
-		episodeDetail, detailErr := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		episodeDetail, detailErr := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: publicID,
-		}))
+		})
 		if detailErr != nil {
 			t.Fatalf("GetEpisodeDetail %s: %v", publicID, detailErr)
 		}
@@ -856,7 +856,7 @@ func TestDBEpisodeNeighborsAgreeWithTheSeriesDetailOrder(t *testing.T) {
 		if index > 0 {
 			wantPrevious = listed[index-1]
 		}
-		if got := episodeDetail.Msg.PreviousEpisode.GetPublicId(); got != wantPrevious {
+		if got := episodeDetail.PreviousEpisode.GetPublicId(); got != wantPrevious {
 			t.Errorf("previous_episode of %s (position %d in %v) = %q, want %q", publicID, index, listed, got, wantPrevious)
 		}
 
@@ -864,7 +864,7 @@ func TestDBEpisodeNeighborsAgreeWithTheSeriesDetailOrder(t *testing.T) {
 		if index < len(listed)-1 {
 			wantNext = listed[index+1]
 		}
-		if got := episodeDetail.Msg.NextEpisode.GetPublicId(); got != wantNext {
+		if got := episodeDetail.NextEpisode.GetPublicId(); got != wantNext {
 			t.Errorf("next_episode of %s (position %d in %v) = %q, want %q", publicID, index, listed, got, wantNext)
 		}
 	}

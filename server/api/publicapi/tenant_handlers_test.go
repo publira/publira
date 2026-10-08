@@ -5,19 +5,20 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 
 	"github.com/publira/publira/server/internal/ageverification"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -185,36 +186,36 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	expectSignInProvidersUnavailable(mock, tenantID)
 	expectPublishedWebPushPublicKey(mock, publicKey)
 
-	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if resp.Msg.TenantPublicId != "TENANT001" {
-		t.Fatalf("tenant_public_id = %q, want TENANT001", resp.Msg.TenantPublicId)
+	if resp.TenantPublicId != "TENANT001" {
+		t.Fatalf("tenant_public_id = %q, want TENANT001", resp.TenantPublicId)
 	}
-	if resp.Msg.CopyrightText != "© Publira" {
-		t.Fatalf("copyright_text = %q, want © Publira", resp.Msg.CopyrightText)
+	if resp.CopyrightText != "© Publira" {
+		t.Fatalf("copyright_text = %q, want © Publira", resp.CopyrightText)
 	}
-	if resp.Msg.Theme == nil {
+	if resp.Theme == nil {
 		t.Fatal("theme is nil, want populated theme")
 	}
-	if resp.Msg.Theme.PrimaryColor != "#112233" {
-		t.Fatalf("theme.primary_color = %q, want #112233", resp.Msg.Theme.PrimaryColor)
+	if resp.Theme.PrimaryColor != "#112233" {
+		t.Fatalf("theme.primary_color = %q, want #112233", resp.Theme.PrimaryColor)
 	}
-	if resp.Msg.Theme.BackgroundColor != "#f5f5f2" {
-		t.Fatalf("theme.background_color = %q, want #f5f5f2", resp.Msg.Theme.BackgroundColor)
+	if resp.Theme.BackgroundColor != "#f5f5f2" {
+		t.Fatalf("theme.background_color = %q, want #f5f5f2", resp.Theme.BackgroundColor)
 	}
-	if resp.Msg.Timezone != "UTC" {
-		t.Fatalf("timezone = %q, want UTC", resp.Msg.Timezone)
+	if resp.Timezone != "UTC" {
+		t.Fatalf("timezone = %q, want UTC", resp.Timezone)
 	}
-	if resp.Msg.DefaultLocale != "ja" {
-		t.Fatalf("default_locale = %q, want ja", resp.Msg.DefaultLocale)
+	if resp.DefaultLocale != "ja" {
+		t.Fatalf("default_locale = %q, want ja", resp.DefaultLocale)
 	}
-	if resp.Msg.WebPushVapidPublicKey != publicKey {
-		t.Fatalf("web_push_vapid_public_key = %q, want %q", resp.Msg.WebPushVapidPublicKey, publicKey)
+	if resp.WebPushVapidPublicKey != publicKey {
+		t.Fatalf("web_push_vapid_public_key = %q, want %q", resp.WebPushVapidPublicKey, publicKey)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -256,15 +257,15 @@ func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 			AddRow(logoImageID, "logo", "original", "image/png", int64(4096), int32(1024), int32(256)))
 	expectSignInProvidersUnavailable(mock, tenantID)
 
-	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
 
-	theme := resp.Msg.Theme
+	theme := resp.Theme
 	if theme == nil {
 		t.Fatal("theme is nil, want populated theme")
 	}
@@ -315,15 +316,15 @@ func TestGetTenantAnswersNoThemeWithoutAThemeRow(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	expectSignInProvidersUnavailable(mock, tenantID)
 
-	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if resp.Msg.Theme != nil {
-		t.Fatalf("theme = %+v, want nil", resp.Msg.Theme)
+	if resp.Theme != nil {
+		t.Fatalf("theme = %+v, want nil", resp.Theme)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -380,10 +381,10 @@ func TestGetTenantFailsWhenTheBrandingCannotBeRead(t *testing.T) {
 			expectPaymentsUnavailable(env.mock, tenantID)
 			tt.expectTheme(env.mock, tenantID, now)
 
-			client := publirav1connect.NewTenantServiceClient(env.ts.Client(), env.ts.URL)
-			_, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+			client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+			_, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeInternal {
 				t.Fatalf("GetTenant error = %v, want CodeInternal", err)
 			}
@@ -414,15 +415,15 @@ func TestGetTenantReturnsConfiguredTimezone(t *testing.T) {
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
 	expectSignInProvidersUnavailable(mock, tenantID)
 
-	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if resp.Msg.Timezone != "America/Los_Angeles" {
-		t.Fatalf("timezone = %q, want America/Los_Angeles", resp.Msg.Timezone)
+	if resp.Timezone != "America/Los_Angeles" {
+		t.Fatalf("timezone = %q, want America/Los_Angeles", resp.Timezone)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -445,15 +446,15 @@ func TestGetTenantFallsBackToDefaultTimezone(t *testing.T) {
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
 	expectSignInProvidersUnavailable(mock, tenantID)
 
-	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if resp.Msg.Timezone != "UTC" {
-		t.Fatalf("timezone = %q, want UTC", resp.Msg.Timezone)
+	if resp.Timezone != "UTC" {
+		t.Fatalf("timezone = %q, want UTC", resp.Timezone)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -476,15 +477,15 @@ func TestGetTenantReturnsConfiguredDefaultLocale(t *testing.T) {
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
 	expectSignInProvidersUnavailable(mock, tenantID)
 
-	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if resp.Msg.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
+	if resp.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.DefaultLocale)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -509,10 +510,10 @@ func TestGetTenantFailsOnAnUnusableStoredLocale(t *testing.T) {
 			now := time.Now()
 			expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, tt.stored)
 
-			client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-			_, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+			client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			_, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeInternal {
 				t.Fatalf("GetTenant code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 			}
@@ -537,14 +538,14 @@ func TestGetTenantReportsWhetherPaymentsCanBeAccepted(t *testing.T) {
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
 	expectSignInProvidersUnavailable(env.mock, tenantID)
 
-	client := publirav1connect.NewTenantServiceClient(env.ts.Client(), env.ts.URL)
-	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if !resp.Msg.AcceptsPayments {
+	if !resp.AcceptsPayments {
 		t.Fatal("accepts_payments = false, want true")
 	}
 	assertPublicExpectations(t, env.mock)
@@ -567,14 +568,14 @@ func TestGetTenantDoesNotAcceptPaymentsWithUndecryptableSettings(t *testing.T) {
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
 	expectSignInProvidersUnavailable(env.mock, tenantID)
 
-	client := publirav1connect.NewTenantServiceClient(env.ts.Client(), env.ts.URL)
-	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if resp.Msg.AcceptsPayments {
+	if resp.AcceptsPayments {
 		t.Fatal("accepts_payments = true, want false")
 	}
 	assertPublicExpectations(t, env.mock)
@@ -608,15 +609,15 @@ func TestGetTenantReportsTheTenantCommentMode(t *testing.T) {
 					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
 			expectSignInProvidersUnavailable(mock, tenantID)
 
-			client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-			resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+			client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-			}))
+			})
 			if err != nil {
 				t.Fatalf("GetTenant: %v", err)
 			}
-			if resp.Msg.CommentMode != tc.want {
-				t.Fatalf("comment_mode = %v, want %v", resp.Msg.CommentMode, tc.want)
+			if resp.CommentMode != tc.want {
+				t.Fatalf("comment_mode = %v, want %v", resp.CommentMode, tc.want)
 			}
 			assertPublicExpectations(t, mock)
 		})
@@ -640,15 +641,15 @@ func TestGetTenantReportsCommentingOffWithoutAConfigRow(t *testing.T) {
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
 	expectSignInProvidersUnavailable(mock, tenantID)
 
-	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if resp.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
-		t.Fatalf("comment_mode = %v, want COMMENT_MODE_DISABLED", resp.Msg.CommentMode)
+	if resp.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
+		t.Fatalf("comment_mode = %v, want COMMENT_MODE_DISABLED", resp.CommentMode)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -663,10 +664,10 @@ func TestGetTenantFailsOnAnUnsupportedCommentMode(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectTenantConfigWithCommentMode(mock, tenantID, now, "members_only")
 
-	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetTenant error = %v, want CodeInternal", err)
 	}
@@ -732,15 +733,15 @@ func TestGetTenantReportsTheTenantAgeVerification(t *testing.T) {
 					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
 			expectSignInProvidersUnavailable(mock, tenantID)
 
-			client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-			resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+			client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-			}))
+			})
 			if err != nil {
 				t.Fatalf("GetTenant: %v", err)
 			}
-			if resp.Msg.AgeVerification != tc.want {
-				t.Fatalf("age_verification = %v, want %v", resp.Msg.AgeVerification, tc.want)
+			if resp.AgeVerification != tc.want {
+				t.Fatalf("age_verification = %v, want %v", resp.AgeVerification, tc.want)
 			}
 			assertPublicExpectations(t, mock)
 		})
@@ -756,10 +757,10 @@ func TestGetTenantFailsOnAnUnsupportedAgeVerification(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectTenantAgeVerification(mock, tenantID, now, "everything")
 
-	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetTenant error = %v, want CodeInternal", err)
 	}
@@ -803,20 +804,20 @@ func TestGetTenantReportsTheAppPurchaseRoute(t *testing.T) {
 					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
 			expectSignInProvidersUnavailable(mock, tenantID)
 
-			client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-			resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+			client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-			}))
+			})
 			if err != nil {
 				t.Fatalf("GetTenant: %v", err)
 			}
 			// A store read that fails answers no store rather than failing the
 			// read, as accepts_payments does.
-			if resp.Msg.AcceptsAppStorePayments || resp.Msg.AcceptsGooglePlayPayments {
-				t.Fatalf("store payments = %v / %v, want false / false", resp.Msg.AcceptsAppStorePayments, resp.Msg.AcceptsGooglePlayPayments)
+			if resp.AcceptsAppStorePayments || resp.AcceptsGooglePlayPayments {
+				t.Fatalf("store payments = %v / %v, want false / false", resp.AcceptsAppStorePayments, resp.AcceptsGooglePlayPayments)
 			}
-			if resp.Msg.AppPurchaseRoute != tc.want {
-				t.Fatalf("app_purchase_route = %v, want %v", resp.Msg.AppPurchaseRoute, tc.want)
+			if resp.AppPurchaseRoute != tc.want {
+				t.Fatalf("app_purchase_route = %v, want %v", resp.AppPurchaseRoute, tc.want)
 			}
 			assertPublicExpectations(t, mock)
 		})
@@ -830,10 +831,10 @@ func TestGetTenantFailsOnAnUnsupportedAppPurchaseRoute(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectTenantConfigWithAppPurchaseRoute(mock, tenantID, now, "coins")
 
-	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetTenant error = %v, want CodeInternal", err)
 	}

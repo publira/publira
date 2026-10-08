@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/appstore"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -16,25 +16,25 @@ import (
 
 func (s *apiServer) ProcessAppStoreNotification(
 	ctx context.Context,
-	req *connect.Request[publirav1.ProcessAppStoreNotificationRequest],
-) (*connect.Response[publirav1.ProcessAppStoreNotificationResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ProcessAppStoreNotificationRequest,
+) (*publirav1.ProcessAppStoreNotificationResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	if len(req.Msg.Payload) == 0 || len(req.Msg.Payload) > maxPaymentWebhookPayload {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid App Store notification payload"))
+	if len(req.Payload) == 0 || len(req.Payload) > maxPaymentWebhookPayload {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid App Store notification payload")
 	}
 	var body struct {
 		SignedPayload string `json:"signedPayload"`
 	}
-	if err := json.Unmarshal(req.Msg.Payload, &body); err != nil || body.SignedPayload == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid App Store notification payload"))
+	if err := json.Unmarshal(req.Payload, &body); err != nil || body.SignedPayload == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid App Store notification payload")
 	}
 	notification, err := s.stores.appStoreVerifier.VerifyNotification(body.SignedPayload)
 	if err != nil {
 		s.logger.WarnContext(ctx, "App Store notification does not verify", "tenant_id", tenant.ID, "error", err)
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the App Store notification does not verify"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "the App Store notification does not verify")
 	}
 
 	// The app is read from the association rather than from the App Store
@@ -46,26 +46,26 @@ func (s *apiServer) ProcessAppStoreNotification(
 	}
 	if !config.IosBundleIdentifier.Valid || config.IosBundleIdentifier.String == "" {
 		s.logger.WarnContext(ctx, "App Store notification for a tenant with no iOS app", "tenant_id", tenant.ID)
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the tenant has no iOS app"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "the tenant has no iOS app")
 	}
 	bundleIdentifier := config.IosBundleIdentifier.String
 	if notification.Data.BundleID != bundleIdentifier {
 		s.logger.WarnContext(ctx, "App Store notification names another app", "tenant_id", tenant.ID, "notification_uuid", notification.NotificationUUID)
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the App Store notification names another app"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "the App Store notification names another app")
 	}
 
 	switch notification.NotificationType {
 	case appstore.NotificationTypeRefund, appstore.NotificationTypeRevoke:
 	default:
-		return connect.NewResponse(&publirav1.ProcessAppStoreNotificationResponse{}), nil
+		return &publirav1.ProcessAppStoreNotificationResponse{}, nil
 	}
 	transaction, err := s.stores.appStoreVerifier.VerifyTransaction(notification.Data.SignedTransactionInfo)
 	if err != nil {
 		s.logger.WarnContext(ctx, "App Store notification carries a transaction that does not verify", "tenant_id", tenant.ID, "notification_uuid", notification.NotificationUUID, "error", err)
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the App Store notification does not verify"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "the App Store notification does not verify")
 	}
 	if transaction.BundleID != bundleIdentifier {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the App Store notification names another app"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "the App Store notification names another app")
 	}
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -85,5 +85,5 @@ func (s *apiServer) ProcessAppStoreNotification(
 		"notification_type", notification.NotificationType,
 		"held_for_purchase", !applied,
 	)
-	return connect.NewResponse(&publirav1.ProcessAppStoreNotificationResponse{}), nil
+	return &publirav1.ProcessAppStoreNotificationResponse{}, nil
 }

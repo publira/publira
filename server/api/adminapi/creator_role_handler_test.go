@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 )
 
 func TestNormalizeCreatorRoleNameTrims(t *testing.T) {

@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectproto"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -48,7 +49,7 @@ func TestStorageUploadErrorReportsMissingPlatformStorage(t *testing.T) {
 	if len(details) != 1 {
 		t.Fatalf("details = %d, want one ErrorInfo", len(details))
 	}
-	value, detailErr := details[0].Value()
+	value, detailErr := connectproto.UnmarshalErrorDetail(details[0])
 	if detailErr != nil {
 		t.Fatalf("detail Value(): %v", detailErr)
 	}

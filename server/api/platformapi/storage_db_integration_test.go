@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
@@ -83,16 +84,7 @@ func newStorageClient(t *testing.T, tester storagesettings.Tester) (
 	t.Cleanup(ts.Close)
 
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	return publirasplatformv1connect.NewPlatformStorageSettingsServiceClient(ts.Client(), ts.URL), pg, operator
-}
-
-// authedStorageRequest is newDBAuthedRequest over a message the caller already
-// holds a pointer to. A protobuf message carries a mutex, so a helper that
-// takes one by value cannot be handed a variable.
-func authedStorageRequest[T any](operator testutil.PlatformOperator, msg *T) *connect.Request[T] {
-	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+issueDBIntegrationToken(operator))
-	return req
+	return publirasplatformv1connect.NewPlatformStorageSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))), pg, operator
 }
 
 func storageUpdateRequest(revision int64) *publirasplatformv1.UpdatePlatformStorageSettingsRequest {
@@ -116,11 +108,11 @@ func updateStorageSettings(
 	req *publirasplatformv1.UpdatePlatformStorageSettingsRequest,
 ) (*publirasplatformv1.PlatformStorageSettings, error) {
 	t.Helper()
-	resp, err := client.UpdatePlatformStorageSettings(context.Background(), authedStorageRequest(operator, req))
+	resp, err := client.UpdatePlatformStorageSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg.GetSettings(), nil
+	return resp.GetSettings(), nil
 }
 
 func getStorageSettings(
@@ -129,11 +121,11 @@ func getStorageSettings(
 	operator testutil.PlatformOperator,
 ) *publirasplatformv1.PlatformStorageSettings {
 	t.Helper()
-	resp, err := client.GetPlatformStorageSettings(context.Background(), authedStorageRequest(operator, &publirasplatformv1.GetPlatformStorageSettingsRequest{}))
+	resp, err := client.GetPlatformStorageSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformStorageSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformStorageSettings: %v", err)
 	}
-	return resp.Msg.GetSettings()
+	return resp.GetSettings()
 }
 
 func storedSecretCiphertext(t *testing.T, pg *testutil.PostgresEnv) string {
@@ -339,7 +331,7 @@ func TestDBUpdatePlatformStorageSettingsAuditsInTheSameTransaction(t *testing.T)
 	ts := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(ts.Close)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformStorageSettingsServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformStorageSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	if _, err := updateStorageSettings(t, client, operator, storageUpdateRequest(0)); err != nil {
 		t.Fatalf("UpdatePlatformStorageSettings: %v", err)
@@ -359,21 +351,21 @@ func TestDBTestPlatformStorageConnectionSignsWithTheStoredSecret(t *testing.T) {
 		t.Fatalf("UpdatePlatformStorageSettings: %v", err)
 	}
 
-	resp, err := client.TestPlatformStorageConnection(context.Background(), authedStorageRequest(operator, &publirasplatformv1.TestPlatformStorageConnectionRequest{
+	resp, err := client.TestPlatformStorageConnection(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.TestPlatformStorageConnectionRequest{
 		Bucket:                    "publira-objects",
 		Region:                    "ap-northeast-1",
 		Endpoint:                  "https://s3.example.com",
 		ForcePathStyle:            true,
 		AccessKeyId:               "AKIAEXAMPLE",
 		SecretAccessKeyUpdateMode: publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("TestPlatformStorageConnection: %v", err)
 	}
-	if len(resp.Msg.GetChecks()) != 4 {
-		t.Fatalf("checks = %d, want one per operation", len(resp.Msg.GetChecks()))
+	if len(resp.GetChecks()) != 4 {
+		t.Fatalf("checks = %d, want one per operation", len(resp.GetChecks()))
 	}
-	for _, check := range resp.Msg.GetChecks() {
+	for _, check := range resp.GetChecks() {
 		if !check.GetSucceeded() {
 			t.Fatalf("operation %v was reported as refused with %q", check.GetOperation(), check.GetReason())
 		}
@@ -405,14 +397,14 @@ func TestDBTestPlatformStorageConnectionReportsARefusedOperation(t *testing.T) {
 	}}
 	client, pg, operator := newStorageClient(t, tester)
 
-	resp, err := client.TestPlatformStorageConnection(context.Background(), authedStorageRequest(operator, &publirasplatformv1.TestPlatformStorageConnectionRequest{
+	resp, err := client.TestPlatformStorageConnection(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.TestPlatformStorageConnectionRequest{
 		Bucket: "publira-objects",
 		Region: "ap-northeast-1",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("TestPlatformStorageConnection: %v", err)
 	}
-	checks := resp.Msg.GetChecks()
+	checks := resp.GetChecks()
 	if len(checks) != 4 || checks[1].GetSucceeded() || checks[1].GetReason() != rpcerrors.ReasonStorageTestPermission {
 		t.Fatalf("checks = %+v, want the read reported as refused", checks)
 	}
@@ -437,12 +429,12 @@ func TestDBTestPlatformStorageConnectionRefusesANewAccessKeyIDWithTheStoredSecre
 		t.Fatalf("UpdatePlatformStorageSettings: %v", err)
 	}
 
-	_, err := client.TestPlatformStorageConnection(context.Background(), authedStorageRequest(operator, &publirasplatformv1.TestPlatformStorageConnectionRequest{
+	_, err := client.TestPlatformStorageConnection(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.TestPlatformStorageConnectionRequest{
 		Bucket:                    "publira-objects",
 		Region:                    "ap-northeast-1",
 		AccessKeyId:               "AKIAOTHER",
 		SecretAccessKeyUpdateMode: publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("TestPlatformStorageConnection code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
@@ -457,10 +449,10 @@ func TestDBTestPlatformStorageConnectionRunsWithoutAStoredCredential(t *testing.
 	tester := &recordingTester{checks: passingChecks()}
 	client, _, operator := newStorageClient(t, tester)
 
-	if _, err := client.TestPlatformStorageConnection(context.Background(), authedStorageRequest(operator, &publirasplatformv1.TestPlatformStorageConnectionRequest{
+	if _, err := client.TestPlatformStorageConnection(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.TestPlatformStorageConnectionRequest{
 		Bucket: "publira-objects",
 		Region: "ap-northeast-1",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("TestPlatformStorageConnection: %v", err)
 	}
 

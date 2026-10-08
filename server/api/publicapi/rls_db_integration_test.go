@@ -460,39 +460,39 @@ func TestDBReaderStateIsMemberScopedByRLS(t *testing.T) {
 
 	client := env.authClient()
 	ownerToken := tokenFor(t, tenant, owner)
-	if _, err := client.MarkAnnouncementAsRead(context.Background(), newBearerRequest(&publirav1.MarkAnnouncementAsReadRequest{
+	if _, err := client.MarkAnnouncementAsRead(testutil.WithBearer(context.Background(), ownerToken), &publirav1.MarkAnnouncementAsReadRequest{
 		Tenant:         tenantContext(tenant),
 		AnnouncementId: announcementID.String(),
-	}, ownerToken)); err != nil {
+	}); err != nil {
 		t.Fatalf("MarkAnnouncementAsRead as the owner: %v", err)
 	}
-	if _, err := client.UpdateNotificationSettings(context.Background(), newBearerRequest(&publirav1.UpdateNotificationSettingsRequest{
+	if _, err := client.UpdateNotificationSettings(testutil.WithBearer(context.Background(), ownerToken), &publirav1.UpdateNotificationSettingsRequest{
 		Tenant:                    tenantContext(tenant),
 		EmailNotificationsEnabled: false,
-	}, ownerToken)); err != nil {
+	}); err != nil {
 		t.Fatalf("UpdateNotificationSettings as the owner: %v", err)
 	}
 
 	otherToken := tokenFor(t, tenant, other)
-	listed, err := client.ListAnnouncements(context.Background(), newBearerRequest(&publirav1.ListAnnouncementsRequest{
+	listed, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), otherToken), &publirav1.ListAnnouncementsRequest{
 		Tenant: tenantContext(tenant),
-	}, otherToken))
+	})
 	if err != nil {
 		t.Fatalf("ListAnnouncements as the other member: %v", err)
 	}
-	if len(listed.Msg.Announcements) != 1 {
-		t.Fatalf("announcements for the other member = %d, want 1", len(listed.Msg.Announcements))
+	if len(listed.Announcements) != 1 {
+		t.Fatalf("announcements for the other member = %d, want 1", len(listed.Announcements))
 	}
-	if listed.Msg.Announcements[0].IsRead {
+	if listed.Announcements[0].IsRead {
 		t.Fatalf("announcement reads as read for the other member, want the owner's read state hidden")
 	}
-	settings, err := client.GetNotificationSettings(context.Background(), newBearerRequest(&publirav1.GetNotificationSettingsRequest{
+	settings, err := client.GetNotificationSettings(testutil.WithBearer(context.Background(), otherToken), &publirav1.GetNotificationSettingsRequest{
 		Tenant: tenantContext(tenant),
-	}, otherToken))
+	})
 	if err != nil {
 		t.Fatalf("GetNotificationSettings as the other member: %v", err)
 	}
-	if !settings.Msg.EmailNotificationsEnabled {
+	if !settings.EmailNotificationsEnabled {
 		t.Fatalf("other member email_notifications_enabled = false, want the owner's setting hidden")
 	}
 
@@ -560,16 +560,16 @@ func TestDBReaderStateIsTenantScopedByRLS(t *testing.T) {
 
 	client := env.authClient()
 	token := tokenFor(t, tenant, member)
-	if _, err := client.MarkAnnouncementAsRead(context.Background(), newBearerRequest(&publirav1.MarkAnnouncementAsReadRequest{
+	if _, err := client.MarkAnnouncementAsRead(testutil.WithBearer(context.Background(), token), &publirav1.MarkAnnouncementAsReadRequest{
 		Tenant:         tenantContext(tenant),
 		AnnouncementId: announcementID.String(),
-	}, token)); err != nil {
+	}); err != nil {
 		t.Fatalf("MarkAnnouncementAsRead: %v", err)
 	}
-	if _, err := client.UpdateNotificationSettings(context.Background(), newBearerRequest(&publirav1.UpdateNotificationSettingsRequest{
+	if _, err := client.UpdateNotificationSettings(testutil.WithBearer(context.Background(), token), &publirav1.UpdateNotificationSettingsRequest{
 		Tenant:                    tenantContext(tenant),
 		EmailNotificationsEnabled: false,
-	}, token)); err != nil {
+	}); err != nil {
 		t.Fatalf("UpdateNotificationSettings: %v", err)
 	}
 
@@ -617,10 +617,10 @@ func TestDBNotificationsAreMemberScopedByRLS(t *testing.T) {
 	ownerBell := insertTenantNotification(t, env, tenant.ID, owner.ID, "episode_published", "episode:E001", `{"episode_id":"E001"}`)
 
 	client := env.notificationClient()
-	if _, err := client.MarkNotificationAsRead(context.Background(), newBearerRequest(&publirav1.MarkNotificationAsReadRequest{
+	if _, err := client.MarkNotificationAsRead(testutil.WithBearer(context.Background(), tokenFor(t, tenant, owner)), &publirav1.MarkNotificationAsReadRequest{
 		Tenant:         tenantContext(tenant),
 		NotificationId: ownerBell.String(),
-	}, tokenFor(t, tenant, owner))); err != nil {
+	}); err != nil {
 		t.Fatalf("MarkNotificationAsRead as the owner: %v", err)
 	}
 
@@ -704,10 +704,10 @@ func TestDBNotificationsAreTenantScopedByRLS(t *testing.T) {
 	bell := insertTenantNotification(t, env, tenant.ID, member.ID, "episode_published", "episode:E001", `{"episode_id":"E001"}`)
 	unread := insertTenantNotification(t, env, tenant.ID, member.ID, "episode_published", "episode:E002", `{"episode_id":"E002"}`)
 
-	if _, err := env.notificationClient().MarkNotificationAsRead(context.Background(), newBearerRequest(&publirav1.MarkNotificationAsReadRequest{
+	if _, err := env.notificationClient().MarkNotificationAsRead(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.MarkNotificationAsReadRequest{
 		Tenant:         tenantContext(tenant),
 		NotificationId: bell.String(),
-	}, tokenFor(t, tenant, member))); err != nil {
+	}); err != nil {
 		t.Fatalf("MarkNotificationAsRead: %v", err)
 	}
 

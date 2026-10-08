@@ -4,21 +4,23 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func pageOnlyColumns() []string {
@@ -51,14 +53,13 @@ func newPageClient(
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
-	return publiraadminv1connect.NewAdminPagesServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+	return publiraadminv1connect.NewAdminPagesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))), mock, sessionToken
 }
 
-func newListPagesRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListPagesRequest] {
-	req := connect.NewRequest(&publiraadminv1.ListPagesRequest{
+func newListPagesRequest(tenantID uuid.UUID) *publiraadminv1.ListPagesRequest {
+	req := &publiraadminv1.ListPagesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 	return req
 }
 
@@ -68,14 +69,13 @@ func TestCreatePageInvalidSlugIncludesFieldViolation(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
 
-	req := connect.NewRequest(&publiraadminv1.CreatePageRequest{
+	req := &publiraadminv1.CreatePageRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Slug:   "not_a_slug",
 		Title:  "Invalid slug",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.CreatePage(context.Background(), req)
+	_, err := client.CreatePage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreatePage code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -89,14 +89,13 @@ func TestCreatePageRefusesASlugThatTakesOverTheSignInScreen(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
 
-	req := connect.NewRequest(&publiraadminv1.CreatePageRequest{
+	req := &publiraadminv1.CreatePageRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Slug:   "/login",
 		Title:  "Sign in help",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.CreatePage(context.Background(), req)
+	_, err := client.CreatePage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreatePage code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -113,14 +112,13 @@ func TestCreatePageRefusesASlugTheSiteAnswersBeforePages(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
 
-	req := connect.NewRequest(&publiraadminv1.CreatePageRequest{
+	req := &publiraadminv1.CreatePageRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Slug:   "/ja",
 		Title:  "Japanese",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.CreatePage(context.Background(), req)
+	_, err := client.CreatePage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreatePage code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -148,19 +146,19 @@ func TestListPagesFirstPageReportsNextToken(t *testing.T) {
 			ids[2], tenantID, "/third", "Third", now.Add(2*time.Minute),
 		))
 
-	req := newListPagesRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	resp, err := client.ListPages(context.Background(), req)
+	req := newListPagesRequest(tenantID)
+	req.Limit = 2
+	resp, err := client.ListPages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListPages: %v", err)
 	}
-	if len(resp.Msg.Pages) != 2 {
-		t.Fatalf("pages count = %d, want the over-fetched row dropped", len(resp.Msg.Pages))
+	if len(resp.Pages) != 2 {
+		t.Fatalf("pages count = %d, want the over-fetched row dropped", len(resp.Pages))
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -182,18 +180,18 @@ func TestListPagesFollowsNextToken(t *testing.T) {
 		WithArgs("ja", tenantID, boundaryID, false, now, int32(3)).
 		WillReturnRows(addPageRow(pageRows(), uuid.Must(uuid.NewV7()), tenantID, "/last", "Last", now.Add(time.Minute)))
 
-	req := newListPagesRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.EncodeTimeUUID(pagination.Forward, now, boundaryID)
-	resp, err := client.ListPages(context.Background(), req)
+	req := newListPagesRequest(tenantID)
+	req.Limit = 2
+	req.Token = pagination.EncodeTimeUUID(pagination.Forward, now, boundaryID)
+	resp, err := client.ListPages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListPages: %v", err)
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the previous page")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -214,24 +212,24 @@ func TestListPagesFollowsPreviousTokenBackwards(t *testing.T) {
 			olderID, tenantID, "/older", "Older", now.Add(-2*time.Minute),
 		))
 
-	req := newListPagesRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.EncodeTimeUUID(pagination.Backward, now, boundaryID)
-	resp, err := client.ListPages(context.Background(), req)
+	req := newListPagesRequest(tenantID)
+	req.Limit = 2
+	req.Token = pagination.EncodeTimeUUID(pagination.Backward, now, boundaryID)
+	resp, err := client.ListPages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListPages: %v", err)
 	}
-	slugs := make([]string, 0, len(resp.Msg.Pages))
-	for _, page := range resp.Msg.Pages {
+	slugs := make([]string, 0, len(resp.Pages))
+	for _, page := range resp.Pages {
 		slugs = append(slugs, page.Slug)
 	}
 	if !slices.Equal(slugs, []string{"/older", "/newer"}) {
 		t.Fatalf("slugs = %v, want backward page restored to ascending order", slugs)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertExpectations(t, mock)
@@ -260,15 +258,15 @@ func TestListPagesEmptyPageKeepsAWayBack(t *testing.T) {
 				WithArgs("ja", tenantID, boundaryID, false, now, int32(21)).
 				WillReturnRows(pageRows())
 
-			req := newListPagesRequest(tenantID, sessionToken)
-			req.Msg.Token = pagination.EncodeTimeUUID(test.direction, now, boundaryID)
-			resp, err := client.ListPages(context.Background(), req)
+			req := newListPagesRequest(tenantID)
+			req.Token = pagination.EncodeTimeUUID(test.direction, now, boundaryID)
+			resp, err := client.ListPages(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err != nil {
 				t.Fatalf("ListPages: %v", err)
 			}
-			recoveryToken := resp.Msg.PreviousToken
+			recoveryToken := resp.PreviousToken
 			if test.direction == pagination.Backward {
-				recoveryToken = resp.Msg.NextToken
+				recoveryToken = resp.NextToken
 			}
 			want := pagination.EncodeTimeUUIDRecovery(test.recoveryDirection, now, boundaryID)
 			if recoveryToken != want {
@@ -290,14 +288,14 @@ func TestListPagesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 		WithArgs("ja", tenantID, boundaryID, true, now, int32(21)).
 		WillReturnRows(pageRows())
 
-	req := newListPagesRequest(tenantID, sessionToken)
-	req.Msg.Token = pagination.EncodeTimeUUIDRecovery(pagination.Backward, now, boundaryID)
-	resp, err := client.ListPages(context.Background(), req)
+	req := newListPagesRequest(tenantID)
+	req.Token = pagination.EncodeTimeUUIDRecovery(pagination.Backward, now, boundaryID)
+	resp, err := client.ListPages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListPages: %v", err)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty after one recovery", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty after one recovery", resp.PreviousToken, resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -307,10 +305,10 @@ func TestListPagesInvalidToken(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
-	req := newListPagesRequest(tenantID, sessionToken)
-	req.Msg.Token = "not-a-valid-token"
+	req := newListPagesRequest(tenantID)
+	req.Token = "not-a-valid-token"
 
-	_, err := client.ListPages(context.Background(), req)
+	_, err := client.ListPages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListPages code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -330,7 +328,7 @@ func TestListPagesDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs("ja", tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "tenant_pages" does not exist`))
 
-	_, err := client.ListPages(context.Background(), newListPagesRequest(tenantID, sessionToken))
+	_, err := client.ListPages(testutil.WithBearer(context.Background(), sessionToken), newListPagesRequest(tenantID))
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ListPages code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -351,13 +349,12 @@ func TestGetPageDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs("ja", pageID, tenantID).
 		WillReturnError(errors.New(`pq: relation "pages" does not exist`))
 
-	req := connect.NewRequest(&publiraadminv1.GetPageRequest{
+	req := &publiraadminv1.GetPageRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PageId: pageID.String(),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.GetPage(context.Background(), req)
+	_, err := client.GetPage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetPage code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -401,26 +398,25 @@ func TestUpdatePageTitleOnlyPreservesDisplayInFooter(t *testing.T) {
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminPagesServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdatePageRequest{
+	client := publiraadminv1connect.NewAdminPagesServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UpdatePageRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PageId: pageID.String(),
 		Title:  "Updated Title",
 		// DisplayInFooter intentionally omitted
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UpdatePage(context.Background(), req)
+	resp, err := client.UpdatePage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UpdatePage: %v", err)
 	}
-	if resp.Msg.Page == nil {
+	if resp.Page == nil {
 		t.Fatalf("page is nil")
 	}
-	if resp.Msg.Page.Title != "Updated Title" {
-		t.Fatalf("title = %q, want Updated Title", resp.Msg.Page.Title)
+	if resp.Page.Title != "Updated Title" {
+		t.Fatalf("title = %q, want Updated Title", resp.Page.Title)
 	}
-	if !resp.Msg.Page.DisplayInFooter {
+	if !resp.Page.DisplayInFooter {
 		t.Fatalf("display_in_footer = false, want true (preserved on title-only update)")
 	}
 	assertExpectations(t, mock)
@@ -458,23 +454,22 @@ func TestUpdatePageSetsDisplayInFooterWhenPresent(t *testing.T) {
 	expectAdminAuditLogInsert(mock)
 
 	displayInFooter := false
-	client := publiraadminv1connect.NewAdminPagesServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdatePageRequest{
+	client := publiraadminv1connect.NewAdminPagesServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UpdatePageRequest{
 		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PageId:          pageID.String(),
 		Title:           "Title",
 		DisplayInFooter: &displayInFooter,
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UpdatePage(context.Background(), req)
+	resp, err := client.UpdatePage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UpdatePage: %v", err)
 	}
-	if resp.Msg.Page == nil {
+	if resp.Page == nil {
 		t.Fatalf("page is nil")
 	}
-	if resp.Msg.Page.DisplayInFooter {
+	if resp.Page.DisplayInFooter {
 		t.Fatalf("display_in_footer = true, want false")
 	}
 	assertExpectations(t, mock)

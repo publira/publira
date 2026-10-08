@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func brandingSourcePNG(t *testing.T, width, height int) []byte {
@@ -34,15 +35,15 @@ func TestDBTenantIconUploadReplaceAndDelete(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	themes := env.themeClient()
 
-	uploaded, err := themes.UploadTenantIcon(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadTenantIconRequest{
+	uploaded, err := themes.UploadTenantIcon(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UploadTenantIconRequest{
 		Tenant:          tenant.tenantContext(),
 		IconData:        brandingSourcePNG(t, 128, 96),
 		IconContentType: "image/png",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UploadTenantIcon: %v", err)
 	}
-	firstURL := brandingImageURL(uploaded.Msg.Theme.IconImageVariants)
+	firstURL := brandingImageURL(uploaded.Theme.IconImageVariants)
 	if !strings.HasPrefix(firstURL, "/images/tenants/") {
 		t.Fatalf("icon variant url = %q, want a /images/tenants/ URL", firstURL)
 	}
@@ -55,42 +56,42 @@ func TestDBTenantIconUploadReplaceAndDelete(t *testing.T) {
 
 	// A tenant that never saved a color still gets its theme row created by the
 	// upload, and the colors keep their defaults.
-	fetched, err := themes.GetTenantTheme(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantThemeRequest{
+	fetched, err := themes.GetTenantTheme(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetTenantThemeRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantTheme: %v", err)
 	}
-	if brandingImageURL(fetched.Msg.Theme.IconImageVariants) != firstURL {
-		t.Fatalf("reloaded icon variant url = %q, want %q", brandingImageURL(fetched.Msg.Theme.IconImageVariants), firstURL)
+	if brandingImageURL(fetched.Theme.IconImageVariants) != firstURL {
+		t.Fatalf("reloaded icon variant url = %q, want %q", brandingImageURL(fetched.Theme.IconImageVariants), firstURL)
 	}
-	if fetched.Msg.Theme.PrimaryColor != "#2b4c8c" {
-		t.Fatalf("primary_color = %q, want the column default #2b4c8c", fetched.Msg.Theme.PrimaryColor)
+	if fetched.Theme.PrimaryColor != "#2b4c8c" {
+		t.Fatalf("primary_color = %q, want the column default #2b4c8c", fetched.Theme.PrimaryColor)
 	}
 
-	replaced, err := themes.UploadTenantIcon(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadTenantIconRequest{
+	replaced, err := themes.UploadTenantIcon(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UploadTenantIconRequest{
 		Tenant:          tenant.tenantContext(),
 		IconData:        brandingSourcePNG(t, 64, 64),
 		IconContentType: "image/png",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UploadTenantIcon (replace): %v", err)
 	}
-	if brandingImageURL(replaced.Msg.Theme.IconImageVariants) == firstURL {
-		t.Fatalf("icon variant url did not change on replace: %q", brandingImageURL(replaced.Msg.Theme.IconImageVariants))
+	if brandingImageURL(replaced.Theme.IconImageVariants) == firstURL {
+		t.Fatalf("icon variant url did not change on replace: %q", brandingImageURL(replaced.Theme.IconImageVariants))
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM tenant_images WHERE tenant_id = $1", tenant.Tenant.ID); got != 1 {
 		t.Fatalf("tenant_images rows after replace = %d, want 1", got)
 	}
 
-	deleted, err := themes.DeleteTenantIcon(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteTenantIconRequest{
+	deleted, err := themes.DeleteTenantIcon(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.DeleteTenantIconRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("DeleteTenantIcon: %v", err)
 	}
-	if brandingImageURL(deleted.Msg.Theme.IconImageVariants) != "" {
-		t.Fatalf("icon variant url after delete = %q, want empty", brandingImageURL(deleted.Msg.Theme.IconImageVariants))
+	if brandingImageURL(deleted.Theme.IconImageVariants) != "" {
+		t.Fatalf("icon variant url after delete = %q, want empty", brandingImageURL(deleted.Theme.IconImageVariants))
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM tenant_images WHERE tenant_id = $1", tenant.Tenant.ID); got != 0 {
 		t.Fatalf("tenant_images rows after delete = %d, want 0", got)
@@ -105,22 +106,22 @@ func TestDBTenantIconIsPerTenant(t *testing.T) {
 	first, second := seedTwoTenants(t, env)
 	themes := env.themeClient()
 
-	if _, err := themes.UploadTenantIcon(context.Background(), newAdminDBRequest(first, &publiraadminv1.UploadTenantIconRequest{
+	if _, err := themes.UploadTenantIcon(testutil.WithBearer(context.Background(), first.token()), &publiraadminv1.UploadTenantIconRequest{
 		Tenant:          first.tenantContext(),
 		IconData:        brandingSourcePNG(t, 64, 64),
 		IconContentType: "image/png",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("UploadTenantIcon: %v", err)
 	}
 
-	other, err := themes.GetTenantTheme(context.Background(), newAdminDBRequest(second, &publiraadminv1.GetTenantThemeRequest{
+	other, err := themes.GetTenantTheme(testutil.WithBearer(context.Background(), second.token()), &publiraadminv1.GetTenantThemeRequest{
 		Tenant: second.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantTheme: %v", err)
 	}
-	if brandingImageURL(other.Msg.Theme.IconImageVariants) != "" {
-		t.Fatalf("second tenant icon variant url = %q, want empty", brandingImageURL(other.Msg.Theme.IconImageVariants))
+	if brandingImageURL(other.Theme.IconImageVariants) != "" {
+		t.Fatalf("second tenant icon variant url = %q, want empty", brandingImageURL(other.Theme.IconImageVariants))
 	}
 }
 
@@ -139,11 +140,11 @@ func TestDBTenantIconConcurrentChangesLeaveOneImage(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, errs[i] = themes.UploadTenantIcon(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadTenantIconRequest{
+			_, errs[i] = themes.UploadTenantIcon(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UploadTenantIconRequest{
 				Tenant:          tenant.tenantContext(),
 				IconData:        brandingSourcePNG(t, 64, 64),
 				IconContentType: "image/png",
-			}))
+			})
 		}()
 	}
 	wg.Wait()
@@ -157,17 +158,17 @@ func TestDBTenantIconConcurrentChangesLeaveOneImage(t *testing.T) {
 		t.Fatalf("tenant_images rows = %d, want 1", got)
 	}
 
-	fetched, err := themes.GetTenantTheme(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantThemeRequest{
+	fetched, err := themes.GetTenantTheme(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetTenantThemeRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantTheme: %v", err)
 	}
 	surviving := env.countRows(t,
 		"SELECT count(*) FROM tenant_images WHERE tenant_id = $1 AND '/images/tenants/' || id::text || '/icon' = $2",
-		tenant.Tenant.ID, brandingImageURL(fetched.Msg.Theme.IconImageVariants))
+		tenant.Tenant.ID, brandingImageURL(fetched.Theme.IconImageVariants))
 	if surviving != 1 {
-		t.Fatalf("icon variant url %q does not point at the surviving tenant image", brandingImageURL(fetched.Msg.Theme.IconImageVariants))
+		t.Fatalf("icon variant url %q does not point at the surviving tenant image", brandingImageURL(fetched.Theme.IconImageVariants))
 	}
 }
 
@@ -176,15 +177,15 @@ func TestDBTenantLogoUploadReplaceAndDelete(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	themes := env.themeClient()
 
-	uploaded, err := themes.UploadTenantLogo(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadTenantLogoRequest{
+	uploaded, err := themes.UploadTenantLogo(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UploadTenantLogoRequest{
 		Tenant:          tenant.tenantContext(),
 		LogoData:        brandingSourcePNG(t, 320, 80),
 		LogoContentType: "image/png",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UploadTenantLogo: %v", err)
 	}
-	firstURL := brandingImageURL(uploaded.Msg.Theme.LogoImageVariants)
+	firstURL := brandingImageURL(uploaded.Theme.LogoImageVariants)
 	if !strings.HasPrefix(firstURL, "/images/tenants/") {
 		t.Fatalf("logo variant url = %q, want a /images/tenants/ URL", firstURL)
 	}
@@ -202,42 +203,42 @@ func TestDBTenantLogoUploadReplaceAndDelete(t *testing.T) {
 
 	// A tenant that never saved a color still gets its theme row created by the
 	// upload, and the colors keep their defaults.
-	fetched, err := themes.GetTenantTheme(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantThemeRequest{
+	fetched, err := themes.GetTenantTheme(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetTenantThemeRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantTheme: %v", err)
 	}
-	if brandingImageURL(fetched.Msg.Theme.LogoImageVariants) != firstURL {
-		t.Fatalf("reloaded logo variant url = %q, want %q", brandingImageURL(fetched.Msg.Theme.LogoImageVariants), firstURL)
+	if brandingImageURL(fetched.Theme.LogoImageVariants) != firstURL {
+		t.Fatalf("reloaded logo variant url = %q, want %q", brandingImageURL(fetched.Theme.LogoImageVariants), firstURL)
 	}
-	if fetched.Msg.Theme.PrimaryColor != "#2b4c8c" {
-		t.Fatalf("primary_color = %q, want the column default #2b4c8c", fetched.Msg.Theme.PrimaryColor)
+	if fetched.Theme.PrimaryColor != "#2b4c8c" {
+		t.Fatalf("primary_color = %q, want the column default #2b4c8c", fetched.Theme.PrimaryColor)
 	}
 
-	replaced, err := themes.UploadTenantLogo(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadTenantLogoRequest{
+	replaced, err := themes.UploadTenantLogo(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UploadTenantLogoRequest{
 		Tenant:          tenant.tenantContext(),
 		LogoData:        brandingSourcePNG(t, 240, 120),
 		LogoContentType: "image/png",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UploadTenantLogo (replace): %v", err)
 	}
-	if brandingImageURL(replaced.Msg.Theme.LogoImageVariants) == firstURL {
-		t.Fatalf("logo variant url did not change on replace: %q", brandingImageURL(replaced.Msg.Theme.LogoImageVariants))
+	if brandingImageURL(replaced.Theme.LogoImageVariants) == firstURL {
+		t.Fatalf("logo variant url did not change on replace: %q", brandingImageURL(replaced.Theme.LogoImageVariants))
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM tenant_images WHERE tenant_id = $1", tenant.Tenant.ID); got != 1 {
 		t.Fatalf("tenant_images rows after replace = %d, want 1", got)
 	}
 
-	deleted, err := themes.DeleteTenantLogo(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteTenantLogoRequest{
+	deleted, err := themes.DeleteTenantLogo(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.DeleteTenantLogoRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("DeleteTenantLogo: %v", err)
 	}
-	if brandingImageURL(deleted.Msg.Theme.LogoImageVariants) != "" {
-		t.Fatalf("logo variant url after delete = %q, want empty", brandingImageURL(deleted.Msg.Theme.LogoImageVariants))
+	if brandingImageURL(deleted.Theme.LogoImageVariants) != "" {
+		t.Fatalf("logo variant url after delete = %q, want empty", brandingImageURL(deleted.Theme.LogoImageVariants))
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM tenant_images WHERE tenant_id = $1", tenant.Tenant.ID); got != 0 {
 		t.Fatalf("tenant_images rows after delete = %d, want 0", got)
@@ -255,42 +256,42 @@ func TestDBTenantLogoAndIconAreIndependent(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	themes := env.themeClient()
 
-	iconUploaded, err := themes.UploadTenantIcon(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadTenantIconRequest{
+	iconUploaded, err := themes.UploadTenantIcon(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UploadTenantIconRequest{
 		Tenant:          tenant.tenantContext(),
 		IconData:        brandingSourcePNG(t, 64, 64),
 		IconContentType: "image/png",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UploadTenantIcon: %v", err)
 	}
-	iconURL := brandingImageURL(iconUploaded.Msg.Theme.IconImageVariants)
+	iconURL := brandingImageURL(iconUploaded.Theme.IconImageVariants)
 
-	logoUploaded, err := themes.UploadTenantLogo(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadTenantLogoRequest{
+	logoUploaded, err := themes.UploadTenantLogo(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UploadTenantLogoRequest{
 		Tenant:          tenant.tenantContext(),
 		LogoData:        brandingSourcePNG(t, 320, 80),
 		LogoContentType: "image/png",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UploadTenantLogo: %v", err)
 	}
-	if brandingImageURL(logoUploaded.Msg.Theme.IconImageVariants) != iconURL {
-		t.Fatalf("icon variant url changed on a logo upload: %q, want %q", brandingImageURL(logoUploaded.Msg.Theme.IconImageVariants), iconURL)
+	if brandingImageURL(logoUploaded.Theme.IconImageVariants) != iconURL {
+		t.Fatalf("icon variant url changed on a logo upload: %q, want %q", brandingImageURL(logoUploaded.Theme.IconImageVariants), iconURL)
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM tenant_images WHERE tenant_id = $1", tenant.Tenant.ID); got != 2 {
 		t.Fatalf("tenant_images rows = %d, want 2", got)
 	}
 
-	deleted, err := themes.DeleteTenantLogo(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteTenantLogoRequest{
+	deleted, err := themes.DeleteTenantLogo(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.DeleteTenantLogoRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("DeleteTenantLogo: %v", err)
 	}
-	if brandingImageURL(deleted.Msg.Theme.LogoImageVariants) != "" {
-		t.Fatalf("logo variant url after delete = %q, want empty", brandingImageURL(deleted.Msg.Theme.LogoImageVariants))
+	if brandingImageURL(deleted.Theme.LogoImageVariants) != "" {
+		t.Fatalf("logo variant url after delete = %q, want empty", brandingImageURL(deleted.Theme.LogoImageVariants))
 	}
-	if brandingImageURL(deleted.Msg.Theme.IconImageVariants) != iconURL {
-		t.Fatalf("icon variant url after a logo delete = %q, want %q", brandingImageURL(deleted.Msg.Theme.IconImageVariants), iconURL)
+	if brandingImageURL(deleted.Theme.IconImageVariants) != iconURL {
+		t.Fatalf("icon variant url after a logo delete = %q, want %q", brandingImageURL(deleted.Theme.IconImageVariants), iconURL)
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM tenant_images WHERE tenant_id = $1", tenant.Tenant.ID); got != 1 {
 		t.Fatalf("tenant_images rows after the logo delete = %d, want 1", got)

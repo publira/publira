@@ -12,7 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
@@ -22,6 +23,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 const (
@@ -119,23 +121,22 @@ func TestListPaymentProvidersAnswersEachProvidersDeclaration(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.ListPaymentProvidersRequest{
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.ListPaymentProvidersRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.ListPaymentProviders(context.Background(), req)
+	}
+	resp, err := client.ListPaymentProviders(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListPaymentProviders: %v", err)
 	}
 	var found *publiraadminv1.PaymentProvider
-	for _, provider := range resp.Msg.Providers {
+	for _, provider := range resp.Providers {
 		if provider.Id == stripe.ID {
 			found = provider
 		}
 	}
 	if found == nil {
-		t.Fatalf("providers = %+v, want stripe among them", resp.Msg.Providers)
+		t.Fatalf("providers = %+v, want stripe among them", resp.Providers)
 	}
 	if found.DisplayName != "Stripe" || found.WebhookPath != "/api/v1/webhook/payment/stripe" {
 		t.Fatalf("stripe = %+v", found)
@@ -162,12 +163,11 @@ func TestListPaymentProvidersRejectsEditorRole(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.ListPaymentProvidersRequest{
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.ListPaymentProvidersRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	if _, err := client.ListPaymentProviders(context.Background(), req); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}
+	if _, err := client.ListPaymentProviders(testutil.WithBearer(context.Background(), sessionToken), req); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("ListPaymentProviders code = %v, want permission_denied", connect.CodeOf(err))
 	}
 	assertExpectations(t, mock)
@@ -182,12 +182,11 @@ func TestGetTenantPaymentSettingsRejectsEditorRole(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.GetTenantPaymentSettingsRequest{
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.GetTenantPaymentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	_, err := client.GetTenantPaymentSettings(context.Background(), req)
+	}
+	_, err := client.GetTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("GetTenantPaymentSettings code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -206,16 +205,15 @@ func TestGetTenantPaymentSettingsReturnsEmptyWhenMissing(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
-	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.GetTenantPaymentSettingsRequest{
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.GetTenantPaymentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.GetTenantPaymentSettings(context.Background(), req)
+	}
+	resp, err := client.GetTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("GetTenantPaymentSettings: %v", err)
 	}
-	settings := resp.Msg.Settings
+	settings := resp.Settings
 	if settings.Provider != "" || settings.Enabled || settings.Ready || len(settings.Fields) != 0 {
 		t.Fatalf("settings = %+v, want empty with no provider", settings)
 	}
@@ -247,16 +245,15 @@ func TestGetTenantPaymentSettingsOmitsPlaintextSecrets(t *testing.T) {
 			now,
 		))
 
-	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.GetTenantPaymentSettingsRequest{
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.GetTenantPaymentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.GetTenantPaymentSettings(context.Background(), req)
+	}
+	resp, err := client.GetTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("GetTenantPaymentSettings: %v", err)
 	}
-	settings := resp.Msg.Settings
+	settings := resp.Settings
 	if settings.Provider != stripe.ID || !settings.Enabled || !settings.Ready {
 		t.Fatalf("settings = %+v, want ready enabled stripe", settings)
 	}
@@ -282,12 +279,11 @@ func TestUpdateTenantPaymentSettingsRejectsEditorRole(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateTenantPaymentSettingsRequest{
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UpdateTenantPaymentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	_, err := client.UpdateTenantPaymentSettings(context.Background(), req)
+	}
+	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("UpdateTenantPaymentSettings code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -308,14 +304,13 @@ func TestUpdateTenantPaymentSettingsRejectsEnableWithoutSecrets(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	mock.ExpectRollback()
 
-	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateTenantPaymentSettingsRequest{
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UpdateTenantPaymentSettingsRequest{
 		Provider: stripe.ID,
 		Enabled:  true,
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	_, err := client.UpdateTenantPaymentSettings(context.Background(), req)
+	}
+	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateTenantPaymentSettings code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -339,13 +334,12 @@ func TestUpdateTenantPaymentSettingsRejectsUnknownProvider(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectRollback()
 
-	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateTenantPaymentSettingsRequest{
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UpdateTenantPaymentSettingsRequest{
 		Provider: "paypal",
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	_, err := client.UpdateTenantPaymentSettings(context.Background(), req)
+	}
+	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateTenantPaymentSettings code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -389,8 +383,8 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 	expectAdminAuditLogInsert(mock)
 	mock.ExpectCommit()
 
-	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateTenantPaymentSettingsRequest{
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UpdateTenantPaymentSettingsRequest{
 		Provider: stripe.ID,
 		Enabled:  true,
 		Fields: []*publiraadminv1.PaymentCredentialFieldUpdate{
@@ -398,13 +392,12 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 			{Name: stripe.FieldWebhookSecret, Mode: publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE, Value: testPaymentWebhookSecret},
 		},
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.UpdateTenantPaymentSettings(context.Background(), req)
+	}
+	resp, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UpdateTenantPaymentSettings: %v", err)
 	}
-	settings := resp.Msg.Settings
+	settings := resp.Settings
 	if !settings.Ready || stripeFieldState(t, settings, stripe.FieldSecretKey).Hint != secretHint {
 		t.Fatalf("settings = %+v", settings)
 	}

@@ -4,10 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"net/http"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -64,7 +63,7 @@ func (s *adminServer) creatorAccountsForSession(ctx context.Context, tenantID, c
 // reader's public_id, or "" when it changed nothing.
 func (s *adminServer) changeCreatorAccount(
 	ctx context.Context,
-	headers http.Header,
+	headers *connect.Header,
 	sessionCtx rpcmiddleware.SessionContext,
 	action string,
 	creator dbmodels.GetCreatorByIDForTenantRow,
@@ -111,9 +110,9 @@ func (s *adminServer) changeCreatorAccount(
 // link hands out the creator's paid work, so it is the tenant admin's to make.
 func (s *adminServer) LinkCreatorAccount(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.LinkCreatorAccountRequest],
-) (*connect.Response[publiraadminv1.LinkCreatorAccountResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.LinkCreatorAccountRequest,
+) (*publiraadminv1.LinkCreatorAccountResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -121,11 +120,11 @@ func (s *adminServer) LinkCreatorAccount(
 	if err != nil {
 		return nil, err
 	}
-	creatorID, err := parseRecordID(req.Msg.CreatorId, "creator_id")
+	creatorID, err := parseRecordID(req.CreatorId, "creator_id")
 	if err != nil {
 		return nil, err
 	}
-	readerID, err := readerIDArg(req.Msg.ReaderId)
+	readerID, err := readerIDArg(req.ReaderId)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +133,7 @@ func (s *adminServer) LinkCreatorAccount(
 		return nil, err
 	}
 
-	accounts, err := s.changeCreatorAccount(ctx, req.Header(), sessionCtx, "creator_account_linked", creator, func(ctx context.Context) (string, error) {
+	accounts, err := s.changeCreatorAccount(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "creator_account_linked", creator, func(ctx context.Context) (string, error) {
 		reader, err := s.tenantReaderByID(ctx, tenant.ID, readerID)
 		if err != nil {
 			return "", err
@@ -155,7 +154,7 @@ func (s *adminServer) LinkCreatorAccount(
 		if err != nil {
 			// The creator or the account was deleted after it was read.
 			if dberr.IsForeignKeyViolation(err) {
-				return "", connect.NewError(connect.CodeNotFound, errors.New("creator or reader not found"))
+				return "", connect.NewError(connect.CodeNotFound, "creator or reader not found")
 			}
 			return "", s.internalDBError(ctx, "failed to link creator account", err, "tenant_id", tenant.ID.String(), "creator_id", creator.ID.String(), "reader_id", reader.ID.String())
 		}
@@ -167,16 +166,16 @@ func (s *adminServer) LinkCreatorAccount(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.LinkCreatorAccountResponse{Accounts: accounts}), nil
+	return &publiraadminv1.LinkCreatorAccountResponse{Accounts: accounts}, nil
 }
 
 // UnlinkCreatorAccount removes a link. The account need not be a reader any
 // more, so a link to an account that has since become staff can still go.
 func (s *adminServer) UnlinkCreatorAccount(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UnlinkCreatorAccountRequest],
-) (*connect.Response[publiraadminv1.UnlinkCreatorAccountResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UnlinkCreatorAccountRequest,
+) (*publiraadminv1.UnlinkCreatorAccountResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -184,11 +183,11 @@ func (s *adminServer) UnlinkCreatorAccount(
 	if err != nil {
 		return nil, err
 	}
-	creatorID, err := parseRecordID(req.Msg.CreatorId, "creator_id")
+	creatorID, err := parseRecordID(req.CreatorId, "creator_id")
 	if err != nil {
 		return nil, err
 	}
-	readerID, err := readerIDArg(req.Msg.ReaderId)
+	readerID, err := readerIDArg(req.ReaderId)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +196,7 @@ func (s *adminServer) UnlinkCreatorAccount(
 		return nil, err
 	}
 
-	accounts, err := s.changeCreatorAccount(ctx, req.Header(), sessionCtx, "creator_account_unlinked", creator, func(ctx context.Context) (string, error) {
+	accounts, err := s.changeCreatorAccount(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "creator_account_unlinked", creator, func(ctx context.Context) (string, error) {
 		readerPublicID, err := s.queriesFor(ctx).DeleteCreatorAccount(ctx, dbmodels.DeleteCreatorAccountParams{
 			TenantID:  tenant.ID,
 			CreatorID: creator.ID,
@@ -214,5 +213,5 @@ func (s *adminServer) UnlinkCreatorAccount(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.UnlinkCreatorAccountResponse{Accounts: accounts}), nil
+	return &publiraadminv1.UnlinkCreatorAccountResponse{Accounts: accounts}, nil
 }

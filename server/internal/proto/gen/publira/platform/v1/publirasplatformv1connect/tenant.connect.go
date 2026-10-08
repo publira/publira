@@ -5,488 +5,578 @@
 package publirasplatformv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// PlatformTenantServiceName is the fully-qualified name of the PlatformTenantService service.
 	PlatformTenantServiceName = "publira.platform.v1.PlatformTenantService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// PlatformTenantServiceListTenantsProcedure is the fully-qualified name of the
-	// PlatformTenantService's ListTenants RPC.
+	// PlatformTenantServiceListTenantsProcedure is the procedure name of the PlatformTenantService's
+	// ListTenants RPC.
 	PlatformTenantServiceListTenantsProcedure = "/publira.platform.v1.PlatformTenantService/ListTenants"
-	// PlatformTenantServiceGetTenantProcedure is the fully-qualified name of the
-	// PlatformTenantService's GetTenant RPC.
+	// PlatformTenantServiceGetTenantProcedure is the procedure name of the PlatformTenantService's
+	// GetTenant RPC.
 	PlatformTenantServiceGetTenantProcedure = "/publira.platform.v1.PlatformTenantService/GetTenant"
-	// PlatformTenantServiceCreateTenantProcedure is the fully-qualified name of the
-	// PlatformTenantService's CreateTenant RPC.
+	// PlatformTenantServiceCreateTenantProcedure is the procedure name of the PlatformTenantService's
+	// CreateTenant RPC.
 	PlatformTenantServiceCreateTenantProcedure = "/publira.platform.v1.PlatformTenantService/CreateTenant"
-	// PlatformTenantServiceUpdateTenantProcedure is the fully-qualified name of the
-	// PlatformTenantService's UpdateTenant RPC.
+	// PlatformTenantServiceUpdateTenantProcedure is the procedure name of the PlatformTenantService's
+	// UpdateTenant RPC.
 	PlatformTenantServiceUpdateTenantProcedure = "/publira.platform.v1.PlatformTenantService/UpdateTenant"
-	// PlatformTenantServiceSuspendTenantProcedure is the fully-qualified name of the
-	// PlatformTenantService's SuspendTenant RPC.
+	// PlatformTenantServiceSuspendTenantProcedure is the procedure name of the PlatformTenantService's
+	// SuspendTenant RPC.
 	PlatformTenantServiceSuspendTenantProcedure = "/publira.platform.v1.PlatformTenantService/SuspendTenant"
-	// PlatformTenantServiceResumeTenantProcedure is the fully-qualified name of the
-	// PlatformTenantService's ResumeTenant RPC.
+	// PlatformTenantServiceResumeTenantProcedure is the procedure name of the PlatformTenantService's
+	// ResumeTenant RPC.
 	PlatformTenantServiceResumeTenantProcedure = "/publira.platform.v1.PlatformTenantService/ResumeTenant"
-	// PlatformTenantServiceListTenantMembersProcedure is the fully-qualified name of the
+	// PlatformTenantServiceListTenantMembersProcedure is the procedure name of the
 	// PlatformTenantService's ListTenantMembers RPC.
 	PlatformTenantServiceListTenantMembersProcedure = "/publira.platform.v1.PlatformTenantService/ListTenantMembers"
-	// PlatformTenantServiceAddTenantMemberProcedure is the fully-qualified name of the
+	// PlatformTenantServiceAddTenantMemberProcedure is the procedure name of the
 	// PlatformTenantService's AddTenantMember RPC.
 	PlatformTenantServiceAddTenantMemberProcedure = "/publira.platform.v1.PlatformTenantService/AddTenantMember"
-	// PlatformTenantServiceUpdateTenantMemberRoleProcedure is the fully-qualified name of the
+	// PlatformTenantServiceUpdateTenantMemberRoleProcedure is the procedure name of the
 	// PlatformTenantService's UpdateTenantMemberRole RPC.
 	PlatformTenantServiceUpdateTenantMemberRoleProcedure = "/publira.platform.v1.PlatformTenantService/UpdateTenantMemberRole"
-	// PlatformTenantServiceRemoveTenantMemberProcedure is the fully-qualified name of the
+	// PlatformTenantServiceRemoveTenantMemberProcedure is the procedure name of the
 	// PlatformTenantService's RemoveTenantMember RPC.
 	PlatformTenantServiceRemoveTenantMemberProcedure = "/publira.platform.v1.PlatformTenantService/RemoveTenantMember"
-	// PlatformTenantServiceListTenantAdminInvitationsProcedure is the fully-qualified name of the
+	// PlatformTenantServiceListTenantAdminInvitationsProcedure is the procedure name of the
 	// PlatformTenantService's ListTenantAdminInvitations RPC.
 	PlatformTenantServiceListTenantAdminInvitationsProcedure = "/publira.platform.v1.PlatformTenantService/ListTenantAdminInvitations"
-	// PlatformTenantServiceCreateTenantAdminInvitationProcedure is the fully-qualified name of the
+	// PlatformTenantServiceCreateTenantAdminInvitationProcedure is the procedure name of the
 	// PlatformTenantService's CreateTenantAdminInvitation RPC.
 	PlatformTenantServiceCreateTenantAdminInvitationProcedure = "/publira.platform.v1.PlatformTenantService/CreateTenantAdminInvitation"
-	// PlatformTenantServiceResendTenantAdminInvitationProcedure is the fully-qualified name of the
+	// PlatformTenantServiceResendTenantAdminInvitationProcedure is the procedure name of the
 	// PlatformTenantService's ResendTenantAdminInvitation RPC.
 	PlatformTenantServiceResendTenantAdminInvitationProcedure = "/publira.platform.v1.PlatformTenantService/ResendTenantAdminInvitation"
-	// PlatformTenantServiceCancelTenantAdminInvitationProcedure is the fully-qualified name of the
+	// PlatformTenantServiceCancelTenantAdminInvitationProcedure is the procedure name of the
 	// PlatformTenantService's CancelTenantAdminInvitation RPC.
 	PlatformTenantServiceCancelTenantAdminInvitationProcedure = "/publira.platform.v1.PlatformTenantService/CancelTenantAdminInvitation"
+)
+
+var (
+	platformTenantServiceListTenantsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("ListTenants"),
+			Procedure:  PlatformTenantServiceListTenantsProcedure,
+		}
+	})
+	platformTenantServiceGetTenantSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("GetTenant"),
+			Procedure:  PlatformTenantServiceGetTenantProcedure,
+		}
+	})
+	platformTenantServiceCreateTenantSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("CreateTenant"),
+			Procedure:  PlatformTenantServiceCreateTenantProcedure,
+		}
+	})
+	platformTenantServiceUpdateTenantSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("UpdateTenant"),
+			Procedure:  PlatformTenantServiceUpdateTenantProcedure,
+		}
+	})
+	platformTenantServiceSuspendTenantSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("SuspendTenant"),
+			Procedure:  PlatformTenantServiceSuspendTenantProcedure,
+		}
+	})
+	platformTenantServiceResumeTenantSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("ResumeTenant"),
+			Procedure:  PlatformTenantServiceResumeTenantProcedure,
+		}
+	})
+	platformTenantServiceListTenantMembersSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("ListTenantMembers"),
+			Procedure:  PlatformTenantServiceListTenantMembersProcedure,
+		}
+	})
+	platformTenantServiceAddTenantMemberSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("AddTenantMember"),
+			Procedure:  PlatformTenantServiceAddTenantMemberProcedure,
+		}
+	})
+	platformTenantServiceUpdateTenantMemberRoleSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("UpdateTenantMemberRole"),
+			Procedure:  PlatformTenantServiceUpdateTenantMemberRoleProcedure,
+		}
+	})
+	platformTenantServiceRemoveTenantMemberSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("RemoveTenantMember"),
+			Procedure:  PlatformTenantServiceRemoveTenantMemberProcedure,
+		}
+	})
+	platformTenantServiceListTenantAdminInvitationsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("ListTenantAdminInvitations"),
+			Procedure:  PlatformTenantServiceListTenantAdminInvitationsProcedure,
+		}
+	})
+	platformTenantServiceCreateTenantAdminInvitationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("CreateTenantAdminInvitation"),
+			Procedure:  PlatformTenantServiceCreateTenantAdminInvitationProcedure,
+		}
+	})
+	platformTenantServiceResendTenantAdminInvitationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("ResendTenantAdminInvitation"),
+			Procedure:  PlatformTenantServiceResendTenantAdminInvitationProcedure,
+		}
+	})
+	platformTenantServiceCancelTenantAdminInvitationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods().ByName("CancelTenantAdminInvitation"),
+			Procedure:  PlatformTenantServiceCancelTenantAdminInvitationProcedure,
+		}
+	})
 )
 
 // PlatformTenantServiceClient is a client for the publira.platform.v1.PlatformTenantService
 // service.
 type PlatformTenantServiceClient interface {
-	ListTenants(context.Context, *connect.Request[v1.ListTenantsRequest]) (*connect.Response[v1.ListTenantsResponse], error)
-	GetTenant(context.Context, *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error)
-	CreateTenant(context.Context, *connect.Request[v1.CreateTenantRequest]) (*connect.Response[v1.CreateTenantResponse], error)
-	UpdateTenant(context.Context, *connect.Request[v1.UpdateTenantRequest]) (*connect.Response[v1.UpdateTenantResponse], error)
-	SuspendTenant(context.Context, *connect.Request[v1.SuspendTenantRequest]) (*connect.Response[v1.SuspendTenantResponse], error)
-	ResumeTenant(context.Context, *connect.Request[v1.ResumeTenantRequest]) (*connect.Response[v1.ResumeTenantResponse], error)
-	ListTenantMembers(context.Context, *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error)
-	AddTenantMember(context.Context, *connect.Request[v1.AddTenantMemberRequest]) (*connect.Response[v1.AddTenantMemberResponse], error)
-	UpdateTenantMemberRole(context.Context, *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error)
-	RemoveTenantMember(context.Context, *connect.Request[v1.RemoveTenantMemberRequest]) (*connect.Response[v1.RemoveTenantMemberResponse], error)
-	ListTenantAdminInvitations(context.Context, *connect.Request[v1.ListTenantAdminInvitationsRequest]) (*connect.Response[v1.ListTenantAdminInvitationsResponse], error)
-	CreateTenantAdminInvitation(context.Context, *connect.Request[v1.CreateTenantAdminInvitationRequest]) (*connect.Response[v1.CreateTenantAdminInvitationResponse], error)
-	ResendTenantAdminInvitation(context.Context, *connect.Request[v1.ResendTenantAdminInvitationRequest]) (*connect.Response[v1.ResendTenantAdminInvitationResponse], error)
-	CancelTenantAdminInvitation(context.Context, *connect.Request[v1.CancelTenantAdminInvitationRequest]) (*connect.Response[v1.CancelTenantAdminInvitationResponse], error)
+	ListTenants(context.Context, *v1.ListTenantsRequest) (*v1.ListTenantsResponse, error)
+	GetTenant(context.Context, *v1.GetTenantRequest) (*v1.GetTenantResponse, error)
+	CreateTenant(context.Context, *v1.CreateTenantRequest) (*v1.CreateTenantResponse, error)
+	UpdateTenant(context.Context, *v1.UpdateTenantRequest) (*v1.UpdateTenantResponse, error)
+	SuspendTenant(context.Context, *v1.SuspendTenantRequest) (*v1.SuspendTenantResponse, error)
+	ResumeTenant(context.Context, *v1.ResumeTenantRequest) (*v1.ResumeTenantResponse, error)
+	ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error)
+	AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error)
+	UpdateTenantMemberRole(context.Context, *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error)
+	RemoveTenantMember(context.Context, *v1.RemoveTenantMemberRequest) (*v1.RemoveTenantMemberResponse, error)
+	ListTenantAdminInvitations(context.Context, *v1.ListTenantAdminInvitationsRequest) (*v1.ListTenantAdminInvitationsResponse, error)
+	CreateTenantAdminInvitation(context.Context, *v1.CreateTenantAdminInvitationRequest) (*v1.CreateTenantAdminInvitationResponse, error)
+	ResendTenantAdminInvitation(context.Context, *v1.ResendTenantAdminInvitationRequest) (*v1.ResendTenantAdminInvitationResponse, error)
+	CancelTenantAdminInvitation(context.Context, *v1.CancelTenantAdminInvitationRequest) (*v1.CancelTenantAdminInvitationResponse, error)
 }
 
 // NewPlatformTenantServiceClient constructs a client for the
-// publira.platform.v1.PlatformTenantService service. By default, it uses the Connect protocol with
-// the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To use
-// the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewPlatformTenantServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PlatformTenantServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	platformTenantServiceMethods := v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods()
-	return &platformTenantServiceClient{
-		listTenants: connect.NewClient[v1.ListTenantsRequest, v1.ListTenantsResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceListTenantsProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("ListTenants")),
-			connect.WithClientOptions(opts...),
-		),
-		getTenant: connect.NewClient[v1.GetTenantRequest, v1.GetTenantResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceGetTenantProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("GetTenant")),
-			connect.WithClientOptions(opts...),
-		),
-		createTenant: connect.NewClient[v1.CreateTenantRequest, v1.CreateTenantResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceCreateTenantProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("CreateTenant")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenant: connect.NewClient[v1.UpdateTenantRequest, v1.UpdateTenantResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceUpdateTenantProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("UpdateTenant")),
-			connect.WithClientOptions(opts...),
-		),
-		suspendTenant: connect.NewClient[v1.SuspendTenantRequest, v1.SuspendTenantResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceSuspendTenantProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("SuspendTenant")),
-			connect.WithClientOptions(opts...),
-		),
-		resumeTenant: connect.NewClient[v1.ResumeTenantRequest, v1.ResumeTenantResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceResumeTenantProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("ResumeTenant")),
-			connect.WithClientOptions(opts...),
-		),
-		listTenantMembers: connect.NewClient[v1.ListTenantMembersRequest, v1.ListTenantMembersResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceListTenantMembersProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("ListTenantMembers")),
-			connect.WithClientOptions(opts...),
-		),
-		addTenantMember: connect.NewClient[v1.AddTenantMemberRequest, v1.AddTenantMemberResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceAddTenantMemberProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("AddTenantMember")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantMemberRole: connect.NewClient[v1.UpdateTenantMemberRoleRequest, v1.UpdateTenantMemberRoleResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceUpdateTenantMemberRoleProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("UpdateTenantMemberRole")),
-			connect.WithClientOptions(opts...),
-		),
-		removeTenantMember: connect.NewClient[v1.RemoveTenantMemberRequest, v1.RemoveTenantMemberResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceRemoveTenantMemberProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("RemoveTenantMember")),
-			connect.WithClientOptions(opts...),
-		),
-		listTenantAdminInvitations: connect.NewClient[v1.ListTenantAdminInvitationsRequest, v1.ListTenantAdminInvitationsResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceListTenantAdminInvitationsProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("ListTenantAdminInvitations")),
-			connect.WithClientOptions(opts...),
-		),
-		createTenantAdminInvitation: connect.NewClient[v1.CreateTenantAdminInvitationRequest, v1.CreateTenantAdminInvitationResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceCreateTenantAdminInvitationProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("CreateTenantAdminInvitation")),
-			connect.WithClientOptions(opts...),
-		),
-		resendTenantAdminInvitation: connect.NewClient[v1.ResendTenantAdminInvitationRequest, v1.ResendTenantAdminInvitationResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceResendTenantAdminInvitationProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("ResendTenantAdminInvitation")),
-			connect.WithClientOptions(opts...),
-		),
-		cancelTenantAdminInvitation: connect.NewClient[v1.CancelTenantAdminInvitationRequest, v1.CancelTenantAdminInvitationResponse](
-			httpClient,
-			baseURL+PlatformTenantServiceCancelTenantAdminInvitationProcedure,
-			connect.WithSchema(platformTenantServiceMethods.ByName("CancelTenantAdminInvitation")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// platformTenantServiceClient implements PlatformTenantServiceClient.
-type platformTenantServiceClient struct {
-	listTenants                 *connect.Client[v1.ListTenantsRequest, v1.ListTenantsResponse]
-	getTenant                   *connect.Client[v1.GetTenantRequest, v1.GetTenantResponse]
-	createTenant                *connect.Client[v1.CreateTenantRequest, v1.CreateTenantResponse]
-	updateTenant                *connect.Client[v1.UpdateTenantRequest, v1.UpdateTenantResponse]
-	suspendTenant               *connect.Client[v1.SuspendTenantRequest, v1.SuspendTenantResponse]
-	resumeTenant                *connect.Client[v1.ResumeTenantRequest, v1.ResumeTenantResponse]
-	listTenantMembers           *connect.Client[v1.ListTenantMembersRequest, v1.ListTenantMembersResponse]
-	addTenantMember             *connect.Client[v1.AddTenantMemberRequest, v1.AddTenantMemberResponse]
-	updateTenantMemberRole      *connect.Client[v1.UpdateTenantMemberRoleRequest, v1.UpdateTenantMemberRoleResponse]
-	removeTenantMember          *connect.Client[v1.RemoveTenantMemberRequest, v1.RemoveTenantMemberResponse]
-	listTenantAdminInvitations  *connect.Client[v1.ListTenantAdminInvitationsRequest, v1.ListTenantAdminInvitationsResponse]
-	createTenantAdminInvitation *connect.Client[v1.CreateTenantAdminInvitationRequest, v1.CreateTenantAdminInvitationResponse]
-	resendTenantAdminInvitation *connect.Client[v1.ResendTenantAdminInvitationRequest, v1.ResendTenantAdminInvitationResponse]
-	cancelTenantAdminInvitation *connect.Client[v1.CancelTenantAdminInvitationRequest, v1.CancelTenantAdminInvitationResponse]
-}
-
-// ListTenants calls publira.platform.v1.PlatformTenantService.ListTenants.
-func (c *platformTenantServiceClient) ListTenants(ctx context.Context, req *connect.Request[v1.ListTenantsRequest]) (*connect.Response[v1.ListTenantsResponse], error) {
-	return c.listTenants.CallUnary(ctx, req)
-}
-
-// GetTenant calls publira.platform.v1.PlatformTenantService.GetTenant.
-func (c *platformTenantServiceClient) GetTenant(ctx context.Context, req *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error) {
-	return c.getTenant.CallUnary(ctx, req)
-}
-
-// CreateTenant calls publira.platform.v1.PlatformTenantService.CreateTenant.
-func (c *platformTenantServiceClient) CreateTenant(ctx context.Context, req *connect.Request[v1.CreateTenantRequest]) (*connect.Response[v1.CreateTenantResponse], error) {
-	return c.createTenant.CallUnary(ctx, req)
-}
-
-// UpdateTenant calls publira.platform.v1.PlatformTenantService.UpdateTenant.
-func (c *platformTenantServiceClient) UpdateTenant(ctx context.Context, req *connect.Request[v1.UpdateTenantRequest]) (*connect.Response[v1.UpdateTenantResponse], error) {
-	return c.updateTenant.CallUnary(ctx, req)
-}
-
-// SuspendTenant calls publira.platform.v1.PlatformTenantService.SuspendTenant.
-func (c *platformTenantServiceClient) SuspendTenant(ctx context.Context, req *connect.Request[v1.SuspendTenantRequest]) (*connect.Response[v1.SuspendTenantResponse], error) {
-	return c.suspendTenant.CallUnary(ctx, req)
-}
-
-// ResumeTenant calls publira.platform.v1.PlatformTenantService.ResumeTenant.
-func (c *platformTenantServiceClient) ResumeTenant(ctx context.Context, req *connect.Request[v1.ResumeTenantRequest]) (*connect.Response[v1.ResumeTenantResponse], error) {
-	return c.resumeTenant.CallUnary(ctx, req)
-}
-
-// ListTenantMembers calls publira.platform.v1.PlatformTenantService.ListTenantMembers.
-func (c *platformTenantServiceClient) ListTenantMembers(ctx context.Context, req *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error) {
-	return c.listTenantMembers.CallUnary(ctx, req)
-}
-
-// AddTenantMember calls publira.platform.v1.PlatformTenantService.AddTenantMember.
-func (c *platformTenantServiceClient) AddTenantMember(ctx context.Context, req *connect.Request[v1.AddTenantMemberRequest]) (*connect.Response[v1.AddTenantMemberResponse], error) {
-	return c.addTenantMember.CallUnary(ctx, req)
-}
-
-// UpdateTenantMemberRole calls publira.platform.v1.PlatformTenantService.UpdateTenantMemberRole.
-func (c *platformTenantServiceClient) UpdateTenantMemberRole(ctx context.Context, req *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error) {
-	return c.updateTenantMemberRole.CallUnary(ctx, req)
-}
-
-// RemoveTenantMember calls publira.platform.v1.PlatformTenantService.RemoveTenantMember.
-func (c *platformTenantServiceClient) RemoveTenantMember(ctx context.Context, req *connect.Request[v1.RemoveTenantMemberRequest]) (*connect.Response[v1.RemoveTenantMemberResponse], error) {
-	return c.removeTenantMember.CallUnary(ctx, req)
-}
-
-// ListTenantAdminInvitations calls
-// publira.platform.v1.PlatformTenantService.ListTenantAdminInvitations.
-func (c *platformTenantServiceClient) ListTenantAdminInvitations(ctx context.Context, req *connect.Request[v1.ListTenantAdminInvitationsRequest]) (*connect.Response[v1.ListTenantAdminInvitationsResponse], error) {
-	return c.listTenantAdminInvitations.CallUnary(ctx, req)
-}
-
-// CreateTenantAdminInvitation calls
-// publira.platform.v1.PlatformTenantService.CreateTenantAdminInvitation.
-func (c *platformTenantServiceClient) CreateTenantAdminInvitation(ctx context.Context, req *connect.Request[v1.CreateTenantAdminInvitationRequest]) (*connect.Response[v1.CreateTenantAdminInvitationResponse], error) {
-	return c.createTenantAdminInvitation.CallUnary(ctx, req)
-}
-
-// ResendTenantAdminInvitation calls
-// publira.platform.v1.PlatformTenantService.ResendTenantAdminInvitation.
-func (c *platformTenantServiceClient) ResendTenantAdminInvitation(ctx context.Context, req *connect.Request[v1.ResendTenantAdminInvitationRequest]) (*connect.Response[v1.ResendTenantAdminInvitationResponse], error) {
-	return c.resendTenantAdminInvitation.CallUnary(ctx, req)
-}
-
-// CancelTenantAdminInvitation calls
-// publira.platform.v1.PlatformTenantService.CancelTenantAdminInvitation.
-func (c *platformTenantServiceClient) CancelTenantAdminInvitation(ctx context.Context, req *connect.Request[v1.CancelTenantAdminInvitationRequest]) (*connect.Response[v1.CancelTenantAdminInvitationResponse], error) {
-	return c.cancelTenantAdminInvitation.CallUnary(ctx, req)
+// publira.platform.v1.PlatformTenantService service. Multiple service clients may share a single
+// connect.Client.
+func NewPlatformTenantServiceClient(client *connect.Client) PlatformTenantServiceClient {
+	return &platformTenantServiceClient{client: client}
 }
 
 // PlatformTenantServiceHandler is an implementation of the
 // publira.platform.v1.PlatformTenantService service.
 type PlatformTenantServiceHandler interface {
-	ListTenants(context.Context, *connect.Request[v1.ListTenantsRequest]) (*connect.Response[v1.ListTenantsResponse], error)
-	GetTenant(context.Context, *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error)
-	CreateTenant(context.Context, *connect.Request[v1.CreateTenantRequest]) (*connect.Response[v1.CreateTenantResponse], error)
-	UpdateTenant(context.Context, *connect.Request[v1.UpdateTenantRequest]) (*connect.Response[v1.UpdateTenantResponse], error)
-	SuspendTenant(context.Context, *connect.Request[v1.SuspendTenantRequest]) (*connect.Response[v1.SuspendTenantResponse], error)
-	ResumeTenant(context.Context, *connect.Request[v1.ResumeTenantRequest]) (*connect.Response[v1.ResumeTenantResponse], error)
-	ListTenantMembers(context.Context, *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error)
-	AddTenantMember(context.Context, *connect.Request[v1.AddTenantMemberRequest]) (*connect.Response[v1.AddTenantMemberResponse], error)
-	UpdateTenantMemberRole(context.Context, *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error)
-	RemoveTenantMember(context.Context, *connect.Request[v1.RemoveTenantMemberRequest]) (*connect.Response[v1.RemoveTenantMemberResponse], error)
-	ListTenantAdminInvitations(context.Context, *connect.Request[v1.ListTenantAdminInvitationsRequest]) (*connect.Response[v1.ListTenantAdminInvitationsResponse], error)
-	CreateTenantAdminInvitation(context.Context, *connect.Request[v1.CreateTenantAdminInvitationRequest]) (*connect.Response[v1.CreateTenantAdminInvitationResponse], error)
-	ResendTenantAdminInvitation(context.Context, *connect.Request[v1.ResendTenantAdminInvitationRequest]) (*connect.Response[v1.ResendTenantAdminInvitationResponse], error)
-	CancelTenantAdminInvitation(context.Context, *connect.Request[v1.CancelTenantAdminInvitationRequest]) (*connect.Response[v1.CancelTenantAdminInvitationResponse], error)
+	ListTenants(context.Context, *v1.ListTenantsRequest) (*v1.ListTenantsResponse, error)
+	GetTenant(context.Context, *v1.GetTenantRequest) (*v1.GetTenantResponse, error)
+	CreateTenant(context.Context, *v1.CreateTenantRequest) (*v1.CreateTenantResponse, error)
+	UpdateTenant(context.Context, *v1.UpdateTenantRequest) (*v1.UpdateTenantResponse, error)
+	SuspendTenant(context.Context, *v1.SuspendTenantRequest) (*v1.SuspendTenantResponse, error)
+	ResumeTenant(context.Context, *v1.ResumeTenantRequest) (*v1.ResumeTenantResponse, error)
+	ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error)
+	AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error)
+	UpdateTenantMemberRole(context.Context, *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error)
+	RemoveTenantMember(context.Context, *v1.RemoveTenantMemberRequest) (*v1.RemoveTenantMemberResponse, error)
+	ListTenantAdminInvitations(context.Context, *v1.ListTenantAdminInvitationsRequest) (*v1.ListTenantAdminInvitationsResponse, error)
+	CreateTenantAdminInvitation(context.Context, *v1.CreateTenantAdminInvitationRequest) (*v1.CreateTenantAdminInvitationResponse, error)
+	ResendTenantAdminInvitation(context.Context, *v1.ResendTenantAdminInvitationRequest) (*v1.ResendTenantAdminInvitationResponse, error)
+	CancelTenantAdminInvitation(context.Context, *v1.CancelTenantAdminInvitationRequest) (*v1.CancelTenantAdminInvitationResponse, error)
 }
 
-// NewPlatformTenantServiceHandler builds an HTTP handler from the service implementation. It
-// returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewPlatformTenantServiceHandler(svc PlatformTenantServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	platformTenantServiceMethods := v1.File_publira_platform_v1_tenant_proto.Services().ByName("PlatformTenantService").Methods()
-	platformTenantServiceListTenantsHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceListTenantsProcedure,
-		svc.ListTenants,
-		connect.WithSchema(platformTenantServiceMethods.ByName("ListTenants")),
-		connect.WithHandlerOptions(opts...),
+// RegisterPlatformTenantServiceHandler registers svc as the
+// publira.platform.v1.PlatformTenantService implementation on server.
+func RegisterPlatformTenantServiceHandler(server *connect.Server, svc PlatformTenantServiceHandler) {
+	adapter := platformTenantServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: platformTenantServiceListTenantsSpec(), Handler: adapter.listTenants},
+		connect.Method{Spec: platformTenantServiceGetTenantSpec(), Handler: adapter.getTenant},
+		connect.Method{Spec: platformTenantServiceCreateTenantSpec(), Handler: adapter.createTenant},
+		connect.Method{Spec: platformTenantServiceUpdateTenantSpec(), Handler: adapter.updateTenant},
+		connect.Method{Spec: platformTenantServiceSuspendTenantSpec(), Handler: adapter.suspendTenant},
+		connect.Method{Spec: platformTenantServiceResumeTenantSpec(), Handler: adapter.resumeTenant},
+		connect.Method{Spec: platformTenantServiceListTenantMembersSpec(), Handler: adapter.listTenantMembers},
+		connect.Method{Spec: platformTenantServiceAddTenantMemberSpec(), Handler: adapter.addTenantMember},
+		connect.Method{Spec: platformTenantServiceUpdateTenantMemberRoleSpec(), Handler: adapter.updateTenantMemberRole},
+		connect.Method{Spec: platformTenantServiceRemoveTenantMemberSpec(), Handler: adapter.removeTenantMember},
+		connect.Method{Spec: platformTenantServiceListTenantAdminInvitationsSpec(), Handler: adapter.listTenantAdminInvitations},
+		connect.Method{Spec: platformTenantServiceCreateTenantAdminInvitationSpec(), Handler: adapter.createTenantAdminInvitation},
+		connect.Method{Spec: platformTenantServiceResendTenantAdminInvitationSpec(), Handler: adapter.resendTenantAdminInvitation},
+		connect.Method{Spec: platformTenantServiceCancelTenantAdminInvitationSpec(), Handler: adapter.cancelTenantAdminInvitation},
 	)
-	platformTenantServiceGetTenantHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceGetTenantProcedure,
-		svc.GetTenant,
-		connect.WithSchema(platformTenantServiceMethods.ByName("GetTenant")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformTenantServiceCreateTenantHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceCreateTenantProcedure,
-		svc.CreateTenant,
-		connect.WithSchema(platformTenantServiceMethods.ByName("CreateTenant")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformTenantServiceUpdateTenantHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceUpdateTenantProcedure,
-		svc.UpdateTenant,
-		connect.WithSchema(platformTenantServiceMethods.ByName("UpdateTenant")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformTenantServiceSuspendTenantHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceSuspendTenantProcedure,
-		svc.SuspendTenant,
-		connect.WithSchema(platformTenantServiceMethods.ByName("SuspendTenant")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformTenantServiceResumeTenantHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceResumeTenantProcedure,
-		svc.ResumeTenant,
-		connect.WithSchema(platformTenantServiceMethods.ByName("ResumeTenant")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformTenantServiceListTenantMembersHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceListTenantMembersProcedure,
-		svc.ListTenantMembers,
-		connect.WithSchema(platformTenantServiceMethods.ByName("ListTenantMembers")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformTenantServiceAddTenantMemberHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceAddTenantMemberProcedure,
-		svc.AddTenantMember,
-		connect.WithSchema(platformTenantServiceMethods.ByName("AddTenantMember")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformTenantServiceUpdateTenantMemberRoleHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceUpdateTenantMemberRoleProcedure,
-		svc.UpdateTenantMemberRole,
-		connect.WithSchema(platformTenantServiceMethods.ByName("UpdateTenantMemberRole")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformTenantServiceRemoveTenantMemberHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceRemoveTenantMemberProcedure,
-		svc.RemoveTenantMember,
-		connect.WithSchema(platformTenantServiceMethods.ByName("RemoveTenantMember")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformTenantServiceListTenantAdminInvitationsHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceListTenantAdminInvitationsProcedure,
-		svc.ListTenantAdminInvitations,
-		connect.WithSchema(platformTenantServiceMethods.ByName("ListTenantAdminInvitations")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformTenantServiceCreateTenantAdminInvitationHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceCreateTenantAdminInvitationProcedure,
-		svc.CreateTenantAdminInvitation,
-		connect.WithSchema(platformTenantServiceMethods.ByName("CreateTenantAdminInvitation")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformTenantServiceResendTenantAdminInvitationHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceResendTenantAdminInvitationProcedure,
-		svc.ResendTenantAdminInvitation,
-		connect.WithSchema(platformTenantServiceMethods.ByName("ResendTenantAdminInvitation")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformTenantServiceCancelTenantAdminInvitationHandler := connect.NewUnaryHandler(
-		PlatformTenantServiceCancelTenantAdminInvitationProcedure,
-		svc.CancelTenantAdminInvitation,
-		connect.WithSchema(platformTenantServiceMethods.ByName("CancelTenantAdminInvitation")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.platform.v1.PlatformTenantService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case PlatformTenantServiceListTenantsProcedure:
-			platformTenantServiceListTenantsHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceGetTenantProcedure:
-			platformTenantServiceGetTenantHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceCreateTenantProcedure:
-			platformTenantServiceCreateTenantHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceUpdateTenantProcedure:
-			platformTenantServiceUpdateTenantHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceSuspendTenantProcedure:
-			platformTenantServiceSuspendTenantHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceResumeTenantProcedure:
-			platformTenantServiceResumeTenantHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceListTenantMembersProcedure:
-			platformTenantServiceListTenantMembersHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceAddTenantMemberProcedure:
-			platformTenantServiceAddTenantMemberHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceUpdateTenantMemberRoleProcedure:
-			platformTenantServiceUpdateTenantMemberRoleHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceRemoveTenantMemberProcedure:
-			platformTenantServiceRemoveTenantMemberHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceListTenantAdminInvitationsProcedure:
-			platformTenantServiceListTenantAdminInvitationsHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceCreateTenantAdminInvitationProcedure:
-			platformTenantServiceCreateTenantAdminInvitationHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceResendTenantAdminInvitationProcedure:
-			platformTenantServiceResendTenantAdminInvitationHandler.ServeHTTP(w, r)
-		case PlatformTenantServiceCancelTenantAdminInvitationProcedure:
-			platformTenantServiceCancelTenantAdminInvitationHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedPlatformTenantServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedPlatformTenantServiceHandler struct{}
 
-func (UnimplementedPlatformTenantServiceHandler) ListTenants(context.Context, *connect.Request[v1.ListTenantsRequest]) (*connect.Response[v1.ListTenantsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.ListTenants is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) ListTenants(context.Context, *v1.ListTenantsRequest) (*v1.ListTenantsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.ListTenants is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) GetTenant(context.Context, *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.GetTenant is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) GetTenant(context.Context, *v1.GetTenantRequest) (*v1.GetTenantResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.GetTenant is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) CreateTenant(context.Context, *connect.Request[v1.CreateTenantRequest]) (*connect.Response[v1.CreateTenantResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.CreateTenant is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) CreateTenant(context.Context, *v1.CreateTenantRequest) (*v1.CreateTenantResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.CreateTenant is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) UpdateTenant(context.Context, *connect.Request[v1.UpdateTenantRequest]) (*connect.Response[v1.UpdateTenantResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.UpdateTenant is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) UpdateTenant(context.Context, *v1.UpdateTenantRequest) (*v1.UpdateTenantResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.UpdateTenant is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) SuspendTenant(context.Context, *connect.Request[v1.SuspendTenantRequest]) (*connect.Response[v1.SuspendTenantResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.SuspendTenant is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) SuspendTenant(context.Context, *v1.SuspendTenantRequest) (*v1.SuspendTenantResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.SuspendTenant is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) ResumeTenant(context.Context, *connect.Request[v1.ResumeTenantRequest]) (*connect.Response[v1.ResumeTenantResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.ResumeTenant is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) ResumeTenant(context.Context, *v1.ResumeTenantRequest) (*v1.ResumeTenantResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.ResumeTenant is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) ListTenantMembers(context.Context, *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.ListTenantMembers is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.ListTenantMembers is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) AddTenantMember(context.Context, *connect.Request[v1.AddTenantMemberRequest]) (*connect.Response[v1.AddTenantMemberResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.AddTenantMember is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.AddTenantMember is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) UpdateTenantMemberRole(context.Context, *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.UpdateTenantMemberRole is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) UpdateTenantMemberRole(context.Context, *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.UpdateTenantMemberRole is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) RemoveTenantMember(context.Context, *connect.Request[v1.RemoveTenantMemberRequest]) (*connect.Response[v1.RemoveTenantMemberResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.RemoveTenantMember is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) RemoveTenantMember(context.Context, *v1.RemoveTenantMemberRequest) (*v1.RemoveTenantMemberResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.RemoveTenantMember is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) ListTenantAdminInvitations(context.Context, *connect.Request[v1.ListTenantAdminInvitationsRequest]) (*connect.Response[v1.ListTenantAdminInvitationsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.ListTenantAdminInvitations is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) ListTenantAdminInvitations(context.Context, *v1.ListTenantAdminInvitationsRequest) (*v1.ListTenantAdminInvitationsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.ListTenantAdminInvitations is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) CreateTenantAdminInvitation(context.Context, *connect.Request[v1.CreateTenantAdminInvitationRequest]) (*connect.Response[v1.CreateTenantAdminInvitationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.CreateTenantAdminInvitation is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) CreateTenantAdminInvitation(context.Context, *v1.CreateTenantAdminInvitationRequest) (*v1.CreateTenantAdminInvitationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.CreateTenantAdminInvitation is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) ResendTenantAdminInvitation(context.Context, *connect.Request[v1.ResendTenantAdminInvitationRequest]) (*connect.Response[v1.ResendTenantAdminInvitationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.ResendTenantAdminInvitation is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) ResendTenantAdminInvitation(context.Context, *v1.ResendTenantAdminInvitationRequest) (*v1.ResendTenantAdminInvitationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.ResendTenantAdminInvitation is not implemented")
 }
 
-func (UnimplementedPlatformTenantServiceHandler) CancelTenantAdminInvitation(context.Context, *connect.Request[v1.CancelTenantAdminInvitationRequest]) (*connect.Response[v1.CancelTenantAdminInvitationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformTenantService.CancelTenantAdminInvitation is not implemented"))
+func (UnimplementedPlatformTenantServiceHandler) CancelTenantAdminInvitation(context.Context, *v1.CancelTenantAdminInvitationRequest) (*v1.CancelTenantAdminInvitationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformTenantService.CancelTenantAdminInvitation is not implemented")
+}
+
+type platformTenantServiceClient struct {
+	client *connect.Client
+}
+
+func (c *platformTenantServiceClient) ListTenants(ctx context.Context, req *v1.ListTenantsRequest) (*v1.ListTenantsResponse, error) {
+	var res v1.ListTenantsResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceListTenantsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) GetTenant(ctx context.Context, req *v1.GetTenantRequest) (*v1.GetTenantResponse, error) {
+	var res v1.GetTenantResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceGetTenantSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) CreateTenant(ctx context.Context, req *v1.CreateTenantRequest) (*v1.CreateTenantResponse, error) {
+	var res v1.CreateTenantResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceCreateTenantSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) UpdateTenant(ctx context.Context, req *v1.UpdateTenantRequest) (*v1.UpdateTenantResponse, error) {
+	var res v1.UpdateTenantResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceUpdateTenantSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) SuspendTenant(ctx context.Context, req *v1.SuspendTenantRequest) (*v1.SuspendTenantResponse, error) {
+	var res v1.SuspendTenantResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceSuspendTenantSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) ResumeTenant(ctx context.Context, req *v1.ResumeTenantRequest) (*v1.ResumeTenantResponse, error) {
+	var res v1.ResumeTenantResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceResumeTenantSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) ListTenantMembers(ctx context.Context, req *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error) {
+	var res v1.ListTenantMembersResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceListTenantMembersSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) AddTenantMember(ctx context.Context, req *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error) {
+	var res v1.AddTenantMemberResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceAddTenantMemberSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) UpdateTenantMemberRole(ctx context.Context, req *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error) {
+	var res v1.UpdateTenantMemberRoleResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceUpdateTenantMemberRoleSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) RemoveTenantMember(ctx context.Context, req *v1.RemoveTenantMemberRequest) (*v1.RemoveTenantMemberResponse, error) {
+	var res v1.RemoveTenantMemberResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceRemoveTenantMemberSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) ListTenantAdminInvitations(ctx context.Context, req *v1.ListTenantAdminInvitationsRequest) (*v1.ListTenantAdminInvitationsResponse, error) {
+	var res v1.ListTenantAdminInvitationsResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceListTenantAdminInvitationsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) CreateTenantAdminInvitation(ctx context.Context, req *v1.CreateTenantAdminInvitationRequest) (*v1.CreateTenantAdminInvitationResponse, error) {
+	var res v1.CreateTenantAdminInvitationResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceCreateTenantAdminInvitationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) ResendTenantAdminInvitation(ctx context.Context, req *v1.ResendTenantAdminInvitationRequest) (*v1.ResendTenantAdminInvitationResponse, error) {
+	var res v1.ResendTenantAdminInvitationResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceResendTenantAdminInvitationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformTenantServiceClient) CancelTenantAdminInvitation(ctx context.Context, req *v1.CancelTenantAdminInvitationRequest) (*v1.CancelTenantAdminInvitationResponse, error) {
+	var res v1.CancelTenantAdminInvitationResponse
+	if err := c.client.CallUnary(ctx, platformTenantServiceCancelTenantAdminInvitationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type platformTenantServiceHandler struct{ svc PlatformTenantServiceHandler }
+
+func (h platformTenantServiceHandler) listTenants(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListTenantsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListTenants(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) getTenant(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenant(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) createTenant(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateTenantRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateTenant(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) updateTenant(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenant(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) suspendTenant(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SuspendTenantRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SuspendTenant(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) resumeTenant(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ResumeTenantRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ResumeTenant(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) listTenantMembers(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListTenantMembersRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListTenantMembers(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) addTenantMember(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AddTenantMemberRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.AddTenantMember(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) updateTenantMemberRole(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantMemberRoleRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantMemberRole(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) removeTenantMember(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RemoveTenantMemberRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RemoveTenantMember(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) listTenantAdminInvitations(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListTenantAdminInvitationsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListTenantAdminInvitations(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) createTenantAdminInvitation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateTenantAdminInvitationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateTenantAdminInvitation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) resendTenantAdminInvitation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ResendTenantAdminInvitationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ResendTenantAdminInvitation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformTenantServiceHandler) cancelTenantAdminInvitation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CancelTenantAdminInvitationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CancelTenantAdminInvitation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

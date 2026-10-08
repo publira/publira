@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/publira/publira/server/internal/platformpolicy"
@@ -13,15 +13,15 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func getViewerPreferencesRequest(tenant testutil.Tenant, token string) *connect.Request[publirav1.GetViewerPreferencesRequest] {
-	return newBearerRequest(&publirav1.GetViewerPreferencesRequest{Tenant: tenantContext(tenant)}, token)
+func getViewerPreferencesRequest(tenant testutil.Tenant) *publirav1.GetViewerPreferencesRequest {
+	return &publirav1.GetViewerPreferencesRequest{Tenant: tenantContext(tenant)}
 }
 
-func updateViewerPreferencesRequest(tenant testutil.Tenant, token string, wideViewerEnabled *bool) *connect.Request[publirav1.UpdateViewerPreferencesRequest] {
-	return newBearerRequest(&publirav1.UpdateViewerPreferencesRequest{
+func updateViewerPreferencesRequest(tenant testutil.Tenant, wideViewerEnabled *bool) *publirav1.UpdateViewerPreferencesRequest {
+	return &publirav1.UpdateViewerPreferencesRequest{
 		Tenant:            tenantContext(tenant),
 		WideViewerEnabled: wideViewerEnabled,
-	}, token)
+	}
 }
 
 func TestDBViewerPreferencesFollowTheReaderToTheirNextDevice(t *testing.T) {
@@ -30,21 +30,21 @@ func TestDBViewerPreferencesFollowTheReaderToTheirNextDevice(t *testing.T) {
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPA", "member-viewer-pref-a@example.com", "Member A", "tenant_member")
 	client := env.authClient()
 
-	saved, err := client.UpdateViewerPreferences(context.Background(), updateViewerPreferencesRequest(tenant, tokenFor(t, tenant, member), proto.Bool(true)))
+	saved, err := client.UpdateViewerPreferences(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), updateViewerPreferencesRequest(tenant, proto.Bool(true)))
 	if err != nil {
 		t.Fatalf("UpdateViewerPreferences: %v", err)
 	}
-	if !saved.Msg.Preferences.GetWideViewerEnabled() {
+	if !saved.Preferences.GetWideViewerEnabled() {
 		t.Fatalf("saved wide_viewer_enabled = false, want true")
 	}
 
 	// A second session of the same account, which is all the reader's next
 	// device shares with the one they made the setting on.
-	read, err := client.GetViewerPreferences(context.Background(), getViewerPreferencesRequest(tenant, tokenFor(t, tenant, member)))
+	read, err := client.GetViewerPreferences(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), getViewerPreferencesRequest(tenant))
 	if err != nil {
 		t.Fatalf("GetViewerPreferences from another session: %v", err)
 	}
-	if !read.Msg.Preferences.GetWideViewerEnabled() {
+	if !read.Preferences.GetWideViewerEnabled() {
 		t.Fatalf("read wide_viewer_enabled = false, want the stored true")
 	}
 
@@ -58,14 +58,14 @@ func TestDBViewerPreferencesAnswerTheDefaultsWhenNothingWasSaved(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTVPB", "viewer-pref-b.example.com", "Viewer Pref B")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPB", "member-viewer-pref-b@example.com", "Member B", "tenant_member")
 
-	read, err := env.authClient().GetViewerPreferences(context.Background(), getViewerPreferencesRequest(tenant, tokenFor(t, tenant, member)))
+	read, err := env.authClient().GetViewerPreferences(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), getViewerPreferencesRequest(tenant))
 	if err != nil {
 		t.Fatalf("GetViewerPreferences for a reader who saved nothing: %v", err)
 	}
-	if read.Msg.Preferences == nil {
+	if read.Preferences == nil {
 		t.Fatalf("preferences = nil, want the defaults")
 	}
-	if read.Msg.Preferences.GetWideViewerEnabled() {
+	if read.Preferences.GetWideViewerEnabled() {
 		t.Fatalf("default wide_viewer_enabled = true, want false")
 	}
 	// Reading saves nothing: the defaults are an answer, not a row.
@@ -85,19 +85,19 @@ func TestDBViewerPreferenceDefaultsAgreeAcrossPaths(t *testing.T) {
 	inserted := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPD", "member-viewer-pref-d@example.com", "Member D", "tenant_member")
 	client := env.authClient()
 
-	fromDefaults, err := client.GetViewerPreferences(context.Background(), getViewerPreferencesRequest(tenant, tokenFor(t, tenant, unsaved)))
+	fromDefaults, err := client.GetViewerPreferences(testutil.WithBearer(context.Background(), tokenFor(t, tenant, unsaved)), getViewerPreferencesRequest(tenant))
 	if err != nil {
 		t.Fatalf("GetViewerPreferences for a reader who saved nothing: %v", err)
 	}
 
 	// An update naming no preference at all, so the row is created from the
 	// insert branch's defaults alone.
-	fromInsert, err := client.UpdateViewerPreferences(context.Background(), updateViewerPreferencesRequest(tenant, tokenFor(t, tenant, inserted), nil))
+	fromInsert, err := client.UpdateViewerPreferences(testutil.WithBearer(context.Background(), tokenFor(t, tenant, inserted)), updateViewerPreferencesRequest(tenant, nil))
 	if err != nil {
 		t.Fatalf("UpdateViewerPreferences naming no preference: %v", err)
 	}
 
-	if got, want := fromInsert.Msg.Preferences.GetWideViewerEnabled(), fromDefaults.Msg.Preferences.GetWideViewerEnabled(); got != want {
+	if got, want := fromInsert.Preferences.GetWideViewerEnabled(), fromDefaults.Preferences.GetWideViewerEnabled(); got != want {
 		t.Fatalf("inserted wide_viewer_enabled = %t, want the default %t the unsaved reader reads", got, want)
 	}
 }
@@ -109,23 +109,23 @@ func TestDBViewerPreferencesKeepThePreferencesAnUpdateOmits(t *testing.T) {
 	client := env.authClient()
 	token := tokenFor(t, tenant, member)
 
-	if _, err := client.UpdateViewerPreferences(context.Background(), updateViewerPreferencesRequest(tenant, token, proto.Bool(true))); err != nil {
+	if _, err := client.UpdateViewerPreferences(testutil.WithBearer(context.Background(), token), updateViewerPreferencesRequest(tenant, proto.Bool(true))); err != nil {
 		t.Fatalf("UpdateViewerPreferences: %v", err)
 	}
 
-	kept, err := client.UpdateViewerPreferences(context.Background(), updateViewerPreferencesRequest(tenant, token, nil))
+	kept, err := client.UpdateViewerPreferences(testutil.WithBearer(context.Background(), token), updateViewerPreferencesRequest(tenant, nil))
 	if err != nil {
 		t.Fatalf("UpdateViewerPreferences naming no preference: %v", err)
 	}
-	if !kept.Msg.Preferences.GetWideViewerEnabled() {
+	if !kept.Preferences.GetWideViewerEnabled() {
 		t.Fatalf("wide_viewer_enabled = false after an update that omitted it, want the stored true")
 	}
 
-	off, err := client.UpdateViewerPreferences(context.Background(), updateViewerPreferencesRequest(tenant, token, proto.Bool(false)))
+	off, err := client.UpdateViewerPreferences(testutil.WithBearer(context.Background(), token), updateViewerPreferencesRequest(tenant, proto.Bool(false)))
 	if err != nil {
 		t.Fatalf("UpdateViewerPreferences turning the setting off: %v", err)
 	}
-	if off.Msg.Preferences.GetWideViewerEnabled() {
+	if off.Preferences.GetWideViewerEnabled() {
 		t.Fatalf("wide_viewer_enabled = true after the reader turned it off")
 	}
 }
@@ -141,15 +141,15 @@ func TestDBViewerPreferencesAreMemberScopedByRLS(t *testing.T) {
 	unsaved := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPJ", "member-viewer-pref-j@example.com", "Member J", "tenant_member")
 	client := env.authClient()
 
-	if _, err := client.UpdateViewerPreferences(context.Background(), updateViewerPreferencesRequest(tenant, tokenFor(t, tenant, first), proto.Bool(true))); err != nil {
+	if _, err := client.UpdateViewerPreferences(testutil.WithBearer(context.Background(), tokenFor(t, tenant, first)), updateViewerPreferencesRequest(tenant, proto.Bool(true))); err != nil {
 		t.Fatalf("UpdateViewerPreferences as the first member: %v", err)
 	}
 
-	otherRead, err := client.GetViewerPreferences(context.Background(), getViewerPreferencesRequest(tenant, tokenFor(t, tenant, second)))
+	otherRead, err := client.GetViewerPreferences(testutil.WithBearer(context.Background(), tokenFor(t, tenant, second)), getViewerPreferencesRequest(tenant))
 	if err != nil {
 		t.Fatalf("GetViewerPreferences as the second member: %v", err)
 	}
-	if otherRead.Msg.Preferences.GetWideViewerEnabled() {
+	if otherRead.Preferences.GetWideViewerEnabled() {
 		t.Fatalf("second member read the first member's wide_viewer_enabled")
 	}
 
@@ -194,7 +194,7 @@ func TestDBViewerPreferencesAreTenantScopedByRLS(t *testing.T) {
 	tenant, otherTenant := env.seedTwoTenants(t)
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPH", "member-viewer-pref-h@example.com", "Member H", "tenant_member")
 
-	if _, err := env.authClient().UpdateViewerPreferences(context.Background(), updateViewerPreferencesRequest(tenant, tokenFor(t, tenant, member), proto.Bool(true))); err != nil {
+	if _, err := env.authClient().UpdateViewerPreferences(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), updateViewerPreferencesRequest(tenant, proto.Bool(true))); err != nil {
 		t.Fatalf("UpdateViewerPreferences: %v", err)
 	}
 
@@ -220,14 +220,14 @@ func TestDBViewerPreferencesNeedASession(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTVPI", "viewer-pref-i.example.com", "Viewer Pref I")
 	client := env.authClient()
 
-	_, err := client.GetViewerPreferences(context.Background(), connect.NewRequest(&publirav1.GetViewerPreferencesRequest{Tenant: tenantContext(tenant)}))
+	_, err := client.GetViewerPreferences(context.Background(), &publirav1.GetViewerPreferencesRequest{Tenant: tenantContext(tenant)})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetViewerPreferences without a session code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
-	_, err = client.UpdateViewerPreferences(context.Background(), connect.NewRequest(&publirav1.UpdateViewerPreferencesRequest{
+	_, err = client.UpdateViewerPreferences(context.Background(), &publirav1.UpdateViewerPreferencesRequest{
 		Tenant:            tenantContext(tenant),
 		WideViewerEnabled: proto.Bool(true),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("UpdateViewerPreferences without a session code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -243,11 +243,11 @@ func TestDBUpdateViewerPreferencesChargesTheReaderAllowance(t *testing.T) {
 	token := tokenFor(t, tenant, member)
 
 	for range 2 {
-		if _, err := client.UpdateViewerPreferences(context.Background(), updateViewerPreferencesRequest(tenant, token, proto.Bool(true))); err != nil {
+		if _, err := client.UpdateViewerPreferences(testutil.WithBearer(context.Background(), token), updateViewerPreferencesRequest(tenant, proto.Bool(true))); err != nil {
 			t.Fatalf("UpdateViewerPreferences within the allowance: %v", err)
 		}
 	}
-	_, err := client.UpdateViewerPreferences(context.Background(), updateViewerPreferencesRequest(tenant, token, proto.Bool(false)))
+	_, err := client.UpdateViewerPreferences(testutil.WithBearer(context.Background(), token), updateViewerPreferencesRequest(tenant, proto.Bool(false)))
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("UpdateViewerPreferences past the allowance code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}

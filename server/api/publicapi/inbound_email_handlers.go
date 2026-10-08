@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -27,7 +27,7 @@ const (
 	// 30 MB.
 	maxInboundEmailWebhookPayload = 32 << 20
 	// maxContactServiceRequestBytes is the most ContactService reads of one
-	// request, set on its handler as connect.WithReadMaxBytes so a larger one
+	// request, set on its server as connecthttp.WithReadMaxBytes so a larger one
 	// is refused while it is read rather than after it has been decoded into
 	// memory: the service is reached without a session. It leaves room for
 	// the headers and the tenant beside the largest payload the webhook takes.
@@ -56,18 +56,18 @@ func (s *apiServer) inboundEmailStore(ctx context.Context) *inboundemail.Store {
 // meant, an API of its that did not answer — is answered with an error.
 func (s *apiServer) ProcessInboundEmailWebhook(
 	ctx context.Context,
-	req *connect.Request[publirav1.ProcessInboundEmailWebhookRequest],
-) (*connect.Response[publirav1.ProcessInboundEmailWebhookResponse], error) {
-	providerID := strings.TrimSpace(req.Msg.Provider)
+	req *publirav1.ProcessInboundEmailWebhookRequest,
+) (*publirav1.ProcessInboundEmailWebhookResponse, error) {
+	providerID := strings.TrimSpace(req.Provider)
 	provider, ok := s.inboundProviders.Lookup(providerID)
 	if !ok {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("inbound email provider not found"))
+		return nil, connect.NewError(connect.CodeNotFound, "inbound email provider not found")
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	acknowledged := connect.NewResponse(&publirav1.ProcessInboundEmailWebhookResponse{})
+	acknowledged := &publirav1.ProcessInboundEmailWebhookResponse{}
 
 	config, credentials, err := s.inboundEmailStore(ctx).LoadEnabledSecrets(ctx, tenant.ID)
 	if inboundemail.IsUnavailable(err) {
@@ -89,33 +89,33 @@ func (s *apiServer) ProcessInboundEmailWebhook(
 		)
 		return acknowledged, nil
 	}
-	if len(req.Msg.Payload) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid inbound email webhook payload"))
+	if len(req.Payload) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid inbound email webhook payload")
 	}
-	if len(req.Msg.Payload) > maxInboundEmailWebhookPayload {
+	if len(req.Payload) > maxInboundEmailWebhookPayload {
 		s.logger.WarnContext(ctx, "inbound email is larger than the webhook reads and was dropped",
 			"tenant_id", tenant.ID,
 			"provider", providerID,
-			"bytes", len(req.Msg.Payload),
+			"bytes", len(req.Payload),
 		)
 		return acknowledged, nil
 	}
 
-	headers := make(http.Header, len(req.Msg.Headers))
-	for name, value := range req.Msg.Headers {
+	headers := make(http.Header, len(req.Headers))
+	for name, value := range req.Headers {
 		headers.Set(name, value)
 	}
-	result, err := provider.ParseWebhook(ctx, req.Msg.Payload, headers, credentials)
+	result, err := provider.ParseWebhook(ctx, req.Payload, headers, credentials)
 	switch {
 	case errors.Is(err, inboundprovider.ErrInvalidSignature):
 		s.logger.WarnContext(ctx, "invalid inbound email webhook signature", "tenant_id", tenant.ID, "provider", providerID)
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid inbound email webhook signature"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid inbound email webhook signature")
 	case errors.Is(err, inboundprovider.ErrMalformedRequest):
 		s.logger.WarnContext(ctx, "malformed inbound email webhook", "tenant_id", tenant.ID, "provider", providerID, "error", err)
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid inbound email webhook"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid inbound email webhook")
 	case errors.Is(err, inboundprovider.ErrProviderUnavailable):
 		s.logger.WarnContext(ctx, "inbound email provider did not answer", "tenant_id", tenant.ID, "provider", providerID, "error", err)
-		return nil, connect.NewError(connect.CodeUnavailable, errors.New("inbound email provider is unavailable"))
+		return nil, connect.NewError(connect.CodeUnavailable, "inbound email provider is unavailable")
 	case err != nil:
 		return nil, s.internalError(ctx, "inbound email webhook could not be processed", err, "tenant_id", tenant.ID.String(), "provider", providerID)
 	}

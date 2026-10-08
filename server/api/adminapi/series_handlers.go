@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 	_ "golang.org/x/image/webp"
 
@@ -37,7 +37,7 @@ func parsePublishedAtOrZero(value string) (sql.NullTime, error) {
 	}
 	t, err := time.Parse(time.RFC3339, trimmed)
 	if err != nil {
-		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, errors.New("published_at must be RFC3339"))
+		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, "published_at must be RFC3339")
 	}
 	return sql.NullTime{Time: t.UTC(), Valid: true}, nil
 }
@@ -82,12 +82,12 @@ func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmo
 		return uuid.NullUUID{}, nil
 	}
 	if s.storage == nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, "storage provider is not configured")
 	}
 
 	seriesImageID, err := uuid.NewV7()
 	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err)
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	createdImage, err := s.queriesFor(ctx).CreateSeriesImage(ctx, dbmodels.CreateSeriesImageParams{
@@ -128,7 +128,7 @@ func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmo
 
 		seriesImageVariantID, variantIDErr := uuid.NewV7()
 		if variantIDErr != nil {
-			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, variantIDErr)
+			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, variantIDErr.Error()).WithCause(variantIDErr)
 		}
 
 		_, createVariantErr := s.queriesFor(ctx).CreateSeriesImageVariant(ctx, dbmodels.CreateSeriesImageVariantParams{
@@ -374,7 +374,7 @@ func (s *adminServer) labelIDArg(ctx context.Context, tenantID uuid.UUID, rawID 
 	}
 	if _, err := s.queriesFor(ctx).GetLabelByIDForTenant(ctx, dbmodels.GetLabelByIDForTenantParams{TenantID: tenantID, ID: id}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return uuid.NullUUID{}, connect.NewError(connect.CodeInvalidArgument, errors.New("label not found"))
+			return uuid.NullUUID{}, connect.NewError(connect.CodeInvalidArgument, "label not found")
 		}
 		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to get label for series", err, "tenant_id", tenantID.String())
 	}
@@ -452,7 +452,7 @@ func (s *adminServer) syncSeriesTags(
 	for _, tag := range tags {
 		tagID, err := uuid.NewV7()
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 		}
 		stored, err := s.queriesFor(ctx).UpsertTagForTenant(ctx, dbmodels.UpsertTagForTenantParams{
 			ID:       tagID,
@@ -624,71 +624,71 @@ func seriesRevalidateTags(tenantID, seriesPublicID string) []string {
 
 func (s *adminServer) CreateSeries(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreateSeriesRequest],
-) (*connect.Response[publiraadminv1.CreateSeriesResponse], error) {
+	req *publiraadminv1.CreateSeriesRequest,
+) (*publiraadminv1.CreateSeriesResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(req.Msg.Title) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("title is required"))
+	if strings.TrimSpace(req.Title) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "title is required")
 	}
-	if req.Msg.ReadingPeriodHours < 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reading_period_hours must be greater than or equal to 0"))
+	if req.ReadingPeriodHours < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "reading_period_hours must be greater than or equal to 0")
 	}
-	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.EyeCatchImageData, req.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
-	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.Status, req.Msg.ScheduleWeekdays, req.Msg.AgeRating, req.Msg.CommentMode, req.Msg.ReadingDirection, req.Msg.SpreadStartIndex)
+	listingMetadata, err := normalizeSeriesListingMetadata(req.Status, req.ScheduleWeekdays, req.AgeRating, req.CommentMode, req.ReadingDirection, req.SpreadStartIndex)
 	if err != nil {
 		return nil, err
 	}
-	availability, err := protomapper.SeriesSurfaceAvailabilityToStored(req.Msg.Availability)
+	availability, err := protomapper.SeriesSurfaceAvailabilityToStored(req.Availability)
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
 	}
-	purchaseAvailability, err := protomapper.SurfaceAvailabilityOverrideToStored(req.Msg.PurchaseAvailability)
+	purchaseAvailability, err := protomapper.SurfaceAvailabilityOverrideToStored(req.PurchaseAvailability)
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "purchase_availability")
 	}
-	publishedAt, err := parsePublishedAtOrZero(req.Msg.PublishedAt)
+	publishedAt, err := parsePublishedAtOrZero(req.PublishedAt)
 	if err != nil {
 		return nil, err
 	}
-	if !publishedAt.Valid && req.Msg.IsPublished {
+	if !publishedAt.Valid && req.IsPublished {
 		publishedAt = sql.NullTime{Time: time.Now().UTC(), Valid: true}
 	}
-	labelID, err := s.labelIDArg(ctx, tenant.ID, req.Msg.LabelId)
+	labelID, err := s.labelIDArg(ctx, tenant.ID, req.LabelId)
 	if err != nil {
 		return nil, err
 	}
-	shares := make([]int32, len(req.Msg.CreatorCredits))
-	for index, credit := range req.Msg.CreatorCredits {
+	shares := make([]int32, len(req.CreatorCredits))
+	for index, credit := range req.CreatorCredits {
 		shares[index] = credit.GetShareBps()
 	}
 	if err := validateCreditShares(shares, "creator_credits"); err != nil {
 		return nil, err
 	}
-	creditsToLink, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits), "creator_credits")
+	creditsToLink, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.CreatorCredits), "creator_credits")
 	if err != nil {
 		return nil, err
 	}
 	setCreatorCreditShares(creditsToLink, shares)
-	genresToLink, err := s.resolveGenres(ctx, tenant.ID, req.Msg.GenreIds)
+	genresToLink, err := s.resolveGenres(ctx, tenant.ID, req.GenreIds)
 	if err != nil {
 		return nil, err
 	}
-	tagsToLink, err := normalizeTagNames(req.Msg.TagNames)
+	tagsToLink, err := normalizeTagNames(req.TagNames)
 	if err != nil {
 		return nil, err
 	}
 	seriesID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -700,7 +700,7 @@ func (s *adminServer) CreateSeries(
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 	base, err := publicid.InsertTx(txCtx, tx, func(publicID string) (dbmodels.Series, error) {
 		return s.queriesFor(txCtx).CreateSeriesBase(txCtx, dbmodels.CreateSeriesBaseParams{
-			ID: seriesID, TenantID: tenant.ID, LabelID: labelID, PublicID: publicID, Title: req.Msg.Title, Availability: availability,
+			ID: seriesID, TenantID: tenant.ID, LabelID: labelID, PublicID: publicID, Title: req.Title, Availability: availability,
 			PurchaseAvailability: purchaseAvailability,
 		})
 	})
@@ -710,8 +710,8 @@ func (s *adminServer) CreateSeries(
 	_, err = s.queriesFor(txCtx).CreateSeriesListing(txCtx, dbmodels.CreateSeriesListingParams{
 		TenantID:           tenant.ID,
 		SeriesID:           base.ID,
-		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
-		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
+		Synopsis:           sql.NullString{String: req.Synopsis, Valid: strings.TrimSpace(req.Synopsis) != ""},
+		ReadingPeriodHours: sql.NullInt32{Int32: req.ReadingPeriodHours, Valid: req.ReadingPeriodHours > 0},
 		Status:             listingMetadata.status,
 		ScheduleWeekdays:   listingMetadata.scheduleWeekdays,
 		AgeRating:          listingMetadata.ageRating,
@@ -778,7 +778,7 @@ func (s *adminServer) CreateSeries(
 			TargetType:  "series",
 			TargetID:    base.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 		})
 	}
 	created, err := s.queriesFor(ctx).GetSeriesByIDForTenant(ctx, dbmodels.GetSeriesByIDForTenantParams{TenantID: tenant.ID, ID: base.ID})
@@ -811,102 +811,102 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, s.internalError(ctx, "series holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", created.PublicID)
 	}
-	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{
+	return &publiraadminv1.CreateSeriesResponse{
 		Series:               series,
 		CommentMode:          commentMode,
 		ReadingDirection:     readingDirection,
 		SpreadStartIndex:     spreadStartIndex,
 		CreatorCredits:       creatorCredits,
 		PurchaseAvailability: savedPurchaseAvailability,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) UpdateSeries(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateSeriesRequest],
-) (*connect.Response[publiraadminv1.UpdateSeriesResponse], error) {
+	req *publiraadminv1.UpdateSeriesRequest,
+) (*publiraadminv1.UpdateSeriesResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(req.Msg.Title) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("title is required"))
+	if strings.TrimSpace(req.Title) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "title is required")
 	}
-	if req.Msg.GetReadingPeriodHours() < 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reading_period_hours must be greater than or equal to 0"))
+	if req.GetReadingPeriodHours() < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "reading_period_hours must be greater than or equal to 0")
 	}
-	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
+	if req.ClearEyeCatchImage && len(req.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
 	// An absent field normalizes to its default, which UpdateSeriesListing only
 	// writes into a series that has no listing row yet.
-	listingMetadata, err := normalizeSeriesListingMetadata(req.Msg.GetStatus(), req.Msg.GetWeeklySchedule().GetWeekdays(), req.Msg.GetAgeRating(), req.Msg.GetCommentMode(), req.Msg.GetReadingDirection(), req.Msg.SpreadStartIndex)
+	listingMetadata, err := normalizeSeriesListingMetadata(req.GetStatus(), req.GetWeeklySchedule().GetWeekdays(), req.GetAgeRating(), req.GetCommentMode(), req.GetReadingDirection(), req.SpreadStartIndex)
 	if err != nil {
 		return nil, err
 	}
-	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.EyeCatchImageData, req.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
-	publishedAt, err := parsePublishedAtOrZero(req.Msg.PublishedAt)
+	publishedAt, err := parsePublishedAtOrZero(req.PublishedAt)
 	if err != nil {
 		return nil, err
 	}
-	if !publishedAt.Valid && req.Msg.IsPublished {
+	if !publishedAt.Valid && req.IsPublished {
 		publishedAt = sql.NullTime{Time: time.Now().UTC(), Valid: true}
 	}
-	seriesID, err := parseRecordID(req.Msg.SeriesId, "series_id")
+	seriesID, err := parseRecordID(req.SeriesId, "series_id")
 	if err != nil {
 		return nil, err
 	}
 	current, err := s.queriesFor(ctx).GetSeriesByIDForTenant(ctx, dbmodels.GetSeriesByIDForTenantParams{TenantID: tenant.ID, ID: seriesID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "series not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get series for update", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
 	availability := current.Availability
-	if req.Msg.Availability != nil {
-		availability, err = protomapper.SeriesSurfaceAvailabilityToStored(req.Msg.GetAvailability())
+	if req.Availability != nil {
+		availability, err = protomapper.SeriesSurfaceAvailabilityToStored(req.GetAvailability())
 		if err != nil {
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "availability")
 		}
 	}
 	purchaseAvailability := current.PurchaseAvailability
-	if req.Msg.PurchaseAvailability != nil {
-		purchaseAvailability, err = protomapper.SurfaceAvailabilityOverrideToStored(req.Msg.GetPurchaseAvailability())
+	if req.PurchaseAvailability != nil {
+		purchaseAvailability, err = protomapper.SurfaceAvailabilityOverrideToStored(req.GetPurchaseAvailability())
 		if err != nil {
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "purchase_availability")
 		}
 	}
-	labelID, err := s.labelIDArg(ctx, tenant.ID, req.Msg.LabelId)
+	labelID, err := s.labelIDArg(ctx, tenant.ID, req.LabelId)
 	if err != nil {
 		return nil, err
 	}
 	if !labelID.Valid {
 		labelID = current.LabelID
 	}
-	shares := make([]int32, len(req.Msg.CreatorCredits))
-	for index, credit := range req.Msg.CreatorCredits {
+	shares := make([]int32, len(req.CreatorCredits))
+	for index, credit := range req.CreatorCredits {
 		shares[index] = credit.GetShareBps()
 	}
 	if err := validateCreditShares(shares, "creator_credits"); err != nil {
 		return nil, err
 	}
-	creditsToLink, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits), "creator_credits")
+	creditsToLink, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.CreatorCredits), "creator_credits")
 	if err != nil {
 		return nil, err
 	}
 	setCreatorCreditShares(creditsToLink, shares)
-	genresToLink, err := s.resolveGenres(ctx, tenant.ID, req.Msg.GenreIds)
+	genresToLink, err := s.resolveGenres(ctx, tenant.ID, req.GenreIds)
 	if err != nil {
 		return nil, err
 	}
-	tagsToLink, err := normalizeTagNames(req.Msg.TagNames)
+	tagsToLink, err := normalizeTagNames(req.TagNames)
 	if err != nil {
 		return nil, err
 	}
@@ -918,29 +918,29 @@ func (s *adminServer) UpdateSeries(
 	defer tx.Rollback() //nolint:errcheck
 
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
-	err = s.queriesFor(txCtx).UpdateSeriesBase(txCtx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: labelID, Availability: availability, PurchaseAvailability: purchaseAvailability})
+	err = s.queriesFor(txCtx).UpdateSeriesBase(txCtx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Title, LabelID: labelID, Availability: availability, PurchaseAvailability: purchaseAvailability})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	_, err = s.queriesFor(txCtx).UpdateSeriesListing(txCtx, dbmodels.UpdateSeriesListingParams{
 		TenantID:                tenant.ID,
 		SeriesID:                current.ID,
-		Synopsis:                sql.NullString{String: req.Msg.GetSynopsis(), Valid: strings.TrimSpace(req.Msg.GetSynopsis()) != ""},
-		ReadingPeriodHours:      sql.NullInt32{Int32: req.Msg.GetReadingPeriodHours(), Valid: req.Msg.GetReadingPeriodHours() > 0},
+		Synopsis:                sql.NullString{String: req.GetSynopsis(), Valid: strings.TrimSpace(req.GetSynopsis()) != ""},
+		ReadingPeriodHours:      sql.NullInt32{Int32: req.GetReadingPeriodHours(), Valid: req.GetReadingPeriodHours() > 0},
 		Status:                  listingMetadata.status,
 		ScheduleWeekdays:        listingMetadata.scheduleWeekdays,
 		AgeRating:               listingMetadata.ageRating,
 		CommentMode:             listingMetadata.commentMode,
 		ReadingDirection:        listingMetadata.readingDirection,
 		SpreadStartIndex:        listingMetadata.spreadStartIndex,
-		WriteSynopsis:           req.Msg.Synopsis != nil,
-		WriteReadingPeriodHours: req.Msg.ReadingPeriodHours != nil,
-		WriteStatus:             req.Msg.Status != nil,
-		WriteScheduleWeekdays:   req.Msg.WeeklySchedule != nil,
-		WriteAgeRating:          req.Msg.AgeRating != nil,
-		WriteCommentMode:        req.Msg.CommentMode != nil,
-		WriteReadingDirection:   req.Msg.ReadingDirection != nil,
-		WriteSpreadStartIndex:   req.Msg.SpreadStartIndex != nil,
+		WriteSynopsis:           req.Synopsis != nil,
+		WriteReadingPeriodHours: req.ReadingPeriodHours != nil,
+		WriteStatus:             req.Status != nil,
+		WriteScheduleWeekdays:   req.WeeklySchedule != nil,
+		WriteAgeRating:          req.AgeRating != nil,
+		WriteCommentMode:        req.CommentMode != nil,
+		WriteReadingDirection:   req.ReadingDirection != nil,
+		WriteSpreadStartIndex:   req.SpreadStartIndex != nil,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update series listing", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
@@ -953,7 +953,7 @@ func (s *adminServer) UpdateSeries(
 		return nil, s.internalDBError(ctx, "failed to update series publication", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	eyeCatchImageID := current.EyeCatchImageID
-	if req.Msg.ClearEyeCatchImage {
+	if req.ClearEyeCatchImage {
 		eyeCatchImageID = uuid.NullUUID{}
 	} else if eyeCatchImage != nil {
 		newEyeCatchImageID, uploadErr := s.createSeriesEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchImage)
@@ -1011,7 +1011,7 @@ func (s *adminServer) UpdateSeries(
 			TargetType:  "series",
 			TargetID:    current.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 		})
 	}
 	series, err := protomapper.SeriesFromGetSeriesByIDForTenantRow(updated)
@@ -1040,14 +1040,14 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, s.internalError(ctx, "series holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", updated.PublicID)
 	}
-	return connect.NewResponse(&publiraadminv1.UpdateSeriesResponse{
+	return &publiraadminv1.UpdateSeriesResponse{
 		Series:               series,
 		CommentMode:          commentMode,
 		ReadingDirection:     readingDirection,
 		SpreadStartIndex:     spreadStartIndex,
 		CreatorCredits:       creatorCredits,
 		PurchaseAvailability: savedPurchaseAvailability,
-	}), nil
+	}, nil
 }
 
 const (
@@ -1190,14 +1190,14 @@ func resolveSeriesListFilters(req *publiraadminv1.ListSeriesRequest) (seriesList
 	if req.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_UNSPECIFIED {
 		status, err := protomapper.SeriesStatusToStored(req.Status)
 		if err != nil {
-			return seriesListFilters{}, connect.NewError(connect.CodeInvalidArgument, errors.New("status is not supported"))
+			return seriesListFilters{}, connect.NewError(connect.CodeInvalidArgument, "status is not supported")
 		}
 		filters.status = sql.NullString{String: status, Valid: true}
 	}
 	if req.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_UNSPECIFIED {
 		ageRating, err := protomapper.SeriesAgeRatingToStored(req.AgeRating)
 		if err != nil {
-			return seriesListFilters{}, connect.NewError(connect.CodeInvalidArgument, errors.New("age_rating is not supported"))
+			return seriesListFilters{}, connect.NewError(connect.CodeInvalidArgument, "age_rating is not supported")
 		}
 		filters.ageRating = sql.NullString{String: ageRating, Valid: true}
 	}
@@ -1206,23 +1206,23 @@ func resolveSeriesListFilters(req *publiraadminv1.ListSeriesRequest) (seriesList
 
 func (s *adminServer) ListSeries(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListSeriesRequest],
-) (*connect.Response[publiraadminv1.ListSeriesResponse], error) {
+	req *publiraadminv1.ListSeriesRequest,
+) (*publiraadminv1.ListSeriesResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	filters, err := resolveSeriesListFilters(req.Msg)
+	filters, err := resolveSeriesListFilters(req)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultSeriesPageSize, maxSeriesPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultSeriesPageSize, maxSeriesPageSize)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	listKey := filters.key()
 	var keys pagination.TimeUUIDKeys
@@ -1361,26 +1361,26 @@ func (s *adminServer) ListSeries(
 		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *adminServer) GetSeries(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetSeriesRequest],
-) (*connect.Response[publiraadminv1.GetSeriesResponse], error) {
+	req *publiraadminv1.GetSeriesRequest,
+) (*publiraadminv1.GetSeriesResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	row, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "series not found")
 		}
-		return nil, s.internalDBError(ctx, "failed to get series", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get series", err, "tenant_id", tenant.ID.String(), "series_public_id", req.PublicId)
 	}
 	creatorRows, err := s.seriesCreatorRows(ctx, []uuid.UUID{row.ID})
 	if err != nil {
@@ -1420,12 +1420,12 @@ func (s *adminServer) GetSeries(
 	if err != nil {
 		return nil, s.internalError(ctx, "series holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", row.PublicID)
 	}
-	return connect.NewResponse(&publiraadminv1.GetSeriesResponse{
+	return &publiraadminv1.GetSeriesResponse{
 		Series:               series,
 		CommentMode:          commentMode,
 		ReadingDirection:     readingDirection,
 		SpreadStartIndex:     spreadStartIndex,
 		CreatorCredits:       seriesCreatorCreditsFromRows(creatorRows),
 		PurchaseAvailability: purchaseAvailability,
-	}), nil
+	}, nil
 }

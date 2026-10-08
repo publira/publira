@@ -12,7 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
@@ -71,19 +72,19 @@ func TestCatalogSearchPublishedSeriesSuccess(t *testing.T) {
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesID, "SERIESPUB", "Seed Series", "A seed synopsis", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "  Seed  ",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedSeries: %v", err)
 	}
-	if len(resp.Msg.Series) != 1 || resp.Msg.Series[0].PublicId != "SERIESPUB" {
-		t.Fatalf("series = %+v, want SERIESPUB", resp.Msg.Series)
+	if len(resp.Series) != 1 || resp.Series[0].PublicId != "SERIESPUB" {
+		t.Fatalf("series = %+v, want SERIESPUB", resp.Series)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty on a single page", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty on a single page", resp.PreviousToken, resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -94,11 +95,11 @@ func TestCatalogSearchPublishedSeriesRejectsEmptyQuery(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "   ",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
 	}
@@ -113,12 +114,12 @@ func TestCatalogSearchPublishedSeriesRejectsQueryMismatchOnToken(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	token := webToken(pagination.Forward, "alpha", "title_asc", "Beta", boundaryID.String())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "Zeta",
 		Token:  token,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
 	}
@@ -144,24 +145,24 @@ func TestCatalogSearchPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 			AddRow(ids[0], "SERIESALPHA", "Alpha Seed", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
 			AddRow(ids[1], "SERIESBETA0", "Beta Seed", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "Seed",
 		Limit:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedSeries: %v", err)
 	}
-	if got := len(resp.Msg.Series); got != 2 {
+	if got := len(resp.Series); got != 2 {
 		t.Fatalf("series count = %d, want the over-fetched row dropped", got)
 	}
 	wantToken := webToken(pagination.Forward, "seed", "title_asc", "Beta Seed", ids[1].String())
-	if resp.Msg.NextToken != wantToken {
-		t.Fatalf("next_token = %q, want the last returned search cursor", resp.Msg.NextToken)
+	if resp.NextToken != wantToken {
+		t.Fatalf("next_token = %q, want the last returned search cursor", resp.NextToken)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -184,24 +185,24 @@ func TestCatalogSearchPublishedSeriesFollowsNextToken(t *testing.T) {
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESZETA0", "Zeta Seed", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "Seed",
 		Limit:  2,
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedSeries: %v", err)
 	}
-	if got := len(resp.Msg.Series); got != 1 {
+	if got := len(resp.Series); got != 1 {
 		t.Fatalf("series count = %d, want 1", got)
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the page the client came from")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -212,12 +213,12 @@ func TestCatalogSearchPublishedSeriesRejectsInvalidToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "Seed",
 		Token:  "not-a-token",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
 	}
@@ -245,16 +246,16 @@ func TestCatalogSearchPublishedSeriesAcceptsRecasedQueryOnToken(t *testing.T) {
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESZETA0", "Zeta Seed", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "SEED",
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedSeries: %v", err)
 	}
-	if got := len(resp.Msg.Series); got != 1 {
+	if got := len(resp.Series); got != 1 {
 		t.Fatalf("series count = %d, want 1", got)
 	}
 	assertPublicExpectations(t, mock)
@@ -282,28 +283,28 @@ func TestCatalogSearchPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T)
 			AddRow(alphaID, "SERIESALPHA", "Alpha Seed", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
 			AddRow(betaID, "SERIESBETA0", "Beta Seed", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "Seed",
 		Limit:  2,
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedSeries: %v", err)
 	}
 
-	got := make([]string, 0, len(resp.Msg.Series))
-	for _, series := range resp.Msg.Series {
+	got := make([]string, 0, len(resp.Series))
+	for _, series := range resp.Series {
 		got = append(got, series.Title)
 	}
 	if !slices.Equal(got, []string{"Alpha Seed", "Beta Seed"}) {
 		t.Fatalf("series = %v, want the backward page flipped back to title ascending", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertPublicExpectations(t, mock)
@@ -339,31 +340,31 @@ func TestCatalogSearchPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 				WithArgs(tenantID, "web", false, nil, nil, nil, nil, "%seed%", boundaryID, false, "Beta Seed", int32(21)).
 				WillReturnRows(searchHitRows())
 
-			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-			resp, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Query:  "Seed",
 				Token:  token,
-			}))
+			})
 			if err != nil {
 				t.Fatalf("SearchPublishedSeries: %v", err)
 			}
-			if len(resp.Msg.Series) != 0 {
-				t.Fatalf("series = %+v, want an empty page", resp.Msg.Series)
+			if len(resp.Series) != 0 {
+				t.Fatalf("series = %+v, want an empty page", resp.Series)
 			}
 
 			wantPrevious := test.direction == pagination.Forward
-			if (resp.Msg.PreviousToken != "") != wantPrevious {
-				t.Fatalf("previous_token = %q, want present: %t", resp.Msg.PreviousToken, wantPrevious)
+			if (resp.PreviousToken != "") != wantPrevious {
+				t.Fatalf("previous_token = %q, want present: %t", resp.PreviousToken, wantPrevious)
 			}
-			if (resp.Msg.NextToken != "") == wantPrevious {
-				t.Fatalf("next_token = %q, want present: %t", resp.Msg.NextToken, !wantPrevious)
+			if (resp.NextToken != "") == wantPrevious {
+				t.Fatalf("next_token = %q, want present: %t", resp.NextToken, !wantPrevious)
 			}
 
-			recoveryToken := resp.Msg.PreviousToken
+			recoveryToken := resp.PreviousToken
 			recoveryDirection := pagination.Backward
 			if test.direction == pagination.Backward {
-				recoveryToken = resp.Msg.NextToken
+				recoveryToken = resp.NextToken
 				recoveryDirection = pagination.Forward
 			}
 			cursor, err := decodeSurfaceToken(recoveryToken, "web")
@@ -392,17 +393,17 @@ func TestCatalogSearchPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing
 		WithArgs(tenantID, "web", false, nil, nil, nil, nil, "%seed%", boundaryID, true, "Beta Seed", int32(21)).
 		WillReturnRows(searchHitRows())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "Seed",
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedSeries: %v", err)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty after a failed recovery", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty after a failed recovery", resp.PreviousToken, resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -451,22 +452,22 @@ func TestCatalogSearchPublishedCreatorsSuccess(t *testing.T) {
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", "Draws things", nil, nil, int64(0), int32(2)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "  Sakura  ",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if len(resp.Msg.Creators) != 1 || resp.Msg.Creators[0].PublicId != "CREATOR00001" {
-		t.Fatalf("creators = %+v, want CREATOR00001", resp.Msg.Creators)
+	if len(resp.Creators) != 1 || resp.Creators[0].PublicId != "CREATOR00001" {
+		t.Fatalf("creators = %+v, want CREATOR00001", resp.Creators)
 	}
-	if resp.Msg.Creators[0].PublishedSeriesCount != 2 {
-		t.Fatalf("published_series_count = %d, want 2", resp.Msg.Creators[0].PublishedSeriesCount)
+	if resp.Creators[0].PublishedSeriesCount != 2 {
+		t.Fatalf("published_series_count = %d, want 2", resp.Creators[0].PublishedSeriesCount)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty on a single page", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty on a single page", resp.PreviousToken, resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -477,11 +478,11 @@ func TestCatalogSearchPublishedCreatorsRejectsEmptyQuery(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "   ",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
 	}
@@ -496,12 +497,12 @@ func TestCatalogSearchPublishedCreatorsRejectsQueryMismatchOnToken(t *testing.T)
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	token := webToken(pagination.Forward, "akira", "Akira", boundaryID.String())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "Sakura",
 		Token:  token,
-	}))
+	})
 	if err.Error() != "invalid_argument: token was issued for another query" {
 		t.Fatalf("error = %q, want a query-mismatch message without token internals", err)
 	}
@@ -526,24 +527,24 @@ func TestCatalogSearchPublishedCreatorsFirstPageReportsNextToken(t *testing.T) {
 			AddRow(akiraID, "CREATORAKIRA", "Akira", nil, nil, nil, int64(0), int32(1)).
 			AddRow(mikaID, "CREATORMIKA0", "Mika", nil, nil, nil, int64(0), int32(1)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "A",
 		Limit:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if got := len(resp.Msg.Creators); got != 2 {
+	if got := len(resp.Creators); got != 2 {
 		t.Fatalf("creator count = %d, want the over-fetched row dropped", got)
 	}
 	wantToken := webToken(pagination.Forward, "a", "Mika", mikaID.String())
-	if resp.Msg.NextToken != wantToken {
-		t.Fatalf("next_token = %q, want the last returned search cursor", resp.Msg.NextToken)
+	if resp.NextToken != wantToken {
+		t.Fatalf("next_token = %q, want the last returned search cursor", resp.NextToken)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -570,23 +571,23 @@ func TestCatalogSearchPublishedCreatorsFollowsPreviousTokenBackwards(t *testing.
 			AddRow(akiraID, "CREATORAKIRA", "Akira", nil, nil, nil, int64(0), int32(1)).
 			AddRow(mikaID, "CREATORMIKA0", "Mika", nil, nil, nil, int64(0), int32(1)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedCreators(context.Background(), connect.NewRequest(&publirav1.SearchPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedCreators(context.Background(), &publirav1.SearchPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "A",
 		Limit:  2,
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedCreators: %v", err)
 	}
-	if got := creatorPublicIDs(resp.Msg.Creators); !slices.Equal(got, []string{"CREATORAKIRA", "CREATORMIKA0"}) {
+	if got := creatorPublicIDs(resp.Creators); !slices.Equal(got, []string{"CREATORAKIRA", "CREATORMIKA0"}) {
 		t.Fatalf("creators = %v, want the backward page flipped back to name ascending", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertPublicExpectations(t, mock)
@@ -606,22 +607,22 @@ func TestCatalogSearchPublishedLabelsSuccess(t *testing.T) {
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(searchLabelColumns().AddRow(labelID, "LABELPUB001", "Jump", nil, nil, int32(3)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "  Jump  ",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels: %v", err)
 	}
-	if len(resp.Msg.Labels) != 1 || resp.Msg.Labels[0].PublicId != "LABELPUB001" {
-		t.Fatalf("labels = %+v, want LABELPUB001", resp.Msg.Labels)
+	if len(resp.Labels) != 1 || resp.Labels[0].PublicId != "LABELPUB001" {
+		t.Fatalf("labels = %+v, want LABELPUB001", resp.Labels)
 	}
-	if got := resp.Msg.Labels[0].PublishedSeriesCount; got != 3 {
+	if got := resp.Labels[0].PublishedSeriesCount; got != 3 {
 		t.Fatalf("published_series_count = %d, want 3", got)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty on a single page", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty on a single page", resp.PreviousToken, resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -632,11 +633,11 @@ func TestCatalogSearchPublishedLabelsRejectsEmptyQuery(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "   ",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
 	}
@@ -651,12 +652,12 @@ func TestCatalogSearchPublishedLabelsRejectsQueryMismatchOnToken(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	token := webToken(pagination.Forward, "jump", "Jump", boundaryID.String())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "Magazine",
 		Token:  token,
-	}))
+	})
 	if err.Error() != "invalid_argument: token was issued for another query" {
 		t.Fatalf("error = %q, want a query-mismatch message without token internals", err)
 	}
@@ -681,24 +682,24 @@ func TestCatalogSearchPublishedLabelsFirstPageReportsNextToken(t *testing.T) {
 			AddRow(alphaID, "LABELALPHA1", "Alpha Comics", nil, nil, int32(1)).
 			AddRow(betaID, "LABELBETA01", "Beta Comics", nil, nil, int32(1)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "Comics",
 		Limit:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels: %v", err)
 	}
-	if got := len(resp.Msg.Labels); got != 2 {
+	if got := len(resp.Labels); got != 2 {
 		t.Fatalf("label count = %d, want the over-fetched row dropped", got)
 	}
 	wantToken := webToken(pagination.Forward, "comics", "Beta Comics", betaID.String())
-	if resp.Msg.NextToken != wantToken {
-		t.Fatalf("next_token = %q, want the last returned search cursor", resp.Msg.NextToken)
+	if resp.NextToken != wantToken {
+		t.Fatalf("next_token = %q, want the last returned search cursor", resp.NextToken)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -725,23 +726,23 @@ func TestCatalogSearchPublishedLabelsFollowsPreviousTokenBackwards(t *testing.T)
 			AddRow(alphaID, "LABELALPHA1", "Alpha Comics", nil, nil, int32(1)).
 			AddRow(betaID, "LABELBETA01", "Beta Comics", nil, nil, int32(1)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "Comics",
 		Limit:  2,
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels: %v", err)
 	}
-	if got := labelPublicIDs(resp.Msg.Labels); !slices.Equal(got, []string{"LABELALPHA1", "LABELBETA01"}) {
+	if got := labelPublicIDs(resp.Labels); !slices.Equal(got, []string{"LABELALPHA1", "LABELBETA01"}) {
 		t.Fatalf("labels = %v, want the backward page flipped back to name ascending", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertPublicExpectations(t, mock)
@@ -766,22 +767,22 @@ func TestCatalogSearchPublishedLabelsAttachesEyeCatchVariants(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "label_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
 			AddRow(uuid.Must(uuid.NewV7()), imageID, "portrait", "portrait_1200w", "image/webp", int64(2048), int32(1200), int32(1600)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "Jump",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels: %v", err)
 	}
-	if len(resp.Msg.Labels) != 1 {
-		t.Fatalf("labels = %+v, want one hit", resp.Msg.Labels)
+	if len(resp.Labels) != 1 {
+		t.Fatalf("labels = %+v, want one hit", resp.Labels)
 	}
-	variants := resp.Msg.Labels[0].EyeCatchImageVariants
+	variants := resp.Labels[0].EyeCatchImageVariants
 	if len(variants) != 1 || variants[0].Label != "portrait_1200w" {
 		t.Fatalf("eye_catch_image_variants = %+v, want the seeded portrait variant", variants)
 	}
-	if resp.Msg.Labels[0].EyeCatchImageUpdatedAt == "" {
+	if resp.Labels[0].EyeCatchImageUpdatedAt == "" {
 		t.Fatal("eye_catch_image_updated_at is empty, want the stored timestamp")
 	}
 	assertPublicExpectations(t, mock)
@@ -845,19 +846,19 @@ func TestCatalogSearchShowsTheHitsOfTheConfiguredBackend(t *testing.T) {
 			AddRow(alphaID, "LABELALPHA1", "Alpha Comics", nil, nil, int32(1)).
 			AddRow(betaID, "LABELBETA01", "Beta Comics", nil, nil, int32(1)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedLabels(context.Background(), connect.NewRequest(&publirav1.SearchPublishedLabelsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedLabels(context.Background(), &publirav1.SearchPublishedLabelsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:  "  Comics  ",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedLabels: %v", err)
 	}
-	if got := labelPublicIDs(resp.Msg.Labels); !slices.Equal(got, []string{"LABELBETA01", "LABELALPHA1"}) {
+	if got := labelPublicIDs(resp.Labels); !slices.Equal(got, []string{"LABELBETA01", "LABELALPHA1"}) {
 		t.Fatalf("labels = %v, want the backend's order", got)
 	}
-	if want := webToken(pagination.Forward, "opaque"); resp.Msg.NextToken != want {
-		t.Fatalf("next_token = %q, want the backend's token bound to the web surface", resp.Msg.NextToken)
+	if want := webToken(pagination.Forward, "opaque"); resp.NextToken != want {
+		t.Fatalf("next_token = %q, want the backend's token bound to the web surface", resp.NextToken)
 	}
 	want := catalogsearch.Request{TenantID: tenantID, Surface: "web", Query: "Comics", Limit: defaultLabelPageSize}
 	if backend.got.TenantID != want.TenantID || backend.got.Surface != want.Surface || backend.got.Query != want.Query || backend.got.Limit != want.Limit || !backend.got.Cursor.IsZero() {
@@ -884,11 +885,11 @@ func TestCatalogSearchAnswersABackendFailure(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 
-			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-			_, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			_, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Query:  "Seed",
-			}))
+			})
 			if connect.CodeOf(err) != test.wantCode || err.Error() != test.wantMsg {
 				t.Fatalf("error = %v, want %q", err, test.wantMsg)
 			}
@@ -951,8 +952,8 @@ func TestCatalogSearchPublishedSeriesHandsTheBackendItsOrderAndFilters(t *testin
 
 			test.req.Tenant = &publirattypesv1.TenantContext{TenantId: tenantID.String()}
 			test.req.Query = "Seed"
-			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-			if _, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(test.req)); err != nil {
+			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			if _, err := client.SearchPublishedSeries(context.Background(), test.req); err != nil {
 				t.Fatalf("SearchPublishedSeries: %v", err)
 			}
 			if backend.gotSeries.Order != test.wantOrder {
@@ -974,12 +975,12 @@ func TestCatalogSearchPublishedSeriesRefusesAGenreTheTenantDoesNotHave(t *testin
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	expectGenreLookup(mock, tenantID, "GENREFOREIGN", false)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:         "Seed",
 		GenrePublicId: "GENREFOREIGN",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("error = %v, want not_found", err)
 	}
@@ -1010,8 +1011,8 @@ func TestCatalogSearchPublishedSeriesNarrowsTheListScan(t *testing.T) {
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESNEW01", "Newer Seed", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(1), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
 		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Query:           "Seed",
 		Limit:           1,
@@ -1019,13 +1020,13 @@ func TestCatalogSearchPublishedSeriesNarrowsTheListScan(t *testing.T) {
 		HasFreeEpisodes: true,
 		GenrePublicId:   "GENRE0000001",
 		Status:          publirattypesv1.SeriesStatus_SERIES_STATUS_ONGOING,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SearchPublishedSeries: %v", err)
 	}
 	wantToken := webToken(pagination.Forward, "seed", "published_at_desc+has_free_episodes+genre:GENRE0000001+status:ongoing", now.Format(time.RFC3339Nano), ids[0].String())
-	if resp.Msg.NextToken != wantToken {
-		t.Fatalf("next_token = %q, want %q", resp.Msg.NextToken, wantToken)
+	if resp.NextToken != wantToken {
+		t.Fatalf("next_token = %q, want %q", resp.NextToken, wantToken)
 	}
 	assertPublicExpectations(t, mock)
 }

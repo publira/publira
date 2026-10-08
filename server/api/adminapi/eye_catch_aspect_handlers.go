@@ -5,10 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -96,20 +95,20 @@ func aspectImageObjectKey(tenantPublicID, entityPath, entityPublicID string, ima
 
 func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UploadSeriesEyeCatchAspectImageRequest],
-) (*connect.Response[publiraadminv1.UploadSeriesEyeCatchAspectImageResponse], error) {
+	req *publiraadminv1.UploadSeriesEyeCatchAspectImageRequest,
+) (*publiraadminv1.UploadSeriesEyeCatchAspectImageResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	aspect, err := resolveEyeCatchAspect(req.Msg.VariantType)
+	aspect, err := resolveEyeCatchAspect(req.VariantType)
 	if err != nil {
 		return nil, err
 	}
-	image, err := normalizeEyeCatchImage(req.Msg.ImageData, req.Msg.ImageContentType, "image_data", "image_content_type")
+	image, err := normalizeEyeCatchImage(req.ImageData, req.ImageContentType, "image_data", "image_content_type")
 	if err != nil {
 		return nil, err
 	}
@@ -117,17 +116,17 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("image_data is required"), "image_data")
 	}
 	if s.storage == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+		return nil, connect.NewError(connect.CodeInternal, "storage provider is not configured")
 	}
 
-	seriesID, err := parseRecordID(req.Msg.SeriesId, "series_id")
+	seriesID, err := parseRecordID(req.SeriesId, "series_id")
 	if err != nil {
 		return nil, err
 	}
 	current, err := s.queriesFor(ctx).GetSeriesByIDForTenant(ctx, dbmodels.GetSeriesByIDForTenantParams{TenantID: tenant.ID, ID: seriesID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "series not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get series for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
@@ -135,10 +134,10 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 	// eye-catch from a single ratio would leave the other three with no image
 	// at all, so the eye-catch has to be there first.
 	if !current.EyeCatchImageID.Valid {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("series has no eye catch image yet"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "series has no eye catch image yet")
 	}
 
-	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, imageCropRect(req.Msg.Crop))
+	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, imageCropRect(req.Crop))
 	if err != nil {
 		return nil, eyeCatchAspectBuildError(err)
 	}
@@ -167,7 +166,7 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 		return nil, s.internalDBError(ctx, "failed to re-read series for eye catch aspect upload", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	if !locked.EyeCatchImageID.Valid {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("series has no eye catch image yet"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "series has no eye catch image yet")
 	}
 
 	imageID := locked.EyeCatchImageID.UUID
@@ -180,7 +179,7 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 
 	uploadID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	store, err := storage.Pin(txCtx, s.storage)
 	if err != nil {
@@ -197,7 +196,7 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 		}
 		variantID, variantIDErr := uuid.NewV7()
 		if variantIDErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, variantIDErr)
+			return nil, connect.NewError(connect.CodeInternal, variantIDErr.Error()).WithCause(variantIDErr)
 		}
 		if _, createErr := s.queriesFor(txCtx).CreateSeriesImageVariant(txCtx, dbmodels.CreateSeriesImageVariantParams{
 			ID:              variantID,
@@ -230,13 +229,13 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordEyeCatchAspectAudit(ctx, req.Header(), tenant.ID, "series", current.PublicID, "series_eye_catch_aspect_image_uploaded", aspect.VariantType)
+	s.recordEyeCatchAspectAudit(ctx, rpcmiddleware.RequestHeader(ctx), tenant.ID, "series", current.PublicID, "series_eye_catch_aspect_image_uploaded", aspect.VariantType)
 
 	series, err := s.seriesWithEyeCatchVariants(ctx, tenant.ID, current.ID)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.UploadSeriesEyeCatchAspectImageResponse{Series: series}), nil
+	return &publiraadminv1.UploadSeriesEyeCatchAspectImageResponse{Series: series}, nil
 }
 
 // seriesWithEyeCatchVariants re-reads the series so the response carries the
@@ -267,20 +266,20 @@ func (s *adminServer) seriesWithEyeCatchVariants(ctx context.Context, tenantID, 
 
 func (s *adminServer) UploadLabelEyeCatchAspectImage(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UploadLabelEyeCatchAspectImageRequest],
-) (*connect.Response[publiraadminv1.UploadLabelEyeCatchAspectImageResponse], error) {
+	req *publiraadminv1.UploadLabelEyeCatchAspectImageRequest,
+) (*publiraadminv1.UploadLabelEyeCatchAspectImageResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	aspect, err := resolveEyeCatchAspect(req.Msg.VariantType)
+	aspect, err := resolveEyeCatchAspect(req.VariantType)
 	if err != nil {
 		return nil, err
 	}
-	image, err := normalizeEyeCatchImage(req.Msg.ImageData, req.Msg.ImageContentType, "image_data", "image_content_type")
+	image, err := normalizeEyeCatchImage(req.ImageData, req.ImageContentType, "image_data", "image_content_type")
 	if err != nil {
 		return nil, err
 	}
@@ -288,10 +287,10 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("image_data is required"), "image_data")
 	}
 	if s.storage == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+		return nil, connect.NewError(connect.CodeInternal, "storage provider is not configured")
 	}
 
-	id, err := parseRecordID(req.Msg.LabelId, "label_id")
+	id, err := parseRecordID(req.LabelId, "label_id")
 	if err != nil {
 		return nil, err
 	}
@@ -300,10 +299,10 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 		return nil, err
 	}
 	if !current.EyeCatchImageID.Valid {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("label has no eye catch image yet"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "label has no eye catch image yet")
 	}
 
-	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, imageCropRect(req.Msg.Crop))
+	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, imageCropRect(req.Crop))
 	if err != nil {
 		return nil, eyeCatchAspectBuildError(err)
 	}
@@ -324,7 +323,7 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 		return nil, err
 	}
 	if !locked.EyeCatchImageID.Valid {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("label has no eye catch image yet"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "label has no eye catch image yet")
 	}
 
 	imageID := locked.EyeCatchImageID.UUID
@@ -337,7 +336,7 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 
 	uploadID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	store, err := storage.Pin(txCtx, s.storage)
 	if err != nil {
@@ -354,7 +353,7 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 		}
 		variantID, variantIDErr := uuid.NewV7()
 		if variantIDErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, variantIDErr)
+			return nil, connect.NewError(connect.CodeInternal, variantIDErr.Error()).WithCause(variantIDErr)
 		}
 		if _, createErr := s.queriesFor(txCtx).CreateLabelImageVariant(txCtx, dbmodels.CreateLabelImageVariantParams{
 			ID:              variantID,
@@ -384,13 +383,13 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordEyeCatchAspectAudit(ctx, req.Header(), tenant.ID, "label", current.PublicID, "label_eye_catch_aspect_image_uploaded", aspect.VariantType)
+	s.recordEyeCatchAspectAudit(ctx, rpcmiddleware.RequestHeader(ctx), tenant.ID, "label", current.PublicID, "label_eye_catch_aspect_image_uploaded", aspect.VariantType)
 
 	label, err := s.labelWithEyeCatchVariants(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.UploadLabelEyeCatchAspectImageResponse{Label: label}), nil
+	return &publiraadminv1.UploadLabelEyeCatchAspectImageResponse{Label: label}, nil
 }
 
 func (s *adminServer) labelWithEyeCatchVariants(ctx context.Context, tenantID, id uuid.UUID) (*publirattypesv1.Label, error) {
@@ -411,7 +410,7 @@ func (s *adminServer) labelWithEyeCatchVariants(ctx context.Context, tenantID, i
 
 // recordEyeCatchAspectAudit files the change under the entity it belongs to,
 // with the ratio in the target so a reader can tell which slot moved.
-func (s *adminServer) recordEyeCatchAspectAudit(ctx context.Context, header http.Header, tenantID uuid.UUID, targetType, entityPublicID, action, variantType string) {
+func (s *adminServer) recordEyeCatchAspectAudit(ctx context.Context, header *connect.Header, tenantID uuid.UUID, targetType, entityPublicID, action, variantType string) {
 	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
 	if !ok {
 		return
@@ -430,20 +429,20 @@ func (s *adminServer) recordEyeCatchAspectAudit(ctx context.Context, header http
 
 func (s *adminServer) UploadGenreEyeCatchAspectImage(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UploadGenreEyeCatchAspectImageRequest],
-) (*connect.Response[publiraadminv1.UploadGenreEyeCatchAspectImageResponse], error) {
+	req *publiraadminv1.UploadGenreEyeCatchAspectImageRequest,
+) (*publiraadminv1.UploadGenreEyeCatchAspectImageResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	aspect, err := resolveEyeCatchAspect(req.Msg.VariantType)
+	aspect, err := resolveEyeCatchAspect(req.VariantType)
 	if err != nil {
 		return nil, err
 	}
-	image, err := normalizeEyeCatchImage(req.Msg.ImageData, req.Msg.ImageContentType, "image_data", "image_content_type")
+	image, err := normalizeEyeCatchImage(req.ImageData, req.ImageContentType, "image_data", "image_content_type")
 	if err != nil {
 		return nil, err
 	}
@@ -451,10 +450,10 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("image_data is required"), "image_data")
 	}
 	if s.storage == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+		return nil, connect.NewError(connect.CodeInternal, "storage provider is not configured")
 	}
 
-	id, err := parseRecordID(req.Msg.GenreId, "genre_id")
+	id, err := parseRecordID(req.GenreId, "genre_id")
 	if err != nil {
 		return nil, err
 	}
@@ -463,10 +462,10 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 		return nil, err
 	}
 	if !current.EyeCatchImageID.Valid {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("genre has no eye catch image yet"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "genre has no eye catch image yet")
 	}
 
-	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, imageCropRect(req.Msg.Crop))
+	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, aspect.VariantType, imageCropRect(req.Crop))
 	if err != nil {
 		return nil, eyeCatchAspectBuildError(err)
 	}
@@ -487,7 +486,7 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 		return nil, err
 	}
 	if !locked.EyeCatchImageID.Valid {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("genre has no eye catch image yet"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "genre has no eye catch image yet")
 	}
 
 	imageID := locked.EyeCatchImageID.UUID
@@ -500,7 +499,7 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 
 	uploadID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	store, err := storage.Pin(txCtx, s.storage)
 	if err != nil {
@@ -517,7 +516,7 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 		}
 		variantID, variantIDErr := uuid.NewV7()
 		if variantIDErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, variantIDErr)
+			return nil, connect.NewError(connect.CodeInternal, variantIDErr.Error()).WithCause(variantIDErr)
 		}
 		if _, createErr := s.queriesFor(txCtx).CreateGenreImageVariant(txCtx, dbmodels.CreateGenreImageVariantParams{
 			ID:              variantID,
@@ -547,11 +546,11 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordEyeCatchAspectAudit(ctx, req.Header(), tenant.ID, "genre", current.PublicID, "genre_eye_catch_aspect_image_uploaded", aspect.VariantType)
+	s.recordEyeCatchAspectAudit(ctx, rpcmiddleware.RequestHeader(ctx), tenant.ID, "genre", current.PublicID, "genre_eye_catch_aspect_image_uploaded", aspect.VariantType)
 
 	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.UploadGenreEyeCatchAspectImageResponse{Genre: genre}), nil
+	return &publiraadminv1.UploadGenreEyeCatchAspectImageResponse{Genre: genre}, nil
 }

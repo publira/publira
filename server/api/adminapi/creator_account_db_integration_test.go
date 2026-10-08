@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auth"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -15,43 +15,43 @@ import (
 func (e *adminDBEnv) createCreator(t *testing.T, tenant adminDBTenant, name string) *publiraadminv1.CreateCreatorResponse {
 	t.Helper()
 
-	res, err := e.creatorClient().CreateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRequest{
+	res, err := e.creatorClient().CreateCreator(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateCreatorRequest{
 		Tenant: tenant.tenantContext(),
 		Name:   name,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateCreator %q: %v", name, err)
 	}
-	return res.Msg
+	return res
 }
 
-func (e *adminDBEnv) linkCreatorAccount(tenant adminDBTenant, creatorID string, reader testutil.TenantUser) (*connect.Response[publiraadminv1.LinkCreatorAccountResponse], error) {
-	return e.creatorClient().LinkCreatorAccount(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.LinkCreatorAccountRequest{
+func (e *adminDBEnv) linkCreatorAccount(tenant adminDBTenant, creatorID string, reader testutil.TenantUser) (*publiraadminv1.LinkCreatorAccountResponse, error) {
+	return e.creatorClient().LinkCreatorAccount(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.LinkCreatorAccountRequest{
 		Tenant:    tenant.tenantContext(),
 		CreatorId: creatorID,
 		ReaderId:  reader.ID.String(),
-	}))
+	})
 }
 
-func (e *adminDBEnv) unlinkCreatorAccount(tenant adminDBTenant, creatorID string, reader testutil.TenantUser) (*connect.Response[publiraadminv1.UnlinkCreatorAccountResponse], error) {
-	return e.creatorClient().UnlinkCreatorAccount(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UnlinkCreatorAccountRequest{
+func (e *adminDBEnv) unlinkCreatorAccount(tenant adminDBTenant, creatorID string, reader testutil.TenantUser) (*publiraadminv1.UnlinkCreatorAccountResponse, error) {
+	return e.creatorClient().UnlinkCreatorAccount(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UnlinkCreatorAccountRequest{
 		Tenant:    tenant.tenantContext(),
 		CreatorId: creatorID,
 		ReaderId:  reader.ID.String(),
-	}))
+	})
 }
 
 func (e *adminDBEnv) creatorAccountsOf(t *testing.T, tenant adminDBTenant, creatorPublicID string) []*publiraadminv1.CreatorAccount {
 	t.Helper()
 
-	res, err := e.creatorClient().GetCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetCreatorRequest{
+	res, err := e.creatorClient().GetCreator(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetCreatorRequest{
 		Tenant:   tenant.tenantContext(),
 		PublicId: creatorPublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetCreator %s: %v", creatorPublicID, err)
 	}
-	return res.Msg.Accounts
+	return res.Accounts
 }
 
 func creatorAccountReaderPublicIDs(accounts []*publiraadminv1.CreatorAccount) []string {
@@ -81,7 +81,7 @@ func TestDBLinkAndUnlinkCreatorAccountsAreAudited(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LinkCreatorAccount alice to her own name: %v", err)
 	}
-	if got := creatorAccountReaderPublicIDs(linked.Msg.Accounts); !slices.Equal(got, []string{alice.PublicID}) {
+	if got := creatorAccountReaderPublicIDs(linked.Accounts); !slices.Equal(got, []string{alice.PublicID}) {
 		t.Fatalf("link response accounts = %v, want %s", got, alice.PublicID)
 	}
 
@@ -90,7 +90,7 @@ func TestDBLinkAndUnlinkCreatorAccountsAreAudited(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LinkCreatorAccount the same pair again: %v", err)
 	}
-	if got := creatorAccountReaderPublicIDs(again.Msg.Accounts); !slices.Equal(got, []string{alice.PublicID, bob.PublicID}) {
+	if got := creatorAccountReaderPublicIDs(again.Accounts); !slices.Equal(got, []string{alice.PublicID, bob.PublicID}) {
 		t.Fatalf("relink response accounts = %v, want alice then bob", got)
 	}
 
@@ -106,7 +106,7 @@ func TestDBLinkAndUnlinkCreatorAccountsAreAudited(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UnlinkCreatorAccount: %v", err)
 	}
-	if got := creatorAccountReaderPublicIDs(unlinked.Msg.Accounts); !slices.Equal(got, []string{bob.PublicID}) {
+	if got := creatorAccountReaderPublicIDs(unlinked.Accounts); !slices.Equal(got, []string{bob.PublicID}) {
 		t.Fatalf("unlink response accounts = %v, want bob", got)
 	}
 	// Unlinking a pair that is not linked changes nothing and records nothing.

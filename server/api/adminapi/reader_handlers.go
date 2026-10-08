@@ -5,11 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ageverification"
@@ -137,9 +136,9 @@ func (s *adminServer) readerPage(
 // them.
 func (s *adminServer) ListReaders(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListReadersRequest],
-) (*connect.Response[publiraadminv1.ListReadersResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ListReadersRequest,
+) (*publiraadminv1.ListReadersResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -147,19 +146,19 @@ func (s *adminServer) ListReaders(
 		return nil, err
 	}
 
-	status, err := normalizeReaderStatusFilter(req.Msg.Status)
+	status, err := normalizeReaderStatusFilter(req.Status)
 	if err != nil {
 		return nil, err
 	}
-	query := strings.TrimSpace(req.Msg.Query)
+	query := strings.TrimSpace(req.Query)
 	filters := readerListFilters{
 		query:  sql.NullString{String: query, Valid: query != ""},
 		status: status,
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultReaderListLimit, maxReaderListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultReaderListLimit, maxReaderListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	listKey := filters.key()
 	var keys pagination.TimeUUIDKeys
@@ -203,15 +202,15 @@ func (s *adminServer) ListReaders(
 		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 // GetReader reads one account of the tenant, gated like ListReaders.
 func (s *adminServer) GetReader(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetReaderRequest],
-) (*connect.Response[publiraadminv1.GetReaderResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.GetReaderRequest,
+) (*publiraadminv1.GetReaderResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +218,7 @@ func (s *adminServer) GetReader(
 		return nil, err
 	}
 
-	publicID, err := readerPublicIDArg(req.Msg.PublicId)
+	publicID, err := readerPublicIDArg(req.PublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +227,7 @@ func (s *adminServer) GetReader(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.GetReaderResponse{Reader: adminReader(row)}), nil
+	return &publiraadminv1.GetReaderResponse{Reader: adminReader(row)}, nil
 }
 
 func readerPublicIDArg(raw string) (string, error) {
@@ -281,7 +280,7 @@ func (s *adminServer) tenantReader(ctx context.Context, tenantID uuid.UUID, publ
 }
 
 func readerNotFoundError() error {
-	return connect.NewError(connect.CodeNotFound, errors.New("reader not found"))
+	return connect.NewError(connect.CodeNotFound, "reader not found")
 }
 
 // errReaderUnchanged is what a reader action's write returns when its statement
@@ -292,7 +291,7 @@ var errReaderUnchanged = errors.New("reader unchanged")
 // retried action records nothing and so cannot make up for a dropped entry.
 func (s *adminServer) changeReader(
 	ctx context.Context,
-	headers http.Header,
+	headers *connect.Header,
 	sessionCtx rpcmiddleware.SessionContext,
 	action string,
 	readerID uuid.UUID,
@@ -371,9 +370,9 @@ func keepAnAdmin(ctx context.Context, tx *sql.Tx, tenantID, readerID uuid.UUID) 
 // tenant's last active tenant_admin can be suspended.
 func (s *adminServer) SuspendReader(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.SuspendReaderRequest],
-) (*connect.Response[publiraadminv1.SuspendReaderResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.SuspendReaderRequest,
+) (*publiraadminv1.SuspendReaderResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -381,7 +380,7 @@ func (s *adminServer) SuspendReader(
 	if err != nil {
 		return nil, err
 	}
-	readerID, err := readerIDArg(req.Msg.ReaderId)
+	readerID, err := readerIDArg(req.ReaderId)
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +390,7 @@ func (s *adminServer) SuspendReader(
 	}
 
 	var updated dbmodels.SuspendTenantReaderRow
-	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_suspended", readerID, func(tx *sql.Tx, queries *dbmodels.Queries) (string, error) {
+	err = s.changeReader(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "reader_suspended", readerID, func(tx *sql.Tx, queries *dbmodels.Queries) (string, error) {
 		if err := keepAnAdmin(ctx, tx, tenant.ID, readerID); err != nil {
 			return "", err
 		}
@@ -407,21 +406,21 @@ func (s *adminServer) SuspendReader(
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&publiraadminv1.SuspendReaderResponse{Reader: adminReader(row)}), nil
+		return &publiraadminv1.SuspendReaderResponse{Reader: adminReader(row)}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.SuspendReaderResponse{Reader: adminReader(readerRow(updated))}), nil
+	return &publiraadminv1.SuspendReaderResponse{Reader: adminReader(readerRow(updated))}, nil
 }
 
 // UnsuspendReader lifts a suspension of a reader of the tenant.
 func (s *adminServer) UnsuspendReader(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UnsuspendReaderRequest],
-) (*connect.Response[publiraadminv1.UnsuspendReaderResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UnsuspendReaderRequest,
+) (*publiraadminv1.UnsuspendReaderResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -429,13 +428,13 @@ func (s *adminServer) UnsuspendReader(
 	if err != nil {
 		return nil, err
 	}
-	readerID, err := readerIDArg(req.Msg.ReaderId)
+	readerID, err := readerIDArg(req.ReaderId)
 	if err != nil {
 		return nil, err
 	}
 
 	var updated dbmodels.UnsuspendTenantReaderRow
-	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_unsuspended", readerID, func(_ *sql.Tx, queries *dbmodels.Queries) (string, error) {
+	err = s.changeReader(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "reader_unsuspended", readerID, func(_ *sql.Tx, queries *dbmodels.Queries) (string, error) {
 		updated, err = queries.UnsuspendTenantReader(ctx, dbmodels.UnsuspendTenantReaderParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			ID:       readerID,
@@ -448,13 +447,13 @@ func (s *adminServer) UnsuspendReader(
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&publiraadminv1.UnsuspendReaderResponse{Reader: adminReader(row)}), nil
+		return &publiraadminv1.UnsuspendReaderResponse{Reader: adminReader(row)}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.UnsuspendReaderResponse{Reader: adminReader(readerRow(updated))}), nil
+	return &publiraadminv1.UnsuspendReaderResponse{Reader: adminReader(readerRow(updated))}, nil
 }
 
 // SetReaderBirthDate sets or clears a reader's birth date. The age gates read
@@ -462,9 +461,9 @@ func (s *adminServer) UnsuspendReader(
 // revoking.
 func (s *adminServer) SetReaderBirthDate(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.SetReaderBirthDateRequest],
-) (*connect.Response[publiraadminv1.SetReaderBirthDateResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.SetReaderBirthDateRequest,
+) (*publiraadminv1.SetReaderBirthDateResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -472,14 +471,14 @@ func (s *adminServer) SetReaderBirthDate(
 	if err != nil {
 		return nil, err
 	}
-	readerID, err := readerIDArg(req.Msg.ReaderId)
+	readerID, err := readerIDArg(req.ReaderId)
 	if err != nil {
 		return nil, err
 	}
 
 	var birthDate sql.NullTime
 	action := "reader_birth_date_cleared"
-	if raw := strings.TrimSpace(req.Msg.BirthDate); raw != "" {
+	if raw := strings.TrimSpace(req.BirthDate); raw != "" {
 		today, err := s.tenantToday(ctx, tenant)
 		if err != nil {
 			return nil, s.internalError(ctx, "failed to resolve the tenant calendar day", err, "tenant_id", tenant.ID.String())
@@ -493,7 +492,7 @@ func (s *adminServer) SetReaderBirthDate(
 	}
 
 	var updated dbmodels.SetTenantReaderBirthDateRow
-	err = s.changeReader(ctx, req.Header(), sessionCtx, action, readerID, func(_ *sql.Tx, queries *dbmodels.Queries) (string, error) {
+	err = s.changeReader(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, action, readerID, func(_ *sql.Tx, queries *dbmodels.Queries) (string, error) {
 		updated, err = queries.SetTenantReaderBirthDate(ctx, dbmodels.SetTenantReaderBirthDateParams{
 			BirthDate: birthDate,
 			TenantID:  uuid.NullUUID{UUID: tenant.ID, Valid: true},
@@ -508,13 +507,13 @@ func (s *adminServer) SetReaderBirthDate(
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&publiraadminv1.SetReaderBirthDateResponse{Reader: adminReader(row)}), nil
+		return &publiraadminv1.SetReaderBirthDateResponse{Reader: adminReader(row)}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.SetReaderBirthDateResponse{Reader: adminReader(readerRow(updated))}), nil
+	return &publiraadminv1.SetReaderBirthDateResponse{Reader: adminReader(readerRow(updated))}, nil
 }
 
 // tenantToday is the calendar day the tenant is living through, which is what
@@ -536,9 +535,9 @@ func (s *adminServer) tenantToday(ctx context.Context, tenant dbmodels.Tenant) (
 // tenant_admin, as SuspendReader is.
 func (s *adminServer) DeleteReader(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.DeleteReaderRequest],
-) (*connect.Response[publiraadminv1.DeleteReaderResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.DeleteReaderRequest,
+) (*publiraadminv1.DeleteReaderResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -546,7 +545,7 @@ func (s *adminServer) DeleteReader(
 	if err != nil {
 		return nil, err
 	}
-	readerID, err := readerIDArg(req.Msg.ReaderId)
+	readerID, err := readerIDArg(req.ReaderId)
 	if err != nil {
 		return nil, err
 	}
@@ -556,7 +555,7 @@ func (s *adminServer) DeleteReader(
 	}
 
 	var deleted dbmodels.DeleteTenantReaderRow
-	err = s.changeReader(ctx, req.Header(), sessionCtx, "reader_deleted", readerID, func(tx *sql.Tx, queries *dbmodels.Queries) (string, error) {
+	err = s.changeReader(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "reader_deleted", readerID, func(tx *sql.Tx, queries *dbmodels.Queries) (string, error) {
 		if err := keepAnAdmin(ctx, tx, tenant.ID, readerID); err != nil {
 			return "", err
 		}
@@ -578,5 +577,5 @@ func (s *adminServer) DeleteReader(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.DeleteReaderResponse{PublicId: deleted.PublicID, ReaderId: deleted.ID.String()}), nil
+	return &publiraadminv1.DeleteReaderResponse{PublicId: deleted.PublicID, ReaderId: deleted.ID.String()}, nil
 }

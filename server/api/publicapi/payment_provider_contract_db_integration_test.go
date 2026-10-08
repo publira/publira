@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
@@ -33,7 +36,7 @@ func TestDBEveryRegisteredPaymentProviderPassesTheContract(t *testing.T) {
 	harness := &contractHarness{
 		pg:        pg,
 		encryptor: encryptor,
-		client:    publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL),
+		client:    publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 	}
 	for _, provider := range providers.Registry().Providers() {
 		id := provider.Declaration().ID

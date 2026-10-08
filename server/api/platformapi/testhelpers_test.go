@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -86,12 +85,6 @@ func issueTestPlatformToken(userPublicID, role string) string {
 
 func operatorTestColumns() []string {
 	return []string{"id", "public_id", "email", "name", "role", "status", "created_at"}
-}
-
-func newAuthedOperatorRequest[T any](msg *T) *connect.Request[T] {
-	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+issueTestPlatformToken("PLATUSER001", "platform_operator"))
-	return req
 }
 
 func expectOperatorAuth(mock sqlmock.Sqlmock, userID uuid.UUID, role string, now time.Time) {
@@ -172,20 +165,8 @@ func newIntegrationTestServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) 
 	return server, mock
 }
 
-func newIntegrationRequest[T any](msg T) *connect.Request[T] {
-	return connect.NewRequest(&msg)
-}
-
-func newAuthedIntegrationRequest[T any](msg T) *connect.Request[T] {
-	req := connect.NewRequest(&msg)
-	req.Header().Set("Authorization", "Bearer "+issueTestPlatformToken("PLATUSER001", integrationPlatformRole))
-	return req
-}
-
-func newAuthedCreateTenantIntegrationRequest(msg *publirasplatformv1.CreateTenantRequest) *connect.Request[publirasplatformv1.CreateTenantRequest] {
-	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+issueTestPlatformToken("PLATUSER001", integrationPlatformRole))
-	return req
+func newIntegrationRequest[T any](msg T) *T {
+	return &msg
 }
 
 func validIntegrationCreateTenantRequest() *publirasplatformv1.CreateTenantRequest {
@@ -304,4 +285,13 @@ func mailGuardWith(perAddress, perSource platformpolicy.HourDay) *mailguard.Guar
 	policy.MailRequestsPerAddress = perAddress
 	policy.MailRequestsPerSource = perSource
 	return mailguard.New(ratelimit.New(ratelimit.NewMemoryStore()), platformpolicy.Fixed(policy), slog.Default())
+}
+
+// bearerHandlerContext is the context a handler sees while it serves an RPC
+// signed with token, for a test that calls the handler method directly.
+func bearerHandlerContext(t *testing.T, token string) context.Context {
+	t.Helper()
+	ctx, call := testutil.NewServerContext(t.Context())
+	call.RequestHeader().Set("Authorization", "Bearer "+token)
+	return ctx
 }

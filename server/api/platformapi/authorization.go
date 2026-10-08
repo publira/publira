@@ -2,14 +2,13 @@ package platformapi
 
 import (
 	"context"
-	"errors"
-	"net/http"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 // platformWriteProcedures is the platform-wide authorization boundary for
@@ -56,11 +55,11 @@ func ensurePlatformWriteRole(role string) error {
 	case auth.RolePlatformOperator, auth.RolePlatformSuperAdmin:
 		return nil
 	default:
-		return connect.NewError(connect.CodePermissionDenied, errors.New("platform write role required"))
+		return connect.NewError(connect.CodePermissionDenied, "platform write role required")
 	}
 }
 
-func (s *platformServer) requirePlatformActor(ctx context.Context, headers http.Header) (platformActor, error) {
+func (s *platformServer) requirePlatformActor(ctx context.Context, headers *connect.Header) (platformActor, error) {
 	if actor, ok := platformActorFromContext(ctx); ok {
 		return actor, nil
 	}
@@ -71,25 +70,26 @@ func (s *platformServer) requirePlatformActor(ctx context.Context, headers http.
 	return platformActor{UserID: user.ID, Role: role, Email: user.Email}, nil
 }
 
-// auditActor is the operator behind req, as the packages under internal/ file
-// their audit entries.
-func (s *platformServer) auditActor(ctx context.Context, req connect.AnyRequest) (auditlog.PlatformActor, error) {
-	actor, err := s.requirePlatformActor(ctx, req.Header())
+// auditActor is the operator behind the call ctx serves, as the packages under
+// internal/ file their audit entries.
+func (s *platformServer) auditActor(ctx context.Context) (auditlog.PlatformActor, error) {
+	headers := rpcmiddleware.RequestHeader(ctx)
+	actor, err := s.requirePlatformActor(ctx, headers)
 	if err != nil {
 		return auditlog.PlatformActor{}, err
 	}
 	if err := actor.requirePerson(); err != nil {
 		return auditlog.PlatformActor{}, err
 	}
-	return actor.audit(req.Header()), nil
+	return actor.audit(headers), nil
 }
 
 // audit is a, as the packages under internal/ file their audit entries.
-func (a platformActor) audit(headers http.Header) auditlog.PlatformActor {
+func (a platformActor) audit(headers *connect.Header) auditlog.PlatformActor {
 	return auditlog.PlatformActor{UserID: a.UserID, Role: a.Role, ClientIP: auditlog.ClientIPFromHeader(headers)}
 }
 
-func (s *platformServer) requirePlatformWriteActor(ctx context.Context, headers http.Header) (platformActor, error) {
+func (s *platformServer) requirePlatformWriteActor(ctx context.Context, headers *connect.Header) (platformActor, error) {
 	actor, err := s.requirePlatformActor(ctx, headers)
 	if err != nil {
 		return platformActor{}, err

@@ -7,7 +7,7 @@ import (
 	"errors"
 	"slices"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -25,16 +25,16 @@ const creditSourceEpisode = "episode"
 
 func (s *adminServer) ListEpisodeCredits(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListEpisodeCreditsRequest],
-) (*connect.Response[publiraadminv1.ListEpisodeCreditsResponse], error) {
+	req *publiraadminv1.ListEpisodeCreditsRequest,
+) (*publiraadminv1.ListEpisodeCreditsResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.episodeForCredits(ctx, tenant.ID, req.Msg.EpisodeId)
+	episode, err := s.episodeForCredits(ctx, tenant.ID, req.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -43,10 +43,10 @@ func (s *adminServer) ListEpisodeCredits(
 		return nil, s.internalDBError(ctx, "failed to list episode credits", err, "episode_id", episode.ID.String())
 	}
 	credits := protomapper.EpisodeCreditsByEpisodeID(rows)
-	return connect.NewResponse(&publiraadminv1.ListEpisodeCreditsResponse{
+	return &publiraadminv1.ListEpisodeCreditsResponse{
 		Creators:       credits[episode.ID],
 		CreatorCredits: episodeCreatorCredits(rows),
-	}), nil
+	}, nil
 }
 
 func episodeCreatorCredits(rows []dbmodels.ListEpisodeCreatorsByEpisodeIDsRow) []*publiraadminv1.EpisodeCreatorCredit {
@@ -63,28 +63,28 @@ func episodeCreatorCredits(rows []dbmodels.ListEpisodeCreatorsByEpisodeIDsRow) [
 
 func (s *adminServer) ReplaceEpisodeCredits(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ReplaceEpisodeCreditsRequest],
-) (*connect.Response[publiraadminv1.ReplaceEpisodeCreditsResponse], error) {
+	req *publiraadminv1.ReplaceEpisodeCreditsRequest,
+) (*publiraadminv1.ReplaceEpisodeCreditsResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	shares := make([]int32, len(req.Msg.CreatorCredits))
-	for index, credit := range req.Msg.CreatorCredits {
+	shares := make([]int32, len(req.CreatorCredits))
+	for index, credit := range req.CreatorCredits {
 		shares[index] = credit.GetShareBps()
 	}
 	if err := validateCreditShares(shares, "creator_credits"); err != nil {
 		return nil, err
 	}
-	credits, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.Msg.CreatorCredits), "creator_credits")
+	credits, err := s.resolveCreatorCredits(ctx, tenant.ID, creatorCreditPairs(req.CreatorCredits), "creator_credits")
 	if err != nil {
 		return nil, err
 	}
 	setCreatorCreditShares(credits, shares)
-	episodeID, err := parseRecordID(req.Msg.EpisodeId, "episode_id")
+	episodeID, err := parseRecordID(req.EpisodeId, "episode_id")
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to lock episode for replace credits", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
@@ -173,13 +173,13 @@ func (s *adminServer) ReplaceEpisodeCredits(
 			TargetType:  "episode",
 			TargetID:    episode.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 		})
 	}
 
-	return connect.NewResponse(&publiraadminv1.ReplaceEpisodeCreditsResponse{
+	return &publiraadminv1.ReplaceEpisodeCreditsResponse{
 		Creators: protomapper.EpisodeCreditsByEpisodeID(written)[episode.ID],
-	}), nil
+	}, nil
 }
 
 // episodeForCredits resolves the episode a credit read names, as the
@@ -200,7 +200,7 @@ func (s *adminServer) episodeForCredits(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.GetEpisodeByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+			return dbmodels.GetEpisodeByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, "episode not found")
 		}
 		return dbmodels.GetEpisodeByIDForTenantRow{}, s.internalDBError(ctx, "failed to get episode", err, "tenant_id", tenantID.String(), "episode_id", episodeID.String())
 	}

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -40,21 +40,21 @@ type bulkCreditOutcome struct {
 
 func (s *adminServer) BulkEditEpisodeCredits(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.BulkEditEpisodeCreditsRequest],
-) (*connect.Response[publiraadminv1.BulkEditEpisodeCreditsResponse], error) {
+	req *publiraadminv1.BulkEditEpisodeCreditsRequest,
+) (*publiraadminv1.BulkEditEpisodeCreditsResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	seriesID, err := parseRecordID(req.Msg.SeriesId, "series_id")
+	seriesID, err := parseRecordID(req.SeriesId, "series_id")
 	if err != nil {
 		return nil, err
 	}
 	// The range in the order the request listed it.
-	episodeIDs, err := recordIDsArg(req.Msg.EpisodeIds, "episode_ids", "episode")
+	episodeIDs, err := recordIDsArg(req.EpisodeIds, "episode_ids", "episode")
 	if err != nil {
 		return nil, err
 	}
@@ -69,9 +69,9 @@ func (s *adminServer) BulkEditEpisodeCredits(
 	// read of the creators and one of the roles, whether the operation names
 	// one pair or two. A replace naming the same credit on both sides is the
 	// duplicate pair resolveCreatorCredits already refuses.
-	pairs, field := bulkCreditPairs(req.Msg)
+	pairs, field := bulkCreditPairs(req)
 	if len(pairs) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an operation is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "an operation is required")
 	}
 	credits, err := s.resolveCreatorCredits(ctx, tenant.ID, pairs, field)
 	if err != nil {
@@ -118,7 +118,7 @@ func (s *adminServer) BulkEditEpisodeCredits(
 		lockedIDs = append(lockedIDs, row.ID)
 	}
 
-	outcome, err := s.applyBulkCreditOperation(txCtx, tenant.ID, lockedIDs, req.Msg, credits)
+	outcome, err := s.applyBulkCreditOperation(txCtx, tenant.ID, lockedIDs, req, credits)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (s *adminServer) BulkEditEpisodeCredits(
 			TargetType:  "series",
 			TargetID:    series.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 		})
 	}
 
@@ -170,11 +170,11 @@ func (s *adminServer) BulkEditEpisodeCredits(
 			Reason:          reason,
 		})
 	}
-	return connect.NewResponse(&publiraadminv1.BulkEditEpisodeCreditsResponse{
+	return &publiraadminv1.BulkEditEpisodeCreditsResponse{
 		ChangedEpisodePublicIds: changed,
 		ChangedEpisodeIds:       changedIDs,
 		UnchangedEpisodes:       unchanged,
-	}), nil
+	}, nil
 }
 
 // bulkCreditPairs reads the (creator, role) pairs out of whichever operation
@@ -282,7 +282,7 @@ func (s *adminServer) applyBulkCreditOperation(
 			return bulkCreditOutcome{}, s.internalDBError(ctx, "failed to check episode credit shares", err, "tenant_id", tenantID.String())
 		}
 		if len(exceeding) > 0 {
-			return bulkCreditOutcome{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the share_bps total would exceed 10000 on %d episode(s)", len(exceeding)))
+			return bulkCreditOutcome{}, connect.Errorf(connect.CodeInvalidArgument, "the share_bps total would exceed 10000 on %d episode(s)", len(exceeding))
 		}
 		written, err := s.queriesFor(ctx).BulkSetEpisodeCreatorShare(ctx, dbmodels.BulkSetEpisodeCreatorShareParams{
 			TenantID: tenantID, EpisodeIds: episodeIDs, CreatorID: credits[0].creator.ID, RoleID: credits[0].role.ID, ShareBps: share,
@@ -296,7 +296,7 @@ func (s *adminServer) applyBulkCreditOperation(
 		}, nil
 
 	default:
-		return bulkCreditOutcome{}, connect.NewError(connect.CodeInvalidArgument, errors.New("an operation is required"))
+		return bulkCreditOutcome{}, connect.NewError(connect.CodeInvalidArgument, "an operation is required")
 	}
 }
 
@@ -322,10 +322,10 @@ func (s *adminServer) refuseDuplicatingBulkCredit(
 		return s.internalDBError(ctx, "failed to check for duplicate episode credits", err, "tenant_id", tenantID.String())
 	}
 	if len(conflicting) > 0 {
-		return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf(
+		return connect.Errorf(connect.CodeFailedPrecondition,
 			"%d episode(s) in the range already credit %s as %s",
 			len(conflicting), credits[1].creator.Name, credits[1].role.Name,
-		))
+		)
 	}
 	return nil
 }

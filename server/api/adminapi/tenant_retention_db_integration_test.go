@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -18,6 +18,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/retention"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // savePlatformRetentionDefaults writes the platform defaults the way the
@@ -43,25 +44,25 @@ func periodsFromProto(periods *publirattypesv1.RetentionPeriods) retention.Perio
 
 func getRetention(t *testing.T, env *adminDBEnv, tenant adminDBTenant) *publiraadminv1.GetTenantRetentionSettingsResponse {
 	t.Helper()
-	res, err := env.tenantSettingsClient().GetTenantRetentionSettings(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantRetentionSettingsRequest{
+	res, err := env.tenantSettingsClient().GetTenantRetentionSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetTenantRetentionSettingsRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantRetentionSettings: %v", err)
 	}
-	return res.Msg
+	return res
 }
 
 func updateRetention(env *adminDBEnv, tenant adminDBTenant, overrides *publiraadminv1.TenantRetentionOverrides, expectedRevision int64) (*publiraadminv1.UpdateTenantRetentionSettingsResponse, error) {
-	res, err := env.tenantSettingsClient().UpdateTenantRetentionSettings(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantRetentionSettingsRequest{
+	res, err := env.tenantSettingsClient().UpdateTenantRetentionSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateTenantRetentionSettingsRequest{
 		Tenant:           tenant.tenantContext(),
 		Overrides:        overrides,
 		ExpectedRevision: expectedRevision,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return res.Msg, nil
+	return res, nil
 }
 
 func TestDBTenantRetentionSettings(t *testing.T) {

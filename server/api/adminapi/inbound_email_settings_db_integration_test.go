@@ -5,37 +5,39 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/inboundemail"
 	"github.com/publira/publira/server/internal/inboundprovider/resend"
 	"github.com/publira/publira/server/internal/inboundprovider/sendgrid"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func (e *adminDBEnv) inboundEmailClient() publiraadminv1connect.AdminInboundEmailSettingsServiceClient {
-	return publiraadminv1connect.NewAdminInboundEmailSettingsServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminInboundEmailSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func updateDBInboundEmailSettings(env *adminDBEnv, tenant adminDBTenant, req *publiraadminv1.UpdateTenantInboundEmailSettingsRequest) (*publiraadminv1.TenantInboundEmailSettings, error) {
 	req.Tenant = tenant.tenantContext()
-	resp, err := env.inboundEmailClient().UpdateTenantInboundEmailSettings(context.Background(), newAdminDBRequest(tenant, req))
+	resp, err := env.inboundEmailClient().UpdateTenantInboundEmailSettings(testutil.WithBearer(context.Background(), tenant.token()), req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg.Settings, nil
+	return resp.Settings, nil
 }
 
 func getDBInboundEmailSettings(t *testing.T, env *adminDBEnv, tenant adminDBTenant) *publiraadminv1.TenantInboundEmailSettings {
 	t.Helper()
-	resp, err := env.inboundEmailClient().GetTenantInboundEmailSettings(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantInboundEmailSettingsRequest{
+	resp, err := env.inboundEmailClient().GetTenantInboundEmailSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetTenantInboundEmailSettingsRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantInboundEmailSettings: %v", err)
 	}
-	return resp.Msg.Settings
+	return resp.Settings
 }
 
 func replaceInboundField(name, value string) *publiraadminv1.InboundEmailCredentialFieldUpdate {
@@ -50,13 +52,13 @@ func TestDBInboundEmailProvidersAreListedWithTheirFields(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
-	resp, err := env.inboundEmailClient().ListInboundEmailProviders(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListInboundEmailProvidersRequest{
+	resp, err := env.inboundEmailClient().ListInboundEmailProviders(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListInboundEmailProvidersRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListInboundEmailProviders: %v", err)
 	}
-	providers := resp.Msg.Providers
+	providers := resp.Providers
 	if len(providers) != 2 || providers[0].Id != resend.ID || providers[1].Id != sendgrid.ID {
 		t.Fatalf("providers = %v, want resend and sendgrid in id order", providers)
 	}

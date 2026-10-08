@@ -8,7 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
@@ -65,54 +66,54 @@ func TestServerAdmitsTheWebServiceTokenOnlyWhenItIsSet(t *testing.T) {
 
 	t.Run("set", func(t *testing.T) {
 		url := startInternalListener(t, pg, nil)
-		genres := publiraadminv1connect.NewAdminGenreServiceClient(http.DefaultClient, url)
-		settings := publiraadminv1connect.NewTenantSettingsServiceClient(http.DefaultClient, url)
+		genres := publiraadminv1connect.NewAdminGenreServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, url)))
+		settings := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, url)))
 
-		listed, err := genres.ListGenres(t.Context(), bearerRequest(token, &publiraadminv1.ListGenresRequest{Tenant: tenantCtx}))
+		listed, err := genres.ListGenres(testutil.WithBearer(t.Context(), token), &publiraadminv1.ListGenresRequest{Tenant: tenantCtx})
 		if err != nil {
 			t.Fatalf("ListGenres: %v", err)
 		}
-		if len(listed.Msg.Genres) != 1 || listed.Msg.Genres[0].Name != "Fantasy" {
-			t.Fatalf("genres = %v, want the tenant's one genre", listed.Msg.Genres)
+		if len(listed.Genres) != 1 || listed.Genres[0].Name != "Fantasy" {
+			t.Fatalf("genres = %v, want the tenant's one genre", listed.Genres)
 		}
-		_, err = genres.CreateGenre(t.Context(), bearerRequest(token, &publiraadminv1.CreateGenreRequest{Tenant: tenantCtx, Name: "Mystery"}))
+		_, err = genres.CreateGenre(testutil.WithBearer(t.Context(), token), &publiraadminv1.CreateGenreRequest{Tenant: tenantCtx, Name: "Mystery"})
 		if code := connect.CodeOf(err); code != connect.CodePermissionDenied {
 			t.Fatalf("CreateGenre code = %v, want %v", code, connect.CodePermissionDenied)
 		}
-		_, err = settings.GetTenantTimezone(t.Context(), bearerRequest(token, &publiraadminv1.GetTenantTimezoneRequest{Tenant: tenantCtx}))
+		_, err = settings.GetTenantTimezone(testutil.WithBearer(t.Context(), token), &publiraadminv1.GetTenantTimezoneRequest{Tenant: tenantCtx})
 		if code := connect.CodeOf(err); code != connect.CodePermissionDenied {
 			t.Fatalf("GetTenantTimezone code = %v, want %v", code, connect.CodePermissionDenied)
 		}
 
-		tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(http.DefaultClient, url)
-		policy := publirasplatformv1connect.NewPlatformPolicyServiceClient(http.DefaultClient, url)
+		tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, url)))
+		policy := publirasplatformv1connect.NewPlatformPolicyServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, url)))
 
-		listedTenants, err := tenants.ListTenants(t.Context(), bearerRequest(token, &publirasplatformv1.ListTenantsRequest{}))
+		listedTenants, err := tenants.ListTenants(testutil.WithBearer(t.Context(), token), &publirasplatformv1.ListTenantsRequest{})
 		if err != nil {
 			t.Fatalf("ListTenants: %v", err)
 		}
-		if len(listedTenants.Msg.Tenants) != 1 || listedTenants.Msg.Tenants[0].PublicId != tenant.PublicID {
-			t.Fatalf("tenants = %v, want the one seeded tenant", listedTenants.Msg.Tenants)
+		if len(listedTenants.Tenants) != 1 || listedTenants.Tenants[0].PublicId != tenant.PublicID {
+			t.Fatalf("tenants = %v, want the one seeded tenant", listedTenants.Tenants)
 		}
-		_, err = tenants.CreateTenant(t.Context(), bearerRequest(token, &publirasplatformv1.CreateTenantRequest{DefaultLocale: "en", Name: "Tenant B", Domain: "tenant-b.example.com"}))
+		_, err = tenants.CreateTenant(testutil.WithBearer(t.Context(), token), &publirasplatformv1.CreateTenantRequest{DefaultLocale: "en", Name: "Tenant B", Domain: "tenant-b.example.com"})
 		if code := connect.CodeOf(err); code != connect.CodePermissionDenied {
 			t.Fatalf("CreateTenant code = %v, want %v", code, connect.CodePermissionDenied)
 		}
-		_, err = policy.UpdatePlatformPolicy(t.Context(), bearerRequest(token, &publirasplatformv1.UpdatePlatformPolicyRequest{}))
+		_, err = policy.UpdatePlatformPolicy(testutil.WithBearer(t.Context(), token), &publirasplatformv1.UpdatePlatformPolicyRequest{})
 		if code := connect.CodeOf(err); code != connect.CodePermissionDenied {
 			t.Fatalf("UpdatePlatformPolicy code = %v, want %v", code, connect.CodePermissionDenied)
 		}
 	})
 	t.Run("unset", func(t *testing.T) {
 		url := startInternalListener(t, pg, map[string]string{"PUBLIRA_WEB_SERVICE_TOKEN": ""})
-		genres := publiraadminv1connect.NewAdminGenreServiceClient(http.DefaultClient, url)
+		genres := publiraadminv1connect.NewAdminGenreServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, url)))
 
-		_, err := genres.ListGenres(t.Context(), bearerRequest(token, &publiraadminv1.ListGenresRequest{Tenant: tenantCtx}))
+		_, err := genres.ListGenres(testutil.WithBearer(t.Context(), token), &publiraadminv1.ListGenresRequest{Tenant: tenantCtx})
 		if code := connect.CodeOf(err); code != connect.CodeUnauthenticated {
 			t.Fatalf("ListGenres code = %v, want %v", code, connect.CodeUnauthenticated)
 		}
-		tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(http.DefaultClient, url)
-		_, err = tenants.ListTenants(t.Context(), bearerRequest(token, &publirasplatformv1.ListTenantsRequest{}))
+		tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, url)))
+		_, err = tenants.ListTenants(testutil.WithBearer(t.Context(), token), &publirasplatformv1.ListTenantsRequest{})
 		if code := connect.CodeOf(err); code != connect.CodeUnauthenticated {
 			t.Fatalf("ListTenants code = %v, want %v", code, connect.CodeUnauthenticated)
 		}
@@ -135,12 +136,6 @@ func startInternalListener(t *testing.T, pg *testutil.PostgresEnv, env map[strin
 	}, revalidationWithoutPlatformConsole(), env), "server")
 	p.WaitReady(t, "http://"+internalAddr+"/readyz")
 	return "http://" + internalAddr
-}
-
-func bearerRequest[T any](token string, msg *T) *connect.Request[T] {
-	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+token)
-	return req
 }
 
 // A password in a redis:// URL would cross the network in cleartext, so the

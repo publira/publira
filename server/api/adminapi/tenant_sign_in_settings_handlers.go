@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/signin"
 )
@@ -59,7 +60,7 @@ func mapSignInSettingsUpdateError(err error) error {
 		return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "google")
 	case errors.Is(err, signin.ErrAppleCredentialsRequired),
 		errors.Is(err, signin.ErrGoogleClientRequired):
-		return connect.NewError(connect.CodeInvalidArgument, err)
+		return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	default:
 		return nil
 	}
@@ -67,9 +68,9 @@ func mapSignInSettingsUpdateError(err error) error {
 
 func (s *adminServer) GetTenantSignInSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantSignInSettingsRequest],
-) (*connect.Response[publiraadminv1.GetTenantSignInSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.GetTenantSignInSettingsRequest,
+) (*publiraadminv1.GetTenantSignInSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -80,14 +81,14 @@ func (s *adminServer) GetTenantSignInSettings(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get tenant sign-in settings", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetTenantSignInSettingsResponse{Settings: tenantSignInSettingsToProto(cfg)}), nil
+	return &publiraadminv1.GetTenantSignInSettingsResponse{Settings: tenantSignInSettingsToProto(cfg)}, nil
 }
 
 func (s *adminServer) UpdateTenantSignInSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantSignInSettingsRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantSignInSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantSignInSettingsRequest,
+) (*publiraadminv1.UpdateTenantSignInSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -96,8 +97,8 @@ func (s *adminServer) UpdateTenantSignInSettings(
 		return nil, err
 	}
 
-	apple := req.Msg.GetApple()
-	google := req.Msg.GetGoogle()
+	apple := req.GetApple()
+	google := req.GetGoogle()
 	input := signin.UpdateInput{
 		Apple: signin.AppleUpdate{
 			Enabled:              apple.GetEnabled(),
@@ -137,7 +138,7 @@ func (s *adminServer) UpdateTenantSignInSettings(
 		TargetID:    tenant.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
 		Reason:      signInSettingsAuditReason(input),
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to audit tenant sign-in settings", err, "tenant_id", tenant.ID.String())
 	}
@@ -149,7 +150,7 @@ func (s *adminServer) UpdateTenantSignInSettings(
 		return nil, s.internalDBError(ctx, "failed to commit tenant sign-in settings", err, "tenant_id", tenant.ID.String())
 	}
 	s.reval.Send(ctx, owed)
-	return connect.NewResponse(&publiraadminv1.UpdateTenantSignInSettingsResponse{Settings: tenantSignInSettingsToProto(cfg)}), nil
+	return &publiraadminv1.UpdateTenantSignInSettingsResponse{Settings: tenantSignInSettingsToProto(cfg)}, nil
 }
 
 // signInSettingsAuditReason names what the update left enabled and what it did

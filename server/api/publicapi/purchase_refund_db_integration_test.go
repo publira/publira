@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
@@ -67,7 +70,7 @@ func newUnpaidRefundWebhookEnv(t *testing.T, slug, domain string) refundWebhookE
 
 	return refundWebhookEnv{
 		pg:      pg,
-		client:  publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL),
+		client:  publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 		tenant:  tenant,
 		user:    user,
 		episode: episode,

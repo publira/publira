@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -24,41 +24,41 @@ import (
 // it, and the reader who wrote the message never sees either.
 
 func (c adminContactConsole) assign(messageID, assigneeUserID string) (*publiraadminv1.ContactMessage, error) {
-	res, err := c.client.AssignContactMessage(context.Background(), newBearerRequest(&publiraadminv1.AssignContactMessageRequest{
+	res, err := c.client.AssignContactMessage(testutil.WithBearer(context.Background(), c.token), &publiraadminv1.AssignContactMessageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: c.tenant.ID.String()},
 		ContactMessageId: messageID,
 		AssigneeUserId:   assigneeUserID,
-	}, c.token))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return res.Msg.Message, nil
+	return res.Message, nil
 }
 
 func (c adminContactConsole) updateStaffNote(messageID, note string) (*publiraadminv1.ContactMessage, error) {
-	res, err := c.client.UpdateContactMessageStaffNote(context.Background(), newBearerRequest(&publiraadminv1.UpdateContactMessageStaffNoteRequest{
+	res, err := c.client.UpdateContactMessageStaffNote(testutil.WithBearer(context.Background(), c.token), &publiraadminv1.UpdateContactMessageStaffNoteRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: c.tenant.ID.String()},
 		ContactMessageId: messageID,
 		StaffNote:        note,
-	}, c.token))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return res.Msg.Message, nil
+	return res.Message, nil
 }
 
 func (c adminContactConsole) markHandled(t *testing.T, messageID string, handled bool) *publiraadminv1.ContactMessage {
 	t.Helper()
 
-	res, err := c.client.MarkContactMessageHandled(context.Background(), newBearerRequest(&publiraadminv1.MarkContactMessageHandledRequest{
+	res, err := c.client.MarkContactMessageHandled(testutil.WithBearer(context.Background(), c.token), &publiraadminv1.MarkContactMessageHandledRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: c.tenant.ID.String()},
 		ContactMessageId: messageID,
 		Handled:          handled,
-	}, c.token))
+	})
 	if err != nil {
 		t.Fatalf("MarkContactMessageHandled(%t): %v", handled, err)
 	}
-	return res.Msg.Message
+	return res.Message
 }
 
 // seedGuestContactMessage sends one message as a guest and returns it as the
@@ -129,14 +129,14 @@ func TestDBContactMessageIsAssignedReassignedAndCleared(t *testing.T) {
 
 	// The list and the single read carry the assignee as the answer did.
 	assertContactMessageAssignee(t, console.list(t, "", 20, "").Messages[0], second)
-	got, err := console.client.GetContactMessage(context.Background(), newBearerRequest(&publiraadminv1.GetContactMessageRequest{
+	got, err := console.client.GetContactMessage(testutil.WithBearer(context.Background(), console.token), &publiraadminv1.GetContactMessageRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		PublicId: message.PublicId,
-	}, console.token))
+	})
 	if err != nil {
 		t.Fatalf("GetContactMessage: %v", err)
 	}
-	assertContactMessageAssignee(t, got.Msg.Message, second)
+	assertContactMessageAssignee(t, got.Message, second)
 
 	// Handling and reopening are the handled flag's business and leave the
 	// assignee where it is, though somebody else did the handling.
@@ -377,15 +377,15 @@ func (c adminContactConsole) assertContactMessageStatus(t *testing.T, answer *pu
 	if answer.Status != want {
 		t.Errorf("the answer carries status = %q, want %q", answer.Status, want)
 	}
-	got, err := c.client.GetContactMessage(context.Background(), newBearerRequest(&publiraadminv1.GetContactMessageRequest{
+	got, err := c.client.GetContactMessage(testutil.WithBearer(context.Background(), c.token), &publiraadminv1.GetContactMessageRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: c.tenant.ID.String()},
 		PublicId: answer.PublicId,
-	}, c.token))
+	})
 	if err != nil {
 		t.Fatalf("GetContactMessage: %v", err)
 	}
-	if got.Msg.Message.Status != want {
-		t.Errorf("GetContactMessage carries status = %q, want %q", got.Msg.Message.Status, want)
+	if got.Message.Status != want {
+		t.Errorf("GetContactMessage carries status = %q, want %q", got.Message.Status, want)
 	}
 
 	for _, filter := range append([]string{""}, contactMessageStatuses...) {
@@ -544,10 +544,10 @@ func TestDBContactMessageStatusFilterRefusesAnUnknownState(t *testing.T) {
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF16", "staff@contact16.example.com", "Staff")
 	console := env.openAdminContactConsole(t, tenant, staff)
 
-	_, err := console.client.ListContactMessages(context.Background(), newBearerRequest(&publiraadminv1.ListContactMessagesRequest{
+	_, err := console.client.ListContactMessages(testutil.WithBearer(context.Background(), console.token), &publiraadminv1.ListContactMessagesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		Status: "assigned",
-	}, console.token))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListContactMessages(%q) = %v, want invalid_argument", "assigned", err)
 	}

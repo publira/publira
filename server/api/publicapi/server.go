@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/catalogsearch"
@@ -74,7 +77,7 @@ type webPushPublicKeySource interface {
 }
 
 func invalidSessionError() error {
-	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid token"))
+	return connect.NewError(connect.CodeUnauthenticated, "invalid token")
 }
 
 // internalDBError keeps context cancellation and deadline errors as-is so
@@ -96,16 +99,17 @@ func (s *apiServer) internalError(ctx context.Context, msg string, err error, ke
 	args = append(args, keyvals...)
 	args = append(args, "error", err)
 	s.logger.ErrorContext(ctx, msg, args...)
-	return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+	return connect.NewError(connect.CodeInternal, "internal server error")
 }
 
 // noStorePrivateResponse marks a response that depends on who is asking, so a
 // shared cache never serves one member's state to another. The member-scoped
 // public RPCs (follow, rating) return through here.
-func noStorePrivateResponse[T any](msg *T) *connect.Response[T] {
-	response := connect.NewResponse(msg)
-	response.Header().Set("Cache-Control", "private, no-store")
-	return response
+func noStorePrivateResponse[T any](ctx context.Context, msg *T) *T {
+	if info, ok := connect.CallInfoForServerContext(ctx); ok {
+		info.ResponseHeader().Set("Cache-Control", "private, no-store")
+	}
+	return msg
 }
 
 func tenantIDFromContext(ctx *publirattypesv1.TenantContext) (uuid.UUID, error) {
@@ -120,7 +124,7 @@ func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirattype
 	tenant, err := s.queriesFor(ctx).GetTenantByID(ctx, tenantID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
+			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, "tenant not found")
 		}
 		return dbmodels.Tenant{}, s.internalDBError(ctx, "failed to get tenant", err, "tenant_id", tenantID.String())
 	}
@@ -246,86 +250,73 @@ func handlerFromServer(server *apiServer) http.Handler {
 }
 
 func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
-	tenantScoped := server.tenantScopedQuerierInterceptor()
-	traced := tracing.ConnectHandlerOption(ServiceName)
+	traced := tracing.ConnectServerInterceptors(ServiceName)
+	tenantScoped := slices.Concat(traced, []connect.ServerInterceptor{server.tenantScopedQuerierInterceptor()})
 
-	path, handler := publirav1connect.NewCatalogServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
-	mux.Handle(path, handler)
-	episodeReadPath, episodeReadHandler := publirav1connect.NewEpisodeReadServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
-	mux.Handle(episodeReadPath, episodeReadHandler)
-	purchasePath, purchaseHandler := publirav1connect.NewPurchaseServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
-	mux.Handle(purchasePath, purchaseHandler)
-	followPath, followHandler := publirav1connect.NewFollowServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
-	mux.Handle(followPath, followHandler)
-	ratingPath, ratingHandler := publirav1connect.NewRatingServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
-	mux.Handle(ratingPath, ratingHandler)
-	waitFreePath, waitFreeHandler := publirav1connect.NewWaitFreeServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
-	mux.Handle(waitFreePath, waitFreeHandler)
-	contentViewPath, contentViewHandler := publirav1connect.NewContentViewServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
-	mux.Handle(contentViewPath, contentViewHandler)
-	commentPath, commentHandler := publirav1connect.NewCommentServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
-	mux.Handle(commentPath, commentHandler)
-	contactPath, contactHandler := publirav1connect.NewContactServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(tenantScoped),
-		connect.WithReadMaxBytes(maxContactServiceRequestBytes),
-	)
-	mux.Handle(contactPath, contactHandler)
-	pagesPath, pagesHandler := publirav1connect.NewPublicPagesServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
-	mux.Handle(pagesPath, pagesHandler)
-	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
-	mux.Handle(authPath, authHandler)
-	notificationPath, notificationHandler := publirav1connect.NewNotificationServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
-	mux.Handle(notificationPath, notificationHandler)
-	tenantPath, tenantHandler := publirav1connect.NewTenantServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
-	mux.Handle(tenantPath, tenantHandler)
+	services := connect.NewServer(tenantScoped...)
+	publirav1connect.RegisterCatalogServiceHandler(services, server)
+	publirav1connect.RegisterEpisodeReadServiceHandler(services, server)
+	publirav1connect.RegisterPurchaseServiceHandler(services, server)
+	publirav1connect.RegisterFollowServiceHandler(services, server)
+	publirav1connect.RegisterRatingServiceHandler(services, server)
+	publirav1connect.RegisterWaitFreeServiceHandler(services, server)
+	publirav1connect.RegisterContentViewServiceHandler(services, server)
+	publirav1connect.RegisterCommentServiceHandler(services, server)
+	publirav1connect.RegisterPublicPagesServiceHandler(services, server)
+	publirav1connect.RegisterAuthServiceHandler(services, server)
+	publirav1connect.RegisterNotificationServiceHandler(services, server)
+	publirav1connect.RegisterTenantServiceHandler(services, server)
+	connecthttp.Mount(mux, services)
+
+	contact := connect.NewServer(tenantScoped...)
+	publirav1connect.RegisterContactServiceHandler(contact, server)
+	connecthttp.Mount(mux, contact, connecthttp.WithReadMaxBytes(maxContactServiceRequestBytes))
+
 	// DomainService is used before tenant context is known (e.g. proxy domain resolution),
 	// so it must not require tenant-scoped interception.
-	domainPath, domainHandler := publirav1connect.NewDomainServiceHandler(server, traced)
-	mux.Handle(domainPath, domainHandler)
+	domain := connect.NewServer(traced...)
+	publirav1connect.RegisterDomainServiceHandler(domain, server)
+	connecthttp.Mount(mux, domain)
 }
 
-func (s *apiServer) tenantScopedQuerierInterceptor() connect.Interceptor {
-	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			if s.db == nil {
-				return next(ctx, req)
-			}
-			if isSQLMockDB(s.db) {
-				return next(ctx, req)
-			}
-
-			tenantReq, ok := req.Any().(tenantScopedRequest)
-			if !ok {
-				return next(ctx, req)
-			}
-
-			tenantID, err := rpcmiddleware.ResolveTenantID(tenantReq.GetTenant(), req.Header())
-			if err != nil {
-				return nil, err
-			}
-
-			tenant, err := s.queriesFor(ctx).GetTenantByID(ctx, tenantID)
-			if err != nil {
-				if errors.Is(err, sql.ErrNoRows) {
-					return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
-				}
-				return nil, s.internalDBError(ctx, "failed to get tenant", err, "tenant_id", tenantID.String())
-			}
-
-			conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, s.logger)
-			if err != nil {
-				return nil, s.internalDBError(ctx, "failed to acquire tenant connection", err, "tenant_id", tenant.ID.String())
-			}
-			defer release()
-
-			tracing.SetTenant(ctx, tenant.PublicID)
-			ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
-			ctx = rpcmiddleware.WithTenantConn(ctx, conn)
-			ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
-			return next(ctx, req)
+func (s *apiServer) tenantScopedQuerierInterceptor() connect.ServerInterceptor {
+	return rpcmiddleware.NewUnaryRequestInterceptor(func(ctx context.Context, _ connect.Spec, req proto.Message, next func(context.Context) error) error {
+		if s.db == nil {
+			return next(ctx)
 		}
+		if isSQLMockDB(s.db) {
+			return next(ctx)
+		}
+
+		tenantReq, ok := req.(tenantScopedRequest)
+		if !ok {
+			return next(ctx)
+		}
+
+		tenantID, err := rpcmiddleware.ResolveTenantID(tenantReq.GetTenant(), rpcmiddleware.RequestHeader(ctx))
+		if err != nil {
+			return err
+		}
+
+		tenant, err := s.queriesFor(ctx).GetTenantByID(ctx, tenantID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return connect.NewError(connect.CodeNotFound, "tenant not found")
+			}
+			return s.internalDBError(ctx, "failed to get tenant", err, "tenant_id", tenantID.String())
+		}
+
+		conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, s.logger)
+		if err != nil {
+			return s.internalDBError(ctx, "failed to acquire tenant connection", err, "tenant_id", tenant.ID.String())
+		}
+		defer release()
+
+		tracing.SetTenant(ctx, tenant.PublicID)
+		ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
+		ctx = rpcmiddleware.WithTenantConn(ctx, conn)
+		ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
+		return next(ctx)
 	})
 }
 

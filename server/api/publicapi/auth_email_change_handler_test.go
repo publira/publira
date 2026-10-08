@@ -5,12 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // An email change is confirmed by exactly one of the password and a fresh
@@ -44,8 +46,8 @@ func TestAuthRequestEmailChangeTakesExactlyOneConfirmation(t *testing.T) {
 				NewEmail:     "moved@example.com",
 			}
 			tc.edit(req)
-			client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-			_, err := client.RequestEmailChange(context.Background(), newAuthedPublicRequest(req, tenantID.String()))
+			client := publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			_, err := client.RequestEmailChange(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}

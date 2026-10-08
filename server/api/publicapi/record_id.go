@@ -2,10 +2,9 @@ package publicapi
 
 import (
 	"database/sql"
-	"fmt"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 )
 
@@ -14,11 +13,11 @@ import (
 func requestRecordID(field, raw string) (uuid.UUID, error) {
 	id := strings.TrimSpace(raw)
 	if id == "" {
-		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s is required", field))
+		return uuid.Nil, connect.Errorf(connect.CodeInvalidArgument, "%s is required", field)
 	}
 	parsed, err := uuid.Parse(id)
 	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s is invalid", field))
+		return uuid.Nil, connect.Errorf(connect.CodeInvalidArgument, "%s is invalid", field)
 	}
 	return parsed, nil
 }

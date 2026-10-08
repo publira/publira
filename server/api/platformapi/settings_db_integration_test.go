@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
@@ -51,14 +52,14 @@ func seedPlatformSettings(
 ) int64 {
 	t.Helper()
 
-	resp, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
+	resp, err := client.UpdatePlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: defaultTimezone,
 		DefaultLocale:   defaultLocale,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdatePlatformSettings (seed): %v", err)
 	}
-	return resp.Msg.Settings.Revision
+	return resp.Settings.Revision
 }
 
 // platformConfigRevision reads platform_config.revision on the superuser
@@ -80,9 +81,9 @@ func platformConfigRevision(t *testing.T, pg *testutil.PostgresEnv) int64 {
 // language to report and the read says so rather than naming one.
 func TestDBGetPlatformSettingsFailsWithoutASettingsRow(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
-	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := client.GetPlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetPlatformSettingsRequest{}))
+	_, err := client.GetPlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformSettingsRequest{})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetPlatformSettings code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 	}
@@ -91,45 +92,45 @@ func TestDBGetPlatformSettingsFailsWithoutASettingsRow(t *testing.T) {
 func TestDBUpdatePlatformSettingsPersistsAndAudits(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	// No settings row yet, so the first save states revision zero and creates one.
-	updateResp, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
+	updateResp, err := client.UpdatePlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: "America/Los_Angeles",
 		DefaultLocale:   "ja",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdatePlatformSettings: %v", err)
 	}
-	if updateResp.Msg.Settings.DefaultTimezone != "America/Los_Angeles" {
-		t.Fatalf("default_timezone = %q, want America/Los_Angeles", updateResp.Msg.Settings.DefaultTimezone)
+	if updateResp.Settings.DefaultTimezone != "America/Los_Angeles" {
+		t.Fatalf("default_timezone = %q, want America/Los_Angeles", updateResp.Settings.DefaultTimezone)
 	}
-	if updateResp.Msg.Settings.Revision != 1 {
-		t.Fatalf("revision of the created row = %d, want 1", updateResp.Msg.Settings.Revision)
+	if updateResp.Settings.Revision != 1 {
+		t.Fatalf("revision of the created row = %d, want 1", updateResp.Settings.Revision)
 	}
 
-	getResp, err := client.GetPlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetPlatformSettingsRequest{}))
+	getResp, err := client.GetPlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformSettings: %v", err)
 	}
-	if getResp.Msg.Settings.DefaultTimezone != "America/Los_Angeles" {
-		t.Fatalf("default_timezone after update = %q, want America/Los_Angeles", getResp.Msg.Settings.DefaultTimezone)
+	if getResp.Settings.DefaultTimezone != "America/Los_Angeles" {
+		t.Fatalf("default_timezone after update = %q, want America/Los_Angeles", getResp.Settings.DefaultTimezone)
 	}
-	if getResp.Msg.Settings.DefaultLocale != "ja" {
-		t.Fatalf("default_locale after update = %q, want ja", getResp.Msg.Settings.DefaultLocale)
+	if getResp.Settings.DefaultLocale != "ja" {
+		t.Fatalf("default_locale after update = %q, want ja", getResp.Settings.DefaultLocale)
 	}
 
 	// A second update goes through the same singleton row instead of adding one.
-	secondResp, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
+	secondResp, err := client.UpdatePlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "Europe/Berlin",
 		DefaultLocale:    "ja",
-		ExpectedRevision: getResp.Msg.Settings.Revision,
-	}))
+		ExpectedRevision: getResp.Settings.Revision,
+	})
 	if err != nil {
 		t.Fatalf("UpdatePlatformSettings (second): %v", err)
 	}
-	if secondResp.Msg.Settings.Revision != 2 {
-		t.Fatalf("revision after the second save = %d, want 2", secondResp.Msg.Settings.Revision)
+	if secondResp.Settings.Revision != 2 {
+		t.Fatalf("revision after the second save = %d, want 2", secondResp.Settings.Revision)
 	}
 	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_config`); got != 1 {
 		t.Fatalf("platform_config rows = %d, want 1", got)
@@ -147,46 +148,46 @@ func TestDBUpdatePlatformSettingsPersistsAndAudits(t *testing.T) {
 func TestDBUpdatePlatformSettingsRejectsInvalidTimezone(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	revision := seedPlatformSettings(t, client, operator, "America/Los_Angeles", "ja")
 
 	for _, timezone := range []string{"Mars/Olympus_Mons", "", "   ", "Local", "+09:00"} {
-		_, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
+		_, err := client.UpdatePlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformSettingsRequest{
 			DefaultTimezone:  timezone,
 			DefaultLocale:    "ja",
 			ExpectedRevision: revision,
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("UpdatePlatformSettings(%q) code = %v, want invalid_argument", timezone, connect.CodeOf(err))
 		}
 	}
 
 	// The rejected updates must leave the configured value untouched.
-	resp, err := client.GetPlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetPlatformSettingsRequest{}))
+	resp, err := client.GetPlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformSettings: %v", err)
 	}
-	if resp.Msg.Settings.DefaultTimezone != "America/Los_Angeles" {
-		t.Fatalf("default_timezone = %q, want America/Los_Angeles", resp.Msg.Settings.DefaultTimezone)
+	if resp.Settings.DefaultTimezone != "America/Los_Angeles" {
+		t.Fatalf("default_timezone = %q, want America/Los_Angeles", resp.Settings.DefaultTimezone)
 	}
-	if resp.Msg.Settings.DefaultLocale != "ja" {
-		t.Fatalf("default_locale = %q, want ja", resp.Msg.Settings.DefaultLocale)
+	if resp.Settings.DefaultLocale != "ja" {
+		t.Fatalf("default_locale = %q, want ja", resp.Settings.DefaultLocale)
 	}
 }
 
 func TestDBUpdatePlatformSettingsRequiresAuthentication(t *testing.T) {
 	ts, _ := newDBIntegrationEnv(t)
-	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := client.UpdatePlatformSettings(context.Background(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+	_, err := client.UpdatePlatformSettings(context.Background(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: "America/Los_Angeles",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("UpdatePlatformSettings code = %v, want unauthenticated", connect.CodeOf(err))
 	}
 
-	_, err = client.GetPlatformSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformSettingsRequest{}))
+	_, err = client.GetPlatformSettings(context.Background(), &publirasplatformv1.GetPlatformSettingsRequest{})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetPlatformSettings code = %v, want unauthenticated", connect.CodeOf(err))
 	}
@@ -197,108 +198,108 @@ func TestDBUpdatePlatformSettingsRequiresAuthentication(t *testing.T) {
 func TestDBCreateTenantAppliesPlatformDefaultTimezone(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
-	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	beforeResp, err := tenants.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	beforeResp, err := tenants.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 		DefaultLocale: "ja",
 		Name:          "Before Tenant",
 		Domain:        "before.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenant (before): %v", err)
 	}
-	if beforeResp.Msg.Tenant.Timezone != tenanttz.Default {
-		t.Fatalf("tenant.timezone = %q, want %s", beforeResp.Msg.Tenant.Timezone, tenanttz.Default)
+	if beforeResp.Tenant.Timezone != tenanttz.Default {
+		t.Fatalf("tenant.timezone = %q, want %s", beforeResp.Tenant.Timezone, tenanttz.Default)
 	}
 
 	seedPlatformSettings(t, settings, operator, "America/Los_Angeles", "ja")
 
-	afterResp, err := tenants.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	afterResp, err := tenants.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 		DefaultLocale: "ja",
 		Name:          "After Tenant",
 		Domain:        "after.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenant (after): %v", err)
 	}
-	if afterResp.Msg.Tenant.Timezone != "America/Los_Angeles" {
-		t.Fatalf("tenant.timezone = %q, want America/Los_Angeles", afterResp.Msg.Tenant.Timezone)
+	if afterResp.Tenant.Timezone != "America/Los_Angeles" {
+		t.Fatalf("tenant.timezone = %q, want America/Los_Angeles", afterResp.Tenant.Timezone)
 	}
 	// The value is written to the tenant row, not just resolved on read.
-	if got := tenantTimezoneByPublicID(t, pg, afterResp.Msg.Tenant.PublicId); got != "America/Los_Angeles" {
+	if got := tenantTimezoneByPublicID(t, pg, afterResp.Tenant.PublicId); got != "America/Los_Angeles" {
 		t.Fatalf("stored tenants.timezone = %q, want America/Los_Angeles", got)
 	}
 
-	if got := tenantTimezoneByPublicID(t, pg, beforeResp.Msg.Tenant.PublicId); got != tenanttz.Default {
+	if got := tenantTimezoneByPublicID(t, pg, beforeResp.Tenant.PublicId); got != tenanttz.Default {
 		t.Fatalf("stored tenants.timezone of the existing tenant = %q, want %s", got, tenanttz.Default)
 	}
-	getBefore, err := tenants.GetTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetTenantRequest{
-		PublicId: beforeResp.Msg.Tenant.PublicId,
-	}))
+	getBefore, err := tenants.GetTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetTenantRequest{
+		PublicId: beforeResp.Tenant.PublicId,
+	})
 	if err != nil {
 		t.Fatalf("GetTenant (before): %v", err)
 	}
-	if getBefore.Msg.Tenant.Timezone != tenanttz.Default {
-		t.Fatalf("existing tenant.timezone = %q, want %s", getBefore.Msg.Tenant.Timezone, tenanttz.Default)
+	if getBefore.Tenant.Timezone != tenanttz.Default {
+		t.Fatalf("existing tenant.timezone = %q, want %s", getBefore.Tenant.Timezone, tenanttz.Default)
 	}
 }
 
 func TestDBUpdatePlatformSettingsPersistsLocale(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	updateResp, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
+	updateResp, err := client.UpdatePlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: tenanttz.Default,
 		DefaultLocale:   "en",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdatePlatformSettings: %v", err)
 	}
-	if updateResp.Msg.Settings.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", updateResp.Msg.Settings.DefaultLocale)
+	if updateResp.Settings.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", updateResp.Settings.DefaultLocale)
 	}
-	if updateResp.Msg.Settings.DefaultTimezone != tenanttz.Default {
-		t.Fatalf("default_timezone = %q, want %s", updateResp.Msg.Settings.DefaultTimezone, tenanttz.Default)
+	if updateResp.Settings.DefaultTimezone != tenanttz.Default {
+		t.Fatalf("default_timezone = %q, want %s", updateResp.Settings.DefaultTimezone, tenanttz.Default)
 	}
 
-	getResp, err := client.GetPlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetPlatformSettingsRequest{}))
+	getResp, err := client.GetPlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformSettings: %v", err)
 	}
-	if getResp.Msg.Settings.DefaultLocale != "en" {
-		t.Fatalf("default_locale after update = %q, want en", getResp.Msg.Settings.DefaultLocale)
+	if getResp.Settings.DefaultLocale != "en" {
+		t.Fatalf("default_locale after update = %q, want en", getResp.Settings.DefaultLocale)
 	}
 }
 
 func TestDBUpdatePlatformSettingsRejectsInvalidLocale(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	revision := seedPlatformSettings(t, client, operator, "America/Los_Angeles", "en")
 
 	for _, defaultLocale := range []string{"fr", "EN", "en-US", "", "   "} {
-		_, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
+		_, err := client.UpdatePlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformSettingsRequest{
 			DefaultTimezone:  "Europe/Berlin",
 			DefaultLocale:    defaultLocale,
 			ExpectedRevision: revision,
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("UpdatePlatformSettings(%q) code = %v, want invalid_argument", defaultLocale, connect.CodeOf(err))
 		}
 	}
 
-	resp, err := client.GetPlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetPlatformSettingsRequest{}))
+	resp, err := client.GetPlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformSettings: %v", err)
 	}
-	if resp.Msg.Settings.DefaultTimezone != "America/Los_Angeles" {
-		t.Fatalf("default_timezone = %q, want America/Los_Angeles", resp.Msg.Settings.DefaultTimezone)
+	if resp.Settings.DefaultTimezone != "America/Los_Angeles" {
+		t.Fatalf("default_timezone = %q, want America/Los_Angeles", resp.Settings.DefaultTimezone)
 	}
-	if resp.Msg.Settings.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.Settings.DefaultLocale)
+	if resp.Settings.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.Settings.DefaultLocale)
 	}
 }
 
@@ -308,35 +309,35 @@ func TestDBUpdatePlatformSettingsRejectsInvalidLocale(t *testing.T) {
 func TestDBCreateTenantStoresRequestedLocale(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
-	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	seedPlatformSettings(t, settings, operator, tenanttz.Default, "ja")
 
-	englishResp, err := tenants.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	englishResp, err := tenants.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 		DefaultLocale: "en",
 		Name:          "English Tenant",
 		Domain:        "en-locale.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenant (en): %v", err)
 	}
-	if got := tenantDefaultLocaleByPublicID(t, pg, englishResp.Msg.Tenant.PublicId); got != "en" {
+	if got := tenantDefaultLocaleByPublicID(t, pg, englishResp.Tenant.PublicId); got != "en" {
 		t.Fatalf("stored tenants.default_locale = %q, want en", got)
 	}
 
-	japaneseResp, err := tenants.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	japaneseResp, err := tenants.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 		DefaultLocale: "ja",
 		Name:          "Japanese Tenant",
 		Domain:        "ja-locale.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenant (ja): %v", err)
 	}
-	if got := tenantDefaultLocaleByPublicID(t, pg, japaneseResp.Msg.Tenant.PublicId); got != "ja" {
+	if got := tenantDefaultLocaleByPublicID(t, pg, japaneseResp.Tenant.PublicId); got != "ja" {
 		t.Fatalf("stored tenants.default_locale = %q, want ja", got)
 	}
-	if got := tenantDefaultLocaleByPublicID(t, pg, englishResp.Msg.Tenant.PublicId); got != "en" {
+	if got := tenantDefaultLocaleByPublicID(t, pg, englishResp.Tenant.PublicId); got != "en" {
 		t.Fatalf("stored tenants.default_locale of the existing tenant = %q, want en", got)
 	}
 }
@@ -347,14 +348,14 @@ func TestDBCreateTenantStoresRequestedLocale(t *testing.T) {
 func TestDBCreateTenantRejectsMissingLocale(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	for _, defaultLocale := range []string{"", "   ", "fr", "EN", "en-US"} {
-		_, err := tenants.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+		_, err := tenants.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 			DefaultLocale: defaultLocale,
 			Name:          "Rejected Tenant",
 			Domain:        "rejected.example.com",
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("CreateTenant(%q) code = %v, want invalid_argument", defaultLocale, connect.CodeOf(err))
 		}
@@ -371,42 +372,42 @@ func TestDBCreateTenantRejectsMissingLocale(t *testing.T) {
 func TestDBUpdatePlatformSettingsRejectsAStaleRevision(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	// Both sessions read this revision.
 	stale := seedPlatformSettings(t, client, operator, "UTC", "ja")
 
 	// The language session saves first and moves the row on.
-	if _, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
+	if _, err := client.UpdatePlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "UTC",
 		DefaultLocale:    "en",
 		ExpectedRevision: stale,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("UpdatePlatformSettings (locale): %v", err)
 	}
 
 	// The time zone session now saves the zone it chose along with the language
 	// it read before the save above.
-	_, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
+	_, err := client.UpdatePlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "Europe/Berlin",
 		DefaultLocale:    "ja",
 		ExpectedRevision: stale,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UpdatePlatformSettings (timezone) code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 
 	// Neither field moved: not the language the first save wrote, and not the
 	// zone the refused save wanted.
-	resp, err := client.GetPlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetPlatformSettingsRequest{}))
+	resp, err := client.GetPlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformSettings: %v", err)
 	}
-	if resp.Msg.Settings.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.Settings.DefaultLocale)
+	if resp.Settings.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.Settings.DefaultLocale)
 	}
-	if resp.Msg.Settings.DefaultTimezone != "UTC" {
-		t.Fatalf("default_timezone = %q, want UTC", resp.Msg.Settings.DefaultTimezone)
+	if resp.Settings.DefaultTimezone != "UTC" {
+		t.Fatalf("default_timezone = %q, want UTC", resp.Settings.DefaultTimezone)
 	}
 	if got := platformConfigRevision(t, pg); got != stale+1 {
 		t.Fatalf("platform_config.revision = %d, want %d", got, stale+1)
@@ -418,7 +419,7 @@ func TestDBUpdatePlatformSettingsRejectsAStaleRevision(t *testing.T) {
 func TestDBUpdatePlatformSettingsConcurrentSavesOneWins(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	shared := seedPlatformSettings(t, client, operator, "UTC", "ja")
 
@@ -447,16 +448,16 @@ func TestDBUpdatePlatformSettingsConcurrentSavesOneWins(t *testing.T) {
 		wg.Add(1)
 		go func(timezone, defaultLocale string) {
 			defer wg.Done()
-			resp, err := client.UpdatePlatformSettings(ctx, newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
+			resp, err := client.UpdatePlatformSettings(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformSettingsRequest{
 				DefaultTimezone:  timezone,
 				DefaultLocale:    defaultLocale,
 				ExpectedRevision: shared,
-			}))
+			})
 			if err != nil {
 				outcomes <- outcome{err: err}
 				return
 			}
-			outcomes <- outcome{settings: resp.Msg.Settings}
+			outcomes <- outcome{settings: resp.Settings}
 		}(candidate.timezone, candidate.defaultLocale)
 	}
 	wg.Wait()
@@ -486,15 +487,15 @@ func TestDBUpdatePlatformSettingsConcurrentSavesOneWins(t *testing.T) {
 
 	// The stored row is the winner's, whole: the loser wrote neither of its two
 	// fields.
-	resp, err := client.GetPlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetPlatformSettingsRequest{}))
+	resp, err := client.GetPlatformSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformSettings: %v", err)
 	}
-	if resp.Msg.Settings.DefaultTimezone != winner.DefaultTimezone {
-		t.Fatalf("default_timezone = %q, want %q", resp.Msg.Settings.DefaultTimezone, winner.DefaultTimezone)
+	if resp.Settings.DefaultTimezone != winner.DefaultTimezone {
+		t.Fatalf("default_timezone = %q, want %q", resp.Settings.DefaultTimezone, winner.DefaultTimezone)
 	}
-	if resp.Msg.Settings.DefaultLocale != winner.DefaultLocale {
-		t.Fatalf("default_locale = %q, want %q", resp.Msg.Settings.DefaultLocale, winner.DefaultLocale)
+	if resp.Settings.DefaultLocale != winner.DefaultLocale {
+		t.Fatalf("default_locale = %q, want %q", resp.Settings.DefaultLocale, winner.DefaultLocale)
 	}
 	if got := platformConfigRevision(t, pg); got != shared+1 {
 		t.Fatalf("platform_config.revision = %d, want %d", got, shared+1)

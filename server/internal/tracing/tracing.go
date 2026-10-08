@@ -26,7 +26,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"connectrpc.com/otelconnect"
 	"go.opentelemetry.io/contrib/exporters/autoexport"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -140,7 +140,7 @@ func SetEndUser(ctx context.Context, userPublicID string) {
 }
 
 // serviceProviders holds the provider Setup built for each service name, so
-// ConnectHandlerOption can send a namespace's spans to the one carrying its
+// ConnectServerInterceptors can send a namespace's spans to the one carrying its
 // service.name. It is written once at startup and read while the handlers are
 // built; a name Setup was never given falls back to the global provider.
 var serviceProviders atomic.Pointer[map[string]trace.TracerProvider]
@@ -152,7 +152,7 @@ var serviceProviders atomic.Pointer[map[string]trace.TracerProvider]
 // The first name is the process default: its provider becomes the global one,
 // so the database instrumentation and the outbound HTTP clients report under
 // it. A process that serves several API namespaces passes one name per
-// namespace and reaches the rest through ConnectHandlerOption, which is what
+// namespace and reaches the rest through ConnectServerInterceptors, which is what
 // keeps those namespaces apart in a trace UI now that they share a process.
 // OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES override every one of them.
 // When tracing is disabled Setup installs nothing and returns a no-op
@@ -253,9 +253,10 @@ type sharedExporter struct {
 
 func (sharedExporter) Shutdown(context.Context) error { return nil }
 
-// ConnectHandlerOption returns the handler option that starts a server
-// span for every inbound Connect / gRPC call and continues the caller's
-// trace from the request headers.
+// ConnectServerInterceptors returns the interceptors that start a server
+// span for every inbound Connect / gRPC call and continue the caller's
+// trace from the request headers. They go first on the server, so the span
+// covers every interceptor after them.
 //
 // WithTrustRemote makes the incoming traceparent the span's parent
 // instead of a link. Without it every RPC starts a fresh trace and a
@@ -277,7 +278,7 @@ func (sharedExporter) Shutdown(context.Context) error { return nil }
 // service.name of the API namespace rather than of the process it shares. A
 // name Setup was not given — every name while tracing is disabled — falls
 // back to the global provider.
-func ConnectHandlerOption(serviceName string) connect.HandlerOption {
+func ConnectServerInterceptors(serviceName string) []connect.ServerInterceptor {
 	options := []otelconnect.Option{
 		otelconnect.WithTrustRemote(),
 		otelconnect.WithoutMetrics(),
@@ -285,14 +286,14 @@ func ConnectHandlerOption(serviceName string) connect.HandlerOption {
 	if provider, ok := serviceProvider(serviceName); ok {
 		options = append(options, otelconnect.WithTracerProvider(provider))
 	}
-	interceptor, err := otelconnect.NewInterceptor(options...)
+	interceptor, err := otelconnect.NewServerInterceptor(options...)
 	if err != nil {
 		slog.Warn("connect rpc tracing is disabled", "error", err)
-		return connect.WithInterceptors()
+		return nil
 	}
 	// The renaming interceptor has to run inside the otelconnect one so
 	// the span it renames already exists.
-	return connect.WithInterceptors(interceptor, rpcSpanNameInterceptor())
+	return []connect.ServerInterceptor{interceptor, rpcSpanNameInterceptor}
 }
 
 // TracerProvider returns the provider Setup built for serviceName, so work
@@ -321,15 +322,13 @@ func serviceProvider(serviceName string) (trace.TracerProvider, bool) {
 // server handles, so it costs width in a trace UI without telling anyone
 // anything; rpc.system, rpc.service, and rpc.method keep the full detail
 // as attributes.
-func rpcSpanNameInterceptor() connect.Interceptor {
-	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			if name := RPCSpanName(req.Spec().Procedure); name != "" {
-				trace.SpanFromContext(ctx).SetName(name)
-			}
-			return next(ctx, req)
+func rpcSpanNameInterceptor(next connect.ServerFunc) connect.ServerFunc {
+	return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {
+		if name := RPCSpanName(spec.Procedure); name != "" {
+			trace.SpanFromContext(ctx).SetName(name)
 		}
-	})
+		return next(ctx, spec, stream)
+	}
 }
 
 // RPCSpanName turns a Connect procedure into the span name, dropping the

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
@@ -57,8 +57,8 @@ func expectTenantForInvitationList(mock sqlmock.Sqlmock, tenantID uuid.UUID, now
 // tenant every list request here asks for.
 var tenantAdminInvitationListKey = pagination.NewListKey("created_at_desc").Value("tenant_id", testTenantID)
 
-func newTenantAdminInvitationListRequest() *connect.Request[publirasplatformv1.ListTenantAdminInvitationsRequest] {
-	return connect.NewRequest(&publirasplatformv1.ListTenantAdminInvitationsRequest{TenantId: testTenantID})
+func newTenantAdminInvitationListRequest() *publirasplatformv1.ListTenantAdminInvitationsRequest {
+	return &publirasplatformv1.ListTenantAdminInvitationsRequest{TenantId: testTenantID}
 }
 
 func TestListTenantAdminInvitationsFirstPageReportsNextToken(t *testing.T) {
@@ -79,18 +79,18 @@ func TestListTenantAdminInvitationsFirstPageReportsNextToken(t *testing.T) {
 		))
 
 	req := newTenantAdminInvitationListRequest()
-	req.Msg.Limit = 2
+	req.Limit = 2
 	resp, err := server.ListTenantAdminInvitations(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListTenantAdminInvitations: %v", err)
 	}
-	if len(resp.Msg.Invitations) != 2 {
-		t.Fatalf("invitation count = %d, want the over-fetched row dropped", len(resp.Msg.Invitations))
+	if len(resp.Invitations) != 2 {
+		t.Fatalf("invitation count = %d, want the over-fetched row dropped", len(resp.Invitations))
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -116,17 +116,17 @@ func TestListTenantAdminInvitationsFollowsNextToken(t *testing.T) {
 		))
 
 	req := newTenantAdminInvitationListRequest()
-	req.Msg.Limit = 2
-	req.Msg.Token = tenantAdminInvitationListKey.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID)
+	req.Limit = 2
+	req.Token = tenantAdminInvitationListKey.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID)
 	resp, err := server.ListTenantAdminInvitations(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListTenantAdminInvitations: %v", err)
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the previous page")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -149,23 +149,23 @@ func TestListTenantAdminInvitationsFollowsPreviousTokenBackwards(t *testing.T) {
 		))
 
 	req := newTenantAdminInvitationListRequest()
-	req.Msg.Limit = 2
-	req.Msg.Token = tenantAdminInvitationListKey.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID)
+	req.Limit = 2
+	req.Token = tenantAdminInvitationListKey.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID)
 	resp, err := server.ListTenantAdminInvitations(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListTenantAdminInvitations: %v", err)
 	}
-	emails := make([]string, 0, len(resp.Msg.Invitations))
-	for _, invitation := range resp.Msg.Invitations {
+	emails := make([]string, 0, len(resp.Invitations))
+	for _, invitation := range resp.Invitations {
 		emails = append(emails, invitation.Email)
 	}
 	if !slices.Equal(emails, []string{"newer@example.com", "older@example.com"}) {
 		t.Fatalf("emails = %v, want backward page restored to descending order", emails)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertOperatorHandlerExpectations(t, mock)
@@ -193,20 +193,20 @@ func TestListTenantAdminInvitationsEmptyPageReturnsOneRecoveryToken(t *testing.T
 				WillReturnRows(tenantAdminInvitationColumns())
 
 			req := newTenantAdminInvitationListRequest()
-			req.Msg.Token = tenantAdminInvitationListKey.EncodeTimeUUID(test.direction, now, boundaryID)
+			req.Token = tenantAdminInvitationListKey.EncodeTimeUUID(test.direction, now, boundaryID)
 			resp, err := server.ListTenantAdminInvitations(context.Background(), req)
 			if err != nil {
 				t.Fatalf("ListTenantAdminInvitations: %v", err)
 			}
 			if test.direction == pagination.Forward {
 				want := tenantAdminInvitationListKey.EncodeTimeUUIDRecovery(pagination.Backward, now, boundaryID)
-				if resp.Msg.PreviousToken != want || resp.Msg.NextToken != "" {
-					t.Fatalf("tokens = (%q, %q), want recovery previous token %q", resp.Msg.PreviousToken, resp.Msg.NextToken, want)
+				if resp.PreviousToken != want || resp.NextToken != "" {
+					t.Fatalf("tokens = (%q, %q), want recovery previous token %q", resp.PreviousToken, resp.NextToken, want)
 				}
 			} else {
 				want := tenantAdminInvitationListKey.EncodeTimeUUIDRecovery(pagination.Forward, now, boundaryID)
-				if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != want {
-					t.Fatalf("tokens = (%q, %q), want recovery next token %q", resp.Msg.PreviousToken, resp.Msg.NextToken, want)
+				if resp.PreviousToken != "" || resp.NextToken != want {
+					t.Fatalf("tokens = (%q, %q), want recovery next token %q", resp.PreviousToken, resp.NextToken, want)
 				}
 			}
 			assertOperatorHandlerExpectations(t, mock)
@@ -226,7 +226,7 @@ func TestListTenantAdminInvitationsRejectsAnotherTenantsToken(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			req := newTenantAdminInvitationListRequest()
-			req.Msg.Token = token
+			req.Token = token
 			_, err := server.ListTenantAdminInvitations(context.Background(), req)
 			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
 				t.Fatalf("ListTenantAdminInvitations with another tenant's token error = %v, want invalid_argument", err)
@@ -246,7 +246,7 @@ func TestListTenantAdminInvitationsRejectsInvalidToken(t *testing.T) {
 	for _, token := range tests {
 		server, mock := newOperatorHandlerTestServer(t)
 		req := newTenantAdminInvitationListRequest()
-		req.Msg.Token = token
+		req.Token = token
 		_, err := server.ListTenantAdminInvitations(context.Background(), req)
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("ListTenantAdminInvitations code = %v, want invalid_argument", connect.CodeOf(err))
@@ -264,18 +264,18 @@ func TestCreateTenantAdminInvitationCommitsOutboxEventWithoutSMTP(t *testing.T) 
 	operator := pg.SeedPlatformOperator(t, "OUTBOXOPS001", "operator@platform.example.com", "Operator")
 	ctx := context.WithValue(context.Background(), platformActorContextKey{}, platformActor{UserID: operator.ID, Role: operator.Role})
 
-	response, err := server.CreateTenantAdminInvitation(ctx, connect.NewRequest(&publirasplatformv1.CreateTenantAdminInvitationRequest{
+	response, err := server.CreateTenantAdminInvitation(ctx, &publirasplatformv1.CreateTenantAdminInvitationRequest{
 		TenantId: tenantID.String(),
 		Email:    "admin@example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation: %v", err)
 	}
-	if response.Msg.Invitation == nil {
+	if response.Invitation == nil {
 		t.Fatal("invitation is nil")
 	}
 
-	invitationID, err := uuid.Parse(response.Msg.Invitation.Id)
+	invitationID, err := uuid.Parse(response.Invitation.Id)
 	if err != nil {
 		t.Fatalf("parse invitation id: %v", err)
 	}

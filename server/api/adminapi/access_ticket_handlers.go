@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -17,6 +17,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -175,10 +176,10 @@ func parseOptionalExpiresAt(raw string) (sql.NullTime, error) {
 	}
 	parsed, err := time.Parse(time.RFC3339, trimmed)
 	if err != nil {
-		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, errors.New("expires_at must be RFC3339"))
+		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, "expires_at must be RFC3339")
 	}
 	if !parsed.After(time.Now()) {
-		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, errors.New("expires_at must be in the future"))
+		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, "expires_at must be in the future")
 	}
 	return sql.NullTime{Time: parsed.UTC(), Valid: true}, nil
 }
@@ -262,9 +263,9 @@ func accessTicketIDArg(raw string) (uuid.UUID, error) {
 
 func (s *adminServer) ListAccessTickets(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListAccessTicketsRequest],
-) (*connect.Response[publiraadminv1.ListAccessTicketsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ListAccessTicketsRequest,
+) (*publiraadminv1.ListAccessTicketsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -272,17 +273,17 @@ func (s *adminServer) ListAccessTickets(
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultAccessTicketListLimit, maxAccessTicketListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultAccessTicketListLimit, maxAccessTicketListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
-	userPublicID := strings.TrimSpace(req.Msg.UserPublicId)
-	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
+	userPublicID := strings.TrimSpace(req.UserPublicId)
+	episodePublicID := strings.TrimSpace(req.EpisodePublicId)
 	listKey := pagination.NewListKey("created_at_desc").
 		Value("user_public_id", userPublicID).
 		Value("episode_public_id", episodePublicID).
-		Flag("active_only", req.Msg.ActiveOnly)
+		Flag("active_only", req.ActiveOnly)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = listKey.DecodeTimeUUID(cursor)
@@ -293,7 +294,7 @@ func (s *adminServer) ListAccessTickets(
 
 	filter := accessTicketPageFilter{
 		tenantID:   tenant.ID,
-		activeOnly: req.Msg.ActiveOnly,
+		activeOnly: req.ActiveOnly,
 	}
 
 	if userPublicID != "" {
@@ -303,9 +304,9 @@ func (s *adminServer) ListAccessTickets(
 		})
 		if getUserErr != nil {
 			if errors.Is(getUserErr, sql.ErrNoRows) {
-				return connect.NewResponse(&publiraadminv1.ListAccessTicketsResponse{
+				return &publiraadminv1.ListAccessTicketsResponse{
 					Tickets: []*publiraadminv1.AdminAccessTicket{},
-				}), nil
+				}, nil
 			}
 			return nil, s.internalDBError(ctx, "failed to resolve user for list access tickets", getUserErr, "tenant_id", tenant.ID.String())
 		}
@@ -319,9 +320,9 @@ func (s *adminServer) ListAccessTickets(
 		})
 		if getEpisodeErr != nil {
 			if errors.Is(getEpisodeErr, sql.ErrNoRows) {
-				return connect.NewResponse(&publiraadminv1.ListAccessTicketsResponse{
+				return &publiraadminv1.ListAccessTicketsResponse{
 					Tickets: []*publiraadminv1.AdminAccessTicket{},
-				}), nil
+				}, nil
 			}
 			return nil, s.internalDBError(ctx, "failed to resolve episode for list access tickets", getEpisodeErr, "tenant_id", tenant.ID.String())
 		}
@@ -363,14 +364,14 @@ func (s *adminServer) ListAccessTickets(
 		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *adminServer) IssueAccessTicket(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.IssueAccessTicketRequest],
-) (*connect.Response[publiraadminv1.IssueAccessTicketResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.IssueAccessTicketRequest,
+) (*publiraadminv1.IssueAccessTicketResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -379,12 +380,12 @@ func (s *adminServer) IssueAccessTicket(
 		return nil, err
 	}
 
-	userID, episodeID, err := s.resolveAccessTicketRecipient(ctx, tenant.ID, req.Msg)
+	userID, episodeID, err := s.resolveAccessTicketRecipient(ctx, tenant.ID, req)
 	if err != nil {
 		return nil, err
 	}
 
-	expiresAt, err := parseOptionalExpiresAt(req.Msg.ExpiresAt)
+	expiresAt, err := parseOptionalExpiresAt(req.ExpiresAt)
 	if err != nil {
 		return nil, err
 	}
@@ -403,18 +404,18 @@ func (s *adminServer) IssueAccessTicket(
 		if getErr != nil {
 			return nil, s.internalDBError(ctx, "failed to load existing access ticket", getErr, "tenant_id", tenant.ID.String(), "access_ticket_id", existing.ID.String())
 		}
-		return connect.NewResponse(&publiraadminv1.IssueAccessTicketResponse{
+		return &publiraadminv1.IssueAccessTicketResponse{
 			Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
-		}), nil
+		}, nil
 	}
 	if existingErr != nil && !errors.Is(existingErr, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to get non-revoked access ticket", existingErr, "tenant_id", tenant.ID.String(), "user_id", userID.String(), "episode_id", episodeID.String())
 	}
 
-	note := strings.TrimSpace(req.Msg.Note)
+	note := strings.TrimSpace(req.Note)
 	ticketID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	created, err := publicid.Insert(func(publicID string) (dbmodels.AccessTicket, error) {
 		return s.queriesFor(ctx).CreateAccessTicket(ctx, dbmodels.CreateAccessTicketParams{
@@ -444,9 +445,9 @@ func (s *adminServer) IssueAccessTicket(
 			if getErr != nil {
 				return nil, s.internalDBError(ctx, "failed to load winning access ticket", getErr, "tenant_id", tenant.ID.String(), "access_ticket_id", winner.ID.String())
 			}
-			return connect.NewResponse(&publiraadminv1.IssueAccessTicketResponse{
+			return &publiraadminv1.IssueAccessTicketResponse{
 				Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
-			}), nil
+			}, nil
 		}
 		return nil, s.internalDBError(ctx, "failed to create access ticket", err, "tenant_id", tenant.ID.String(), "user_id", userID.String(), "episode_id", episodeID.String())
 	}
@@ -464,19 +465,19 @@ func (s *adminServer) IssueAccessTicket(
 		TargetType:  "access_ticket",
 		TargetID:    created.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publiraadminv1.IssueAccessTicketResponse{
+	return &publiraadminv1.IssueAccessTicketResponse{
 		Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) RevokeAccessTicket(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.RevokeAccessTicketRequest],
-) (*connect.Response[publiraadminv1.RevokeAccessTicketResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.RevokeAccessTicketRequest,
+) (*publiraadminv1.RevokeAccessTicketResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -485,7 +486,7 @@ func (s *adminServer) RevokeAccessTicket(
 		return nil, err
 	}
 
-	ticketID, err := accessTicketIDArg(req.Msg.AccessTicketId)
+	ticketID, err := accessTicketIDArg(req.AccessTicketId)
 	if err != nil {
 		return nil, err
 	}
@@ -494,14 +495,14 @@ func (s *adminServer) RevokeAccessTicket(
 	current, err := s.loadAccessTicket(ctx, tenant.ID, ticketID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("access ticket not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "access ticket not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get access ticket for revoke", err, "tenant_id", tenant.ID.String(), "access_ticket_id", ticketID.String())
 	}
 	if current.RevokedAt.Valid {
-		return connect.NewResponse(&publiraadminv1.RevokeAccessTicketResponse{
+		return &publiraadminv1.RevokeAccessTicketResponse{
 			Ticket: mapAccessTicketFromGetRow(current, time.Now()),
-		}), nil
+		}, nil
 	}
 
 	if _, err := s.queriesFor(ctx).RevokeAccessTicketForTenant(ctx, dbmodels.RevokeAccessTicketForTenantParams{
@@ -515,13 +516,13 @@ func (s *adminServer) RevokeAccessTicket(
 			ticketRow, getErr := s.loadAccessTicket(ctx, tenant.ID, ticketID)
 			if getErr != nil {
 				if errors.Is(getErr, sql.ErrNoRows) {
-					return nil, connect.NewError(connect.CodeNotFound, errors.New("access ticket not found"))
+					return nil, connect.NewError(connect.CodeNotFound, "access ticket not found")
 				}
 				return nil, s.internalDBError(ctx, "failed to load concurrently revoked access ticket", getErr, "tenant_id", tenant.ID.String(), "access_ticket_id", ticketID.String())
 			}
-			return connect.NewResponse(&publiraadminv1.RevokeAccessTicketResponse{
+			return &publiraadminv1.RevokeAccessTicketResponse{
 				Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
-			}), nil
+			}, nil
 		}
 		return nil, s.internalDBError(ctx, "failed to revoke access ticket", err, "tenant_id", tenant.ID.String(), "access_ticket_id", ticketID.String())
 	}
@@ -539,12 +540,12 @@ func (s *adminServer) RevokeAccessTicket(
 		TargetType:  "access_ticket",
 		TargetID:    current.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publiraadminv1.RevokeAccessTicketResponse{
+	return &publiraadminv1.RevokeAccessTicketResponse{
 		Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
-	}), nil
+	}, nil
 }
 
 // resolveAccessTicketRecipient resolves the user and the episode a new ticket
@@ -575,7 +576,7 @@ func (s *adminServer) resolveAccessTicketRecipient(
 		return uuid.Nil, uuid.Nil, s.internalDBError(ctx, "failed to get user for issue access ticket", err, "tenant_id", tenantID.String(), "user_id", userID.String())
 	}
 	if user.Status != "active" {
-		return uuid.Nil, uuid.Nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("user is not active"))
+		return uuid.Nil, uuid.Nil, connect.NewError(connect.CodeFailedPrecondition, "user is not active")
 	}
 
 	if _, err := queries.GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenantID, ID: episodeID}); err != nil {

@@ -4,17 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 )
@@ -55,17 +55,17 @@ func TestPlatformAuthLoginSuccess(t *testing.T) {
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(rolePlatformOperator))
 
-	resp, err := server.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	resp, err := server.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    "platform@example.com",
 		Password: password,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
-	if resp.Msg.User == nil || resp.Msg.User.Role != rolePlatformOperator {
-		t.Fatalf("user.role = %v, want %s", resp.Msg.User, rolePlatformOperator)
+	if resp.User == nil || resp.User.Role != rolePlatformOperator {
+		t.Fatalf("user.role = %v, want %s", resp.User, rolePlatformOperator)
 	}
-	if resp.Msg.AccessToken == nil || resp.Msg.AccessToken.Token == "" {
+	if resp.AccessToken == nil || resp.AccessToken.Token == "" {
 		t.Fatalf("session is missing token")
 	}
 	assertOperatorHandlerExpectations(t, mock)
@@ -77,10 +77,10 @@ func TestPlatformAuthLoginDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs("platform@example.com").
 		WillReturnError(errors.New(`pq: relation "platform_users" does not exist`))
 
-	_, err := server.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	_, err := server.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    "platform@example.com",
 		Password: "secret-password",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("Login code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -101,13 +101,13 @@ func TestPlatformAuthRequestPasswordResetRecordsTheRequestWithoutLookingUpTheAdd
 		WithArgs(sqlmock.AnyArg(), nil, outbox.EventTypePlatformPasswordResetRequest, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(newOutboxEventRow(outbox.EventTypePlatformPasswordResetRequest))
 
-	resp, err := server.RequestPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
+	resp, err := server.RequestPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
 		Email: "platform@example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RequestPasswordReset: %v", err)
 	}
-	if !resp.Msg.Requested {
+	if !resp.Requested {
 		t.Fatal("requested = false, want true")
 	}
 	assertOperatorHandlerExpectations(t, mock)
@@ -123,13 +123,13 @@ func TestPlatformAuthVerifyPasswordResetTokenValid(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(platformPasswordResetTokenColumns()).
 			AddRow(uuid.Must(uuid.NewV7()), userID, auth.HashToken("valid-token"), now.Add(time.Hour), nil, now))
 
-	resp, err := server.VerifyPasswordResetToken(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenRequest{
+	resp, err := server.VerifyPasswordResetToken(context.Background(), &publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenRequest{
 		Token: "valid-token",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("VerifyPasswordResetToken: %v", err)
 	}
-	if !resp.Msg.Valid {
+	if !resp.Valid {
 		t.Fatal("valid = false, want true")
 	}
 	assertOperatorHandlerExpectations(t, mock)
@@ -161,14 +161,14 @@ func TestPlatformAuthConfirmPasswordResetSuccess(t *testing.T) {
 		WithArgs(tokenID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	resp, err := server.ConfirmPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
+	resp, err := server.ConfirmPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
 		Token:       "valid-token",
 		NewPassword: "new-password",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ConfirmPasswordReset: %v", err)
 	}
-	if !resp.Msg.Confirmed {
+	if !resp.Confirmed {
 		t.Fatal("confirmed = false, want true")
 	}
 	assertOperatorHandlerExpectations(t, mock)
@@ -181,10 +181,10 @@ func TestPlatformAuthConfirmPasswordResetInvalidToken(t *testing.T) {
 		WithArgs(auth.HashToken("invalid-token")).
 		WillReturnError(sql.ErrNoRows)
 
-	_, err := server.ConfirmPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
+	_, err := server.ConfirmPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
 		Token:       "invalid-token",
 		NewPassword: "new-password",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ConfirmPasswordReset code = %v, want failed_precondition", connect.CodeOf(err))
 	}
@@ -227,15 +227,15 @@ func TestPlatformAuthRequestEmailChangeSuccess(t *testing.T) {
 	}
 	mock.ExpectCommit()
 
-	resp, err := server.RequestEmailChange(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.PlatformAuthServiceRequestEmailChangeRequest{
+	resp, err := server.RequestEmailChange(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.PlatformAuthServiceRequestEmailChangeRequest{
 		CurrentEmail:    "platform@example.com",
 		NewEmail:        "next@example.com",
 		CurrentPassword: "current-password",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RequestEmailChange: %v", err)
 	}
-	if !resp.Msg.Requested {
+	if !resp.Requested {
 		t.Fatal("requested = false, want true")
 	}
 	assertOperatorHandlerExpectations(t, mock)
@@ -252,11 +252,11 @@ func TestPlatformAuthVerifyEmailChangeTokenValid(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(platformEmailChangeTokenColumns()).
 			AddRow(tokenID, userID, "platform@example.com", "next@example.com", "h1", auth.HashToken("valid-email-token"), nil, nil, now.Add(time.Hour), nil, now, "new_email"))
 
-	resp, err := server.VerifyEmailChangeToken(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenRequest{Token: "valid-email-token"}))
+	resp, err := server.VerifyEmailChangeToken(context.Background(), &publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenRequest{Token: "valid-email-token"})
 	if err != nil {
 		t.Fatalf("VerifyEmailChangeToken: %v", err)
 	}
-	if !resp.Msg.Valid {
+	if !resp.Valid {
 		t.Fatal("valid = false, want true")
 	}
 	assertOperatorHandlerExpectations(t, mock)
@@ -294,12 +294,12 @@ func TestPlatformAuthConfirmEmailChangeSuccess(t *testing.T) {
 		WillReturnRows(newOutboxEventRow(outbox.EventTypePlatformEmailChangedNoticeEmail))
 	mock.ExpectCommit()
 
-	resp, err := server.ConfirmEmailChange(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceConfirmEmailChangeRequest{Token: "confirm-token"}))
+	resp, err := server.ConfirmEmailChange(context.Background(), &publirasplatformv1.PlatformAuthServiceConfirmEmailChangeRequest{Token: "confirm-token"})
 	if err != nil {
 		t.Fatalf("ConfirmEmailChange: %v", err)
 	}
-	if !resp.Msg.Confirmed || !resp.Msg.Changed {
-		t.Fatalf("response = %+v, want confirmed=true changed=true", resp.Msg)
+	if !resp.Confirmed || !resp.Changed {
+		t.Fatalf("response = %+v, want confirmed=true changed=true", resp)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -322,15 +322,15 @@ func TestPlatformAuthConfirmEmailChangePendingAfterFirstConfirmation(t *testing.
 		WithArgs(tokenID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	resp, err := server.ConfirmEmailChange(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceConfirmEmailChangeRequest{Token: "first-token"}))
+	resp, err := server.ConfirmEmailChange(context.Background(), &publirasplatformv1.PlatformAuthServiceConfirmEmailChangeRequest{Token: "first-token"})
 	if err != nil {
 		t.Fatalf("ConfirmEmailChange: %v", err)
 	}
-	if !resp.Msg.Confirmed || resp.Msg.Changed {
-		t.Fatalf("response = %+v, want confirmed=true changed=false", resp.Msg)
+	if !resp.Confirmed || resp.Changed {
+		t.Fatalf("response = %+v, want confirmed=true changed=false", resp)
 	}
-	if resp.Msg.PendingConfirmationFor != "new_email" {
-		t.Fatalf("pending_confirmation_for = %q, want new_email", resp.Msg.PendingConfirmationFor)
+	if resp.PendingConfirmationFor != "new_email" {
+		t.Fatalf("pending_confirmation_for = %q, want new_email", resp.PendingConfirmationFor)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -341,12 +341,12 @@ func TestPlatformAuthGetMeSuccess(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectOperatorAuth(mock, userID, rolePlatformOperator, now)
 
-	resp, err := server.GetMe(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.PlatformAuthServiceGetMeRequest{}))
+	resp, err := server.GetMe(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.PlatformAuthServiceGetMeRequest{})
 	if err != nil {
 		t.Fatalf("GetMe: %v", err)
 	}
-	if resp.Msg.User == nil || resp.Msg.User.Role != rolePlatformOperator {
-		t.Fatalf("user.role = %v, want %s", resp.Msg.User, rolePlatformOperator)
+	if resp.User == nil || resp.User.Role != rolePlatformOperator {
+		t.Fatalf("user.role = %v, want %s", resp.User, rolePlatformOperator)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -354,7 +354,7 @@ func TestPlatformAuthGetMeSuccess(t *testing.T) {
 func TestPlatformAuthLogoutRevokes(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	_, err := server.Logout(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.PlatformAuthServiceLogoutRequest{}))
+	_, err := server.Logout(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.PlatformAuthServiceLogoutRequest{})
 	if err != nil {
 		t.Fatalf("Logout: %v", err)
 	}
@@ -364,7 +364,7 @@ func TestPlatformAuthLogoutRevokes(t *testing.T) {
 func TestPlatformAuthLogoutMissingTokenClearsCookie(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	_, err := server.Logout(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLogoutRequest{}))
+	_, err := server.Logout(context.Background(), &publirasplatformv1.PlatformAuthServiceLogoutRequest{})
 	if err != nil {
 		t.Fatalf("Logout: %v", err)
 	}
@@ -374,7 +374,7 @@ func TestPlatformAuthLogoutMissingTokenClearsCookie(t *testing.T) {
 func TestPlatformAuthGetMeUnauthenticated(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	_, err := server.GetMe(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceGetMeRequest{}))
+	_, err := server.GetMe(context.Background(), &publirasplatformv1.PlatformAuthServiceGetMeRequest{})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMe code = %v, want unauthenticated", connect.CodeOf(err))
 	}
@@ -388,10 +388,10 @@ func TestPlatformAuthLoginInvalidCredentials(t *testing.T) {
 		WithArgs("platform@example.com").
 		WillReturnError(sql.ErrNoRows)
 
-	_, err := server.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	_, err := server.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    "platform@example.com",
 		Password: "wrong-password",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login code = %v, want unauthenticated", connect.CodeOf(err))
 	}

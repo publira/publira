@@ -9,13 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -69,7 +70,7 @@ func (a viewActor) resolved() bool {
 // exactly the unbounded actor growth this instrumentation was moved out of the
 // detail reads to stop. Such a view is attributed to a cookie when one came
 // with it, and otherwise not recorded at all.
-func resolveViewActor(userID uuid.NullUUID, header http.Header) (viewActor, *http.Cookie) {
+func resolveViewActor(userID uuid.NullUUID, header *connect.Header) (viewActor, *http.Cookie) {
 	if userID.Valid {
 		return viewActor{userID: userID}, nil
 	}
@@ -89,11 +90,11 @@ func resolveViewActor(userID uuid.NullUUID, header http.Header) (viewActor, *htt
 // anonymousIDFromCookie accepts the cookie only when it parses as a non-nil
 // UUID. A client-supplied value reaches content_events.anonymous_id directly,
 // so anything else is treated as absent and replaced by a minted identifier.
-func anonymousIDFromCookie(header http.Header) (uuid.UUID, bool) {
+func anonymousIDFromCookie(header *connect.Header) (uuid.UUID, bool) {
 	if header == nil {
 		return uuid.Nil, false
 	}
-	cookie, err := (&http.Request{Header: header}).Cookie(anonymousIDCookieName)
+	cookie, err := (&http.Request{Header: http.Header{"Cookie": header.Values("Cookie")}}).Cookie(anonymousIDCookieName)
 	if err != nil {
 		return uuid.Nil, false
 	}
@@ -141,7 +142,7 @@ var prefetchHeaderMarkers = map[string]string{
 // speculative. A prefetch is a guess about what may be read next, so counting
 // it would credit every popular listing page's neighbours with views nobody
 // looked at. Only the client can tell us this, so the filter is best effort.
-func isPrefetchRequest(header http.Header) bool {
+func isPrefetchRequest(header *connect.Header) bool {
 	if header == nil {
 		return false
 	}
@@ -161,7 +162,7 @@ func isPrefetchRequest(header http.Header) bool {
 func (s *apiServer) viewerUserID(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	header http.Header,
+	header *connect.Header,
 ) uuid.NullUUID {
 	if _, hasBearer := auth.BearerTokenFromHeader(header); !hasBearer {
 		return uuid.NullUUID{}
@@ -196,7 +197,7 @@ func (s *apiServer) resolveContentViewTarget(
 	target *publirav1.ContentViewTarget,
 ) (resolvedContentViewTarget, error) {
 	if target == nil || strings.TrimSpace(target.Id) == "" {
-		return resolvedContentViewTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("target is required"))
+		return resolvedContentViewTarget{}, connect.NewError(connect.CodeInvalidArgument, "target is required")
 	}
 	targetID, err := requestRecordID("target.id", target.Id)
 	if err != nil {
@@ -215,7 +216,7 @@ func (s *apiServer) resolveContentViewTarget(
 			return resolvedContentViewTarget{seriesID: seriesID}, nil
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			return resolvedContentViewTarget{}, connect.NewError(connect.CodeNotFound, errors.New("target not found"))
+			return resolvedContentViewTarget{}, connect.NewError(connect.CodeNotFound, "target not found")
 		}
 		return resolvedContentViewTarget{}, s.internalDBError(ctx, "failed to get content view series target", err, "tenant_id", tenantID.String())
 	case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_EPISODE:
@@ -231,11 +232,11 @@ func (s *apiServer) resolveContentViewTarget(
 			}, nil
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			return resolvedContentViewTarget{}, connect.NewError(connect.CodeNotFound, errors.New("target not found"))
+			return resolvedContentViewTarget{}, connect.NewError(connect.CodeNotFound, "target not found")
 		}
 		return resolvedContentViewTarget{}, s.internalDBError(ctx, "failed to get content view episode target", err, "tenant_id", tenantID.String())
 	default:
-		return resolvedContentViewTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("target type is invalid"))
+		return resolvedContentViewTarget{}, connect.NewError(connect.CodeInvalidArgument, "target type is invalid")
 	}
 }
 
@@ -253,24 +254,29 @@ func (s *apiServer) resolveContentViewTarget(
 // a reader whose page rendered must not be told their view failed to store.
 func (s *apiServer) RecordContentView(
 	ctx context.Context,
-	req *connect.Request[publirav1.RecordContentViewRequest],
-) (*connect.Response[publirav1.RecordContentViewResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.RecordContentViewRequest,
+) (*publirav1.RecordContentViewResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	target, err := s.resolveContentViewTarget(ctx, tenant.ID, surface, req.Msg.Target)
+	target, err := s.resolveContentViewTarget(ctx, tenant.ID, surface, req.Target)
 	if err != nil {
 		return nil, err
 	}
 
-	res := noStorePrivateResponse(&publirav1.RecordContentViewResponse{})
-	viewerUserID := s.viewerUserID(ctx, req.Msg.Tenant, req.Header())
-	s.instrumentViewEvent(ctx, res.Header(), req.Header(), tenant.ID, target.seriesID, target.episodeID, viewerUserID)
+	res := noStorePrivateResponse(ctx, &publirav1.RecordContentViewResponse{})
+	requestHeader := rpcmiddleware.RequestHeader(ctx)
+	var responseHeader *connect.Header
+	if info, ok := connect.CallInfoForServerContext(ctx); ok {
+		responseHeader = info.ResponseHeader()
+	}
+	viewerUserID := s.viewerUserID(ctx, req.Tenant, requestHeader)
+	s.instrumentViewEvent(ctx, responseHeader, requestHeader, tenant.ID, target.seriesID, target.episodeID, viewerUserID)
 	return res, nil
 }
 
@@ -280,8 +286,8 @@ func (s *apiServer) RecordContentView(
 // never fail the request it instruments.
 func (s *apiServer) instrumentViewEvent(
 	ctx context.Context,
-	responseHeader http.Header,
-	requestHeader http.Header,
+	responseHeader *connect.Header,
+	requestHeader *connect.Header,
 	tenantID uuid.UUID,
 	seriesID uuid.UUID,
 	episodeID uuid.NullUUID,

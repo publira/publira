@@ -11,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
@@ -21,6 +22,7 @@ import (
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 type adminSMTPTesterStub struct {
@@ -57,12 +59,11 @@ func TestGetTenantEmailSettingsRejectsEditorRole(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.GetTenantEmailSettingsRequest{
+	client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.GetTenantEmailSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	_, err := client.GetTenantEmailSettings(context.Background(), req)
+	}
+	_, err := client.GetTenantEmailSettings(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("GetTenantEmailSettings code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -99,21 +100,20 @@ func TestUpdateTenantEmailSettingsDisabledPreservesStoredValues(t *testing.T) {
 			AddRow(tenantID, false, "smtp.saved.example", 465, "saved-user", encrypted, "tls", "Saved Sender", "saved@example.com", "reply@example.com", now, now))
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateTenantEmailSettingsRequest{
+	client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UpdateTenantEmailSettingsRequest{
 		Tenant:              &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SmtpOverrideEnabled: false,
 		PasswordUpdateMode:  publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.UpdateTenantEmailSettings(context.Background(), req)
+	}
+	resp, err := client.UpdateTenantEmailSettings(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UpdateTenantEmailSettings: %v", err)
 	}
-	if resp.Msg.Settings.Host != "smtp.saved.example" {
-		t.Fatalf("settings.host = %q, want smtp.saved.example", resp.Msg.Settings.Host)
+	if resp.Settings.Host != "smtp.saved.example" {
+		t.Fatalf("settings.host = %q, want smtp.saved.example", resp.Settings.Host)
 	}
-	if !resp.Msg.Settings.HasPassword {
+	if !resp.Settings.HasPassword {
 		t.Fatal("settings.has_password = false, want true")
 	}
 	assertExpectations(t, mock)
@@ -144,14 +144,13 @@ func TestSendTenantSmtpTestEmailRefusesWhenOverrideDisabled(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.SendTenantSmtpTestEmailRequest{
+	client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.SendTenantSmtpTestEmailRequest{
 		Tenant:              &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		RecipientType:       publiraadminv1.TestEmailRecipientType_TEST_EMAIL_RECIPIENT_TYPE_SELF,
 		SmtpOverrideEnabled: false,
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	if _, err := client.SendTenantSmtpTestEmail(context.Background(), req); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	}
+	if _, err := client.SendTenantSmtpTestEmail(testutil.WithBearer(context.Background(), sessionToken), req); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("SendTenantSmtpTestEmail code = %v, want failed_precondition", connect.CodeOf(err))
 	}
 	if tester.recipient != "" {
@@ -197,8 +196,8 @@ func TestSendTenantSmtpTestEmailNamesTheSender(t *testing.T) {
 				WillReturnError(sql.ErrNoRows)
 			expectAdminAuditLogInsert(mock)
 
-			client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(ts.Client(), ts.URL)
-			req := connect.NewRequest(&publiraadminv1.SendTenantSmtpTestEmailRequest{
+			client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			req := &publiraadminv1.SendTenantSmtpTestEmailRequest{
 				Tenant:              &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				RecipientType:       publiraadminv1.TestEmailRecipientType_TEST_EMAIL_RECIPIENT_TYPE_SELF,
 				SmtpOverrideEnabled: true,
@@ -210,9 +209,8 @@ func TestSendTenantSmtpTestEmailNamesTheSender(t *testing.T) {
 				Encryption:          "starttls",
 				FromName:            tc.fromName,
 				FromAddress:         "tenant-mail@example.com",
-			})
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
-			if _, err := client.SendTenantSmtpTestEmail(context.Background(), req); err != nil {
+			}
+			if _, err := client.SendTenantSmtpTestEmail(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 				t.Fatalf("SendTenantSmtpTestEmail: %v", err)
 			}
 			if tester.settings.FromName != tc.want {
@@ -238,8 +236,8 @@ func TestUpdateTenantEmailSettingsOverrideRequiresAUsername(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(tenantSMTPColumns()).
 			AddRow(tenantID, true, "smtp.saved.example", 465, "saved-user", "enc:tenant:stored", "tls", "Saved Sender", "saved@example.com", "reply@example.com", now, now))
 
-	client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateTenantEmailSettingsRequest{
+	client := publiraadminv1connect.NewAdminEmailSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UpdateTenantEmailSettingsRequest{
 		Tenant:              &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SmtpOverrideEnabled: true,
 		Host:                "smtp.saved.example",
@@ -247,9 +245,8 @@ func TestUpdateTenantEmailSettingsOverrideRequiresAUsername(t *testing.T) {
 		PasswordUpdateMode:  publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
 		Encryption:          "tls",
 		FromAddress:         "saved@example.com",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	_, err := client.UpdateTenantEmailSettings(context.Background(), req)
+	}
+	_, err := client.UpdateTenantEmailSettings(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), emailsettings.ErrUsernameRequired.Error()) {
 		t.Fatalf("UpdateTenantEmailSettings = %v, want invalid_argument naming the username", err)
 	}

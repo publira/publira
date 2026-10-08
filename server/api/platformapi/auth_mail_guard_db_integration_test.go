@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/platformpolicy"
@@ -18,12 +19,12 @@ import (
 func TestDBPlatformRequestPasswordResetStopsAtTheLimit(t *testing.T) {
 	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	requestReset := func() error {
-		_, err := authClient.RequestPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
+		_, err := authClient.RequestPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
 			Email: operator.Email,
-		}))
+		})
 		return err
 	}
 

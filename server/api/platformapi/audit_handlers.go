@@ -3,17 +3,17 @@ package platformapi
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 type platformAuditLogPageRow struct {
@@ -163,32 +163,32 @@ func (s *platformServer) platformAuditLogPage(
 
 func (s *platformServer) ListAuditLogs(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.ListAuditLogsRequest],
-) (*connect.Response[publirasplatformv1.ListAuditLogsResponse], error) {
-	_, actorUser, _, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	req *publirasplatformv1.ListAuditLogsRequest,
+) (*publirasplatformv1.ListAuditLogsResponse, error) {
+	_, actorUser, _, err := s.authenticatePlatformSession(ctx, "", rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultListLimit, maxListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultListLimit, maxListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var tenantID uuid.NullUUID
 	tenantIDKey := ""
-	if raw := strings.TrimSpace(req.Msg.TenantId); raw != "" {
+	if raw := strings.TrimSpace(req.TenantId); raw != "" {
 		parsed, err := uuid.Parse(raw)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_id is not an identifier"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "tenant_id is not an identifier")
 		}
 		tenantID = uuid.NullUUID{UUID: parsed, Valid: true}
 		tenantIDKey = parsed.String()
 	}
 	filters := platformAuditLogQueryFilters{
 		tenantID:          tenantID,
-		actorUserPublicID: nullStringFilter(req.Msg.ActorUserPublicId),
-		action:            nullStringFilter(req.Msg.Action),
+		actorUserPublicID: nullStringFilter(req.ActorUserPublicId),
+		action:            nullStringFilter(req.Action),
 	}
 	listKey := pagination.NewListKey("created_at_desc").
 		Value("tenant_id", tenantIDKey).
@@ -235,5 +235,5 @@ func (s *platformServer) ListAuditLogs(
 		resp.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }

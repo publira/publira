@@ -6,13 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net/http"
 	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -78,7 +77,7 @@ func genreRevalidateTags(tenantID string) []string {
 // recordGenreChange files the audit entry for one genre write. Every genre RPC
 // changes the classification every series is read through, so all of them are
 // recorded, not only the destructive one.
-func (s *adminServer) recordGenreChange(ctx context.Context, tenantID uuid.UUID, header http.Header, action, targetID string) {
+func (s *adminServer) recordGenreChange(ctx context.Context, tenantID uuid.UUID, header *connect.Header, action, targetID string) {
 	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
 	if !ok {
 		return
@@ -234,7 +233,7 @@ func (s *adminServer) eyeCatchVariants(data []byte, contentType string) ([]image
 		return nil, err
 	}
 	if s.storage == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+		return nil, connect.NewError(connect.CodeInternal, "storage provider is not configured")
 	}
 	variants, err := imageproc.BuildEyeCatchVariants(image.Data, image.ContentType)
 	if err != nil {
@@ -250,7 +249,7 @@ func (s *adminServer) createGenreEyeCatchImage(ctx context.Context, tenant dbmod
 
 	genreImageID, err := uuid.NewV7()
 	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err)
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	createdImage, err := s.queriesFor(ctx).CreateGenreImage(ctx, dbmodels.CreateGenreImageParams{
 		ID:       genreImageID,
@@ -284,7 +283,7 @@ func (s *adminServer) createGenreEyeCatchImage(ctx context.Context, tenant dbmod
 
 		variantID, variantIDErr := uuid.NewV7()
 		if variantIDErr != nil {
-			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, variantIDErr)
+			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, variantIDErr.Error()).WithCause(variantIDErr)
 		}
 		if _, createErr := s.queriesFor(ctx).CreateGenreImageVariant(ctx, dbmodels.CreateGenreImageVariantParams{
 			ID:              variantID,
@@ -346,32 +345,32 @@ func (s *adminServer) genrePage(
 
 func (s *adminServer) ListGenres(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListGenresRequest],
-) (*connect.Response[publiraadminv1.ListGenresResponse], error) {
+	req *publiraadminv1.ListGenresRequest,
+) (*publiraadminv1.ListGenresResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultGenrePageSize, maxGenrePageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultGenrePageSize, maxGenrePageSize)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.CountUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeCountUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 		// The count a token carries is the display_order it was built from, and
 		// display_order is an int4. A client-supplied value outside that range
 		// would silently wrap on the way into the query and compare against a
 		// position no genre holds, so it is refused instead.
 		if keys.Count < math.MinInt32 || keys.Count > math.MaxInt32 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -413,31 +412,31 @@ func (s *adminServer) ListGenres(
 		res.NextToken = pagination.EncodeCountUUIDRecovery(pagination.Forward, keys.Count, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *adminServer) CreateGenre(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreateGenreRequest],
-) (*connect.Response[publiraadminv1.CreateGenreResponse], error) {
+	req *publiraadminv1.CreateGenreRequest,
+) (*publiraadminv1.CreateGenreResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	normalized, err := normalizeCatalogName(req.Msg.Name, "name")
+	normalized, err := normalizeCatalogName(req.Name, "name")
 	if err != nil {
 		return nil, err
 	}
-	eyeCatchVariants, err := s.eyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	eyeCatchVariants, err := s.eyeCatchVariants(req.EyeCatchImageData, req.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
 	genreID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	// The genre and its eye-catch commit together. A genre left behind by a
@@ -493,13 +492,13 @@ func (s *adminServer) CreateGenre(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_created", created.PublicID)
+	s.recordGenreChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "genre_created", created.PublicID)
 
 	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, created.ID)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.CreateGenreResponse{Genre: genre}), nil
+	return &publiraadminv1.CreateGenreResponse{Genre: genre}, nil
 }
 
 // genreWithEyeCatch re-reads a genre after a write, so the answer carries the
@@ -526,27 +525,27 @@ func existingGenreNameError() error {
 
 func (s *adminServer) UpdateGenre(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateGenreRequest],
-) (*connect.Response[publiraadminv1.UpdateGenreResponse], error) {
+	req *publiraadminv1.UpdateGenreRequest,
+) (*publiraadminv1.UpdateGenreResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	normalized, err := normalizeCatalogName(req.Msg.Name, "name")
+	normalized, err := normalizeCatalogName(req.Name, "name")
 	if err != nil {
 		return nil, err
 	}
-	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
+	if req.ClearEyeCatchImage && len(req.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
-	eyeCatchVariants, err := s.eyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	eyeCatchVariants, err := s.eyeCatchVariants(req.EyeCatchImageData, req.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseRecordID(req.Msg.GenreId, "genre_id")
+	id, err := parseRecordID(req.GenreId, "genre_id")
 	if err != nil {
 		return nil, err
 	}
@@ -572,7 +571,7 @@ func (s *adminServer) UpdateGenre(
 	}
 
 	eyeCatchImageID := current.EyeCatchImageID
-	if req.Msg.ClearEyeCatchImage {
+	if req.ClearEyeCatchImage {
 		eyeCatchImageID = uuid.NullUUID{}
 	} else if len(eyeCatchVariants) > 0 {
 		eyeCatchImageID, err = s.createGenreEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchVariants)
@@ -600,29 +599,29 @@ func (s *adminServer) UpdateGenre(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_updated", current.PublicID)
+	s.recordGenreChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "genre_updated", current.PublicID)
 
 	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.UpdateGenreResponse{Genre: genre}), nil
+	return &publiraadminv1.UpdateGenreResponse{Genre: genre}, nil
 }
 
 func (s *adminServer) ReorderGenres(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ReorderGenresRequest],
-) (*connect.Response[publiraadminv1.ReorderGenresResponse], error) {
+	req *publiraadminv1.ReorderGenresRequest,
+) (*publiraadminv1.ReorderGenresResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 	order, expected, err := reorderIDs(
-		reorderList{req.Msg.GenreIds, "genre_ids"},
-		reorderList{req.Msg.ExpectedGenreIds, "expected_genre_ids"},
+		reorderList{req.GenreIds, "genre_ids"},
+		reorderList{req.ExpectedGenreIds, "expected_genre_ids"},
 		"genre",
 	)
 	if err != nil {
@@ -651,7 +650,7 @@ func (s *adminServer) ReorderGenres(
 		currentOrder = append(currentOrder, key)
 	}
 	if !slices.Equal(currentOrder, expected) {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("genre order has changed"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "genre order has changed")
 	}
 
 	reordered := make([]genreRow, 0, len(order))
@@ -681,27 +680,27 @@ func (s *adminServer) ReorderGenres(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genres_reordered", tenant.PublicID)
+	s.recordGenreChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "genres_reordered", tenant.PublicID)
 
 	genres, err := s.genreMessages(ctx, reordered)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.ReorderGenresResponse{Genres: genres}), nil
+	return &publiraadminv1.ReorderGenresResponse{Genres: genres}, nil
 }
 
 func (s *adminServer) DeleteGenre(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.DeleteGenreRequest],
-) (*connect.Response[publiraadminv1.DeleteGenreResponse], error) {
+	req *publiraadminv1.DeleteGenreRequest,
+) (*publiraadminv1.DeleteGenreResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseRecordID(req.Msg.GenreId, "genre_id")
+	id, err := parseRecordID(req.GenreId, "genre_id")
 	if err != nil {
 		return nil, err
 	}
@@ -734,18 +733,18 @@ func (s *adminServer) DeleteGenre(
 		return nil, err
 	}
 
-	s.recordGenreChange(ctx, tenant.ID, req.Header(), "genre_deleted", current.PublicID)
+	s.recordGenreChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "genre_deleted", current.PublicID)
 
-	return connect.NewResponse(&publiraadminv1.DeleteGenreResponse{}), nil
+	return &publiraadminv1.DeleteGenreResponse{}, nil
 }
 
 // genreInUseError refuses to delete a genre a series still carries. Deleting it
 // would reclassify those series without anyone saying so, so the count is part
 // of the message: it tells the editor how much work unassigning it is.
 func genreInUseError(assigned int32) error {
-	return connect.NewError(
+	return connect.Errorf(
 		connect.CodeFailedPrecondition,
-		fmt.Errorf("genre is assigned to %d series and cannot be deleted", assigned),
+		"genre is assigned to %d series and cannot be deleted", assigned,
 	)
 }
 
@@ -754,7 +753,7 @@ func (s *adminServer) genreByID(ctx context.Context, tenantID, id uuid.UUID) (db
 	row, err := s.queriesFor(ctx).GetGenreByIDForTenant(ctx, dbmodels.GetGenreByIDForTenantParams{TenantID: tenantID, ID: id})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.GetGenreByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
+			return dbmodels.GetGenreByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, "genre not found")
 		}
 		return dbmodels.GetGenreByIDForTenantRow{}, s.internalDBError(ctx, "failed to get genre", err, "tenant_id", tenantID.String(), "genre_id", id.String())
 	}
@@ -766,7 +765,7 @@ func (s *adminServer) genreByID(ctx context.Context, tenantID, id uuid.UUID) (db
 func (s *adminServer) lockGenreByID(ctx context.Context, tenantID, id uuid.UUID) error {
 	if _, err := s.queriesFor(ctx).LockGenreByIDForTenant(ctx, dbmodels.LockGenreByIDForTenantParams{TenantID: tenantID, ID: id}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
+			return connect.NewError(connect.CodeNotFound, "genre not found")
 		}
 		return s.internalDBError(ctx, "failed to lock genre", err, "tenant_id", tenantID.String(), "genre_id", id.String())
 	}

@@ -5,20 +5,11 @@
 package publirav1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// CatalogServiceName is the fully-qualified name of the CatalogService service.
@@ -37,135 +28,262 @@ const (
 	WaitFreeServiceName = "publira.v1.WaitFreeService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// CatalogServiceListPublishedLabelsProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceListPublishedLabelsProcedure is the procedure name of the CatalogService's
 	// ListPublishedLabels RPC.
 	CatalogServiceListPublishedLabelsProcedure = "/publira.v1.CatalogService/ListPublishedLabels"
-	// CatalogServiceListPublishedSeriesProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceListPublishedSeriesProcedure is the procedure name of the CatalogService's
 	// ListPublishedSeries RPC.
 	CatalogServiceListPublishedSeriesProcedure = "/publira.v1.CatalogService/ListPublishedSeries"
-	// CatalogServiceGetSeriesDetailProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceGetSeriesDetailProcedure is the procedure name of the CatalogService's
 	// GetSeriesDetail RPC.
 	CatalogServiceGetSeriesDetailProcedure = "/publira.v1.CatalogService/GetSeriesDetail"
-	// CatalogServiceGetSeriesEpisodeAccessProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceGetSeriesEpisodeAccessProcedure is the procedure name of the CatalogService's
 	// GetSeriesEpisodeAccess RPC.
 	CatalogServiceGetSeriesEpisodeAccessProcedure = "/publira.v1.CatalogService/GetSeriesEpisodeAccess"
-	// CatalogServiceGetEpisodeDetailProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceGetEpisodeDetailProcedure is the procedure name of the CatalogService's
 	// GetEpisodeDetail RPC.
 	CatalogServiceGetEpisodeDetailProcedure = "/publira.v1.CatalogService/GetEpisodeDetail"
-	// CatalogServiceListPublishedCreatorsProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceListPublishedCreatorsProcedure is the procedure name of the CatalogService's
 	// ListPublishedCreators RPC.
 	CatalogServiceListPublishedCreatorsProcedure = "/publira.v1.CatalogService/ListPublishedCreators"
-	// CatalogServiceGetPublishedCreatorDetailProcedure is the fully-qualified name of the
-	// CatalogService's GetPublishedCreatorDetail RPC.
+	// CatalogServiceGetPublishedCreatorDetailProcedure is the procedure name of the CatalogService's
+	// GetPublishedCreatorDetail RPC.
 	CatalogServiceGetPublishedCreatorDetailProcedure = "/publira.v1.CatalogService/GetPublishedCreatorDetail"
-	// CatalogServiceGetPublishedLabelDetailProcedure is the fully-qualified name of the
-	// CatalogService's GetPublishedLabelDetail RPC.
+	// CatalogServiceGetPublishedLabelDetailProcedure is the procedure name of the CatalogService's
+	// GetPublishedLabelDetail RPC.
 	CatalogServiceGetPublishedLabelDetailProcedure = "/publira.v1.CatalogService/GetPublishedLabelDetail"
-	// CatalogServiceListPublishedGenresProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceListPublishedGenresProcedure is the procedure name of the CatalogService's
 	// ListPublishedGenres RPC.
 	CatalogServiceListPublishedGenresProcedure = "/publira.v1.CatalogService/ListPublishedGenres"
-	// CatalogServiceListPublishedTagsProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceListPublishedTagsProcedure is the procedure name of the CatalogService's
 	// ListPublishedTags RPC.
 	CatalogServiceListPublishedTagsProcedure = "/publira.v1.CatalogService/ListPublishedTags"
-	// CatalogServiceSearchPublishedSeriesProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceSearchPublishedSeriesProcedure is the procedure name of the CatalogService's
 	// SearchPublishedSeries RPC.
 	CatalogServiceSearchPublishedSeriesProcedure = "/publira.v1.CatalogService/SearchPublishedSeries"
-	// CatalogServiceSearchPublishedCreatorsProcedure is the fully-qualified name of the
-	// CatalogService's SearchPublishedCreators RPC.
+	// CatalogServiceSearchPublishedCreatorsProcedure is the procedure name of the CatalogService's
+	// SearchPublishedCreators RPC.
 	CatalogServiceSearchPublishedCreatorsProcedure = "/publira.v1.CatalogService/SearchPublishedCreators"
-	// CatalogServiceSearchPublishedLabelsProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceSearchPublishedLabelsProcedure is the procedure name of the CatalogService's
 	// SearchPublishedLabels RPC.
 	CatalogServiceSearchPublishedLabelsProcedure = "/publira.v1.CatalogService/SearchPublishedLabels"
-	// CatalogServiceListRecommendedSeriesProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceListRecommendedSeriesProcedure is the procedure name of the CatalogService's
 	// ListRecommendedSeries RPC.
 	CatalogServiceListRecommendedSeriesProcedure = "/publira.v1.CatalogService/ListRecommendedSeries"
-	// CatalogServiceListMyRecommendedSeriesProcedure is the fully-qualified name of the
-	// CatalogService's ListMyRecommendedSeries RPC.
+	// CatalogServiceListMyRecommendedSeriesProcedure is the procedure name of the CatalogService's
+	// ListMyRecommendedSeries RPC.
 	CatalogServiceListMyRecommendedSeriesProcedure = "/publira.v1.CatalogService/ListMyRecommendedSeries"
-	// CatalogServiceListRankedSeriesProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceListRankedSeriesProcedure is the procedure name of the CatalogService's
 	// ListRankedSeries RPC.
 	CatalogServiceListRankedSeriesProcedure = "/publira.v1.CatalogService/ListRankedSeries"
-	// CatalogServiceListRelatedSeriesProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceListRelatedSeriesProcedure is the procedure name of the CatalogService's
 	// ListRelatedSeries RPC.
 	CatalogServiceListRelatedSeriesProcedure = "/publira.v1.CatalogService/ListRelatedSeries"
-	// CatalogServiceListSitemapEntriesProcedure is the fully-qualified name of the CatalogService's
+	// CatalogServiceListSitemapEntriesProcedure is the procedure name of the CatalogService's
 	// ListSitemapEntries RPC.
 	CatalogServiceListSitemapEntriesProcedure = "/publira.v1.CatalogService/ListSitemapEntries"
-	// EpisodeReadServiceMarkEpisodeAsReadProcedure is the fully-qualified name of the
-	// EpisodeReadService's MarkEpisodeAsRead RPC.
+	// EpisodeReadServiceMarkEpisodeAsReadProcedure is the procedure name of the EpisodeReadService's
+	// MarkEpisodeAsRead RPC.
 	EpisodeReadServiceMarkEpisodeAsReadProcedure = "/publira.v1.EpisodeReadService/MarkEpisodeAsRead"
-	// EpisodeReadServiceSaveReadingPositionProcedure is the fully-qualified name of the
-	// EpisodeReadService's SaveReadingPosition RPC.
+	// EpisodeReadServiceSaveReadingPositionProcedure is the procedure name of the EpisodeReadService's
+	// SaveReadingPosition RPC.
 	EpisodeReadServiceSaveReadingPositionProcedure = "/publira.v1.EpisodeReadService/SaveReadingPosition"
-	// EpisodeReadServiceGetMyReadingPositionProcedure is the fully-qualified name of the
-	// EpisodeReadService's GetMyReadingPosition RPC.
+	// EpisodeReadServiceGetMyReadingPositionProcedure is the procedure name of the EpisodeReadService's
+	// GetMyReadingPosition RPC.
 	EpisodeReadServiceGetMyReadingPositionProcedure = "/publira.v1.EpisodeReadService/GetMyReadingPosition"
-	// EpisodeReadServiceGetMySeriesProgressProcedure is the fully-qualified name of the
-	// EpisodeReadService's GetMySeriesProgress RPC.
+	// EpisodeReadServiceGetMySeriesProgressProcedure is the procedure name of the EpisodeReadService's
+	// GetMySeriesProgress RPC.
 	EpisodeReadServiceGetMySeriesProgressProcedure = "/publira.v1.EpisodeReadService/GetMySeriesProgress"
-	// EpisodeReadServiceListMyRecentSeriesProcedure is the fully-qualified name of the
-	// EpisodeReadService's ListMyRecentSeries RPC.
+	// EpisodeReadServiceListMyRecentSeriesProcedure is the procedure name of the EpisodeReadService's
+	// ListMyRecentSeries RPC.
 	EpisodeReadServiceListMyRecentSeriesProcedure = "/publira.v1.EpisodeReadService/ListMyRecentSeries"
-	// EpisodeReadServiceListMyEpisodeReadsProcedure is the fully-qualified name of the
-	// EpisodeReadService's ListMyEpisodeReads RPC.
+	// EpisodeReadServiceListMyEpisodeReadsProcedure is the procedure name of the EpisodeReadService's
+	// ListMyEpisodeReads RPC.
 	EpisodeReadServiceListMyEpisodeReadsProcedure = "/publira.v1.EpisodeReadService/ListMyEpisodeReads"
-	// FollowServiceGetMyFollowStatusProcedure is the fully-qualified name of the FollowService's
+	// FollowServiceGetMyFollowStatusProcedure is the procedure name of the FollowService's
 	// GetMyFollowStatus RPC.
 	FollowServiceGetMyFollowStatusProcedure = "/publira.v1.FollowService/GetMyFollowStatus"
-	// FollowServiceFollowProcedure is the fully-qualified name of the FollowService's Follow RPC.
+	// FollowServiceFollowProcedure is the procedure name of the FollowService's Follow RPC.
 	FollowServiceFollowProcedure = "/publira.v1.FollowService/Follow"
-	// FollowServiceUnfollowProcedure is the fully-qualified name of the FollowService's Unfollow RPC.
+	// FollowServiceUnfollowProcedure is the procedure name of the FollowService's Unfollow RPC.
 	FollowServiceUnfollowProcedure = "/publira.v1.FollowService/Unfollow"
-	// FollowServiceListMyFollowsProcedure is the fully-qualified name of the FollowService's
-	// ListMyFollows RPC.
+	// FollowServiceListMyFollowsProcedure is the procedure name of the FollowService's ListMyFollows
+	// RPC.
 	FollowServiceListMyFollowsProcedure = "/publira.v1.FollowService/ListMyFollows"
-	// FollowServiceListMyFollowUpdatesProcedure is the fully-qualified name of the FollowService's
+	// FollowServiceListMyFollowUpdatesProcedure is the procedure name of the FollowService's
 	// ListMyFollowUpdates RPC.
 	FollowServiceListMyFollowUpdatesProcedure = "/publira.v1.FollowService/ListMyFollowUpdates"
-	// RatingServiceRateEpisodeProcedure is the fully-qualified name of the RatingService's RateEpisode
-	// RPC.
+	// RatingServiceRateEpisodeProcedure is the procedure name of the RatingService's RateEpisode RPC.
 	RatingServiceRateEpisodeProcedure = "/publira.v1.RatingService/RateEpisode"
-	// RatingServiceGetMyEpisodeRatingProcedure is the fully-qualified name of the RatingService's
+	// RatingServiceGetMyEpisodeRatingProcedure is the procedure name of the RatingService's
 	// GetMyEpisodeRating RPC.
 	RatingServiceGetMyEpisodeRatingProcedure = "/publira.v1.RatingService/GetMyEpisodeRating"
-	// RatingServiceGetMySeriesRatingProcedure is the fully-qualified name of the RatingService's
+	// RatingServiceGetMySeriesRatingProcedure is the procedure name of the RatingService's
 	// GetMySeriesRating RPC.
 	RatingServiceGetMySeriesRatingProcedure = "/publira.v1.RatingService/GetMySeriesRating"
-	// ContentViewServiceRecordContentViewProcedure is the fully-qualified name of the
-	// ContentViewService's RecordContentView RPC.
+	// ContentViewServiceRecordContentViewProcedure is the procedure name of the ContentViewService's
+	// RecordContentView RPC.
 	ContentViewServiceRecordContentViewProcedure = "/publira.v1.ContentViewService/RecordContentView"
-	// PurchaseServiceStartEpisodeCheckoutProcedure is the fully-qualified name of the PurchaseService's
+	// PurchaseServiceStartEpisodeCheckoutProcedure is the procedure name of the PurchaseService's
 	// StartEpisodeCheckout RPC.
 	PurchaseServiceStartEpisodeCheckoutProcedure = "/publira.v1.PurchaseService/StartEpisodeCheckout"
-	// PurchaseServiceListMyPurchasesProcedure is the fully-qualified name of the PurchaseService's
+	// PurchaseServiceListMyPurchasesProcedure is the procedure name of the PurchaseService's
 	// ListMyPurchases RPC.
 	PurchaseServiceListMyPurchasesProcedure = "/publira.v1.PurchaseService/ListMyPurchases"
-	// PurchaseServiceProcessPaymentWebhookProcedure is the fully-qualified name of the
-	// PurchaseService's ProcessPaymentWebhook RPC.
+	// PurchaseServiceProcessPaymentWebhookProcedure is the procedure name of the PurchaseService's
+	// ProcessPaymentWebhook RPC.
 	PurchaseServiceProcessPaymentWebhookProcedure = "/publira.v1.PurchaseService/ProcessPaymentWebhook"
-	// PurchaseServiceStartStorePurchaseProcedure is the fully-qualified name of the PurchaseService's
+	// PurchaseServiceStartStorePurchaseProcedure is the procedure name of the PurchaseService's
 	// StartStorePurchase RPC.
 	PurchaseServiceStartStorePurchaseProcedure = "/publira.v1.PurchaseService/StartStorePurchase"
-	// PurchaseServiceConfirmStorePurchaseProcedure is the fully-qualified name of the PurchaseService's
+	// PurchaseServiceConfirmStorePurchaseProcedure is the procedure name of the PurchaseService's
 	// ConfirmStorePurchase RPC.
 	PurchaseServiceConfirmStorePurchaseProcedure = "/publira.v1.PurchaseService/ConfirmStorePurchase"
-	// PurchaseServiceProcessAppStoreNotificationProcedure is the fully-qualified name of the
+	// PurchaseServiceProcessAppStoreNotificationProcedure is the procedure name of the
 	// PurchaseService's ProcessAppStoreNotification RPC.
 	PurchaseServiceProcessAppStoreNotificationProcedure = "/publira.v1.PurchaseService/ProcessAppStoreNotification"
-	// WaitFreeServiceGetMyTicketStateProcedure is the fully-qualified name of the WaitFreeService's
+	// WaitFreeServiceGetMyTicketStateProcedure is the procedure name of the WaitFreeService's
 	// GetMyTicketState RPC.
 	WaitFreeServiceGetMyTicketStateProcedure = "/publira.v1.WaitFreeService/GetMyTicketState"
-	// WaitFreeServiceUseTicketProcedure is the fully-qualified name of the WaitFreeService's UseTicket
-	// RPC.
+	// WaitFreeServiceUseTicketProcedure is the procedure name of the WaitFreeService's UseTicket RPC.
 	WaitFreeServiceUseTicketProcedure = "/publira.v1.WaitFreeService/UseTicket"
+)
+
+var (
+	catalogServiceListPublishedLabelsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("ListPublishedLabels"),
+			Procedure:  CatalogServiceListPublishedLabelsProcedure,
+		}
+	})
+	catalogServiceListPublishedSeriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("ListPublishedSeries"),
+			Procedure:  CatalogServiceListPublishedSeriesProcedure,
+		}
+	})
+	catalogServiceGetSeriesDetailSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("GetSeriesDetail"),
+			Procedure:  CatalogServiceGetSeriesDetailProcedure,
+		}
+	})
+	catalogServiceGetSeriesEpisodeAccessSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("GetSeriesEpisodeAccess"),
+			Procedure:  CatalogServiceGetSeriesEpisodeAccessProcedure,
+		}
+	})
+	catalogServiceGetEpisodeDetailSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("GetEpisodeDetail"),
+			Procedure:  CatalogServiceGetEpisodeDetailProcedure,
+		}
+	})
+	catalogServiceListPublishedCreatorsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("ListPublishedCreators"),
+			Procedure:  CatalogServiceListPublishedCreatorsProcedure,
+		}
+	})
+	catalogServiceGetPublishedCreatorDetailSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("GetPublishedCreatorDetail"),
+			Procedure:  CatalogServiceGetPublishedCreatorDetailProcedure,
+		}
+	})
+	catalogServiceGetPublishedLabelDetailSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("GetPublishedLabelDetail"),
+			Procedure:  CatalogServiceGetPublishedLabelDetailProcedure,
+		}
+	})
+	catalogServiceListPublishedGenresSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("ListPublishedGenres"),
+			Procedure:  CatalogServiceListPublishedGenresProcedure,
+		}
+	})
+	catalogServiceListPublishedTagsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("ListPublishedTags"),
+			Procedure:  CatalogServiceListPublishedTagsProcedure,
+		}
+	})
+	catalogServiceSearchPublishedSeriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("SearchPublishedSeries"),
+			Procedure:  CatalogServiceSearchPublishedSeriesProcedure,
+		}
+	})
+	catalogServiceSearchPublishedCreatorsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("SearchPublishedCreators"),
+			Procedure:  CatalogServiceSearchPublishedCreatorsProcedure,
+		}
+	})
+	catalogServiceSearchPublishedLabelsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("SearchPublishedLabels"),
+			Procedure:  CatalogServiceSearchPublishedLabelsProcedure,
+		}
+	})
+	catalogServiceListRecommendedSeriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("ListRecommendedSeries"),
+			Procedure:  CatalogServiceListRecommendedSeriesProcedure,
+		}
+	})
+	catalogServiceListMyRecommendedSeriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("ListMyRecommendedSeries"),
+			Procedure:  CatalogServiceListMyRecommendedSeriesProcedure,
+		}
+	})
+	catalogServiceListRankedSeriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("ListRankedSeries"),
+			Procedure:  CatalogServiceListRankedSeriesProcedure,
+		}
+	})
+	catalogServiceListRelatedSeriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("ListRelatedSeries"),
+			Procedure:  CatalogServiceListRelatedSeriesProcedure,
+		}
+	})
+	catalogServiceListSitemapEntriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("ListSitemapEntries"),
+			Procedure:  CatalogServiceListSitemapEntriesProcedure,
+		}
+	})
 )
 
 // CatalogServiceClient is a client for the publira.v1.CatalogService service.
@@ -173,51 +291,51 @@ type CatalogServiceClient interface {
 	// Every label of the tenant, including one with no published series, so a
 	// label's URL keeps working after its last series is taken down. A label
 	// whose published series are all kept off the calling surface is left out.
-	ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error)
-	ListPublishedSeries(context.Context, *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error)
-	GetSeriesDetail(context.Context, *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error)
+	ListPublishedLabels(context.Context, *v1.ListPublishedLabelsRequest) (*v1.ListPublishedLabelsResponse, error)
+	ListPublishedSeries(context.Context, *v1.ListPublishedSeriesRequest) (*v1.ListPublishedSeriesResponse, error)
+	GetSeriesDetail(context.Context, *v1.GetSeriesDetailRequest) (*v1.GetSeriesDetailResponse, error)
 	// The access state GetEpisodeDetail would answer for each published episode
 	// of one series, for the caller. It is separate from GetSeriesDetail so that
 	// read stays the same for every reader. Optional authentication: a guest and
 	// a bearer this server cannot verify are answered as a guest. Unpublished,
 	// cross-tenant, and missing series, and a series the calling surface may not
 	// show, are all surfaced as NotFound.
-	GetSeriesEpisodeAccess(context.Context, *connect.Request[v1.GetSeriesEpisodeAccessRequest]) (*connect.Response[v1.GetSeriesEpisodeAccessResponse], error)
+	GetSeriesEpisodeAccess(context.Context, *v1.GetSeriesEpisodeAccessRequest) (*v1.GetSeriesEpisodeAccessResponse, error)
 	// Returns only currently published episodes in the requested tenant.
 	// Unpublished, cross-tenant, and missing episodes, and an episode the calling
 	// surface may not show, are all surfaced as NotFound to prevent content
 	// existence leakage.
-	GetEpisodeDetail(context.Context, *connect.Request[v1.GetEpisodeDetailRequest]) (*connect.Response[v1.GetEpisodeDetailResponse], error)
-	ListPublishedCreators(context.Context, *connect.Request[v1.ListPublishedCreatorsRequest]) (*connect.Response[v1.ListPublishedCreatorsResponse], error)
+	GetEpisodeDetail(context.Context, *v1.GetEpisodeDetailRequest) (*v1.GetEpisodeDetailResponse, error)
+	ListPublishedCreators(context.Context, *v1.ListPublishedCreatorsRequest) (*v1.ListPublishedCreatorsResponse, error)
 	// Returns a creator only when they have at least one currently published
 	// series in the requested tenant that the calling surface may show. Cross-tenant, unpublished, and missing
 	// creators are all surfaced as NotFound so an unpublished creator cannot be
 	// distinguished from one that does not exist.
-	GetPublishedCreatorDetail(context.Context, *connect.Request[v1.GetPublishedCreatorDetailRequest]) (*connect.Response[v1.GetPublishedCreatorDetailResponse], error)
+	GetPublishedCreatorDetail(context.Context, *v1.GetPublishedCreatorDetailRequest) (*v1.GetPublishedCreatorDetailResponse, error)
 	// Returns a label that belongs to the requested tenant. Cross-tenant and
 	// missing labels are surfaced as NotFound so a foreign label cannot be
 	// distinguished from one that does not exist. A label ListPublishedLabels
 	// leaves out for the calling surface is NotFound there too.
-	GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error)
+	GetPublishedLabelDetail(context.Context, *v1.GetPublishedLabelDetailRequest) (*v1.GetPublishedLabelDetailResponse, error)
 	// The tenant's genres, in the order the console put them in, each with how
 	// many of its series are published right now.
-	ListPublishedGenres(context.Context, *connect.Request[v1.ListPublishedGenresRequest]) (*connect.Response[v1.ListPublishedGenresResponse], error)
+	ListPublishedGenres(context.Context, *v1.ListPublishedGenresRequest) (*v1.ListPublishedGenresResponse, error)
 	// The tags at least one published series carries, the most-carried first.
-	ListPublishedTags(context.Context, *connect.Request[v1.ListPublishedTagsRequest]) (*connect.Response[v1.ListPublishedTagsResponse], error)
+	ListPublishedTags(context.Context, *v1.ListPublishedTagsRequest) (*v1.ListPublishedTagsResponse, error)
 	// Keyword search over published series titles and synopses, narrowed and
 	// sorted by the fields ListPublishedSeries takes. An empty query is
 	// invalid_argument. A token carries the Unicode-lowercased query it was
 	// built for; sending it with a query that lowers to a different string is
 	// invalid_argument.
-	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
+	SearchPublishedSeries(context.Context, *v1.SearchPublishedSeriesRequest) (*v1.SearchPublishedSeriesResponse, error)
 	// Keyword search over the names of creators who hold at least one currently
 	// published series. An empty query is invalid_argument, and the token rule
 	// is the one SearchPublishedSeries states.
-	SearchPublishedCreators(context.Context, *connect.Request[v1.SearchPublishedCreatorsRequest]) (*connect.Response[v1.SearchPublishedCreatorsResponse], error)
+	SearchPublishedCreators(context.Context, *v1.SearchPublishedCreatorsRequest) (*v1.SearchPublishedCreatorsResponse, error)
 	// Keyword search over the names of labels that hold at least one currently
 	// published series. An empty query is invalid_argument, and the token rule
 	// is the one SearchPublishedSeries states.
-	SearchPublishedLabels(context.Context, *connect.Request[v1.SearchPublishedLabelsRequest]) (*connect.Response[v1.SearchPublishedLabelsResponse], error)
+	SearchPublishedLabels(context.Context, *v1.SearchPublishedLabelsRequest) (*v1.SearchPublishedLabelsResponse, error)
 	// Every published series, ordered by the latest ranking snapshot of
 	// behavioural signals and then by publication date, so a storefront slot can
 	// take the first page and a "see more" view can keep paging into the rest.
@@ -225,7 +343,7 @@ type CatalogServiceClient interface {
 	// arrivals alone, which is what the slot showed before rankings existed.
 	// A ranking rebuilt between two pages moves the boundary the same way an
 	// unpublished series does; the token names a position, not a snapshot.
-	ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error)
+	ListRecommendedSeries(context.Context, *v1.ListRecommendedSeriesRequest) (*v1.ListRecommendedSeriesResponse, error)
 	// Every published series, ordered for the authenticated member from the
 	// features the daily batch computes out of their own last 28 days.
 	//
@@ -250,7 +368,7 @@ type CatalogServiceClient interface {
 	// exactly what ListRecommendedSeries answers. The response is private to the
 	// member either way and is never shared between readers; a guest calls
 	// ListRecommendedSeries instead, whose answer is cached and shared.
-	ListMyRecommendedSeries(context.Context, *connect.Request[v1.ListMyRecommendedSeriesRequest]) (*connect.Response[v1.ListMyRecommendedSeriesResponse], error)
+	ListMyRecommendedSeries(context.Context, *v1.ListMyRecommendedSeriesRequest) (*v1.ListMyRecommendedSeriesResponse, error)
 	// One page of the latest ranking snapshot for a period, an age rating, and
 	// optionally a genre, in the positions that snapshot recorded. A tenant or
 	// a genre the batch has not ranked yet gets an empty list rather than an
@@ -258,7 +376,7 @@ type CatalogServiceClient interface {
 	// unpublished — or taken out of the genre — since the snapshot was written
 	// drops out and leaves a gap in the positions, because a snapshot describes
 	// a past window rather than the catalogue as it stands now.
-	ListRankedSeries(context.Context, *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error)
+	ListRankedSeries(context.Context, *v1.ListRankedSeriesRequest) (*v1.ListRankedSeriesResponse, error)
 	// The tenant's other published series, ordered by how much they share with
 	// one series: each creator they have in common counts 3, the same label 2,
 	// and each genre and each tag 1. Ties go to the better position in the
@@ -272,245 +390,17 @@ type CatalogServiceClient interface {
 	//
 	// Nothing here depends on who is reading, so a response can be cached and
 	// shared between readers.
-	ListRelatedSeries(context.Context, *connect.Request[v1.ListRelatedSeriesRequest]) (*connect.Response[v1.ListRelatedSeriesResponse], error)
+	ListRelatedSeries(context.Context, *v1.ListRelatedSeriesRequest) (*v1.ListRelatedSeriesResponse, error)
 	// Every page the web storefront publishes for the tenant, with the time each
 	// last changed, for the storefront's sitemap. It reads nothing about the
 	// caller, so a response can be cached and shared.
-	ListSitemapEntries(context.Context, *connect.Request[v1.ListSitemapEntriesRequest]) (*connect.Response[v1.ListSitemapEntriesResponse], error)
+	ListSitemapEntries(context.Context, *v1.ListSitemapEntriesRequest) (*v1.ListSitemapEntriesResponse, error)
 }
 
-// NewCatalogServiceClient constructs a client for the publira.v1.CatalogService service. By
-// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
-// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
-// connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) CatalogServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	catalogServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods()
-	return &catalogServiceClient{
-		listPublishedLabels: connect.NewClient[v1.ListPublishedLabelsRequest, v1.ListPublishedLabelsResponse](
-			httpClient,
-			baseURL+CatalogServiceListPublishedLabelsProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("ListPublishedLabels")),
-			connect.WithClientOptions(opts...),
-		),
-		listPublishedSeries: connect.NewClient[v1.ListPublishedSeriesRequest, v1.ListPublishedSeriesResponse](
-			httpClient,
-			baseURL+CatalogServiceListPublishedSeriesProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("ListPublishedSeries")),
-			connect.WithClientOptions(opts...),
-		),
-		getSeriesDetail: connect.NewClient[v1.GetSeriesDetailRequest, v1.GetSeriesDetailResponse](
-			httpClient,
-			baseURL+CatalogServiceGetSeriesDetailProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("GetSeriesDetail")),
-			connect.WithClientOptions(opts...),
-		),
-		getSeriesEpisodeAccess: connect.NewClient[v1.GetSeriesEpisodeAccessRequest, v1.GetSeriesEpisodeAccessResponse](
-			httpClient,
-			baseURL+CatalogServiceGetSeriesEpisodeAccessProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("GetSeriesEpisodeAccess")),
-			connect.WithClientOptions(opts...),
-		),
-		getEpisodeDetail: connect.NewClient[v1.GetEpisodeDetailRequest, v1.GetEpisodeDetailResponse](
-			httpClient,
-			baseURL+CatalogServiceGetEpisodeDetailProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("GetEpisodeDetail")),
-			connect.WithClientOptions(opts...),
-		),
-		listPublishedCreators: connect.NewClient[v1.ListPublishedCreatorsRequest, v1.ListPublishedCreatorsResponse](
-			httpClient,
-			baseURL+CatalogServiceListPublishedCreatorsProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("ListPublishedCreators")),
-			connect.WithClientOptions(opts...),
-		),
-		getPublishedCreatorDetail: connect.NewClient[v1.GetPublishedCreatorDetailRequest, v1.GetPublishedCreatorDetailResponse](
-			httpClient,
-			baseURL+CatalogServiceGetPublishedCreatorDetailProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("GetPublishedCreatorDetail")),
-			connect.WithClientOptions(opts...),
-		),
-		getPublishedLabelDetail: connect.NewClient[v1.GetPublishedLabelDetailRequest, v1.GetPublishedLabelDetailResponse](
-			httpClient,
-			baseURL+CatalogServiceGetPublishedLabelDetailProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("GetPublishedLabelDetail")),
-			connect.WithClientOptions(opts...),
-		),
-		listPublishedGenres: connect.NewClient[v1.ListPublishedGenresRequest, v1.ListPublishedGenresResponse](
-			httpClient,
-			baseURL+CatalogServiceListPublishedGenresProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("ListPublishedGenres")),
-			connect.WithClientOptions(opts...),
-		),
-		listPublishedTags: connect.NewClient[v1.ListPublishedTagsRequest, v1.ListPublishedTagsResponse](
-			httpClient,
-			baseURL+CatalogServiceListPublishedTagsProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("ListPublishedTags")),
-			connect.WithClientOptions(opts...),
-		),
-		searchPublishedSeries: connect.NewClient[v1.SearchPublishedSeriesRequest, v1.SearchPublishedSeriesResponse](
-			httpClient,
-			baseURL+CatalogServiceSearchPublishedSeriesProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedSeries")),
-			connect.WithClientOptions(opts...),
-		),
-		searchPublishedCreators: connect.NewClient[v1.SearchPublishedCreatorsRequest, v1.SearchPublishedCreatorsResponse](
-			httpClient,
-			baseURL+CatalogServiceSearchPublishedCreatorsProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedCreators")),
-			connect.WithClientOptions(opts...),
-		),
-		searchPublishedLabels: connect.NewClient[v1.SearchPublishedLabelsRequest, v1.SearchPublishedLabelsResponse](
-			httpClient,
-			baseURL+CatalogServiceSearchPublishedLabelsProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedLabels")),
-			connect.WithClientOptions(opts...),
-		),
-		listRecommendedSeries: connect.NewClient[v1.ListRecommendedSeriesRequest, v1.ListRecommendedSeriesResponse](
-			httpClient,
-			baseURL+CatalogServiceListRecommendedSeriesProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("ListRecommendedSeries")),
-			connect.WithClientOptions(opts...),
-		),
-		listMyRecommendedSeries: connect.NewClient[v1.ListMyRecommendedSeriesRequest, v1.ListMyRecommendedSeriesResponse](
-			httpClient,
-			baseURL+CatalogServiceListMyRecommendedSeriesProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("ListMyRecommendedSeries")),
-			connect.WithClientOptions(opts...),
-		),
-		listRankedSeries: connect.NewClient[v1.ListRankedSeriesRequest, v1.ListRankedSeriesResponse](
-			httpClient,
-			baseURL+CatalogServiceListRankedSeriesProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("ListRankedSeries")),
-			connect.WithClientOptions(opts...),
-		),
-		listRelatedSeries: connect.NewClient[v1.ListRelatedSeriesRequest, v1.ListRelatedSeriesResponse](
-			httpClient,
-			baseURL+CatalogServiceListRelatedSeriesProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("ListRelatedSeries")),
-			connect.WithClientOptions(opts...),
-		),
-		listSitemapEntries: connect.NewClient[v1.ListSitemapEntriesRequest, v1.ListSitemapEntriesResponse](
-			httpClient,
-			baseURL+CatalogServiceListSitemapEntriesProcedure,
-			connect.WithSchema(catalogServiceMethods.ByName("ListSitemapEntries")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// catalogServiceClient implements CatalogServiceClient.
-type catalogServiceClient struct {
-	listPublishedLabels       *connect.Client[v1.ListPublishedLabelsRequest, v1.ListPublishedLabelsResponse]
-	listPublishedSeries       *connect.Client[v1.ListPublishedSeriesRequest, v1.ListPublishedSeriesResponse]
-	getSeriesDetail           *connect.Client[v1.GetSeriesDetailRequest, v1.GetSeriesDetailResponse]
-	getSeriesEpisodeAccess    *connect.Client[v1.GetSeriesEpisodeAccessRequest, v1.GetSeriesEpisodeAccessResponse]
-	getEpisodeDetail          *connect.Client[v1.GetEpisodeDetailRequest, v1.GetEpisodeDetailResponse]
-	listPublishedCreators     *connect.Client[v1.ListPublishedCreatorsRequest, v1.ListPublishedCreatorsResponse]
-	getPublishedCreatorDetail *connect.Client[v1.GetPublishedCreatorDetailRequest, v1.GetPublishedCreatorDetailResponse]
-	getPublishedLabelDetail   *connect.Client[v1.GetPublishedLabelDetailRequest, v1.GetPublishedLabelDetailResponse]
-	listPublishedGenres       *connect.Client[v1.ListPublishedGenresRequest, v1.ListPublishedGenresResponse]
-	listPublishedTags         *connect.Client[v1.ListPublishedTagsRequest, v1.ListPublishedTagsResponse]
-	searchPublishedSeries     *connect.Client[v1.SearchPublishedSeriesRequest, v1.SearchPublishedSeriesResponse]
-	searchPublishedCreators   *connect.Client[v1.SearchPublishedCreatorsRequest, v1.SearchPublishedCreatorsResponse]
-	searchPublishedLabels     *connect.Client[v1.SearchPublishedLabelsRequest, v1.SearchPublishedLabelsResponse]
-	listRecommendedSeries     *connect.Client[v1.ListRecommendedSeriesRequest, v1.ListRecommendedSeriesResponse]
-	listMyRecommendedSeries   *connect.Client[v1.ListMyRecommendedSeriesRequest, v1.ListMyRecommendedSeriesResponse]
-	listRankedSeries          *connect.Client[v1.ListRankedSeriesRequest, v1.ListRankedSeriesResponse]
-	listRelatedSeries         *connect.Client[v1.ListRelatedSeriesRequest, v1.ListRelatedSeriesResponse]
-	listSitemapEntries        *connect.Client[v1.ListSitemapEntriesRequest, v1.ListSitemapEntriesResponse]
-}
-
-// ListPublishedLabels calls publira.v1.CatalogService.ListPublishedLabels.
-func (c *catalogServiceClient) ListPublishedLabels(ctx context.Context, req *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error) {
-	return c.listPublishedLabels.CallUnary(ctx, req)
-}
-
-// ListPublishedSeries calls publira.v1.CatalogService.ListPublishedSeries.
-func (c *catalogServiceClient) ListPublishedSeries(ctx context.Context, req *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error) {
-	return c.listPublishedSeries.CallUnary(ctx, req)
-}
-
-// GetSeriesDetail calls publira.v1.CatalogService.GetSeriesDetail.
-func (c *catalogServiceClient) GetSeriesDetail(ctx context.Context, req *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error) {
-	return c.getSeriesDetail.CallUnary(ctx, req)
-}
-
-// GetSeriesEpisodeAccess calls publira.v1.CatalogService.GetSeriesEpisodeAccess.
-func (c *catalogServiceClient) GetSeriesEpisodeAccess(ctx context.Context, req *connect.Request[v1.GetSeriesEpisodeAccessRequest]) (*connect.Response[v1.GetSeriesEpisodeAccessResponse], error) {
-	return c.getSeriesEpisodeAccess.CallUnary(ctx, req)
-}
-
-// GetEpisodeDetail calls publira.v1.CatalogService.GetEpisodeDetail.
-func (c *catalogServiceClient) GetEpisodeDetail(ctx context.Context, req *connect.Request[v1.GetEpisodeDetailRequest]) (*connect.Response[v1.GetEpisodeDetailResponse], error) {
-	return c.getEpisodeDetail.CallUnary(ctx, req)
-}
-
-// ListPublishedCreators calls publira.v1.CatalogService.ListPublishedCreators.
-func (c *catalogServiceClient) ListPublishedCreators(ctx context.Context, req *connect.Request[v1.ListPublishedCreatorsRequest]) (*connect.Response[v1.ListPublishedCreatorsResponse], error) {
-	return c.listPublishedCreators.CallUnary(ctx, req)
-}
-
-// GetPublishedCreatorDetail calls publira.v1.CatalogService.GetPublishedCreatorDetail.
-func (c *catalogServiceClient) GetPublishedCreatorDetail(ctx context.Context, req *connect.Request[v1.GetPublishedCreatorDetailRequest]) (*connect.Response[v1.GetPublishedCreatorDetailResponse], error) {
-	return c.getPublishedCreatorDetail.CallUnary(ctx, req)
-}
-
-// GetPublishedLabelDetail calls publira.v1.CatalogService.GetPublishedLabelDetail.
-func (c *catalogServiceClient) GetPublishedLabelDetail(ctx context.Context, req *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error) {
-	return c.getPublishedLabelDetail.CallUnary(ctx, req)
-}
-
-// ListPublishedGenres calls publira.v1.CatalogService.ListPublishedGenres.
-func (c *catalogServiceClient) ListPublishedGenres(ctx context.Context, req *connect.Request[v1.ListPublishedGenresRequest]) (*connect.Response[v1.ListPublishedGenresResponse], error) {
-	return c.listPublishedGenres.CallUnary(ctx, req)
-}
-
-// ListPublishedTags calls publira.v1.CatalogService.ListPublishedTags.
-func (c *catalogServiceClient) ListPublishedTags(ctx context.Context, req *connect.Request[v1.ListPublishedTagsRequest]) (*connect.Response[v1.ListPublishedTagsResponse], error) {
-	return c.listPublishedTags.CallUnary(ctx, req)
-}
-
-// SearchPublishedSeries calls publira.v1.CatalogService.SearchPublishedSeries.
-func (c *catalogServiceClient) SearchPublishedSeries(ctx context.Context, req *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error) {
-	return c.searchPublishedSeries.CallUnary(ctx, req)
-}
-
-// SearchPublishedCreators calls publira.v1.CatalogService.SearchPublishedCreators.
-func (c *catalogServiceClient) SearchPublishedCreators(ctx context.Context, req *connect.Request[v1.SearchPublishedCreatorsRequest]) (*connect.Response[v1.SearchPublishedCreatorsResponse], error) {
-	return c.searchPublishedCreators.CallUnary(ctx, req)
-}
-
-// SearchPublishedLabels calls publira.v1.CatalogService.SearchPublishedLabels.
-func (c *catalogServiceClient) SearchPublishedLabels(ctx context.Context, req *connect.Request[v1.SearchPublishedLabelsRequest]) (*connect.Response[v1.SearchPublishedLabelsResponse], error) {
-	return c.searchPublishedLabels.CallUnary(ctx, req)
-}
-
-// ListRecommendedSeries calls publira.v1.CatalogService.ListRecommendedSeries.
-func (c *catalogServiceClient) ListRecommendedSeries(ctx context.Context, req *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error) {
-	return c.listRecommendedSeries.CallUnary(ctx, req)
-}
-
-// ListMyRecommendedSeries calls publira.v1.CatalogService.ListMyRecommendedSeries.
-func (c *catalogServiceClient) ListMyRecommendedSeries(ctx context.Context, req *connect.Request[v1.ListMyRecommendedSeriesRequest]) (*connect.Response[v1.ListMyRecommendedSeriesResponse], error) {
-	return c.listMyRecommendedSeries.CallUnary(ctx, req)
-}
-
-// ListRankedSeries calls publira.v1.CatalogService.ListRankedSeries.
-func (c *catalogServiceClient) ListRankedSeries(ctx context.Context, req *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error) {
-	return c.listRankedSeries.CallUnary(ctx, req)
-}
-
-// ListRelatedSeries calls publira.v1.CatalogService.ListRelatedSeries.
-func (c *catalogServiceClient) ListRelatedSeries(ctx context.Context, req *connect.Request[v1.ListRelatedSeriesRequest]) (*connect.Response[v1.ListRelatedSeriesResponse], error) {
-	return c.listRelatedSeries.CallUnary(ctx, req)
-}
-
-// ListSitemapEntries calls publira.v1.CatalogService.ListSitemapEntries.
-func (c *catalogServiceClient) ListSitemapEntries(ctx context.Context, req *connect.Request[v1.ListSitemapEntriesRequest]) (*connect.Response[v1.ListSitemapEntriesResponse], error) {
-	return c.listSitemapEntries.CallUnary(ctx, req)
+// NewCatalogServiceClient constructs a client for the publira.v1.CatalogService service. Multiple
+// service clients may share a single connect.Client.
+func NewCatalogServiceClient(client *connect.Client) CatalogServiceClient {
+	return &catalogServiceClient{client: client}
 }
 
 // CatalogServiceHandler is an implementation of the publira.v1.CatalogService service.
@@ -518,51 +408,51 @@ type CatalogServiceHandler interface {
 	// Every label of the tenant, including one with no published series, so a
 	// label's URL keeps working after its last series is taken down. A label
 	// whose published series are all kept off the calling surface is left out.
-	ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error)
-	ListPublishedSeries(context.Context, *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error)
-	GetSeriesDetail(context.Context, *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error)
+	ListPublishedLabels(context.Context, *v1.ListPublishedLabelsRequest) (*v1.ListPublishedLabelsResponse, error)
+	ListPublishedSeries(context.Context, *v1.ListPublishedSeriesRequest) (*v1.ListPublishedSeriesResponse, error)
+	GetSeriesDetail(context.Context, *v1.GetSeriesDetailRequest) (*v1.GetSeriesDetailResponse, error)
 	// The access state GetEpisodeDetail would answer for each published episode
 	// of one series, for the caller. It is separate from GetSeriesDetail so that
 	// read stays the same for every reader. Optional authentication: a guest and
 	// a bearer this server cannot verify are answered as a guest. Unpublished,
 	// cross-tenant, and missing series, and a series the calling surface may not
 	// show, are all surfaced as NotFound.
-	GetSeriesEpisodeAccess(context.Context, *connect.Request[v1.GetSeriesEpisodeAccessRequest]) (*connect.Response[v1.GetSeriesEpisodeAccessResponse], error)
+	GetSeriesEpisodeAccess(context.Context, *v1.GetSeriesEpisodeAccessRequest) (*v1.GetSeriesEpisodeAccessResponse, error)
 	// Returns only currently published episodes in the requested tenant.
 	// Unpublished, cross-tenant, and missing episodes, and an episode the calling
 	// surface may not show, are all surfaced as NotFound to prevent content
 	// existence leakage.
-	GetEpisodeDetail(context.Context, *connect.Request[v1.GetEpisodeDetailRequest]) (*connect.Response[v1.GetEpisodeDetailResponse], error)
-	ListPublishedCreators(context.Context, *connect.Request[v1.ListPublishedCreatorsRequest]) (*connect.Response[v1.ListPublishedCreatorsResponse], error)
+	GetEpisodeDetail(context.Context, *v1.GetEpisodeDetailRequest) (*v1.GetEpisodeDetailResponse, error)
+	ListPublishedCreators(context.Context, *v1.ListPublishedCreatorsRequest) (*v1.ListPublishedCreatorsResponse, error)
 	// Returns a creator only when they have at least one currently published
 	// series in the requested tenant that the calling surface may show. Cross-tenant, unpublished, and missing
 	// creators are all surfaced as NotFound so an unpublished creator cannot be
 	// distinguished from one that does not exist.
-	GetPublishedCreatorDetail(context.Context, *connect.Request[v1.GetPublishedCreatorDetailRequest]) (*connect.Response[v1.GetPublishedCreatorDetailResponse], error)
+	GetPublishedCreatorDetail(context.Context, *v1.GetPublishedCreatorDetailRequest) (*v1.GetPublishedCreatorDetailResponse, error)
 	// Returns a label that belongs to the requested tenant. Cross-tenant and
 	// missing labels are surfaced as NotFound so a foreign label cannot be
 	// distinguished from one that does not exist. A label ListPublishedLabels
 	// leaves out for the calling surface is NotFound there too.
-	GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error)
+	GetPublishedLabelDetail(context.Context, *v1.GetPublishedLabelDetailRequest) (*v1.GetPublishedLabelDetailResponse, error)
 	// The tenant's genres, in the order the console put them in, each with how
 	// many of its series are published right now.
-	ListPublishedGenres(context.Context, *connect.Request[v1.ListPublishedGenresRequest]) (*connect.Response[v1.ListPublishedGenresResponse], error)
+	ListPublishedGenres(context.Context, *v1.ListPublishedGenresRequest) (*v1.ListPublishedGenresResponse, error)
 	// The tags at least one published series carries, the most-carried first.
-	ListPublishedTags(context.Context, *connect.Request[v1.ListPublishedTagsRequest]) (*connect.Response[v1.ListPublishedTagsResponse], error)
+	ListPublishedTags(context.Context, *v1.ListPublishedTagsRequest) (*v1.ListPublishedTagsResponse, error)
 	// Keyword search over published series titles and synopses, narrowed and
 	// sorted by the fields ListPublishedSeries takes. An empty query is
 	// invalid_argument. A token carries the Unicode-lowercased query it was
 	// built for; sending it with a query that lowers to a different string is
 	// invalid_argument.
-	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
+	SearchPublishedSeries(context.Context, *v1.SearchPublishedSeriesRequest) (*v1.SearchPublishedSeriesResponse, error)
 	// Keyword search over the names of creators who hold at least one currently
 	// published series. An empty query is invalid_argument, and the token rule
 	// is the one SearchPublishedSeries states.
-	SearchPublishedCreators(context.Context, *connect.Request[v1.SearchPublishedCreatorsRequest]) (*connect.Response[v1.SearchPublishedCreatorsResponse], error)
+	SearchPublishedCreators(context.Context, *v1.SearchPublishedCreatorsRequest) (*v1.SearchPublishedCreatorsResponse, error)
 	// Keyword search over the names of labels that hold at least one currently
 	// published series. An empty query is invalid_argument, and the token rule
 	// is the one SearchPublishedSeries states.
-	SearchPublishedLabels(context.Context, *connect.Request[v1.SearchPublishedLabelsRequest]) (*connect.Response[v1.SearchPublishedLabelsResponse], error)
+	SearchPublishedLabels(context.Context, *v1.SearchPublishedLabelsRequest) (*v1.SearchPublishedLabelsResponse, error)
 	// Every published series, ordered by the latest ranking snapshot of
 	// behavioural signals and then by publication date, so a storefront slot can
 	// take the first page and a "see more" view can keep paging into the rest.
@@ -570,7 +460,7 @@ type CatalogServiceHandler interface {
 	// arrivals alone, which is what the slot showed before rankings existed.
 	// A ranking rebuilt between two pages moves the boundary the same way an
 	// unpublished series does; the token names a position, not a snapshot.
-	ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error)
+	ListRecommendedSeries(context.Context, *v1.ListRecommendedSeriesRequest) (*v1.ListRecommendedSeriesResponse, error)
 	// Every published series, ordered for the authenticated member from the
 	// features the daily batch computes out of their own last 28 days.
 	//
@@ -595,7 +485,7 @@ type CatalogServiceHandler interface {
 	// exactly what ListRecommendedSeries answers. The response is private to the
 	// member either way and is never shared between readers; a guest calls
 	// ListRecommendedSeries instead, whose answer is cached and shared.
-	ListMyRecommendedSeries(context.Context, *connect.Request[v1.ListMyRecommendedSeriesRequest]) (*connect.Response[v1.ListMyRecommendedSeriesResponse], error)
+	ListMyRecommendedSeries(context.Context, *v1.ListMyRecommendedSeriesRequest) (*v1.ListMyRecommendedSeriesResponse, error)
 	// One page of the latest ranking snapshot for a period, an age rating, and
 	// optionally a genre, in the positions that snapshot recorded. A tenant or
 	// a genre the batch has not ranked yet gets an empty list rather than an
@@ -603,7 +493,7 @@ type CatalogServiceHandler interface {
 	// unpublished — or taken out of the genre — since the snapshot was written
 	// drops out and leaves a gap in the positions, because a snapshot describes
 	// a past window rather than the catalogue as it stands now.
-	ListRankedSeries(context.Context, *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error)
+	ListRankedSeries(context.Context, *v1.ListRankedSeriesRequest) (*v1.ListRankedSeriesResponse, error)
 	// The tenant's other published series, ordered by how much they share with
 	// one series: each creator they have in common counts 3, the same label 2,
 	// and each genre and each tag 1. Ties go to the better position in the
@@ -617,369 +507,563 @@ type CatalogServiceHandler interface {
 	//
 	// Nothing here depends on who is reading, so a response can be cached and
 	// shared between readers.
-	ListRelatedSeries(context.Context, *connect.Request[v1.ListRelatedSeriesRequest]) (*connect.Response[v1.ListRelatedSeriesResponse], error)
+	ListRelatedSeries(context.Context, *v1.ListRelatedSeriesRequest) (*v1.ListRelatedSeriesResponse, error)
 	// Every page the web storefront publishes for the tenant, with the time each
 	// last changed, for the storefront's sitemap. It reads nothing about the
 	// caller, so a response can be cached and shared.
-	ListSitemapEntries(context.Context, *connect.Request[v1.ListSitemapEntriesRequest]) (*connect.Response[v1.ListSitemapEntriesResponse], error)
+	ListSitemapEntries(context.Context, *v1.ListSitemapEntriesRequest) (*v1.ListSitemapEntriesResponse, error)
 }
 
-// NewCatalogServiceHandler builds an HTTP handler from the service implementation. It returns the
-// path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	catalogServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods()
-	catalogServiceListPublishedLabelsHandler := connect.NewUnaryHandler(
-		CatalogServiceListPublishedLabelsProcedure,
-		svc.ListPublishedLabels,
-		connect.WithSchema(catalogServiceMethods.ByName("ListPublishedLabels")),
-		connect.WithHandlerOptions(opts...),
+// RegisterCatalogServiceHandler registers svc as the publira.v1.CatalogService implementation on
+// server.
+func RegisterCatalogServiceHandler(server *connect.Server, svc CatalogServiceHandler) {
+	adapter := catalogServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: catalogServiceListPublishedLabelsSpec(), Handler: adapter.listPublishedLabels},
+		connect.Method{Spec: catalogServiceListPublishedSeriesSpec(), Handler: adapter.listPublishedSeries},
+		connect.Method{Spec: catalogServiceGetSeriesDetailSpec(), Handler: adapter.getSeriesDetail},
+		connect.Method{Spec: catalogServiceGetSeriesEpisodeAccessSpec(), Handler: adapter.getSeriesEpisodeAccess},
+		connect.Method{Spec: catalogServiceGetEpisodeDetailSpec(), Handler: adapter.getEpisodeDetail},
+		connect.Method{Spec: catalogServiceListPublishedCreatorsSpec(), Handler: adapter.listPublishedCreators},
+		connect.Method{Spec: catalogServiceGetPublishedCreatorDetailSpec(), Handler: adapter.getPublishedCreatorDetail},
+		connect.Method{Spec: catalogServiceGetPublishedLabelDetailSpec(), Handler: adapter.getPublishedLabelDetail},
+		connect.Method{Spec: catalogServiceListPublishedGenresSpec(), Handler: adapter.listPublishedGenres},
+		connect.Method{Spec: catalogServiceListPublishedTagsSpec(), Handler: adapter.listPublishedTags},
+		connect.Method{Spec: catalogServiceSearchPublishedSeriesSpec(), Handler: adapter.searchPublishedSeries},
+		connect.Method{Spec: catalogServiceSearchPublishedCreatorsSpec(), Handler: adapter.searchPublishedCreators},
+		connect.Method{Spec: catalogServiceSearchPublishedLabelsSpec(), Handler: adapter.searchPublishedLabels},
+		connect.Method{Spec: catalogServiceListRecommendedSeriesSpec(), Handler: adapter.listRecommendedSeries},
+		connect.Method{Spec: catalogServiceListMyRecommendedSeriesSpec(), Handler: adapter.listMyRecommendedSeries},
+		connect.Method{Spec: catalogServiceListRankedSeriesSpec(), Handler: adapter.listRankedSeries},
+		connect.Method{Spec: catalogServiceListRelatedSeriesSpec(), Handler: adapter.listRelatedSeries},
+		connect.Method{Spec: catalogServiceListSitemapEntriesSpec(), Handler: adapter.listSitemapEntries},
 	)
-	catalogServiceListPublishedSeriesHandler := connect.NewUnaryHandler(
-		CatalogServiceListPublishedSeriesProcedure,
-		svc.ListPublishedSeries,
-		connect.WithSchema(catalogServiceMethods.ByName("ListPublishedSeries")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceGetSeriesDetailHandler := connect.NewUnaryHandler(
-		CatalogServiceGetSeriesDetailProcedure,
-		svc.GetSeriesDetail,
-		connect.WithSchema(catalogServiceMethods.ByName("GetSeriesDetail")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceGetSeriesEpisodeAccessHandler := connect.NewUnaryHandler(
-		CatalogServiceGetSeriesEpisodeAccessProcedure,
-		svc.GetSeriesEpisodeAccess,
-		connect.WithSchema(catalogServiceMethods.ByName("GetSeriesEpisodeAccess")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceGetEpisodeDetailHandler := connect.NewUnaryHandler(
-		CatalogServiceGetEpisodeDetailProcedure,
-		svc.GetEpisodeDetail,
-		connect.WithSchema(catalogServiceMethods.ByName("GetEpisodeDetail")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceListPublishedCreatorsHandler := connect.NewUnaryHandler(
-		CatalogServiceListPublishedCreatorsProcedure,
-		svc.ListPublishedCreators,
-		connect.WithSchema(catalogServiceMethods.ByName("ListPublishedCreators")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceGetPublishedCreatorDetailHandler := connect.NewUnaryHandler(
-		CatalogServiceGetPublishedCreatorDetailProcedure,
-		svc.GetPublishedCreatorDetail,
-		connect.WithSchema(catalogServiceMethods.ByName("GetPublishedCreatorDetail")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceGetPublishedLabelDetailHandler := connect.NewUnaryHandler(
-		CatalogServiceGetPublishedLabelDetailProcedure,
-		svc.GetPublishedLabelDetail,
-		connect.WithSchema(catalogServiceMethods.ByName("GetPublishedLabelDetail")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceListPublishedGenresHandler := connect.NewUnaryHandler(
-		CatalogServiceListPublishedGenresProcedure,
-		svc.ListPublishedGenres,
-		connect.WithSchema(catalogServiceMethods.ByName("ListPublishedGenres")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceListPublishedTagsHandler := connect.NewUnaryHandler(
-		CatalogServiceListPublishedTagsProcedure,
-		svc.ListPublishedTags,
-		connect.WithSchema(catalogServiceMethods.ByName("ListPublishedTags")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceSearchPublishedSeriesHandler := connect.NewUnaryHandler(
-		CatalogServiceSearchPublishedSeriesProcedure,
-		svc.SearchPublishedSeries,
-		connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedSeries")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceSearchPublishedCreatorsHandler := connect.NewUnaryHandler(
-		CatalogServiceSearchPublishedCreatorsProcedure,
-		svc.SearchPublishedCreators,
-		connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedCreators")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceSearchPublishedLabelsHandler := connect.NewUnaryHandler(
-		CatalogServiceSearchPublishedLabelsProcedure,
-		svc.SearchPublishedLabels,
-		connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedLabels")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceListRecommendedSeriesHandler := connect.NewUnaryHandler(
-		CatalogServiceListRecommendedSeriesProcedure,
-		svc.ListRecommendedSeries,
-		connect.WithSchema(catalogServiceMethods.ByName("ListRecommendedSeries")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceListMyRecommendedSeriesHandler := connect.NewUnaryHandler(
-		CatalogServiceListMyRecommendedSeriesProcedure,
-		svc.ListMyRecommendedSeries,
-		connect.WithSchema(catalogServiceMethods.ByName("ListMyRecommendedSeries")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceListRankedSeriesHandler := connect.NewUnaryHandler(
-		CatalogServiceListRankedSeriesProcedure,
-		svc.ListRankedSeries,
-		connect.WithSchema(catalogServiceMethods.ByName("ListRankedSeries")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceListRelatedSeriesHandler := connect.NewUnaryHandler(
-		CatalogServiceListRelatedSeriesProcedure,
-		svc.ListRelatedSeries,
-		connect.WithSchema(catalogServiceMethods.ByName("ListRelatedSeries")),
-		connect.WithHandlerOptions(opts...),
-	)
-	catalogServiceListSitemapEntriesHandler := connect.NewUnaryHandler(
-		CatalogServiceListSitemapEntriesProcedure,
-		svc.ListSitemapEntries,
-		connect.WithSchema(catalogServiceMethods.ByName("ListSitemapEntries")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.v1.CatalogService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case CatalogServiceListPublishedLabelsProcedure:
-			catalogServiceListPublishedLabelsHandler.ServeHTTP(w, r)
-		case CatalogServiceListPublishedSeriesProcedure:
-			catalogServiceListPublishedSeriesHandler.ServeHTTP(w, r)
-		case CatalogServiceGetSeriesDetailProcedure:
-			catalogServiceGetSeriesDetailHandler.ServeHTTP(w, r)
-		case CatalogServiceGetSeriesEpisodeAccessProcedure:
-			catalogServiceGetSeriesEpisodeAccessHandler.ServeHTTP(w, r)
-		case CatalogServiceGetEpisodeDetailProcedure:
-			catalogServiceGetEpisodeDetailHandler.ServeHTTP(w, r)
-		case CatalogServiceListPublishedCreatorsProcedure:
-			catalogServiceListPublishedCreatorsHandler.ServeHTTP(w, r)
-		case CatalogServiceGetPublishedCreatorDetailProcedure:
-			catalogServiceGetPublishedCreatorDetailHandler.ServeHTTP(w, r)
-		case CatalogServiceGetPublishedLabelDetailProcedure:
-			catalogServiceGetPublishedLabelDetailHandler.ServeHTTP(w, r)
-		case CatalogServiceListPublishedGenresProcedure:
-			catalogServiceListPublishedGenresHandler.ServeHTTP(w, r)
-		case CatalogServiceListPublishedTagsProcedure:
-			catalogServiceListPublishedTagsHandler.ServeHTTP(w, r)
-		case CatalogServiceSearchPublishedSeriesProcedure:
-			catalogServiceSearchPublishedSeriesHandler.ServeHTTP(w, r)
-		case CatalogServiceSearchPublishedCreatorsProcedure:
-			catalogServiceSearchPublishedCreatorsHandler.ServeHTTP(w, r)
-		case CatalogServiceSearchPublishedLabelsProcedure:
-			catalogServiceSearchPublishedLabelsHandler.ServeHTTP(w, r)
-		case CatalogServiceListRecommendedSeriesProcedure:
-			catalogServiceListRecommendedSeriesHandler.ServeHTTP(w, r)
-		case CatalogServiceListMyRecommendedSeriesProcedure:
-			catalogServiceListMyRecommendedSeriesHandler.ServeHTTP(w, r)
-		case CatalogServiceListRankedSeriesProcedure:
-			catalogServiceListRankedSeriesHandler.ServeHTTP(w, r)
-		case CatalogServiceListRelatedSeriesProcedure:
-			catalogServiceListRelatedSeriesHandler.ServeHTTP(w, r)
-		case CatalogServiceListSitemapEntriesProcedure:
-			catalogServiceListSitemapEntriesHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedCatalogServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedCatalogServiceHandler struct{}
 
-func (UnimplementedCatalogServiceHandler) ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListPublishedLabels is not implemented"))
+func (UnimplementedCatalogServiceHandler) ListPublishedLabels(context.Context, *v1.ListPublishedLabelsRequest) (*v1.ListPublishedLabelsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.ListPublishedLabels is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) ListPublishedSeries(context.Context, *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListPublishedSeries is not implemented"))
+func (UnimplementedCatalogServiceHandler) ListPublishedSeries(context.Context, *v1.ListPublishedSeriesRequest) (*v1.ListPublishedSeriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.ListPublishedSeries is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) GetSeriesDetail(context.Context, *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.GetSeriesDetail is not implemented"))
+func (UnimplementedCatalogServiceHandler) GetSeriesDetail(context.Context, *v1.GetSeriesDetailRequest) (*v1.GetSeriesDetailResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.GetSeriesDetail is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) GetSeriesEpisodeAccess(context.Context, *connect.Request[v1.GetSeriesEpisodeAccessRequest]) (*connect.Response[v1.GetSeriesEpisodeAccessResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.GetSeriesEpisodeAccess is not implemented"))
+func (UnimplementedCatalogServiceHandler) GetSeriesEpisodeAccess(context.Context, *v1.GetSeriesEpisodeAccessRequest) (*v1.GetSeriesEpisodeAccessResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.GetSeriesEpisodeAccess is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) GetEpisodeDetail(context.Context, *connect.Request[v1.GetEpisodeDetailRequest]) (*connect.Response[v1.GetEpisodeDetailResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.GetEpisodeDetail is not implemented"))
+func (UnimplementedCatalogServiceHandler) GetEpisodeDetail(context.Context, *v1.GetEpisodeDetailRequest) (*v1.GetEpisodeDetailResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.GetEpisodeDetail is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) ListPublishedCreators(context.Context, *connect.Request[v1.ListPublishedCreatorsRequest]) (*connect.Response[v1.ListPublishedCreatorsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListPublishedCreators is not implemented"))
+func (UnimplementedCatalogServiceHandler) ListPublishedCreators(context.Context, *v1.ListPublishedCreatorsRequest) (*v1.ListPublishedCreatorsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.ListPublishedCreators is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) GetPublishedCreatorDetail(context.Context, *connect.Request[v1.GetPublishedCreatorDetailRequest]) (*connect.Response[v1.GetPublishedCreatorDetailResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.GetPublishedCreatorDetail is not implemented"))
+func (UnimplementedCatalogServiceHandler) GetPublishedCreatorDetail(context.Context, *v1.GetPublishedCreatorDetailRequest) (*v1.GetPublishedCreatorDetailResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.GetPublishedCreatorDetail is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.GetPublishedLabelDetail is not implemented"))
+func (UnimplementedCatalogServiceHandler) GetPublishedLabelDetail(context.Context, *v1.GetPublishedLabelDetailRequest) (*v1.GetPublishedLabelDetailResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.GetPublishedLabelDetail is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) ListPublishedGenres(context.Context, *connect.Request[v1.ListPublishedGenresRequest]) (*connect.Response[v1.ListPublishedGenresResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListPublishedGenres is not implemented"))
+func (UnimplementedCatalogServiceHandler) ListPublishedGenres(context.Context, *v1.ListPublishedGenresRequest) (*v1.ListPublishedGenresResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.ListPublishedGenres is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) ListPublishedTags(context.Context, *connect.Request[v1.ListPublishedTagsRequest]) (*connect.Response[v1.ListPublishedTagsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListPublishedTags is not implemented"))
+func (UnimplementedCatalogServiceHandler) ListPublishedTags(context.Context, *v1.ListPublishedTagsRequest) (*v1.ListPublishedTagsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.ListPublishedTags is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.SearchPublishedSeries is not implemented"))
+func (UnimplementedCatalogServiceHandler) SearchPublishedSeries(context.Context, *v1.SearchPublishedSeriesRequest) (*v1.SearchPublishedSeriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.SearchPublishedSeries is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) SearchPublishedCreators(context.Context, *connect.Request[v1.SearchPublishedCreatorsRequest]) (*connect.Response[v1.SearchPublishedCreatorsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.SearchPublishedCreators is not implemented"))
+func (UnimplementedCatalogServiceHandler) SearchPublishedCreators(context.Context, *v1.SearchPublishedCreatorsRequest) (*v1.SearchPublishedCreatorsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.SearchPublishedCreators is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) SearchPublishedLabels(context.Context, *connect.Request[v1.SearchPublishedLabelsRequest]) (*connect.Response[v1.SearchPublishedLabelsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.SearchPublishedLabels is not implemented"))
+func (UnimplementedCatalogServiceHandler) SearchPublishedLabels(context.Context, *v1.SearchPublishedLabelsRequest) (*v1.SearchPublishedLabelsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.SearchPublishedLabels is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) ListRecommendedSeries(context.Context, *connect.Request[v1.ListRecommendedSeriesRequest]) (*connect.Response[v1.ListRecommendedSeriesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListRecommendedSeries is not implemented"))
+func (UnimplementedCatalogServiceHandler) ListRecommendedSeries(context.Context, *v1.ListRecommendedSeriesRequest) (*v1.ListRecommendedSeriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.ListRecommendedSeries is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) ListMyRecommendedSeries(context.Context, *connect.Request[v1.ListMyRecommendedSeriesRequest]) (*connect.Response[v1.ListMyRecommendedSeriesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListMyRecommendedSeries is not implemented"))
+func (UnimplementedCatalogServiceHandler) ListMyRecommendedSeries(context.Context, *v1.ListMyRecommendedSeriesRequest) (*v1.ListMyRecommendedSeriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.ListMyRecommendedSeries is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) ListRankedSeries(context.Context, *connect.Request[v1.ListRankedSeriesRequest]) (*connect.Response[v1.ListRankedSeriesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListRankedSeries is not implemented"))
+func (UnimplementedCatalogServiceHandler) ListRankedSeries(context.Context, *v1.ListRankedSeriesRequest) (*v1.ListRankedSeriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.ListRankedSeries is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) ListRelatedSeries(context.Context, *connect.Request[v1.ListRelatedSeriesRequest]) (*connect.Response[v1.ListRelatedSeriesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListRelatedSeries is not implemented"))
+func (UnimplementedCatalogServiceHandler) ListRelatedSeries(context.Context, *v1.ListRelatedSeriesRequest) (*v1.ListRelatedSeriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.ListRelatedSeries is not implemented")
 }
 
-func (UnimplementedCatalogServiceHandler) ListSitemapEntries(context.Context, *connect.Request[v1.ListSitemapEntriesRequest]) (*connect.Response[v1.ListSitemapEntriesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListSitemapEntries is not implemented"))
+func (UnimplementedCatalogServiceHandler) ListSitemapEntries(context.Context, *v1.ListSitemapEntriesRequest) (*v1.ListSitemapEntriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.ListSitemapEntries is not implemented")
 }
+
+type catalogServiceClient struct {
+	client *connect.Client
+}
+
+func (c *catalogServiceClient) ListPublishedLabels(ctx context.Context, req *v1.ListPublishedLabelsRequest) (*v1.ListPublishedLabelsResponse, error) {
+	var res v1.ListPublishedLabelsResponse
+	if err := c.client.CallUnary(ctx, catalogServiceListPublishedLabelsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) ListPublishedSeries(ctx context.Context, req *v1.ListPublishedSeriesRequest) (*v1.ListPublishedSeriesResponse, error) {
+	var res v1.ListPublishedSeriesResponse
+	if err := c.client.CallUnary(ctx, catalogServiceListPublishedSeriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) GetSeriesDetail(ctx context.Context, req *v1.GetSeriesDetailRequest) (*v1.GetSeriesDetailResponse, error) {
+	var res v1.GetSeriesDetailResponse
+	if err := c.client.CallUnary(ctx, catalogServiceGetSeriesDetailSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) GetSeriesEpisodeAccess(ctx context.Context, req *v1.GetSeriesEpisodeAccessRequest) (*v1.GetSeriesEpisodeAccessResponse, error) {
+	var res v1.GetSeriesEpisodeAccessResponse
+	if err := c.client.CallUnary(ctx, catalogServiceGetSeriesEpisodeAccessSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) GetEpisodeDetail(ctx context.Context, req *v1.GetEpisodeDetailRequest) (*v1.GetEpisodeDetailResponse, error) {
+	var res v1.GetEpisodeDetailResponse
+	if err := c.client.CallUnary(ctx, catalogServiceGetEpisodeDetailSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) ListPublishedCreators(ctx context.Context, req *v1.ListPublishedCreatorsRequest) (*v1.ListPublishedCreatorsResponse, error) {
+	var res v1.ListPublishedCreatorsResponse
+	if err := c.client.CallUnary(ctx, catalogServiceListPublishedCreatorsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) GetPublishedCreatorDetail(ctx context.Context, req *v1.GetPublishedCreatorDetailRequest) (*v1.GetPublishedCreatorDetailResponse, error) {
+	var res v1.GetPublishedCreatorDetailResponse
+	if err := c.client.CallUnary(ctx, catalogServiceGetPublishedCreatorDetailSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) GetPublishedLabelDetail(ctx context.Context, req *v1.GetPublishedLabelDetailRequest) (*v1.GetPublishedLabelDetailResponse, error) {
+	var res v1.GetPublishedLabelDetailResponse
+	if err := c.client.CallUnary(ctx, catalogServiceGetPublishedLabelDetailSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) ListPublishedGenres(ctx context.Context, req *v1.ListPublishedGenresRequest) (*v1.ListPublishedGenresResponse, error) {
+	var res v1.ListPublishedGenresResponse
+	if err := c.client.CallUnary(ctx, catalogServiceListPublishedGenresSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) ListPublishedTags(ctx context.Context, req *v1.ListPublishedTagsRequest) (*v1.ListPublishedTagsResponse, error) {
+	var res v1.ListPublishedTagsResponse
+	if err := c.client.CallUnary(ctx, catalogServiceListPublishedTagsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) SearchPublishedSeries(ctx context.Context, req *v1.SearchPublishedSeriesRequest) (*v1.SearchPublishedSeriesResponse, error) {
+	var res v1.SearchPublishedSeriesResponse
+	if err := c.client.CallUnary(ctx, catalogServiceSearchPublishedSeriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) SearchPublishedCreators(ctx context.Context, req *v1.SearchPublishedCreatorsRequest) (*v1.SearchPublishedCreatorsResponse, error) {
+	var res v1.SearchPublishedCreatorsResponse
+	if err := c.client.CallUnary(ctx, catalogServiceSearchPublishedCreatorsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) SearchPublishedLabels(ctx context.Context, req *v1.SearchPublishedLabelsRequest) (*v1.SearchPublishedLabelsResponse, error) {
+	var res v1.SearchPublishedLabelsResponse
+	if err := c.client.CallUnary(ctx, catalogServiceSearchPublishedLabelsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) ListRecommendedSeries(ctx context.Context, req *v1.ListRecommendedSeriesRequest) (*v1.ListRecommendedSeriesResponse, error) {
+	var res v1.ListRecommendedSeriesResponse
+	if err := c.client.CallUnary(ctx, catalogServiceListRecommendedSeriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) ListMyRecommendedSeries(ctx context.Context, req *v1.ListMyRecommendedSeriesRequest) (*v1.ListMyRecommendedSeriesResponse, error) {
+	var res v1.ListMyRecommendedSeriesResponse
+	if err := c.client.CallUnary(ctx, catalogServiceListMyRecommendedSeriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) ListRankedSeries(ctx context.Context, req *v1.ListRankedSeriesRequest) (*v1.ListRankedSeriesResponse, error) {
+	var res v1.ListRankedSeriesResponse
+	if err := c.client.CallUnary(ctx, catalogServiceListRankedSeriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) ListRelatedSeries(ctx context.Context, req *v1.ListRelatedSeriesRequest) (*v1.ListRelatedSeriesResponse, error) {
+	var res v1.ListRelatedSeriesResponse
+	if err := c.client.CallUnary(ctx, catalogServiceListRelatedSeriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) ListSitemapEntries(ctx context.Context, req *v1.ListSitemapEntriesRequest) (*v1.ListSitemapEntriesResponse, error) {
+	var res v1.ListSitemapEntriesResponse
+	if err := c.client.CallUnary(ctx, catalogServiceListSitemapEntriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type catalogServiceHandler struct{ svc CatalogServiceHandler }
+
+func (h catalogServiceHandler) listPublishedLabels(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListPublishedLabelsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListPublishedLabels(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) listPublishedSeries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListPublishedSeriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListPublishedSeries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) getSeriesDetail(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetSeriesDetailRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetSeriesDetail(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) getSeriesEpisodeAccess(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetSeriesEpisodeAccessRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetSeriesEpisodeAccess(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) getEpisodeDetail(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetEpisodeDetailRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetEpisodeDetail(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) listPublishedCreators(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListPublishedCreatorsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListPublishedCreators(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) getPublishedCreatorDetail(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetPublishedCreatorDetailRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetPublishedCreatorDetail(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) getPublishedLabelDetail(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetPublishedLabelDetailRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetPublishedLabelDetail(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) listPublishedGenres(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListPublishedGenresRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListPublishedGenres(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) listPublishedTags(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListPublishedTagsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListPublishedTags(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) searchPublishedSeries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SearchPublishedSeriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SearchPublishedSeries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) searchPublishedCreators(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SearchPublishedCreatorsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SearchPublishedCreators(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) searchPublishedLabels(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SearchPublishedLabelsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SearchPublishedLabels(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) listRecommendedSeries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListRecommendedSeriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListRecommendedSeries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) listMyRecommendedSeries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListMyRecommendedSeriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListMyRecommendedSeries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) listRankedSeries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListRankedSeriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListRankedSeries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) listRelatedSeries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListRelatedSeriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListRelatedSeries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) listSitemapEntries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListSitemapEntriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListSitemapEntries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+var (
+	episodeReadServiceMarkEpisodeAsReadSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("EpisodeReadService").Methods().ByName("MarkEpisodeAsRead"),
+			Procedure:  EpisodeReadServiceMarkEpisodeAsReadProcedure,
+		}
+	})
+	episodeReadServiceSaveReadingPositionSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("EpisodeReadService").Methods().ByName("SaveReadingPosition"),
+			Procedure:  EpisodeReadServiceSaveReadingPositionProcedure,
+		}
+	})
+	episodeReadServiceGetMyReadingPositionSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("EpisodeReadService").Methods().ByName("GetMyReadingPosition"),
+			Procedure:  EpisodeReadServiceGetMyReadingPositionProcedure,
+		}
+	})
+	episodeReadServiceGetMySeriesProgressSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("EpisodeReadService").Methods().ByName("GetMySeriesProgress"),
+			Procedure:  EpisodeReadServiceGetMySeriesProgressProcedure,
+		}
+	})
+	episodeReadServiceListMyRecentSeriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("EpisodeReadService").Methods().ByName("ListMyRecentSeries"),
+			Procedure:  EpisodeReadServiceListMyRecentSeriesProcedure,
+		}
+	})
+	episodeReadServiceListMyEpisodeReadsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("EpisodeReadService").Methods().ByName("ListMyEpisodeReads"),
+			Procedure:  EpisodeReadServiceListMyEpisodeReadsProcedure,
+		}
+	})
+)
 
 // EpisodeReadServiceClient is a client for the publira.v1.EpisodeReadService service.
 type EpisodeReadServiceClient interface {
 	// Idempotently records that the authenticated member finished a currently
 	// published episode they may read. Unpublished, foreign, missing, and
 	// inaccessible episodes are all surfaced as NotFound.
-	MarkEpisodeAsRead(context.Context, *connect.Request[v1.MarkEpisodeAsReadRequest]) (*connect.Response[v1.MarkEpisodeAsReadResponse], error)
+	MarkEpisodeAsRead(context.Context, *v1.MarkEpisodeAsReadRequest) (*v1.MarkEpisodeAsReadResponse, error)
 	// Stores where the authenticated member stopped in an episode they may read.
 	// Saving the same page again changes nothing, and a page they went back to
 	// is accepted like any other. Unpublished, foreign, missing, and
 	// inaccessible episodes are all surfaced as NotFound.
-	SaveReadingPosition(context.Context, *connect.Request[v1.SaveReadingPositionRequest]) (*connect.Response[v1.SaveReadingPositionResponse], error)
+	SaveReadingPosition(context.Context, *v1.SaveReadingPositionRequest) (*v1.SaveReadingPositionResponse, error)
 	// Returns where the authenticated member stopped in an episode. An episode
 	// they may no longer read has no position, the same answer as one they never
 	// opened.
-	GetMyReadingPosition(context.Context, *connect.Request[v1.GetMyReadingPositionRequest]) (*connect.Response[v1.GetMyReadingPositionResponse], error)
+	GetMyReadingPosition(context.Context, *v1.GetMyReadingPositionRequest) (*v1.GetMyReadingPositionResponse, error)
 	// Returns the authenticated member's standing in one published series. It is
 	// separate from CatalogService.GetSeriesDetail so the series detail stays
 	// shared-cacheable while this read stays private.
-	GetMySeriesProgress(context.Context, *connect.Request[v1.GetMySeriesProgressRequest]) (*connect.Response[v1.GetMySeriesProgressResponse], error)
+	GetMySeriesProgress(context.Context, *v1.GetMySeriesProgressRequest) (*v1.GetMySeriesProgressResponse, error)
 	// The series the authenticated member was in the middle of, newest activity
 	// first, each with the episode to continue from. A series whose published
 	// episodes the member has all finished is not in the middle of anything and
 	// drops out until another episode is published. A series that is no longer
 	// published is skipped like one the member never read, so the list never
 	// names something the storefront has taken down.
-	ListMyRecentSeries(context.Context, *connect.Request[v1.ListMyRecentSeriesRequest]) (*connect.Response[v1.ListMyRecentSeriesResponse], error)
+	ListMyRecentSeries(context.Context, *v1.ListMyRecentSeriesRequest) (*v1.ListMyRecentSeriesResponse, error)
 	// The episodes the authenticated member has finished, most recent first. An
 	// episode whose series or listing is no longer published is skipped, the way
 	// ListMyRecentSeries skips one, so the history never names something the
 	// storefront has taken down. Body access is not re-checked: the member did
 	// read the episode, and an expired rental is still part of what they read.
-	ListMyEpisodeReads(context.Context, *connect.Request[v1.ListMyEpisodeReadsRequest]) (*connect.Response[v1.ListMyEpisodeReadsResponse], error)
+	ListMyEpisodeReads(context.Context, *v1.ListMyEpisodeReadsRequest) (*v1.ListMyEpisodeReadsResponse, error)
 }
 
-// NewEpisodeReadServiceClient constructs a client for the publira.v1.EpisodeReadService service. By
-// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
-// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
-// connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewEpisodeReadServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) EpisodeReadServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	episodeReadServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("EpisodeReadService").Methods()
-	return &episodeReadServiceClient{
-		markEpisodeAsRead: connect.NewClient[v1.MarkEpisodeAsReadRequest, v1.MarkEpisodeAsReadResponse](
-			httpClient,
-			baseURL+EpisodeReadServiceMarkEpisodeAsReadProcedure,
-			connect.WithSchema(episodeReadServiceMethods.ByName("MarkEpisodeAsRead")),
-			connect.WithClientOptions(opts...),
-		),
-		saveReadingPosition: connect.NewClient[v1.SaveReadingPositionRequest, v1.SaveReadingPositionResponse](
-			httpClient,
-			baseURL+EpisodeReadServiceSaveReadingPositionProcedure,
-			connect.WithSchema(episodeReadServiceMethods.ByName("SaveReadingPosition")),
-			connect.WithClientOptions(opts...),
-		),
-		getMyReadingPosition: connect.NewClient[v1.GetMyReadingPositionRequest, v1.GetMyReadingPositionResponse](
-			httpClient,
-			baseURL+EpisodeReadServiceGetMyReadingPositionProcedure,
-			connect.WithSchema(episodeReadServiceMethods.ByName("GetMyReadingPosition")),
-			connect.WithClientOptions(opts...),
-		),
-		getMySeriesProgress: connect.NewClient[v1.GetMySeriesProgressRequest, v1.GetMySeriesProgressResponse](
-			httpClient,
-			baseURL+EpisodeReadServiceGetMySeriesProgressProcedure,
-			connect.WithSchema(episodeReadServiceMethods.ByName("GetMySeriesProgress")),
-			connect.WithClientOptions(opts...),
-		),
-		listMyRecentSeries: connect.NewClient[v1.ListMyRecentSeriesRequest, v1.ListMyRecentSeriesResponse](
-			httpClient,
-			baseURL+EpisodeReadServiceListMyRecentSeriesProcedure,
-			connect.WithSchema(episodeReadServiceMethods.ByName("ListMyRecentSeries")),
-			connect.WithClientOptions(opts...),
-		),
-		listMyEpisodeReads: connect.NewClient[v1.ListMyEpisodeReadsRequest, v1.ListMyEpisodeReadsResponse](
-			httpClient,
-			baseURL+EpisodeReadServiceListMyEpisodeReadsProcedure,
-			connect.WithSchema(episodeReadServiceMethods.ByName("ListMyEpisodeReads")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// episodeReadServiceClient implements EpisodeReadServiceClient.
-type episodeReadServiceClient struct {
-	markEpisodeAsRead    *connect.Client[v1.MarkEpisodeAsReadRequest, v1.MarkEpisodeAsReadResponse]
-	saveReadingPosition  *connect.Client[v1.SaveReadingPositionRequest, v1.SaveReadingPositionResponse]
-	getMyReadingPosition *connect.Client[v1.GetMyReadingPositionRequest, v1.GetMyReadingPositionResponse]
-	getMySeriesProgress  *connect.Client[v1.GetMySeriesProgressRequest, v1.GetMySeriesProgressResponse]
-	listMyRecentSeries   *connect.Client[v1.ListMyRecentSeriesRequest, v1.ListMyRecentSeriesResponse]
-	listMyEpisodeReads   *connect.Client[v1.ListMyEpisodeReadsRequest, v1.ListMyEpisodeReadsResponse]
-}
-
-// MarkEpisodeAsRead calls publira.v1.EpisodeReadService.MarkEpisodeAsRead.
-func (c *episodeReadServiceClient) MarkEpisodeAsRead(ctx context.Context, req *connect.Request[v1.MarkEpisodeAsReadRequest]) (*connect.Response[v1.MarkEpisodeAsReadResponse], error) {
-	return c.markEpisodeAsRead.CallUnary(ctx, req)
-}
-
-// SaveReadingPosition calls publira.v1.EpisodeReadService.SaveReadingPosition.
-func (c *episodeReadServiceClient) SaveReadingPosition(ctx context.Context, req *connect.Request[v1.SaveReadingPositionRequest]) (*connect.Response[v1.SaveReadingPositionResponse], error) {
-	return c.saveReadingPosition.CallUnary(ctx, req)
-}
-
-// GetMyReadingPosition calls publira.v1.EpisodeReadService.GetMyReadingPosition.
-func (c *episodeReadServiceClient) GetMyReadingPosition(ctx context.Context, req *connect.Request[v1.GetMyReadingPositionRequest]) (*connect.Response[v1.GetMyReadingPositionResponse], error) {
-	return c.getMyReadingPosition.CallUnary(ctx, req)
-}
-
-// GetMySeriesProgress calls publira.v1.EpisodeReadService.GetMySeriesProgress.
-func (c *episodeReadServiceClient) GetMySeriesProgress(ctx context.Context, req *connect.Request[v1.GetMySeriesProgressRequest]) (*connect.Response[v1.GetMySeriesProgressResponse], error) {
-	return c.getMySeriesProgress.CallUnary(ctx, req)
-}
-
-// ListMyRecentSeries calls publira.v1.EpisodeReadService.ListMyRecentSeries.
-func (c *episodeReadServiceClient) ListMyRecentSeries(ctx context.Context, req *connect.Request[v1.ListMyRecentSeriesRequest]) (*connect.Response[v1.ListMyRecentSeriesResponse], error) {
-	return c.listMyRecentSeries.CallUnary(ctx, req)
-}
-
-// ListMyEpisodeReads calls publira.v1.EpisodeReadService.ListMyEpisodeReads.
-func (c *episodeReadServiceClient) ListMyEpisodeReads(ctx context.Context, req *connect.Request[v1.ListMyEpisodeReadsRequest]) (*connect.Response[v1.ListMyEpisodeReadsResponse], error) {
-	return c.listMyEpisodeReads.CallUnary(ctx, req)
+// NewEpisodeReadServiceClient constructs a client for the publira.v1.EpisodeReadService service.
+// Multiple service clients may share a single connect.Client.
+func NewEpisodeReadServiceClient(client *connect.Client) EpisodeReadServiceClient {
+	return &episodeReadServiceClient{client: client}
 }
 
 // EpisodeReadServiceHandler is an implementation of the publira.v1.EpisodeReadService service.
@@ -987,136 +1071,251 @@ type EpisodeReadServiceHandler interface {
 	// Idempotently records that the authenticated member finished a currently
 	// published episode they may read. Unpublished, foreign, missing, and
 	// inaccessible episodes are all surfaced as NotFound.
-	MarkEpisodeAsRead(context.Context, *connect.Request[v1.MarkEpisodeAsReadRequest]) (*connect.Response[v1.MarkEpisodeAsReadResponse], error)
+	MarkEpisodeAsRead(context.Context, *v1.MarkEpisodeAsReadRequest) (*v1.MarkEpisodeAsReadResponse, error)
 	// Stores where the authenticated member stopped in an episode they may read.
 	// Saving the same page again changes nothing, and a page they went back to
 	// is accepted like any other. Unpublished, foreign, missing, and
 	// inaccessible episodes are all surfaced as NotFound.
-	SaveReadingPosition(context.Context, *connect.Request[v1.SaveReadingPositionRequest]) (*connect.Response[v1.SaveReadingPositionResponse], error)
+	SaveReadingPosition(context.Context, *v1.SaveReadingPositionRequest) (*v1.SaveReadingPositionResponse, error)
 	// Returns where the authenticated member stopped in an episode. An episode
 	// they may no longer read has no position, the same answer as one they never
 	// opened.
-	GetMyReadingPosition(context.Context, *connect.Request[v1.GetMyReadingPositionRequest]) (*connect.Response[v1.GetMyReadingPositionResponse], error)
+	GetMyReadingPosition(context.Context, *v1.GetMyReadingPositionRequest) (*v1.GetMyReadingPositionResponse, error)
 	// Returns the authenticated member's standing in one published series. It is
 	// separate from CatalogService.GetSeriesDetail so the series detail stays
 	// shared-cacheable while this read stays private.
-	GetMySeriesProgress(context.Context, *connect.Request[v1.GetMySeriesProgressRequest]) (*connect.Response[v1.GetMySeriesProgressResponse], error)
+	GetMySeriesProgress(context.Context, *v1.GetMySeriesProgressRequest) (*v1.GetMySeriesProgressResponse, error)
 	// The series the authenticated member was in the middle of, newest activity
 	// first, each with the episode to continue from. A series whose published
 	// episodes the member has all finished is not in the middle of anything and
 	// drops out until another episode is published. A series that is no longer
 	// published is skipped like one the member never read, so the list never
 	// names something the storefront has taken down.
-	ListMyRecentSeries(context.Context, *connect.Request[v1.ListMyRecentSeriesRequest]) (*connect.Response[v1.ListMyRecentSeriesResponse], error)
+	ListMyRecentSeries(context.Context, *v1.ListMyRecentSeriesRequest) (*v1.ListMyRecentSeriesResponse, error)
 	// The episodes the authenticated member has finished, most recent first. An
 	// episode whose series or listing is no longer published is skipped, the way
 	// ListMyRecentSeries skips one, so the history never names something the
 	// storefront has taken down. Body access is not re-checked: the member did
 	// read the episode, and an expired rental is still part of what they read.
-	ListMyEpisodeReads(context.Context, *connect.Request[v1.ListMyEpisodeReadsRequest]) (*connect.Response[v1.ListMyEpisodeReadsResponse], error)
+	ListMyEpisodeReads(context.Context, *v1.ListMyEpisodeReadsRequest) (*v1.ListMyEpisodeReadsResponse, error)
 }
 
-// NewEpisodeReadServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewEpisodeReadServiceHandler(svc EpisodeReadServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	episodeReadServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("EpisodeReadService").Methods()
-	episodeReadServiceMarkEpisodeAsReadHandler := connect.NewUnaryHandler(
-		EpisodeReadServiceMarkEpisodeAsReadProcedure,
-		svc.MarkEpisodeAsRead,
-		connect.WithSchema(episodeReadServiceMethods.ByName("MarkEpisodeAsRead")),
-		connect.WithHandlerOptions(opts...),
+// RegisterEpisodeReadServiceHandler registers svc as the publira.v1.EpisodeReadService
+// implementation on server.
+func RegisterEpisodeReadServiceHandler(server *connect.Server, svc EpisodeReadServiceHandler) {
+	adapter := episodeReadServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: episodeReadServiceMarkEpisodeAsReadSpec(), Handler: adapter.markEpisodeAsRead},
+		connect.Method{Spec: episodeReadServiceSaveReadingPositionSpec(), Handler: adapter.saveReadingPosition},
+		connect.Method{Spec: episodeReadServiceGetMyReadingPositionSpec(), Handler: adapter.getMyReadingPosition},
+		connect.Method{Spec: episodeReadServiceGetMySeriesProgressSpec(), Handler: adapter.getMySeriesProgress},
+		connect.Method{Spec: episodeReadServiceListMyRecentSeriesSpec(), Handler: adapter.listMyRecentSeries},
+		connect.Method{Spec: episodeReadServiceListMyEpisodeReadsSpec(), Handler: adapter.listMyEpisodeReads},
 	)
-	episodeReadServiceSaveReadingPositionHandler := connect.NewUnaryHandler(
-		EpisodeReadServiceSaveReadingPositionProcedure,
-		svc.SaveReadingPosition,
-		connect.WithSchema(episodeReadServiceMethods.ByName("SaveReadingPosition")),
-		connect.WithHandlerOptions(opts...),
-	)
-	episodeReadServiceGetMyReadingPositionHandler := connect.NewUnaryHandler(
-		EpisodeReadServiceGetMyReadingPositionProcedure,
-		svc.GetMyReadingPosition,
-		connect.WithSchema(episodeReadServiceMethods.ByName("GetMyReadingPosition")),
-		connect.WithHandlerOptions(opts...),
-	)
-	episodeReadServiceGetMySeriesProgressHandler := connect.NewUnaryHandler(
-		EpisodeReadServiceGetMySeriesProgressProcedure,
-		svc.GetMySeriesProgress,
-		connect.WithSchema(episodeReadServiceMethods.ByName("GetMySeriesProgress")),
-		connect.WithHandlerOptions(opts...),
-	)
-	episodeReadServiceListMyRecentSeriesHandler := connect.NewUnaryHandler(
-		EpisodeReadServiceListMyRecentSeriesProcedure,
-		svc.ListMyRecentSeries,
-		connect.WithSchema(episodeReadServiceMethods.ByName("ListMyRecentSeries")),
-		connect.WithHandlerOptions(opts...),
-	)
-	episodeReadServiceListMyEpisodeReadsHandler := connect.NewUnaryHandler(
-		EpisodeReadServiceListMyEpisodeReadsProcedure,
-		svc.ListMyEpisodeReads,
-		connect.WithSchema(episodeReadServiceMethods.ByName("ListMyEpisodeReads")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.v1.EpisodeReadService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case EpisodeReadServiceMarkEpisodeAsReadProcedure:
-			episodeReadServiceMarkEpisodeAsReadHandler.ServeHTTP(w, r)
-		case EpisodeReadServiceSaveReadingPositionProcedure:
-			episodeReadServiceSaveReadingPositionHandler.ServeHTTP(w, r)
-		case EpisodeReadServiceGetMyReadingPositionProcedure:
-			episodeReadServiceGetMyReadingPositionHandler.ServeHTTP(w, r)
-		case EpisodeReadServiceGetMySeriesProgressProcedure:
-			episodeReadServiceGetMySeriesProgressHandler.ServeHTTP(w, r)
-		case EpisodeReadServiceListMyRecentSeriesProcedure:
-			episodeReadServiceListMyRecentSeriesHandler.ServeHTTP(w, r)
-		case EpisodeReadServiceListMyEpisodeReadsProcedure:
-			episodeReadServiceListMyEpisodeReadsHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedEpisodeReadServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedEpisodeReadServiceHandler struct{}
 
-func (UnimplementedEpisodeReadServiceHandler) MarkEpisodeAsRead(context.Context, *connect.Request[v1.MarkEpisodeAsReadRequest]) (*connect.Response[v1.MarkEpisodeAsReadResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.MarkEpisodeAsRead is not implemented"))
+func (UnimplementedEpisodeReadServiceHandler) MarkEpisodeAsRead(context.Context, *v1.MarkEpisodeAsReadRequest) (*v1.MarkEpisodeAsReadResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.EpisodeReadService.MarkEpisodeAsRead is not implemented")
 }
 
-func (UnimplementedEpisodeReadServiceHandler) SaveReadingPosition(context.Context, *connect.Request[v1.SaveReadingPositionRequest]) (*connect.Response[v1.SaveReadingPositionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.SaveReadingPosition is not implemented"))
+func (UnimplementedEpisodeReadServiceHandler) SaveReadingPosition(context.Context, *v1.SaveReadingPositionRequest) (*v1.SaveReadingPositionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.EpisodeReadService.SaveReadingPosition is not implemented")
 }
 
-func (UnimplementedEpisodeReadServiceHandler) GetMyReadingPosition(context.Context, *connect.Request[v1.GetMyReadingPositionRequest]) (*connect.Response[v1.GetMyReadingPositionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.GetMyReadingPosition is not implemented"))
+func (UnimplementedEpisodeReadServiceHandler) GetMyReadingPosition(context.Context, *v1.GetMyReadingPositionRequest) (*v1.GetMyReadingPositionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.EpisodeReadService.GetMyReadingPosition is not implemented")
 }
 
-func (UnimplementedEpisodeReadServiceHandler) GetMySeriesProgress(context.Context, *connect.Request[v1.GetMySeriesProgressRequest]) (*connect.Response[v1.GetMySeriesProgressResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.GetMySeriesProgress is not implemented"))
+func (UnimplementedEpisodeReadServiceHandler) GetMySeriesProgress(context.Context, *v1.GetMySeriesProgressRequest) (*v1.GetMySeriesProgressResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.EpisodeReadService.GetMySeriesProgress is not implemented")
 }
 
-func (UnimplementedEpisodeReadServiceHandler) ListMyRecentSeries(context.Context, *connect.Request[v1.ListMyRecentSeriesRequest]) (*connect.Response[v1.ListMyRecentSeriesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.ListMyRecentSeries is not implemented"))
+func (UnimplementedEpisodeReadServiceHandler) ListMyRecentSeries(context.Context, *v1.ListMyRecentSeriesRequest) (*v1.ListMyRecentSeriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.EpisodeReadService.ListMyRecentSeries is not implemented")
 }
 
-func (UnimplementedEpisodeReadServiceHandler) ListMyEpisodeReads(context.Context, *connect.Request[v1.ListMyEpisodeReadsRequest]) (*connect.Response[v1.ListMyEpisodeReadsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.EpisodeReadService.ListMyEpisodeReads is not implemented"))
+func (UnimplementedEpisodeReadServiceHandler) ListMyEpisodeReads(context.Context, *v1.ListMyEpisodeReadsRequest) (*v1.ListMyEpisodeReadsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.EpisodeReadService.ListMyEpisodeReads is not implemented")
 }
+
+type episodeReadServiceClient struct {
+	client *connect.Client
+}
+
+func (c *episodeReadServiceClient) MarkEpisodeAsRead(ctx context.Context, req *v1.MarkEpisodeAsReadRequest) (*v1.MarkEpisodeAsReadResponse, error) {
+	var res v1.MarkEpisodeAsReadResponse
+	if err := c.client.CallUnary(ctx, episodeReadServiceMarkEpisodeAsReadSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *episodeReadServiceClient) SaveReadingPosition(ctx context.Context, req *v1.SaveReadingPositionRequest) (*v1.SaveReadingPositionResponse, error) {
+	var res v1.SaveReadingPositionResponse
+	if err := c.client.CallUnary(ctx, episodeReadServiceSaveReadingPositionSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *episodeReadServiceClient) GetMyReadingPosition(ctx context.Context, req *v1.GetMyReadingPositionRequest) (*v1.GetMyReadingPositionResponse, error) {
+	var res v1.GetMyReadingPositionResponse
+	if err := c.client.CallUnary(ctx, episodeReadServiceGetMyReadingPositionSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *episodeReadServiceClient) GetMySeriesProgress(ctx context.Context, req *v1.GetMySeriesProgressRequest) (*v1.GetMySeriesProgressResponse, error) {
+	var res v1.GetMySeriesProgressResponse
+	if err := c.client.CallUnary(ctx, episodeReadServiceGetMySeriesProgressSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *episodeReadServiceClient) ListMyRecentSeries(ctx context.Context, req *v1.ListMyRecentSeriesRequest) (*v1.ListMyRecentSeriesResponse, error) {
+	var res v1.ListMyRecentSeriesResponse
+	if err := c.client.CallUnary(ctx, episodeReadServiceListMyRecentSeriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *episodeReadServiceClient) ListMyEpisodeReads(ctx context.Context, req *v1.ListMyEpisodeReadsRequest) (*v1.ListMyEpisodeReadsResponse, error) {
+	var res v1.ListMyEpisodeReadsResponse
+	if err := c.client.CallUnary(ctx, episodeReadServiceListMyEpisodeReadsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type episodeReadServiceHandler struct{ svc EpisodeReadServiceHandler }
+
+func (h episodeReadServiceHandler) markEpisodeAsRead(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.MarkEpisodeAsReadRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.MarkEpisodeAsRead(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h episodeReadServiceHandler) saveReadingPosition(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SaveReadingPositionRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SaveReadingPosition(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h episodeReadServiceHandler) getMyReadingPosition(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetMyReadingPositionRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetMyReadingPosition(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h episodeReadServiceHandler) getMySeriesProgress(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetMySeriesProgressRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetMySeriesProgress(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h episodeReadServiceHandler) listMyRecentSeries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListMyRecentSeriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListMyRecentSeries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h episodeReadServiceHandler) listMyEpisodeReads(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListMyEpisodeReadsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListMyEpisodeReads(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+var (
+	followServiceGetMyFollowStatusSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("FollowService").Methods().ByName("GetMyFollowStatus"),
+			Procedure:  FollowServiceGetMyFollowStatusProcedure,
+		}
+	})
+	followServiceFollowSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("FollowService").Methods().ByName("Follow"),
+			Procedure:  FollowServiceFollowProcedure,
+		}
+	})
+	followServiceUnfollowSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("FollowService").Methods().ByName("Unfollow"),
+			Procedure:  FollowServiceUnfollowProcedure,
+		}
+	})
+	followServiceListMyFollowsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("FollowService").Methods().ByName("ListMyFollows"),
+			Procedure:  FollowServiceListMyFollowsProcedure,
+		}
+	})
+	followServiceListMyFollowUpdatesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("FollowService").Methods().ByName("ListMyFollowUpdates"),
+			Procedure:  FollowServiceListMyFollowUpdatesProcedure,
+		}
+	})
+)
 
 // FollowServiceClient is a client for the publira.v1.FollowService service.
 type FollowServiceClient interface {
 	// Returns the authenticated member's relation to a currently public target.
-	GetMyFollowStatus(context.Context, *connect.Request[v1.GetMyFollowStatusRequest]) (*connect.Response[v1.GetMyFollowStatusResponse], error)
+	GetMyFollowStatus(context.Context, *v1.GetMyFollowStatusRequest) (*v1.GetMyFollowStatusResponse, error)
 	// Idempotently follows a currently public target.
-	Follow(context.Context, *connect.Request[v1.FollowRequest]) (*connect.Response[v1.FollowResponse], error)
+	Follow(context.Context, *v1.FollowRequest) (*v1.FollowResponse, error)
 	// Idempotently removes the follow for a currently public target.
-	Unfollow(context.Context, *connect.Request[v1.UnfollowRequest]) (*connect.Response[v1.UnfollowResponse], error)
+	Unfollow(context.Context, *v1.UnfollowRequest) (*v1.UnfollowResponse, error)
 	// Lists only the authenticated member's follows whose targets remain public,
 	// newest follow first.
-	ListMyFollows(context.Context, *connect.Request[v1.ListMyFollowsRequest]) (*connect.Response[v1.ListMyFollowsResponse], error)
+	ListMyFollows(context.Context, *v1.ListMyFollowsRequest) (*v1.ListMyFollowsResponse, error)
 	// The episodes that have arrived in what the authenticated member follows,
 	// most recently published first: the published episodes of a series they
 	// follow, and the published episodes credited to a creator they follow. A
@@ -1129,98 +1328,26 @@ type FollowServiceClient interface {
 	// An episode whose series or listing is no longer published is skipped, the
 	// way ListMyEpisodeReads skips one, so the list never names something the
 	// storefront has taken down.
-	ListMyFollowUpdates(context.Context, *connect.Request[v1.ListMyFollowUpdatesRequest]) (*connect.Response[v1.ListMyFollowUpdatesResponse], error)
+	ListMyFollowUpdates(context.Context, *v1.ListMyFollowUpdatesRequest) (*v1.ListMyFollowUpdatesResponse, error)
 }
 
-// NewFollowServiceClient constructs a client for the publira.v1.FollowService service. By default,
-// it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and
-// sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC()
-// or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewFollowServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) FollowServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	followServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("FollowService").Methods()
-	return &followServiceClient{
-		getMyFollowStatus: connect.NewClient[v1.GetMyFollowStatusRequest, v1.GetMyFollowStatusResponse](
-			httpClient,
-			baseURL+FollowServiceGetMyFollowStatusProcedure,
-			connect.WithSchema(followServiceMethods.ByName("GetMyFollowStatus")),
-			connect.WithClientOptions(opts...),
-		),
-		follow: connect.NewClient[v1.FollowRequest, v1.FollowResponse](
-			httpClient,
-			baseURL+FollowServiceFollowProcedure,
-			connect.WithSchema(followServiceMethods.ByName("Follow")),
-			connect.WithClientOptions(opts...),
-		),
-		unfollow: connect.NewClient[v1.UnfollowRequest, v1.UnfollowResponse](
-			httpClient,
-			baseURL+FollowServiceUnfollowProcedure,
-			connect.WithSchema(followServiceMethods.ByName("Unfollow")),
-			connect.WithClientOptions(opts...),
-		),
-		listMyFollows: connect.NewClient[v1.ListMyFollowsRequest, v1.ListMyFollowsResponse](
-			httpClient,
-			baseURL+FollowServiceListMyFollowsProcedure,
-			connect.WithSchema(followServiceMethods.ByName("ListMyFollows")),
-			connect.WithClientOptions(opts...),
-		),
-		listMyFollowUpdates: connect.NewClient[v1.ListMyFollowUpdatesRequest, v1.ListMyFollowUpdatesResponse](
-			httpClient,
-			baseURL+FollowServiceListMyFollowUpdatesProcedure,
-			connect.WithSchema(followServiceMethods.ByName("ListMyFollowUpdates")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// followServiceClient implements FollowServiceClient.
-type followServiceClient struct {
-	getMyFollowStatus   *connect.Client[v1.GetMyFollowStatusRequest, v1.GetMyFollowStatusResponse]
-	follow              *connect.Client[v1.FollowRequest, v1.FollowResponse]
-	unfollow            *connect.Client[v1.UnfollowRequest, v1.UnfollowResponse]
-	listMyFollows       *connect.Client[v1.ListMyFollowsRequest, v1.ListMyFollowsResponse]
-	listMyFollowUpdates *connect.Client[v1.ListMyFollowUpdatesRequest, v1.ListMyFollowUpdatesResponse]
-}
-
-// GetMyFollowStatus calls publira.v1.FollowService.GetMyFollowStatus.
-func (c *followServiceClient) GetMyFollowStatus(ctx context.Context, req *connect.Request[v1.GetMyFollowStatusRequest]) (*connect.Response[v1.GetMyFollowStatusResponse], error) {
-	return c.getMyFollowStatus.CallUnary(ctx, req)
-}
-
-// Follow calls publira.v1.FollowService.Follow.
-func (c *followServiceClient) Follow(ctx context.Context, req *connect.Request[v1.FollowRequest]) (*connect.Response[v1.FollowResponse], error) {
-	return c.follow.CallUnary(ctx, req)
-}
-
-// Unfollow calls publira.v1.FollowService.Unfollow.
-func (c *followServiceClient) Unfollow(ctx context.Context, req *connect.Request[v1.UnfollowRequest]) (*connect.Response[v1.UnfollowResponse], error) {
-	return c.unfollow.CallUnary(ctx, req)
-}
-
-// ListMyFollows calls publira.v1.FollowService.ListMyFollows.
-func (c *followServiceClient) ListMyFollows(ctx context.Context, req *connect.Request[v1.ListMyFollowsRequest]) (*connect.Response[v1.ListMyFollowsResponse], error) {
-	return c.listMyFollows.CallUnary(ctx, req)
-}
-
-// ListMyFollowUpdates calls publira.v1.FollowService.ListMyFollowUpdates.
-func (c *followServiceClient) ListMyFollowUpdates(ctx context.Context, req *connect.Request[v1.ListMyFollowUpdatesRequest]) (*connect.Response[v1.ListMyFollowUpdatesResponse], error) {
-	return c.listMyFollowUpdates.CallUnary(ctx, req)
+// NewFollowServiceClient constructs a client for the publira.v1.FollowService service. Multiple
+// service clients may share a single connect.Client.
+func NewFollowServiceClient(client *connect.Client) FollowServiceClient {
+	return &followServiceClient{client: client}
 }
 
 // FollowServiceHandler is an implementation of the publira.v1.FollowService service.
 type FollowServiceHandler interface {
 	// Returns the authenticated member's relation to a currently public target.
-	GetMyFollowStatus(context.Context, *connect.Request[v1.GetMyFollowStatusRequest]) (*connect.Response[v1.GetMyFollowStatusResponse], error)
+	GetMyFollowStatus(context.Context, *v1.GetMyFollowStatusRequest) (*v1.GetMyFollowStatusResponse, error)
 	// Idempotently follows a currently public target.
-	Follow(context.Context, *connect.Request[v1.FollowRequest]) (*connect.Response[v1.FollowResponse], error)
+	Follow(context.Context, *v1.FollowRequest) (*v1.FollowResponse, error)
 	// Idempotently removes the follow for a currently public target.
-	Unfollow(context.Context, *connect.Request[v1.UnfollowRequest]) (*connect.Response[v1.UnfollowResponse], error)
+	Unfollow(context.Context, *v1.UnfollowRequest) (*v1.UnfollowResponse, error)
 	// Lists only the authenticated member's follows whose targets remain public,
 	// newest follow first.
-	ListMyFollows(context.Context, *connect.Request[v1.ListMyFollowsRequest]) (*connect.Response[v1.ListMyFollowsResponse], error)
+	ListMyFollows(context.Context, *v1.ListMyFollowsRequest) (*v1.ListMyFollowsResponse, error)
 	// The episodes that have arrived in what the authenticated member follows,
 	// most recently published first: the published episodes of a series they
 	// follow, and the published episodes credited to a creator they follow. A
@@ -1233,86 +1360,174 @@ type FollowServiceHandler interface {
 	// An episode whose series or listing is no longer published is skipped, the
 	// way ListMyEpisodeReads skips one, so the list never names something the
 	// storefront has taken down.
-	ListMyFollowUpdates(context.Context, *connect.Request[v1.ListMyFollowUpdatesRequest]) (*connect.Response[v1.ListMyFollowUpdatesResponse], error)
+	ListMyFollowUpdates(context.Context, *v1.ListMyFollowUpdatesRequest) (*v1.ListMyFollowUpdatesResponse, error)
 }
 
-// NewFollowServiceHandler builds an HTTP handler from the service implementation. It returns the
-// path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewFollowServiceHandler(svc FollowServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	followServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("FollowService").Methods()
-	followServiceGetMyFollowStatusHandler := connect.NewUnaryHandler(
-		FollowServiceGetMyFollowStatusProcedure,
-		svc.GetMyFollowStatus,
-		connect.WithSchema(followServiceMethods.ByName("GetMyFollowStatus")),
-		connect.WithHandlerOptions(opts...),
+// RegisterFollowServiceHandler registers svc as the publira.v1.FollowService implementation on
+// server.
+func RegisterFollowServiceHandler(server *connect.Server, svc FollowServiceHandler) {
+	adapter := followServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: followServiceGetMyFollowStatusSpec(), Handler: adapter.getMyFollowStatus},
+		connect.Method{Spec: followServiceFollowSpec(), Handler: adapter.follow},
+		connect.Method{Spec: followServiceUnfollowSpec(), Handler: adapter.unfollow},
+		connect.Method{Spec: followServiceListMyFollowsSpec(), Handler: adapter.listMyFollows},
+		connect.Method{Spec: followServiceListMyFollowUpdatesSpec(), Handler: adapter.listMyFollowUpdates},
 	)
-	followServiceFollowHandler := connect.NewUnaryHandler(
-		FollowServiceFollowProcedure,
-		svc.Follow,
-		connect.WithSchema(followServiceMethods.ByName("Follow")),
-		connect.WithHandlerOptions(opts...),
-	)
-	followServiceUnfollowHandler := connect.NewUnaryHandler(
-		FollowServiceUnfollowProcedure,
-		svc.Unfollow,
-		connect.WithSchema(followServiceMethods.ByName("Unfollow")),
-		connect.WithHandlerOptions(opts...),
-	)
-	followServiceListMyFollowsHandler := connect.NewUnaryHandler(
-		FollowServiceListMyFollowsProcedure,
-		svc.ListMyFollows,
-		connect.WithSchema(followServiceMethods.ByName("ListMyFollows")),
-		connect.WithHandlerOptions(opts...),
-	)
-	followServiceListMyFollowUpdatesHandler := connect.NewUnaryHandler(
-		FollowServiceListMyFollowUpdatesProcedure,
-		svc.ListMyFollowUpdates,
-		connect.WithSchema(followServiceMethods.ByName("ListMyFollowUpdates")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.v1.FollowService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case FollowServiceGetMyFollowStatusProcedure:
-			followServiceGetMyFollowStatusHandler.ServeHTTP(w, r)
-		case FollowServiceFollowProcedure:
-			followServiceFollowHandler.ServeHTTP(w, r)
-		case FollowServiceUnfollowProcedure:
-			followServiceUnfollowHandler.ServeHTTP(w, r)
-		case FollowServiceListMyFollowsProcedure:
-			followServiceListMyFollowsHandler.ServeHTTP(w, r)
-		case FollowServiceListMyFollowUpdatesProcedure:
-			followServiceListMyFollowUpdatesHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedFollowServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedFollowServiceHandler struct{}
 
-func (UnimplementedFollowServiceHandler) GetMyFollowStatus(context.Context, *connect.Request[v1.GetMyFollowStatusRequest]) (*connect.Response[v1.GetMyFollowStatusResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.FollowService.GetMyFollowStatus is not implemented"))
+func (UnimplementedFollowServiceHandler) GetMyFollowStatus(context.Context, *v1.GetMyFollowStatusRequest) (*v1.GetMyFollowStatusResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.FollowService.GetMyFollowStatus is not implemented")
 }
 
-func (UnimplementedFollowServiceHandler) Follow(context.Context, *connect.Request[v1.FollowRequest]) (*connect.Response[v1.FollowResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.FollowService.Follow is not implemented"))
+func (UnimplementedFollowServiceHandler) Follow(context.Context, *v1.FollowRequest) (*v1.FollowResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.FollowService.Follow is not implemented")
 }
 
-func (UnimplementedFollowServiceHandler) Unfollow(context.Context, *connect.Request[v1.UnfollowRequest]) (*connect.Response[v1.UnfollowResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.FollowService.Unfollow is not implemented"))
+func (UnimplementedFollowServiceHandler) Unfollow(context.Context, *v1.UnfollowRequest) (*v1.UnfollowResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.FollowService.Unfollow is not implemented")
 }
 
-func (UnimplementedFollowServiceHandler) ListMyFollows(context.Context, *connect.Request[v1.ListMyFollowsRequest]) (*connect.Response[v1.ListMyFollowsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.FollowService.ListMyFollows is not implemented"))
+func (UnimplementedFollowServiceHandler) ListMyFollows(context.Context, *v1.ListMyFollowsRequest) (*v1.ListMyFollowsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.FollowService.ListMyFollows is not implemented")
 }
 
-func (UnimplementedFollowServiceHandler) ListMyFollowUpdates(context.Context, *connect.Request[v1.ListMyFollowUpdatesRequest]) (*connect.Response[v1.ListMyFollowUpdatesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.FollowService.ListMyFollowUpdates is not implemented"))
+func (UnimplementedFollowServiceHandler) ListMyFollowUpdates(context.Context, *v1.ListMyFollowUpdatesRequest) (*v1.ListMyFollowUpdatesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.FollowService.ListMyFollowUpdates is not implemented")
 }
+
+type followServiceClient struct {
+	client *connect.Client
+}
+
+func (c *followServiceClient) GetMyFollowStatus(ctx context.Context, req *v1.GetMyFollowStatusRequest) (*v1.GetMyFollowStatusResponse, error) {
+	var res v1.GetMyFollowStatusResponse
+	if err := c.client.CallUnary(ctx, followServiceGetMyFollowStatusSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *followServiceClient) Follow(ctx context.Context, req *v1.FollowRequest) (*v1.FollowResponse, error) {
+	var res v1.FollowResponse
+	if err := c.client.CallUnary(ctx, followServiceFollowSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *followServiceClient) Unfollow(ctx context.Context, req *v1.UnfollowRequest) (*v1.UnfollowResponse, error) {
+	var res v1.UnfollowResponse
+	if err := c.client.CallUnary(ctx, followServiceUnfollowSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *followServiceClient) ListMyFollows(ctx context.Context, req *v1.ListMyFollowsRequest) (*v1.ListMyFollowsResponse, error) {
+	var res v1.ListMyFollowsResponse
+	if err := c.client.CallUnary(ctx, followServiceListMyFollowsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *followServiceClient) ListMyFollowUpdates(ctx context.Context, req *v1.ListMyFollowUpdatesRequest) (*v1.ListMyFollowUpdatesResponse, error) {
+	var res v1.ListMyFollowUpdatesResponse
+	if err := c.client.CallUnary(ctx, followServiceListMyFollowUpdatesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type followServiceHandler struct{ svc FollowServiceHandler }
+
+func (h followServiceHandler) getMyFollowStatus(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetMyFollowStatusRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetMyFollowStatus(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h followServiceHandler) follow(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.FollowRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.Follow(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h followServiceHandler) unfollow(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UnfollowRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.Unfollow(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h followServiceHandler) listMyFollows(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListMyFollowsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListMyFollows(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h followServiceHandler) listMyFollowUpdates(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListMyFollowUpdatesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListMyFollowUpdates(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+var (
+	ratingServiceRateEpisodeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("RatingService").Methods().ByName("RateEpisode"),
+			Procedure:  RatingServiceRateEpisodeProcedure,
+		}
+	})
+	ratingServiceGetMyEpisodeRatingSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("RatingService").Methods().ByName("GetMyEpisodeRating"),
+			Procedure:  RatingServiceGetMyEpisodeRatingProcedure,
+		}
+	})
+	ratingServiceGetMySeriesRatingSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("RatingService").Methods().ByName("GetMySeriesRating"),
+			Procedure:  RatingServiceGetMySeriesRatingProcedure,
+		}
+	})
+)
 
 // RatingServiceClient is a client for the publira.v1.RatingService service.
 type RatingServiceClient interface {
@@ -1332,7 +1547,7 @@ type RatingServiceClient interface {
 	// An episode that credits a creator the reader's account is linked to is
 	// permission_denied with the ErrorInfo reason READER_CREDITED_ON_EPISODE,
 	// free or not: the credit opens the body but not the rating.
-	RateEpisode(context.Context, *connect.Request[v1.RateEpisodeRequest]) (*connect.Response[v1.RateEpisodeResponse], error)
+	RateEpisode(context.Context, *v1.RateEpisodeRequest) (*v1.RateEpisodeResponse, error)
 	// Returns the authenticated reader's rating of a currently published episode,
 	// how many readers have rated it, and which press mode governs it.
 	//
@@ -1343,7 +1558,7 @@ type RatingServiceClient interface {
 	// It also says whether the reader is credited on the episode, which is what
 	// RateEpisode refuses by and what GetEpisodeDetail reports only beside
 	// EPISODE_ACCESS_ENTITLED.
-	GetMyEpisodeRating(context.Context, *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error)
+	GetMyEpisodeRating(context.Context, *v1.GetMyEpisodeRatingRequest) (*v1.GetMyEpisodeRatingResponse, error)
 	// Returns what the authenticated reader's own reactions say about a currently
 	// published series: the mean of the scores they gave its episodes.
 	//
@@ -1351,61 +1566,13 @@ type RatingServiceClient interface {
 	// rated by reacting to the episodes it is made of, which is also why this
 	// answer covers only the episodes this reader reacted to rather than every
 	// episode of the series.
-	GetMySeriesRating(context.Context, *connect.Request[v1.GetMySeriesRatingRequest]) (*connect.Response[v1.GetMySeriesRatingResponse], error)
+	GetMySeriesRating(context.Context, *v1.GetMySeriesRatingRequest) (*v1.GetMySeriesRatingResponse, error)
 }
 
-// NewRatingServiceClient constructs a client for the publira.v1.RatingService service. By default,
-// it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and
-// sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC()
-// or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewRatingServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) RatingServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	ratingServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("RatingService").Methods()
-	return &ratingServiceClient{
-		rateEpisode: connect.NewClient[v1.RateEpisodeRequest, v1.RateEpisodeResponse](
-			httpClient,
-			baseURL+RatingServiceRateEpisodeProcedure,
-			connect.WithSchema(ratingServiceMethods.ByName("RateEpisode")),
-			connect.WithClientOptions(opts...),
-		),
-		getMyEpisodeRating: connect.NewClient[v1.GetMyEpisodeRatingRequest, v1.GetMyEpisodeRatingResponse](
-			httpClient,
-			baseURL+RatingServiceGetMyEpisodeRatingProcedure,
-			connect.WithSchema(ratingServiceMethods.ByName("GetMyEpisodeRating")),
-			connect.WithClientOptions(opts...),
-		),
-		getMySeriesRating: connect.NewClient[v1.GetMySeriesRatingRequest, v1.GetMySeriesRatingResponse](
-			httpClient,
-			baseURL+RatingServiceGetMySeriesRatingProcedure,
-			connect.WithSchema(ratingServiceMethods.ByName("GetMySeriesRating")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// ratingServiceClient implements RatingServiceClient.
-type ratingServiceClient struct {
-	rateEpisode        *connect.Client[v1.RateEpisodeRequest, v1.RateEpisodeResponse]
-	getMyEpisodeRating *connect.Client[v1.GetMyEpisodeRatingRequest, v1.GetMyEpisodeRatingResponse]
-	getMySeriesRating  *connect.Client[v1.GetMySeriesRatingRequest, v1.GetMySeriesRatingResponse]
-}
-
-// RateEpisode calls publira.v1.RatingService.RateEpisode.
-func (c *ratingServiceClient) RateEpisode(ctx context.Context, req *connect.Request[v1.RateEpisodeRequest]) (*connect.Response[v1.RateEpisodeResponse], error) {
-	return c.rateEpisode.CallUnary(ctx, req)
-}
-
-// GetMyEpisodeRating calls publira.v1.RatingService.GetMyEpisodeRating.
-func (c *ratingServiceClient) GetMyEpisodeRating(ctx context.Context, req *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error) {
-	return c.getMyEpisodeRating.CallUnary(ctx, req)
-}
-
-// GetMySeriesRating calls publira.v1.RatingService.GetMySeriesRating.
-func (c *ratingServiceClient) GetMySeriesRating(ctx context.Context, req *connect.Request[v1.GetMySeriesRatingRequest]) (*connect.Response[v1.GetMySeriesRatingResponse], error) {
-	return c.getMySeriesRating.CallUnary(ctx, req)
+// NewRatingServiceClient constructs a client for the publira.v1.RatingService service. Multiple
+// service clients may share a single connect.Client.
+func NewRatingServiceClient(client *connect.Client) RatingServiceClient {
+	return &ratingServiceClient{client: client}
 }
 
 // RatingServiceHandler is an implementation of the publira.v1.RatingService service.
@@ -1426,7 +1593,7 @@ type RatingServiceHandler interface {
 	// An episode that credits a creator the reader's account is linked to is
 	// permission_denied with the ErrorInfo reason READER_CREDITED_ON_EPISODE,
 	// free or not: the credit opens the body but not the rating.
-	RateEpisode(context.Context, *connect.Request[v1.RateEpisodeRequest]) (*connect.Response[v1.RateEpisodeResponse], error)
+	RateEpisode(context.Context, *v1.RateEpisodeRequest) (*v1.RateEpisodeResponse, error)
 	// Returns the authenticated reader's rating of a currently published episode,
 	// how many readers have rated it, and which press mode governs it.
 	//
@@ -1437,7 +1604,7 @@ type RatingServiceHandler interface {
 	// It also says whether the reader is credited on the episode, which is what
 	// RateEpisode refuses by and what GetEpisodeDetail reports only beside
 	// EPISODE_ACCESS_ENTITLED.
-	GetMyEpisodeRating(context.Context, *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error)
+	GetMyEpisodeRating(context.Context, *v1.GetMyEpisodeRatingRequest) (*v1.GetMyEpisodeRatingResponse, error)
 	// Returns what the authenticated reader's own reactions say about a currently
 	// published series: the mean of the scores they gave its episodes.
 	//
@@ -1445,62 +1612,110 @@ type RatingServiceHandler interface {
 	// rated by reacting to the episodes it is made of, which is also why this
 	// answer covers only the episodes this reader reacted to rather than every
 	// episode of the series.
-	GetMySeriesRating(context.Context, *connect.Request[v1.GetMySeriesRatingRequest]) (*connect.Response[v1.GetMySeriesRatingResponse], error)
+	GetMySeriesRating(context.Context, *v1.GetMySeriesRatingRequest) (*v1.GetMySeriesRatingResponse, error)
 }
 
-// NewRatingServiceHandler builds an HTTP handler from the service implementation. It returns the
-// path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewRatingServiceHandler(svc RatingServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	ratingServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("RatingService").Methods()
-	ratingServiceRateEpisodeHandler := connect.NewUnaryHandler(
-		RatingServiceRateEpisodeProcedure,
-		svc.RateEpisode,
-		connect.WithSchema(ratingServiceMethods.ByName("RateEpisode")),
-		connect.WithHandlerOptions(opts...),
+// RegisterRatingServiceHandler registers svc as the publira.v1.RatingService implementation on
+// server.
+func RegisterRatingServiceHandler(server *connect.Server, svc RatingServiceHandler) {
+	adapter := ratingServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: ratingServiceRateEpisodeSpec(), Handler: adapter.rateEpisode},
+		connect.Method{Spec: ratingServiceGetMyEpisodeRatingSpec(), Handler: adapter.getMyEpisodeRating},
+		connect.Method{Spec: ratingServiceGetMySeriesRatingSpec(), Handler: adapter.getMySeriesRating},
 	)
-	ratingServiceGetMyEpisodeRatingHandler := connect.NewUnaryHandler(
-		RatingServiceGetMyEpisodeRatingProcedure,
-		svc.GetMyEpisodeRating,
-		connect.WithSchema(ratingServiceMethods.ByName("GetMyEpisodeRating")),
-		connect.WithHandlerOptions(opts...),
-	)
-	ratingServiceGetMySeriesRatingHandler := connect.NewUnaryHandler(
-		RatingServiceGetMySeriesRatingProcedure,
-		svc.GetMySeriesRating,
-		connect.WithSchema(ratingServiceMethods.ByName("GetMySeriesRating")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.v1.RatingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case RatingServiceRateEpisodeProcedure:
-			ratingServiceRateEpisodeHandler.ServeHTTP(w, r)
-		case RatingServiceGetMyEpisodeRatingProcedure:
-			ratingServiceGetMyEpisodeRatingHandler.ServeHTTP(w, r)
-		case RatingServiceGetMySeriesRatingProcedure:
-			ratingServiceGetMySeriesRatingHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedRatingServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedRatingServiceHandler struct{}
 
-func (UnimplementedRatingServiceHandler) RateEpisode(context.Context, *connect.Request[v1.RateEpisodeRequest]) (*connect.Response[v1.RateEpisodeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.RatingService.RateEpisode is not implemented"))
+func (UnimplementedRatingServiceHandler) RateEpisode(context.Context, *v1.RateEpisodeRequest) (*v1.RateEpisodeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.RatingService.RateEpisode is not implemented")
 }
 
-func (UnimplementedRatingServiceHandler) GetMyEpisodeRating(context.Context, *connect.Request[v1.GetMyEpisodeRatingRequest]) (*connect.Response[v1.GetMyEpisodeRatingResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.RatingService.GetMyEpisodeRating is not implemented"))
+func (UnimplementedRatingServiceHandler) GetMyEpisodeRating(context.Context, *v1.GetMyEpisodeRatingRequest) (*v1.GetMyEpisodeRatingResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.RatingService.GetMyEpisodeRating is not implemented")
 }
 
-func (UnimplementedRatingServiceHandler) GetMySeriesRating(context.Context, *connect.Request[v1.GetMySeriesRatingRequest]) (*connect.Response[v1.GetMySeriesRatingResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.RatingService.GetMySeriesRating is not implemented"))
+func (UnimplementedRatingServiceHandler) GetMySeriesRating(context.Context, *v1.GetMySeriesRatingRequest) (*v1.GetMySeriesRatingResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.RatingService.GetMySeriesRating is not implemented")
 }
+
+type ratingServiceClient struct {
+	client *connect.Client
+}
+
+func (c *ratingServiceClient) RateEpisode(ctx context.Context, req *v1.RateEpisodeRequest) (*v1.RateEpisodeResponse, error) {
+	var res v1.RateEpisodeResponse
+	if err := c.client.CallUnary(ctx, ratingServiceRateEpisodeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *ratingServiceClient) GetMyEpisodeRating(ctx context.Context, req *v1.GetMyEpisodeRatingRequest) (*v1.GetMyEpisodeRatingResponse, error) {
+	var res v1.GetMyEpisodeRatingResponse
+	if err := c.client.CallUnary(ctx, ratingServiceGetMyEpisodeRatingSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *ratingServiceClient) GetMySeriesRating(ctx context.Context, req *v1.GetMySeriesRatingRequest) (*v1.GetMySeriesRatingResponse, error) {
+	var res v1.GetMySeriesRatingResponse
+	if err := c.client.CallUnary(ctx, ratingServiceGetMySeriesRatingSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type ratingServiceHandler struct{ svc RatingServiceHandler }
+
+func (h ratingServiceHandler) rateEpisode(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RateEpisodeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RateEpisode(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h ratingServiceHandler) getMyEpisodeRating(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetMyEpisodeRatingRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetMyEpisodeRating(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h ratingServiceHandler) getMySeriesRating(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetMySeriesRatingRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetMySeriesRating(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+var (
+	contentViewServiceRecordContentViewSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("ContentViewService").Methods().ByName("RecordContentView"),
+			Procedure:  ContentViewServiceRecordContentViewProcedure,
+		}
+	})
+)
 
 // ContentViewServiceClient is a client for the publira.v1.ContentViewService service.
 type ContentViewServiceClient interface {
@@ -1523,37 +1738,13 @@ type ContentViewServiceClient interface {
 	// Cross-tenant, unpublished, and missing targets are all surfaced as
 	// NotFound, matching FollowService and RatingService, so a view cannot be
 	// used to probe for hidden content.
-	RecordContentView(context.Context, *connect.Request[v1.RecordContentViewRequest]) (*connect.Response[v1.RecordContentViewResponse], error)
+	RecordContentView(context.Context, *v1.RecordContentViewRequest) (*v1.RecordContentViewResponse, error)
 }
 
-// NewContentViewServiceClient constructs a client for the publira.v1.ContentViewService service. By
-// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
-// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
-// connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewContentViewServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ContentViewServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	contentViewServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("ContentViewService").Methods()
-	return &contentViewServiceClient{
-		recordContentView: connect.NewClient[v1.RecordContentViewRequest, v1.RecordContentViewResponse](
-			httpClient,
-			baseURL+ContentViewServiceRecordContentViewProcedure,
-			connect.WithSchema(contentViewServiceMethods.ByName("RecordContentView")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// contentViewServiceClient implements ContentViewServiceClient.
-type contentViewServiceClient struct {
-	recordContentView *connect.Client[v1.RecordContentViewRequest, v1.RecordContentViewResponse]
-}
-
-// RecordContentView calls publira.v1.ContentViewService.RecordContentView.
-func (c *contentViewServiceClient) RecordContentView(ctx context.Context, req *connect.Request[v1.RecordContentViewRequest]) (*connect.Response[v1.RecordContentViewResponse], error) {
-	return c.recordContentView.CallUnary(ctx, req)
+// NewContentViewServiceClient constructs a client for the publira.v1.ContentViewService service.
+// Multiple service clients may share a single connect.Client.
+func NewContentViewServiceClient(client *connect.Client) ContentViewServiceClient {
+	return &contentViewServiceClient{client: client}
 }
 
 // ContentViewServiceHandler is an implementation of the publira.v1.ContentViewService service.
@@ -1577,244 +1768,311 @@ type ContentViewServiceHandler interface {
 	// Cross-tenant, unpublished, and missing targets are all surfaced as
 	// NotFound, matching FollowService and RatingService, so a view cannot be
 	// used to probe for hidden content.
-	RecordContentView(context.Context, *connect.Request[v1.RecordContentViewRequest]) (*connect.Response[v1.RecordContentViewResponse], error)
+	RecordContentView(context.Context, *v1.RecordContentViewRequest) (*v1.RecordContentViewResponse, error)
 }
 
-// NewContentViewServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewContentViewServiceHandler(svc ContentViewServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	contentViewServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("ContentViewService").Methods()
-	contentViewServiceRecordContentViewHandler := connect.NewUnaryHandler(
-		ContentViewServiceRecordContentViewProcedure,
-		svc.RecordContentView,
-		connect.WithSchema(contentViewServiceMethods.ByName("RecordContentView")),
-		connect.WithHandlerOptions(opts...),
+// RegisterContentViewServiceHandler registers svc as the publira.v1.ContentViewService
+// implementation on server.
+func RegisterContentViewServiceHandler(server *connect.Server, svc ContentViewServiceHandler) {
+	adapter := contentViewServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: contentViewServiceRecordContentViewSpec(), Handler: adapter.recordContentView},
 	)
-	return "/publira.v1.ContentViewService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case ContentViewServiceRecordContentViewProcedure:
-			contentViewServiceRecordContentViewHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedContentViewServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedContentViewServiceHandler struct{}
 
-func (UnimplementedContentViewServiceHandler) RecordContentView(context.Context, *connect.Request[v1.RecordContentViewRequest]) (*connect.Response[v1.RecordContentViewResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.ContentViewService.RecordContentView is not implemented"))
+func (UnimplementedContentViewServiceHandler) RecordContentView(context.Context, *v1.RecordContentViewRequest) (*v1.RecordContentViewResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.ContentViewService.RecordContentView is not implemented")
 }
+
+type contentViewServiceClient struct {
+	client *connect.Client
+}
+
+func (c *contentViewServiceClient) RecordContentView(ctx context.Context, req *v1.RecordContentViewRequest) (*v1.RecordContentViewResponse, error) {
+	var res v1.RecordContentViewResponse
+	if err := c.client.CallUnary(ctx, contentViewServiceRecordContentViewSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type contentViewServiceHandler struct{ svc ContentViewServiceHandler }
+
+func (h contentViewServiceHandler) recordContentView(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RecordContentViewRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RecordContentView(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+var (
+	purchaseServiceStartEpisodeCheckoutSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("StartEpisodeCheckout"),
+			Procedure:  PurchaseServiceStartEpisodeCheckoutProcedure,
+		}
+	})
+	purchaseServiceListMyPurchasesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("ListMyPurchases"),
+			Procedure:  PurchaseServiceListMyPurchasesProcedure,
+		}
+	})
+	purchaseServiceProcessPaymentWebhookSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("ProcessPaymentWebhook"),
+			Procedure:  PurchaseServiceProcessPaymentWebhookProcedure,
+		}
+	})
+	purchaseServiceStartStorePurchaseSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("StartStorePurchase"),
+			Procedure:  PurchaseServiceStartStorePurchaseProcedure,
+		}
+	})
+	purchaseServiceConfirmStorePurchaseSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("ConfirmStorePurchase"),
+			Procedure:  PurchaseServiceConfirmStorePurchaseProcedure,
+		}
+	})
+	purchaseServiceProcessAppStoreNotificationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("ProcessAppStoreNotification"),
+			Procedure:  PurchaseServiceProcessAppStoreNotificationProcedure,
+		}
+	})
+)
 
 // PurchaseServiceClient is a client for the publira.v1.PurchaseService service.
 type PurchaseServiceClient interface {
-	StartEpisodeCheckout(context.Context, *connect.Request[v1.StartEpisodeCheckoutRequest]) (*connect.Response[v1.StartEpisodeCheckoutResponse], error)
+	StartEpisodeCheckout(context.Context, *v1.StartEpisodeCheckoutRequest) (*v1.StartEpisodeCheckoutResponse, error)
 	// Lists only the authenticated reader's purchases in the requested tenant.
-	ListMyPurchases(context.Context, *connect.Request[v1.ListMyPurchasesRequest]) (*connect.Response[v1.ListMyPurchasesResponse], error)
-	ProcessPaymentWebhook(context.Context, *connect.Request[v1.ProcessPaymentWebhookRequest]) (*connect.Response[v1.ProcessPaymentWebhookResponse], error)
-	StartStorePurchase(context.Context, *connect.Request[v1.StartStorePurchaseRequest]) (*connect.Response[v1.StartStorePurchaseResponse], error)
-	ConfirmStorePurchase(context.Context, *connect.Request[v1.ConfirmStorePurchaseRequest]) (*connect.Response[v1.ConfirmStorePurchaseResponse], error)
-	ProcessAppStoreNotification(context.Context, *connect.Request[v1.ProcessAppStoreNotificationRequest]) (*connect.Response[v1.ProcessAppStoreNotificationResponse], error)
+	ListMyPurchases(context.Context, *v1.ListMyPurchasesRequest) (*v1.ListMyPurchasesResponse, error)
+	ProcessPaymentWebhook(context.Context, *v1.ProcessPaymentWebhookRequest) (*v1.ProcessPaymentWebhookResponse, error)
+	StartStorePurchase(context.Context, *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error)
+	ConfirmStorePurchase(context.Context, *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error)
+	ProcessAppStoreNotification(context.Context, *v1.ProcessAppStoreNotificationRequest) (*v1.ProcessAppStoreNotificationResponse, error)
 }
 
-// NewPurchaseServiceClient constructs a client for the publira.v1.PurchaseService service. By
-// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
-// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
-// connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewPurchaseServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PurchaseServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	purchaseServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods()
-	return &purchaseServiceClient{
-		startEpisodeCheckout: connect.NewClient[v1.StartEpisodeCheckoutRequest, v1.StartEpisodeCheckoutResponse](
-			httpClient,
-			baseURL+PurchaseServiceStartEpisodeCheckoutProcedure,
-			connect.WithSchema(purchaseServiceMethods.ByName("StartEpisodeCheckout")),
-			connect.WithClientOptions(opts...),
-		),
-		listMyPurchases: connect.NewClient[v1.ListMyPurchasesRequest, v1.ListMyPurchasesResponse](
-			httpClient,
-			baseURL+PurchaseServiceListMyPurchasesProcedure,
-			connect.WithSchema(purchaseServiceMethods.ByName("ListMyPurchases")),
-			connect.WithClientOptions(opts...),
-		),
-		processPaymentWebhook: connect.NewClient[v1.ProcessPaymentWebhookRequest, v1.ProcessPaymentWebhookResponse](
-			httpClient,
-			baseURL+PurchaseServiceProcessPaymentWebhookProcedure,
-			connect.WithSchema(purchaseServiceMethods.ByName("ProcessPaymentWebhook")),
-			connect.WithClientOptions(opts...),
-		),
-		startStorePurchase: connect.NewClient[v1.StartStorePurchaseRequest, v1.StartStorePurchaseResponse](
-			httpClient,
-			baseURL+PurchaseServiceStartStorePurchaseProcedure,
-			connect.WithSchema(purchaseServiceMethods.ByName("StartStorePurchase")),
-			connect.WithClientOptions(opts...),
-		),
-		confirmStorePurchase: connect.NewClient[v1.ConfirmStorePurchaseRequest, v1.ConfirmStorePurchaseResponse](
-			httpClient,
-			baseURL+PurchaseServiceConfirmStorePurchaseProcedure,
-			connect.WithSchema(purchaseServiceMethods.ByName("ConfirmStorePurchase")),
-			connect.WithClientOptions(opts...),
-		),
-		processAppStoreNotification: connect.NewClient[v1.ProcessAppStoreNotificationRequest, v1.ProcessAppStoreNotificationResponse](
-			httpClient,
-			baseURL+PurchaseServiceProcessAppStoreNotificationProcedure,
-			connect.WithSchema(purchaseServiceMethods.ByName("ProcessAppStoreNotification")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// purchaseServiceClient implements PurchaseServiceClient.
-type purchaseServiceClient struct {
-	startEpisodeCheckout        *connect.Client[v1.StartEpisodeCheckoutRequest, v1.StartEpisodeCheckoutResponse]
-	listMyPurchases             *connect.Client[v1.ListMyPurchasesRequest, v1.ListMyPurchasesResponse]
-	processPaymentWebhook       *connect.Client[v1.ProcessPaymentWebhookRequest, v1.ProcessPaymentWebhookResponse]
-	startStorePurchase          *connect.Client[v1.StartStorePurchaseRequest, v1.StartStorePurchaseResponse]
-	confirmStorePurchase        *connect.Client[v1.ConfirmStorePurchaseRequest, v1.ConfirmStorePurchaseResponse]
-	processAppStoreNotification *connect.Client[v1.ProcessAppStoreNotificationRequest, v1.ProcessAppStoreNotificationResponse]
-}
-
-// StartEpisodeCheckout calls publira.v1.PurchaseService.StartEpisodeCheckout.
-func (c *purchaseServiceClient) StartEpisodeCheckout(ctx context.Context, req *connect.Request[v1.StartEpisodeCheckoutRequest]) (*connect.Response[v1.StartEpisodeCheckoutResponse], error) {
-	return c.startEpisodeCheckout.CallUnary(ctx, req)
-}
-
-// ListMyPurchases calls publira.v1.PurchaseService.ListMyPurchases.
-func (c *purchaseServiceClient) ListMyPurchases(ctx context.Context, req *connect.Request[v1.ListMyPurchasesRequest]) (*connect.Response[v1.ListMyPurchasesResponse], error) {
-	return c.listMyPurchases.CallUnary(ctx, req)
-}
-
-// ProcessPaymentWebhook calls publira.v1.PurchaseService.ProcessPaymentWebhook.
-func (c *purchaseServiceClient) ProcessPaymentWebhook(ctx context.Context, req *connect.Request[v1.ProcessPaymentWebhookRequest]) (*connect.Response[v1.ProcessPaymentWebhookResponse], error) {
-	return c.processPaymentWebhook.CallUnary(ctx, req)
-}
-
-// StartStorePurchase calls publira.v1.PurchaseService.StartStorePurchase.
-func (c *purchaseServiceClient) StartStorePurchase(ctx context.Context, req *connect.Request[v1.StartStorePurchaseRequest]) (*connect.Response[v1.StartStorePurchaseResponse], error) {
-	return c.startStorePurchase.CallUnary(ctx, req)
-}
-
-// ConfirmStorePurchase calls publira.v1.PurchaseService.ConfirmStorePurchase.
-func (c *purchaseServiceClient) ConfirmStorePurchase(ctx context.Context, req *connect.Request[v1.ConfirmStorePurchaseRequest]) (*connect.Response[v1.ConfirmStorePurchaseResponse], error) {
-	return c.confirmStorePurchase.CallUnary(ctx, req)
-}
-
-// ProcessAppStoreNotification calls publira.v1.PurchaseService.ProcessAppStoreNotification.
-func (c *purchaseServiceClient) ProcessAppStoreNotification(ctx context.Context, req *connect.Request[v1.ProcessAppStoreNotificationRequest]) (*connect.Response[v1.ProcessAppStoreNotificationResponse], error) {
-	return c.processAppStoreNotification.CallUnary(ctx, req)
+// NewPurchaseServiceClient constructs a client for the publira.v1.PurchaseService service. Multiple
+// service clients may share a single connect.Client.
+func NewPurchaseServiceClient(client *connect.Client) PurchaseServiceClient {
+	return &purchaseServiceClient{client: client}
 }
 
 // PurchaseServiceHandler is an implementation of the publira.v1.PurchaseService service.
 type PurchaseServiceHandler interface {
-	StartEpisodeCheckout(context.Context, *connect.Request[v1.StartEpisodeCheckoutRequest]) (*connect.Response[v1.StartEpisodeCheckoutResponse], error)
+	StartEpisodeCheckout(context.Context, *v1.StartEpisodeCheckoutRequest) (*v1.StartEpisodeCheckoutResponse, error)
 	// Lists only the authenticated reader's purchases in the requested tenant.
-	ListMyPurchases(context.Context, *connect.Request[v1.ListMyPurchasesRequest]) (*connect.Response[v1.ListMyPurchasesResponse], error)
-	ProcessPaymentWebhook(context.Context, *connect.Request[v1.ProcessPaymentWebhookRequest]) (*connect.Response[v1.ProcessPaymentWebhookResponse], error)
-	StartStorePurchase(context.Context, *connect.Request[v1.StartStorePurchaseRequest]) (*connect.Response[v1.StartStorePurchaseResponse], error)
-	ConfirmStorePurchase(context.Context, *connect.Request[v1.ConfirmStorePurchaseRequest]) (*connect.Response[v1.ConfirmStorePurchaseResponse], error)
-	ProcessAppStoreNotification(context.Context, *connect.Request[v1.ProcessAppStoreNotificationRequest]) (*connect.Response[v1.ProcessAppStoreNotificationResponse], error)
+	ListMyPurchases(context.Context, *v1.ListMyPurchasesRequest) (*v1.ListMyPurchasesResponse, error)
+	ProcessPaymentWebhook(context.Context, *v1.ProcessPaymentWebhookRequest) (*v1.ProcessPaymentWebhookResponse, error)
+	StartStorePurchase(context.Context, *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error)
+	ConfirmStorePurchase(context.Context, *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error)
+	ProcessAppStoreNotification(context.Context, *v1.ProcessAppStoreNotificationRequest) (*v1.ProcessAppStoreNotificationResponse, error)
 }
 
-// NewPurchaseServiceHandler builds an HTTP handler from the service implementation. It returns the
-// path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewPurchaseServiceHandler(svc PurchaseServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	purchaseServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods()
-	purchaseServiceStartEpisodeCheckoutHandler := connect.NewUnaryHandler(
-		PurchaseServiceStartEpisodeCheckoutProcedure,
-		svc.StartEpisodeCheckout,
-		connect.WithSchema(purchaseServiceMethods.ByName("StartEpisodeCheckout")),
-		connect.WithHandlerOptions(opts...),
+// RegisterPurchaseServiceHandler registers svc as the publira.v1.PurchaseService implementation on
+// server.
+func RegisterPurchaseServiceHandler(server *connect.Server, svc PurchaseServiceHandler) {
+	adapter := purchaseServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: purchaseServiceStartEpisodeCheckoutSpec(), Handler: adapter.startEpisodeCheckout},
+		connect.Method{Spec: purchaseServiceListMyPurchasesSpec(), Handler: adapter.listMyPurchases},
+		connect.Method{Spec: purchaseServiceProcessPaymentWebhookSpec(), Handler: adapter.processPaymentWebhook},
+		connect.Method{Spec: purchaseServiceStartStorePurchaseSpec(), Handler: adapter.startStorePurchase},
+		connect.Method{Spec: purchaseServiceConfirmStorePurchaseSpec(), Handler: adapter.confirmStorePurchase},
+		connect.Method{Spec: purchaseServiceProcessAppStoreNotificationSpec(), Handler: adapter.processAppStoreNotification},
 	)
-	purchaseServiceListMyPurchasesHandler := connect.NewUnaryHandler(
-		PurchaseServiceListMyPurchasesProcedure,
-		svc.ListMyPurchases,
-		connect.WithSchema(purchaseServiceMethods.ByName("ListMyPurchases")),
-		connect.WithHandlerOptions(opts...),
-	)
-	purchaseServiceProcessPaymentWebhookHandler := connect.NewUnaryHandler(
-		PurchaseServiceProcessPaymentWebhookProcedure,
-		svc.ProcessPaymentWebhook,
-		connect.WithSchema(purchaseServiceMethods.ByName("ProcessPaymentWebhook")),
-		connect.WithHandlerOptions(opts...),
-	)
-	purchaseServiceStartStorePurchaseHandler := connect.NewUnaryHandler(
-		PurchaseServiceStartStorePurchaseProcedure,
-		svc.StartStorePurchase,
-		connect.WithSchema(purchaseServiceMethods.ByName("StartStorePurchase")),
-		connect.WithHandlerOptions(opts...),
-	)
-	purchaseServiceConfirmStorePurchaseHandler := connect.NewUnaryHandler(
-		PurchaseServiceConfirmStorePurchaseProcedure,
-		svc.ConfirmStorePurchase,
-		connect.WithSchema(purchaseServiceMethods.ByName("ConfirmStorePurchase")),
-		connect.WithHandlerOptions(opts...),
-	)
-	purchaseServiceProcessAppStoreNotificationHandler := connect.NewUnaryHandler(
-		PurchaseServiceProcessAppStoreNotificationProcedure,
-		svc.ProcessAppStoreNotification,
-		connect.WithSchema(purchaseServiceMethods.ByName("ProcessAppStoreNotification")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.v1.PurchaseService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case PurchaseServiceStartEpisodeCheckoutProcedure:
-			purchaseServiceStartEpisodeCheckoutHandler.ServeHTTP(w, r)
-		case PurchaseServiceListMyPurchasesProcedure:
-			purchaseServiceListMyPurchasesHandler.ServeHTTP(w, r)
-		case PurchaseServiceProcessPaymentWebhookProcedure:
-			purchaseServiceProcessPaymentWebhookHandler.ServeHTTP(w, r)
-		case PurchaseServiceStartStorePurchaseProcedure:
-			purchaseServiceStartStorePurchaseHandler.ServeHTTP(w, r)
-		case PurchaseServiceConfirmStorePurchaseProcedure:
-			purchaseServiceConfirmStorePurchaseHandler.ServeHTTP(w, r)
-		case PurchaseServiceProcessAppStoreNotificationProcedure:
-			purchaseServiceProcessAppStoreNotificationHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedPurchaseServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedPurchaseServiceHandler struct{}
 
-func (UnimplementedPurchaseServiceHandler) StartEpisodeCheckout(context.Context, *connect.Request[v1.StartEpisodeCheckoutRequest]) (*connect.Response[v1.StartEpisodeCheckoutResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.StartEpisodeCheckout is not implemented"))
+func (UnimplementedPurchaseServiceHandler) StartEpisodeCheckout(context.Context, *v1.StartEpisodeCheckoutRequest) (*v1.StartEpisodeCheckoutResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.StartEpisodeCheckout is not implemented")
 }
 
-func (UnimplementedPurchaseServiceHandler) ListMyPurchases(context.Context, *connect.Request[v1.ListMyPurchasesRequest]) (*connect.Response[v1.ListMyPurchasesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.ListMyPurchases is not implemented"))
+func (UnimplementedPurchaseServiceHandler) ListMyPurchases(context.Context, *v1.ListMyPurchasesRequest) (*v1.ListMyPurchasesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.ListMyPurchases is not implemented")
 }
 
-func (UnimplementedPurchaseServiceHandler) ProcessPaymentWebhook(context.Context, *connect.Request[v1.ProcessPaymentWebhookRequest]) (*connect.Response[v1.ProcessPaymentWebhookResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.ProcessPaymentWebhook is not implemented"))
+func (UnimplementedPurchaseServiceHandler) ProcessPaymentWebhook(context.Context, *v1.ProcessPaymentWebhookRequest) (*v1.ProcessPaymentWebhookResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.ProcessPaymentWebhook is not implemented")
 }
 
-func (UnimplementedPurchaseServiceHandler) StartStorePurchase(context.Context, *connect.Request[v1.StartStorePurchaseRequest]) (*connect.Response[v1.StartStorePurchaseResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.StartStorePurchase is not implemented"))
+func (UnimplementedPurchaseServiceHandler) StartStorePurchase(context.Context, *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.StartStorePurchase is not implemented")
 }
 
-func (UnimplementedPurchaseServiceHandler) ConfirmStorePurchase(context.Context, *connect.Request[v1.ConfirmStorePurchaseRequest]) (*connect.Response[v1.ConfirmStorePurchaseResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.ConfirmStorePurchase is not implemented"))
+func (UnimplementedPurchaseServiceHandler) ConfirmStorePurchase(context.Context, *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.ConfirmStorePurchase is not implemented")
 }
 
-func (UnimplementedPurchaseServiceHandler) ProcessAppStoreNotification(context.Context, *connect.Request[v1.ProcessAppStoreNotificationRequest]) (*connect.Response[v1.ProcessAppStoreNotificationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.ProcessAppStoreNotification is not implemented"))
+func (UnimplementedPurchaseServiceHandler) ProcessAppStoreNotification(context.Context, *v1.ProcessAppStoreNotificationRequest) (*v1.ProcessAppStoreNotificationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.ProcessAppStoreNotification is not implemented")
 }
+
+type purchaseServiceClient struct {
+	client *connect.Client
+}
+
+func (c *purchaseServiceClient) StartEpisodeCheckout(ctx context.Context, req *v1.StartEpisodeCheckoutRequest) (*v1.StartEpisodeCheckoutResponse, error) {
+	var res v1.StartEpisodeCheckoutResponse
+	if err := c.client.CallUnary(ctx, purchaseServiceStartEpisodeCheckoutSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *purchaseServiceClient) ListMyPurchases(ctx context.Context, req *v1.ListMyPurchasesRequest) (*v1.ListMyPurchasesResponse, error) {
+	var res v1.ListMyPurchasesResponse
+	if err := c.client.CallUnary(ctx, purchaseServiceListMyPurchasesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *purchaseServiceClient) ProcessPaymentWebhook(ctx context.Context, req *v1.ProcessPaymentWebhookRequest) (*v1.ProcessPaymentWebhookResponse, error) {
+	var res v1.ProcessPaymentWebhookResponse
+	if err := c.client.CallUnary(ctx, purchaseServiceProcessPaymentWebhookSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *purchaseServiceClient) StartStorePurchase(ctx context.Context, req *v1.StartStorePurchaseRequest) (*v1.StartStorePurchaseResponse, error) {
+	var res v1.StartStorePurchaseResponse
+	if err := c.client.CallUnary(ctx, purchaseServiceStartStorePurchaseSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *purchaseServiceClient) ConfirmStorePurchase(ctx context.Context, req *v1.ConfirmStorePurchaseRequest) (*v1.ConfirmStorePurchaseResponse, error) {
+	var res v1.ConfirmStorePurchaseResponse
+	if err := c.client.CallUnary(ctx, purchaseServiceConfirmStorePurchaseSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *purchaseServiceClient) ProcessAppStoreNotification(ctx context.Context, req *v1.ProcessAppStoreNotificationRequest) (*v1.ProcessAppStoreNotificationResponse, error) {
+	var res v1.ProcessAppStoreNotificationResponse
+	if err := c.client.CallUnary(ctx, purchaseServiceProcessAppStoreNotificationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type purchaseServiceHandler struct{ svc PurchaseServiceHandler }
+
+func (h purchaseServiceHandler) startEpisodeCheckout(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.StartEpisodeCheckoutRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.StartEpisodeCheckout(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h purchaseServiceHandler) listMyPurchases(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListMyPurchasesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListMyPurchases(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h purchaseServiceHandler) processPaymentWebhook(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ProcessPaymentWebhookRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ProcessPaymentWebhook(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h purchaseServiceHandler) startStorePurchase(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.StartStorePurchaseRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.StartStorePurchase(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h purchaseServiceHandler) confirmStorePurchase(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ConfirmStorePurchaseRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ConfirmStorePurchase(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h purchaseServiceHandler) processAppStoreNotification(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ProcessAppStoreNotificationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ProcessAppStoreNotification(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+var (
+	waitFreeServiceGetMyTicketStateSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("WaitFreeService").Methods().ByName("GetMyTicketState"),
+			Procedure:  WaitFreeServiceGetMyTicketStateProcedure,
+		}
+	})
+	waitFreeServiceUseTicketSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("WaitFreeService").Methods().ByName("UseTicket"),
+			Procedure:  WaitFreeServiceUseTicketProcedure,
+		}
+	})
+)
 
 // WaitFreeServiceClient is a client for the publira.v1.WaitFreeService service.
 type WaitFreeServiceClient interface {
-	GetMyTicketState(context.Context, *connect.Request[v1.GetMyTicketStateRequest]) (*connect.Response[v1.GetMyTicketStateResponse], error)
+	GetMyTicketState(context.Context, *v1.GetMyTicketStateRequest) (*v1.GetMyTicketStateResponse, error)
 	// Spends the reader's ticket on the episode's series and opens the episode
 	// for the series' access period, through an access ticket the episode's
 	// access then reports as EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET.
@@ -1836,54 +2094,18 @@ type WaitFreeServiceClient interface {
 	// Every request, refused or not, spends the reader's allowance in the
 	// platform policy's wait_free_ticket_use first, and one past it is
 	// resource_exhausted with Retry-After.
-	UseTicket(context.Context, *connect.Request[v1.UseTicketRequest]) (*connect.Response[v1.UseTicketResponse], error)
+	UseTicket(context.Context, *v1.UseTicketRequest) (*v1.UseTicketResponse, error)
 }
 
-// NewWaitFreeServiceClient constructs a client for the publira.v1.WaitFreeService service. By
-// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
-// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
-// connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewWaitFreeServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) WaitFreeServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	waitFreeServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("WaitFreeService").Methods()
-	return &waitFreeServiceClient{
-		getMyTicketState: connect.NewClient[v1.GetMyTicketStateRequest, v1.GetMyTicketStateResponse](
-			httpClient,
-			baseURL+WaitFreeServiceGetMyTicketStateProcedure,
-			connect.WithSchema(waitFreeServiceMethods.ByName("GetMyTicketState")),
-			connect.WithClientOptions(opts...),
-		),
-		useTicket: connect.NewClient[v1.UseTicketRequest, v1.UseTicketResponse](
-			httpClient,
-			baseURL+WaitFreeServiceUseTicketProcedure,
-			connect.WithSchema(waitFreeServiceMethods.ByName("UseTicket")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// waitFreeServiceClient implements WaitFreeServiceClient.
-type waitFreeServiceClient struct {
-	getMyTicketState *connect.Client[v1.GetMyTicketStateRequest, v1.GetMyTicketStateResponse]
-	useTicket        *connect.Client[v1.UseTicketRequest, v1.UseTicketResponse]
-}
-
-// GetMyTicketState calls publira.v1.WaitFreeService.GetMyTicketState.
-func (c *waitFreeServiceClient) GetMyTicketState(ctx context.Context, req *connect.Request[v1.GetMyTicketStateRequest]) (*connect.Response[v1.GetMyTicketStateResponse], error) {
-	return c.getMyTicketState.CallUnary(ctx, req)
-}
-
-// UseTicket calls publira.v1.WaitFreeService.UseTicket.
-func (c *waitFreeServiceClient) UseTicket(ctx context.Context, req *connect.Request[v1.UseTicketRequest]) (*connect.Response[v1.UseTicketResponse], error) {
-	return c.useTicket.CallUnary(ctx, req)
+// NewWaitFreeServiceClient constructs a client for the publira.v1.WaitFreeService service. Multiple
+// service clients may share a single connect.Client.
+func NewWaitFreeServiceClient(client *connect.Client) WaitFreeServiceClient {
+	return &waitFreeServiceClient{client: client}
 }
 
 // WaitFreeServiceHandler is an implementation of the publira.v1.WaitFreeService service.
 type WaitFreeServiceHandler interface {
-	GetMyTicketState(context.Context, *connect.Request[v1.GetMyTicketStateRequest]) (*connect.Response[v1.GetMyTicketStateResponse], error)
+	GetMyTicketState(context.Context, *v1.GetMyTicketStateRequest) (*v1.GetMyTicketStateResponse, error)
 	// Spends the reader's ticket on the episode's series and opens the episode
 	// for the series' access period, through an access ticket the episode's
 	// access then reports as EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET.
@@ -1905,47 +2127,72 @@ type WaitFreeServiceHandler interface {
 	// Every request, refused or not, spends the reader's allowance in the
 	// platform policy's wait_free_ticket_use first, and one past it is
 	// resource_exhausted with Retry-After.
-	UseTicket(context.Context, *connect.Request[v1.UseTicketRequest]) (*connect.Response[v1.UseTicketResponse], error)
+	UseTicket(context.Context, *v1.UseTicketRequest) (*v1.UseTicketResponse, error)
 }
 
-// NewWaitFreeServiceHandler builds an HTTP handler from the service implementation. It returns the
-// path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewWaitFreeServiceHandler(svc WaitFreeServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	waitFreeServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("WaitFreeService").Methods()
-	waitFreeServiceGetMyTicketStateHandler := connect.NewUnaryHandler(
-		WaitFreeServiceGetMyTicketStateProcedure,
-		svc.GetMyTicketState,
-		connect.WithSchema(waitFreeServiceMethods.ByName("GetMyTicketState")),
-		connect.WithHandlerOptions(opts...),
+// RegisterWaitFreeServiceHandler registers svc as the publira.v1.WaitFreeService implementation on
+// server.
+func RegisterWaitFreeServiceHandler(server *connect.Server, svc WaitFreeServiceHandler) {
+	adapter := waitFreeServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: waitFreeServiceGetMyTicketStateSpec(), Handler: adapter.getMyTicketState},
+		connect.Method{Spec: waitFreeServiceUseTicketSpec(), Handler: adapter.useTicket},
 	)
-	waitFreeServiceUseTicketHandler := connect.NewUnaryHandler(
-		WaitFreeServiceUseTicketProcedure,
-		svc.UseTicket,
-		connect.WithSchema(waitFreeServiceMethods.ByName("UseTicket")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.v1.WaitFreeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case WaitFreeServiceGetMyTicketStateProcedure:
-			waitFreeServiceGetMyTicketStateHandler.ServeHTTP(w, r)
-		case WaitFreeServiceUseTicketProcedure:
-			waitFreeServiceUseTicketHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedWaitFreeServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedWaitFreeServiceHandler struct{}
 
-func (UnimplementedWaitFreeServiceHandler) GetMyTicketState(context.Context, *connect.Request[v1.GetMyTicketStateRequest]) (*connect.Response[v1.GetMyTicketStateResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.WaitFreeService.GetMyTicketState is not implemented"))
+func (UnimplementedWaitFreeServiceHandler) GetMyTicketState(context.Context, *v1.GetMyTicketStateRequest) (*v1.GetMyTicketStateResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.WaitFreeService.GetMyTicketState is not implemented")
 }
 
-func (UnimplementedWaitFreeServiceHandler) UseTicket(context.Context, *connect.Request[v1.UseTicketRequest]) (*connect.Response[v1.UseTicketResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.WaitFreeService.UseTicket is not implemented"))
+func (UnimplementedWaitFreeServiceHandler) UseTicket(context.Context, *v1.UseTicketRequest) (*v1.UseTicketResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.WaitFreeService.UseTicket is not implemented")
+}
+
+type waitFreeServiceClient struct {
+	client *connect.Client
+}
+
+func (c *waitFreeServiceClient) GetMyTicketState(ctx context.Context, req *v1.GetMyTicketStateRequest) (*v1.GetMyTicketStateResponse, error) {
+	var res v1.GetMyTicketStateResponse
+	if err := c.client.CallUnary(ctx, waitFreeServiceGetMyTicketStateSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *waitFreeServiceClient) UseTicket(ctx context.Context, req *v1.UseTicketRequest) (*v1.UseTicketResponse, error) {
+	var res v1.UseTicketResponse
+	if err := c.client.CallUnary(ctx, waitFreeServiceUseTicketSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type waitFreeServiceHandler struct{ svc WaitFreeServiceHandler }
+
+func (h waitFreeServiceHandler) getMyTicketState(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetMyTicketStateRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetMyTicketState(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h waitFreeServiceHandler) useTicket(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UseTicketRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UseTicket(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

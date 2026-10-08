@@ -7,7 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	publiraemailv1 "github.com/publira/publira/server/internal/proto/gen/publira/email/v1"
@@ -46,12 +47,12 @@ func NewClient(baseURL string) *Client {
 	}, baseURL)
 }
 
-func NewClientWithHTTPClient(httpClient connect.HTTPClient, baseURL string) *Client {
+func NewClientWithHTTPClient(httpClient connecthttp.HTTPClient, baseURL string) *Client {
 	return &Client{
-		client: publiraemailv1connect.NewEmailRendererServiceClient(
+		client: publiraemailv1connect.NewEmailRendererServiceClient(connect.NewClient(connecthttp.NewTransport(
 			httpClient,
 			strings.TrimRight(baseURL, "/"),
-		),
+		))),
 	}
 }
 
@@ -61,15 +62,15 @@ func (c *Client) Render(ctx context.Context, input Request) (Email, error) {
 		return Email{}, err
 	}
 
-	response, err := c.client.RenderEmail(ctx, connect.NewRequest(&publiraemailv1.RenderEmailRequest{
+	response, err := c.client.RenderEmail(ctx, &publiraemailv1.RenderEmailRequest{
 		Template: input.Template,
 		Locale:   input.Locale,
 		Data:     data,
 		TimeZone: input.TimeZone,
-	}))
+	})
 	if err != nil {
 		return Email{}, err
 	}
 
-	return Email{HTML: response.Msg.GetHtml()}, nil
+	return Email{HTML: response.GetHtml()}, nil
 }

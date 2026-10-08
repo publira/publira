@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -71,7 +71,7 @@ func (s *apiServer) resolveRatingEpisode(
 	}
 	if errors.Is(err, sql.ErrNoRows) {
 		return dbmodels.GetPublishedEpisodeForTenantRow{},
-			connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+			connect.NewError(connect.CodeNotFound, "episode not found")
 	}
 	return dbmodels.GetPublishedEpisodeForTenantRow{},
 		s.internalDBError(ctx, "failed to get rating episode target", err, "tenant_id", tenantID.String())
@@ -96,7 +96,7 @@ func (s *apiServer) requireReaderMayRateEpisode(
 		// The answer an unpublished or foreign episode gets, so this RPC cannot
 		// be used to tell the episodes a reader has no access to apart from the
 		// ones that are not there. MarkEpisodeAsRead answers the same way.
-		return connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		return connect.NewError(connect.CodeNotFound, "episode not found")
 	}
 	return nil
 }
@@ -111,7 +111,7 @@ func (s *apiServer) episodeRatingMode(ctx context.Context, tenantID, episodeID u
 	if errors.Is(err, sql.ErrNoRows) {
 		// A published episode always has a row here, so no row means the catalog
 		// changed under the request rather than that the mode is unset.
-		return 0, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		return 0, connect.NewError(connect.CodeNotFound, "episode not found")
 	}
 	if err != nil {
 		return 0, s.internalDBError(ctx, "failed to get the episode rating mode", err, "tenant_id", tenantID.String())
@@ -150,20 +150,20 @@ func ratingPoints(mode publirav1.EpisodeRatingMode, presses int32) int16 {
 // whether the reader is credited on it and so may not rate it at all.
 func (s *apiServer) GetMyEpisodeRating(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetMyEpisodeRatingRequest],
-) (*connect.Response[publirav1.GetMyEpisodeRatingResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.GetMyEpisodeRatingRequest,
+) (*publirav1.GetMyEpisodeRatingResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId)
+	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (s *apiServer) GetMyEpisodeRating(
 		return nil, err
 	}
 
-	return noStorePrivateResponse(&publirav1.GetMyEpisodeRatingResponse{
+	return noStorePrivateResponse(ctx, &publirav1.GetMyEpisodeRatingResponse{
 		Score:          int32(score),
 		RatingCount:    row.RatingCount,
 		Mode:           mode,
@@ -205,20 +205,20 @@ func (s *apiServer) GetMyEpisodeRating(
 // derived from those reactions rather than stored.
 func (s *apiServer) GetMySeriesRating(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetMySeriesRatingRequest],
-) (*connect.Response[publirav1.GetMySeriesRatingResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.GetMySeriesRatingRequest,
+) (*publirav1.GetMySeriesRatingResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	requestedSeriesID, err := requestRecordID("series_id", req.Msg.SeriesId)
+	requestedSeriesID, err := requestRecordID("series_id", req.SeriesId)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func (s *apiServer) GetMySeriesRating(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "series not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get rating series target", err, "tenant_id", tenant.ID.String())
 	}
@@ -247,7 +247,7 @@ func (s *apiServer) GetMySeriesRating(
 			"tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
-	return noStorePrivateResponse(&publirav1.GetMySeriesRatingResponse{
+	return noStorePrivateResponse(ctx, &publirav1.GetMySeriesRatingResponse{
 		RatingAverage:     rating.RatingAverage,
 		RatedEpisodeCount: rating.RatedEpisodeCount,
 	}), nil
@@ -257,23 +257,23 @@ func (s *apiServer) GetMySeriesRating(
 // raises the one they already gave.
 func (s *apiServer) RateEpisode(
 	ctx context.Context,
-	req *connect.Request[publirav1.RateEpisodeRequest],
-) (*connect.Response[publirav1.RateEpisodeResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.RateEpisodeRequest,
+) (*publirav1.RateEpisodeResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 	if err := s.chargeReaderAction(ctx, actionRateEpisode, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.scopeRatingUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId)
+	row, err := s.resolveRatingEpisode(ctx, tenant.ID, surface, req.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -285,14 +285,14 @@ func (s *apiServer) RateEpisode(
 		return nil, err
 	}
 
-	rating, err := s.storeEpisodeRating(ctx, tenant.ID, user.ID, row, ratingPoints(mode, req.Msg.Presses))
+	rating, err := s.storeEpisodeRating(ctx, tenant.ID, user.ID, row, ratingPoints(mode, req.Presses))
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to record the episode rating", err,
 			"tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	s.reval.Send(ctx, rating.owed)
 
-	return noStorePrivateResponse(&publirav1.RateEpisodeResponse{
+	return noStorePrivateResponse(ctx, &publirav1.RateEpisodeResponse{
 		Score:       int32(rating.score),
 		RatingCount: rating.count,
 		Mode:        mode,

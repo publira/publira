@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/auth"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
@@ -16,70 +17,70 @@ import (
 
 func TestDBInitialSetupCreatesLoginableSuperAdmin(t *testing.T) {
 	ts, _ := newDBIntegrationEnv(t)
-	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	status, err := setup.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
+	status, err := setup.CheckSetupStatus(context.Background(), &publirasplatformv1.CheckSetupStatusRequest{})
 	if err != nil {
 		t.Fatalf("CheckSetupStatus: %v", err)
 	}
-	if status.Msg.SetupCompleted {
+	if status.SetupCompleted {
 		t.Fatal("setup_completed = true on an empty database, want false")
 	}
 
-	if _, err := setup.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
+	if _, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Initial Admin",
 		Email:         "initial-admin@example.com",
 		Password:      "initial-admin-password",
 		DefaultLocale: "en",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateInitialUser: %v", err)
 	}
 
-	status, err = setup.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
+	status, err = setup.CheckSetupStatus(context.Background(), &publirasplatformv1.CheckSetupStatusRequest{})
 	if err != nil {
 		t.Fatalf("CheckSetupStatus after setup: %v", err)
 	}
-	if !status.Msg.SetupCompleted {
+	if !status.SetupCompleted {
 		t.Fatal("setup_completed = false after the initial user was created, want true")
 	}
 
 	// The role row has to be committed with the user, otherwise the account exists
 	// but cannot authenticate.
-	loginResp, err := authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	loginResp, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    "initial-admin@example.com",
 		Password: "initial-admin-password",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login as the initial user: %v", err)
 	}
-	if loginResp.Msg.User.Role != auth.RolePlatformSuperAdmin {
-		t.Fatalf("role = %q, want %s", loginResp.Msg.User.Role, auth.RolePlatformSuperAdmin)
+	if loginResp.User.Role != auth.RolePlatformSuperAdmin {
+		t.Fatalf("role = %q, want %s", loginResp.User.Role, auth.RolePlatformSuperAdmin)
 	}
 
 	me, err := authClient.GetMe(
-		context.Background(),
-		newDBBearerRequest(loginResp.Msg.AccessToken.Token, publirasplatformv1.PlatformAuthServiceGetMeRequest{}),
+		testutil.WithBearer(context.Background(), loginResp.AccessToken.Token),
+		&publirasplatformv1.PlatformAuthServiceGetMeRequest{},
 	)
 	if err != nil {
 		t.Fatalf("GetMe with the login token: %v", err)
 	}
-	if me.Msg.User.PublicId != loginResp.Msg.User.PublicId {
-		t.Fatalf("GetMe public_id = %q, want %q", me.Msg.User.PublicId, loginResp.Msg.User.PublicId)
+	if me.User.PublicId != loginResp.User.PublicId {
+		t.Fatalf("GetMe public_id = %q, want %q", me.User.PublicId, loginResp.User.PublicId)
 	}
 }
 
 func TestDBCreateInitialUserRejectsSecondSetup(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	pg.SeedPlatformSuperAdmin(t, "PLATADMIN001", "superadmin@example.com", "Platform Super Admin")
-	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := setup.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
+	_, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Second Admin",
 		Email:         "second-admin@example.com",
 		Password:      "second-admin-password",
 		DefaultLocale: "en",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateInitialUser code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
 	}
@@ -93,16 +94,16 @@ func TestDBCreateInitialUserRejectsSecondSetup(t *testing.T) {
 // carries no platform role closes the setup endpoint.
 func TestDBCreateInitialUserRejectsWhenRolelessPlatformUserExists(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
-	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	seedPlatformUserWithoutRole(t, pg, "PLATNOROLE01", "no-role@example.com", "No Role")
 
-	_, err := setup.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
+	_, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Initial Admin",
 		Email:         "initial-admin@example.com",
 		Password:      "initial-admin-password",
 		DefaultLocale: "en",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateInitialUser code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
 	}
@@ -120,12 +121,12 @@ func TestDBCreateInitialUserRejectsWhenRolelessPlatformUserExists(t *testing.T) 
 func TestDBLoginRejectsPlatformUserWithoutRole(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	seedPlatformUserWithoutRole(t, pg, "PLATNOROLE01", "no-role@example.com", "No Role")
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	_, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    "no-role@example.com",
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -136,16 +137,16 @@ func TestDBLoginRejectsPlatformUserWithoutRole(t *testing.T) {
 // before anyone opens the settings screen.
 func TestDBInitialSetupSavesTheChosenDefaultLocale(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
-	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
-	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	if _, err := setup.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
+	if _, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Initial Admin",
 		Email:         "initial-admin@example.com",
 		Password:      "initial-admin-password",
 		DefaultLocale: "en",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateInitialUser: %v", err)
 	}
 
@@ -153,23 +154,23 @@ func TestDBInitialSetupSavesTheChosenDefaultLocale(t *testing.T) {
 		t.Fatalf("platform_config rows with default_locale = en: %d, want 1", got)
 	}
 
-	loginResp, err := authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	loginResp, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    "initial-admin@example.com",
 		Password: "initial-admin-password",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login as the initial user: %v", err)
 	}
 
 	resp, err := settings.GetPlatformSettings(
-		context.Background(),
-		newDBBearerRequest(loginResp.Msg.AccessToken.Token, publirasplatformv1.GetPlatformSettingsRequest{}),
+		testutil.WithBearer(context.Background(), loginResp.AccessToken.Token),
+		&publirasplatformv1.GetPlatformSettingsRequest{},
 	)
 	if err != nil {
 		t.Fatalf("GetPlatformSettings: %v", err)
 	}
-	if resp.Msg.Settings.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.Settings.DefaultLocale)
+	if resp.Settings.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.Settings.DefaultLocale)
 	}
 }
 
@@ -177,14 +178,14 @@ func TestDBInitialSetupSavesTheChosenDefaultLocale(t *testing.T) {
 // no administrator and no settings row behind.
 func TestDBCreateInitialUserRejectsUnsupportedLocale(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
-	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := setup.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
+	_, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Initial Admin",
 		Email:         "initial-admin@example.com",
 		Password:      "initial-admin-password",
 		DefaultLocale: "fr",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateInitialUser code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
@@ -202,7 +203,7 @@ func TestDBCreateInitialUserRejectsUnsupportedLocale(t *testing.T) {
 // the setup lock from outside makes both reach it before either writes.
 func TestDBConcurrentInitialSetupLeavesOneOperator(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
-	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -223,7 +224,7 @@ func TestDBConcurrentInitialSetupLeavesOneOperator(t *testing.T) {
 	var wg sync.WaitGroup
 	for i, msg := range requests {
 		wg.Go(func() {
-			_, errs[i] = setup.CreateInitialUser(ctx, connect.NewRequest(msg))
+			_, errs[i] = setup.CreateInitialUser(ctx, msg)
 		})
 	}
 
@@ -278,7 +279,7 @@ func setupLockQuery(fn string) string {
 // chosen locale replaces the saved one and the saved time zone is kept.
 func TestDBInitialSetupOverAnOrphanedSettingsRow(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
-	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -289,12 +290,12 @@ func TestDBInitialSetupOverAnOrphanedSettingsRow(t *testing.T) {
 		t.Fatalf("seed platform_config: %v", err)
 	}
 
-	if _, err := setup.CreateInitialUser(ctx, connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
+	if _, err := setup.CreateInitialUser(ctx, &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Initial Admin",
 		Email:         "initial-admin@example.com",
 		Password:      "initial-admin-password",
 		DefaultLocale: "en",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateInitialUser: %v", err)
 	}
 

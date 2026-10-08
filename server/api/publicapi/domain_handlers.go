@@ -6,17 +6,18 @@ import (
 	"errors"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+
 	"github.com/publira/publira/server/internal/locale"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 )
 
 func (s *apiServer) GetTenantByDomain(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetTenantByDomainRequest],
-) (*connect.Response[publirav1.GetTenantByDomainResponse], error) {
-	domains := make([]string, 0, len(req.Msg.Domains))
-	for _, candidate := range req.Msg.Domains {
+	req *publirav1.GetTenantByDomainRequest,
+) (*publirav1.GetTenantByDomainResponse, error) {
+	domains := make([]string, 0, len(req.Domains))
+	for _, candidate := range req.Domains {
 		domain := strings.TrimSpace(candidate)
 		if domain == "" {
 			continue
@@ -24,13 +25,13 @@ func (s *apiServer) GetTenantByDomain(
 		domains = append(domains, domain)
 	}
 	if len(domains) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domains are required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "domains are required")
 	}
 
 	tenant, err := s.queriesFor(ctx).GetTenantByDomains(ctx, domains)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "tenant not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get tenant by domain", err, "domains", domains)
 	}
@@ -40,8 +41,8 @@ func (s *apiServer) GetTenantByDomain(
 		return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
 	}
 
-	return connect.NewResponse(&publirav1.GetTenantByDomainResponse{
+	return &publirav1.GetTenantByDomainResponse{
 		TenantId:      tenant.ID.String(),
 		DefaultLocale: defaultLocale,
-	}), nil
+	}, nil
 }

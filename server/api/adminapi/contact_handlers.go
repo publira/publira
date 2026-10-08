@@ -6,12 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 	"unicode/utf8"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -208,7 +207,7 @@ func (s *adminServer) contactMessagePage(
 // which is also what row-level security would leave of the first.
 func (s *adminServer) contactMessageLookupError(ctx context.Context, tenantID uuid.UUID, err error, identifier ...any) error {
 	if errors.Is(err, sql.ErrNoRows) {
-		return connect.NewError(connect.CodeNotFound, errors.New("contact message not found"))
+		return connect.NewError(connect.CodeNotFound, "contact message not found")
 	}
 	return s.internalDBError(ctx, "failed to get the contact message", err, append([]any{"tenant_id", tenantID.String()}, identifier...)...)
 }
@@ -265,13 +264,13 @@ func requiredContactMessageID(raw string) (uuid.UUID, error) {
 // no row for a message of another tenant exactly as for one that never existed.
 func (s *adminServer) contactMessageUpdateError(ctx context.Context, tenantID, messageID uuid.UUID, err error, what string) error {
 	if errors.Is(err, sql.ErrNoRows) {
-		return connect.NewError(connect.CodeNotFound, errors.New("contact message not found"))
+		return connect.NewError(connect.CodeNotFound, "contact message not found")
 	}
 	return s.internalDBError(ctx, "failed to "+what, err, "tenant_id", tenantID.String(), "contact_message_id", messageID.String())
 }
 
 func contactMessageAuditEntry(
-	headers http.Header,
+	headers *connect.Header,
 	sessionCtx rpcmiddleware.SessionContext,
 	action, messagePublicID string,
 ) auditlog.TenantEntry {
@@ -291,9 +290,9 @@ func contactMessageAuditEntry(
 // first.
 func (s *adminServer) ListContactMessages(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListContactMessagesRequest],
-) (*connect.Response[publiraadminv1.ListContactMessagesResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ListContactMessagesRequest,
+) (*publiraadminv1.ListContactMessagesResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -301,20 +300,20 @@ func (s *adminServer) ListContactMessages(
 		return nil, err
 	}
 
-	status, err := normalizeContactMessageStatusFilter(req.Msg.Status)
+	status, err := normalizeContactMessageStatusFilter(req.Status)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultContactMessageListLimit, maxContactMessageListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultContactMessageListLimit, maxContactMessageListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -351,22 +350,22 @@ func (s *adminServer) ListContactMessages(
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 // GetContactMessage returns one message in full.
 func (s *adminServer) GetContactMessage(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetContactMessageRequest],
-) (*connect.Response[publiraadminv1.GetContactMessageResponse], error) {
+	req *publiraadminv1.GetContactMessageRequest,
+) (*publiraadminv1.GetContactMessageResponse, error) {
 	if _, err := s.requireTenantAdmin(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	publicID, err := requiredContactMessageField(req.Msg.PublicId, "public_id")
+	publicID, err := requiredContactMessageField(req.PublicId, "public_id")
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +377,7 @@ func (s *adminServer) GetContactMessage(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.GetContactMessageResponse{Message: message}), nil
+	return &publiraadminv1.GetContactMessageResponse{Message: message}, nil
 }
 
 // MarkContactMessageHandled records that staff have dealt with one message, or
@@ -389,17 +388,17 @@ func (s *adminServer) GetContactMessage(
 // same moment.
 func (s *adminServer) MarkContactMessageHandled(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.MarkContactMessageHandledRequest],
-) (*connect.Response[publiraadminv1.MarkContactMessageHandledResponse], error) {
+	req *publiraadminv1.MarkContactMessageHandledRequest,
+) (*publiraadminv1.MarkContactMessageHandledResponse, error) {
 	sessionCtx, err := s.requireTenantAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	messageID, err := requiredContactMessageID(req.Msg.ContactMessageId)
+	messageID, err := requiredContactMessageID(req.ContactMessageId)
 	if err != nil {
 		return nil, err
 	}
@@ -407,7 +406,7 @@ func (s *adminServer) MarkContactMessageHandled(
 	if _, err := s.queriesFor(ctx).SetContactMessageHandledByIDForTenant(ctx, dbmodels.SetContactMessageHandledByIDForTenantParams{
 		TenantID:  tenant.ID,
 		ID:        messageID,
-		Handled:   req.Msg.Handled,
+		Handled:   req.Handled,
 		HandledBy: uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true},
 	}); err != nil {
 		return nil, s.contactMessageUpdateError(ctx, tenant.ID, messageID, err, "mark the contact message")
@@ -421,16 +420,16 @@ func (s *adminServer) MarkContactMessageHandled(
 	}
 
 	action := "contact_message_reopened"
-	if req.Msg.Handled {
+	if req.Handled {
 		action = "contact_message_handled"
 	}
-	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, action, updated.PublicID))
+	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(rpcmiddleware.RequestHeader(ctx), sessionCtx, action, updated.PublicID))
 
 	message, err := s.contactMessageDetail(ctx, updated)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.MarkContactMessageHandledResponse{Message: message}), nil
+	return &publiraadminv1.MarkContactMessageHandledResponse{Message: message}, nil
 }
 
 // contactMessageAssignee reads the account a request assigns a message to, or
@@ -468,21 +467,21 @@ func (s *adminServer) contactMessageAssignee(ctx context.Context, tenantID uuid.
 // another, or clears the assignment.
 func (s *adminServer) AssignContactMessage(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.AssignContactMessageRequest],
-) (*connect.Response[publiraadminv1.AssignContactMessageResponse], error) {
+	req *publiraadminv1.AssignContactMessageRequest,
+) (*publiraadminv1.AssignContactMessageResponse, error) {
 	sessionCtx, err := s.requireTenantAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	messageID, err := requiredContactMessageID(req.Msg.ContactMessageId)
+	messageID, err := requiredContactMessageID(req.ContactMessageId)
 	if err != nil {
 		return nil, err
 	}
-	assignee, err := s.contactMessageAssignee(ctx, tenant.ID, req.Msg.AssigneeUserId)
+	assignee, err := s.contactMessageAssignee(ctx, tenant.ID, req.AssigneeUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -505,34 +504,34 @@ func (s *adminServer) AssignContactMessage(
 	if assignee.Valid {
 		action = "contact_message_assigned"
 	}
-	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, action, updated.PublicID))
+	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(rpcmiddleware.RequestHeader(ctx), sessionCtx, action, updated.PublicID))
 
 	message, err := s.contactMessageDetail(ctx, updated)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.AssignContactMessageResponse{Message: message}), nil
+	return &publiraadminv1.AssignContactMessageResponse{Message: message}, nil
 }
 
 // UpdateContactMessageStaffNote saves, replaces, or clears the internal note on
 // one message.
 func (s *adminServer) UpdateContactMessageStaffNote(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateContactMessageStaffNoteRequest],
-) (*connect.Response[publiraadminv1.UpdateContactMessageStaffNoteResponse], error) {
+	req *publiraadminv1.UpdateContactMessageStaffNoteRequest,
+) (*publiraadminv1.UpdateContactMessageStaffNoteResponse, error) {
 	sessionCtx, err := s.requireTenantAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	messageID, err := requiredContactMessageID(req.Msg.ContactMessageId)
+	messageID, err := requiredContactMessageID(req.ContactMessageId)
 	if err != nil {
 		return nil, err
 	}
-	note := strings.TrimSpace(req.Msg.StaffNote)
+	note := strings.TrimSpace(req.StaffNote)
 	if utf8.RuneCountInString(note) > maxContactMessageStaffNoteRunes {
 		return nil, rpcerrors.NewFieldViolationError(
 			connect.CodeInvalidArgument,
@@ -553,13 +552,13 @@ func (s *adminServer) UpdateContactMessageStaffNote(
 	if err != nil {
 		return nil, err
 	}
-	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, "contact_message_staff_note_updated", updated.PublicID))
+	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(rpcmiddleware.RequestHeader(ctx), sessionCtx, "contact_message_staff_note_updated", updated.PublicID))
 
 	message, err := s.contactMessageDetail(ctx, updated)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.UpdateContactMessageStaffNoteResponse{Message: message}), nil
+	return &publiraadminv1.UpdateContactMessageStaffNoteResponse{Message: message}, nil
 }
 
 // validateContactMessageReply reads the answer a request carries, by the rules
@@ -598,7 +597,7 @@ func (s *adminServer) storeContactMessageReply(
 	}
 	mailID, err := outbox.NewContactMessageReplyMessageID(tenant)
 	if err != nil {
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -651,21 +650,21 @@ func (s *adminServer) storeContactMessageReply(
 // it under the message.
 func (s *adminServer) ReplyToContactMessage(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ReplyToContactMessageRequest],
-) (*connect.Response[publiraadminv1.ReplyToContactMessageResponse], error) {
+	req *publiraadminv1.ReplyToContactMessageRequest,
+) (*publiraadminv1.ReplyToContactMessageResponse, error) {
 	sessionCtx, err := s.requireTenantAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	messageID, err := requiredContactMessageID(req.Msg.ContactMessageId)
+	messageID, err := requiredContactMessageID(req.ContactMessageId)
 	if err != nil {
 		return nil, err
 	}
-	body, err := validateContactMessageReply(req.Msg.Body)
+	body, err := validateContactMessageReply(req.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -679,7 +678,7 @@ func (s *adminServer) ReplyToContactMessage(
 	if err != nil {
 		return nil, err
 	}
-	if err := s.mail.Allow(ctx, req, tenant.ID.String(), answered.ReplyToEmail); err != nil {
+	if err := s.mail.Allow(ctx, tenant.ID.String(), answered.ReplyToEmail); err != nil {
 		return nil, err
 	}
 
@@ -693,11 +692,11 @@ func (s *adminServer) ReplyToContactMessage(
 	}
 	// The audit record names the message and not what was said: the answer is
 	// kept under the message, where only the inbox's own staff can read it.
-	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(req.Header(), sessionCtx, "contact_message_replied", updated.PublicID))
+	s.recorderFor(ctx).RecordTenant(ctx, contactMessageAuditEntry(rpcmiddleware.RequestHeader(ctx), sessionCtx, "contact_message_replied", updated.PublicID))
 
 	message, err := s.contactMessageDetail(ctx, updated)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.ReplyToContactMessageResponse{Message: message}), nil
+	return &publiraadminv1.ReplyToContactMessageResponse{Message: message}, nil
 }

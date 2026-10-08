@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
@@ -18,11 +18,11 @@ func updateRetentionDefaults(
 	operator testutil.PlatformOperator,
 	defaults *publirattypesv1.RetentionPeriods,
 	expectedRevision int64,
-) (*connect.Response[publirasplatformv1.UpdatePlatformRetentionDefaultsResponse], error) {
-	return client.UpdatePlatformRetentionDefaults(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformRetentionDefaultsRequest{
+) (*publirasplatformv1.UpdatePlatformRetentionDefaultsResponse, error) {
+	return client.UpdatePlatformRetentionDefaults(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformRetentionDefaultsRequest{
 		Defaults:         defaults,
 		ExpectedRevision: expectedRevision,
-	}))
+	})
 }
 
 func getRetentionDefaults(
@@ -31,11 +31,11 @@ func getRetentionDefaults(
 	operator testutil.PlatformOperator,
 ) (retention.Periods, int64) {
 	t.Helper()
-	resp, err := client.GetPlatformRetentionDefaults(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetPlatformRetentionDefaultsRequest{}))
+	resp, err := client.GetPlatformRetentionDefaults(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformRetentionDefaultsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformRetentionDefaults: %v", err)
 	}
-	return retentionPeriodsFromProto(resp.Msg.Defaults), resp.Msg.Revision
+	return retentionPeriodsFromProto(resp.Defaults), resp.Revision
 }
 
 func TestDBPlatformRetentionDefaults(t *testing.T) {
@@ -54,16 +54,16 @@ func TestDBPlatformRetentionDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdatePlatformRetentionDefaults (first): %v", err)
 	}
-	if created.Msg.Revision != 1 || retentionPeriodsFromProto(created.Msg.Defaults) != want {
-		t.Fatalf("first save = %+v at revision %d, want %+v at revision 1", created.Msg.Defaults, created.Msg.Revision, want)
+	if created.Revision != 1 || retentionPeriodsFromProto(created.Defaults) != want {
+		t.Fatalf("first save = %+v at revision %d, want %+v at revision 1", created.Defaults, created.Revision, want)
 	}
 	want.WithdrawnCommentDays = 90
-	updated, err := updateRetentionDefaults(client, operator, retentionPeriodsToProto(want), created.Msg.Revision)
+	updated, err := updateRetentionDefaults(client, operator, retentionPeriodsToProto(want), created.Revision)
 	if err != nil {
 		t.Fatalf("UpdatePlatformRetentionDefaults (second): %v", err)
 	}
-	if updated.Msg.Revision != 2 {
-		t.Fatalf("second save revision = %d, want 2", updated.Msg.Revision)
+	if updated.Revision != 2 {
+		t.Fatalf("second save revision = %d, want 2", updated.Revision)
 	}
 	if got, revision := getRetentionDefaults(t, client, operator); got != want || revision != 2 {
 		t.Fatalf("defaults after two saves = %+v at revision %d, want %+v at revision 2", got, revision, want)
@@ -78,7 +78,7 @@ func TestDBPlatformRetentionDefaults(t *testing.T) {
 
 	// A save based on a read another save has since moved past is refused.
 	for name, revision := range map[string]int64{
-		"the revision before the last save": created.Msg.Revision,
+		"the revision before the last save": created.Revision,
 		"zero once a row exists":            0,
 	} {
 		if _, err := updateRetentionDefaults(client, operator, retentionPeriodsToProto(retention.Builtin()), revision); connect.CodeOf(err) != connect.CodeFailedPrecondition {
@@ -110,7 +110,7 @@ func TestDBPlatformRetentionDefaults(t *testing.T) {
 			"defaults.content_event_days",
 		},
 	} {
-		_, err := updateRetentionDefaults(client, operator, tc.defaults, updated.Msg.Revision)
+		_, err := updateRetentionDefaults(client, operator, tc.defaults, updated.Revision)
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("%s error = %v, want invalid_argument", name, err)
 		}
@@ -124,12 +124,12 @@ func TestDBPlatformRetentionDefaults(t *testing.T) {
 func TestDBPlatformRetentionDefaultsRequireAuthentication(t *testing.T) {
 	client, _, _ := newPolicyClient(t)
 
-	if _, err := client.GetPlatformRetentionDefaults(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformRetentionDefaultsRequest{})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+	if _, err := client.GetPlatformRetentionDefaults(context.Background(), &publirasplatformv1.GetPlatformRetentionDefaultsRequest{}); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetPlatformRetentionDefaults without a session error = %v, want unauthenticated", err)
 	}
-	if _, err := client.UpdatePlatformRetentionDefaults(context.Background(), connect.NewRequest(&publirasplatformv1.UpdatePlatformRetentionDefaultsRequest{
+	if _, err := client.UpdatePlatformRetentionDefaults(context.Background(), &publirasplatformv1.UpdatePlatformRetentionDefaultsRequest{
 		Defaults: retentionPeriodsToProto(retention.Builtin()),
-	})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+	}); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("UpdatePlatformRetentionDefaults without a session error = %v, want unauthenticated", err)
 	}
 }

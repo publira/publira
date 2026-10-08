@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"image"
 	"image/color"
 	"image/png"
@@ -15,13 +14,16 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func tenantThemeColumns() []string {
@@ -242,31 +244,30 @@ func TestGetTenantThemeReturnsConfiguredTheme(t *testing.T) {
 			AddRow(tenantThemeSelectRow(tenantID, "#123456", "#abcdef", "#654321", icon, logo, now)...))
 	expectTenantImageVariants(mock, icon, logo)
 
-	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.GetTenantThemeRequest{
+	client := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.GetTenantThemeRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.GetTenantTheme(context.Background(), req)
+	}
+	resp, err := client.GetTenantTheme(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("GetTenantTheme: %v", err)
 	}
-	if resp.Msg.Theme.PrimaryColor != "#123456" {
-		t.Fatalf("primary_color = %q, want #123456", resp.Msg.Theme.PrimaryColor)
+	if resp.Theme.PrimaryColor != "#123456" {
+		t.Fatalf("primary_color = %q, want #123456", resp.Theme.PrimaryColor)
 	}
-	if resp.Msg.Theme.SecondaryColor != "#abcdef" {
-		t.Fatalf("secondary_color = %q, want #abcdef", resp.Msg.Theme.SecondaryColor)
+	if resp.Theme.SecondaryColor != "#abcdef" {
+		t.Fatalf("secondary_color = %q, want #abcdef", resp.Theme.SecondaryColor)
 	}
-	if resp.Msg.Theme.AccentColor != "#654321" {
-		t.Fatalf("accent_color = %q, want #654321", resp.Msg.Theme.AccentColor)
+	if resp.Theme.AccentColor != "#654321" {
+		t.Fatalf("accent_color = %q, want #654321", resp.Theme.AccentColor)
 	}
-	if got := brandingImageURL(resp.Msg.Theme.IconImageVariants); got != "/images/tenants/99999999-9999-4999-8999-999999999999/icon" {
+	if got := brandingImageURL(resp.Theme.IconImageVariants); got != "/images/tenants/99999999-9999-4999-8999-999999999999/icon" {
 		t.Fatalf("icon variant url = %q, want /images/tenants/99999999-9999-4999-8999-999999999999", got)
 	}
-	if got := brandingImageURL(resp.Msg.Theme.LogoImageVariants); got != "/images/tenants/88888888-8888-4888-8888-888888888888/logo" {
+	if got := brandingImageURL(resp.Theme.LogoImageVariants); got != "/images/tenants/88888888-8888-4888-8888-888888888888/logo" {
 		t.Fatalf("logo variant url = %q, want /images/tenants/88888888-8888-4888-8888-888888888888", got)
 	}
-	if resp.Msg.Theme.LogoImageUpdatedAt == "" {
+	if resp.Theme.LogoImageUpdatedAt == "" {
 		t.Fatal("logo_image_updated_at is empty, want the stored image's timestamp")
 	}
 	assertExpectations(t, mock)
@@ -286,29 +287,28 @@ func TestGetTenantThemeReturnsDefaultsWhenUnset(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
 
-	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.GetTenantThemeRequest{
+	client := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.GetTenantThemeRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.GetTenantTheme(context.Background(), req)
+	}
+	resp, err := client.GetTenantTheme(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("GetTenantTheme: %v", err)
 	}
-	if resp.Msg.Theme.PrimaryColor != "#2b4c8c" {
-		t.Fatalf("primary_color = %q, want #2b4c8c", resp.Msg.Theme.PrimaryColor)
+	if resp.Theme.PrimaryColor != "#2b4c8c" {
+		t.Fatalf("primary_color = %q, want #2b4c8c", resp.Theme.PrimaryColor)
 	}
-	if resp.Msg.Theme.SecondaryColor != "#c63d17" {
-		t.Fatalf("secondary_color = %q, want #c63d17", resp.Msg.Theme.SecondaryColor)
+	if resp.Theme.SecondaryColor != "#c63d17" {
+		t.Fatalf("secondary_color = %q, want #c63d17", resp.Theme.SecondaryColor)
 	}
-	if resp.Msg.Theme.AccentColor != "#e3e9f5" {
-		t.Fatalf("accent_color = %q, want #e3e9f5", resp.Msg.Theme.AccentColor)
+	if resp.Theme.AccentColor != "#e3e9f5" {
+		t.Fatalf("accent_color = %q, want #e3e9f5", resp.Theme.AccentColor)
 	}
-	if len(resp.Msg.Theme.IconImageVariants) != 0 {
-		t.Fatalf("icon variants = %d, want none", len(resp.Msg.Theme.IconImageVariants))
+	if len(resp.Theme.IconImageVariants) != 0 {
+		t.Fatalf("icon variants = %d, want none", len(resp.Theme.IconImageVariants))
 	}
-	if len(resp.Msg.Theme.LogoImageVariants) != 0 {
-		t.Fatalf("logo variants = %d, want none", len(resp.Msg.Theme.LogoImageVariants))
+	if len(resp.Theme.LogoImageVariants) != 0 {
+		t.Fatalf("logo variants = %d, want none", len(resp.Theme.LogoImageVariants))
 	}
 	assertExpectations(t, mock)
 }
@@ -326,12 +326,11 @@ func TestGetTenantThemeDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(errors.New(`pq: relation "tenant_themes" does not exist`))
 
-	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.GetTenantThemeRequest{
+	client := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.GetTenantThemeRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	_, err := client.GetTenantTheme(context.Background(), req)
+	}
+	_, err := client.GetTenantTheme(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetTenantTheme code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -363,17 +362,16 @@ func TestUpsertTenantThemeValidatesColorCode(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UpsertTenantThemeRequest{
+	client := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UpsertTenantThemeRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Theme: &publirattypesv1.TenantTheme{
 			PrimaryColor:   "invalid",
 			SecondaryColor: "#112233",
 			AccentColor:    "#445566",
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	_, err := client.UpsertTenantTheme(context.Background(), req)
+	}
+	_, err := client.UpsertTenantTheme(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpsertTenantTheme code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -468,8 +466,8 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 	mock.ExpectCommit()
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{}, now)
 
-	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UpsertTenantThemeRequest{
+	client := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UpsertTenantThemeRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Theme: &publirattypesv1.TenantTheme{
 			PrimaryColor:               "  #2B4C8C ",
@@ -502,20 +500,19 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 			SerifFontFamily:            " \"Noto Serif KR\", serif ",
 			SansFontFamily:             "\"Noto Sans KR\", sans-serif",
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.UpsertTenantTheme(context.Background(), req)
+	}
+	resp, err := client.UpsertTenantTheme(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UpsertTenantTheme: %v", err)
 	}
-	if resp.Msg.Theme.PrimaryColor != "#2b4c8c" {
-		t.Fatalf("primary_color = %q, want #2b4c8c", resp.Msg.Theme.PrimaryColor)
+	if resp.Theme.PrimaryColor != "#2b4c8c" {
+		t.Fatalf("primary_color = %q, want #2b4c8c", resp.Theme.PrimaryColor)
 	}
-	if resp.Msg.Theme.SecondaryColor != "#c63d17" {
-		t.Fatalf("secondary_color = %q, want #c63d17", resp.Msg.Theme.SecondaryColor)
+	if resp.Theme.SecondaryColor != "#c63d17" {
+		t.Fatalf("secondary_color = %q, want #c63d17", resp.Theme.SecondaryColor)
 	}
-	if resp.Msg.Theme.AccentColor != "#e3e9f5" {
-		t.Fatalf("accent_color = %q, want #e3e9f5", resp.Msg.Theme.AccentColor)
+	if resp.Theme.AccentColor != "#e3e9f5" {
+		t.Fatalf("accent_color = %q, want #e3e9f5", resp.Theme.AccentColor)
 	}
 	assertExpectations(t, mock)
 }
@@ -608,19 +605,18 @@ func TestUploadTenantIconStoresImageAndPointsThemeAtIt(t *testing.T) {
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{UUID: storedImageID, Valid: true}, uuid.NullUUID{}, now)
 	mock.ExpectCommit()
 
-	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadTenantIconRequest{
+	client := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UploadTenantIconRequest{
 		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		IconData:        testSquarePNG(t, 64),
 		IconContentType: "image/png",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.UploadTenantIcon(context.Background(), req)
+	}
+	resp, err := client.UploadTenantIcon(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UploadTenantIcon: %v", err)
 	}
 	want := "/images/tenants/" + storedImageID.String() + "/icon"
-	if got := brandingImageURL(resp.Msg.Theme.IconImageVariants); got != want {
+	if got := brandingImageURL(resp.Theme.IconImageVariants); got != want {
 		t.Fatalf("icon variant url = %q, want %q", got, want)
 	}
 	assertExpectations(t, mock)
@@ -635,14 +631,13 @@ func TestUploadTenantIconRejectsUndersizedImage(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadTenantIconRequest{
+	client := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UploadTenantIconRequest{
 		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		IconData:        testSquarePNG(t, 16),
 		IconContentType: "image/png",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	_, err := client.UploadTenantIcon(context.Background(), req)
+	}
+	_, err := client.UploadTenantIcon(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UploadTenantIcon code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -677,17 +672,16 @@ func TestDeleteTenantIconClearsReferenceAndDropsImage(t *testing.T) {
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{}, now)
 	mock.ExpectCommit()
 
-	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.DeleteTenantIconRequest{
+	client := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.DeleteTenantIconRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.DeleteTenantIcon(context.Background(), req)
+	}
+	resp, err := client.DeleteTenantIcon(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("DeleteTenantIcon: %v", err)
 	}
-	if len(resp.Msg.Theme.IconImageVariants) != 0 {
-		t.Fatalf("icon variants = %d, want none", len(resp.Msg.Theme.IconImageVariants))
+	if len(resp.Theme.IconImageVariants) != 0 {
+		t.Fatalf("icon variants = %d, want none", len(resp.Theme.IconImageVariants))
 	}
 	assertExpectations(t, mock)
 }
@@ -752,19 +746,18 @@ func TestUploadTenantLogoStoresImageAndPointsThemeAtIt(t *testing.T) {
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{UUID: storedImageID, Valid: true}, now)
 	mock.ExpectCommit()
 
-	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadTenantLogoRequest{
+	client := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UploadTenantLogoRequest{
 		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		LogoData:        testWideRectPNG(t, 320, 80),
 		LogoContentType: "image/png",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.UploadTenantLogo(context.Background(), req)
+	}
+	resp, err := client.UploadTenantLogo(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UploadTenantLogo: %v", err)
 	}
 	want := "/images/tenants/" + storedImageID.String() + "/logo"
-	if got := brandingImageURL(resp.Msg.Theme.LogoImageVariants); got != want {
+	if got := brandingImageURL(resp.Theme.LogoImageVariants); got != want {
 		t.Fatalf("logo variant url = %q, want %q", got, want)
 	}
 	assertExpectations(t, mock)
@@ -779,14 +772,13 @@ func TestUploadTenantLogoRejectsUndersizedImage(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadTenantLogoRequest{
+	client := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.UploadTenantLogoRequest{
 		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		LogoData:        testWideRectPNG(t, 320, 16),
 		LogoContentType: "image/png",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	_, err := client.UploadTenantLogo(context.Background(), req)
+	}
+	_, err := client.UploadTenantLogo(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UploadTenantLogo code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -821,17 +813,16 @@ func TestDeleteTenantLogoClearsReferenceAndDropsImage(t *testing.T) {
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{}, now)
 	mock.ExpectCommit()
 
-	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.DeleteTenantLogoRequest{
+	client := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.DeleteTenantLogoRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.DeleteTenantLogo(context.Background(), req)
+	}
+	resp, err := client.DeleteTenantLogo(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("DeleteTenantLogo: %v", err)
 	}
-	if len(resp.Msg.Theme.LogoImageVariants) != 0 {
-		t.Fatalf("logo variants = %d, want none", len(resp.Msg.Theme.LogoImageVariants))
+	if len(resp.Theme.LogoImageVariants) != 0 {
+		t.Fatalf("logo variants = %d, want none", len(resp.Theme.LogoImageVariants))
 	}
 	assertExpectations(t, mock)
 }

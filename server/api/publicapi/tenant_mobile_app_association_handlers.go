@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"connectrpc.com/connect"
-
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 )
 
@@ -16,9 +14,9 @@ import (
 // verifiers cache.
 func (s *apiServer) GetTenantMobileAppAssociation(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetTenantMobileAppAssociationRequest],
-) (*connect.Response[publirav1.GetTenantMobileAppAssociationResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.GetTenantMobileAppAssociationRequest,
+) (*publirav1.GetTenantMobileAppAssociationResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +24,7 @@ func (s *apiServer) GetTenantMobileAppAssociation(
 	config, err := s.queriesFor(ctx).GetTenantConfigByTenantID(ctx, tenant.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return connect.NewResponse(&publirav1.GetTenantMobileAppAssociationResponse{}), nil
+			return &publirav1.GetTenantMobileAppAssociationResponse{}, nil
 		}
 		return nil, s.internalError(ctx, "failed to get tenant mobile app association", err, "tenant_id", tenant.ID.String())
 	}
@@ -44,5 +42,5 @@ func (s *apiServer) GetTenantMobileAppAssociation(
 			BundleIdentifier: config.IosBundleIdentifier.String,
 		}
 	}
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }

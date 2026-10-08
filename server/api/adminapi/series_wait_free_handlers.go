@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"errors"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 // The column defaults of series_wait_free_settings, which is what a series
@@ -68,16 +69,16 @@ func (s *adminServer) waitFreeSeries(ctx context.Context, tenantID uuid.UUID, ra
 
 func (s *adminServer) GetSeriesWaitFreeSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetSeriesWaitFreeSettingsRequest],
-) (*connect.Response[publiraadminv1.GetSeriesWaitFreeSettingsResponse], error) {
+	req *publiraadminv1.GetSeriesWaitFreeSettingsRequest,
+) (*publiraadminv1.GetSeriesWaitFreeSettingsResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	series, err := s.waitFreeSeries(ctx, tenant.ID, req.Msg.SeriesId)
+	series, err := s.waitFreeSeries(ctx, tenant.ID, req.SeriesId)
 	if err != nil {
 		return nil, err
 	}
@@ -86,37 +87,37 @@ func (s *adminServer) GetSeriesWaitFreeSettings(
 		SeriesID: series.ID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return connect.NewResponse(&publiraadminv1.GetSeriesWaitFreeSettingsResponse{Settings: defaultSeriesWaitFreeSettings()}), nil
+		return &publiraadminv1.GetSeriesWaitFreeSettingsResponse{Settings: defaultSeriesWaitFreeSettings()}, nil
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get series wait-free settings", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetSeriesWaitFreeSettingsResponse{
+	return &publiraadminv1.GetSeriesWaitFreeSettingsResponse{
 		Settings: &publiraadminv1.SeriesWaitFreeSettings{
 			Enabled:             row.Enabled,
 			RechargeHours:       row.RechargeHours,
 			AccessHours:         row.AccessHours,
 			ExcludedLatestCount: row.ExcludedLatestCount,
 		},
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) UpdateSeriesWaitFreeSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateSeriesWaitFreeSettingsRequest],
-) (*connect.Response[publiraadminv1.UpdateSeriesWaitFreeSettingsResponse], error) {
+	req *publiraadminv1.UpdateSeriesWaitFreeSettingsRequest,
+) (*publiraadminv1.UpdateSeriesWaitFreeSettingsResponse, error) {
 	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	if err := validateSeriesWaitFreeSettings(req.Msg.Settings); err != nil {
+	if err := validateSeriesWaitFreeSettings(req.Settings); err != nil {
 		return nil, err
 	}
-	series, err := s.waitFreeSeries(ctx, tenant.ID, req.Msg.SeriesId)
+	series, err := s.waitFreeSeries(ctx, tenant.ID, req.SeriesId)
 	if err != nil {
 		return nil, err
 	}
@@ -131,10 +132,10 @@ func (s *adminServer) UpdateSeriesWaitFreeSettings(
 	saved, err := q.UpsertSeriesWaitFreeSettings(ctx, dbmodels.UpsertSeriesWaitFreeSettingsParams{
 		TenantID:            tenant.ID,
 		SeriesID:            series.ID,
-		Enabled:             req.Msg.Settings.Enabled,
-		RechargeHours:       req.Msg.Settings.RechargeHours,
-		AccessHours:         req.Msg.Settings.AccessHours,
-		ExcludedLatestCount: req.Msg.Settings.ExcludedLatestCount,
+		Enabled:             req.Settings.Enabled,
+		RechargeHours:       req.Settings.RechargeHours,
+		AccessHours:         req.Settings.AccessHours,
+		ExcludedLatestCount: req.Settings.ExcludedLatestCount,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to save series wait-free settings", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
@@ -158,15 +159,15 @@ func (s *adminServer) UpdateSeriesWaitFreeSettings(
 		TargetType:  "series",
 		TargetID:    series.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publiraadminv1.UpdateSeriesWaitFreeSettingsResponse{
+	return &publiraadminv1.UpdateSeriesWaitFreeSettingsResponse{
 		Settings: &publiraadminv1.SeriesWaitFreeSettings{
 			Enabled:             saved.Enabled,
 			RechargeHours:       saved.RechargeHours,
 			AccessHours:         saved.AccessHours,
 			ExcludedLatestCount: saved.ExcludedLatestCount,
 		},
-	}), nil
+	}, nil
 }

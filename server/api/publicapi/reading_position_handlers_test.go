@@ -3,20 +3,22 @@ package publicapi
 import (
 	"context"
 	"database/sql"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 type readingPositionFixture struct {
@@ -25,6 +27,9 @@ type readingPositionFixture struct {
 	tenantID uuid.UUID
 	userID   uuid.UUID
 	now      time.Time
+	// call is the CallInfo of the fixture's latest RPC, which carries the
+	// response headers.
+	call *connect.CallInfo
 }
 
 func newReadingPositionFixture(t *testing.T) *readingPositionFixture {
@@ -32,7 +37,7 @@ func newReadingPositionFixture(t *testing.T) *readingPositionFixture {
 
 	testServer, mock := newTestPublicServer(t)
 	fixture := &readingPositionFixture{
-		client:   publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL),
+		client:   publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))),
 		mock:     mock,
 		tenantID: uuid.Must(uuid.NewV7()),
 		userID:   uuid.Must(uuid.NewV7()),
@@ -50,26 +55,32 @@ var (
 	series001ID          = uuid.MustParse("01920000-0000-7000-8000-000000000101")
 )
 
-func (f *readingPositionFixture) save(episodeID string, pageIndex int32) (*connect.Response[publirav1.SaveReadingPositionResponse], error) {
-	return f.client.SaveReadingPosition(context.Background(), newAuthedPublicRequest(&publirav1.SaveReadingPositionRequest{
+func (f *readingPositionFixture) save(episodeID string, pageIndex int32) (*publirav1.SaveReadingPositionResponse, error) {
+	ctx, call := testutil.NewClientContext(testutil.WithBearer(context.Background(), issueTestPublicToken(f.tenantID.String())))
+	f.call = call
+	return f.client.SaveReadingPosition(ctx, &publirav1.SaveReadingPositionRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
 		EpisodeId: episodeID,
 		PageIndex: pageIndex,
-	}, f.tenantID.String()))
+	})
 }
 
-func (f *readingPositionFixture) get(episodeID string) (*connect.Response[publirav1.GetMyReadingPositionResponse], error) {
-	return f.client.GetMyReadingPosition(context.Background(), newAuthedPublicRequest(&publirav1.GetMyReadingPositionRequest{
+func (f *readingPositionFixture) get(episodeID string) (*publirav1.GetMyReadingPositionResponse, error) {
+	ctx, call := testutil.NewClientContext(testutil.WithBearer(context.Background(), issueTestPublicToken(f.tenantID.String())))
+	f.call = call
+	return f.client.GetMyReadingPosition(ctx, &publirav1.GetMyReadingPositionRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
 		EpisodeId: episodeID,
-	}, f.tenantID.String()))
+	})
 }
 
-func (f *readingPositionFixture) progress(seriesID string) (*connect.Response[publirav1.GetMySeriesProgressResponse], error) {
-	return f.client.GetMySeriesProgress(context.Background(), newAuthedPublicRequest(&publirav1.GetMySeriesProgressRequest{
+func (f *readingPositionFixture) progress(seriesID string) (*publirav1.GetMySeriesProgressResponse, error) {
+	ctx, call := testutil.NewClientContext(testutil.WithBearer(context.Background(), issueTestPublicToken(f.tenantID.String())))
+	f.call = call
+	return f.client.GetMySeriesProgress(ctx, &publirav1.GetMySeriesProgressRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
 		SeriesId: seriesID,
-	}, f.tenantID.String()))
+	})
 }
 
 // expectFinishedEpisodes stands in for the finished-episode read every
@@ -107,7 +118,7 @@ func TestSaveReadingPositionStoresThePageAndReturnsPrivateResponse(t *testing.T)
 	if err != nil {
 		t.Fatalf("SaveReadingPosition: %v", err)
 	}
-	position := response.Msg.Position
+	position := response.Position
 	if position == nil {
 		t.Fatal("SaveReadingPosition returned no position")
 	}
@@ -117,7 +128,7 @@ func TestSaveReadingPositionStoresThePageAndReturnsPrivateResponse(t *testing.T)
 	if got, want := position.UpdatedAt, fixture.now.Format(time.RFC3339Nano); got != want {
 		t.Fatalf("updated_at = %q, want %q", got, want)
 	}
-	if got := response.Header().Get("Cache-Control"); got != "private, no-store" {
+	if got := fixture.call.ResponseHeader().Get("Cache-Control"); got != "private, no-store" {
 		t.Fatalf("Cache-Control = %q, want private, no-store", got)
 	}
 	assertPublicExpectations(t, fixture.mock)
@@ -172,13 +183,13 @@ func TestSaveReadingPositionRequiresASession(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now().UTC())
-	client := publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 
-	_, err := client.SaveReadingPosition(context.Background(), connect.NewRequest(&publirav1.SaveReadingPositionRequest{
+	_, err := client.SaveReadingPosition(context.Background(), &publirav1.SaveReadingPositionRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: episode001ID.String(),
 		PageIndex: 1,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("SaveReadingPosition without a bearer error = %v, want unauthenticated", err)
 	}
@@ -196,14 +207,14 @@ func TestGetMyReadingPositionReturnsTheStoredPage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMyReadingPosition: %v", err)
 	}
-	position := response.Msg.Position
+	position := response.Position
 	if position == nil {
 		t.Fatal("GetMyReadingPosition returned no position")
 	}
 	if position.EpisodePublicId != "EPISODE001" || position.PageIndex != 11 || position.PageCount != 40 {
 		t.Fatalf("position = %+v, want EPISODE001 at 11 of 40", position)
 	}
-	if got := response.Header().Get("Cache-Control"); got != "private, no-store" {
+	if got := fixture.call.ResponseHeader().Get("Cache-Control"); got != "private, no-store" {
 		t.Fatalf("Cache-Control = %q, want private, no-store", got)
 	}
 	assertPublicExpectations(t, fixture.mock)
@@ -219,8 +230,8 @@ func TestGetMyReadingPositionIsEmptyWithoutOne(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMyReadingPosition: %v", err)
 	}
-	if response.Msg.Position != nil {
-		t.Fatalf("position = %+v, want none", response.Msg.Position)
+	if response.Position != nil {
+		t.Fatalf("position = %+v, want none", response.Position)
 	}
 	assertPublicExpectations(t, fixture.mock)
 }
@@ -239,7 +250,7 @@ func TestGetMySeriesProgressReturnsTheLastOpenedEpisode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress: %v", err)
 	}
-	progress := response.Msg.Progress
+	progress := response.Progress
 	if progress == nil {
 		t.Fatal("GetMySeriesProgress returned no progress")
 	}
@@ -252,10 +263,10 @@ func TestGetMySeriesProgressReturnsTheLastOpenedEpisode(t *testing.T) {
 	if progress.IsFinished {
 		t.Fatal("is_finished = true, want false")
 	}
-	if !slices.Equal(response.Msg.FinishedEpisodePublicIds, []string{"EPISODE001", "EPISODE002"}) {
-		t.Fatalf("finished_episode_public_ids = %v, want the two finished episodes", response.Msg.FinishedEpisodePublicIds)
+	if !slices.Equal(response.FinishedEpisodePublicIds, []string{"EPISODE001", "EPISODE002"}) {
+		t.Fatalf("finished_episode_public_ids = %v, want the two finished episodes", response.FinishedEpisodePublicIds)
 	}
-	if got := response.Header().Get("Cache-Control"); got != "private, no-store" {
+	if got := fixture.call.ResponseHeader().Get("Cache-Control"); got != "private, no-store" {
 		t.Fatalf("Cache-Control = %q, want private, no-store", got)
 	}
 	assertPublicExpectations(t, fixture.mock)
@@ -272,11 +283,11 @@ func TestGetMySeriesProgressIsEmptyForAnUnopenedSeries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress: %v", err)
 	}
-	if response.Msg.Progress != nil {
-		t.Fatalf("progress = %+v, want none", response.Msg.Progress)
+	if response.Progress != nil {
+		t.Fatalf("progress = %+v, want none", response.Progress)
 	}
-	if len(response.Msg.FinishedEpisodePublicIds) != 0 {
-		t.Fatalf("finished_episode_public_ids = %v, want none", response.Msg.FinishedEpisodePublicIds)
+	if len(response.FinishedEpisodePublicIds) != 0 {
+		t.Fatalf("finished_episode_public_ids = %v, want none", response.FinishedEpisodePublicIds)
 	}
 	assertPublicExpectations(t, fixture.mock)
 }
@@ -294,11 +305,11 @@ func TestGetMySeriesProgressReportsFinishedEpisodesWithoutAPosition(t *testing.T
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress: %v", err)
 	}
-	if response.Msg.Progress != nil {
-		t.Fatalf("progress = %+v, want none", response.Msg.Progress)
+	if response.Progress != nil {
+		t.Fatalf("progress = %+v, want none", response.Progress)
 	}
-	if !slices.Equal(response.Msg.FinishedEpisodePublicIds, []string{"EPISODE001"}) {
-		t.Fatalf("finished_episode_public_ids = %v, want EPISODE001", response.Msg.FinishedEpisodePublicIds)
+	if !slices.Equal(response.FinishedEpisodePublicIds, []string{"EPISODE001"}) {
+		t.Fatalf("finished_episode_public_ids = %v, want EPISODE001", response.FinishedEpisodePublicIds)
 	}
 	assertPublicExpectations(t, fixture.mock)
 }
@@ -324,12 +335,14 @@ func recentSeriesColumns() *sqlmock.Rows {
 	})
 }
 
-func (f *readingPositionFixture) recent(limit int32, token string) (*connect.Response[publirav1.ListMyRecentSeriesResponse], error) {
-	return f.client.ListMyRecentSeries(context.Background(), newAuthedPublicRequest(&publirav1.ListMyRecentSeriesRequest{
+func (f *readingPositionFixture) recent(limit int32, token string) (*publirav1.ListMyRecentSeriesResponse, error) {
+	ctx, call := testutil.NewClientContext(testutil.WithBearer(context.Background(), issueTestPublicToken(f.tenantID.String())))
+	f.call = call
+	return f.client.ListMyRecentSeries(ctx, &publirav1.ListMyRecentSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
 		Limit:  limit,
 		Token:  token,
-	}, f.tenantID.String()))
+	})
 }
 
 func TestListMyRecentSeriesReturnsTheEpisodeToContinueFrom(t *testing.T) {
@@ -355,13 +368,13 @@ func TestListMyRecentSeriesReturnsTheEpisodeToContinueFrom(t *testing.T) {
 	}
 	// The display query is unordered; the keyset scan is what decides the page
 	// order, and the handler puts the rows back into it.
-	items := make([]*publirattypesv1.Series, 0, len(response.Msg.Series))
-	for _, item := range response.Msg.Series {
+	items := make([]*publirattypesv1.Series, 0, len(response.Series))
+	for _, item := range response.Series {
 		items = append(items, item.GetSeries())
 	}
 	assertSeriesPublicIDs(t, items, "SERIES001", "SERIES002")
 
-	first := response.Msg.Series[0]
+	first := response.Series[0]
 	if got := first.GetEpisode().GetPublicId(); got != "EPISODE003" {
 		t.Fatalf("episode = %q, want the unfinished EPISODE003", got)
 	}
@@ -374,7 +387,7 @@ func TestListMyRecentSeriesReturnsTheEpisodeToContinueFrom(t *testing.T) {
 
 	// A next episode the reader has never opened has no position to resume, and
 	// a paid one they have not bought is offered all the same.
-	second := response.Msg.Series[1]
+	second := response.Series[1]
 	if got := second.GetEpisode().GetPublicId(); got != "EPISODE004" {
 		t.Fatalf("episode = %q, want the next EPISODE004", got)
 	}
@@ -382,13 +395,13 @@ func TestListMyRecentSeriesReturnsTheEpisodeToContinueFrom(t *testing.T) {
 		t.Fatalf("position = %+v, want none for an episode never opened", second.GetPosition())
 	}
 
-	if response.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", response.Msg.PreviousToken)
+	if response.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", response.PreviousToken)
 	}
-	if response.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", response.Msg.NextToken)
+	if response.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", response.NextToken)
 	}
-	if got := response.Header().Get("Cache-Control"); got != "private, no-store" {
+	if got := fixture.call.ResponseHeader().Get("Cache-Control"); got != "private, no-store" {
 		t.Fatalf("Cache-Control = %q, want private, no-store", got)
 	}
 	assertPublicExpectations(t, fixture.mock)
@@ -416,12 +429,12 @@ func TestListMyRecentSeriesPagesForwardOnTheActivityCursor(t *testing.T) {
 	}
 	// The over-fetched row is dropped from the page and is what says another
 	// page exists; the token names the last row that stayed.
-	if len(response.Msg.Series) != 1 {
-		t.Fatalf("series = %d, want the single row of the page", len(response.Msg.Series))
+	if len(response.Series) != 1 {
+		t.Fatalf("series = %d, want the single row of the page", len(response.Series))
 	}
 	want := onWeb(pagination.EncodeTimeUUID(pagination.Forward, fixture.now, series))
-	if response.Msg.NextToken != want {
-		t.Fatalf("next_token = %q, want the token of the last row on the page", response.Msg.NextToken)
+	if response.NextToken != want {
+		t.Fatalf("next_token = %q, want the token of the last row on the page", response.NextToken)
 	}
 	assertPublicExpectations(t, fixture.mock)
 }
@@ -445,15 +458,15 @@ func TestListMyRecentSeriesReadsTheBackwardDirectionAscending(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries: %v", err)
 	}
-	if len(response.Msg.Series) != 1 {
-		t.Fatalf("series = %d, want the single row of the page", len(response.Msg.Series))
+	if len(response.Series) != 1 {
+		t.Fatalf("series = %d, want the single row of the page", len(response.Series))
 	}
 	// The side the client came from is known to hold rows without asking.
-	if response.Msg.NextToken == "" {
+	if response.NextToken == "" {
 		t.Fatal("next_token is empty, want the way back to the page the client came from")
 	}
-	if response.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan ran out", response.Msg.PreviousToken)
+	if response.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan ran out", response.PreviousToken)
 	}
 	assertPublicExpectations(t, fixture.mock)
 }
@@ -471,15 +484,15 @@ func TestListMyRecentSeriesRecoversOnceFromAnEmptyPage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries: %v", err)
 	}
-	if len(response.Msg.Series) != 0 {
-		t.Fatalf("series = %d, want none", len(response.Msg.Series))
+	if len(response.Series) != 0 {
+		t.Fatalf("series = %d, want none", len(response.Series))
 	}
 	want := onWeb(pagination.EncodeTimeUUIDRecovery(pagination.Backward, fixture.now, boundary))
-	if response.Msg.PreviousToken != want {
-		t.Fatalf("previous_token = %q, want the recovery token back to the boundary row", response.Msg.PreviousToken)
+	if response.PreviousToken != want {
+		t.Fatalf("previous_token = %q, want the recovery token back to the boundary row", response.PreviousToken)
 	}
-	if response.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty", response.Msg.NextToken)
+	if response.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty", response.NextToken)
 	}
 	assertPublicExpectations(t, fixture.mock)
 }
@@ -497,15 +510,15 @@ func TestListMyRecentSeriesRecoversOnceFromAnEmptyBackwardPage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries: %v", err)
 	}
-	if len(response.Msg.Series) != 0 {
-		t.Fatalf("series = %d, want none", len(response.Msg.Series))
+	if len(response.Series) != 0 {
+		t.Fatalf("series = %d, want none", len(response.Series))
 	}
 	want := onWeb(pagination.EncodeTimeUUIDRecovery(pagination.Forward, fixture.now, boundary))
-	if response.Msg.NextToken != want {
-		t.Fatalf("next_token = %q, want the recovery token back to the boundary row", response.Msg.NextToken)
+	if response.NextToken != want {
+		t.Fatalf("next_token = %q, want the recovery token back to the boundary row", response.NextToken)
 	}
-	if response.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty", response.Msg.PreviousToken)
+	if response.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty", response.PreviousToken)
 	}
 	assertPublicExpectations(t, fixture.mock)
 }
@@ -524,11 +537,11 @@ func TestListMyRecentSeriesRequiresASession(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now().UTC())
-	client := publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 
-	_, err := client.ListMyRecentSeries(context.Background(), connect.NewRequest(&publirav1.ListMyRecentSeriesRequest{
+	_, err := client.ListMyRecentSeries(context.Background(), &publirav1.ListMyRecentSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("ListMyRecentSeries without a bearer error = %v, want unauthenticated", err)
 	}

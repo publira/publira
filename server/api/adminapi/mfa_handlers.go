@@ -4,11 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"net/http"
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -18,6 +17,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 // The actions the second factor writes to the tenant audit trail. A wrong
@@ -36,7 +36,7 @@ const (
 const mfaOTPAuthIssuer = "Publira"
 
 func mfaCodeRequiredError() error {
-	return connect.NewError(connect.CodeInvalidArgument, errors.New("code is required"))
+	return connect.NewError(connect.CodeInvalidArgument, "code is required")
 }
 
 // A refused code and a rejected session both answer `unauthenticated`, and a
@@ -51,7 +51,7 @@ func mfaLockedError() error {
 }
 
 func mfaNotEnabledError() error {
-	return connect.NewError(connect.CodeFailedPrecondition, errors.New("mfa is not enabled"))
+	return connect.NewError(connect.CodeFailedPrecondition, "mfa is not enabled")
 }
 
 // mfaActor is the account an MFA RPC acts for, together with how it proved
@@ -120,11 +120,11 @@ func (s *adminServer) mfaChallengeFor(
 		audience = auth.AudienceAdminMFAEnroll
 	}
 	if s.tokens == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
+		return nil, connect.NewError(connect.CodeInternal, "token manager is not configured")
 	}
 	token, expiresAt, err := s.tokens.IssueMFAChallengeToken(user.PublicID, audience, tenant.ID.String(), user.CredentialsVersion, time.Now())
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	return &publiraadminv1.AdminAuthServiceMfaChallenge{
 		Token:     token,
@@ -212,7 +212,7 @@ func (s *adminServer) actorFromChallenge(
 func (s *adminServer) mfaActorFor(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	headers http.Header,
+	headers *connect.Header,
 	challengeToken string,
 ) (mfaActor, error) {
 	if strings.TrimSpace(challengeToken) != "" {
@@ -225,7 +225,7 @@ func (s *adminServer) mfaActorFor(
 	return mfaActor{Tenant: tenant, User: user, Role: role}, nil
 }
 
-func (s *adminServer) recordMfaAudit(ctx context.Context, actor mfaActor, headers http.Header, action, outcome, reason string) {
+func (s *adminServer) recordMfaAudit(ctx context.Context, actor mfaActor, headers *connect.Header, action, outcome, reason string) {
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    actor.Tenant.ID,
 		ActorUserID: actor.User.ID,
@@ -279,7 +279,7 @@ func (s *adminServer) checkMfaCode(
 		return mfaCodeOutcome{Reason: "code_missing"}, mfaCodeRequiredError()
 	}
 	if s.encryptor == nil {
-		return mfaCodeOutcome{Reason: "secret_manager_unavailable"}, connect.NewError(connect.CodeFailedPrecondition, errors.New("secret manager is not configured"))
+		return mfaCodeOutcome{Reason: "secret_manager_unavailable"}, connect.NewError(connect.CodeFailedPrecondition, "secret manager is not configured")
 	}
 	secret, err := s.encryptor.DecryptString(row.SecretEncrypted)
 	if err != nil {
@@ -405,9 +405,9 @@ func (s *adminServer) remainingRecoveryCodes(ctx context.Context, userID uuid.UU
 
 func (s *adminServer) GetMfaStatus(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.AdminAuthServiceGetMfaStatusRequest],
-) (*connect.Response[publiraadminv1.AdminAuthServiceGetMfaStatusResponse], error) {
-	_, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publiraadminv1.AdminAuthServiceGetMfaStatusRequest,
+) (*publiraadminv1.AdminAuthServiceGetMfaStatusResponse, error) {
+	_, user, role, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -429,19 +429,19 @@ func (s *adminServer) GetMfaStatus(
 		resp.EnabledAt = auth.FormatExpiresAt(row.EnabledAt.Time)
 		resp.RemainingRecoveryCodes = remaining
 	}
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }
 
 func (s *adminServer) StartMfaEnrollment(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest],
-) (*connect.Response[publiraadminv1.AdminAuthServiceStartMfaEnrollmentResponse], error) {
-	actor, err := s.mfaActorFor(ctx, req.Msg.Tenant, req.Header(), req.Msg.ChallengeToken)
+	req *publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest,
+) (*publiraadminv1.AdminAuthServiceStartMfaEnrollmentResponse, error) {
+	actor, err := s.mfaActorFor(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx), req.ChallengeToken)
 	if err != nil {
 		return nil, err
 	}
 	if s.encryptor == nil {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("secret manager is not configured"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "secret manager is not configured")
 	}
 	row, found, err := s.mfaTotpRow(ctx, actor.User.ID)
 	if err != nil {
@@ -450,7 +450,7 @@ func (s *adminServer) StartMfaEnrollment(
 	// Replacing a confirmed authenticator has to go through disabling it, so
 	// a stolen session cannot quietly swap the factor for one of its own.
 	if found && row.EnabledAt.Valid {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("mfa is already enabled"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "mfa is already enabled")
 	}
 
 	issuer := strings.TrimSpace(actor.Tenant.Name)
@@ -473,17 +473,17 @@ func (s *adminServer) StartMfaEnrollment(
 		return nil, s.internalDBError(ctx, "failed to store mfa totp secret", err, "user_id", actor.User.ID.String())
 	}
 
-	return connect.NewResponse(&publiraadminv1.AdminAuthServiceStartMfaEnrollmentResponse{
+	return &publiraadminv1.AdminAuthServiceStartMfaEnrollmentResponse{
 		Secret:     enrollment.Secret,
 		OtpauthUri: enrollment.OTPAuthURI,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) ConfirmMfaEnrollment(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest],
-) (*connect.Response[publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentResponse], error) {
-	actor, err := s.mfaActorFor(ctx, req.Msg.Tenant, req.Header(), req.Msg.ChallengeToken)
+	req *publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest,
+) (*publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentResponse, error) {
+	actor, err := s.mfaActorFor(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx), req.ChallengeToken)
 	if err != nil {
 		return nil, err
 	}
@@ -492,17 +492,17 @@ func (s *adminServer) ConfirmMfaEnrollment(
 		return nil, err
 	}
 	if !found {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("mfa enrollment has not been started"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "mfa enrollment has not been started")
 	}
 	if row.EnabledAt.Valid {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("mfa is already enabled"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "mfa is already enabled")
 	}
 
 	// A recovery code cannot confirm an enrollment: there are none yet, and
 	// the point of the step is proving the authenticator was set up.
-	outcome, err := s.checkMfaCode(ctx, row, req.Msg.Code, false)
+	outcome, err := s.checkMfaCode(ctx, row, req.Code, false)
 	if err != nil {
-		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaEnrolled, auditlog.OutcomeFailure, outcome.Reason)
+		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaEnrolled, auditlog.OutcomeFailure, outcome.Reason)
 		return nil, err
 	}
 
@@ -510,13 +510,13 @@ func (s *adminServer) ConfirmMfaEnrollment(
 	// enable commits, because the recovery codes exist only in the response
 	// this call is about to build.
 	if actor.FromChallenge && s.tokens == nil {
-		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaEnrolled, auditlog.OutcomeFailure, "token_manager_unavailable")
-		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
+		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaEnrolled, auditlog.OutcomeFailure, "token_manager_unavailable")
+		return nil, connect.NewError(connect.CodeInternal, "token manager is not configured")
 	}
 
 	codes, err := s.enableMfa(ctx, actor)
 	if err != nil {
-		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaEnrolled, auditlog.OutcomeFailure, "enable_failed")
+		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaEnrolled, auditlog.OutcomeFailure, "enable_failed")
 		return nil, err
 	}
 
@@ -535,8 +535,8 @@ func (s *adminServer) ConfirmMfaEnrollment(
 			reason = "session_issue_failed"
 		}
 	}
-	s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaEnrolled, auditlog.OutcomeSuccess, reason)
-	return connect.NewResponse(resp), nil
+	s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaEnrolled, auditlog.OutcomeSuccess, reason)
+	return resp, nil
 }
 
 // enableMfa marks the authenticator confirmed and issues the recovery codes
@@ -592,7 +592,7 @@ func (s *adminServer) spendMfaChallenge(ctx context.Context, actor mfaActor) (cl
 // issueAdminSession finishes a login the second factor has now settled.
 func (s *adminServer) issueAdminSession(ctx context.Context, actor mfaActor) (*publirattypesv1.User, *publirattypesv1.AccessToken, error) {
 	if s.tokens == nil {
-		return nil, nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
+		return nil, nil, connect.NewError(connect.CodeInternal, "token manager is not configured")
 	}
 	token, expiresAt, err := s.tokens.Issue(actor.User.PublicID, auth.AudienceAdmin, actor.Tenant.ID.String(), actor.Role, actor.User.CredentialsVersion, time.Now())
 	if err != nil {
@@ -605,11 +605,11 @@ func (s *adminServer) issueAdminSession(ctx context.Context, actor mfaActor) (*p
 
 func (s *adminServer) VerifyMfa(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.AdminAuthServiceVerifyMfaRequest],
-) (*connect.Response[publiraadminv1.AdminAuthServiceVerifyMfaResponse], error) {
-	actor, err := s.actorFromChallenge(ctx, req.Msg.Tenant, req.Msg.ChallengeToken, auth.AudienceAdminMFAVerify)
+	req *publiraadminv1.AdminAuthServiceVerifyMfaRequest,
+) (*publiraadminv1.AdminAuthServiceVerifyMfaResponse, error) {
+	actor, err := s.actorFromChallenge(ctx, req.Tenant, req.ChallengeToken, auth.AudienceAdminMFAVerify)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "admin_mfa_verify", "failure", "", "", "invalid_challenge")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_mfa_verify", "failure", "", "", "invalid_challenge")
 		return nil, err
 	}
 	row, found, err := s.mfaTotpRow(ctx, actor.User.ID)
@@ -620,22 +620,22 @@ func (s *adminServer) VerifyMfa(
 		return nil, mfaNotEnabledError()
 	}
 
-	outcome, err := s.checkMfaCode(ctx, row, req.Msg.Code, true)
+	outcome, err := s.checkMfaCode(ctx, row, req.Code, true)
 	if err != nil {
-		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaVerified, auditlog.OutcomeFailure, outcome.Reason)
-		auth.AuditEvent(req.Header(), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, outcome.Reason)
+		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaVerified, auditlog.OutcomeFailure, outcome.Reason)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, outcome.Reason)
 		return nil, err
 	}
 
 	claimed, err := s.spendMfaChallenge(ctx, actor)
 	if err != nil {
-		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_claim_failed")
-		auth.AuditEvent(req.Header(), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_claim_failed")
+		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_claim_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_claim_failed")
 		return nil, err
 	}
 	if !claimed {
-		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_spent")
-		auth.AuditEvent(req.Header(), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_spent")
+		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_spent")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_spent")
 		return nil, invalidSessionError()
 	}
 
@@ -651,24 +651,24 @@ func (s *adminServer) VerifyMfa(
 	factor := "totp"
 	if outcome.RecoveryUsed {
 		factor = "recovery_code"
-		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaRecoveryCodeUsed, auditlog.OutcomeSuccess, "")
+		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaRecoveryCodeUsed, auditlog.OutcomeSuccess, "")
 	}
-	s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaVerified, auditlog.OutcomeSuccess, factor)
-	auth.AuditEvent(req.Header(), "admin_mfa_verify", "success", actor.Tenant.PublicID, actor.User.PublicID, factor)
+	s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaVerified, auditlog.OutcomeSuccess, factor)
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_mfa_verify", "success", actor.Tenant.PublicID, actor.User.PublicID, factor)
 
-	return connect.NewResponse(&publiraadminv1.AdminAuthServiceVerifyMfaResponse{
+	return &publiraadminv1.AdminAuthServiceVerifyMfaResponse{
 		User:                   user,
 		AccessToken:            accessToken,
 		RecoveryCodeUsed:       outcome.RecoveryUsed,
 		RemainingRecoveryCodes: remaining,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) DisableMfa(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.AdminAuthServiceDisableMfaRequest],
-) (*connect.Response[publiraadminv1.AdminAuthServiceDisableMfaResponse], error) {
-	tenant, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publiraadminv1.AdminAuthServiceDisableMfaRequest,
+) (*publiraadminv1.AdminAuthServiceDisableMfaResponse, error) {
+	tenant, user, role, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -683,9 +683,9 @@ func (s *adminServer) DisableMfa(
 
 	// A recovery code counts here: an account whose authenticator is gone has
 	// to be able to take the factor off without waiting for an operator.
-	outcome, err := s.checkMfaCode(ctx, row, req.Msg.Code, true)
+	outcome, err := s.checkMfaCode(ctx, row, req.Code, true)
 	if err != nil {
-		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaDisabled, auditlog.OutcomeFailure, outcome.Reason)
+		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaDisabled, auditlog.OutcomeFailure, outcome.Reason)
 		return nil, err
 	}
 
@@ -710,15 +710,15 @@ func (s *adminServer) DisableMfa(
 	if outcome.RecoveryUsed {
 		factor = "recovery_code"
 	}
-	s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaDisabled, auditlog.OutcomeSuccess, factor)
-	return connect.NewResponse(&publiraadminv1.AdminAuthServiceDisableMfaResponse{Disabled: true}), nil
+	s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaDisabled, auditlog.OutcomeSuccess, factor)
+	return &publiraadminv1.AdminAuthServiceDisableMfaResponse{Disabled: true}, nil
 }
 
 func (s *adminServer) RegenerateMfaRecoveryCodes(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest],
-) (*connect.Response[publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse], error) {
-	tenant, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest,
+) (*publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse, error) {
+	tenant, user, role, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -733,9 +733,9 @@ func (s *adminServer) RegenerateMfaRecoveryCodes(
 
 	// Only the authenticator can ask for a new batch. Letting one recovery
 	// code mint ten more would make a single leaked code permanent.
-	outcome, err := s.checkMfaCode(ctx, row, req.Msg.Code, false)
+	outcome, err := s.checkMfaCode(ctx, row, req.Code, false)
 	if err != nil {
-		s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeFailure, outcome.Reason)
+		s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeFailure, outcome.Reason)
 		return nil, err
 	}
 
@@ -753,6 +753,6 @@ func (s *adminServer) RegenerateMfaRecoveryCodes(
 		return nil, s.internalDBError(ctx, "failed to commit mfa recovery codes", err, "user_id", user.ID.String())
 	}
 
-	s.recordMfaAudit(ctx, actor, req.Header(), auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeSuccess, "")
-	return connect.NewResponse(&publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse{RecoveryCodes: codes}), nil
+	s.recordMfaAudit(ctx, actor, rpcmiddleware.RequestHeader(ctx), auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeSuccess, "")
+	return &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse{RecoveryCodes: codes}, nil
 }

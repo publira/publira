@@ -6,10 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auth"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 const (
@@ -20,13 +21,13 @@ const (
 func getDBTenantMobileAppAssociation(t *testing.T, env *adminDBEnv, tenant adminDBTenant) *publiraadminv1.TenantMobileAppAssociation {
 	t.Helper()
 
-	resp, err := env.tenantSettingsClient().GetTenantMobileAppAssociation(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantMobileAppAssociationRequest{
+	resp, err := env.tenantSettingsClient().GetTenantMobileAppAssociation(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetTenantMobileAppAssociationRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantMobileAppAssociation: %v", err)
 	}
-	return resp.Msg.Association
+	return resp.Association
 }
 
 func updateDBTenantMobileAppAssociation(
@@ -34,14 +35,14 @@ func updateDBTenantMobileAppAssociation(
 	tenant adminDBTenant,
 	association *publiraadminv1.TenantMobileAppAssociation,
 ) (*publiraadminv1.TenantMobileAppAssociation, error) {
-	resp, err := env.tenantSettingsClient().UpdateTenantMobileAppAssociation(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantMobileAppAssociationRequest{
+	resp, err := env.tenantSettingsClient().UpdateTenantMobileAppAssociation(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateTenantMobileAppAssociationRequest{
 		Tenant:      tenant.tenantContext(),
 		Association: association,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg.Association, nil
+	return resp.Association, nil
 }
 
 func assertAndroidAssociation(t *testing.T, label string, got *publiraadminv1.TenantAndroidAppAssociation, wantApplicationID string, wantFingerprints ...string) {
@@ -208,9 +209,9 @@ func TestDBTenantMobileAppAssociationIsIsolatedPerTenant(t *testing.T) {
 	}
 	assertIosAssociation(t, "second tenant", secondRead.Ios, "BBBBB22222", "com.tenant-b.reader")
 
-	_, err := env.tenantSettingsClient().UpdateTenantMobileAppAssociation(context.Background(), newAdminDBRequest(first, &publiraadminv1.UpdateTenantMobileAppAssociationRequest{
+	_, err := env.tenantSettingsClient().UpdateTenantMobileAppAssociation(testutil.WithBearer(context.Background(), first.token()), &publiraadminv1.UpdateTenantMobileAppAssociationRequest{
 		Tenant: second.tenantContext(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("UpdateTenantMobileAppAssociation with another tenant's context: code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}

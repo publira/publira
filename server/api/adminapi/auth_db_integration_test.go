@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auth"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -17,35 +17,34 @@ func TestDBAdminLoginIssuesUsableSession(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.authClient()
 
-	loggedIn, err := client.Login(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+	loggedIn, err := client.Login(context.Background(), &publiraadminv1.AdminAuthServiceLoginRequest{
 		Tenant:   tenant.tenantContext(),
 		Email:    tenant.User.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
-	if loggedIn.Msg.User.PublicId != tenant.User.PublicID {
-		t.Fatalf("login user = %q, want %q", loggedIn.Msg.User.PublicId, tenant.User.PublicID)
+	if loggedIn.User.PublicId != tenant.User.PublicID {
+		t.Fatalf("login user = %q, want %q", loggedIn.User.PublicId, tenant.User.PublicID)
 	}
-	if loggedIn.Msg.User.Role != auth.RoleTenantAdmin {
-		t.Fatalf("login role = %q, want %s", loggedIn.Msg.User.Role, auth.RoleTenantAdmin)
+	if loggedIn.User.Role != auth.RoleTenantAdmin {
+		t.Fatalf("login role = %q, want %s", loggedIn.User.Role, auth.RoleTenantAdmin)
 	}
-	token := loggedIn.Msg.AccessToken.GetToken()
+	token := loggedIn.AccessToken.GetToken()
 	if token == "" {
 		t.Fatal("login returned an empty access token")
 	}
 
 	// The token the server just minted has to carry a session the same server
 	// accepts, all the way through the RLS-scoped user lookup.
-	req := connect.NewRequest(&publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: tenant.tenantContext()})
-	req.Header().Set("Authorization", "Bearer "+token)
-	me, err := client.GetMe(context.Background(), req)
+	req := &publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: tenant.tenantContext()}
+	me, err := client.GetMe(testutil.WithBearer(context.Background(), token), req)
 	if err != nil {
 		t.Fatalf("GetMe: %v", err)
 	}
-	if me.Msg.User.PublicId != tenant.User.PublicID {
-		t.Fatalf("GetMe user = %q, want %q", me.Msg.User.PublicId, tenant.User.PublicID)
+	if me.User.PublicId != tenant.User.PublicID {
+		t.Fatalf("GetMe user = %q, want %q", me.User.PublicId, tenant.User.PublicID)
 	}
 }
 
@@ -75,16 +74,16 @@ func TestDBAdminLoginAcceptsAnAccountCreatedWithoutAnInvitation(t *testing.T) {
 		t.Fatalf("Commit: %v", err)
 	}
 
-	loggedIn, err := env.authClient().Login(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+	loggedIn, err := env.authClient().Login(ctx, &publiraadminv1.AdminAuthServiceLoginRequest{
 		Tenant:   tenant.tenantContext(),
 		Email:    "second@tenant-a.example.com",
 		Password: "a password nobody mailed",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
-	if loggedIn.Msg.User.PublicId != member.PublicID || loggedIn.Msg.User.Role != auth.RoleTenantAdmin {
-		t.Fatalf("login user = %+v, want %s as %s", loggedIn.Msg.User, member.PublicID, auth.RoleTenantAdmin)
+	if loggedIn.User.PublicId != member.PublicID || loggedIn.User.Role != auth.RoleTenantAdmin {
+		t.Fatalf("login user = %+v, want %s as %s", loggedIn.User, member.PublicID, auth.RoleTenantAdmin)
 	}
 	if count := env.countRows(t, `SELECT count(*) FROM outbox_events WHERE tenant_id = $1`, tenant.Tenant.ID); count != 0 {
 		t.Fatalf("queued events = %d, want no mail", count)
@@ -95,11 +94,11 @@ func TestDBAdminLoginRejectsWrongPassword(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
-	_, err := env.authClient().Login(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+	_, err := env.authClient().Login(context.Background(), &publiraadminv1.AdminAuthServiceLoginRequest{
 		Tenant:   tenant.tenantContext(),
 		Email:    tenant.User.Email,
 		Password: "not-the-password",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -111,11 +110,11 @@ func TestDBAdminLoginRejectsUserOfAnotherTenant(t *testing.T) {
 
 	// Correct credentials, wrong tenant: RLS keeps the other tenant's user out of
 	// reach, so the lookup finds nothing rather than signing them in.
-	_, err := env.authClient().Login(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+	_, err := env.authClient().Login(context.Background(), &publiraadminv1.AdminAuthServiceLoginRequest{
 		Tenant:   first.tenantContext(),
 		Email:    second.User.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -130,11 +129,11 @@ func TestDBAdminLoginRejectsSuspendedUser(t *testing.T) {
 		t.Fatalf("suspend user: %v", err)
 	}
 
-	_, err := env.authClient().Login(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+	_, err := env.authClient().Login(ctx, &publiraadminv1.AdminAuthServiceLoginRequest{
 		Tenant:   tenant.tenantContext(),
 		Email:    tenant.User.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -150,16 +149,16 @@ func TestDBAdminLoginRejectsReaderWithoutATenantRole(t *testing.T) {
 	client := env.authClient()
 	ctx := context.Background()
 
-	_, readerErr := client.Login(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+	_, readerErr := client.Login(ctx, &publiraadminv1.AdminAuthServiceLoginRequest{
 		Tenant:   tenant.tenantContext(),
 		Email:    reader.Email,
 		Password: testutil.SeededPassword,
-	}))
-	_, wrongPasswordErr := client.Login(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+	})
+	_, wrongPasswordErr := client.Login(ctx, &publiraadminv1.AdminAuthServiceLoginRequest{
 		Tenant:   tenant.tenantContext(),
 		Email:    reader.Email,
 		Password: "not-the-password",
-	}))
+	})
 	if connect.CodeOf(readerErr) != connect.CodeUnauthenticated {
 		t.Fatalf("Login code = %v, want unauthenticated (err=%v)", connect.CodeOf(readerErr), readerErr)
 	}
@@ -179,17 +178,18 @@ func TestDBAdminSessionEndsWhenTheMemberRolesAreRemoved(t *testing.T) {
 	client := env.authClient()
 	ctx := context.Background()
 
-	loggedIn, err := client.Login(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+	loggedIn, err := client.Login(ctx, &publiraadminv1.AdminAuthServiceLoginRequest{
 		Tenant:   tenant.tenantContext(),
 		Email:    editor.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
 	getMe := func() error {
-		req := connect.NewRequest(&publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: asEditor.tenantContext()})
-		req.Header().Set("Authorization", "Bearer "+loggedIn.Msg.AccessToken.GetToken())
+		req := &publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: asEditor.tenantContext()}
+		ctx, info := connect.NewClientContext(ctx)
+		info.RequestHeader().Set("Authorization", "Bearer "+loggedIn.AccessToken.GetToken())
 		_, err := client.GetMe(ctx, req)
 		return err
 	}
@@ -197,9 +197,9 @@ func TestDBAdminSessionEndsWhenTheMemberRolesAreRemoved(t *testing.T) {
 		t.Fatalf("GetMe before removal: %v", err)
 	}
 
-	if _, err := env.tenantMemberClient().RemoveTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
+	if _, err := env.tenantMemberClient().RemoveTenantMember(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.RemoveTenantMemberRequest{
 		Tenant: tenant.tenantContext(), UserId: editor.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RemoveTenantMember: %v", err)
 	}
 
@@ -221,9 +221,8 @@ func TestDBAdminSessionRejectsStaleCredentialsVersion(t *testing.T) {
 		t.Fatalf("bump credentials_version: %v", err)
 	}
 
-	req := connect.NewRequest(&publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: tenant.tenantContext()})
-	req.Header().Set("Authorization", "Bearer "+staleToken)
-	_, err := env.authClient().GetMe(context.Background(), req)
+	req := &publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: tenant.tenantContext()}
+	_, err := env.authClient().GetMe(testutil.WithBearer(context.Background(), staleToken), req)
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMe code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -234,23 +233,23 @@ func TestDBUpdateTenantConfigPersists(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.authClient()
 
-	if _, err := client.UpdateTenantConfig(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest{
+	if _, err := client.UpdateTenantConfig(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest{
 		Tenant:          tenant.tenantContext(),
 		CopyrightText:   "© Tenant A",
 		SiteDescription: "A tenant that exists only in a test",
 		SiteTagline:     "Read on",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("UpdateTenantConfig: %v", err)
 	}
 
-	got, err := client.GetTenantConfig(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceGetTenantConfigRequest{
+	got, err := client.GetTenantConfig(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceGetTenantConfigRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantConfig: %v", err)
 	}
-	if got.Msg.CopyrightText != "© Tenant A" || got.Msg.SiteTagline != "Read on" {
-		t.Fatalf("tenant config = %+v, want the values just written", got.Msg)
+	if got.CopyrightText != "© Tenant A" || got.SiteTagline != "Read on" {
+		t.Fatalf("tenant config = %+v, want the values just written", got)
 	}
 
 	// tenant_config is RLS-protected; the row must be stamped with this tenant.

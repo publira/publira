@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 	_ "golang.org/x/image/webp"
 
@@ -141,7 +141,7 @@ func normalizeCreatorIconImage(data []byte, contentType string, crop *imageproc.
 		return nil, nil
 	}
 	if len(data) > creatorIconMaxUploadBytes {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("icon_image_data exceeds 10MB"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "icon_image_data exceeds 10MB")
 	}
 
 	normalizedContentType := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
@@ -149,18 +149,18 @@ func normalizeCreatorIconImage(data []byte, contentType string, crop *imageproc.
 		normalizedContentType = strings.ToLower(strings.TrimSpace(http.DetectContentType(data)))
 	}
 	if normalizedContentType != "image/jpeg" && normalizedContentType != "image/png" && normalizedContentType != "image/webp" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("icon_image_content_type must be image/jpeg, image/png, or image/webp"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "icon_image_content_type must be image/jpeg, image/png, or image/webp")
 	}
 
 	decoded, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("icon_image_data is not decodable"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "icon_image_data is not decodable")
 	}
 	region := decoded
 	if crop != nil {
 		region, err = imageproc.CropImage(decoded, *crop)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 		}
 	}
 	bounds := region.Bounds()
@@ -170,9 +170,10 @@ func normalizeCreatorIconImage(data []byte, contentType string, crop *imageproc.
 	}
 	if cropSize < creatorIconMinDimension {
 		if crop != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%w: icon crop must be at least %dx%d after fitting to a square", imageproc.ErrInvalidCrop, creatorIconMinDimension, creatorIconMinDimension))
+			err := fmt.Errorf("%w: icon crop must be at least %dx%d after fitting to a square", imageproc.ErrInvalidCrop, creatorIconMinDimension, creatorIconMinDimension)
+			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 		}
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("icon image must be at least 256x256"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "icon image must be at least 256x256")
 	}
 
 	origin := image.Point{
@@ -187,16 +188,16 @@ func normalizeCreatorIconImage(data []byte, contentType string, crop *imageproc.
 	switch normalizedContentType {
 	case "image/jpeg":
 		if err := jpeg.Encode(&encoded, cropped, &jpeg.Options{Quality: 90}); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to encode icon image"))
+			return nil, connect.NewError(connect.CodeInternal, "failed to encode icon image")
 		}
 	case "image/png":
 		if err := png.Encode(&encoded, cropped); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to encode icon image"))
+			return nil, connect.NewError(connect.CodeInternal, "failed to encode icon image")
 		}
 	default:
 		encodedContentType = "image/png"
 		if err := png.Encode(&encoded, cropped); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to encode icon image"))
+			return nil, connect.NewError(connect.CodeInternal, "failed to encode icon image")
 		}
 	}
 
@@ -224,12 +225,12 @@ func (s *adminServer) createCreatorIconImage(ctx context.Context, tenant dbmodel
 		return uuid.NullUUID{}, nil
 	}
 	if s.storage == nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, "storage provider is not configured")
 	}
 
 	creatorImageID, err := uuid.NewV7()
 	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err)
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	createdImage, err := s.queriesFor(ctx).CreateCreatorImage(ctx, dbmodels.CreateCreatorImageParams{
@@ -253,7 +254,7 @@ func (s *adminServer) createCreatorIconImage(ctx context.Context, tenant dbmodel
 
 	creatorImageVariantID, err := uuid.NewV7()
 	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err)
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	_, err = s.queriesFor(ctx).CreateCreatorImageVariant(ctx, dbmodels.CreateCreatorImageVariantParams{
@@ -282,7 +283,7 @@ func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmod
 
 	labelImageID, err := uuid.NewV7()
 	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err)
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	createdImage, err := s.queriesFor(ctx).CreateLabelImage(ctx, dbmodels.CreateLabelImageParams{
@@ -318,7 +319,7 @@ func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmod
 
 		labelImageVariantID, variantIDErr := uuid.NewV7()
 		if variantIDErr != nil {
-			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, variantIDErr)
+			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, variantIDErr.Error()).WithCause(variantIDErr)
 		}
 
 		_, createVariantErr := s.queriesFor(ctx).CreateLabelImageVariant(ctx, dbmodels.CreateLabelImageVariantParams{
@@ -456,25 +457,25 @@ func (s *adminServer) creatorPage(
 
 func (s *adminServer) ListCreators(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListCreatorsRequest],
-) (*connect.Response[publiraadminv1.ListCreatorsResponse], error) {
+	req *publiraadminv1.ListCreatorsRequest,
+) (*publiraadminv1.ListCreatorsResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCreatorPageSize, maxCreatorPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultCreatorPageSize, maxCreatorPageSize)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -515,27 +516,27 @@ func (s *adminServer) ListCreators(
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *adminServer) GetCreator(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetCreatorRequest],
-) (*connect.Response[publiraadminv1.GetCreatorResponse], error) {
+	req *publiraadminv1.GetCreatorRequest,
+) (*publiraadminv1.GetCreatorResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 	// Another tenant's creator is filtered out by the query's tenant_id, so it
 	// lands on the same not_found as a missing one and never leaks that the
 	// record exists.
-	row, err := s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	row, err := s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "creator not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get creator", err, "tenant_id", tenant.ID.String())
 	}
@@ -543,7 +544,7 @@ func (s *adminServer) GetCreator(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.GetCreatorResponse{
+	return &publiraadminv1.GetCreatorResponse{
 		Creator: adminCreator(row.ID, protomapper.CreatorFromRow(
 			row.PublicID,
 			row.Name,
@@ -553,30 +554,30 @@ func (s *adminServer) GetCreator(
 			row.IconImageUpdatedAt,
 		)),
 		Accounts: accounts,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) ListLabels(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListLabelsRequest],
-) (*connect.Response[publiraadminv1.ListLabelsResponse], error) {
+	req *publiraadminv1.ListLabelsRequest,
+) (*publiraadminv1.ListLabelsResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultLabelPageSize, maxLabelPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultLabelPageSize, maxLabelPageSize)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -630,27 +631,27 @@ func (s *adminServer) ListLabels(
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *adminServer) GetLabel(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetLabelRequest],
-) (*connect.Response[publiraadminv1.GetLabelResponse], error) {
+	req *publiraadminv1.GetLabelRequest,
+) (*publiraadminv1.GetLabelResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 	// Another tenant's label is filtered out by the query's tenant_id, so it
 	// lands on the same not_found as a missing one and never leaks that the
 	// record exists.
-	row, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	row, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "label not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get label", err, "tenant_id", tenant.ID.String())
 	}
@@ -662,7 +663,7 @@ func (s *adminServer) GetLabel(
 		}
 		variants = variantsByImageID[row.EyeCatchImageID.UUID]
 	}
-	return connect.NewResponse(&publiraadminv1.GetLabelResponse{Label: adminLabel(row.ID, protomapper.LabelWithImage(row.PublicID, row.Name, row.EyeCatchImageUpdatedAt, variants))}), nil
+	return &publiraadminv1.GetLabelResponse{Label: adminLabel(row.ID, protomapper.LabelWithImage(row.PublicID, row.Name, row.EyeCatchImageUpdatedAt, variants))}, nil
 }
 
 // creatorRevalidateTags names what web-host caches a creator under. The creator
@@ -681,27 +682,27 @@ func creatorRevalidateTags(tenantID string) []string {
 
 func (s *adminServer) CreateCreator(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreateCreatorRequest],
-) (*connect.Response[publiraadminv1.CreateCreatorResponse], error) {
+	req *publiraadminv1.CreateCreatorRequest,
+) (*publiraadminv1.CreateCreatorResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(req.Msg.Name) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	if strings.TrimSpace(req.Name) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "name is required")
 	}
 
-	iconImage, err := normalizeCreatorIconImage(req.Msg.IconImageData, req.Msg.IconImageContentType, imageCropRect(req.Msg.IconImageCrop))
+	iconImage, err := normalizeCreatorIconImage(req.IconImageData, req.IconImageContentType, imageCropRect(req.IconImageCrop))
 	if err != nil {
 		return nil, err
 	}
 
 	creatorID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	// The creator and its icon commit together, so a refused upload leaves no
 	// creator behind for the editor's retry to create a second time.
@@ -717,8 +718,8 @@ func (s *adminServer) CreateCreator(
 			ID:          creatorID,
 			TenantID:    tenant.ID,
 			PublicID:    publicID,
-			Name:        req.Msg.Name,
-			ProfileText: sql.NullString{String: req.Msg.ProfileText, Valid: strings.TrimSpace(req.Msg.ProfileText) != ""},
+			Name:        req.Name,
+			ProfileText: sql.NullString{String: req.ProfileText, Valid: strings.TrimSpace(req.ProfileText) != ""},
 			IconImageID: uuid.NullUUID{},
 		})
 	})
@@ -761,43 +762,43 @@ func (s *adminServer) CreateCreator(
 			TargetType:  "creator",
 			TargetID:    createdBase.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 		})
 	}
 	s.reval.Send(ctx, owed)
-	return connect.NewResponse(&publiraadminv1.CreateCreatorResponse{Creator: adminCreator(created.ID, protomapper.CreatorFromRow(
+	return &publiraadminv1.CreateCreatorResponse{Creator: adminCreator(created.ID, protomapper.CreatorFromRow(
 		created.PublicID,
 		created.Name,
 		created.ProfileText.String,
 		created.IconImageID,
 		created.IconImageFileSizeBytes,
 		created.IconImageUpdatedAt,
-	))}), nil
+	))}, nil
 }
 
 func (s *adminServer) UpdateCreator(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateCreatorRequest],
-) (*connect.Response[publiraadminv1.UpdateCreatorResponse], error) {
+	req *publiraadminv1.UpdateCreatorRequest,
+) (*publiraadminv1.UpdateCreatorResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(req.Msg.Name) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	if strings.TrimSpace(req.Name) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "name is required")
 	}
-	if req.Msg.ClearIconImage && len(req.Msg.IconImageData) > 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("clear_icon_image and icon_image_data cannot be used together"))
+	if req.ClearIconImage && len(req.IconImageData) > 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "clear_icon_image and icon_image_data cannot be used together")
 	}
-	iconImage, err := normalizeCreatorIconImage(req.Msg.IconImageData, req.Msg.IconImageContentType, imageCropRect(req.Msg.IconImageCrop))
+	iconImage, err := normalizeCreatorIconImage(req.IconImageData, req.IconImageContentType, imageCropRect(req.IconImageCrop))
 	if err != nil {
 		return nil, err
 	}
 
-	id, err := parseRecordID(req.Msg.CreatorId, "creator_id")
+	id, err := parseRecordID(req.CreatorId, "creator_id")
 	if err != nil {
 		return nil, err
 	}
@@ -815,7 +816,7 @@ func (s *adminServer) UpdateCreator(
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 
 	iconImageID := current.IconImageID
-	if req.Msg.ClearIconImage {
+	if req.ClearIconImage {
 		iconImageID = uuid.NullUUID{}
 	} else if iconImage != nil {
 		newIconImageID, uploadErr := s.createCreatorIconImage(txCtx, tenant, current.ID, current.PublicID, iconImage)
@@ -827,8 +828,8 @@ func (s *adminServer) UpdateCreator(
 
 	err = s.queriesFor(txCtx).UpdateCreator(txCtx, dbmodels.UpdateCreatorParams{
 		ID:          current.ID,
-		Name:        req.Msg.Name,
-		ProfileText: sql.NullString{String: req.Msg.ProfileText, Valid: strings.TrimSpace(req.Msg.ProfileText) != ""},
+		Name:        req.Name,
+		ProfileText: sql.NullString{String: req.ProfileText, Valid: strings.TrimSpace(req.ProfileText) != ""},
 		IconImageID: iconImageID,
 	})
 	if err != nil {
@@ -858,18 +859,18 @@ func (s *adminServer) UpdateCreator(
 			TargetType:  "creator",
 			TargetID:    updated.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 		})
 	}
 	s.reval.Send(ctx, owed)
-	return connect.NewResponse(&publiraadminv1.UpdateCreatorResponse{Creator: adminCreator(updated.ID, protomapper.CreatorFromRow(
+	return &publiraadminv1.UpdateCreatorResponse{Creator: adminCreator(updated.ID, protomapper.CreatorFromRow(
 		updated.PublicID,
 		updated.Name,
 		updated.ProfileText.String,
 		updated.IconImageID,
 		updated.IconImageFileSizeBytes,
 		updated.IconImageUpdatedAt,
-	))}), nil
+	))}, nil
 }
 
 // labelRevalidateTags names what web-host caches a label under. The label list
@@ -888,25 +889,25 @@ func labelRevalidateTags(tenantID string) []string {
 
 func (s *adminServer) CreateLabel(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreateLabelRequest],
-) (*connect.Response[publiraadminv1.CreateLabelResponse], error) {
+	req *publiraadminv1.CreateLabelRequest,
+) (*publiraadminv1.CreateLabelResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(req.Msg.Name) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	if strings.TrimSpace(req.Name) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "name is required")
 	}
-	eyeCatchVariants, err := s.eyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	eyeCatchVariants, err := s.eyeCatchVariants(req.EyeCatchImageData, req.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
 	labelID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	// The label and its eye-catch commit together, so a refused upload leaves
 	// no label behind for the editor's retry to create a second time.
@@ -922,7 +923,7 @@ func (s *adminServer) CreateLabel(
 			ID:              labelID,
 			TenantID:        tenant.ID,
 			PublicID:        publicID,
-			Name:            req.Msg.Name,
+			Name:            req.Name,
 			EyeCatchImageID: uuid.NullUUID{},
 		})
 	})
@@ -971,35 +972,35 @@ func (s *adminServer) CreateLabel(
 			TargetType:  "label",
 			TargetID:    created.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 		})
 	}
 	s.reval.Send(ctx, owed)
-	return connect.NewResponse(&publiraadminv1.CreateLabelResponse{Label: adminLabel(created.ID, protomapper.LabelWithImage(created.PublicID, created.Name, created.EyeCatchImageUpdatedAt, variants))}), nil
+	return &publiraadminv1.CreateLabelResponse{Label: adminLabel(created.ID, protomapper.LabelWithImage(created.PublicID, created.Name, created.EyeCatchImageUpdatedAt, variants))}, nil
 }
 
 func (s *adminServer) UpdateLabel(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateLabelRequest],
-) (*connect.Response[publiraadminv1.UpdateLabelResponse], error) {
+	req *publiraadminv1.UpdateLabelRequest,
+) (*publiraadminv1.UpdateLabelResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(req.Msg.Name) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	if strings.TrimSpace(req.Name) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "name is required")
 	}
-	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
+	if req.ClearEyeCatchImage && len(req.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
-	eyeCatchVariants, err := s.eyeCatchVariants(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	eyeCatchVariants, err := s.eyeCatchVariants(req.EyeCatchImageData, req.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseRecordID(req.Msg.LabelId, "label_id")
+	id, err := parseRecordID(req.LabelId, "label_id")
 	if err != nil {
 		return nil, err
 	}
@@ -1017,7 +1018,7 @@ func (s *adminServer) UpdateLabel(
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 
 	eyeCatchImageID := current.EyeCatchImageID
-	if req.Msg.ClearEyeCatchImage {
+	if req.ClearEyeCatchImage {
 		eyeCatchImageID = uuid.NullUUID{}
 	} else if len(eyeCatchVariants) > 0 {
 		newEyeCatchImageID, uploadErr := s.createLabelEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchVariants)
@@ -1026,7 +1027,7 @@ func (s *adminServer) UpdateLabel(
 		}
 		eyeCatchImageID = newEyeCatchImageID
 	}
-	err = s.queriesFor(txCtx).UpdateLabel(txCtx, dbmodels.UpdateLabelParams{ID: current.ID, Name: req.Msg.Name, EyeCatchImageID: eyeCatchImageID})
+	err = s.queriesFor(txCtx).UpdateLabel(txCtx, dbmodels.UpdateLabelParams{ID: current.ID, Name: req.Name, EyeCatchImageID: eyeCatchImageID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update label", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
 	}
@@ -1062,11 +1063,11 @@ func (s *adminServer) UpdateLabel(
 			TargetType:  "label",
 			TargetID:    updated.PublicID,
 			Outcome:     auditlog.OutcomeSuccess,
-			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 		})
 	}
 	s.reval.Send(ctx, owed)
-	return connect.NewResponse(&publiraadminv1.UpdateLabelResponse{Label: adminLabel(updated.ID, protomapper.LabelWithImage(updated.PublicID, updated.Name, updated.EyeCatchImageUpdatedAt, variants))}), nil
+	return &publiraadminv1.UpdateLabelResponse{Label: adminLabel(updated.ID, protomapper.LabelWithImage(updated.PublicID, updated.Name, updated.EyeCatchImageUpdatedAt, variants))}, nil
 }
 
 // adminCreator is a creator as the admin API answers with it: the catalog's
@@ -1088,7 +1089,7 @@ func (s *adminServer) creatorByID(ctx context.Context, tenantID, id uuid.UUID) (
 	row, err := s.queriesFor(ctx).GetCreatorByIDForTenant(ctx, dbmodels.GetCreatorByIDForTenantParams{TenantID: tenantID, ID: id})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.GetCreatorByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
+			return dbmodels.GetCreatorByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, "creator not found")
 		}
 		return dbmodels.GetCreatorByIDForTenantRow{}, s.internalDBError(ctx, "failed to get creator", err, "tenant_id", tenantID.String(), "creator_id", id.String())
 	}
@@ -1100,7 +1101,7 @@ func (s *adminServer) labelByID(ctx context.Context, tenantID, id uuid.UUID) (db
 	row, err := s.queriesFor(ctx).GetLabelByIDForTenant(ctx, dbmodels.GetLabelByIDForTenantParams{TenantID: tenantID, ID: id})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.GetLabelByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
+			return dbmodels.GetLabelByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, "label not found")
 		}
 		return dbmodels.GetLabelByIDForTenantRow{}, s.internalDBError(ctx, "failed to get label", err, "tenant_id", tenantID.String(), "label_id", id.String())
 	}
@@ -1112,7 +1113,7 @@ func (s *adminServer) labelByID(ctx context.Context, tenantID, id uuid.UUID) (db
 func (s *adminServer) lockLabelByID(ctx context.Context, tenantID, id uuid.UUID) error {
 	if _, err := s.queriesFor(ctx).LockLabelByIDForTenant(ctx, dbmodels.LockLabelByIDForTenantParams{TenantID: tenantID, ID: id}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return connect.NewError(connect.CodeNotFound, errors.New("label not found"))
+			return connect.NewError(connect.CodeNotFound, "label not found")
 		}
 		return s.internalDBError(ctx, "failed to lock label", err, "tenant_id", tenantID.String(), "label_id", id.String())
 	}

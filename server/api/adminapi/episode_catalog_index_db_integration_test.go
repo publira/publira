@@ -10,6 +10,7 @@ import (
 	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // seriesSyncsQueued counts the catalog_index_sync events that name the series.
@@ -52,28 +53,28 @@ func TestDBEpisodeWritesQueueTheirSeriesSearchSync(t *testing.T) {
 	}
 
 	step("CreateEpisode published at once", 1, func() error {
-		_, err := client.CreateEpisode(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+		_, err := client.CreateEpisode(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateEpisodeRequest{
 			Tenant:      tenant.tenantContext(),
 			SeriesId:    seriesID,
 			Title:       "Chapter Two",
 			ScheduledAt: rfc3339(time.Now().Add(-time.Minute)),
-		}))
+		})
 		return err
 	})
 	step("UpdateEpisodePublishSchedule", 1, func() error {
-		_, err := client.UpdateEpisodePublishSchedule(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodePublishScheduleRequest{
+		_, err := client.UpdateEpisodePublishSchedule(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateEpisodePublishScheduleRequest{
 			Tenant:      tenant.tenantContext(),
 			EpisodeId:   episodeID,
 			ScheduledAt: rfc3339(time.Now().Add(time.Hour)),
-		}))
+		})
 		return err
 	})
 	step("UpdateEpisodeAvailability", 1, func() error {
-		_, err := client.UpdateEpisodeAvailability(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateEpisodeAvailabilityRequest{
+		_, err := client.UpdateEpisodeAvailability(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateEpisodeAvailabilityRequest{
 			Tenant:       tenant.tenantContext(),
 			EpisodeId:    episodeID,
 			Availability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
-		}))
+		})
 		return err
 	})
 
@@ -81,41 +82,41 @@ func TestDBEpisodeWritesQueueTheirSeriesSearchSync(t *testing.T) {
 	// queues the sync when it opens.
 	var ahead, open string
 	step("CreateEpisodeFreeWindow ahead of its start", 0, func() error {
-		resp, err := client.CreateEpisodeFreeWindow(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+		resp, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 			Tenant:    tenant.tenantContext(),
 			EpisodeId: episodeID,
 			StartsAt:  rfc3339(time.Now().Add(24 * time.Hour)),
 			EndsAt:    rfc3339(time.Now().Add(48 * time.Hour)),
-		}))
+		})
 		if err == nil {
-			ahead = resp.Msg.FreeWindow.Id
+			ahead = resp.FreeWindow.Id
 		}
 		return err
 	})
 	step("CreateEpisodeFreeWindow open at once", 1, func() error {
-		resp, err := client.CreateEpisodeFreeWindow(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+		resp, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 			Tenant:    tenant.tenantContext(),
 			EpisodeId: episodeID,
 			StartsAt:  rfc3339(time.Now().Add(-time.Hour)),
 			EndsAt:    rfc3339(time.Now().Add(time.Hour)),
-		}))
+		})
 		if err == nil {
-			open = resp.Msg.FreeWindow.Id
+			open = resp.FreeWindow.Id
 		}
 		return err
 	})
 	step("DeleteEpisodeFreeWindow ahead of its start", 0, func() error {
-		_, err := client.DeleteEpisodeFreeWindow(ctx, newAdminDBRequest(tenant, &publiraadminv1.DeleteEpisodeFreeWindowRequest{
+		_, err := client.DeleteEpisodeFreeWindow(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.DeleteEpisodeFreeWindowRequest{
 			Tenant:       tenant.tenantContext(),
 			FreeWindowId: ahead,
-		}))
+		})
 		return err
 	})
 	step("DeleteEpisodeFreeWindow open", 1, func() error {
-		_, err := client.DeleteEpisodeFreeWindow(ctx, newAdminDBRequest(tenant, &publiraadminv1.DeleteEpisodeFreeWindowRequest{
+		_, err := client.DeleteEpisodeFreeWindow(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.DeleteEpisodeFreeWindowRequest{
 			Tenant:       tenant.tenantContext(),
 			FreeWindowId: open,
-		}))
+		})
 		return err
 	})
 	// A window past its end is still owed a sync until apply-free-windows has
@@ -123,10 +124,10 @@ func TestDBEpisodeWritesQueueTheirSeriesSearchSync(t *testing.T) {
 	// the batch. Once the end is applied, the document no longer counts it.
 	deleteWindow := func(windowID uuid.UUID) func() error {
 		return func() error {
-			_, err := client.DeleteEpisodeFreeWindow(ctx, newAdminDBRequest(tenant, &publiraadminv1.DeleteEpisodeFreeWindowRequest{
+			_, err := client.DeleteEpisodeFreeWindow(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.DeleteEpisodeFreeWindowRequest{
 				Tenant:       tenant.tenantContext(),
 				FreeWindowId: windowID.String(),
-			}))
+			})
 			return err
 		}
 	}
@@ -140,12 +141,12 @@ func TestDBEpisodeWritesQueueTheirSeriesSearchSync(t *testing.T) {
 	step("DeleteEpisodeFreeWindow over and closed by the batch", 0, deleteWindow(applied))
 
 	step("CreateSeriesFreeWindows open at once", 1, func() error {
-		_, err := client.CreateSeriesFreeWindows(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesFreeWindowsRequest{
+		_, err := client.CreateSeriesFreeWindows(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateSeriesFreeWindowsRequest{
 			Tenant:   tenant.tenantContext(),
 			SeriesId: seriesID,
 			StartsAt: rfc3339(time.Now().Add(-time.Minute)),
 			EndsAt:   rfc3339(time.Now().Add(time.Hour)),
-		}))
+		})
 		return err
 	})
 }

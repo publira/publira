@@ -6,10 +6,11 @@ import (
 	"slices"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func tagNames(tags []*publirattypesv1.Tag) []string {
@@ -29,51 +30,51 @@ func TestDBCreateSeriesCarriesItsGenresAndTags(t *testing.T) {
 	romance := createGenre(t, genres, tenant, "Romance")
 	fantasy := createGenre(t, genres, tenant, "Fantasy")
 
-	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+	created, err := client.CreateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesRequest{
 		Tenant: tenant.tenantContext(),
 		Title:  "Classified Series",
 		// Assigned in the reverse of the tenant's genre order, which is not the
 		// order a read hands back.
 		GenreIds: []string{fantasy.Id, romance.Id},
 		TagNames: []string{"time travel", "school life"},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
 	}
-	if got := genreNames(created.Msg.Series.Genres); !slices.Equal(got, []string{"Romance", "Fantasy"}) {
+	if got := genreNames(created.Series.Genres); !slices.Equal(got, []string{"Romance", "Fantasy"}) {
 		t.Fatalf("genres = %v, want them in the tenant's genre order", got)
 	}
-	if got := tagNames(created.Msg.Series.Tags); !slices.Equal(got, []string{"school life", "time travel"}) {
+	if got := tagNames(created.Series.Tags); !slices.Equal(got, []string{"school life", "time travel"}) {
 		t.Fatalf("tags = %v, want them by name", got)
 	}
 
-	got, err := client.GetSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{
+	got, err := client.GetSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetSeriesRequest{
 		Tenant:   tenant.tenantContext(),
-		PublicId: created.Msg.Series.PublicId,
-	}))
+		PublicId: created.Series.PublicId,
+	})
 	if err != nil {
 		t.Fatalf("GetSeries: %v", err)
 	}
-	if names := genreNames(got.Msg.Series.Genres); !slices.Equal(names, []string{"Romance", "Fantasy"}) {
+	if names := genreNames(got.Series.Genres); !slices.Equal(names, []string{"Romance", "Fantasy"}) {
 		t.Fatalf("GetSeries genres = %v, want the assigned genres", names)
 	}
-	if names := tagNames(got.Msg.Series.Tags); !slices.Equal(names, []string{"school life", "time travel"}) {
+	if names := tagNames(got.Series.Tags); !slices.Equal(names, []string{"school life", "time travel"}) {
 		t.Fatalf("GetSeries tags = %v, want the assigned tags", names)
 	}
 
-	listed, err := client.ListSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListSeriesRequest{
+	listed, err := client.ListSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListSeriesRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListSeries: %v", err)
 	}
-	if len(listed.Msg.Series) != 1 {
-		t.Fatalf("ListSeries = %d series, want 1", len(listed.Msg.Series))
+	if len(listed.Series) != 1 {
+		t.Fatalf("ListSeries = %d series, want 1", len(listed.Series))
 	}
-	if names := genreNames(listed.Msg.Series[0].Genres); !slices.Equal(names, []string{"Romance", "Fantasy"}) {
+	if names := genreNames(listed.Series[0].Genres); !slices.Equal(names, []string{"Romance", "Fantasy"}) {
 		t.Fatalf("ListSeries genres = %v, want the assigned genres", names)
 	}
-	if names := tagNames(listed.Msg.Series[0].Tags); !slices.Equal(names, []string{"school life", "time travel"}) {
+	if names := tagNames(listed.Series[0].Tags); !slices.Equal(names, []string{"school life", "time travel"}) {
 		t.Fatalf("ListSeries tags = %v, want the assigned tags", names)
 	}
 }
@@ -87,30 +88,30 @@ func TestDBUpdateSeriesReplacesTheWholeClassification(t *testing.T) {
 	fantasy := createGenre(t, genres, tenant, "Fantasy")
 	mystery := createGenre(t, genres, tenant, "Mystery")
 
-	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+	created, err := client.CreateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesRequest{
 		Tenant:   tenant.tenantContext(),
 		Title:    "Classified Series",
 		GenreIds: []string{fantasy.Id},
 		TagNames: []string{"Time Travel"},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
 	}
 
-	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+	updated, err := client.UpdateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateSeriesRequest{
 		Tenant:   tenant.tenantContext(),
-		SeriesId: created.Msg.Series.Id,
+		SeriesId: created.Series.Id,
 		Title:    "Classified Series",
 		GenreIds: []string{mystery.Id},
 		TagNames: []string{"Detective"},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
 	}
-	if got := genreNames(updated.Msg.Series.Genres); !slices.Equal(got, []string{"Mystery"}) {
+	if got := genreNames(updated.Series.Genres); !slices.Equal(got, []string{"Mystery"}) {
 		t.Fatalf("genres = %v, want only the genre the update named", got)
 	}
-	if got := tagNames(updated.Msg.Series.Tags); !slices.Equal(got, []string{"Detective"}) {
+	if got := tagNames(updated.Series.Tags); !slices.Equal(got, []string{"Detective"}) {
 		t.Fatalf("tags = %v, want only the tag the update named", got)
 	}
 
@@ -128,26 +129,26 @@ func TestDBUpdateSeriesClearsTheClassificationWhenTheSaveNamesNone(t *testing.T)
 	client := env.seriesClient()
 
 	fantasy := createGenre(t, genres, tenant, "Fantasy")
-	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+	created, err := client.CreateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesRequest{
 		Tenant:   tenant.tenantContext(),
 		Title:    "Classified Series",
 		GenreIds: []string{fantasy.Id},
 		TagNames: []string{"Time Travel"},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
 	}
 
-	updated, err := client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+	updated, err := client.UpdateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateSeriesRequest{
 		Tenant:   tenant.tenantContext(),
-		SeriesId: created.Msg.Series.Id,
+		SeriesId: created.Series.Id,
 		Title:    "Classified Series",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
 	}
-	if len(updated.Msg.Series.Genres) != 0 || len(updated.Msg.Series.Tags) != 0 {
-		t.Fatalf("genres/tags = %v/%v, want both cleared", genreNames(updated.Msg.Series.Genres), tagNames(updated.Msg.Series.Tags))
+	if len(updated.Series.Genres) != 0 || len(updated.Series.Tags) != 0 {
+		t.Fatalf("genres/tags = %v/%v, want both cleared", genreNames(updated.Series.Genres), tagNames(updated.Series.Tags))
 	}
 	if count := env.countRows(t, "SELECT count(*) FROM tags WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
 		t.Fatalf("tag rows = %d, want none left", count)
@@ -163,29 +164,29 @@ func TestDBSeriesTagsResolveToOneTagPerSlug(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
 
-	first, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+	first, err := client.CreateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesRequest{
 		Tenant:   tenant.tenantContext(),
 		Title:    "First Series",
 		TagNames: []string{"Time Travel", "time travel"},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateSeries first: %v", err)
 	}
-	if got := tagNames(first.Msg.Series.Tags); !slices.Equal(got, []string{"Time Travel"}) {
+	if got := tagNames(first.Series.Tags); !slices.Equal(got, []string{"Time Travel"}) {
 		t.Fatalf("tags = %v, want the two spellings counted once", got)
 	}
 
 	// A second series typing the tag differently joins the tag that exists
 	// rather than creating one beside it.
-	second, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+	second, err := client.CreateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesRequest{
 		Tenant:   tenant.tenantContext(),
 		Title:    "Second Series",
 		TagNames: []string{"TIME TRAVEL"},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateSeries second: %v", err)
 	}
-	if got := tagNames(second.Msg.Series.Tags); !slices.Equal(got, []string{"Time Travel"}) {
+	if got := tagNames(second.Series.Tags); !slices.Equal(got, []string{"Time Travel"}) {
 		t.Fatalf("tags = %v, want the name the tag was created under", got)
 	}
 	if count := env.countRows(t, "SELECT count(*) FROM tags WHERE tenant_id = $1", tenant.Tenant.ID); count != 1 {
@@ -199,11 +200,11 @@ func TestDBSeriesRefusesAGenreOfAnotherTenant(t *testing.T) {
 	theirs := createGenre(t, env.genreClient(), second, "Fantasy")
 	client := env.seriesClient()
 
-	_, err := client.CreateSeries(context.Background(), newAdminDBRequest(first, &publiraadminv1.CreateSeriesRequest{
+	_, err := client.CreateSeries(testutil.WithBearer(context.Background(), first.token()), &publiraadminv1.CreateSeriesRequest{
 		Tenant:   first.tenantContext(),
 		Title:    "Classified Series",
 		GenreIds: []string{theirs.Id},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -219,11 +220,11 @@ func TestDBSeriesRefusesMoreTagsThanTheLimit(t *testing.T) {
 		tags = append(tags, fmt.Sprintf("tag %d", i))
 	}
 
-	_, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+	_, err := client.CreateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesRequest{
 		Tenant:   tenant.tenantContext(),
 		Title:    "Classified Series",
 		TagNames: tags,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -235,11 +236,11 @@ func TestDBSeriesTagsOfAnotherTenantStayApart(t *testing.T) {
 	client := env.seriesClient()
 
 	for _, tenant := range []adminDBTenant{first, second} {
-		if _, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+		if _, err := client.CreateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesRequest{
 			Tenant:   tenant.tenantContext(),
 			Title:    "Classified Series",
 			TagNames: []string{"Time Travel"},
-		})); err != nil {
+		}); err != nil {
 			t.Fatalf("CreateSeries: %v", err)
 		}
 	}

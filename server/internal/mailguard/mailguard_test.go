@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // The windows are aligned to the epoch, so a test that wants to sit inside one
@@ -45,12 +46,23 @@ func newTestGuard(t *testing.T, perAddress, perSource platformpolicy.HourDay) (*
 
 // request stands for one submission of a form, arriving from source through the
 // edge that records it.
-func request(source string) connect.AnyRequest {
-	req := connect.NewRequest(&struct{}{})
+// callFrom is the context of an RPC the edge recorded as coming from source.
+func callFrom(t *testing.T, source string) context.Context {
+	t.Helper()
+	ctx, info := testutil.NewServerContext(t.Context())
 	if source != "" {
-		req.Header().Set("X-Forwarded-For", source+", 10.0.0.1")
+		info.RequestHeader().Set("X-Forwarded-For", source+", 10.0.0.1")
 	}
-	return req
+	return ctx
+}
+
+// callFromPeer is the context of an RPC that reached the server from addr
+// without passing the edge.
+func callFromPeer(t *testing.T, addr string) context.Context {
+	t.Helper()
+	ctx, info := testutil.NewServerContext(t.Context())
+	info.PeerAddr = addr
+	return ctx
 }
 
 const (
@@ -65,12 +77,12 @@ func TestGuardRefusesPastTheMailboxAllowance(t *testing.T) {
 	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: allowance, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
 	for attempt := 1; attempt <= allowance; attempt++ {
-		if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
+		if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); err != nil {
 			t.Fatalf("attempt %d = %v, want the first %d allowed", attempt, err, allowance)
 		}
 	}
 
-	err := guard.Allow(t.Context(), request(testSource), testScope, testAddress)
+	err := guard.Allow(callFrom(t, testSource), testScope, testAddress)
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("attempt %d code = %v, want resource_exhausted (err=%v)", allowance+1, connect.CodeOf(err), err)
 	}
@@ -79,22 +91,22 @@ func TestGuardRefusesPastTheMailboxAllowance(t *testing.T) {
 func TestGuardStartsAFreshAllowanceWhenTheWindowPasses(t *testing.T) {
 	guard, clock := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
-	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
 	}
-	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err == nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); err == nil {
 		t.Fatal("the second request in the window = allowed, want it refused")
 	}
 
 	// The hour this address started in runs to 13:00, so it is still the same
 	// hour one instant before that.
 	clock.advance(30*time.Minute - time.Nanosecond)
-	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err == nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); err == nil {
 		t.Fatal("a request at the last instant of the window = allowed, want it refused")
 	}
 
 	clock.advance(time.Nanosecond)
-	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); err != nil {
 		t.Fatalf("the first request of the next window = %v, want a fresh allowance", err)
 	}
 }
@@ -105,13 +117,13 @@ func TestGuardKeepsTheDailyBudgetAcrossWindows(t *testing.T) {
 	guard, clock := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 2}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
 	for hour := range 2 {
-		if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
+		if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); err != nil {
 			t.Fatalf("the request in hour %d = %v, want it allowed", hour, err)
 		}
 		clock.advance(time.Hour)
 	}
 
-	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err == nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); err == nil {
 		t.Fatal("the third request of the day = allowed, want the daily budget to refuse it")
 	}
 }
@@ -121,10 +133,10 @@ func TestGuardKeepsTheDailyBudgetAcrossWindows(t *testing.T) {
 func TestGuardTreatsOneMailboxWrittenTwoWaysAsOne(t *testing.T) {
 	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
-	if err := guard.Allow(t.Context(), request(testSource), testScope, " Member@Example.com "); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, " Member@Example.com "); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
 	}
-	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err == nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); err == nil {
 		t.Fatal("the same mailbox in another spelling = allowed, want one allowance for one inbox")
 	}
 }
@@ -134,17 +146,17 @@ func TestGuardTreatsOneMailboxWrittenTwoWaysAsOne(t *testing.T) {
 func TestGuardChargesTheSubAddressedVariantsOfOneInboxAsOne(t *testing.T) {
 	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
-	if err := guard.Allow(t.Context(), request(testSource), testScope, "john+1@example.com"); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, "john+1@example.com"); err != nil {
 		t.Fatalf("the first tag = %v, want it allowed", err)
 	}
 	for _, address := range []string{"john+2@example.com", "John@Example.com"} {
-		err := guard.Allow(t.Context(), request(testSource), testScope, address)
+		err := guard.Allow(callFrom(t, testSource), testScope, address)
 		if connect.CodeOf(err) != connect.CodeResourceExhausted {
 			t.Fatalf("%s code = %v, want resource_exhausted from the inbox's one allowance (err=%v)", address, connect.CodeOf(err), err)
 		}
 	}
 
-	if err := guard.Allow(t.Context(), request(testSource), testScope, "jane@example.com"); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, "jane@example.com"); err != nil {
 		t.Fatalf("another inbox = %v, want an allowance of its own", err)
 	}
 }
@@ -154,13 +166,13 @@ func TestGuardChargesTheSubAddressedVariantsOfOneInboxAsOne(t *testing.T) {
 func TestGuardKeepsScopesApart(t *testing.T) {
 	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
-	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); err != nil {
 		t.Fatalf("the first scope's request = %v, want it allowed", err)
 	}
-	if err := guard.Allow(t.Context(), request(testSource), testOtherScope, testAddress); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), testOtherScope, testAddress); err != nil {
 		t.Fatalf("another scope's request = %v, want an allowance of its own", err)
 	}
-	if err := guard.Allow(t.Context(), request(testSource), PlatformScope, testAddress); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), PlatformScope, testAddress); err != nil {
 		t.Fatalf("the platform console's request = %v, want an allowance of its own", err)
 	}
 }
@@ -170,16 +182,16 @@ func TestGuardKeepsScopesApart(t *testing.T) {
 func TestGuardChargesOneOriginAcrossAddressesAndScopes(t *testing.T) {
 	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 2, PerDay: 100})
 
-	if err := guard.Allow(t.Context(), request(testSource), testScope, "first@example.com"); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, "first@example.com"); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
 	}
-	if err := guard.Allow(t.Context(), request(testSource), testOtherScope, "second@example.com"); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), testOtherScope, "second@example.com"); err != nil {
 		t.Fatalf("the second request = %v, want it allowed", err)
 	}
-	if err := guard.Allow(t.Context(), request(testSource), PlatformScope, "third@example.com"); err == nil {
+	if err := guard.Allow(callFrom(t, testSource), PlatformScope, "third@example.com"); err == nil {
 		t.Fatal("a third address from the same origin = allowed, want the origin's allowance to refuse it")
 	}
-	if err := guard.Allow(t.Context(), request("198.51.100.7"), testScope, "fourth@example.com"); err != nil {
+	if err := guard.Allow(callFrom(t, "198.51.100.7"), testScope, "fourth@example.com"); err != nil {
 		t.Fatalf("another origin's request = %v, want an allowance of its own", err)
 	}
 }
@@ -189,12 +201,12 @@ func TestGuardChargesOneOriginAcrossAddressesAndScopes(t *testing.T) {
 func TestGuardRefusesEveryAddressTheSameWay(t *testing.T) {
 	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 1, PerDay: 100})
 
-	if err := guard.Allow(t.Context(), request(testSource), testScope, "registered@example.com"); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, "registered@example.com"); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
 	}
 
-	registered := guard.Allow(t.Context(), request(testSource), testScope, "registered@example.com")
-	free := guard.Allow(t.Context(), request(testSource), testScope, "free@example.com")
+	registered := guard.Allow(callFrom(t, testSource), testScope, "registered@example.com")
+	free := guard.Allow(callFrom(t, testSource), testScope, "free@example.com")
 	if registered == nil || free == nil {
 		t.Fatalf("refusals = %v and %v, want both refused", registered, free)
 	}
@@ -212,16 +224,16 @@ func TestGuardRefusesEveryAddressTheSameWay(t *testing.T) {
 func TestGuardDoesNotSpendTheMailboxAllowanceOnARefusedOrigin(t *testing.T) {
 	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1, PerDay: 100})
 
-	if err := guard.Allow(t.Context(), request(testSource), testScope, "first@example.com"); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, "first@example.com"); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
 	}
-	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err == nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); err == nil {
 		t.Fatal("a second request from the same origin = allowed, want it refused")
 	}
 
 	// The mailbox that request named received nothing, so its own allowance is
 	// untouched when it asks from somewhere else.
-	if err := guard.Allow(t.Context(), request("198.51.100.7"), testScope, testAddress); err != nil {
+	if err := guard.Allow(callFrom(t, "198.51.100.7"), testScope, testAddress); err != nil {
 		t.Fatalf("the mailbox's own request = %v, want its allowance intact", err)
 	}
 }
@@ -231,16 +243,17 @@ func TestGuardDoesNotSpendTheMailboxAllowanceOnARefusedOrigin(t *testing.T) {
 func TestGuardSaysHowLongToWait(t *testing.T) {
 	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 
-	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
+	if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
 	}
-	err := guard.Allow(t.Context(), request(testSource), testScope, testAddress)
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("error %v is not a connect error", err)
+	ctx, info := testutil.NewServerContext(t.Context())
+	info.RequestHeader().Set("X-Forwarded-For", testSource)
+	err := guard.Allow(ctx, testScope, testAddress)
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
 	// The hour this address is in has half of itself left to run.
-	if got := connectErr.Meta().Get("Retry-After"); got != "1800" {
+	if got := info.ResponseHeader().Get("Retry-After"); got != "1800" {
 		t.Fatalf("Retry-After = %q, want the 1800s left of the window", got)
 	}
 }
@@ -251,14 +264,14 @@ func TestGuardAllowEachGivesBackWhatARefusedBatchSpent(t *testing.T) {
 	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 2, PerDay: 100})
 	addresses := []string{"first@example.com", "second@example.com", "third@example.com"}
 
-	err := guard.AllowEach(t.Context(), request(testSource), testScope, addresses)
+	err := guard.AllowEach(callFrom(t, testSource), testScope, addresses)
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("AllowEach over the origin's allowance code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
 
 	// Nothing was mailed, so the origin and both mailboxes charged before the
 	// refusal have their allowance back.
-	if err := guard.AllowEach(t.Context(), request(testSource), testScope, addresses[:2]); err != nil {
+	if err := guard.AllowEach(callFrom(t, testSource), testScope, addresses[:2]); err != nil {
 		t.Fatalf("AllowEach within the allowance after the refusal = %v, want it allowed", err)
 	}
 }
@@ -266,19 +279,11 @@ func TestGuardAllowEachGivesBackWhatARefusedBatchSpent(t *testing.T) {
 func TestGuardChargesThePeerWhenTheEdgeRecordedNothing(t *testing.T) {
 	guard, _ := newTestGuard(t, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 1, PerDay: 100})
 
-	if err := guard.Allow(t.Context(), peerRequest("192.0.2.5:41000"), testScope, "first@example.com"); err != nil {
+	if err := guard.Allow(callFromPeer(t, "192.0.2.5:41000"), testScope, "first@example.com"); err != nil {
 		t.Fatalf("the first request = %v, want it allowed", err)
 	}
-	if err := guard.Allow(t.Context(), peerRequest("192.0.2.5:41001"), testScope, "second@example.com"); err == nil {
+	if err := guard.Allow(callFromPeer(t, "192.0.2.5:41001"), testScope, "second@example.com"); err == nil {
 		t.Fatal("another connection from the same peer = allowed, want one origin to hold one allowance")
-	}
-}
-
-func TestSourcePrefersTheAddressTheEdgeRecorded(t *testing.T) {
-	req := connect.NewRequest(&struct{}{})
-	req.Header().Set("X-Forwarded-For", " 203.0.113.10 , 10.0.0.1 ")
-	if got := source(req); got != "203.0.113.10" {
-		t.Fatalf("source = %q, want the first entry of X-Forwarded-For", got)
 	}
 }
 
@@ -296,19 +301,6 @@ func TestRulesPairAnHourlyBurstWithADailyBudget(t *testing.T) {
 
 // peerRequest stands for a request that reached a server without passing an
 // edge, so the connection it arrived on is all there is to charge.
-func peerRequest(addr string) connect.AnyRequest {
-	return peerOnlyRequest{Request: connect.NewRequest(&struct{}{}), addr: addr}
-}
-
-type peerOnlyRequest struct {
-	*connect.Request[struct{}]
-	addr string
-}
-
-func (r peerOnlyRequest) Peer() connect.Peer {
-	return connect.Peer{Addr: r.addr}
-}
-
 // A caller that reads no settings of its own still gets a limit, rather than a
 // form with no bound on the mail it causes.
 func TestNewDefaultLimitsAnUnconfiguredCaller(t *testing.T) {
@@ -316,11 +308,11 @@ func TestNewDefaultLimitsAnUnconfiguredCaller(t *testing.T) {
 	allowance := platformpolicy.Defaults().MailRequestsPerAddress.PerHour
 
 	for attempt := 1; attempt <= allowance; attempt++ {
-		if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); err != nil {
+		if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); err != nil {
 			t.Fatalf("attempt %d = %v, want the first %d allowed", attempt, err, allowance)
 		}
 	}
-	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); connect.CodeOf(err) != connect.CodeResourceExhausted {
+	if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("attempt %d = %v, want the default allowance to refuse it", allowance+1, err)
 	}
 }
@@ -336,7 +328,7 @@ func (failingPolicy) Policy(context.Context) (platformpolicy.Policy, error) {
 func TestGuardRefusesWhenThePolicyCannotBeResolved(t *testing.T) {
 	guard := New(ratelimit.New(ratelimit.NewMemoryStore()), failingPolicy{}, slog.Default())
 
-	if err := guard.Allow(t.Context(), request(testSource), testScope, testAddress); connect.CodeOf(err) != connect.CodeInternal {
+	if err := guard.Allow(callFrom(t, testSource), testScope, testAddress); connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("Allow = %v, want internal", err)
 	}
 }

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -15,6 +15,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantmembers"
 )
 
@@ -33,15 +34,15 @@ func adminInvitationStatus(invitation dbmodels.TenantAdminInvitation, now time.T
 
 func (s *adminServer) GetTenantAdminInvitationState(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.AdminAuthServiceGetTenantAdminInvitationStateRequest],
-) (*connect.Response[publiraadminv1.AdminAuthServiceGetTenantAdminInvitationStateResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.AdminAuthServiceGetTenantAdminInvitationStateRequest,
+) (*publiraadminv1.AdminAuthServiceGetTenantAdminInvitationStateResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	token := strings.TrimSpace(req.Msg.Token)
+	token := strings.TrimSpace(req.Token)
 	if token == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is required")
 	}
 
 	invitation, err := s.queriesFor(ctx).GetTenantAdminInvitationByHashForTenant(ctx, dbmodels.GetTenantAdminInvitationByHashForTenantParams{
@@ -50,7 +51,7 @@ func (s *adminServer) GetTenantAdminInvitationState(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("invitation not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "invitation not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String())
 	}
@@ -63,26 +64,26 @@ func (s *adminServer) GetTenantAdminInvitationState(
 		return nil, s.internalDBError(ctx, "failed to get invitation user", userErr, "tenant_id", tenant.ID.String())
 	}
 
-	return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetTenantAdminInvitationStateResponse{
+	return &publiraadminv1.AdminAuthServiceGetTenantAdminInvitationStateResponse{
 		Email:         invitation.Email,
 		Status:        adminInvitationStatus(invitation, time.Now()),
 		ExpiresAt:     invitation.ExpiresAt.UTC().Format(time.RFC3339),
 		AccountExists: userErr == nil,
 		Role:          invitation.Role,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) AcceptTenantAdminInvitation(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest],
-) (*connect.Response[publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest,
+) (*publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	token := strings.TrimSpace(req.Msg.Token)
+	token := strings.TrimSpace(req.Token)
 	if token == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is required")
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -100,7 +101,7 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("invitation not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "invitation not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String())
 	}
@@ -108,11 +109,11 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 	status := adminInvitationStatus(invitation, time.Now())
 	switch status {
 	case "accepted":
-		return connect.NewResponse(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationResponse{Accepted: true}), nil
+		return &publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationResponse{Accepted: true}, nil
 	case "canceled":
 		return nil, rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, errors.New("invitation canceled"), rpcerrors.ReasonInvitationCanceled)
 	case "expired":
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("invitation expired"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "invitation expired")
 	}
 
 	user, err := txq.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
@@ -124,10 +125,10 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 	role := invitation.Role
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		name := strings.TrimSpace(req.Msg.Name)
-		password := req.Msg.Password
+		name := strings.TrimSpace(req.Name)
+		password := req.Password
 		if name == "" || strings.TrimSpace(password) == "" {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name and password are required"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "name and password are required")
 		}
 		member, err := tenantmembers.CreateAccount(ctx, tx, tenantmembers.AccountParams{
 			TenantID: tenant.ID,
@@ -183,11 +184,11 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		TargetID:    invitation.Email,
 		Outcome:     auditlog.OutcomeSuccess,
 		Reason:      roleGrantedReason(role),
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationResponse{
+	return &publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationResponse{
 		Accepted:       true,
 		AccountCreated: accountCreated,
-	}), nil
+	}, nil
 }

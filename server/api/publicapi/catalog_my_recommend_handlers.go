@@ -3,11 +3,10 @@ package publicapi
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"strconv"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -15,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/platformconfig"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/recommendfeatures"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -49,10 +49,10 @@ func decodeRecommendedOrderToken(cursor pagination.Cursor, order string) (pagina
 		return cursor, nil
 	}
 	if len(cursor.Keys) == 0 {
-		return pagination.Cursor{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return pagination.Cursor{}, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	if cursor.Keys[0] != order {
-		return pagination.Cursor{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another recommendation order"))
+		return pagination.Cursor{}, connect.NewError(connect.CodeInvalidArgument, "token was issued for another recommendation order")
 	}
 	cursor.Keys = cursor.Keys[1:]
 	return cursor, nil
@@ -113,7 +113,7 @@ type readerRecommendedCursorKeys struct {
 }
 
 func decodeReaderRecommendedCursorKeys(cursor pagination.Cursor) (readerRecommendedCursorKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	invalid := connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	if len(cursor.Keys) != 5 && len(cursor.Keys) != 6 {
 		return readerRecommendedCursorKeys{}, invalid
 	}
@@ -302,20 +302,20 @@ func (s *apiServer) readerRecommendedSeriesPage(
 // between the two reads is that this one is private.
 func (s *apiServer) ListMyRecommendedSeries(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListMyRecommendedSeriesRequest],
-) (*connect.Response[publirav1.ListMyRecommendedSeriesResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.ListMyRecommendedSeriesRequest,
+) (*publirav1.ListMyRecommendedSeriesResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRecommendedSeriesPageSize, maxRecommendedSeriesPageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultRecommendedSeriesPageSize, maxRecommendedSeriesPageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 
 	hasFeatures, err := s.queriesFor(ctx).HasUserRecommendFeatures(ctx, dbmodels.HasUserRecommendFeaturesParams{
@@ -356,5 +356,5 @@ func (s *apiServer) ListMyRecommendedSeries(
 	}
 	bindRecommendedOrderTokens(order, &res.PreviousToken, &res.NextToken)
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
-	return noStorePrivateResponse(res), nil
+	return noStorePrivateResponse(ctx, res), nil
 }

@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -22,7 +23,7 @@ func newPolicyClient(t *testing.T) (publirasplatformv1connect.PlatformPolicyServ
 	t.Helper()
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	return publirasplatformv1connect.NewPlatformPolicyServiceClient(ts.Client(), ts.URL), pg, operator
+	return publirasplatformv1connect.NewPlatformPolicyServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))), pg, operator
 }
 
 // tightenedPolicy differs from the defaults in every group of values, so a
@@ -52,12 +53,12 @@ func updatePolicy(
 	operator testutil.PlatformOperator,
 	policy platformpolicy.Policy,
 	expectedRevision int64,
-) (*connect.Response[publirasplatformv1.UpdatePlatformPolicyResponse], error) {
+) (*publirasplatformv1.UpdatePlatformPolicyResponse, error) {
 	t.Helper()
-	return client.UpdatePlatformPolicy(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformPolicyRequest{
+	return client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
 		Policy:           platformPolicyToProto(policy),
 		ExpectedRevision: expectedRevision,
-	}))
+	})
 }
 
 func getPolicy(
@@ -66,11 +67,11 @@ func getPolicy(
 	operator testutil.PlatformOperator,
 ) (platformpolicy.Policy, int64) {
 	t.Helper()
-	resp, err := client.GetPlatformPolicy(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetPlatformPolicyRequest{}))
+	resp, err := client.GetPlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformPolicyRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformPolicy: %v", err)
 	}
-	return platformPolicyFromProto(resp.Msg.Policy), resp.Msg.Revision
+	return platformPolicyFromProto(resp.Policy), resp.Revision
 }
 
 // An installation that has saved nothing reads the built-in defaults, which are
@@ -95,20 +96,20 @@ func TestDBUpdatePlatformPolicyPersistsAndAudits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdatePlatformPolicy (first): %v", err)
 	}
-	if created.Msg.Revision != 1 {
-		t.Fatalf("revision of the created row = %d, want 1", created.Msg.Revision)
+	if created.Revision != 1 {
+		t.Fatalf("revision of the created row = %d, want 1", created.Revision)
 	}
 	if got, revision := getPolicy(t, client, operator); got != want || revision != 1 {
 		t.Fatalf("policy after the first save = %+v at revision %d, want %+v at revision 1", got, revision, want)
 	}
 
 	want.MFARequiredForTenantAdmin = false
-	updated, err := updatePolicy(t, client, operator, want, created.Msg.Revision)
+	updated, err := updatePolicy(t, client, operator, want, created.Revision)
 	if err != nil {
 		t.Fatalf("UpdatePlatformPolicy (second): %v", err)
 	}
-	if updated.Msg.Revision != 2 || platformPolicyFromProto(updated.Msg.Policy) != want {
-		t.Fatalf("second save = %+v at revision %d, want %+v at revision 2", updated.Msg.Policy, updated.Msg.Revision, want)
+	if updated.Revision != 2 || platformPolicyFromProto(updated.Policy) != want {
+		t.Fatalf("second save = %+v at revision %d, want %+v at revision 2", updated.Policy, updated.Revision, want)
 	}
 	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_policy_config`); got != 1 {
 		t.Fatalf("platform_policy_config rows = %d, want 1", got)
@@ -131,14 +132,14 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedWaitFreeTicketUseLimit(t *testing.T
 		t.Helper()
 		message := platformPolicyToProto(policy)
 		message.WaitFreeTicketUse = nil
-		resp, err := client.UpdatePlatformPolicy(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformPolicyRequest{
+		resp, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
 			Policy:           message,
 			ExpectedRevision: revision,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("UpdatePlatformPolicy without wait_free_ticket_use: %v", err)
 		}
-		return resp.Msg
+		return resp
 	}
 
 	want := tightenedPolicy()
@@ -155,7 +156,7 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedWaitFreeTicketUseLimit(t *testing.T
 	}
 
 	want.MFARequiredForTenantAdmin = false
-	third := saveWithout(t, want, second.Msg.Revision)
+	third := saveWithout(t, want, second.Revision)
 	if got := platformPolicyFromProto(third.Policy); got != want {
 		t.Fatalf("save without the limit = %+v, want %+v keeping the stored ticket use limit", got, want)
 	}
@@ -170,12 +171,12 @@ func TestDBUpdatePlatformPolicyRejectsAStaleRevision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdatePlatformPolicy (first): %v", err)
 	}
-	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), first.Msg.Revision); err != nil {
+	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), first.Revision); err != nil {
 		t.Fatalf("UpdatePlatformPolicy (second): %v", err)
 	}
 
 	for name, revision := range map[string]int64{
-		"the revision before the last save": first.Msg.Revision,
+		"the revision before the last save": first.Revision,
 		"zero once a row exists":            0,
 		"a revision never issued":           99,
 	} {
@@ -254,7 +255,7 @@ func TestDBUpdatePlatformPolicyRejectsInvalidValues(t *testing.T) {
 				policy = platformPolicyToProto(platformpolicy.Defaults())
 				tc.adjust(policy)
 			}
-			_, err := client.UpdatePlatformPolicy(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformPolicyRequest{Policy: policy}))
+			_, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{Policy: policy})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdatePlatformPolicy code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
@@ -274,14 +275,14 @@ func TestDBUpdatePlatformPolicyRejectsInvalidValues(t *testing.T) {
 
 func TestDBPlatformPolicyRequiresAuthentication(t *testing.T) {
 	ts, _ := newDBIntegrationEnv(t)
-	client := publirasplatformv1connect.NewPlatformPolicyServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformPolicyServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	if _, err := client.GetPlatformPolicy(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformPolicyRequest{})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+	if _, err := client.GetPlatformPolicy(context.Background(), &publirasplatformv1.GetPlatformPolicyRequest{}); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetPlatformPolicy code = %v, want unauthenticated", connect.CodeOf(err))
 	}
-	if _, err := client.UpdatePlatformPolicy(context.Background(), connect.NewRequest(&publirasplatformv1.UpdatePlatformPolicyRequest{
+	if _, err := client.UpdatePlatformPolicy(context.Background(), &publirasplatformv1.UpdatePlatformPolicyRequest{
 		Policy: platformPolicyToProto(platformpolicy.Defaults()),
-	})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+	}); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("UpdatePlatformPolicy code = %v, want unauthenticated", connect.CodeOf(err))
 	}
 }
@@ -290,7 +291,7 @@ func TestDBPlatformPolicyRequiresAuthentication(t *testing.T) {
 func TestDBPlatformAuditorReadsButCannotUpdateThePolicy(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	auditor := pg.SeedPlatformAuditor(t, "PLATAUDIT01", "auditor@example.com", "Platform Auditor")
-	client := publirasplatformv1connect.NewPlatformPolicyServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformPolicyServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	if _, revision := getPolicy(t, client, auditor); revision != 0 {
 		t.Fatalf("revision = %d, want 0", revision)
@@ -316,7 +317,7 @@ func TestDBUpdatePlatformPolicyConcurrentSavesOneWins(t *testing.T) {
 				if err != nil {
 					t.Fatalf("UpdatePlatformPolicy (seed): %v", err)
 				}
-				shared = resp.Msg.Revision
+				shared = resp.Revision
 			}
 
 			candidates := []platformpolicy.Policy{tightenedPolicy(), platformpolicy.Defaults()}
@@ -329,10 +330,10 @@ func TestDBUpdatePlatformPolicyConcurrentSavesOneWins(t *testing.T) {
 			var wg sync.WaitGroup
 			for _, candidate := range candidates {
 				wg.Go(func() {
-					_, err := client.UpdatePlatformPolicy(ctx, newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformPolicyRequest{
+					_, err := client.UpdatePlatformPolicy(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
 						Policy:           platformPolicyToProto(candidate),
 						ExpectedRevision: shared,
-					}))
+					})
 					errs <- err
 				})
 			}
@@ -378,7 +379,7 @@ func TestDBUpdatePlatformPolicyAuditsInTheSameTransaction(t *testing.T) {
 	ts := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(ts.Close)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformPolicyServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformPolicyServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
 		t.Fatalf("UpdatePlatformPolicy: %v", err)

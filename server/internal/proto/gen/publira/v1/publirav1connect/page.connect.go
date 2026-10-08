@@ -5,163 +5,168 @@
 package publirav1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// PublicPagesServiceName is the fully-qualified name of the PublicPagesService service.
 	PublicPagesServiceName = "publira.v1.PublicPagesService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// PublicPagesServiceListPublishedPagesProcedure is the fully-qualified name of the
-	// PublicPagesService's ListPublishedPages RPC.
+	// PublicPagesServiceListPublishedPagesProcedure is the procedure name of the PublicPagesService's
+	// ListPublishedPages RPC.
 	PublicPagesServiceListPublishedPagesProcedure = "/publira.v1.PublicPagesService/ListPublishedPages"
-	// PublicPagesServiceListPublishedPageSlugsProcedure is the fully-qualified name of the
+	// PublicPagesServiceListPublishedPageSlugsProcedure is the procedure name of the
 	// PublicPagesService's ListPublishedPageSlugs RPC.
 	PublicPagesServiceListPublishedPageSlugsProcedure = "/publira.v1.PublicPagesService/ListPublishedPageSlugs"
-	// PublicPagesServiceGetPublishedPageProcedure is the fully-qualified name of the
-	// PublicPagesService's GetPublishedPage RPC.
+	// PublicPagesServiceGetPublishedPageProcedure is the procedure name of the PublicPagesService's
+	// GetPublishedPage RPC.
 	PublicPagesServiceGetPublishedPageProcedure = "/publira.v1.PublicPagesService/GetPublishedPage"
+)
+
+var (
+	publicPagesServiceListPublishedPagesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_page_proto.Services().ByName("PublicPagesService").Methods().ByName("ListPublishedPages"),
+			Procedure:  PublicPagesServiceListPublishedPagesProcedure,
+		}
+	})
+	publicPagesServiceListPublishedPageSlugsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_page_proto.Services().ByName("PublicPagesService").Methods().ByName("ListPublishedPageSlugs"),
+			Procedure:  PublicPagesServiceListPublishedPageSlugsProcedure,
+		}
+	})
+	publicPagesServiceGetPublishedPageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_page_proto.Services().ByName("PublicPagesService").Methods().ByName("GetPublishedPage"),
+			Procedure:  PublicPagesServiceGetPublishedPageProcedure,
+		}
+	})
 )
 
 // PublicPagesServiceClient is a client for the publira.v1.PublicPagesService service.
 type PublicPagesServiceClient interface {
-	ListPublishedPages(context.Context, *connect.Request[v1.ListPublishedPagesRequest]) (*connect.Response[v1.ListPublishedPagesResponse], error)
-	ListPublishedPageSlugs(context.Context, *connect.Request[v1.ListPublishedPageSlugsRequest]) (*connect.Response[v1.ListPublishedPageSlugsResponse], error)
-	GetPublishedPage(context.Context, *connect.Request[v1.GetPublishedPageRequest]) (*connect.Response[v1.GetPublishedPageResponse], error)
+	ListPublishedPages(context.Context, *v1.ListPublishedPagesRequest) (*v1.ListPublishedPagesResponse, error)
+	ListPublishedPageSlugs(context.Context, *v1.ListPublishedPageSlugsRequest) (*v1.ListPublishedPageSlugsResponse, error)
+	GetPublishedPage(context.Context, *v1.GetPublishedPageRequest) (*v1.GetPublishedPageResponse, error)
 }
 
-// NewPublicPagesServiceClient constructs a client for the publira.v1.PublicPagesService service. By
-// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
-// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
-// connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewPublicPagesServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PublicPagesServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	publicPagesServiceMethods := v1.File_publira_v1_page_proto.Services().ByName("PublicPagesService").Methods()
-	return &publicPagesServiceClient{
-		listPublishedPages: connect.NewClient[v1.ListPublishedPagesRequest, v1.ListPublishedPagesResponse](
-			httpClient,
-			baseURL+PublicPagesServiceListPublishedPagesProcedure,
-			connect.WithSchema(publicPagesServiceMethods.ByName("ListPublishedPages")),
-			connect.WithClientOptions(opts...),
-		),
-		listPublishedPageSlugs: connect.NewClient[v1.ListPublishedPageSlugsRequest, v1.ListPublishedPageSlugsResponse](
-			httpClient,
-			baseURL+PublicPagesServiceListPublishedPageSlugsProcedure,
-			connect.WithSchema(publicPagesServiceMethods.ByName("ListPublishedPageSlugs")),
-			connect.WithClientOptions(opts...),
-		),
-		getPublishedPage: connect.NewClient[v1.GetPublishedPageRequest, v1.GetPublishedPageResponse](
-			httpClient,
-			baseURL+PublicPagesServiceGetPublishedPageProcedure,
-			connect.WithSchema(publicPagesServiceMethods.ByName("GetPublishedPage")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// publicPagesServiceClient implements PublicPagesServiceClient.
-type publicPagesServiceClient struct {
-	listPublishedPages     *connect.Client[v1.ListPublishedPagesRequest, v1.ListPublishedPagesResponse]
-	listPublishedPageSlugs *connect.Client[v1.ListPublishedPageSlugsRequest, v1.ListPublishedPageSlugsResponse]
-	getPublishedPage       *connect.Client[v1.GetPublishedPageRequest, v1.GetPublishedPageResponse]
-}
-
-// ListPublishedPages calls publira.v1.PublicPagesService.ListPublishedPages.
-func (c *publicPagesServiceClient) ListPublishedPages(ctx context.Context, req *connect.Request[v1.ListPublishedPagesRequest]) (*connect.Response[v1.ListPublishedPagesResponse], error) {
-	return c.listPublishedPages.CallUnary(ctx, req)
-}
-
-// ListPublishedPageSlugs calls publira.v1.PublicPagesService.ListPublishedPageSlugs.
-func (c *publicPagesServiceClient) ListPublishedPageSlugs(ctx context.Context, req *connect.Request[v1.ListPublishedPageSlugsRequest]) (*connect.Response[v1.ListPublishedPageSlugsResponse], error) {
-	return c.listPublishedPageSlugs.CallUnary(ctx, req)
-}
-
-// GetPublishedPage calls publira.v1.PublicPagesService.GetPublishedPage.
-func (c *publicPagesServiceClient) GetPublishedPage(ctx context.Context, req *connect.Request[v1.GetPublishedPageRequest]) (*connect.Response[v1.GetPublishedPageResponse], error) {
-	return c.getPublishedPage.CallUnary(ctx, req)
+// NewPublicPagesServiceClient constructs a client for the publira.v1.PublicPagesService service.
+// Multiple service clients may share a single connect.Client.
+func NewPublicPagesServiceClient(client *connect.Client) PublicPagesServiceClient {
+	return &publicPagesServiceClient{client: client}
 }
 
 // PublicPagesServiceHandler is an implementation of the publira.v1.PublicPagesService service.
 type PublicPagesServiceHandler interface {
-	ListPublishedPages(context.Context, *connect.Request[v1.ListPublishedPagesRequest]) (*connect.Response[v1.ListPublishedPagesResponse], error)
-	ListPublishedPageSlugs(context.Context, *connect.Request[v1.ListPublishedPageSlugsRequest]) (*connect.Response[v1.ListPublishedPageSlugsResponse], error)
-	GetPublishedPage(context.Context, *connect.Request[v1.GetPublishedPageRequest]) (*connect.Response[v1.GetPublishedPageResponse], error)
+	ListPublishedPages(context.Context, *v1.ListPublishedPagesRequest) (*v1.ListPublishedPagesResponse, error)
+	ListPublishedPageSlugs(context.Context, *v1.ListPublishedPageSlugsRequest) (*v1.ListPublishedPageSlugsResponse, error)
+	GetPublishedPage(context.Context, *v1.GetPublishedPageRequest) (*v1.GetPublishedPageResponse, error)
 }
 
-// NewPublicPagesServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewPublicPagesServiceHandler(svc PublicPagesServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	publicPagesServiceMethods := v1.File_publira_v1_page_proto.Services().ByName("PublicPagesService").Methods()
-	publicPagesServiceListPublishedPagesHandler := connect.NewUnaryHandler(
-		PublicPagesServiceListPublishedPagesProcedure,
-		svc.ListPublishedPages,
-		connect.WithSchema(publicPagesServiceMethods.ByName("ListPublishedPages")),
-		connect.WithHandlerOptions(opts...),
+// RegisterPublicPagesServiceHandler registers svc as the publira.v1.PublicPagesService
+// implementation on server.
+func RegisterPublicPagesServiceHandler(server *connect.Server, svc PublicPagesServiceHandler) {
+	adapter := publicPagesServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: publicPagesServiceListPublishedPagesSpec(), Handler: adapter.listPublishedPages},
+		connect.Method{Spec: publicPagesServiceListPublishedPageSlugsSpec(), Handler: adapter.listPublishedPageSlugs},
+		connect.Method{Spec: publicPagesServiceGetPublishedPageSpec(), Handler: adapter.getPublishedPage},
 	)
-	publicPagesServiceListPublishedPageSlugsHandler := connect.NewUnaryHandler(
-		PublicPagesServiceListPublishedPageSlugsProcedure,
-		svc.ListPublishedPageSlugs,
-		connect.WithSchema(publicPagesServiceMethods.ByName("ListPublishedPageSlugs")),
-		connect.WithHandlerOptions(opts...),
-	)
-	publicPagesServiceGetPublishedPageHandler := connect.NewUnaryHandler(
-		PublicPagesServiceGetPublishedPageProcedure,
-		svc.GetPublishedPage,
-		connect.WithSchema(publicPagesServiceMethods.ByName("GetPublishedPage")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.v1.PublicPagesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case PublicPagesServiceListPublishedPagesProcedure:
-			publicPagesServiceListPublishedPagesHandler.ServeHTTP(w, r)
-		case PublicPagesServiceListPublishedPageSlugsProcedure:
-			publicPagesServiceListPublishedPageSlugsHandler.ServeHTTP(w, r)
-		case PublicPagesServiceGetPublishedPageProcedure:
-			publicPagesServiceGetPublishedPageHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedPublicPagesServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedPublicPagesServiceHandler struct{}
 
-func (UnimplementedPublicPagesServiceHandler) ListPublishedPages(context.Context, *connect.Request[v1.ListPublishedPagesRequest]) (*connect.Response[v1.ListPublishedPagesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PublicPagesService.ListPublishedPages is not implemented"))
+func (UnimplementedPublicPagesServiceHandler) ListPublishedPages(context.Context, *v1.ListPublishedPagesRequest) (*v1.ListPublishedPagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PublicPagesService.ListPublishedPages is not implemented")
 }
 
-func (UnimplementedPublicPagesServiceHandler) ListPublishedPageSlugs(context.Context, *connect.Request[v1.ListPublishedPageSlugsRequest]) (*connect.Response[v1.ListPublishedPageSlugsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PublicPagesService.ListPublishedPageSlugs is not implemented"))
+func (UnimplementedPublicPagesServiceHandler) ListPublishedPageSlugs(context.Context, *v1.ListPublishedPageSlugsRequest) (*v1.ListPublishedPageSlugsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PublicPagesService.ListPublishedPageSlugs is not implemented")
 }
 
-func (UnimplementedPublicPagesServiceHandler) GetPublishedPage(context.Context, *connect.Request[v1.GetPublishedPageRequest]) (*connect.Response[v1.GetPublishedPageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PublicPagesService.GetPublishedPage is not implemented"))
+func (UnimplementedPublicPagesServiceHandler) GetPublishedPage(context.Context, *v1.GetPublishedPageRequest) (*v1.GetPublishedPageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PublicPagesService.GetPublishedPage is not implemented")
+}
+
+type publicPagesServiceClient struct {
+	client *connect.Client
+}
+
+func (c *publicPagesServiceClient) ListPublishedPages(ctx context.Context, req *v1.ListPublishedPagesRequest) (*v1.ListPublishedPagesResponse, error) {
+	var res v1.ListPublishedPagesResponse
+	if err := c.client.CallUnary(ctx, publicPagesServiceListPublishedPagesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *publicPagesServiceClient) ListPublishedPageSlugs(ctx context.Context, req *v1.ListPublishedPageSlugsRequest) (*v1.ListPublishedPageSlugsResponse, error) {
+	var res v1.ListPublishedPageSlugsResponse
+	if err := c.client.CallUnary(ctx, publicPagesServiceListPublishedPageSlugsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *publicPagesServiceClient) GetPublishedPage(ctx context.Context, req *v1.GetPublishedPageRequest) (*v1.GetPublishedPageResponse, error) {
+	var res v1.GetPublishedPageResponse
+	if err := c.client.CallUnary(ctx, publicPagesServiceGetPublishedPageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type publicPagesServiceHandler struct{ svc PublicPagesServiceHandler }
+
+func (h publicPagesServiceHandler) listPublishedPages(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListPublishedPagesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListPublishedPages(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h publicPagesServiceHandler) listPublishedPageSlugs(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListPublishedPageSlugsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListPublishedPageSlugs(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h publicPagesServiceHandler) getPublishedPage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetPublishedPageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetPublishedPage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

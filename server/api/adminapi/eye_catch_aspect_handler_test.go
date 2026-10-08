@@ -3,7 +3,6 @@ package adminapi
 import (
 	"bytes"
 	"context"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -12,14 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // aspectJPEG encodes a plain JPEG of the given size. A ratio upload is checked
@@ -160,22 +162,21 @@ func TestUploadSeriesEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 			AddRow(landscapeID, imageID, "landscape", "landscape_1600w", "image/jpeg", int64(4096), int32(1600), int32(900)).
 			AddRow(portraitID, imageID, "portrait", "portrait_1200w", "image/jpeg", int64(4096), int32(1200), int32(1600)))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:         testSeriesID.String(),
 		VariantType:      "landscape",
 		ImageData:        aspectJPEG(t, 1600, 900),
 		ImageContentType: "image/jpeg",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req)
+	resp, err := client.UploadSeriesEyeCatchAspectImage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UploadSeriesEyeCatchAspectImage: %v", err)
 	}
 	ratios := map[string]string{}
-	for _, variant := range resp.Msg.Series.GetEyeCatchImageVariants() {
+	for _, variant := range resp.Series.GetEyeCatchImageVariants() {
 		ratios[variant.GetVariantType()] = variant.GetUrl()
 	}
 	if ratios["landscape"] != protomapper.EyeCatchVariantURL("series", imageID, "landscape", 1600, landscapeID) ||
@@ -201,17 +202,16 @@ func TestUploadSeriesEyeCatchAspectImageRequiresAnExistingEyeCatch(t *testing.T)
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:         testSeriesID.String(),
 		VariantType:      "landscape",
 		ImageData:        aspectJPEG(t, 1600, 900),
 		ImageContentType: "image/jpeg",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req)
+	_, err := client.UploadSeriesEyeCatchAspectImage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("error code = %v, want failed_precondition (err: %v)", connect.CodeOf(err), err)
 	}
@@ -229,17 +229,16 @@ func TestUploadSeriesEyeCatchAspectImageRejectsAnUnknownRatio(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:         testSeriesID.String(),
 		VariantType:      "banner",
 		ImageData:        aspectJPEG(t, 1600, 900),
 		ImageContentType: "image/jpeg",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req)
+	_, err := client.UploadSeriesEyeCatchAspectImage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error code = %v, want invalid_argument (err: %v)", connect.CodeOf(err), err)
 	}
@@ -263,17 +262,16 @@ func TestUploadSeriesEyeCatchAspectImageRejectsASourceBelowTheRatioMinimum(t *te
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:         testSeriesID.String(),
 		VariantType:      "landscape",
 		ImageData:        aspectJPEG(t, 800, 450),
 		ImageContentType: "image/jpeg",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req)
+	_, err := client.UploadSeriesEyeCatchAspectImage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error code = %v, want invalid_argument (err: %v)", connect.CodeOf(err), err)
 	}
@@ -331,22 +329,21 @@ func TestUploadSeriesEyeCatchAspectImageStoresTheRatioCutFromTheCrop(t *testing.
 		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("series_image_id")).
 			AddRow(uuid.Must(uuid.NewV7()), imageID, "landscape", "landscape_1600w", "image/jpeg", int64(4096), int32(1600), int32(900)))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	// The red left half of the upload, which is exactly the landscape
 	// minimum, so the ratio is still delivered at all three of its widths.
 	// The source is already 16:9, so ignoring the rectangle would centre the
 	// crop on the red/blue seam and deliver something that is not red.
-	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
+	req := &publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:         testSeriesID.String(),
 		VariantType:      "landscape",
 		ImageData:        halvedAspectPNG(t, 3200, 1800),
 		ImageContentType: "image/png",
 		Crop:             &publirattypesv1.ImageCropRect{X: 0, Y: 0, Width: 1600, Height: 900},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req); err != nil {
+	if _, err := client.UploadSeriesEyeCatchAspectImage(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UploadSeriesEyeCatchAspectImage: %v", err)
 	}
 
@@ -392,18 +389,17 @@ func TestUploadSeriesEyeCatchAspectImageRejectsACropOutsideTheImage(t *testing.T
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:         testSeriesID.String(),
 		VariantType:      "landscape",
 		ImageData:        aspectJPEG(t, 3200, 1800),
 		ImageContentType: "image/jpeg",
 		Crop:             &publirattypesv1.ImageCropRect{X: 2000, Y: 0, Width: 1600, Height: 900},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.UploadSeriesEyeCatchAspectImage(context.Background(), req)
+	_, err := client.UploadSeriesEyeCatchAspectImage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error code = %v, want invalid_argument (err: %v)", connect.CodeOf(err), err)
 	}
@@ -429,18 +425,17 @@ func TestUploadLabelEyeCatchAspectImageRejectsACropOutsideTheImage(t *testing.T)
 		WillReturnRows(sqlmock.NewRows(labelRowColumns()).
 			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
 
-	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadLabelEyeCatchAspectImageRequest{
+	client := publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadLabelEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		LabelId:          labelID.String(),
 		VariantType:      "square",
 		ImageData:        aspectJPEG(t, 2400, 2400),
 		ImageContentType: "image/jpeg",
 		Crop:             &publirattypesv1.ImageCropRect{X: 0, Y: 1300, Width: 1200, Height: 1200},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.UploadLabelEyeCatchAspectImage(context.Background(), req)
+	_, err := client.UploadLabelEyeCatchAspectImage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error code = %v, want invalid_argument (err: %v)", connect.CodeOf(err), err)
 	}
@@ -497,21 +492,20 @@ func TestUploadLabelEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("label_image_id")).
 			AddRow(squareID, imageID, "square", "square_1200w", "image/jpeg", int64(4096), int32(1200), int32(1200)))
 
-	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadLabelEyeCatchAspectImageRequest{
+	client := publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadLabelEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		LabelId:          labelID.String(),
 		VariantType:      "square",
 		ImageData:        aspectJPEG(t, 1200, 1200),
 		ImageContentType: "image/jpeg",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UploadLabelEyeCatchAspectImage(context.Background(), req)
+	resp, err := client.UploadLabelEyeCatchAspectImage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UploadLabelEyeCatchAspectImage: %v", err)
 	}
-	variants := resp.Msg.Label.GetEyeCatchImageVariants()
+	variants := resp.Label.GetEyeCatchImageVariants()
 	if len(variants) != 1 || variants[0].GetUrl() != protomapper.EyeCatchVariantURL("labels", imageID, "square", 1200, squareID) {
 		t.Fatalf("variants = %v, want the square variant addressed by its row", variants)
 	}
@@ -538,17 +532,16 @@ func TestUploadGenreEyeCatchAspectImageRequiresAnExistingEyeCatch(t *testing.T) 
 		WillReturnRows(sqlmock.NewRows(genreRowColumns()).
 			AddRow(genreID, "GENRE001", "Fantasy", "fantasy", int32(1), now, nil, nil))
 
-	client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
+	client := publiraadminv1connect.NewAdminGenreServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		GenreId:          genreID.String(),
 		VariantType:      "square",
 		ImageData:        aspectJPEG(t, 1200, 1200),
 		ImageContentType: "image/jpeg",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.UploadGenreEyeCatchAspectImage(context.Background(), req)
+	_, err := client.UploadGenreEyeCatchAspectImage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("error code = %v, want failed_precondition (err: %v)", connect.CodeOf(err), err)
 	}
@@ -605,21 +598,20 @@ func TestUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(eyeCatchVariantColumns("genre_image_id")).
 			AddRow(squareID, imageID, "square", "square_1200w", "image/jpeg", int64(4096), int32(1200), int32(1200)))
 
-	client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
+	client := publiraadminv1connect.NewAdminGenreServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		GenreId:          genreID.String(),
 		VariantType:      "square",
 		ImageData:        aspectJPEG(t, 1200, 1200),
 		ImageContentType: "image/jpeg",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UploadGenreEyeCatchAspectImage(context.Background(), req)
+	resp, err := client.UploadGenreEyeCatchAspectImage(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UploadGenreEyeCatchAspectImage: %v", err)
 	}
-	variants := resp.Msg.Genre.GetEyeCatchImageVariants()
+	variants := resp.Genre.GetEyeCatchImageVariants()
 	if len(variants) != 1 || variants[0].GetUrl() != protomapper.EyeCatchVariantURL("genres", imageID, "square", 1200, squareID) {
 		t.Fatalf("variants = %v, want the square variant addressed by its row", variants)
 	}

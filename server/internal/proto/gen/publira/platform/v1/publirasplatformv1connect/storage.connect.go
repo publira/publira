@@ -5,20 +5,11 @@
 package publirasplatformv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// PlatformStorageSettingsServiceName is the fully-qualified name of the
@@ -26,149 +17,162 @@ const (
 	PlatformStorageSettingsServiceName = "publira.platform.v1.PlatformStorageSettingsService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// PlatformStorageSettingsServiceGetPlatformStorageSettingsProcedure is the fully-qualified name of
-	// the PlatformStorageSettingsService's GetPlatformStorageSettings RPC.
+	// PlatformStorageSettingsServiceGetPlatformStorageSettingsProcedure is the procedure name of the
+	// PlatformStorageSettingsService's GetPlatformStorageSettings RPC.
 	PlatformStorageSettingsServiceGetPlatformStorageSettingsProcedure = "/publira.platform.v1.PlatformStorageSettingsService/GetPlatformStorageSettings"
-	// PlatformStorageSettingsServiceUpdatePlatformStorageSettingsProcedure is the fully-qualified name
-	// of the PlatformStorageSettingsService's UpdatePlatformStorageSettings RPC.
+	// PlatformStorageSettingsServiceUpdatePlatformStorageSettingsProcedure is the procedure name of the
+	// PlatformStorageSettingsService's UpdatePlatformStorageSettings RPC.
 	PlatformStorageSettingsServiceUpdatePlatformStorageSettingsProcedure = "/publira.platform.v1.PlatformStorageSettingsService/UpdatePlatformStorageSettings"
-	// PlatformStorageSettingsServiceTestPlatformStorageConnectionProcedure is the fully-qualified name
-	// of the PlatformStorageSettingsService's TestPlatformStorageConnection RPC.
+	// PlatformStorageSettingsServiceTestPlatformStorageConnectionProcedure is the procedure name of the
+	// PlatformStorageSettingsService's TestPlatformStorageConnection RPC.
 	PlatformStorageSettingsServiceTestPlatformStorageConnectionProcedure = "/publira.platform.v1.PlatformStorageSettingsService/TestPlatformStorageConnection"
+)
+
+var (
+	platformStorageSettingsServiceGetPlatformStorageSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_storage_proto.Services().ByName("PlatformStorageSettingsService").Methods().ByName("GetPlatformStorageSettings"),
+			Procedure:  PlatformStorageSettingsServiceGetPlatformStorageSettingsProcedure,
+		}
+	})
+	platformStorageSettingsServiceUpdatePlatformStorageSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_storage_proto.Services().ByName("PlatformStorageSettingsService").Methods().ByName("UpdatePlatformStorageSettings"),
+			Procedure:  PlatformStorageSettingsServiceUpdatePlatformStorageSettingsProcedure,
+		}
+	})
+	platformStorageSettingsServiceTestPlatformStorageConnectionSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_storage_proto.Services().ByName("PlatformStorageSettingsService").Methods().ByName("TestPlatformStorageConnection"),
+			Procedure:  PlatformStorageSettingsServiceTestPlatformStorageConnectionProcedure,
+		}
+	})
 )
 
 // PlatformStorageSettingsServiceClient is a client for the
 // publira.platform.v1.PlatformStorageSettingsService service.
 type PlatformStorageSettingsServiceClient interface {
-	GetPlatformStorageSettings(context.Context, *connect.Request[v1.GetPlatformStorageSettingsRequest]) (*connect.Response[v1.GetPlatformStorageSettingsResponse], error)
-	UpdatePlatformStorageSettings(context.Context, *connect.Request[v1.UpdatePlatformStorageSettingsRequest]) (*connect.Response[v1.UpdatePlatformStorageSettingsResponse], error)
-	TestPlatformStorageConnection(context.Context, *connect.Request[v1.TestPlatformStorageConnectionRequest]) (*connect.Response[v1.TestPlatformStorageConnectionResponse], error)
+	GetPlatformStorageSettings(context.Context, *v1.GetPlatformStorageSettingsRequest) (*v1.GetPlatformStorageSettingsResponse, error)
+	UpdatePlatformStorageSettings(context.Context, *v1.UpdatePlatformStorageSettingsRequest) (*v1.UpdatePlatformStorageSettingsResponse, error)
+	TestPlatformStorageConnection(context.Context, *v1.TestPlatformStorageConnectionRequest) (*v1.TestPlatformStorageConnectionResponse, error)
 }
 
 // NewPlatformStorageSettingsServiceClient constructs a client for the
-// publira.platform.v1.PlatformStorageSettingsService service. By default, it uses the Connect
-// protocol with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed
-// requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
-// connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewPlatformStorageSettingsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PlatformStorageSettingsServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	platformStorageSettingsServiceMethods := v1.File_publira_platform_v1_storage_proto.Services().ByName("PlatformStorageSettingsService").Methods()
-	return &platformStorageSettingsServiceClient{
-		getPlatformStorageSettings: connect.NewClient[v1.GetPlatformStorageSettingsRequest, v1.GetPlatformStorageSettingsResponse](
-			httpClient,
-			baseURL+PlatformStorageSettingsServiceGetPlatformStorageSettingsProcedure,
-			connect.WithSchema(platformStorageSettingsServiceMethods.ByName("GetPlatformStorageSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updatePlatformStorageSettings: connect.NewClient[v1.UpdatePlatformStorageSettingsRequest, v1.UpdatePlatformStorageSettingsResponse](
-			httpClient,
-			baseURL+PlatformStorageSettingsServiceUpdatePlatformStorageSettingsProcedure,
-			connect.WithSchema(platformStorageSettingsServiceMethods.ByName("UpdatePlatformStorageSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		testPlatformStorageConnection: connect.NewClient[v1.TestPlatformStorageConnectionRequest, v1.TestPlatformStorageConnectionResponse](
-			httpClient,
-			baseURL+PlatformStorageSettingsServiceTestPlatformStorageConnectionProcedure,
-			connect.WithSchema(platformStorageSettingsServiceMethods.ByName("TestPlatformStorageConnection")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// platformStorageSettingsServiceClient implements PlatformStorageSettingsServiceClient.
-type platformStorageSettingsServiceClient struct {
-	getPlatformStorageSettings    *connect.Client[v1.GetPlatformStorageSettingsRequest, v1.GetPlatformStorageSettingsResponse]
-	updatePlatformStorageSettings *connect.Client[v1.UpdatePlatformStorageSettingsRequest, v1.UpdatePlatformStorageSettingsResponse]
-	testPlatformStorageConnection *connect.Client[v1.TestPlatformStorageConnectionRequest, v1.TestPlatformStorageConnectionResponse]
-}
-
-// GetPlatformStorageSettings calls
-// publira.platform.v1.PlatformStorageSettingsService.GetPlatformStorageSettings.
-func (c *platformStorageSettingsServiceClient) GetPlatformStorageSettings(ctx context.Context, req *connect.Request[v1.GetPlatformStorageSettingsRequest]) (*connect.Response[v1.GetPlatformStorageSettingsResponse], error) {
-	return c.getPlatformStorageSettings.CallUnary(ctx, req)
-}
-
-// UpdatePlatformStorageSettings calls
-// publira.platform.v1.PlatformStorageSettingsService.UpdatePlatformStorageSettings.
-func (c *platformStorageSettingsServiceClient) UpdatePlatformStorageSettings(ctx context.Context, req *connect.Request[v1.UpdatePlatformStorageSettingsRequest]) (*connect.Response[v1.UpdatePlatformStorageSettingsResponse], error) {
-	return c.updatePlatformStorageSettings.CallUnary(ctx, req)
-}
-
-// TestPlatformStorageConnection calls
-// publira.platform.v1.PlatformStorageSettingsService.TestPlatformStorageConnection.
-func (c *platformStorageSettingsServiceClient) TestPlatformStorageConnection(ctx context.Context, req *connect.Request[v1.TestPlatformStorageConnectionRequest]) (*connect.Response[v1.TestPlatformStorageConnectionResponse], error) {
-	return c.testPlatformStorageConnection.CallUnary(ctx, req)
+// publira.platform.v1.PlatformStorageSettingsService service. Multiple service clients may share a
+// single connect.Client.
+func NewPlatformStorageSettingsServiceClient(client *connect.Client) PlatformStorageSettingsServiceClient {
+	return &platformStorageSettingsServiceClient{client: client}
 }
 
 // PlatformStorageSettingsServiceHandler is an implementation of the
 // publira.platform.v1.PlatformStorageSettingsService service.
 type PlatformStorageSettingsServiceHandler interface {
-	GetPlatformStorageSettings(context.Context, *connect.Request[v1.GetPlatformStorageSettingsRequest]) (*connect.Response[v1.GetPlatformStorageSettingsResponse], error)
-	UpdatePlatformStorageSettings(context.Context, *connect.Request[v1.UpdatePlatformStorageSettingsRequest]) (*connect.Response[v1.UpdatePlatformStorageSettingsResponse], error)
-	TestPlatformStorageConnection(context.Context, *connect.Request[v1.TestPlatformStorageConnectionRequest]) (*connect.Response[v1.TestPlatformStorageConnectionResponse], error)
+	GetPlatformStorageSettings(context.Context, *v1.GetPlatformStorageSettingsRequest) (*v1.GetPlatformStorageSettingsResponse, error)
+	UpdatePlatformStorageSettings(context.Context, *v1.UpdatePlatformStorageSettingsRequest) (*v1.UpdatePlatformStorageSettingsResponse, error)
+	TestPlatformStorageConnection(context.Context, *v1.TestPlatformStorageConnectionRequest) (*v1.TestPlatformStorageConnectionResponse, error)
 }
 
-// NewPlatformStorageSettingsServiceHandler builds an HTTP handler from the service implementation.
-// It returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewPlatformStorageSettingsServiceHandler(svc PlatformStorageSettingsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	platformStorageSettingsServiceMethods := v1.File_publira_platform_v1_storage_proto.Services().ByName("PlatformStorageSettingsService").Methods()
-	platformStorageSettingsServiceGetPlatformStorageSettingsHandler := connect.NewUnaryHandler(
-		PlatformStorageSettingsServiceGetPlatformStorageSettingsProcedure,
-		svc.GetPlatformStorageSettings,
-		connect.WithSchema(platformStorageSettingsServiceMethods.ByName("GetPlatformStorageSettings")),
-		connect.WithHandlerOptions(opts...),
+// RegisterPlatformStorageSettingsServiceHandler registers svc as the
+// publira.platform.v1.PlatformStorageSettingsService implementation on server.
+func RegisterPlatformStorageSettingsServiceHandler(server *connect.Server, svc PlatformStorageSettingsServiceHandler) {
+	adapter := platformStorageSettingsServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: platformStorageSettingsServiceGetPlatformStorageSettingsSpec(), Handler: adapter.getPlatformStorageSettings},
+		connect.Method{Spec: platformStorageSettingsServiceUpdatePlatformStorageSettingsSpec(), Handler: adapter.updatePlatformStorageSettings},
+		connect.Method{Spec: platformStorageSettingsServiceTestPlatformStorageConnectionSpec(), Handler: adapter.testPlatformStorageConnection},
 	)
-	platformStorageSettingsServiceUpdatePlatformStorageSettingsHandler := connect.NewUnaryHandler(
-		PlatformStorageSettingsServiceUpdatePlatformStorageSettingsProcedure,
-		svc.UpdatePlatformStorageSettings,
-		connect.WithSchema(platformStorageSettingsServiceMethods.ByName("UpdatePlatformStorageSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformStorageSettingsServiceTestPlatformStorageConnectionHandler := connect.NewUnaryHandler(
-		PlatformStorageSettingsServiceTestPlatformStorageConnectionProcedure,
-		svc.TestPlatformStorageConnection,
-		connect.WithSchema(platformStorageSettingsServiceMethods.ByName("TestPlatformStorageConnection")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.platform.v1.PlatformStorageSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case PlatformStorageSettingsServiceGetPlatformStorageSettingsProcedure:
-			platformStorageSettingsServiceGetPlatformStorageSettingsHandler.ServeHTTP(w, r)
-		case PlatformStorageSettingsServiceUpdatePlatformStorageSettingsProcedure:
-			platformStorageSettingsServiceUpdatePlatformStorageSettingsHandler.ServeHTTP(w, r)
-		case PlatformStorageSettingsServiceTestPlatformStorageConnectionProcedure:
-			platformStorageSettingsServiceTestPlatformStorageConnectionHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedPlatformStorageSettingsServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedPlatformStorageSettingsServiceHandler struct{}
 
-func (UnimplementedPlatformStorageSettingsServiceHandler) GetPlatformStorageSettings(context.Context, *connect.Request[v1.GetPlatformStorageSettingsRequest]) (*connect.Response[v1.GetPlatformStorageSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformStorageSettingsService.GetPlatformStorageSettings is not implemented"))
+func (UnimplementedPlatformStorageSettingsServiceHandler) GetPlatformStorageSettings(context.Context, *v1.GetPlatformStorageSettingsRequest) (*v1.GetPlatformStorageSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformStorageSettingsService.GetPlatformStorageSettings is not implemented")
 }
 
-func (UnimplementedPlatformStorageSettingsServiceHandler) UpdatePlatformStorageSettings(context.Context, *connect.Request[v1.UpdatePlatformStorageSettingsRequest]) (*connect.Response[v1.UpdatePlatformStorageSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformStorageSettingsService.UpdatePlatformStorageSettings is not implemented"))
+func (UnimplementedPlatformStorageSettingsServiceHandler) UpdatePlatformStorageSettings(context.Context, *v1.UpdatePlatformStorageSettingsRequest) (*v1.UpdatePlatformStorageSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformStorageSettingsService.UpdatePlatformStorageSettings is not implemented")
 }
 
-func (UnimplementedPlatformStorageSettingsServiceHandler) TestPlatformStorageConnection(context.Context, *connect.Request[v1.TestPlatformStorageConnectionRequest]) (*connect.Response[v1.TestPlatformStorageConnectionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformStorageSettingsService.TestPlatformStorageConnection is not implemented"))
+func (UnimplementedPlatformStorageSettingsServiceHandler) TestPlatformStorageConnection(context.Context, *v1.TestPlatformStorageConnectionRequest) (*v1.TestPlatformStorageConnectionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformStorageSettingsService.TestPlatformStorageConnection is not implemented")
+}
+
+type platformStorageSettingsServiceClient struct {
+	client *connect.Client
+}
+
+func (c *platformStorageSettingsServiceClient) GetPlatformStorageSettings(ctx context.Context, req *v1.GetPlatformStorageSettingsRequest) (*v1.GetPlatformStorageSettingsResponse, error) {
+	var res v1.GetPlatformStorageSettingsResponse
+	if err := c.client.CallUnary(ctx, platformStorageSettingsServiceGetPlatformStorageSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformStorageSettingsServiceClient) UpdatePlatformStorageSettings(ctx context.Context, req *v1.UpdatePlatformStorageSettingsRequest) (*v1.UpdatePlatformStorageSettingsResponse, error) {
+	var res v1.UpdatePlatformStorageSettingsResponse
+	if err := c.client.CallUnary(ctx, platformStorageSettingsServiceUpdatePlatformStorageSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformStorageSettingsServiceClient) TestPlatformStorageConnection(ctx context.Context, req *v1.TestPlatformStorageConnectionRequest) (*v1.TestPlatformStorageConnectionResponse, error) {
+	var res v1.TestPlatformStorageConnectionResponse
+	if err := c.client.CallUnary(ctx, platformStorageSettingsServiceTestPlatformStorageConnectionSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type platformStorageSettingsServiceHandler struct {
+	svc PlatformStorageSettingsServiceHandler
+}
+
+func (h platformStorageSettingsServiceHandler) getPlatformStorageSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetPlatformStorageSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetPlatformStorageSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformStorageSettingsServiceHandler) updatePlatformStorageSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdatePlatformStorageSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdatePlatformStorageSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformStorageSettingsServiceHandler) testPlatformStorageConnection(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.TestPlatformStorageConnectionRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.TestPlatformStorageConnection(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

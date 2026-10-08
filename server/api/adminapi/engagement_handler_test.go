@@ -3,19 +3,21 @@ package adminapi
 import (
 	"context"
 	"database/sql"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func episodeReadThroughColumns() *sqlmock.Rows {
@@ -40,18 +42,17 @@ func newEngagementClient(
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	return publiraadminv1connect.NewAdminEngagementServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+	return publiraadminv1connect.NewAdminEngagementServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))), mock, sessionToken
 }
 
 func newEpisodeReadThroughRequest(
 	tenantID uuid.UUID,
-	sessionToken, token string,
-) *connect.Request[publiraadminv1.ListEpisodeReadThroughRequest] {
-	req := connect.NewRequest(&publiraadminv1.ListEpisodeReadThroughRequest{
+	token string,
+) *publiraadminv1.ListEpisodeReadThroughRequest {
+	req := &publiraadminv1.ListEpisodeReadThroughRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  token,
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 	return req
 }
 
@@ -131,38 +132,38 @@ func TestListEpisodeReadThroughReturnsCountsAndTotals(t *testing.T) {
 			AddRow(firstEpisodeID, int64(7), int64(20), "EPISODE1", "First", "SERIES1", "Series One").
 			AddRow(secondEpisodeID, int64(2), int64(10), "EPISODE2", "Second", "SERIES1", "Series One"))
 
-	resp, err := client.ListEpisodeReadThrough(context.Background(), newEpisodeReadThroughRequest(tenantID, sessionToken, ""))
+	resp, err := client.ListEpisodeReadThrough(testutil.WithBearer(context.Background(), sessionToken), newEpisodeReadThroughRequest(tenantID, ""))
 	if err != nil {
 		t.Fatalf("ListEpisodeReadThrough: %v", err)
 	}
-	if len(resp.Msg.Episodes) != 2 {
-		t.Fatalf("episodes count = %d, want 2", len(resp.Msg.Episodes))
+	if len(resp.Episodes) != 2 {
+		t.Fatalf("episodes count = %d, want 2", len(resp.Episodes))
 	}
-	if got := resp.Msg.Episodes[0].CompleteCount; got != 7 {
+	if got := resp.Episodes[0].CompleteCount; got != 7 {
 		t.Fatalf("first complete_count = %d, want 7", got)
 	}
-	if got := resp.Msg.Episodes[0].MemberViewCount; got != 20 {
+	if got := resp.Episodes[0].MemberViewCount; got != 20 {
 		t.Fatalf("first member_view_count = %d, want 20", got)
 	}
-	if got := resp.Msg.TotalCompleteCount; got != 9 {
+	if got := resp.TotalCompleteCount; got != 9 {
 		t.Fatalf("total_complete_count = %d, want 9", got)
 	}
-	if got := resp.Msg.TotalMemberViewCount; got != 30 {
+	if got := resp.TotalMemberViewCount; got != 30 {
 		t.Fatalf("total_member_view_count = %d, want 30", got)
 	}
-	if resp.Msg.PeriodStart == "" || resp.Msg.PeriodEnd == "" {
-		t.Fatalf("period = %q..%q, want both dates named", resp.Msg.PeriodStart, resp.Msg.PeriodEnd)
+	if resp.PeriodStart == "" || resp.PeriodEnd == "" {
+		t.Fatalf("period = %q..%q, want both dates named", resp.PeriodStart, resp.PeriodEnd)
 	}
 	// The zone the period was counted in comes back with it, so the screen
 	// names the same one the server used rather than a zone of its own.
-	if got := resp.Msg.TimeZone; got != "UTC" {
+	if got := resp.TimeZone; got != "UTC" {
 		t.Fatalf("time_zone = %q, want the tenant's UTC", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -185,20 +186,20 @@ func TestListEpisodeReadThroughPagesOnTheCompletionKeyset(t *testing.T) {
 			AddRow(boundaryID, int64(5), int64(12), "EPISODE1", "First", "SERIES1", "Series One").
 			AddRow(uuid.Must(uuid.NewV7()), int64(2), int64(8), "EPISODE2", "Second", "SERIES1", "Series One"))
 
-	req := newEpisodeReadThroughRequest(tenantID, sessionToken, "")
-	req.Msg.Limit = 1
-	resp, err := client.ListEpisodeReadThrough(context.Background(), req)
+	req := newEpisodeReadThroughRequest(tenantID, "")
+	req.Limit = 1
+	resp, err := client.ListEpisodeReadThrough(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListEpisodeReadThrough: %v", err)
 	}
-	if len(resp.Msg.Episodes) != 1 {
-		t.Fatalf("episodes count = %d, want 1", len(resp.Msg.Episodes))
+	if len(resp.Episodes) != 1 {
+		t.Fatalf("episodes count = %d, want 1", len(resp.Episodes))
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token to the following page")
 	}
 
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("Decode(next_token): %v", err)
 	}
@@ -236,17 +237,17 @@ func TestListEpisodeReadThroughRecoversFromAnEmptyPage(t *testing.T) {
 		).
 		WillReturnRows(episodeReadThroughColumns())
 
-	resp, err := client.ListEpisodeReadThrough(context.Background(), newEpisodeReadThroughRequest(tenantID, sessionToken, token))
+	resp, err := client.ListEpisodeReadThrough(testutil.WithBearer(context.Background(), sessionToken), newEpisodeReadThroughRequest(tenantID, token))
 	if err != nil {
 		t.Fatalf("ListEpisodeReadThrough: %v", err)
 	}
-	if len(resp.Msg.Episodes) != 0 {
-		t.Fatalf("episodes count = %d, want 0", len(resp.Msg.Episodes))
+	if len(resp.Episodes) != 0 {
+		t.Fatalf("episodes count = %d, want 0", len(resp.Episodes))
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a recovery token back to the page the client came from")
 	}
-	cursor, err := pagination.Decode(resp.Msg.PreviousToken)
+	cursor, err := pagination.Decode(resp.PreviousToken)
 	if err != nil {
 		t.Fatalf("Decode(previous_token): %v", err)
 	}
@@ -267,8 +268,8 @@ func TestListEpisodeReadThroughRejectsMalformedToken(t *testing.T) {
 	client, mock, sessionToken := newEngagementClient(t, tenantID, userID, now)
 
 	_, err := client.ListEpisodeReadThrough(
-		context.Background(),
-		newEpisodeReadThroughRequest(tenantID, sessionToken, "not-a-token"),
+		testutil.WithBearer(context.Background(), sessionToken),
+		newEpisodeReadThroughRequest(tenantID, "not-a-token"),
 	)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)

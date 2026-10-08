@@ -9,6 +9,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestDBPushDeviceMovesToTheReaderWhoRegistersItLast(t *testing.T) {
@@ -22,11 +23,11 @@ func TestDBPushDeviceMovesToTheReaderWhoRegistersItLast(t *testing.T) {
 		id    uuid.UUID
 		token string
 	}{{id: first.ID, token: tokenFor(t, tenant, first)}, {id: second.ID, token: tokenFor(t, tenant, second)}} {
-		if _, err := client.RegisterPushDevice(context.Background(), newBearerRequest(&publirav1.RegisterPushDeviceRequest{
+		if _, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), user.token), &publirav1.RegisterPushDeviceRequest{
 			Tenant:   tenantContext(tenant),
 			Token:    "shared-device-token",
 			Platform: publirav1.PushPlatform_PUSH_PLATFORM_ANDROID,
-		}, user.token)); err != nil {
+		}); err != nil {
 			t.Fatalf("RegisterPushDevice: %v", err)
 		}
 	}
@@ -50,18 +51,18 @@ func TestDBPushDeviceIsListedForTheNotificationsItsOwnerHolds(t *testing.T) {
 	insertTenantNotification(t, env, tenant.ID, other.ID, "episode_published", "episode:E002", `{"episode_id":"E002"}`)
 
 	client := env.notificationClient()
-	if _, err := client.RegisterPushDevice(context.Background(), newBearerRequest(&publirav1.RegisterPushDeviceRequest{
+	if _, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.RegisterPushDeviceRequest{
 		Tenant:   tenantContext(tenant),
 		Token:    "member-device",
 		Platform: publirav1.PushPlatform_PUSH_PLATFORM_IOS,
-	}, tokenFor(t, tenant, member))); err != nil {
+	}); err != nil {
 		t.Fatalf("RegisterPushDevice: %v", err)
 	}
-	if _, err := client.RegisterPushDevice(context.Background(), newBearerRequest(&publirav1.RegisterPushDeviceRequest{
+	if _, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), tokenFor(t, tenant, other)), &publirav1.RegisterPushDeviceRequest{
 		Tenant:   tenantContext(tenant),
 		Token:    "other-device",
 		Platform: publirav1.PushPlatform_PUSH_PLATFORM_ANDROID,
-	}, tokenFor(t, tenant, other))); err != nil {
+	}); err != nil {
 		t.Fatalf("RegisterPushDevice: %v", err)
 	}
 
@@ -91,22 +92,22 @@ func TestDBUnregisterPushDeviceLeavesAnotherReadersToken(t *testing.T) {
 	other := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0002", "other@tenant-a.example.com", "Other")
 
 	client := env.notificationClient()
-	if _, err := client.RegisterPushDevice(context.Background(), newBearerRequest(&publirav1.RegisterPushDeviceRequest{
+	if _, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), tokenFor(t, tenant, other)), &publirav1.RegisterPushDeviceRequest{
 		Tenant:   tenantContext(tenant),
 		Token:    "other-device",
 		Platform: publirav1.PushPlatform_PUSH_PLATFORM_ANDROID,
-	}, tokenFor(t, tenant, other))); err != nil {
+	}); err != nil {
 		t.Fatalf("RegisterPushDevice: %v", err)
 	}
 
-	resp, err := client.UnregisterPushDevice(context.Background(), newBearerRequest(&publirav1.UnregisterPushDeviceRequest{
+	resp, err := client.UnregisterPushDevice(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.UnregisterPushDeviceRequest{
 		Tenant: tenantContext(tenant),
 		Token:  "other-device",
-	}, tokenFor(t, tenant, member)))
+	})
 	if err != nil {
 		t.Fatalf("UnregisterPushDevice: %v", err)
 	}
-	if resp.Msg.Unregistered {
+	if resp.Unregistered {
 		t.Fatal("unregistered = true, want false for a token the caller does not hold")
 	}
 	if devices := listPushDeviceRows(t, env); len(devices) != 1 {

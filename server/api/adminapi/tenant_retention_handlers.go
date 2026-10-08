@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -15,6 +15,7 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 // fieldRetentionOverrides is the UpdateTenantRetentionSettingsRequest field a
@@ -68,12 +69,12 @@ func retentionOverridesFromProto(overrides *publiraadminv1.TenantRetentionOverri
 
 func (s *adminServer) GetTenantRetentionSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantRetentionSettingsRequest],
-) (*connect.Response[publiraadminv1.GetTenantRetentionSettingsResponse], error) {
+	req *publiraadminv1.GetTenantRetentionSettingsRequest,
+) (*publiraadminv1.GetTenantRetentionSettingsResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -82,12 +83,12 @@ func (s *adminServer) GetTenantRetentionSettings(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read retention settings", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetTenantRetentionSettingsResponse{
+	return &publiraadminv1.GetTenantRetentionSettingsResponse{
 		Overrides:        retentionOverridesToProto(settings.Overrides),
 		PlatformDefaults: retentionPeriodsToProto(settings.Defaults),
 		Effective:        retentionPeriodsToProto(settings.Effective()),
 		Revision:         settings.Revision,
-	}), nil
+	}, nil
 }
 
 // writeTenantRetention locks the tenant's row, compares its revision with the
@@ -117,14 +118,14 @@ func (s *adminServer) writeTenantRetention(
 		// Any revision but zero was read from a row that has since been
 		// deleted, and creating one would resurrect values nobody confirmed.
 		if expectedRevision != 0 {
-			return retention.Settings{}, connect.NewError(connect.CodeFailedPrecondition, errTenantRetentionConflict)
+			return retention.Settings{}, connect.NewError(connect.CodeFailedPrecondition, errTenantRetentionConflict.Error()).WithCause(errTenantRetentionConflict)
 		}
 		updated, err = txq.InsertTenantRetentionSettings(ctx, overrides.TenantSettingsInsertParams(tenant.ID))
 		if err != nil {
 			// Two first saves both find nothing to lock; the primary key
 			// settles which one wins.
 			if dberr.IsUniqueViolation(err) {
-				return retention.Settings{}, connect.NewError(connect.CodeFailedPrecondition, errTenantRetentionConflict)
+				return retention.Settings{}, connect.NewError(connect.CodeFailedPrecondition, errTenantRetentionConflict.Error()).WithCause(errTenantRetentionConflict)
 			}
 			return retention.Settings{}, s.internalDBError(ctx, "failed to create retention settings", err, "tenant_id", tenant.ID.String())
 		}
@@ -132,7 +133,7 @@ func (s *adminServer) writeTenantRetention(
 		return retention.Settings{}, s.internalDBError(ctx, "failed to lock retention settings", err, "tenant_id", tenant.ID.String())
 	default:
 		if expectedRevision != current.Revision {
-			return retention.Settings{}, connect.NewError(connect.CodeFailedPrecondition, errTenantRetentionConflict)
+			return retention.Settings{}, connect.NewError(connect.CodeFailedPrecondition, errTenantRetentionConflict.Error()).WithCause(errTenantRetentionConflict)
 		}
 		updated, err = txq.UpdateTenantRetentionSettings(ctx, overrides.TenantSettingsParams(tenant.ID))
 		if err != nil {
@@ -159,9 +160,9 @@ func (s *adminServer) writeTenantRetention(
 
 func (s *adminServer) UpdateTenantRetentionSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantRetentionSettingsRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantRetentionSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantRetentionSettingsRequest,
+) (*publiraadminv1.UpdateTenantRetentionSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -172,18 +173,18 @@ func (s *adminServer) UpdateTenantRetentionSettings(
 
 	// Every override is written, so a missing message would clear all of them
 	// rather than change nothing.
-	if req.Msg.GetOverrides() == nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("overrides is required"))
+	if req.GetOverrides() == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "overrides is required")
 	}
-	overrides := retentionOverridesFromProto(req.Msg.GetOverrides())
+	overrides := retentionOverridesFromProto(req.GetOverrides())
 	if err := overrides.Validate(); err != nil {
 		return nil, rpcerrors.FromFieldError(fielderr.Within(fieldRetentionOverrides, err))
 	}
-	if req.Msg.ExpectedRevision < 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("expected_revision must not be negative"))
+	if req.ExpectedRevision < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "expected_revision must not be negative")
 	}
 
-	settings, err := s.writeTenantRetention(ctx, tenant, overrides, req.Msg.ExpectedRevision, auditlog.TenantEntry{
+	settings, err := s.writeTenantRetention(ctx, tenant, overrides, req.ExpectedRevision, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
@@ -191,16 +192,16 @@ func (s *adminServer) UpdateTenantRetentionSettings(
 		TargetType:  "tenant_retention",
 		TargetID:    tenant.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.UpdateTenantRetentionSettingsResponse{
+	return &publiraadminv1.UpdateTenantRetentionSettingsResponse{
 		Overrides:        retentionOverridesToProto(settings.Overrides),
 		PlatformDefaults: retentionPeriodsToProto(settings.Defaults),
 		Effective:        retentionPeriodsToProto(settings.Effective()),
 		Revision:         settings.Revision,
-	}), nil
+	}, nil
 }

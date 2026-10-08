@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -19,6 +19,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -52,7 +53,7 @@ func rankingKeyForPeriod(period publirav1.RankingPeriod) (string, error) {
 	case publirav1.RankingPeriod_RANKING_PERIOD_WEEKLY:
 		return contentranking.WeeklyRankingKey, nil
 	default:
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("period is unknown"))
+		return "", connect.NewError(connect.CodeInvalidArgument, "period is unknown")
 	}
 }
 
@@ -95,7 +96,7 @@ func (s *apiServer) resolveRankingGenre(ctx context.Context, tenantID uuid.UUID,
 		PublicID: publicID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeNotFound, errors.New("genre not found"))
+		return uuid.NullUUID{}, connect.NewError(connect.CodeNotFound, "genre not found")
 	}
 	if err != nil {
 		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to resolve the ranking genre", err, "tenant_id", tenantID.String())
@@ -109,7 +110,7 @@ func (s *apiServer) resolveRankingGenre(ctx context.Context, tenantID uuid.UUID,
 // A rejected session reads as a guest; any other auth failure is reported.
 func (s *apiServer) readerMayListRanking(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListRankedSeriesRequest],
+	req *publirav1.ListRankedSeriesRequest,
 	tenant dbmodels.Tenant,
 	ageRating string,
 ) (private bool, err error) {
@@ -122,8 +123,8 @@ func (s *apiServer) readerMayListRanking(
 	}
 
 	var birthDate sql.NullTime
-	if _, hasBearer := auth.BearerTokenFromHeader(req.Header()); hasBearer {
-		session, authErr := s.authenticateAccessToken(ctx, req.Msg.Tenant, req.Header())
+	if _, hasBearer := auth.BearerTokenFromHeader(rpcmiddleware.RequestHeader(ctx)); hasBearer {
+		session, authErr := s.authenticateAccessToken(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 		switch {
 		case authErr == nil:
 			birthDate = session.User.BirthDate
@@ -136,7 +137,7 @@ func (s *apiServer) readerMayListRanking(
 		return false, s.internalError(ctx, "failed to check the reader against the tenant age rule", err, "tenant_id", tenant.ID.String())
 	}
 	if !clears {
-		return false, connect.NewError(connect.CodePermissionDenied, errors.New("the reader has not proven the age this rating asks for"))
+		return false, connect.NewError(connect.CodePermissionDenied, "the reader has not proven the age this rating asks for")
 	}
 	return true, nil
 }
@@ -344,7 +345,7 @@ type rankedSeriesCursorKeys struct {
 }
 
 func decodeRankedSeriesCursorKeys(cursor pagination.Cursor, leaderboard rankingLeaderboard) (rankedSeriesCursorKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	invalid := connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	if len(cursor.Keys) != 5 && len(cursor.Keys) != 6 {
 		return rankedSeriesCursorKeys{}, invalid
 	}
@@ -354,12 +355,12 @@ func decodeRankedSeriesCursorKeys(cursor pagination.Cursor, leaderboard rankingL
 	}
 	if cursor.Keys[0] != leaderboard.listKey() {
 		if rankingKey, _, _ := strings.Cut(cursor.Keys[0], "+"); rankingKey == leaderboard.rankingKey {
-			return rankedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another genre"))
+			return rankedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, "token was issued for another genre")
 		}
-		return rankedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another period"))
+		return rankedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, "token was issued for another period")
 	}
 	if cursor.Keys[1] != leaderboard.ageRating {
-		return rankedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another age rating"))
+		return rankedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, "token was issued for another age rating")
 	}
 	snapshotID, err := uuid.Parse(cursor.Keys[2])
 	if err != nil {
@@ -453,40 +454,40 @@ func (s *apiServer) rankedSeriesPageRows(
 // snapshot, and orders the whole catalogue instead.
 func (s *apiServer) ListRankedSeries(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListRankedSeriesRequest],
-) (*connect.Response[publirav1.ListRankedSeriesResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ListRankedSeriesRequest,
+) (*publirav1.ListRankedSeriesResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	rankingKey, err := rankingKeyForPeriod(req.Msg.Period)
+	rankingKey, err := rankingKeyForPeriod(req.Period)
 	if err != nil {
 		return nil, err
 	}
-	ageRating, err := protomapper.SeriesAgeRatingToStored(req.Msg.AgeRating)
+	ageRating, err := protomapper.SeriesAgeRatingToStored(req.AgeRating)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("age_rating is unknown"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "age_rating is unknown")
 	}
 	// The batch ranks a genre's all-ages series alone. Any other rating would
 	// find no snapshot and answer an empty chart, which a client cannot tell
 	// from a genre nobody has read yet.
-	if req.Msg.GenrePublicId != "" && ageRating != ageverification.RatingAll {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a genre is ranked for all ages only"))
+	if req.GenrePublicId != "" && ageRating != ageverification.RatingAll {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "a genre is ranked for all ages only")
 	}
 	leaderboard := rankingLeaderboard{
 		surface:       surface,
 		rankingKey:    rankingKey,
 		ageRating:     ageRating,
-		genrePublicID: req.Msg.GenrePublicId,
+		genrePublicID: req.GenrePublicId,
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRankedSeriesPageSize, maxRankedSeriesPageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultRankedSeriesPageSize, maxRankedSeriesPageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys rankedSeriesCursorKeys
 	if !cursor.IsZero() {
@@ -495,7 +496,7 @@ func (s *apiServer) ListRankedSeries(
 			return nil, err
 		}
 	}
-	leaderboard.genreID, err = s.resolveRankingGenre(ctx, tenant.ID, req.Msg.GenrePublicId)
+	leaderboard.genreID, err = s.resolveRankingGenre(ctx, tenant.ID, req.GenrePublicId)
 	if err != nil {
 		return nil, err
 	}
@@ -503,16 +504,16 @@ func (s *apiServer) ListRankedSeries(
 	if err != nil {
 		return nil, err
 	}
-	respond := func(res *publirav1.ListRankedSeriesResponse) *connect.Response[publirav1.ListRankedSeriesResponse] {
+	respond := func(res *publirav1.ListRankedSeriesResponse) *publirav1.ListRankedSeriesResponse {
 		if private {
-			return noStorePrivateResponse(res)
+			return noStorePrivateResponse(ctx, res)
 		}
-		return connect.NewResponse(res)
+		return res
 	}
 
 	snapshots, err := s.rankingSnapshotsForPage(ctx, tenant.ID, leaderboard, keys.snapshotID)
 	if errors.Is(err, errRankingSnapshotUnavailable) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is no longer valid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is no longer valid")
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read the ranking snapshot", err, "tenant_id", tenant.ID.String())

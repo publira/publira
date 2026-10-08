@@ -1,9 +1,11 @@
 package adminapi
 
 import (
+	"errors"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectproto"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -72,7 +74,11 @@ func TestNormalizePageSlugForStorage(t *testing.T) {
 
 func badRequestReason(t *testing.T, err error) string {
 	t.Helper()
-	detail, detailErr := err.(*connect.Error).Details()[0].Value()
+	rpcError, ok := errors.AsType[*connect.Error](err)
+	if !ok {
+		t.Fatalf("error type = %T, want *connect.Error", err)
+	}
+	detail, detailErr := connectproto.UnmarshalErrorDetail(rpcError.Details()[0])
 	if detailErr != nil {
 		t.Fatalf("detail = %v", detailErr)
 	}
@@ -81,14 +87,14 @@ func badRequestReason(t *testing.T, err error) string {
 
 func assertBadRequestField(t *testing.T, err error, wantField string) {
 	t.Helper()
-	rpcError, ok := err.(*connect.Error)
+	rpcError, ok := errors.AsType[*connect.Error](err)
 	if !ok {
 		t.Fatalf("error type = %T, want *connect.Error", err)
 	}
 	if len(rpcError.Details()) != 1 {
 		t.Fatalf("detail count = %d, want 1", len(rpcError.Details()))
 	}
-	detail, detailErr := rpcError.Details()[0].Value()
+	detail, detailErr := connectproto.UnmarshalErrorDetail(rpcError.Details()[0])
 	if detailErr != nil {
 		t.Fatalf("detail = %v", detailErr)
 	}

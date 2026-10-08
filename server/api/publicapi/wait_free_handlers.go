@@ -6,13 +6,14 @@ import (
 	"errors"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 // seriesWaitFreeRule reads a series' wait-for-free rule, and reports false
@@ -53,7 +54,7 @@ func waitFreeNotOfferedError() error {
 }
 
 func waitFreeEpisodeOpenError() error {
-	return connect.NewError(connect.CodeAlreadyExists, errors.New("the reader can already open this episode"))
+	return connect.NewError(connect.CodeAlreadyExists, "the reader can already open this episode")
 }
 
 func waitFreeNotRechargedError(nextAvailableAt time.Time) error {
@@ -64,17 +65,17 @@ func waitFreeNotRechargedError(nextAvailableAt time.Time) error {
 
 func (s *apiServer) GetMyTicketState(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetMyTicketStateRequest],
-) (*connect.Response[publirav1.GetMyTicketStateResponse], error) {
-	seriesID, err := requestRecordID("series_id", req.Msg.SeriesId)
+	req *publirav1.GetMyTicketStateRequest,
+) (*publirav1.GetMyTicketStateResponse, error) {
+	seriesID, err := requestRecordID("series_id", req.SeriesId)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +86,7 @@ func (s *apiServer) GetMyTicketState(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "series not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get series for wait-free ticket state", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
@@ -126,23 +127,23 @@ func (s *apiServer) GetMyTicketState(
 			ExpiresAt: ticket.ExpiresAt.Time.UTC().Format(time.RFC3339),
 		})
 	}
-	return noStorePrivateResponse(res), nil
+	return noStorePrivateResponse(ctx, res), nil
 }
 
 // UseTicket spends the reader's wait-for-free ticket on one episode.
 func (s *apiServer) UseTicket(
 	ctx context.Context,
-	req *connect.Request[publirav1.UseTicketRequest],
-) (*connect.Response[publirav1.UseTicketResponse], error) {
-	episodeID, err := requestRecordID("episode_id", req.Msg.EpisodeId)
+	req *publirav1.UseTicketRequest,
+) (*publirav1.UseTicketResponse, error) {
+	episodeID, err := requestRecordID("episode_id", req.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +159,7 @@ func (s *apiServer) UseTicket(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get episode for a wait-free ticket", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
@@ -181,7 +182,7 @@ func (s *apiServer) UseTicket(
 		return nil, s.internalError(ctx, "failed to check the reader against the tenant age rule", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	if !clearsAgeGate {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the tenant's age rule stops this reader from opening the series"))
+		return nil, connect.NewError(connect.CodePermissionDenied, "the tenant's age rule stops this reader from opening the series")
 	}
 
 	if episode.FreeToEveryone {
@@ -203,7 +204,7 @@ func (s *apiServer) UseTicket(
 
 	ticketID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -241,7 +242,7 @@ func (s *apiServer) UseTicket(
 		return nil, s.internalDBError(ctx, "failed to commit a wait-free ticket", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 
-	return noStorePrivateResponse(&publirav1.UseTicketResponse{
+	return noStorePrivateResponse(ctx, &publirav1.UseTicketResponse{
 		Ticket: &publirav1.WaitFreeTicket{
 			EpisodeId: ticket.EpisodeID.String(),
 			ExpiresAt: ticket.ExpiresAt.Time.UTC().Format(time.RFC3339),

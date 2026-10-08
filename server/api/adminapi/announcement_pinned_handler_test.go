@@ -4,18 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestCreateAnnouncementPinnedStoresTheWindow(t *testing.T) {
@@ -49,24 +51,23 @@ func TestCreateAnnouncementPinnedStoresTheWindow(t *testing.T) {
 
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
+	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateAnnouncementRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:       "Maintenance",
 		Body:        "Body",
 		Pinned:      true,
 		PinnedUntil: until.Format(time.RFC3339),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.CreateAnnouncement(context.Background(), req)
+	resp, err := client.CreateAnnouncement(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("CreateAnnouncement: %v", err)
 	}
-	if !resp.Msg.Announcement.GetPinned() {
+	if !resp.Announcement.GetPinned() {
 		t.Fatal("pinned = false, want true")
 	}
-	if got, want := resp.Msg.Announcement.GetPinnedUntil(), until.Format(time.RFC3339); got != want {
+	if got, want := resp.Announcement.GetPinnedUntil(), until.Format(time.RFC3339); got != want {
 		t.Fatalf("pinned_until = %q, want %q", got, want)
 	}
 
@@ -95,16 +96,15 @@ func TestCreateAnnouncementRefusesAPinItCannotShow(t *testing.T) {
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
-			req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
+			req := &publiraadminv1.CreateAnnouncementRequest{
 				Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Title:       "Maintenance",
 				Body:        "Body",
 				Pinned:      true,
 				PinnedUntil: test.pinnedUntil,
-			})
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			}
 
-			_, err := client.CreateAnnouncement(context.Background(), req)
+			_, err := client.CreateAnnouncement(testutil.WithBearer(context.Background(), sessionToken), req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("CreateAnnouncement error = %v, want invalid_argument", err)
 			}
@@ -128,13 +128,12 @@ func TestUnpinAnnouncementClearsTheFlag(t *testing.T) {
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
-	req := connect.NewRequest(&publiraadminv1.UnpinAnnouncementRequest{
+	req := &publiraadminv1.UnpinAnnouncementRequest{
 		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		AnnouncementId: announcementID.String(),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.UnpinAnnouncement(context.Background(), req); err != nil {
+	if _, err := client.UnpinAnnouncement(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UnpinAnnouncement: %v", err)
 	}
 
@@ -156,13 +155,12 @@ func TestUnpinAnnouncementReportsAMissingRow(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	mock.ExpectRollback()
 
-	req := connect.NewRequest(&publiraadminv1.UnpinAnnouncementRequest{
+	req := &publiraadminv1.UnpinAnnouncementRequest{
 		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		AnnouncementId: announcementID.String(),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.UnpinAnnouncement(context.Background(), req)
+	_, err := client.UnpinAnnouncement(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("UnpinAnnouncement error = %v, want not_found", err)
 	}

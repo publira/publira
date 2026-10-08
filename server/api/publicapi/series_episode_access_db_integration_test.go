@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ageverification"
@@ -123,26 +123,25 @@ func TestDBGetSeriesEpisodeAccessAgreesWithGetEpisodeDetail(t *testing.T) {
 	catalog := env.catalogClient()
 	for _, caller := range []string{"guest", "reader"} {
 		t.Run(caller, func(t *testing.T) {
-			withCaller := func(req *connect.Request[publirav1.GetSeriesEpisodeAccessRequest]) *connect.Request[publirav1.GetSeriesEpisodeAccessRequest] {
-				if caller == "reader" {
-					return newBearerRequest(req.Msg, tokenFor(t, tenant, reader))
-				}
-				return req
+			ctx := context.Background()
+			if caller == "reader" {
+				ctx = testutil.WithBearer(ctx, tokenFor(t, tenant, reader))
 			}
-			resp, err := catalog.GetSeriesEpisodeAccess(context.Background(), withCaller(connect.NewRequest(&publirav1.GetSeriesEpisodeAccessRequest{
+			respCtx, respCall := testutil.NewClientContext(ctx)
+			resp, err := catalog.GetSeriesEpisodeAccess(respCtx, &publirav1.GetSeriesEpisodeAccessRequest{
 				Tenant:   tenantContext(tenant),
 				SeriesId: series.ID.String(),
-			})))
+			})
 			if err != nil {
 				t.Fatalf("GetSeriesEpisodeAccess: %v", err)
 			}
-			if got := resp.Header().Get("Cache-Control"); got != "private, no-store" {
+			if got := respCall.ResponseHeader().Get("Cache-Control"); got != "private, no-store" {
 				t.Errorf("Cache-Control = %q, want private, no-store", got)
 			}
-			if len(resp.Msg.Episodes) != len(order) {
-				t.Fatalf("episodes = %d, want %d", len(resp.Msg.Episodes), len(order))
+			if len(resp.Episodes) != len(order) {
+				t.Fatalf("episodes = %d, want %d", len(resp.Episodes), len(order))
 			}
-			for i, entry := range resp.Msg.Episodes {
+			for i, entry := range resp.Episodes {
 				if entry.EpisodePublicId != order[i] {
 					t.Fatalf("episode %d = %s, want %s", i, entry.EpisodePublicId, order[i])
 				}
@@ -150,16 +149,13 @@ func TestDBGetSeriesEpisodeAccessAgreesWithGetEpisodeDetail(t *testing.T) {
 					t.Errorf("%s access = %v, want %v", entry.EpisodePublicId, entry.Access, want[caller][entry.EpisodePublicId])
 				}
 
-				detailReq := connect.NewRequest(&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: entry.EpisodePublicId})
-				if caller == "reader" {
-					detailReq = newBearerRequest(detailReq.Msg, tokenFor(t, tenant, reader))
-				}
-				detail, err := catalog.GetEpisodeDetail(context.Background(), detailReq)
+				detailReq := &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: entry.EpisodePublicId}
+				detail, err := catalog.GetEpisodeDetail(ctx, detailReq)
 				if err != nil {
 					t.Fatalf("GetEpisodeDetail %s: %v", entry.EpisodePublicId, err)
 				}
-				if detail.Msg.Access != entry.Access {
-					t.Errorf("%s: series access %v disagrees with episode detail %v", entry.EpisodePublicId, entry.Access, detail.Msg.Access)
+				if detail.Access != entry.Access {
+					t.Errorf("%s: series access %v disagrees with episode detail %v", entry.EpisodePublicId, entry.Access, detail.Access)
 				}
 			}
 		})
@@ -200,19 +196,20 @@ func TestDBGetSeriesEpisodeAccessAppliesTheTenantAgeRule(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := connect.NewRequest(&publirav1.GetSeriesEpisodeAccessRequest{
+			req := &publirav1.GetSeriesEpisodeAccessRequest{
 				Tenant:   tenantContext(tenant),
 				SeriesId: series.ID.String(),
-			})
-			if tt.reader != nil {
-				req = newBearerRequest(req.Msg, tokenFor(t, tenant, *tt.reader))
 			}
-			resp, err := env.catalogClient().GetSeriesEpisodeAccess(context.Background(), req)
+			ctx := context.Background()
+			if tt.reader != nil {
+				ctx = testutil.WithBearer(ctx, tokenFor(t, tenant, *tt.reader))
+			}
+			resp, err := env.catalogClient().GetSeriesEpisodeAccess(ctx, req)
 			if err != nil {
 				t.Fatalf("GetSeriesEpisodeAccess: %v", err)
 			}
-			if len(resp.Msg.Episodes) != 1 || resp.Msg.Episodes[0].Access != tt.want {
-				t.Fatalf("episodes = %v, want one %v", resp.Msg.Episodes, tt.want)
+			if len(resp.Episodes) != 1 || resp.Episodes[0].Access != tt.want {
+				t.Fatalf("episodes = %v, want one %v", resp.Episodes, tt.want)
 			}
 		})
 	}
@@ -225,10 +222,10 @@ func TestDBGetSeriesEpisodeAccessHidesSeriesTheStorefrontDoesNot(t *testing.T) {
 	foreign := env.PG.SeedSeries(t, tenantB.ID, testutil.SeriesSeed{PublicID: "SERIESB00001", Title: "Foreign", Published: true})
 
 	for _, seriesID := range []string{draft.ID.String(), foreign.ID.String(), uuid.NewString()} {
-		_, err := env.catalogClient().GetSeriesEpisodeAccess(context.Background(), connect.NewRequest(&publirav1.GetSeriesEpisodeAccessRequest{
+		_, err := env.catalogClient().GetSeriesEpisodeAccess(context.Background(), &publirav1.GetSeriesEpisodeAccessRequest{
 			Tenant:   tenantContext(tenantA),
 			SeriesId: seriesID,
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Errorf("%s: code = %v, want not_found", seriesID, connect.CodeOf(err))
 		}
@@ -246,14 +243,14 @@ func TestDBGetSeriesEpisodeAccessAnswersAnUnverifiableBearerAsAGuest(t *testing.
 		Price:    500,
 	})
 
-	resp, err := env.catalogClient().GetSeriesEpisodeAccess(context.Background(), newBearerRequest(&publirav1.GetSeriesEpisodeAccessRequest{
+	resp, err := env.catalogClient().GetSeriesEpisodeAccess(testutil.WithBearer(context.Background(), "not-a-valid-jwt"), &publirav1.GetSeriesEpisodeAccessRequest{
 		Tenant:   tenantContext(tenant),
 		SeriesId: series.ID.String(),
-	}, "not-a-valid-jwt"))
+	})
 	if err != nil {
 		t.Fatalf("GetSeriesEpisodeAccess: %v", err)
 	}
-	if len(resp.Msg.Episodes) != 1 || resp.Msg.Episodes[0].Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
-		t.Fatalf("episodes = %v, want one locked", resp.Msg.Episodes)
+	if len(resp.Episodes) != 1 || resp.Episodes[0].Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+		t.Fatalf("episodes = %v, want one locked", resp.Episodes)
 	}
 }

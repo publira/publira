@@ -6,10 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // spacedPassword is a password whose surrounding spaces are part of what the
@@ -22,23 +23,23 @@ func assertSignsInOnlyAsTyped(t *testing.T, env *adminDBEnv, tenant adminDBTenan
 	t.Helper()
 
 	client := env.authClient()
-	login, err := client.Login(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+	login, err := client.Login(context.Background(), &publiraadminv1.AdminAuthServiceLoginRequest{
 		Tenant:   tenant.tenantContext(),
 		Email:    email,
 		Password: password,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login with the password as typed: %v", err)
 	}
-	_, err = client.Login(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+	_, err = client.Login(context.Background(), &publiraadminv1.AdminAuthServiceLoginRequest{
 		Tenant:   tenant.tenantContext(),
 		Email:    email,
 		Password: strings.TrimSpace(password),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login with the password trimmed code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
-	return login.Msg.AccessToken.GetToken()
+	return login.AccessToken.GetToken()
 }
 
 func TestDBAcceptTenantAdminInvitationKeepsThePasswordAsTyped(t *testing.T) {
@@ -46,9 +47,9 @@ func TestDBAcceptTenantAdminInvitationKeepsThePasswordAsTyped(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	ctx := context.Background()
 
-	if _, err := env.tenantMemberClient().CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+	if _, err := env.tenantMemberClient().CreateTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 		Tenant: tenant.tenantContext(), Email: "invitee@tenant-a.example.com",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateTenantAdminInvitation: %v", err)
 	}
 	events := env.pendingOutboxEvents(t, outbox.EventTypeTenantAdminInvitationEmail)
@@ -60,12 +61,12 @@ func TestDBAcceptTenantAdminInvitationKeepsThePasswordAsTyped(t *testing.T) {
 		t.Fatalf("decode invitation payload: %v", err)
 	}
 
-	if _, err := env.authClient().AcceptTenantAdminInvitation(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
+	if _, err := env.authClient().AcceptTenantAdminInvitation(ctx, &publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
 		Tenant:   tenant.tenantContext(),
 		Token:    invitation.Token,
 		Name:     "Invitee",
 		Password: spacedPassword,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("AcceptTenantAdminInvitation: %v", err)
 	}
 
@@ -80,10 +81,10 @@ func TestDBAdminConfirmPasswordResetKeepsThePasswordAsTyped(t *testing.T) {
 	client := env.authClient()
 	ctx := context.Background()
 
-	if _, err := client.RequestPasswordReset(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
+	if _, err := client.RequestPasswordReset(ctx, &publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
 		Tenant: tenant.tenantContext(),
 		Email:  tenant.User.Email,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RequestPasswordReset: %v", err)
 	}
 	env.processPasswordResetRequests(t)
@@ -96,22 +97,23 @@ func TestDBAdminConfirmPasswordResetKeepsThePasswordAsTyped(t *testing.T) {
 		t.Fatalf("decode reset payload: %v", err)
 	}
 
-	if _, err := client.ConfirmPasswordReset(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceConfirmPasswordResetRequest{
+	if _, err := client.ConfirmPasswordReset(ctx, &publiraadminv1.AdminAuthServiceConfirmPasswordResetRequest{
 		Tenant:      tenant.tenantContext(),
 		Token:       reset.Token,
 		NewPassword: spacedPassword,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("ConfirmPasswordReset: %v", err)
 	}
 	token := assertSignsInOnlyAsTyped(t, env, tenant, tenant.User.Email, spacedPassword)
 
-	req := connect.NewRequest(&publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
+	req := &publiraadminv1.AdminAuthServiceRequestEmailChangeRequest{
 		Tenant:          tenant.tenantContext(),
 		CurrentEmail:    tenant.User.Email,
 		NewEmail:        "moved@tenant-a.example.com",
 		CurrentPassword: strings.TrimSpace(spacedPassword),
-	})
-	req.Header().Set("Authorization", "Bearer "+token)
+	}
+	ctx, info := connect.NewClientContext(ctx)
+	info.RequestHeader().Set("Authorization", "Bearer "+token)
 	_, err := client.RequestEmailChange(ctx, req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("RequestEmailChange with the current password trimmed code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)

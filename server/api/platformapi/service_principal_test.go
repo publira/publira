@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
-	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -28,7 +27,7 @@ func TestServicePrincipalFailsClosedWhereAnOperatorIsNeeded(t *testing.T) {
 			return err
 		},
 		"an audit actor": func(ctx context.Context) error {
-			_, err := s.auditActor(ctx, connect.NewRequest(&publirasplatformv1.CreateTenantRequest{}))
+			_, err := s.auditActor(ctx)
 			return err
 		},
 		"the owner of the notifications": func(ctx context.Context) error {

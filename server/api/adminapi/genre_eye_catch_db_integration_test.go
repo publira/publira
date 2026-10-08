@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // eyeCatchVariantCount is one variant per ratio and delivered width: three
@@ -29,16 +30,16 @@ func createGenreWithEyeCatch(
 ) *publirattypesv1.Genre {
 	t.Helper()
 
-	created, err := client.CreateGenre(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateGenreRequest{
+	created, err := client.CreateGenre(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateGenreRequest{
 		Tenant:                   tenant.tenantContext(),
 		Name:                     name,
 		EyeCatchImageData:        aspectJPEG(t, 2400, 3200),
 		EyeCatchImageContentType: "image/jpeg",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateGenre(%q): %v", name, err)
 	}
-	return created.Msg.Genre
+	return created.Genre
 }
 
 // genreVariantURLs lists the URLs of the variants of one ratio.
@@ -103,12 +104,12 @@ func TestDBCreateGenreWithAnUnusableImageLeavesNoGenre(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
 
-	_, err := client.CreateGenre(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateGenreRequest{
+	_, err := client.CreateGenre(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateGenreRequest{
 		Tenant:                   tenant.tenantContext(),
 		Name:                     "Fantasy",
 		EyeCatchImageData:        aspectJPEG(t, 600, 800),
 		EyeCatchImageContentType: "image/jpeg",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateGenre with a small image error = %v, want invalid_argument", err)
 	}
@@ -145,13 +146,13 @@ func TestDBUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	}
 	before := untouched()
 
-	uploaded, err := client.UploadGenreEyeCatchAspectImage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
+	uploaded, err := client.UploadGenreEyeCatchAspectImage(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
 		Tenant:           tenant.tenantContext(),
 		GenreId:          created.Id,
 		VariantType:      "square",
 		ImageData:        aspectJPEG(t, 1200, 1200),
 		ImageContentType: "image/jpeg",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UploadGenreEyeCatchAspectImage: %v", err)
 	}
@@ -159,12 +160,12 @@ func TestDBUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	if after := untouched(); !slices.Equal(after, before) {
 		t.Fatalf("other ratios = %v after replacing square, want %v", after, before)
 	}
-	if got := len(uploaded.Msg.Genre.GetEyeCatchImageVariants()); got != eyeCatchVariantCount {
+	if got := len(uploaded.Genre.GetEyeCatchImageVariants()); got != eyeCatchVariantCount {
 		t.Fatalf("variants after replacing square = %d, want %d", got, eyeCatchVariantCount)
 	}
 	// The ratio is replaced under the same image, so the route stays and only
 	// the version changes. The other ratios keep the URLs a cache already holds.
-	replaced := genreVariantURLs(uploaded.Msg.Genre, "square")
+	replaced := genreVariantURLs(uploaded.Genre, "square")
 	original := genreVariantURLs(created, "square")
 	if slices.Equal(replaced, original) {
 		t.Fatalf("square urls = %v, want them to differ from the ones they replaced", replaced)
@@ -173,7 +174,7 @@ func TestDBUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 		t.Fatalf("square paths = %v, want the same image route %v", got, want)
 	}
 	for _, ratio := range []string{"portrait", "landscape", "og"} {
-		if got, want := genreVariantURLs(uploaded.Msg.Genre, ratio), genreVariantURLs(created, ratio); !slices.Equal(got, want) {
+		if got, want := genreVariantURLs(uploaded.Genre, ratio), genreVariantURLs(created, ratio); !slices.Equal(got, want) {
 			t.Fatalf("%s urls = %v, want the urls from before the replacement %v", ratio, got, want)
 		}
 	}
@@ -215,13 +216,13 @@ func TestDBUploadGenreEyeCatchAspectImageRequiresAnEyeCatch(t *testing.T) {
 	client := env.genreClient()
 
 	genre := createGenre(t, client, tenant, "Fantasy")
-	_, err := client.UploadGenreEyeCatchAspectImage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
+	_, err := client.UploadGenreEyeCatchAspectImage(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
 		Tenant:           tenant.tenantContext(),
 		GenreId:          genre.Id,
 		VariantType:      "square",
 		ImageData:        aspectJPEG(t, 1200, 1200),
 		ImageContentType: "image/jpeg",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UploadGenreEyeCatchAspectImage error = %v, want failed_precondition", err)
 	}
@@ -234,28 +235,28 @@ func TestDBUpdateGenreClearsTheEyeCatchAndKeepsItOtherwise(t *testing.T) {
 
 	created := createGenreWithEyeCatch(t, client, tenant, "Fantasy")
 
-	renamed, err := client.UpdateGenre(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateGenreRequest{
+	renamed, err := client.UpdateGenre(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateGenreRequest{
 		Tenant:  tenant.tenantContext(),
 		GenreId: created.Id,
 		Name:    "High Fantasy",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateGenre rename: %v", err)
 	}
-	if got := len(renamed.Msg.Genre.GetEyeCatchImageVariants()); got != eyeCatchVariantCount {
+	if got := len(renamed.Genre.GetEyeCatchImageVariants()); got != eyeCatchVariantCount {
 		t.Fatalf("variants after a rename = %d, want the eye-catch kept", got)
 	}
 
-	cleared, err := client.UpdateGenre(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateGenreRequest{
+	cleared, err := client.UpdateGenre(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateGenreRequest{
 		Tenant:             tenant.tenantContext(),
 		GenreId:            created.Id,
 		Name:               "High Fantasy",
 		ClearEyeCatchImage: true,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateGenre clear: %v", err)
 	}
-	if got := cleared.Msg.Genre.GetEyeCatchImageVariants(); len(got) != 0 {
+	if got := cleared.Genre.GetEyeCatchImageVariants(); len(got) != 0 {
 		t.Fatalf("variants after clearing = %v, want none", got)
 	}
 	if listed := listGenres(t, client, tenant); len(listed[0].GetEyeCatchImageVariants()) != 0 {
@@ -276,15 +277,15 @@ func TestDBReorderGenresKeepsTheEyeCatchInTheAnswer(t *testing.T) {
 	first := createGenreWithEyeCatch(t, client, tenant, "Fantasy")
 	second := createGenre(t, client, tenant, "Mystery")
 
-	reordered, err := client.ReorderGenres(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderGenresRequest{
+	reordered, err := client.ReorderGenres(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ReorderGenresRequest{
 		Tenant:           tenant.tenantContext(),
 		GenreIds:         []string{second.Id, first.Id},
 		ExpectedGenreIds: []string{first.Id, second.Id},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ReorderGenres: %v", err)
 	}
-	genres := reordered.Msg.Genres
+	genres := reordered.Genres
 	if len(genres) != 2 || len(genres[0].GetEyeCatchImageVariants()) != 0 || len(genres[1].GetEyeCatchImageVariants()) != eyeCatchVariantCount {
 		t.Fatalf("reordered genres = %v, want Mystery bare and Fantasy with its eye-catch", genres)
 	}
@@ -313,11 +314,11 @@ func TestDBUpdateGenreRenameAfterAConcurrentClearKeepsTheClear(t *testing.T) {
 
 	renamed := make(chan error, 1)
 	go func() {
-		_, err := client.UpdateGenre(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateGenreRequest{
+		_, err := client.UpdateGenre(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateGenreRequest{
 			Tenant:  tenant.tenantContext(),
 			GenreId: created.Id,
 			Name:    "High Fantasy",
-		}))
+		})
 		renamed <- err
 	}()
 

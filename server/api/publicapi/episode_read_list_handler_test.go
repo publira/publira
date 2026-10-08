@@ -3,20 +3,22 @@ package publicapi
 import (
 	"context"
 	"database/sql"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func episodeReadRows() *sqlmock.Rows {
@@ -72,17 +74,18 @@ func TestEpisodeReadListReturnsTheReadersOwnHistory(t *testing.T) {
 		WithArgs(tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(addEpisodeReadRow(episodeReadRows(), readID, now))
 
-	client := publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL)
-	response, err := client.ListMyEpisodeReads(context.Background(), newAuthedPublicRequest(&publirav1.ListMyEpisodeReadsRequest{
+	client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	responseCtx, responseCall := testutil.NewClientContext(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())))
+	response, err := client.ListMyEpisodeReads(responseCtx, &publirav1.ListMyEpisodeReadsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, tenantID.String()))
+	})
 	if err != nil {
 		t.Fatalf("ListMyEpisodeReads: %v", err)
 	}
-	if len(response.Msg.Reads) != 1 {
-		t.Fatalf("read count = %d, want 1", len(response.Msg.Reads))
+	if len(response.Reads) != 1 {
+		t.Fatalf("read count = %d, want 1", len(response.Reads))
 	}
-	read := response.Msg.Reads[0]
+	read := response.Reads[0]
 	if read.Episode.GetPublicId() != "EPISODE"+readID.String() || read.Episode.GetOrderIndex() != 3 {
 		t.Fatalf("episode = %+v, want the finished episode and its number", read.Episode)
 	}
@@ -92,7 +95,7 @@ func TestEpisodeReadListReturnsTheReadersOwnHistory(t *testing.T) {
 	if got, want := read.ReadAt, now.Format(time.RFC3339Nano); got != want {
 		t.Fatalf("read_at = %q, want %q", got, want)
 	}
-	if got := response.Header().Get("Cache-Control"); got != "private, no-store" {
+	if got := responseCall.ResponseHeader().Get("Cache-Control"); got != "private, no-store" {
 		t.Fatalf("Cache-Control = %q, want private, no-store", got)
 	}
 	assertPublicExpectations(t, mock)
@@ -125,18 +128,18 @@ func TestEpisodeReadListForwardPageReturnsNeighborTokens(t *testing.T) {
 		).
 		WillReturnRows(addEpisodeReadRow(addEpisodeReadRow(addEpisodeReadRow(episodeReadRows(), firstID, firstAt), secondID, secondAt), extraID, secondAt.Add(-time.Minute)))
 
-	client := publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL)
-	response, err := client.ListMyEpisodeReads(context.Background(), newAuthedPublicRequest(&publirav1.ListMyEpisodeReadsRequest{
+	client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	response, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyEpisodeReadsRequest{
 		Limit:  2,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  onWeb(pagination.EncodeTimeUUID(pagination.Forward, cursorAt, cursorID)),
-	}, tenantID.String()))
+	})
 	if err != nil {
 		t.Fatalf("ListMyEpisodeReads: %v", err)
 	}
-	assertEpisodeReadEpisodeIDs(t, response.Msg.Reads, []uuid.UUID{firstID, secondID})
-	assertEpisodeReadToken(t, response.Msg.PreviousToken, pagination.Backward, firstAt, firstID)
-	assertEpisodeReadToken(t, response.Msg.NextToken, pagination.Forward, secondAt, secondID)
+	assertEpisodeReadEpisodeIDs(t, response.Reads, []uuid.UUID{firstID, secondID})
+	assertEpisodeReadToken(t, response.PreviousToken, pagination.Backward, firstAt, firstID)
+	assertEpisodeReadToken(t, response.NextToken, pagination.Forward, secondAt, secondID)
 	assertPublicExpectations(t, mock)
 }
 
@@ -167,18 +170,18 @@ func TestEpisodeReadListBackwardPageReturnsDisplayOrderAndNeighborTokens(t *test
 		).
 		WillReturnRows(addEpisodeReadRow(addEpisodeReadRow(addEpisodeReadRow(episodeReadRows(), oldestID, oldestAt), middleID, middleAt), newestID, middleAt.Add(time.Minute)))
 
-	client := publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL)
-	response, err := client.ListMyEpisodeReads(context.Background(), newAuthedPublicRequest(&publirav1.ListMyEpisodeReadsRequest{
+	client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	response, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyEpisodeReadsRequest{
 		Limit:  2,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  onWeb(pagination.EncodeTimeUUID(pagination.Backward, cursorAt, cursorID)),
-	}, tenantID.String()))
+	})
 	if err != nil {
 		t.Fatalf("ListMyEpisodeReads: %v", err)
 	}
-	assertEpisodeReadEpisodeIDs(t, response.Msg.Reads, []uuid.UUID{middleID, oldestID})
-	assertEpisodeReadToken(t, response.Msg.PreviousToken, pagination.Backward, middleAt, middleID)
-	assertEpisodeReadToken(t, response.Msg.NextToken, pagination.Forward, oldestAt, oldestID)
+	assertEpisodeReadEpisodeIDs(t, response.Reads, []uuid.UUID{middleID, oldestID})
+	assertEpisodeReadToken(t, response.PreviousToken, pagination.Backward, middleAt, middleID)
+	assertEpisodeReadToken(t, response.NextToken, pagination.Forward, oldestAt, oldestID)
 	assertPublicExpectations(t, mock)
 }
 
@@ -238,12 +241,12 @@ func TestEpisodeReadListEmptyPagesReturnRecoveryTokens(t *testing.T) {
 			if tt.inclusive {
 				token = onWeb(pagination.EncodeTimeUUIDRecovery(tt.direction, cursorAt, cursorID))
 			}
-			client := publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL)
-			response, err := client.ListMyEpisodeReads(context.Background(), newAuthedPublicRequest(&publirav1.ListMyEpisodeReadsRequest{
+			client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			response, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyEpisodeReadsRequest{
 				Limit:  2,
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Token:  token,
-			}, tenantID.String()))
+			})
 			if err != nil {
 				t.Fatalf("ListMyEpisodeReads: %v", err)
 			}
@@ -256,8 +259,8 @@ func TestEpisodeReadListEmptyPagesReturnRecoveryTokens(t *testing.T) {
 			if wantNextToken == "recovery forward" {
 				wantNextToken = onWeb(pagination.EncodeTimeUUIDRecovery(pagination.Forward, cursorAt, cursorID))
 			}
-			if response.Msg.PreviousToken != wantPreviousToken || response.Msg.NextToken != wantNextToken {
-				t.Fatalf("tokens = (%q, %q), want (%q, %q)", response.Msg.PreviousToken, response.Msg.NextToken, wantPreviousToken, wantNextToken)
+			if response.PreviousToken != wantPreviousToken || response.NextToken != wantNextToken {
+				t.Fatalf("tokens = (%q, %q), want (%q, %q)", response.PreviousToken, response.NextToken, wantPreviousToken, wantNextToken)
 			}
 			assertPublicExpectations(t, mock)
 		})
@@ -272,11 +275,11 @@ func TestEpisodeReadListRejectsInvalidToken(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
 
-	client := publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListMyEpisodeReads(context.Background(), newAuthedPublicRequest(&publirav1.ListMyEpisodeReadsRequest{
+	client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyEpisodeReadsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  "not-a-token",
-	}, tenantID.String()))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListMyEpisodeReads code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -289,10 +292,10 @@ func TestEpisodeReadListRequiresSignIn(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	client := publirav1connect.NewEpisodeReadServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListMyEpisodeReads(context.Background(), connect.NewRequest(&publirav1.ListMyEpisodeReadsRequest{
+	client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListMyEpisodeReads(context.Background(), &publirav1.ListMyEpisodeReadsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("ListMyEpisodeReads code = %v, want %v", connect.CodeOf(err), connect.CodeUnauthenticated)
 	}

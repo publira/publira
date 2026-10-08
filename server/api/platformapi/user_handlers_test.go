@@ -4,16 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 )
@@ -53,21 +53,21 @@ func TestListEndUsers(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(listEndUsersResultColumns()).
 			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", now, "TENANT000001", "Readers"))
 
-	resp, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{}))
+	resp, err := server.ListEndUsers(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListEndUsersRequest{})
 	if err != nil {
 		t.Fatalf("ListEndUsers: %v", err)
 	}
-	if len(resp.Msg.Users) != 1 {
-		t.Fatalf("len(users) = %d, want 1", len(resp.Msg.Users))
+	if len(resp.Users) != 1 {
+		t.Fatalf("len(users) = %d, want 1", len(resp.Users))
 	}
-	if resp.Msg.Users[0].PublicId != "EUSER00001" {
-		t.Fatalf("public_id = %v, want EUSER00001", resp.Msg.Users[0].PublicId)
+	if resp.Users[0].PublicId != "EUSER00001" {
+		t.Fatalf("public_id = %v, want EUSER00001", resp.Users[0].PublicId)
 	}
-	if got := resp.Msg.Users[0].TenantIds; len(got) != 1 || got[0] != "TENANT000001" {
+	if got := resp.Users[0].TenantIds; len(got) != 1 || got[0] != "TENANT000001" {
 		t.Fatalf("tenant_ids = %v, want [TENANT000001]", got)
 	}
-	if resp.Msg.Users[0].TenantName != "Readers" {
-		t.Fatalf("tenant_name = %q, want Readers", resp.Msg.Users[0].TenantName)
+	if resp.Users[0].TenantName != "Readers" {
+		t.Fatalf("tenant_name = %q, want Readers", resp.Users[0].TenantName)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -80,7 +80,7 @@ func TestListEndUsersDatabaseErrorIsHidden(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEndUsersDesc)).
 		WillReturnError(errors.New(`pq: relation "users" does not exist`))
 
-	_, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{}))
+	_, err := server.ListEndUsers(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListEndUsersRequest{})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ListEndUsers code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -95,7 +95,7 @@ func TestListEndUsersDatabaseErrorIsHidden(t *testing.T) {
 func TestListEndUsersUnauthenticated(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	_, err := server.ListEndUsers(context.Background(), connect.NewRequest(&publirasplatformv1.ListEndUsersRequest{}))
+	_, err := server.ListEndUsers(context.Background(), &publirasplatformv1.ListEndUsersRequest{})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("ListEndUsers code = %v, want unauthenticated", connect.CodeOf(err))
 	}
@@ -120,12 +120,12 @@ func TestGetEndUser(t *testing.T) {
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(getTenantByUserIDColumns()))
 
-	resp, err := server.GetEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.GetEndUserRequest{PublicId: "EUSER00001"}))
+	resp, err := server.GetEndUser(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.GetEndUserRequest{PublicId: "EUSER00001"})
 	if err != nil {
 		t.Fatalf("GetEndUser: %v", err)
 	}
-	if resp.Msg.User.PublicId != "EUSER00001" {
-		t.Fatalf("public_id = %v, want EUSER00001", resp.Msg.User.PublicId)
+	if resp.User.PublicId != "EUSER00001" {
+		t.Fatalf("public_id = %v, want EUSER00001", resp.User.PublicId)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -142,7 +142,7 @@ func TestGetEndUserNotFound(t *testing.T) {
 		WithArgs("NOTEXIST01").
 		WillReturnError(sql.ErrNoRows)
 
-	_, err := server.GetEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.GetEndUserRequest{PublicId: "NOTEXIST01"}))
+	_, err := server.GetEndUser(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.GetEndUserRequest{PublicId: "NOTEXIST01"})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetEndUser code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -189,12 +189,12 @@ func TestSuspendEndUser(t *testing.T) {
 
 	expectOperatorAuditLogInsert(mock)
 
-	resp, err := server.SuspendEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.SuspendEndUserRequest{UserId: endUserID.String()}))
+	resp, err := server.SuspendEndUser(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.SuspendEndUserRequest{UserId: endUserID.String()})
 	if err != nil {
 		t.Fatalf("SuspendEndUser: %v", err)
 	}
-	if resp.Msg.User.Status != "suspended" {
-		t.Fatalf("status = %v, want suspended", resp.Msg.User.Status)
+	if resp.User.Status != "suspended" {
+		t.Fatalf("status = %v, want suspended", resp.User.Status)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -219,7 +219,7 @@ func TestSuspendEndUserWithPlatformRole(t *testing.T) {
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_admin"))
 
-	_, err := server.SuspendEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.SuspendEndUserRequest{UserId: endUserID.String()}))
+	_, err := server.SuspendEndUser(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.SuspendEndUserRequest{UserId: endUserID.String()})
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("SuspendEndUser code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -255,12 +255,12 @@ func TestUnsuspendEndUser(t *testing.T) {
 
 	expectOperatorAuditLogInsert(mock)
 
-	resp, err := server.UnsuspendEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.UnsuspendEndUserRequest{UserId: endUserID.String()}))
+	resp, err := server.UnsuspendEndUser(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.UnsuspendEndUserRequest{UserId: endUserID.String()})
 	if err != nil {
 		t.Fatalf("UnsuspendEndUser: %v", err)
 	}
-	if resp.Msg.User.Status != "active" {
-		t.Fatalf("status = %v, want active", resp.Msg.User.Status)
+	if resp.User.Status != "active" {
+		t.Fatalf("status = %v, want active", resp.User.Status)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -284,7 +284,7 @@ func TestUnsuspendEndUserWithTenantMembership(t *testing.T) {
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_editor"))
 
-	_, err := server.UnsuspendEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.UnsuspendEndUserRequest{UserId: endUserID.String()}))
+	_, err := server.UnsuspendEndUser(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.UnsuspendEndUserRequest{UserId: endUserID.String()})
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("UnsuspendEndUser code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -317,12 +317,12 @@ func TestDeleteEndUser(t *testing.T) {
 
 	expectOperatorAuditLogInsert(mock)
 
-	resp, err := server.DeleteEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeleteEndUserRequest{UserId: endUserID.String()}))
+	resp, err := server.DeleteEndUser(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.DeleteEndUserRequest{UserId: endUserID.String()})
 	if err != nil {
 		t.Fatalf("DeleteEndUser: %v", err)
 	}
-	if resp.Msg.PublicId != "EUSER00001" {
-		t.Fatalf("public_id = %v, want EUSER00001", resp.Msg.PublicId)
+	if resp.PublicId != "EUSER00001" {
+		t.Fatalf("public_id = %v, want EUSER00001", resp.PublicId)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -346,7 +346,7 @@ func TestDeleteEndUserWithPlatformRole(t *testing.T) {
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_admin"))
 
-	_, err := server.DeleteEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeleteEndUserRequest{UserId: endUserID.String()}))
+	_, err := server.DeleteEndUser(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.DeleteEndUserRequest{UserId: endUserID.String()})
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("DeleteEndUser code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -386,17 +386,17 @@ func TestListEndUsersFirstPageReportsNextToken(t *testing.T) {
 		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(rows)
 
-	resp, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{Limit: 2}))
+	resp, err := server.ListEndUsers(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListEndUsersRequest{Limit: 2})
 	if err != nil {
 		t.Fatalf("ListEndUsers: %v", err)
 	}
-	if got := endUserNames(resp.Msg.Users); !slices.Equal(got, []string{"Newer", "Older"}) {
+	if got := endUserNames(resp.Users); !slices.Equal(got, []string{"Newer", "Older"}) {
 		t.Fatalf("users = %v, want the first page only", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	next, err := pagination.Decode(resp.Msg.NextToken)
+	next, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -425,20 +425,20 @@ func TestListEndUsersFollowsPreviousTokenBackwards(t *testing.T) {
 		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(3)).
 		WillReturnRows(rows)
 
-	resp, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{
+	resp, err := server.ListEndUsers(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListEndUsersRequest{
 		Limit: 2,
 		Token: pagination.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListEndUsers: %v", err)
 	}
-	if got := endUserNames(resp.Msg.Users); !slices.Equal(got, []string{"Newer", "Older"}) {
+	if got := endUserNames(resp.Users); !slices.Equal(got, []string{"Newer", "Older"}) {
 		t.Fatalf("users = %v, want the backward page restored to descending order", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	next, err := pagination.Decode(resp.Msg.NextToken)
+	next, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -461,19 +461,19 @@ func TestListEndUsersEmptyPageKeepsAWayBack(t *testing.T) {
 		WithArgs(sql.NullTime{}, sql.NullTime{}, sql.NullString{}, sqlmock.AnyArg(), sql.NullString{}, uuid.NullUUID{UUID: boundaryID, Valid: true}, false, sqlmock.AnyArg(), int32(defaultListLimit+1)).
 		WillReturnRows(sqlmock.NewRows(listEndUsersResultColumns()))
 
-	resp, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{
+	resp, err := server.ListEndUsers(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListEndUsersRequest{
 		Token: pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListEndUsers: %v", err)
 	}
-	if len(resp.Msg.Users) != 0 {
-		t.Fatalf("users count = %d, want 0", len(resp.Msg.Users))
+	if len(resp.Users) != 0 {
+		t.Fatalf("users count = %d, want 0", len(resp.Users))
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on an emptied page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on an emptied page", resp.NextToken)
 	}
-	previous, err := pagination.Decode(resp.Msg.PreviousToken)
+	previous, err := pagination.Decode(resp.PreviousToken)
 	if err != nil {
 		t.Fatalf("decode previous_token: %v", err)
 	}
@@ -490,9 +490,9 @@ func TestListEndUsersRejectsBrokenToken(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectOperatorAuth(mock, userID, "platform_operator", now)
 
-	_, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{
+	_, err := server.ListEndUsers(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListEndUsersRequest{
 		Token: "not-a-token",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListEndUsers code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -538,7 +538,7 @@ func TestListEndUsersRejectsAnotherFiltersToken(t *testing.T) {
 			server, mock := newOperatorHandlerTestServer(t)
 			expectOperatorAuth(mock, uuid.Must(uuid.NewV7()), "platform_operator", boundaryAt)
 			tt.req.Token = tt.token
-			_, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(tt.req))
+			_, err := server.ListEndUsers(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), tt.req)
 			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
 				t.Fatalf("ListEndUsers error = %v, want invalid_argument for another filter", err)
 			}

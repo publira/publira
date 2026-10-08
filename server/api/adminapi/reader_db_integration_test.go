@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -25,11 +25,11 @@ func (e *adminDBEnv) listReaders(t *testing.T, tenant adminDBTenant, req *publir
 	t.Helper()
 
 	req.Tenant = tenant.tenantContext()
-	res, err := e.userClient().ListReaders(context.Background(), newAdminDBRequest(tenant, req))
+	res, err := e.userClient().ListReaders(testutil.WithBearer(context.Background(), tenant.token()), req)
 	if err != nil {
 		t.Fatalf("ListReaders %+v: %v", req, err)
 	}
-	return res.Msg
+	return res
 }
 
 func adminReaderPublicIDs(readers []*publiraadminv1.AdminReader) []string {
@@ -129,15 +129,15 @@ func TestDBAdminListReadersLeavesBirthDatesOut(t *testing.T) {
 		}
 	}
 
-	res, err := env.userClient().GetReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.GetReaderRequest{
+	res, err := env.userClient().GetReader(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.GetReaderRequest{
 		Tenant:   admin.tenantContext(),
 		PublicId: newer.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetReader: %v", err)
 	}
-	if res.Msg.Reader.BirthDate != "1990-04-02" {
-		t.Fatalf("read reader birth_date = %q, want 1990-04-02", res.Msg.Reader.BirthDate)
+	if res.Reader.BirthDate != "1990-04-02" {
+		t.Fatalf("read reader birth_date = %q, want 1990-04-02", res.Reader.BirthDate)
 	}
 }
 
@@ -170,7 +170,7 @@ func TestDBAdminListReadersBindsTokensToTheFilters(t *testing.T) {
 	} {
 		req.Tenant = admin.tenantContext()
 		req.Token = page.NextToken
-		if _, err := env.userClient().ListReaders(context.Background(), newAdminDBRequest(admin, req)); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		if _, err := env.userClient().ListReaders(testutil.WithBearer(context.Background(), admin.token()), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("ListReaders query=%q status=%q with another filter's token error = %v, want invalid_argument", req.Query, req.Status, err)
 		}
 	}
@@ -180,10 +180,10 @@ func TestDBAdminListReadersRejectsAnUnknownStatus(t *testing.T) {
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RSTTENANT001", "reader-status.example.com", "Status", "RSTADMIN0001", "admin@reader-status.example.com")
 
-	_, err := env.userClient().ListReaders(context.Background(), newAdminDBRequest(admin, &publiraadminv1.ListReadersRequest{
+	_, err := env.userClient().ListReaders(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.ListReadersRequest{
 		Tenant: admin.tenantContext(),
 		Status: "deleted",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListReaders with an unknown status error = %v, want invalid_argument", err)
 	}
@@ -206,14 +206,14 @@ func TestDBAdminGetReaderReadsOneReaderOfTheTenant(t *testing.T) {
 	}
 
 	client := env.userClient()
-	res, err := client.GetReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.GetReaderRequest{
+	res, err := client.GetReader(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.GetReaderRequest{
 		Tenant:   admin.tenantContext(),
 		PublicId: reader.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetReader: %v", err)
 	}
-	got := res.Msg.Reader
+	got := res.Reader
 	if got.Id != reader.ID.String() || got.PublicId != reader.PublicID || got.Name != "Reader" || got.Email != "reader@reader-get.example.com" || got.Status != "active" {
 		t.Fatalf("reader = %+v, want the seeded active reader", got)
 	}
@@ -222,22 +222,22 @@ func TestDBAdminGetReaderReadsOneReaderOfTheTenant(t *testing.T) {
 	}
 
 	// A staff account is read like any other, with its role.
-	staff, err := client.GetReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.GetReaderRequest{
+	staff, err := client.GetReader(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.GetReaderRequest{
 		Tenant:   admin.tenantContext(),
 		PublicId: admin.User.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetReader for a staff account: %v", err)
 	}
-	if staff.Msg.Reader.Id != admin.User.ID.String() || staff.Msg.Reader.Role != auth.RoleTenantAdmin {
-		t.Fatalf("staff account = %+v, want %s as %s", staff.Msg.Reader, admin.User.PublicID, auth.RoleTenantAdmin)
+	if staff.Reader.Id != admin.User.ID.String() || staff.Reader.Role != auth.RoleTenantAdmin {
+		t.Fatalf("staff account = %+v, want %s as %s", staff.Reader, admin.User.PublicID, auth.RoleTenantAdmin)
 	}
 
 	// A public id of another tenant is absent here.
-	_, err = client.GetReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.GetReaderRequest{
+	_, err = client.GetReader(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.GetReaderRequest{
 		Tenant:   admin.tenantContext(),
 		PublicId: outsider.PublicID,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetReader %s error = %v, want not_found", outsider.PublicID, err)
 	}
@@ -251,40 +251,40 @@ func TestDBAdminReaderRPCsRequireTheAdminRole(t *testing.T) {
 	asEditor := admin.as(editor)
 	client := env.userClient()
 
-	if _, err := client.ListReaders(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.ListReadersRequest{
+	if _, err := client.ListReaders(testutil.WithBearer(context.Background(), asEditor.token()), &publiraadminv1.ListReadersRequest{
 		Tenant: asEditor.tenantContext(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("ListReaders as an editor error = %v, want permission_denied", err)
 	}
-	if _, err := client.GetReader(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.GetReaderRequest{
+	if _, err := client.GetReader(testutil.WithBearer(context.Background(), asEditor.token()), &publiraadminv1.GetReaderRequest{
 		Tenant:   asEditor.tenantContext(),
 		PublicId: reader.PublicID,
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("GetReader as an editor error = %v, want permission_denied", err)
 	}
-	if _, err := client.SuspendReader(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.SuspendReaderRequest{
+	if _, err := client.SuspendReader(testutil.WithBearer(context.Background(), asEditor.token()), &publiraadminv1.SuspendReaderRequest{
 		Tenant:   asEditor.tenantContext(),
 		ReaderId: reader.ID.String(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("SuspendReader as an editor error = %v, want permission_denied", err)
 	}
-	if _, err := client.UnsuspendReader(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.UnsuspendReaderRequest{
+	if _, err := client.UnsuspendReader(testutil.WithBearer(context.Background(), asEditor.token()), &publiraadminv1.UnsuspendReaderRequest{
 		Tenant:   asEditor.tenantContext(),
 		ReaderId: reader.ID.String(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("UnsuspendReader as an editor error = %v, want permission_denied", err)
 	}
-	if _, err := client.DeleteReader(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.DeleteReaderRequest{
+	if _, err := client.DeleteReader(testutil.WithBearer(context.Background(), asEditor.token()), &publiraadminv1.DeleteReaderRequest{
 		Tenant:   asEditor.tenantContext(),
 		ReaderId: reader.ID.String(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("DeleteReader as an editor error = %v, want permission_denied", err)
 	}
-	if _, err := client.SetReaderBirthDate(context.Background(), newAdminDBRequest(asEditor, &publiraadminv1.SetReaderBirthDateRequest{
+	if _, err := client.SetReaderBirthDate(testutil.WithBearer(context.Background(), asEditor.token()), &publiraadminv1.SetReaderBirthDateRequest{
 		Tenant:    asEditor.tenantContext(),
 		ReaderId:  reader.ID.String(),
 		BirthDate: "1990-01-01",
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("SetReaderBirthDate as an editor error = %v, want permission_denied", err)
 	}
 	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1 AND birth_date IS NULL", reader.ID); count != 1 {
@@ -298,13 +298,13 @@ func TestDBAdminReaderRPCsRequireTheAdminRole(t *testing.T) {
 func (e *adminDBEnv) readerAuditLogs(t *testing.T, tenant adminDBTenant) []*publiraadminv1.AdminAuditLog {
 	t.Helper()
 
-	res, err := e.auditClient().ListAuditLogs(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListAuditLogsRequest{
+	res, err := e.auditClient().ListAuditLogs(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListAuditLogsRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListAuditLogs: %v", err)
 	}
-	return res.Msg.AuditLogs
+	return res.AuditLogs
 }
 
 func assertReaderAuditLog(t *testing.T, entry *publiraadminv1.AdminAuditLog, action string, actor adminDBTenant, readerPublicID string) {
@@ -324,25 +324,25 @@ func TestDBAdminSuspendAndUnsuspendReaderAreAuditedOncePerChange(t *testing.T) {
 
 	suspend := func() *publiraadminv1.AdminReader {
 		t.Helper()
-		res, err := client.SuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+		res, err := client.SuspendReader(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.SuspendReaderRequest{
 			Tenant:   admin.tenantContext(),
 			ReaderId: reader.ID.String(),
-		}))
+		})
 		if err != nil {
 			t.Fatalf("SuspendReader: %v", err)
 		}
-		return res.Msg.Reader
+		return res.Reader
 	}
 	unsuspend := func() *publiraadminv1.AdminReader {
 		t.Helper()
-		res, err := client.UnsuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.UnsuspendReaderRequest{
+		res, err := client.UnsuspendReader(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.UnsuspendReaderRequest{
 			Tenant:   admin.tenantContext(),
 			ReaderId: reader.ID.String(),
-		}))
+		})
 		if err != nil {
 			t.Fatalf("UnsuspendReader: %v", err)
 		}
-		return res.Msg.Reader
+		return res.Reader
 	}
 
 	// Lifting a suspension that is not there changes nothing and records nothing.
@@ -379,10 +379,10 @@ func TestDBAdminDeleteReaderIsAudited(t *testing.T) {
 	client := env.userClient()
 
 	req := &publiraadminv1.DeleteReaderRequest{Tenant: admin.tenantContext(), ReaderId: reader.ID.String()}
-	if _, err := client.DeleteReader(context.Background(), newAdminDBRequest(admin, req)); err != nil {
+	if _, err := client.DeleteReader(testutil.WithBearer(context.Background(), admin.token()), req); err != nil {
 		t.Fatalf("DeleteReader: %v", err)
 	}
-	if _, err := client.DeleteReader(context.Background(), newAdminDBRequest(admin, req)); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := client.DeleteReader(testutil.WithBearer(context.Background(), admin.token()), req); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("DeleteReader for a deleted reader error = %v, want not_found", err)
 	}
 
@@ -411,15 +411,15 @@ func TestDBAdminSetReaderBirthDateCorrectsAWrittenOnceDate(t *testing.T) {
 
 	set := func(birthDate string) *publiraadminv1.AdminReader {
 		t.Helper()
-		res, err := client.SetReaderBirthDate(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SetReaderBirthDateRequest{
+		res, err := client.SetReaderBirthDate(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.SetReaderBirthDateRequest{
 			Tenant:    admin.tenantContext(),
 			ReaderId:  reader.ID.String(),
 			BirthDate: birthDate,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("SetReaderBirthDate %q: %v", birthDate, err)
 		}
-		return res.Msg.Reader
+		return res.Reader
 	}
 
 	if got := set("1995-03-04"); got.BirthDate != "1995-03-04" || got.PublicId != reader.PublicID {
@@ -459,11 +459,11 @@ func TestDBAdminSetReaderBirthDateRejectsWhatAReaderCouldNotStore(t *testing.T) 
 
 	future := time.Now().UTC().AddDate(0, 0, 2).Format("2006-01-02")
 	for _, birthDate := range []string{"1995-3-4", "1995-02-30", "04/03/1995", future, "1800-01-01"} {
-		_, err := client.SetReaderBirthDate(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SetReaderBirthDateRequest{
+		_, err := client.SetReaderBirthDate(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.SetReaderBirthDateRequest{
 			Tenant:    admin.tenantContext(),
 			ReaderId:  reader.ID.String(),
 			BirthDate: birthDate,
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("SetReaderBirthDate %q error = %v, want invalid_argument", birthDate, err)
 		}
@@ -486,29 +486,29 @@ func TestDBAdminReaderActionsLeaveOtherTenantsAlone(t *testing.T) {
 	client := env.userClient()
 
 	for _, readerID := range []string{outsider.ID.String(), other.User.ID.String(), uuid.Must(uuid.NewV7()).String()} {
-		if _, err := client.SuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+		if _, err := client.SuspendReader(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.SuspendReaderRequest{
 			Tenant:   admin.tenantContext(),
 			ReaderId: readerID,
-		})); connect.CodeOf(err) != connect.CodeNotFound {
+		}); connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("SuspendReader %s error = %v, want not_found", readerID, err)
 		}
-		if _, err := client.UnsuspendReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.UnsuspendReaderRequest{
+		if _, err := client.UnsuspendReader(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.UnsuspendReaderRequest{
 			Tenant:   admin.tenantContext(),
 			ReaderId: readerID,
-		})); connect.CodeOf(err) != connect.CodeNotFound {
+		}); connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("UnsuspendReader %s error = %v, want not_found", readerID, err)
 		}
-		if _, err := client.DeleteReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+		if _, err := client.DeleteReader(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.DeleteReaderRequest{
 			Tenant:   admin.tenantContext(),
 			ReaderId: readerID,
-		})); connect.CodeOf(err) != connect.CodeNotFound {
+		}); connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("DeleteReader %s error = %v, want not_found", readerID, err)
 		}
-		if _, err := client.SetReaderBirthDate(context.Background(), newAdminDBRequest(admin, &publiraadminv1.SetReaderBirthDateRequest{
+		if _, err := client.SetReaderBirthDate(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.SetReaderBirthDateRequest{
 			Tenant:    admin.tenantContext(),
 			ReaderId:  readerID,
 			BirthDate: "1990-01-01",
-		})); connect.CodeOf(err) != connect.CodeNotFound {
+		}); connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("SetReaderBirthDate %s error = %v, want not_found", readerID, err)
 		}
 	}
@@ -575,42 +575,42 @@ func TestDBAdminReaderActionsReachStaffAccounts(t *testing.T) {
 		t.Fatalf("UpdateUserEmailVerifiedAtByID: %v", err)
 	}
 
-	suspended, err := client.SuspendReader(ctx, newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+	suspended, err := client.SuspendReader(testutil.WithBearer(ctx, admin.token()), &publiraadminv1.SuspendReaderRequest{
 		Tenant:   admin.tenantContext(),
 		ReaderId: editor.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SuspendReader for a staff account: %v", err)
 	}
-	if got := suspended.Msg.Reader; got.Status != "suspended" || got.Role != auth.RoleTenantEditor {
+	if got := suspended.Reader; got.Status != "suspended" || got.Role != auth.RoleTenantEditor {
 		t.Fatalf("suspended staff account = %+v, want suspended as %s", got, auth.RoleTenantEditor)
 	}
-	unsuspended, err := client.UnsuspendReader(ctx, newAdminDBRequest(admin, &publiraadminv1.UnsuspendReaderRequest{
+	unsuspended, err := client.UnsuspendReader(testutil.WithBearer(ctx, admin.token()), &publiraadminv1.UnsuspendReaderRequest{
 		Tenant:   admin.tenantContext(),
 		ReaderId: editor.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UnsuspendReader for a staff account: %v", err)
 	}
-	if got := unsuspended.Msg.Reader; got.Status != "active" || got.Role != auth.RoleTenantEditor {
+	if got := unsuspended.Reader; got.Status != "active" || got.Role != auth.RoleTenantEditor {
 		t.Fatalf("unsuspended staff account = %+v, want active as %s", got, auth.RoleTenantEditor)
 	}
-	corrected, err := client.SetReaderBirthDate(ctx, newAdminDBRequest(admin, &publiraadminv1.SetReaderBirthDateRequest{
+	corrected, err := client.SetReaderBirthDate(testutil.WithBearer(ctx, admin.token()), &publiraadminv1.SetReaderBirthDateRequest{
 		Tenant:    admin.tenantContext(),
 		ReaderId:  editor.ID.String(),
 		BirthDate: "1990-01-01",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SetReaderBirthDate for a staff account: %v", err)
 	}
-	if got := corrected.Msg.Reader; got.BirthDate != "1990-01-01" || got.Role != auth.RoleTenantEditor {
+	if got := corrected.Reader; got.BirthDate != "1990-01-01" || got.Role != auth.RoleTenantEditor {
 		t.Fatalf("corrected staff account = %+v, want born 1990-01-01 as %s", got, auth.RoleTenantEditor)
 	}
 
-	if _, err := client.DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+	if _, err := client.DeleteReader(testutil.WithBearer(ctx, admin.token()), &publiraadminv1.DeleteReaderRequest{
 		Tenant:   admin.tenantContext(),
 		ReaderId: editor.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("DeleteReader for a staff account: %v", err)
 	}
 	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1", editor.ID); count != 0 {
@@ -651,15 +651,15 @@ func TestDBAdminSuspendAndDeleteReaderRefuseTheCallersOwnAccount(t *testing.T) {
 	client := env.userClient()
 	ctx := context.Background()
 
-	_, err := client.SuspendReader(ctx, newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+	_, err := client.SuspendReader(testutil.WithBearer(ctx, admin.token()), &publiraadminv1.SuspendReaderRequest{
 		Tenant:   admin.tenantContext(),
 		ReaderId: admin.User.ID.String(),
-	}))
+	})
 	requireReaderRefusal(t, err, rpcerrors.ReasonOwnAccount)
-	_, err = client.DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+	_, err = client.DeleteReader(testutil.WithBearer(ctx, admin.token()), &publiraadminv1.DeleteReaderRequest{
 		Tenant:   admin.tenantContext(),
 		ReaderId: admin.User.ID.String(),
-	}))
+	})
 	requireReaderRefusal(t, err, rpcerrors.ReasonOwnAccount)
 
 	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1 AND status = 'active'", admin.User.ID); count != 1 {
@@ -718,17 +718,17 @@ func TestDBAdminSuspendAndDeleteReaderKeepAnActiveTenantAdmin(t *testing.T) {
 	ctx := context.Background()
 
 	suspend := func() error {
-		_, err := client.SuspendReader(ctx, newAdminDBRequest(admin, &publiraadminv1.SuspendReaderRequest{
+		_, err := client.SuspendReader(testutil.WithBearer(ctx, admin.token()), &publiraadminv1.SuspendReaderRequest{
 			Tenant:   admin.tenantContext(),
 			ReaderId: second.ID.String(),
-		}))
+		})
 		return err
 	}
 	deleteSecond := func() error {
-		_, err := client.DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+		_, err := client.DeleteReader(testutil.WithBearer(ctx, admin.token()), &publiraadminv1.DeleteReaderRequest{
 			Tenant:   admin.tenantContext(),
 			ReaderId: second.ID.String(),
-		}))
+		})
 		return err
 	}
 
@@ -802,11 +802,11 @@ func TestDBAdminDeleteReaderKeepsAnEntryStillQueuedForTheAccount(t *testing.T) {
 	second := admin.as(env.PG.SeedTenantAdmin(t, admin.Tenant.ID, "RAQADMIN0002", "second@reader-queued.example.com", "Second"))
 	ctx := context.Background()
 
-	page, err := env.pagesClient().CreatePage(ctx, newAdminDBRequest(second, &publiraadminv1.CreatePageRequest{
+	page, err := env.pagesClient().CreatePage(testutil.WithBearer(ctx, second.token()), &publiraadminv1.CreatePageRequest{
 		Tenant: second.tenantContext(),
 		Slug:   "queued",
 		Title:  "Queued",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreatePage by the second administrator: %v", err)
 	}
@@ -815,10 +815,10 @@ func TestDBAdminDeleteReaderKeepsAnEntryStillQueuedForTheAccount(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("the page's audit entry never reached the recorder")
 	}
-	if _, err := env.userClient().DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+	if _, err := env.userClient().DeleteReader(testutil.WithBearer(ctx, admin.token()), &publiraadminv1.DeleteReaderRequest{
 		Tenant:   admin.tenantContext(),
 		ReaderId: second.User.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("DeleteReader while the account's entry is queued: %v", err)
 	}
 	release()
@@ -830,7 +830,7 @@ func TestDBAdminDeleteReaderKeepsAnEntryStillQueuedForTheAccount(t *testing.T) {
 		SELECT count(*) FROM audit_logs
 		WHERE tenant_id = $1 AND action = 'page_created' AND target_id = $2
 			AND actor_user_id IS NULL AND actor_public_id = $3 AND actor_name = $4
-	`, admin.Tenant.ID, page.Msg.Page.Id, second.User.PublicID, "Second"); count != 1 {
+	`, admin.Tenant.ID, page.Page.Id, second.User.PublicID, "Second"); count != 1 {
 		t.Fatalf("queued entries kept under the deleted administrator = %d, want 1", count)
 	}
 }
@@ -847,36 +847,36 @@ func TestDBAdminDeleteReaderKeepsTheRecordOfAStaffAccount(t *testing.T) {
 	client := env.userClient()
 	ctx := context.Background()
 
-	if _, err := client.SuspendReader(ctx, newAdminDBRequest(second, &publiraadminv1.SuspendReaderRequest{
+	if _, err := client.SuspendReader(testutil.WithBearer(ctx, second.token()), &publiraadminv1.SuspendReaderRequest{
 		Tenant:   second.tenantContext(),
 		ReaderId: reader.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("SuspendReader by the second administrator: %v", err)
 	}
 	pageID := createDBPage(t, env, second, "history", "History", true)
 
-	if _, err := client.DeleteReader(ctx, newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+	if _, err := client.DeleteReader(testutil.WithBearer(ctx, admin.token()), &publiraadminv1.DeleteReaderRequest{
 		Tenant:   admin.tenantContext(),
 		ReaderId: second.User.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("DeleteReader for the account the audit log names: %v", err)
 	}
 	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1", second.User.ID); count != 0 {
 		t.Fatal("the account the audit log names is still there")
 	}
 
-	res, err := env.auditClient().ListAuditLogs(ctx, newAdminDBRequest(admin, &publiraadminv1.ListAuditLogsRequest{
+	res, err := env.auditClient().ListAuditLogs(testutil.WithBearer(ctx, admin.token()), &publiraadminv1.ListAuditLogsRequest{
 		Tenant:            admin.tenantContext(),
 		ActorUserPublicId: second.User.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListAuditLogs by the deleted actor: %v", err)
 	}
-	if len(res.Msg.AuditLogs) == 0 {
+	if len(res.AuditLogs) == 0 {
 		t.Fatal("no audit entries are filed under the deleted actor")
 	}
 	var suspension *publiraadminv1.AdminAuditLog
-	for _, entry := range res.Msg.AuditLogs {
+	for _, entry := range res.AuditLogs {
 		if entry.ActorUserPublicId != second.User.PublicID || entry.ActorName != "Second" || entry.ActorRole != auth.RoleTenantAdmin {
 			t.Fatalf("entry %s names (%q, %q, %q), want the deleted administrator", entry.Action, entry.ActorUserPublicId, entry.ActorName, entry.ActorRole)
 		}
@@ -885,7 +885,7 @@ func TestDBAdminDeleteReaderKeepsTheRecordOfAStaffAccount(t *testing.T) {
 		}
 	}
 	if suspension == nil {
-		t.Fatalf("the deleted administrator's suspension is missing from %+v", res.Msg.AuditLogs)
+		t.Fatalf("the deleted administrator's suspension is missing from %+v", res.AuditLogs)
 	}
 	assertReaderAuditLog(t, suspension, "reader_suspended", second, reader.PublicID)
 

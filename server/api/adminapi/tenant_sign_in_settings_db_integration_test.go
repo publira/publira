@@ -6,13 +6,14 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/signin/signintest"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 const (
@@ -23,11 +24,11 @@ const (
 
 func updateDBSignInSettings(env *adminDBEnv, tenant adminDBTenant, req *publiraadminv1.UpdateTenantSignInSettingsRequest) (*publiraadminv1.TenantSignInSettings, error) {
 	req.Tenant = tenant.tenantContext()
-	resp, err := env.tenantSettingsClient().UpdateTenantSignInSettings(context.Background(), newAdminDBRequest(tenant, req))
+	resp, err := env.tenantSettingsClient().UpdateTenantSignInSettings(testutil.WithBearer(context.Background(), tenant.token()), req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg.Settings, nil
+	return resp.Settings, nil
 }
 
 // An administrator stores the Sign in with Apple key and the Google clients,
@@ -59,13 +60,13 @@ func TestDBSignInSettingsAreStoredAndReadBackMasked(t *testing.T) {
 		t.Fatalf("saved = %v, want both providers ready", saved)
 	}
 
-	got, err := env.tenantSettingsClient().GetTenantSignInSettings(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantSignInSettingsRequest{
+	got, err := env.tenantSettingsClient().GetTenantSignInSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetTenantSignInSettingsRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantSignInSettings: %v", err)
 	}
-	body, err := json.Marshal(got.Msg)
+	body, err := json.Marshal(got)
 	if err != nil {
 		t.Fatalf("marshal the response: %v", err)
 	}
@@ -73,8 +74,8 @@ func TestDBSignInSettingsAreStoredAndReadBackMasked(t *testing.T) {
 	if strings.Contains(string(body), keyBody) {
 		t.Fatal("GetTenantSignInSettings answered the private key")
 	}
-	if got.Msg.Settings.Apple.ServicesId != testSignInServicesID || got.Msg.Settings.Google.IosClientId != testSignInIOSClientID {
-		t.Fatalf("settings = %v", got.Msg.Settings)
+	if got.Settings.Apple.ServicesId != testSignInServicesID || got.Settings.Google.IosClientId != testSignInIOSClientID {
+		t.Fatalf("settings = %v", got.Settings)
 	}
 
 	stored := env.countRows(t, "SELECT count(*) FROM tenant_apple_sign_in_config WHERE tenant_id = $1 AND private_key_encrypted LIKE 'enc:%'", tenant.Tenant.ID)
@@ -128,10 +129,10 @@ func TestDBAdminDeleteReaderQueuesTheRevocationOfItsAppleToken(t *testing.T) {
 		t.Fatalf("seed the link: %v", err)
 	}
 
-	if _, err := env.userClient().DeleteReader(context.Background(), newAdminDBRequest(admin, &publiraadminv1.DeleteReaderRequest{
+	if _, err := env.userClient().DeleteReader(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.DeleteReaderRequest{
 		Tenant:   admin.tenantContext(),
 		ReaderId: reader.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("DeleteReader: %v", err)
 	}
 

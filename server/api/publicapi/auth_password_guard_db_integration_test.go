@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -31,14 +31,11 @@ func newStepUpLimitedEnv(t *testing.T, limit int) *publicDBEnv {
 func wrongPasswordChangePassword(t *testing.T, env *publicDBEnv, tenant testutil.Tenant, token string) error {
 	t.Helper()
 
-	_, err := env.authClient().ChangePassword(context.Background(), newBearerRequest(
-		&publirav1.ChangePasswordRequest{
-			Tenant:          tenantContext(tenant),
-			CurrentPassword: "not-the-password",
-			NewPassword:     "a-brand-new-password",
-		},
-		token,
-	))
+	_, err := env.authClient().ChangePassword(testutil.WithBearer(context.Background(), token), &publirav1.ChangePasswordRequest{
+		Tenant:          tenantContext(tenant),
+		CurrentPassword: "not-the-password",
+		NewPassword:     "a-brand-new-password",
+	})
 	return err
 }
 
@@ -54,22 +51,16 @@ func TestDBStepUpPasswordLimitIsSharedByTheAccountRPCs(t *testing.T) {
 	if err := wrongPasswordChangePassword(t, env, tenant, token); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("the first guess, through ChangePassword, code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
-	_, err := client.DeleteMe(context.Background(), newBearerRequest(
-		&publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: "not-the-password"},
-		token,
-	))
+	_, err := client.DeleteMe(testutil.WithBearer(context.Background(), token), &publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: "not-the-password"})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("the second guess, through DeleteMe, code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
-	_, err = client.RequestEmailChange(context.Background(), newBearerRequest(
-		&publirav1.RequestEmailChangeRequest{
-			Tenant:          tenantContext(tenant),
-			CurrentEmail:    user.Email,
-			NewEmail:        "moved@tenant-a.example.com",
-			CurrentPassword: "not-the-password",
-		},
-		token,
-	))
+	_, err = client.RequestEmailChange(testutil.WithBearer(context.Background(), token), &publirav1.RequestEmailChangeRequest{
+		Tenant:          tenantContext(tenant),
+		CurrentEmail:    user.Email,
+		NewEmail:        "moved@tenant-a.example.com",
+		CurrentPassword: "not-the-password",
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("the third guess, through RequestEmailChange, code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
@@ -79,22 +70,16 @@ func TestDBStepUpPasswordLimitIsSharedByTheAccountRPCs(t *testing.T) {
 	if err := wrongPasswordChangePassword(t, env, tenant, token); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("ChangePassword past the limit code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
-	_, err = client.DeleteMe(context.Background(), newBearerRequest(
-		&publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: "not-the-password"},
-		token,
-	))
+	_, err = client.DeleteMe(testutil.WithBearer(context.Background(), token), &publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: "not-the-password"})
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("DeleteMe past the limit code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
-	_, err = client.RequestEmailChange(context.Background(), newBearerRequest(
-		&publirav1.RequestEmailChangeRequest{
-			Tenant:          tenantContext(tenant),
-			CurrentEmail:    user.Email,
-			NewEmail:        "moved@tenant-a.example.com",
-			CurrentPassword: "not-the-password",
-		},
-		token,
-	))
+	_, err = client.RequestEmailChange(testutil.WithBearer(context.Background(), token), &publirav1.RequestEmailChangeRequest{
+		Tenant:          tenantContext(tenant),
+		CurrentEmail:    user.Email,
+		NewEmail:        "moved@tenant-a.example.com",
+		CurrentPassword: "not-the-password",
+	})
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("RequestEmailChange past the limit code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
@@ -123,14 +108,11 @@ func TestDBStepUpPasswordRefusalVerifiesNothingAndWritesNothing(t *testing.T) {
 		t.Fatalf("the one guess the budget pays for code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 
-	_, err := client.ChangePassword(context.Background(), newBearerRequest(
-		&publirav1.ChangePasswordRequest{
-			Tenant:          tenantContext(tenant),
-			CurrentPassword: testutil.SeededPassword,
-			NewPassword:     "a-brand-new-password",
-		},
-		token,
-	))
+	_, err := client.ChangePassword(testutil.WithBearer(context.Background(), token), &publirav1.ChangePasswordRequest{
+		Tenant:          tenantContext(tenant),
+		CurrentPassword: testutil.SeededPassword,
+		NewPassword:     "a-brand-new-password",
+	})
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("ChangePassword with the right password past the limit code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
@@ -147,10 +129,7 @@ func TestDBStepUpPasswordRefusalVerifiesNothingAndWritesNothing(t *testing.T) {
 		t.Fatalf("queued notices after a refused request = %d, want none", notices)
 	}
 
-	_, err = client.DeleteMe(context.Background(), newBearerRequest(
-		&publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: testutil.SeededPassword},
-		token,
-	))
+	_, err = client.DeleteMe(testutil.WithBearer(context.Background(), token), &publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: testutil.SeededPassword})
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("DeleteMe with the right password past the limit code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
@@ -174,14 +153,11 @@ func TestDBStepUpPasswordCorrectPasswordClearsTheCount(t *testing.T) {
 	}
 
 	const corrected = "a-brand-new-password"
-	changed, err := env.authClient().ChangePassword(context.Background(), newBearerRequest(
-		&publirav1.ChangePasswordRequest{
-			Tenant:          tenantContext(tenant),
-			CurrentPassword: testutil.SeededPassword,
-			NewPassword:     corrected,
-		},
-		token,
-	))
+	changed, err := env.authClient().ChangePassword(testutil.WithBearer(context.Background(), token), &publirav1.ChangePasswordRequest{
+		Tenant:          tenantContext(tenant),
+		CurrentPassword: testutil.SeededPassword,
+		NewPassword:     corrected,
+	})
 	if err != nil {
 		t.Fatalf("ChangePassword with the right password on the last allowance: %v", err)
 	}
@@ -189,7 +165,7 @@ func TestDBStepUpPasswordCorrectPasswordClearsTheCount(t *testing.T) {
 	// The change hands back the session it ended, and the count it cleared is
 	// what the next two typos spend.
 	for attempt := 1; attempt <= 2; attempt++ {
-		err := wrongPasswordChangePassword(t, env, tenant, changed.Msg.AccessToken.GetToken())
+		err := wrongPasswordChangePassword(t, env, tenant, changed.AccessToken.GetToken())
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("typo %d after the correct password code = %v, want invalid_argument (err=%v)", attempt, connect.CodeOf(err), err)
 		}

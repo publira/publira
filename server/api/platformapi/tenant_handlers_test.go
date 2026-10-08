@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
@@ -80,21 +80,21 @@ func TestListTenantsFirstPageReportsNextToken(t *testing.T) {
 			ids[2], "TENANT003", "Acme Three", now.Add(-2*time.Minute),
 		))
 
-	resp, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{
+	resp, err := server.ListTenants(context.Background(), &publirasplatformv1.ListTenantsRequest{
 		Limit:  2,
 		Name:   " Acme ",
 		Status: " active ",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
 	}
-	if len(resp.Msg.Tenants) != 2 {
-		t.Fatalf("tenant count = %d, want the over-fetched row dropped", len(resp.Msg.Tenants))
+	if len(resp.Tenants) != 2 {
+		t.Fatalf("tenant count = %d, want the over-fetched row dropped", len(resp.Tenants))
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -120,18 +120,18 @@ func TestListTenantsFollowsNextToken(t *testing.T) {
 			sqlmock.NewRows(tenantTestColumns()), uuid.Must(uuid.NewV7()), "TENANT003", "Third", now.Add(-2*time.Minute),
 		))
 
-	resp, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{
+	resp, err := server.ListTenants(context.Background(), &publirasplatformv1.ListTenantsRequest{
 		Limit: 2,
 		Token: pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the previous page")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -152,21 +152,21 @@ func TestListTenantsFollowsPreviousTokenBackwards(t *testing.T) {
 			uuid.Must(uuid.NewV7()), "TENANT001", "Newer", now.Add(-time.Minute),
 		))
 
-	resp, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{
+	resp, err := server.ListTenants(context.Background(), &publirasplatformv1.ListTenantsRequest{
 		Limit: 2,
 		Token: pagination.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
 	}
-	publicIDs := []string{resp.Msg.Tenants[0].PublicId, resp.Msg.Tenants[1].PublicId}
+	publicIDs := []string{resp.Tenants[0].PublicId, resp.Tenants[1].PublicId}
 	if !slices.Equal(publicIDs, []string{"TENANT001", "TENANT002"}) {
 		t.Fatalf("public IDs = %v, want backward page restored to descending order", publicIDs)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertOperatorHandlerExpectations(t, mock)
@@ -195,21 +195,21 @@ func TestListTenantsEmptyPageReturnsOneRecoveryToken(t *testing.T) {
 				).
 				WillReturnRows(sqlmock.NewRows(tenantTestColumns()))
 
-			resp, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{
+			resp, err := server.ListTenants(context.Background(), &publirasplatformv1.ListTenantsRequest{
 				Token: pagination.EncodeTimeUUID(test.direction, now, boundaryID),
-			}))
+			})
 			if err != nil {
 				t.Fatalf("ListTenants: %v", err)
 			}
 			if test.direction == pagination.Forward {
 				want := pagination.EncodeTimeUUIDRecovery(pagination.Backward, now, boundaryID)
-				if resp.Msg.PreviousToken != want || resp.Msg.NextToken != "" {
-					t.Fatalf("tokens = (%q, %q), want recovery previous token %q", resp.Msg.PreviousToken, resp.Msg.NextToken, want)
+				if resp.PreviousToken != want || resp.NextToken != "" {
+					t.Fatalf("tokens = (%q, %q), want recovery previous token %q", resp.PreviousToken, resp.NextToken, want)
 				}
 			} else {
 				want := pagination.EncodeTimeUUIDRecovery(pagination.Forward, now, boundaryID)
-				if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != want {
-					t.Fatalf("tokens = (%q, %q), want recovery next token %q", resp.Msg.PreviousToken, resp.Msg.NextToken, want)
+				if resp.PreviousToken != "" || resp.NextToken != want {
+					t.Fatalf("tokens = (%q, %q), want recovery next token %q", resp.PreviousToken, resp.NextToken, want)
 				}
 			}
 			assertOperatorHandlerExpectations(t, mock)
@@ -229,14 +229,14 @@ func TestListTenantsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 		).
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()))
 
-	resp, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{
+	resp, err := server.ListTenants(context.Background(), &publirasplatformv1.ListTenantsRequest{
 		Token: pagination.EncodeTimeUUIDRecovery(pagination.Forward, now, boundaryID),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty after one recovery", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty after one recovery", resp.PreviousToken, resp.NextToken)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -275,7 +275,7 @@ func TestListTenantsRejectsAnotherFiltersToken(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			server, mock := newOperatorHandlerTestServer(t)
 			tt.req.Token = tt.token
-			_, err := server.ListTenants(context.Background(), connect.NewRequest(tt.req))
+			_, err := server.ListTenants(context.Background(), tt.req)
 			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
 				t.Fatalf("ListTenants error = %v, want invalid_argument for another filter", err)
 			}
@@ -293,7 +293,7 @@ func TestListTenantsRejectsInvalidToken(t *testing.T) {
 
 	for _, token := range tests {
 		server, mock := newOperatorHandlerTestServer(t)
-		_, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{Token: token}))
+		_, err := server.ListTenants(context.Background(), &publirasplatformv1.ListTenantsRequest{Token: token})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("ListTenants code = %v, want invalid_argument", connect.CodeOf(err))
 		}
@@ -311,7 +311,7 @@ func TestListTenantsDatabaseErrorIsHidden(t *testing.T) {
 		).
 		WillReturnError(errors.New(`pq: relation "tenants" does not exist`))
 
-	_, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{}))
+	_, err := server.ListTenants(context.Background(), &publirasplatformv1.ListTenantsRequest{})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ListTenants code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -339,18 +339,18 @@ func TestListTenantMembersSuccess(t *testing.T) {
 			AddRow(member1ID, "USER000001", "Alice", "alice@example.com", "tenant_admin", "active", now).
 			AddRow(member2ID, "USER000002", "Bob", "bob@example.com", "tenant_editor", "active", now))
 
-	resp, err := server.ListTenantMembers(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantMembersRequest{TenantId: tenantID.String()}))
+	resp, err := server.ListTenantMembers(context.Background(), &publirasplatformv1.ListTenantMembersRequest{TenantId: tenantID.String()})
 	if err != nil {
 		t.Fatalf("ListTenantMembers: %v", err)
 	}
-	if len(resp.Msg.Members) != 2 {
-		t.Fatalf("member count = %d, want 2", len(resp.Msg.Members))
+	if len(resp.Members) != 2 {
+		t.Fatalf("member count = %d, want 2", len(resp.Members))
 	}
-	if resp.Msg.Members[0].UserId != member1ID.String() {
-		t.Fatalf("members[0].user_id = %q, want %s", resp.Msg.Members[0].UserId, member1ID)
+	if resp.Members[0].UserId != member1ID.String() {
+		t.Fatalf("members[0].user_id = %q, want %s", resp.Members[0].UserId, member1ID)
 	}
-	if resp.Msg.Members[0].Role != "tenant_admin" {
-		t.Fatalf("members[0].role = %q, want tenant_admin", resp.Msg.Members[0].Role)
+	if resp.Members[0].Role != "tenant_admin" {
+		t.Fatalf("members[0].role = %q, want tenant_admin", resp.Members[0].Role)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -366,10 +366,10 @@ func TestListTenantMembersRejectsAnotherTenantsToken(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			server, mock := newOperatorHandlerTestServer(t)
-			_, err := server.ListTenantMembers(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantMembersRequest{
+			_, err := server.ListTenantMembers(context.Background(), &publirasplatformv1.ListTenantMembersRequest{
 				TenantId: testTenantID,
 				Token:    token,
-			}))
+			})
 			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
 				t.Fatalf("ListTenantMembers with another tenant's token error = %v, want invalid_argument", err)
 			}
@@ -394,12 +394,12 @@ func TestListTenantMembersEmptyList(t *testing.T) {
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows(tenantMemberColumns()))
 
-	resp, err := server.ListTenantMembers(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantMembersRequest{TenantId: tenantID.String()}))
+	resp, err := server.ListTenantMembers(context.Background(), &publirasplatformv1.ListTenantMembersRequest{TenantId: tenantID.String()})
 	if err != nil {
 		t.Fatalf("ListTenantMembers: %v", err)
 	}
-	if len(resp.Msg.Members) != 0 {
-		t.Fatalf("member count = %d, want 0", len(resp.Msg.Members))
+	if len(resp.Members) != 0 {
+		t.Fatalf("member count = %d, want 0", len(resp.Members))
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -413,7 +413,7 @@ func TestListTenantMembersTenantNotFound(t *testing.T) {
 		WithArgs(uuid.MustParse(testTenantID)).
 		WillReturnError(sql.ErrNoRows)
 
-	_, err := server.ListTenantMembers(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantMembersRequest{TenantId: testTenantID}))
+	_, err := server.ListTenantMembers(context.Background(), &publirasplatformv1.ListTenantMembersRequest{TenantId: testTenantID})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ListTenantMembers code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -456,19 +456,19 @@ func TestAddTenantMemberSuccess(t *testing.T) {
 	expectTenantMemberAuditLogInsert(mock, operatorID, "tenant_member_added", targetUserID)
 	mock.ExpectCommit()
 
-	resp, err := server.AddTenantMember(newOperatorActorContext(operatorID), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+	resp, err := server.AddTenantMember(newOperatorActorContext(operatorID), &publirasplatformv1.AddTenantMemberRequest{
 		TenantId: tenantID.String(),
 		UserId:   targetUserID.String(),
 		Role:     "tenant_admin",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("AddTenantMember: %v", err)
 	}
-	if resp.Msg.Member.UserId != targetUserID.String() {
-		t.Fatalf("member.user_id = %q, want %s", resp.Msg.Member.UserId, targetUserID)
+	if resp.Member.UserId != targetUserID.String() {
+		t.Fatalf("member.user_id = %q, want %s", resp.Member.UserId, targetUserID)
 	}
-	if resp.Msg.Member.Role != "tenant_admin" {
-		t.Fatalf("member.role = %q, want tenant_admin", resp.Msg.Member.Role)
+	if resp.Member.Role != "tenant_admin" {
+		t.Fatalf("member.role = %q, want tenant_admin", resp.Member.Role)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -502,16 +502,16 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 	expectTenantMemberAuditLogInsert(mock, operatorID, "tenant_member_added", targetUserID)
 	mock.ExpectCommit()
 
-	resp, err := server.AddTenantMember(newOperatorActorContext(operatorID), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+	resp, err := server.AddTenantMember(newOperatorActorContext(operatorID), &publirasplatformv1.AddTenantMemberRequest{
 		TenantId: tenantID.String(),
 		Email:    "alice@example.com",
 		Role:     "tenant_admin",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("AddTenantMember by email: %v", err)
 	}
-	if resp.Msg.Member.UserId != targetUserID.String() {
-		t.Fatalf("member.user_id = %q, want %s", resp.Msg.Member.UserId, targetUserID)
+	if resp.Member.UserId != targetUserID.String() {
+		t.Fatalf("member.user_id = %q, want %s", resp.Member.UserId, targetUserID)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -542,7 +542,7 @@ func TestAddTenantMemberRefusesNamingTheUserByUserID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			server, mock := newOperatorHandlerTestServer(t)
 
-			_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(tt.req))
+			_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), tt.req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("AddTenantMember code = %v, want invalid_argument", connect.CodeOf(err))
 			}
@@ -562,11 +562,11 @@ func TestAddTenantMemberTenantNotFound(t *testing.T) {
 		WithArgs(uuid.MustParse(testTenantID)).
 		WillReturnError(sql.ErrNoRows)
 
-	_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+	_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), &publirasplatformv1.AddTenantMemberRequest{
 		TenantId: testTenantID,
 		UserId:   testUserID,
 		Role:     "tenant_admin",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("AddTenantMember code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -589,11 +589,11 @@ func TestAddTenantMemberUserNotFound(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	mock.ExpectRollback()
 
-	_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+	_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), &publirasplatformv1.AddTenantMemberRequest{
 		TenantId: tenantID.String(),
 		UserId:   testUserID,
 		Role:     "tenant_admin",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("AddTenantMember code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -621,11 +621,11 @@ func TestAddTenantMemberAlreadyExists(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_admin"))
 	mock.ExpectRollback()
 
-	_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+	_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), &publirasplatformv1.AddTenantMemberRequest{
 		TenantId: tenantID.String(),
 		UserId:   targetUserID.String(),
 		Role:     "tenant_admin",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("AddTenantMember code = %v, want already_exists", connect.CodeOf(err))
 	}
@@ -663,16 +663,16 @@ func TestUpdateTenantMemberRoleSuccess(t *testing.T) {
 	expectTenantMemberAuditLogInsert(mock, operatorID, "tenant_member_role_updated", targetUserID)
 	mock.ExpectCommit()
 
-	resp, err := server.UpdateTenantMemberRole(newOperatorActorContext(operatorID), connect.NewRequest(&publirasplatformv1.UpdateTenantMemberRoleRequest{
+	resp, err := server.UpdateTenantMemberRole(newOperatorActorContext(operatorID), &publirasplatformv1.UpdateTenantMemberRoleRequest{
 		TenantId: tenantID.String(),
 		UserId:   targetUserID.String(),
 		Role:     "tenant_editor",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateTenantMemberRole: %v", err)
 	}
-	if resp.Msg.Member.Role != "tenant_editor" {
-		t.Fatalf("member.role = %q, want tenant_editor", resp.Msg.Member.Role)
+	if resp.Member.Role != "tenant_editor" {
+		t.Fatalf("member.role = %q, want tenant_editor", resp.Member.Role)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -698,11 +698,11 @@ func TestUpdateTenantMemberRoleMemberNotFound(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 	mock.ExpectRollback()
 
-	_, err := server.UpdateTenantMemberRole(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.UpdateTenantMemberRoleRequest{
+	_, err := server.UpdateTenantMemberRole(newOperatorActorContext(uuid.Must(uuid.NewV7())), &publirasplatformv1.UpdateTenantMemberRoleRequest{
 		TenantId: tenantID.String(),
 		UserId:   targetUserID.String(),
 		Role:     "tenant_editor",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("UpdateTenantMemberRole code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -735,15 +735,15 @@ func TestRemoveTenantMemberSuccess(t *testing.T) {
 	expectTenantMemberAuditLogInsert(mock, operatorID, "tenant_member_removed", targetUserID)
 	mock.ExpectCommit()
 
-	resp, err := server.RemoveTenantMember(newOperatorActorContext(operatorID), connect.NewRequest(&publirasplatformv1.RemoveTenantMemberRequest{
+	resp, err := server.RemoveTenantMember(newOperatorActorContext(operatorID), &publirasplatformv1.RemoveTenantMemberRequest{
 		TenantId: tenantID.String(),
 		UserId:   targetUserID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RemoveTenantMember: %v", err)
 	}
-	if resp.Msg.UserId != targetUserID.String() {
-		t.Fatalf("user_id = %q, want %s", resp.Msg.UserId, targetUserID)
+	if resp.UserId != targetUserID.String() {
+		t.Fatalf("user_id = %q, want %s", resp.UserId, targetUserID)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -774,10 +774,10 @@ func TestRemoveTenantMemberRollsBackWhenItsEntryFails(t *testing.T) {
 		WillReturnError(errors.New("connection reset"))
 	mock.ExpectRollback()
 
-	_, err := server.RemoveTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.RemoveTenantMemberRequest{
+	_, err := server.RemoveTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), &publirasplatformv1.RemoveTenantMemberRequest{
 		TenantId: tenantID.String(),
 		UserId:   targetUserID.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("RemoveTenantMember code = %v, want internal", connect.CodeOf(err))
 	}
@@ -800,10 +800,10 @@ func TestRemoveTenantMemberNotFound(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 	mock.ExpectRollback()
 
-	_, err := server.RemoveTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), connect.NewRequest(&publirasplatformv1.RemoveTenantMemberRequest{
+	_, err := server.RemoveTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), &publirasplatformv1.RemoveTenantMemberRequest{
 		TenantId: tenantID.String(),
 		UserId:   testUserID,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("RemoveTenantMember code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -832,43 +832,43 @@ func TestPlatformTenantRPCsNameTheRefusedField(t *testing.T) {
 		field string
 	}{
 		{name: "get with no public ID", field: "public_id", call: func(s *platformServer) error {
-			_, err := s.GetTenant(ctx, connect.NewRequest(&publirasplatformv1.GetTenantRequest{}))
+			_, err := s.GetTenant(ctx, &publirasplatformv1.GetTenantRequest{})
 			return err
 		}},
 		{name: "suspend with no tenant ID", field: "tenant_id", call: func(s *platformServer) error {
-			_, err := s.SuspendTenant(ctx, connect.NewRequest(&publirasplatformv1.SuspendTenantRequest{TenantId: " "}))
+			_, err := s.SuspendTenant(ctx, &publirasplatformv1.SuspendTenantRequest{TenantId: " "})
 			return err
 		}},
 		{name: "update with a blank name", field: "name", call: func(s *platformServer) error {
-			_, err := s.UpdateTenant(ctx, connect.NewRequest(&publirasplatformv1.UpdateTenantRequest{TenantId: testTenantID, Domain: "tenant.example.com"}))
+			_, err := s.UpdateTenant(ctx, &publirasplatformv1.UpdateTenantRequest{TenantId: testTenantID, Domain: "tenant.example.com"})
 			return err
 		}},
 		{name: "update with a blank domain", field: "domain", call: func(s *platformServer) error {
-			_, err := s.UpdateTenant(ctx, connect.NewRequest(&publirasplatformv1.UpdateTenantRequest{TenantId: testTenantID, Name: "Tenant"}))
+			_, err := s.UpdateTenant(ctx, &publirasplatformv1.UpdateTenantRequest{TenantId: testTenantID, Name: "Tenant"})
 			return err
 		}},
 		{name: "add a member with an unknown role", field: "role", call: func(s *platformServer) error {
-			_, err := s.AddTenantMember(ctx, connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{TenantId: testTenantID, UserId: testUserID, Role: "owner"}))
+			_, err := s.AddTenantMember(ctx, &publirasplatformv1.AddTenantMemberRequest{TenantId: testTenantID, UserId: testUserID, Role: "owner"})
 			return err
 		}},
 		{name: "add a member by a malformed email", field: "email", call: func(s *platformServer) error {
-			_, err := s.AddTenantMember(ctx, connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{TenantId: testTenantID, Email: "nobody", Role: "tenant_admin"}))
+			_, err := s.AddTenantMember(ctx, &publirasplatformv1.AddTenantMemberRequest{TenantId: testTenantID, Email: "nobody", Role: "tenant_admin"})
 			return err
 		}},
 		{name: "change the role of no user", field: "user_id", call: func(s *platformServer) error {
-			_, err := s.UpdateTenantMemberRole(ctx, connect.NewRequest(&publirasplatformv1.UpdateTenantMemberRoleRequest{TenantId: testTenantID, Role: "tenant_admin"}))
+			_, err := s.UpdateTenantMemberRole(ctx, &publirasplatformv1.UpdateTenantMemberRoleRequest{TenantId: testTenantID, Role: "tenant_admin"})
 			return err
 		}},
 		{name: "remove a user named by a public ID", field: "user_id", call: func(s *platformServer) error {
-			_, err := s.RemoveTenantMember(ctx, connect.NewRequest(&publirasplatformv1.RemoveTenantMemberRequest{TenantId: testTenantID, UserId: "USER000001"}))
+			_, err := s.RemoveTenantMember(ctx, &publirasplatformv1.RemoveTenantMemberRequest{TenantId: testTenantID, UserId: "USER000001"})
 			return err
 		}},
 		{name: "remove no user", field: "user_id", call: func(s *platformServer) error {
-			_, err := s.RemoveTenantMember(ctx, connect.NewRequest(&publirasplatformv1.RemoveTenantMemberRequest{TenantId: testTenantID}))
+			_, err := s.RemoveTenantMember(ctx, &publirasplatformv1.RemoveTenantMemberRequest{TenantId: testTenantID})
 			return err
 		}},
 		{name: "invite a malformed email", field: "email", call: func(s *platformServer) error {
-			_, err := s.CreateTenantAdminInvitation(ctx, connect.NewRequest(&publirasplatformv1.CreateTenantAdminInvitationRequest{TenantId: testTenantID, Email: "nobody"}))
+			_, err := s.CreateTenantAdminInvitation(ctx, &publirasplatformv1.CreateTenantAdminInvitationRequest{TenantId: testTenantID, Email: "nobody"})
 			return err
 		}},
 	} {
