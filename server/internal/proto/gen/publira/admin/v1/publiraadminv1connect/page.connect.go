@@ -5,460 +5,536 @@
 package publiraadminv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AdminPagesServiceName is the fully-qualified name of the AdminPagesService service.
 	AdminPagesServiceName = "publira.admin.v1.AdminPagesService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AdminPagesServiceCreatePageProcedure is the fully-qualified name of the AdminPagesService's
-	// CreatePage RPC.
-	AdminPagesServiceCreatePageProcedure = "/publira.admin.v1.AdminPagesService/CreatePage"
-	// AdminPagesServiceUpdatePageProcedure is the fully-qualified name of the AdminPagesService's
-	// UpdatePage RPC.
-	AdminPagesServiceUpdatePageProcedure = "/publira.admin.v1.AdminPagesService/UpdatePage"
-	// AdminPagesServiceListPagesProcedure is the fully-qualified name of the AdminPagesService's
-	// ListPages RPC.
-	AdminPagesServiceListPagesProcedure = "/publira.admin.v1.AdminPagesService/ListPages"
-	// AdminPagesServiceGetPageProcedure is the fully-qualified name of the AdminPagesService's GetPage
+	// AdminPagesServiceCreatePageProcedure is the procedure name of the AdminPagesService's CreatePage
 	// RPC.
+	AdminPagesServiceCreatePageProcedure = "/publira.admin.v1.AdminPagesService/CreatePage"
+	// AdminPagesServiceUpdatePageProcedure is the procedure name of the AdminPagesService's UpdatePage
+	// RPC.
+	AdminPagesServiceUpdatePageProcedure = "/publira.admin.v1.AdminPagesService/UpdatePage"
+	// AdminPagesServiceListPagesProcedure is the procedure name of the AdminPagesService's ListPages
+	// RPC.
+	AdminPagesServiceListPagesProcedure = "/publira.admin.v1.AdminPagesService/ListPages"
+	// AdminPagesServiceGetPageProcedure is the procedure name of the AdminPagesService's GetPage RPC.
 	AdminPagesServiceGetPageProcedure = "/publira.admin.v1.AdminPagesService/GetPage"
-	// AdminPagesServiceCreateVersionProcedure is the fully-qualified name of the AdminPagesService's
+	// AdminPagesServiceCreateVersionProcedure is the procedure name of the AdminPagesService's
 	// CreateVersion RPC.
 	AdminPagesServiceCreateVersionProcedure = "/publira.admin.v1.AdminPagesService/CreateVersion"
-	// AdminPagesServiceListVersionsProcedure is the fully-qualified name of the AdminPagesService's
+	// AdminPagesServiceListVersionsProcedure is the procedure name of the AdminPagesService's
 	// ListVersions RPC.
 	AdminPagesServiceListVersionsProcedure = "/publira.admin.v1.AdminPagesService/ListVersions"
-	// AdminPagesServicePublishVersionProcedure is the fully-qualified name of the AdminPagesService's
+	// AdminPagesServicePublishVersionProcedure is the procedure name of the AdminPagesService's
 	// PublishVersion RPC.
 	AdminPagesServicePublishVersionProcedure = "/publira.admin.v1.AdminPagesService/PublishVersion"
-	// AdminPagesServiceUnpublishPageProcedure is the fully-qualified name of the AdminPagesService's
+	// AdminPagesServiceUnpublishPageProcedure is the procedure name of the AdminPagesService's
 	// UnpublishPage RPC.
 	AdminPagesServiceUnpublishPageProcedure = "/publira.admin.v1.AdminPagesService/UnpublishPage"
-	// AdminPagesServiceRollbackToVersionProcedure is the fully-qualified name of the
-	// AdminPagesService's RollbackToVersion RPC.
+	// AdminPagesServiceRollbackToVersionProcedure is the procedure name of the AdminPagesService's
+	// RollbackToVersion RPC.
 	AdminPagesServiceRollbackToVersionProcedure = "/publira.admin.v1.AdminPagesService/RollbackToVersion"
-	// AdminPagesServiceCreatePageTranslationProcedure is the fully-qualified name of the
-	// AdminPagesService's CreatePageTranslation RPC.
+	// AdminPagesServiceCreatePageTranslationProcedure is the procedure name of the AdminPagesService's
+	// CreatePageTranslation RPC.
 	AdminPagesServiceCreatePageTranslationProcedure = "/publira.admin.v1.AdminPagesService/CreatePageTranslation"
-	// AdminPagesServiceListPageTranslationsProcedure is the fully-qualified name of the
-	// AdminPagesService's ListPageTranslations RPC.
+	// AdminPagesServiceListPageTranslationsProcedure is the procedure name of the AdminPagesService's
+	// ListPageTranslations RPC.
 	AdminPagesServiceListPageTranslationsProcedure = "/publira.admin.v1.AdminPagesService/ListPageTranslations"
-	// AdminPagesServiceDeletePageTranslationProcedure is the fully-qualified name of the
-	// AdminPagesService's DeletePageTranslation RPC.
+	// AdminPagesServiceDeletePageTranslationProcedure is the procedure name of the AdminPagesService's
+	// DeletePageTranslation RPC.
 	AdminPagesServiceDeletePageTranslationProcedure = "/publira.admin.v1.AdminPagesService/DeletePageTranslation"
+)
+
+var (
+	adminPagesServiceCreatePageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("CreatePage"),
+			Procedure:  AdminPagesServiceCreatePageProcedure,
+		}
+	})
+	adminPagesServiceUpdatePageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("UpdatePage"),
+			Procedure:  AdminPagesServiceUpdatePageProcedure,
+		}
+	})
+	adminPagesServiceListPagesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("ListPages"),
+			Procedure:  AdminPagesServiceListPagesProcedure,
+		}
+	})
+	adminPagesServiceGetPageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("GetPage"),
+			Procedure:  AdminPagesServiceGetPageProcedure,
+		}
+	})
+	adminPagesServiceCreateVersionSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("CreateVersion"),
+			Procedure:  AdminPagesServiceCreateVersionProcedure,
+		}
+	})
+	adminPagesServiceListVersionsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("ListVersions"),
+			Procedure:  AdminPagesServiceListVersionsProcedure,
+		}
+	})
+	adminPagesServicePublishVersionSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("PublishVersion"),
+			Procedure:  AdminPagesServicePublishVersionProcedure,
+		}
+	})
+	adminPagesServiceUnpublishPageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("UnpublishPage"),
+			Procedure:  AdminPagesServiceUnpublishPageProcedure,
+		}
+	})
+	adminPagesServiceRollbackToVersionSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("RollbackToVersion"),
+			Procedure:  AdminPagesServiceRollbackToVersionProcedure,
+		}
+	})
+	adminPagesServiceCreatePageTranslationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("CreatePageTranslation"),
+			Procedure:  AdminPagesServiceCreatePageTranslationProcedure,
+		}
+	})
+	adminPagesServiceListPageTranslationsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("ListPageTranslations"),
+			Procedure:  AdminPagesServiceListPageTranslationsProcedure,
+		}
+	})
+	adminPagesServiceDeletePageTranslationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods().ByName("DeletePageTranslation"),
+			Procedure:  AdminPagesServiceDeletePageTranslationProcedure,
+		}
+	})
 )
 
 // AdminPagesServiceClient is a client for the publira.admin.v1.AdminPagesService service.
 type AdminPagesServiceClient interface {
 	// Minimum role: tenant_editor.
-	CreatePage(context.Context, *connect.Request[v1.CreatePageRequest]) (*connect.Response[v1.CreatePageResponse], error)
+	CreatePage(context.Context, *v1.CreatePageRequest) (*v1.CreatePageResponse, error)
 	// Minimum role: tenant_editor.
-	UpdatePage(context.Context, *connect.Request[v1.UpdatePageRequest]) (*connect.Response[v1.UpdatePageResponse], error)
+	UpdatePage(context.Context, *v1.UpdatePageRequest) (*v1.UpdatePageResponse, error)
 	// Minimum role: tenant_auditor.
-	ListPages(context.Context, *connect.Request[v1.ListPagesRequest]) (*connect.Response[v1.ListPagesResponse], error)
+	ListPages(context.Context, *v1.ListPagesRequest) (*v1.ListPagesResponse, error)
 	// Minimum role: tenant_auditor.
-	GetPage(context.Context, *connect.Request[v1.GetPageRequest]) (*connect.Response[v1.GetPageResponse], error)
+	GetPage(context.Context, *v1.GetPageRequest) (*v1.GetPageResponse, error)
 	// Minimum role: tenant_editor.
-	CreateVersion(context.Context, *connect.Request[v1.CreateVersionRequest]) (*connect.Response[v1.CreateVersionResponse], error)
+	CreateVersion(context.Context, *v1.CreateVersionRequest) (*v1.CreateVersionResponse, error)
 	// Minimum role: tenant_auditor.
-	ListVersions(context.Context, *connect.Request[v1.ListVersionsRequest]) (*connect.Response[v1.ListVersionsResponse], error)
+	ListVersions(context.Context, *v1.ListVersionsRequest) (*v1.ListVersionsResponse, error)
 	// Minimum role: tenant_editor.
-	PublishVersion(context.Context, *connect.Request[v1.PublishVersionRequest]) (*connect.Response[v1.PublishVersionResponse], error)
+	PublishVersion(context.Context, *v1.PublishVersionRequest) (*v1.PublishVersionResponse, error)
 	// Clears the page's published version. The versions themselves are kept, so
 	// the page can go back up without its body being entered again.
 	//
 	// Minimum role: tenant_editor.
-	UnpublishPage(context.Context, *connect.Request[v1.UnpublishPageRequest]) (*connect.Response[v1.UnpublishPageResponse], error)
+	UnpublishPage(context.Context, *v1.UnpublishPageRequest) (*v1.UnpublishPageResponse, error)
 	// Minimum role: tenant_editor.
-	RollbackToVersion(context.Context, *connect.Request[v1.RollbackToVersionRequest]) (*connect.Response[v1.RollbackToVersionResponse], error)
+	RollbackToVersion(context.Context, *v1.RollbackToVersionRequest) (*v1.RollbackToVersionResponse, error)
 	// Minimum role: tenant_editor.
-	CreatePageTranslation(context.Context, *connect.Request[v1.CreatePageTranslationRequest]) (*connect.Response[v1.CreatePageTranslationResponse], error)
+	CreatePageTranslation(context.Context, *v1.CreatePageTranslationRequest) (*v1.CreatePageTranslationResponse, error)
 	// Minimum role: tenant_auditor.
-	ListPageTranslations(context.Context, *connect.Request[v1.ListPageTranslationsRequest]) (*connect.Response[v1.ListPageTranslationsResponse], error)
+	ListPageTranslations(context.Context, *v1.ListPageTranslationsRequest) (*v1.ListPageTranslationsResponse, error)
 	// Deletes one translation with its versions. A page's last translation
 	// cannot be deleted (failed_precondition).
 	//
 	// Minimum role: tenant_editor.
-	DeletePageTranslation(context.Context, *connect.Request[v1.DeletePageTranslationRequest]) (*connect.Response[v1.DeletePageTranslationResponse], error)
+	DeletePageTranslation(context.Context, *v1.DeletePageTranslationRequest) (*v1.DeletePageTranslationResponse, error)
 }
 
 // NewAdminPagesServiceClient constructs a client for the publira.admin.v1.AdminPagesService
-// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
-// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
-// the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewAdminPagesServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdminPagesServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	adminPagesServiceMethods := v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods()
-	return &adminPagesServiceClient{
-		createPage: connect.NewClient[v1.CreatePageRequest, v1.CreatePageResponse](
-			httpClient,
-			baseURL+AdminPagesServiceCreatePageProcedure,
-			connect.WithSchema(adminPagesServiceMethods.ByName("CreatePage")),
-			connect.WithClientOptions(opts...),
-		),
-		updatePage: connect.NewClient[v1.UpdatePageRequest, v1.UpdatePageResponse](
-			httpClient,
-			baseURL+AdminPagesServiceUpdatePageProcedure,
-			connect.WithSchema(adminPagesServiceMethods.ByName("UpdatePage")),
-			connect.WithClientOptions(opts...),
-		),
-		listPages: connect.NewClient[v1.ListPagesRequest, v1.ListPagesResponse](
-			httpClient,
-			baseURL+AdminPagesServiceListPagesProcedure,
-			connect.WithSchema(adminPagesServiceMethods.ByName("ListPages")),
-			connect.WithClientOptions(opts...),
-		),
-		getPage: connect.NewClient[v1.GetPageRequest, v1.GetPageResponse](
-			httpClient,
-			baseURL+AdminPagesServiceGetPageProcedure,
-			connect.WithSchema(adminPagesServiceMethods.ByName("GetPage")),
-			connect.WithClientOptions(opts...),
-		),
-		createVersion: connect.NewClient[v1.CreateVersionRequest, v1.CreateVersionResponse](
-			httpClient,
-			baseURL+AdminPagesServiceCreateVersionProcedure,
-			connect.WithSchema(adminPagesServiceMethods.ByName("CreateVersion")),
-			connect.WithClientOptions(opts...),
-		),
-		listVersions: connect.NewClient[v1.ListVersionsRequest, v1.ListVersionsResponse](
-			httpClient,
-			baseURL+AdminPagesServiceListVersionsProcedure,
-			connect.WithSchema(adminPagesServiceMethods.ByName("ListVersions")),
-			connect.WithClientOptions(opts...),
-		),
-		publishVersion: connect.NewClient[v1.PublishVersionRequest, v1.PublishVersionResponse](
-			httpClient,
-			baseURL+AdminPagesServicePublishVersionProcedure,
-			connect.WithSchema(adminPagesServiceMethods.ByName("PublishVersion")),
-			connect.WithClientOptions(opts...),
-		),
-		unpublishPage: connect.NewClient[v1.UnpublishPageRequest, v1.UnpublishPageResponse](
-			httpClient,
-			baseURL+AdminPagesServiceUnpublishPageProcedure,
-			connect.WithSchema(adminPagesServiceMethods.ByName("UnpublishPage")),
-			connect.WithClientOptions(opts...),
-		),
-		rollbackToVersion: connect.NewClient[v1.RollbackToVersionRequest, v1.RollbackToVersionResponse](
-			httpClient,
-			baseURL+AdminPagesServiceRollbackToVersionProcedure,
-			connect.WithSchema(adminPagesServiceMethods.ByName("RollbackToVersion")),
-			connect.WithClientOptions(opts...),
-		),
-		createPageTranslation: connect.NewClient[v1.CreatePageTranslationRequest, v1.CreatePageTranslationResponse](
-			httpClient,
-			baseURL+AdminPagesServiceCreatePageTranslationProcedure,
-			connect.WithSchema(adminPagesServiceMethods.ByName("CreatePageTranslation")),
-			connect.WithClientOptions(opts...),
-		),
-		listPageTranslations: connect.NewClient[v1.ListPageTranslationsRequest, v1.ListPageTranslationsResponse](
-			httpClient,
-			baseURL+AdminPagesServiceListPageTranslationsProcedure,
-			connect.WithSchema(adminPagesServiceMethods.ByName("ListPageTranslations")),
-			connect.WithClientOptions(opts...),
-		),
-		deletePageTranslation: connect.NewClient[v1.DeletePageTranslationRequest, v1.DeletePageTranslationResponse](
-			httpClient,
-			baseURL+AdminPagesServiceDeletePageTranslationProcedure,
-			connect.WithSchema(adminPagesServiceMethods.ByName("DeletePageTranslation")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// adminPagesServiceClient implements AdminPagesServiceClient.
-type adminPagesServiceClient struct {
-	createPage            *connect.Client[v1.CreatePageRequest, v1.CreatePageResponse]
-	updatePage            *connect.Client[v1.UpdatePageRequest, v1.UpdatePageResponse]
-	listPages             *connect.Client[v1.ListPagesRequest, v1.ListPagesResponse]
-	getPage               *connect.Client[v1.GetPageRequest, v1.GetPageResponse]
-	createVersion         *connect.Client[v1.CreateVersionRequest, v1.CreateVersionResponse]
-	listVersions          *connect.Client[v1.ListVersionsRequest, v1.ListVersionsResponse]
-	publishVersion        *connect.Client[v1.PublishVersionRequest, v1.PublishVersionResponse]
-	unpublishPage         *connect.Client[v1.UnpublishPageRequest, v1.UnpublishPageResponse]
-	rollbackToVersion     *connect.Client[v1.RollbackToVersionRequest, v1.RollbackToVersionResponse]
-	createPageTranslation *connect.Client[v1.CreatePageTranslationRequest, v1.CreatePageTranslationResponse]
-	listPageTranslations  *connect.Client[v1.ListPageTranslationsRequest, v1.ListPageTranslationsResponse]
-	deletePageTranslation *connect.Client[v1.DeletePageTranslationRequest, v1.DeletePageTranslationResponse]
-}
-
-// CreatePage calls publira.admin.v1.AdminPagesService.CreatePage.
-func (c *adminPagesServiceClient) CreatePage(ctx context.Context, req *connect.Request[v1.CreatePageRequest]) (*connect.Response[v1.CreatePageResponse], error) {
-	return c.createPage.CallUnary(ctx, req)
-}
-
-// UpdatePage calls publira.admin.v1.AdminPagesService.UpdatePage.
-func (c *adminPagesServiceClient) UpdatePage(ctx context.Context, req *connect.Request[v1.UpdatePageRequest]) (*connect.Response[v1.UpdatePageResponse], error) {
-	return c.updatePage.CallUnary(ctx, req)
-}
-
-// ListPages calls publira.admin.v1.AdminPagesService.ListPages.
-func (c *adminPagesServiceClient) ListPages(ctx context.Context, req *connect.Request[v1.ListPagesRequest]) (*connect.Response[v1.ListPagesResponse], error) {
-	return c.listPages.CallUnary(ctx, req)
-}
-
-// GetPage calls publira.admin.v1.AdminPagesService.GetPage.
-func (c *adminPagesServiceClient) GetPage(ctx context.Context, req *connect.Request[v1.GetPageRequest]) (*connect.Response[v1.GetPageResponse], error) {
-	return c.getPage.CallUnary(ctx, req)
-}
-
-// CreateVersion calls publira.admin.v1.AdminPagesService.CreateVersion.
-func (c *adminPagesServiceClient) CreateVersion(ctx context.Context, req *connect.Request[v1.CreateVersionRequest]) (*connect.Response[v1.CreateVersionResponse], error) {
-	return c.createVersion.CallUnary(ctx, req)
-}
-
-// ListVersions calls publira.admin.v1.AdminPagesService.ListVersions.
-func (c *adminPagesServiceClient) ListVersions(ctx context.Context, req *connect.Request[v1.ListVersionsRequest]) (*connect.Response[v1.ListVersionsResponse], error) {
-	return c.listVersions.CallUnary(ctx, req)
-}
-
-// PublishVersion calls publira.admin.v1.AdminPagesService.PublishVersion.
-func (c *adminPagesServiceClient) PublishVersion(ctx context.Context, req *connect.Request[v1.PublishVersionRequest]) (*connect.Response[v1.PublishVersionResponse], error) {
-	return c.publishVersion.CallUnary(ctx, req)
-}
-
-// UnpublishPage calls publira.admin.v1.AdminPagesService.UnpublishPage.
-func (c *adminPagesServiceClient) UnpublishPage(ctx context.Context, req *connect.Request[v1.UnpublishPageRequest]) (*connect.Response[v1.UnpublishPageResponse], error) {
-	return c.unpublishPage.CallUnary(ctx, req)
-}
-
-// RollbackToVersion calls publira.admin.v1.AdminPagesService.RollbackToVersion.
-func (c *adminPagesServiceClient) RollbackToVersion(ctx context.Context, req *connect.Request[v1.RollbackToVersionRequest]) (*connect.Response[v1.RollbackToVersionResponse], error) {
-	return c.rollbackToVersion.CallUnary(ctx, req)
-}
-
-// CreatePageTranslation calls publira.admin.v1.AdminPagesService.CreatePageTranslation.
-func (c *adminPagesServiceClient) CreatePageTranslation(ctx context.Context, req *connect.Request[v1.CreatePageTranslationRequest]) (*connect.Response[v1.CreatePageTranslationResponse], error) {
-	return c.createPageTranslation.CallUnary(ctx, req)
-}
-
-// ListPageTranslations calls publira.admin.v1.AdminPagesService.ListPageTranslations.
-func (c *adminPagesServiceClient) ListPageTranslations(ctx context.Context, req *connect.Request[v1.ListPageTranslationsRequest]) (*connect.Response[v1.ListPageTranslationsResponse], error) {
-	return c.listPageTranslations.CallUnary(ctx, req)
-}
-
-// DeletePageTranslation calls publira.admin.v1.AdminPagesService.DeletePageTranslation.
-func (c *adminPagesServiceClient) DeletePageTranslation(ctx context.Context, req *connect.Request[v1.DeletePageTranslationRequest]) (*connect.Response[v1.DeletePageTranslationResponse], error) {
-	return c.deletePageTranslation.CallUnary(ctx, req)
+// service. Multiple service clients may share a single connect.Client.
+func NewAdminPagesServiceClient(client *connect.Client) AdminPagesServiceClient {
+	return &adminPagesServiceClient{client: client}
 }
 
 // AdminPagesServiceHandler is an implementation of the publira.admin.v1.AdminPagesService service.
 type AdminPagesServiceHandler interface {
 	// Minimum role: tenant_editor.
-	CreatePage(context.Context, *connect.Request[v1.CreatePageRequest]) (*connect.Response[v1.CreatePageResponse], error)
+	CreatePage(context.Context, *v1.CreatePageRequest) (*v1.CreatePageResponse, error)
 	// Minimum role: tenant_editor.
-	UpdatePage(context.Context, *connect.Request[v1.UpdatePageRequest]) (*connect.Response[v1.UpdatePageResponse], error)
+	UpdatePage(context.Context, *v1.UpdatePageRequest) (*v1.UpdatePageResponse, error)
 	// Minimum role: tenant_auditor.
-	ListPages(context.Context, *connect.Request[v1.ListPagesRequest]) (*connect.Response[v1.ListPagesResponse], error)
+	ListPages(context.Context, *v1.ListPagesRequest) (*v1.ListPagesResponse, error)
 	// Minimum role: tenant_auditor.
-	GetPage(context.Context, *connect.Request[v1.GetPageRequest]) (*connect.Response[v1.GetPageResponse], error)
+	GetPage(context.Context, *v1.GetPageRequest) (*v1.GetPageResponse, error)
 	// Minimum role: tenant_editor.
-	CreateVersion(context.Context, *connect.Request[v1.CreateVersionRequest]) (*connect.Response[v1.CreateVersionResponse], error)
+	CreateVersion(context.Context, *v1.CreateVersionRequest) (*v1.CreateVersionResponse, error)
 	// Minimum role: tenant_auditor.
-	ListVersions(context.Context, *connect.Request[v1.ListVersionsRequest]) (*connect.Response[v1.ListVersionsResponse], error)
+	ListVersions(context.Context, *v1.ListVersionsRequest) (*v1.ListVersionsResponse, error)
 	// Minimum role: tenant_editor.
-	PublishVersion(context.Context, *connect.Request[v1.PublishVersionRequest]) (*connect.Response[v1.PublishVersionResponse], error)
+	PublishVersion(context.Context, *v1.PublishVersionRequest) (*v1.PublishVersionResponse, error)
 	// Clears the page's published version. The versions themselves are kept, so
 	// the page can go back up without its body being entered again.
 	//
 	// Minimum role: tenant_editor.
-	UnpublishPage(context.Context, *connect.Request[v1.UnpublishPageRequest]) (*connect.Response[v1.UnpublishPageResponse], error)
+	UnpublishPage(context.Context, *v1.UnpublishPageRequest) (*v1.UnpublishPageResponse, error)
 	// Minimum role: tenant_editor.
-	RollbackToVersion(context.Context, *connect.Request[v1.RollbackToVersionRequest]) (*connect.Response[v1.RollbackToVersionResponse], error)
+	RollbackToVersion(context.Context, *v1.RollbackToVersionRequest) (*v1.RollbackToVersionResponse, error)
 	// Minimum role: tenant_editor.
-	CreatePageTranslation(context.Context, *connect.Request[v1.CreatePageTranslationRequest]) (*connect.Response[v1.CreatePageTranslationResponse], error)
+	CreatePageTranslation(context.Context, *v1.CreatePageTranslationRequest) (*v1.CreatePageTranslationResponse, error)
 	// Minimum role: tenant_auditor.
-	ListPageTranslations(context.Context, *connect.Request[v1.ListPageTranslationsRequest]) (*connect.Response[v1.ListPageTranslationsResponse], error)
+	ListPageTranslations(context.Context, *v1.ListPageTranslationsRequest) (*v1.ListPageTranslationsResponse, error)
 	// Deletes one translation with its versions. A page's last translation
 	// cannot be deleted (failed_precondition).
 	//
 	// Minimum role: tenant_editor.
-	DeletePageTranslation(context.Context, *connect.Request[v1.DeletePageTranslationRequest]) (*connect.Response[v1.DeletePageTranslationResponse], error)
+	DeletePageTranslation(context.Context, *v1.DeletePageTranslationRequest) (*v1.DeletePageTranslationResponse, error)
 }
 
-// NewAdminPagesServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewAdminPagesServiceHandler(svc AdminPagesServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	adminPagesServiceMethods := v1.File_publira_admin_v1_page_proto.Services().ByName("AdminPagesService").Methods()
-	adminPagesServiceCreatePageHandler := connect.NewUnaryHandler(
-		AdminPagesServiceCreatePageProcedure,
-		svc.CreatePage,
-		connect.WithSchema(adminPagesServiceMethods.ByName("CreatePage")),
-		connect.WithHandlerOptions(opts...),
+// RegisterAdminPagesServiceHandler registers svc as the publira.admin.v1.AdminPagesService
+// implementation on server.
+func RegisterAdminPagesServiceHandler(server *connect.Server, svc AdminPagesServiceHandler) {
+	adapter := adminPagesServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: adminPagesServiceCreatePageSpec(), Handler: adapter.createPage},
+		connect.Method{Spec: adminPagesServiceUpdatePageSpec(), Handler: adapter.updatePage},
+		connect.Method{Spec: adminPagesServiceListPagesSpec(), Handler: adapter.listPages},
+		connect.Method{Spec: adminPagesServiceGetPageSpec(), Handler: adapter.getPage},
+		connect.Method{Spec: adminPagesServiceCreateVersionSpec(), Handler: adapter.createVersion},
+		connect.Method{Spec: adminPagesServiceListVersionsSpec(), Handler: adapter.listVersions},
+		connect.Method{Spec: adminPagesServicePublishVersionSpec(), Handler: adapter.publishVersion},
+		connect.Method{Spec: adminPagesServiceUnpublishPageSpec(), Handler: adapter.unpublishPage},
+		connect.Method{Spec: adminPagesServiceRollbackToVersionSpec(), Handler: adapter.rollbackToVersion},
+		connect.Method{Spec: adminPagesServiceCreatePageTranslationSpec(), Handler: adapter.createPageTranslation},
+		connect.Method{Spec: adminPagesServiceListPageTranslationsSpec(), Handler: adapter.listPageTranslations},
+		connect.Method{Spec: adminPagesServiceDeletePageTranslationSpec(), Handler: adapter.deletePageTranslation},
 	)
-	adminPagesServiceUpdatePageHandler := connect.NewUnaryHandler(
-		AdminPagesServiceUpdatePageProcedure,
-		svc.UpdatePage,
-		connect.WithSchema(adminPagesServiceMethods.ByName("UpdatePage")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminPagesServiceListPagesHandler := connect.NewUnaryHandler(
-		AdminPagesServiceListPagesProcedure,
-		svc.ListPages,
-		connect.WithSchema(adminPagesServiceMethods.ByName("ListPages")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminPagesServiceGetPageHandler := connect.NewUnaryHandler(
-		AdminPagesServiceGetPageProcedure,
-		svc.GetPage,
-		connect.WithSchema(adminPagesServiceMethods.ByName("GetPage")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminPagesServiceCreateVersionHandler := connect.NewUnaryHandler(
-		AdminPagesServiceCreateVersionProcedure,
-		svc.CreateVersion,
-		connect.WithSchema(adminPagesServiceMethods.ByName("CreateVersion")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminPagesServiceListVersionsHandler := connect.NewUnaryHandler(
-		AdminPagesServiceListVersionsProcedure,
-		svc.ListVersions,
-		connect.WithSchema(adminPagesServiceMethods.ByName("ListVersions")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminPagesServicePublishVersionHandler := connect.NewUnaryHandler(
-		AdminPagesServicePublishVersionProcedure,
-		svc.PublishVersion,
-		connect.WithSchema(adminPagesServiceMethods.ByName("PublishVersion")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminPagesServiceUnpublishPageHandler := connect.NewUnaryHandler(
-		AdminPagesServiceUnpublishPageProcedure,
-		svc.UnpublishPage,
-		connect.WithSchema(adminPagesServiceMethods.ByName("UnpublishPage")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminPagesServiceRollbackToVersionHandler := connect.NewUnaryHandler(
-		AdminPagesServiceRollbackToVersionProcedure,
-		svc.RollbackToVersion,
-		connect.WithSchema(adminPagesServiceMethods.ByName("RollbackToVersion")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminPagesServiceCreatePageTranslationHandler := connect.NewUnaryHandler(
-		AdminPagesServiceCreatePageTranslationProcedure,
-		svc.CreatePageTranslation,
-		connect.WithSchema(adminPagesServiceMethods.ByName("CreatePageTranslation")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminPagesServiceListPageTranslationsHandler := connect.NewUnaryHandler(
-		AdminPagesServiceListPageTranslationsProcedure,
-		svc.ListPageTranslations,
-		connect.WithSchema(adminPagesServiceMethods.ByName("ListPageTranslations")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminPagesServiceDeletePageTranslationHandler := connect.NewUnaryHandler(
-		AdminPagesServiceDeletePageTranslationProcedure,
-		svc.DeletePageTranslation,
-		connect.WithSchema(adminPagesServiceMethods.ByName("DeletePageTranslation")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.admin.v1.AdminPagesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case AdminPagesServiceCreatePageProcedure:
-			adminPagesServiceCreatePageHandler.ServeHTTP(w, r)
-		case AdminPagesServiceUpdatePageProcedure:
-			adminPagesServiceUpdatePageHandler.ServeHTTP(w, r)
-		case AdminPagesServiceListPagesProcedure:
-			adminPagesServiceListPagesHandler.ServeHTTP(w, r)
-		case AdminPagesServiceGetPageProcedure:
-			adminPagesServiceGetPageHandler.ServeHTTP(w, r)
-		case AdminPagesServiceCreateVersionProcedure:
-			adminPagesServiceCreateVersionHandler.ServeHTTP(w, r)
-		case AdminPagesServiceListVersionsProcedure:
-			adminPagesServiceListVersionsHandler.ServeHTTP(w, r)
-		case AdminPagesServicePublishVersionProcedure:
-			adminPagesServicePublishVersionHandler.ServeHTTP(w, r)
-		case AdminPagesServiceUnpublishPageProcedure:
-			adminPagesServiceUnpublishPageHandler.ServeHTTP(w, r)
-		case AdminPagesServiceRollbackToVersionProcedure:
-			adminPagesServiceRollbackToVersionHandler.ServeHTTP(w, r)
-		case AdminPagesServiceCreatePageTranslationProcedure:
-			adminPagesServiceCreatePageTranslationHandler.ServeHTTP(w, r)
-		case AdminPagesServiceListPageTranslationsProcedure:
-			adminPagesServiceListPageTranslationsHandler.ServeHTTP(w, r)
-		case AdminPagesServiceDeletePageTranslationProcedure:
-			adminPagesServiceDeletePageTranslationHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedAdminPagesServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminPagesServiceHandler struct{}
 
-func (UnimplementedAdminPagesServiceHandler) CreatePage(context.Context, *connect.Request[v1.CreatePageRequest]) (*connect.Response[v1.CreatePageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.CreatePage is not implemented"))
+func (UnimplementedAdminPagesServiceHandler) CreatePage(context.Context, *v1.CreatePageRequest) (*v1.CreatePageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.CreatePage is not implemented")
 }
 
-func (UnimplementedAdminPagesServiceHandler) UpdatePage(context.Context, *connect.Request[v1.UpdatePageRequest]) (*connect.Response[v1.UpdatePageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.UpdatePage is not implemented"))
+func (UnimplementedAdminPagesServiceHandler) UpdatePage(context.Context, *v1.UpdatePageRequest) (*v1.UpdatePageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.UpdatePage is not implemented")
 }
 
-func (UnimplementedAdminPagesServiceHandler) ListPages(context.Context, *connect.Request[v1.ListPagesRequest]) (*connect.Response[v1.ListPagesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.ListPages is not implemented"))
+func (UnimplementedAdminPagesServiceHandler) ListPages(context.Context, *v1.ListPagesRequest) (*v1.ListPagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.ListPages is not implemented")
 }
 
-func (UnimplementedAdminPagesServiceHandler) GetPage(context.Context, *connect.Request[v1.GetPageRequest]) (*connect.Response[v1.GetPageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.GetPage is not implemented"))
+func (UnimplementedAdminPagesServiceHandler) GetPage(context.Context, *v1.GetPageRequest) (*v1.GetPageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.GetPage is not implemented")
 }
 
-func (UnimplementedAdminPagesServiceHandler) CreateVersion(context.Context, *connect.Request[v1.CreateVersionRequest]) (*connect.Response[v1.CreateVersionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.CreateVersion is not implemented"))
+func (UnimplementedAdminPagesServiceHandler) CreateVersion(context.Context, *v1.CreateVersionRequest) (*v1.CreateVersionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.CreateVersion is not implemented")
 }
 
-func (UnimplementedAdminPagesServiceHandler) ListVersions(context.Context, *connect.Request[v1.ListVersionsRequest]) (*connect.Response[v1.ListVersionsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.ListVersions is not implemented"))
+func (UnimplementedAdminPagesServiceHandler) ListVersions(context.Context, *v1.ListVersionsRequest) (*v1.ListVersionsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.ListVersions is not implemented")
 }
 
-func (UnimplementedAdminPagesServiceHandler) PublishVersion(context.Context, *connect.Request[v1.PublishVersionRequest]) (*connect.Response[v1.PublishVersionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.PublishVersion is not implemented"))
+func (UnimplementedAdminPagesServiceHandler) PublishVersion(context.Context, *v1.PublishVersionRequest) (*v1.PublishVersionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.PublishVersion is not implemented")
 }
 
-func (UnimplementedAdminPagesServiceHandler) UnpublishPage(context.Context, *connect.Request[v1.UnpublishPageRequest]) (*connect.Response[v1.UnpublishPageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.UnpublishPage is not implemented"))
+func (UnimplementedAdminPagesServiceHandler) UnpublishPage(context.Context, *v1.UnpublishPageRequest) (*v1.UnpublishPageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.UnpublishPage is not implemented")
 }
 
-func (UnimplementedAdminPagesServiceHandler) RollbackToVersion(context.Context, *connect.Request[v1.RollbackToVersionRequest]) (*connect.Response[v1.RollbackToVersionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.RollbackToVersion is not implemented"))
+func (UnimplementedAdminPagesServiceHandler) RollbackToVersion(context.Context, *v1.RollbackToVersionRequest) (*v1.RollbackToVersionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.RollbackToVersion is not implemented")
 }
 
-func (UnimplementedAdminPagesServiceHandler) CreatePageTranslation(context.Context, *connect.Request[v1.CreatePageTranslationRequest]) (*connect.Response[v1.CreatePageTranslationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.CreatePageTranslation is not implemented"))
+func (UnimplementedAdminPagesServiceHandler) CreatePageTranslation(context.Context, *v1.CreatePageTranslationRequest) (*v1.CreatePageTranslationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.CreatePageTranslation is not implemented")
 }
 
-func (UnimplementedAdminPagesServiceHandler) ListPageTranslations(context.Context, *connect.Request[v1.ListPageTranslationsRequest]) (*connect.Response[v1.ListPageTranslationsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.ListPageTranslations is not implemented"))
+func (UnimplementedAdminPagesServiceHandler) ListPageTranslations(context.Context, *v1.ListPageTranslationsRequest) (*v1.ListPageTranslationsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.ListPageTranslations is not implemented")
 }
 
-func (UnimplementedAdminPagesServiceHandler) DeletePageTranslation(context.Context, *connect.Request[v1.DeletePageTranslationRequest]) (*connect.Response[v1.DeletePageTranslationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminPagesService.DeletePageTranslation is not implemented"))
+func (UnimplementedAdminPagesServiceHandler) DeletePageTranslation(context.Context, *v1.DeletePageTranslationRequest) (*v1.DeletePageTranslationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPagesService.DeletePageTranslation is not implemented")
+}
+
+type adminPagesServiceClient struct {
+	client *connect.Client
+}
+
+func (c *adminPagesServiceClient) CreatePage(ctx context.Context, req *v1.CreatePageRequest) (*v1.CreatePageResponse, error) {
+	var res v1.CreatePageResponse
+	if err := c.client.CallUnary(ctx, adminPagesServiceCreatePageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPagesServiceClient) UpdatePage(ctx context.Context, req *v1.UpdatePageRequest) (*v1.UpdatePageResponse, error) {
+	var res v1.UpdatePageResponse
+	if err := c.client.CallUnary(ctx, adminPagesServiceUpdatePageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPagesServiceClient) ListPages(ctx context.Context, req *v1.ListPagesRequest) (*v1.ListPagesResponse, error) {
+	var res v1.ListPagesResponse
+	if err := c.client.CallUnary(ctx, adminPagesServiceListPagesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPagesServiceClient) GetPage(ctx context.Context, req *v1.GetPageRequest) (*v1.GetPageResponse, error) {
+	var res v1.GetPageResponse
+	if err := c.client.CallUnary(ctx, adminPagesServiceGetPageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPagesServiceClient) CreateVersion(ctx context.Context, req *v1.CreateVersionRequest) (*v1.CreateVersionResponse, error) {
+	var res v1.CreateVersionResponse
+	if err := c.client.CallUnary(ctx, adminPagesServiceCreateVersionSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPagesServiceClient) ListVersions(ctx context.Context, req *v1.ListVersionsRequest) (*v1.ListVersionsResponse, error) {
+	var res v1.ListVersionsResponse
+	if err := c.client.CallUnary(ctx, adminPagesServiceListVersionsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPagesServiceClient) PublishVersion(ctx context.Context, req *v1.PublishVersionRequest) (*v1.PublishVersionResponse, error) {
+	var res v1.PublishVersionResponse
+	if err := c.client.CallUnary(ctx, adminPagesServicePublishVersionSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPagesServiceClient) UnpublishPage(ctx context.Context, req *v1.UnpublishPageRequest) (*v1.UnpublishPageResponse, error) {
+	var res v1.UnpublishPageResponse
+	if err := c.client.CallUnary(ctx, adminPagesServiceUnpublishPageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPagesServiceClient) RollbackToVersion(ctx context.Context, req *v1.RollbackToVersionRequest) (*v1.RollbackToVersionResponse, error) {
+	var res v1.RollbackToVersionResponse
+	if err := c.client.CallUnary(ctx, adminPagesServiceRollbackToVersionSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPagesServiceClient) CreatePageTranslation(ctx context.Context, req *v1.CreatePageTranslationRequest) (*v1.CreatePageTranslationResponse, error) {
+	var res v1.CreatePageTranslationResponse
+	if err := c.client.CallUnary(ctx, adminPagesServiceCreatePageTranslationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPagesServiceClient) ListPageTranslations(ctx context.Context, req *v1.ListPageTranslationsRequest) (*v1.ListPageTranslationsResponse, error) {
+	var res v1.ListPageTranslationsResponse
+	if err := c.client.CallUnary(ctx, adminPagesServiceListPageTranslationsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPagesServiceClient) DeletePageTranslation(ctx context.Context, req *v1.DeletePageTranslationRequest) (*v1.DeletePageTranslationResponse, error) {
+	var res v1.DeletePageTranslationResponse
+	if err := c.client.CallUnary(ctx, adminPagesServiceDeletePageTranslationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type adminPagesServiceHandler struct{ svc AdminPagesServiceHandler }
+
+func (h adminPagesServiceHandler) createPage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreatePageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreatePage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPagesServiceHandler) updatePage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdatePageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdatePage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPagesServiceHandler) listPages(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListPagesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListPages(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPagesServiceHandler) getPage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetPageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetPage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPagesServiceHandler) createVersion(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateVersionRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateVersion(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPagesServiceHandler) listVersions(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListVersionsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListVersions(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPagesServiceHandler) publishVersion(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.PublishVersionRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.PublishVersion(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPagesServiceHandler) unpublishPage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UnpublishPageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UnpublishPage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPagesServiceHandler) rollbackToVersion(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RollbackToVersionRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RollbackToVersion(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPagesServiceHandler) createPageTranslation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreatePageTranslationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreatePageTranslation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPagesServiceHandler) listPageTranslations(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListPageTranslationsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListPageTranslations(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPagesServiceHandler) deletePageTranslation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeletePageTranslationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeletePageTranslation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

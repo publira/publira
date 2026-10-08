@@ -5,20 +5,11 @@
 package publirasplatformv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// PlatformNotificationServiceName is the fully-qualified name of the PlatformNotificationService
@@ -26,178 +17,199 @@ const (
 	PlatformNotificationServiceName = "publira.platform.v1.PlatformNotificationService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// PlatformNotificationServiceListNotificationsProcedure is the fully-qualified name of the
+	// PlatformNotificationServiceListNotificationsProcedure is the procedure name of the
 	// PlatformNotificationService's ListNotifications RPC.
 	PlatformNotificationServiceListNotificationsProcedure = "/publira.platform.v1.PlatformNotificationService/ListNotifications"
-	// PlatformNotificationServiceCountUnreadNotificationsProcedure is the fully-qualified name of the
+	// PlatformNotificationServiceCountUnreadNotificationsProcedure is the procedure name of the
 	// PlatformNotificationService's CountUnreadNotifications RPC.
 	PlatformNotificationServiceCountUnreadNotificationsProcedure = "/publira.platform.v1.PlatformNotificationService/CountUnreadNotifications"
-	// PlatformNotificationServiceMarkNotificationAsReadProcedure is the fully-qualified name of the
+	// PlatformNotificationServiceMarkNotificationAsReadProcedure is the procedure name of the
 	// PlatformNotificationService's MarkNotificationAsRead RPC.
 	PlatformNotificationServiceMarkNotificationAsReadProcedure = "/publira.platform.v1.PlatformNotificationService/MarkNotificationAsRead"
-	// PlatformNotificationServiceMarkAllNotificationsAsReadProcedure is the fully-qualified name of the
+	// PlatformNotificationServiceMarkAllNotificationsAsReadProcedure is the procedure name of the
 	// PlatformNotificationService's MarkAllNotificationsAsRead RPC.
 	PlatformNotificationServiceMarkAllNotificationsAsReadProcedure = "/publira.platform.v1.PlatformNotificationService/MarkAllNotificationsAsRead"
+)
+
+var (
+	platformNotificationServiceListNotificationsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_notification_proto.Services().ByName("PlatformNotificationService").Methods().ByName("ListNotifications"),
+			Procedure:  PlatformNotificationServiceListNotificationsProcedure,
+		}
+	})
+	platformNotificationServiceCountUnreadNotificationsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_notification_proto.Services().ByName("PlatformNotificationService").Methods().ByName("CountUnreadNotifications"),
+			Procedure:  PlatformNotificationServiceCountUnreadNotificationsProcedure,
+		}
+	})
+	platformNotificationServiceMarkNotificationAsReadSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_notification_proto.Services().ByName("PlatformNotificationService").Methods().ByName("MarkNotificationAsRead"),
+			Procedure:  PlatformNotificationServiceMarkNotificationAsReadProcedure,
+		}
+	})
+	platformNotificationServiceMarkAllNotificationsAsReadSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_notification_proto.Services().ByName("PlatformNotificationService").Methods().ByName("MarkAllNotificationsAsRead"),
+			Procedure:  PlatformNotificationServiceMarkAllNotificationsAsReadProcedure,
+		}
+	})
 )
 
 // PlatformNotificationServiceClient is a client for the
 // publira.platform.v1.PlatformNotificationService service.
 type PlatformNotificationServiceClient interface {
-	ListNotifications(context.Context, *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.ListNotificationsResponse], error)
-	CountUnreadNotifications(context.Context, *connect.Request[v1.CountUnreadNotificationsRequest]) (*connect.Response[v1.CountUnreadNotificationsResponse], error)
-	MarkNotificationAsRead(context.Context, *connect.Request[v1.MarkNotificationAsReadRequest]) (*connect.Response[v1.MarkNotificationAsReadResponse], error)
-	MarkAllNotificationsAsRead(context.Context, *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error)
+	ListNotifications(context.Context, *v1.ListNotificationsRequest) (*v1.ListNotificationsResponse, error)
+	CountUnreadNotifications(context.Context, *v1.CountUnreadNotificationsRequest) (*v1.CountUnreadNotificationsResponse, error)
+	MarkNotificationAsRead(context.Context, *v1.MarkNotificationAsReadRequest) (*v1.MarkNotificationAsReadResponse, error)
+	MarkAllNotificationsAsRead(context.Context, *v1.MarkAllNotificationsAsReadRequest) (*v1.MarkAllNotificationsAsReadResponse, error)
 }
 
 // NewPlatformNotificationServiceClient constructs a client for the
-// publira.platform.v1.PlatformNotificationService service. By default, it uses the Connect protocol
-// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
-// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
-// options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewPlatformNotificationServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PlatformNotificationServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	platformNotificationServiceMethods := v1.File_publira_platform_v1_notification_proto.Services().ByName("PlatformNotificationService").Methods()
-	return &platformNotificationServiceClient{
-		listNotifications: connect.NewClient[v1.ListNotificationsRequest, v1.ListNotificationsResponse](
-			httpClient,
-			baseURL+PlatformNotificationServiceListNotificationsProcedure,
-			connect.WithSchema(platformNotificationServiceMethods.ByName("ListNotifications")),
-			connect.WithClientOptions(opts...),
-		),
-		countUnreadNotifications: connect.NewClient[v1.CountUnreadNotificationsRequest, v1.CountUnreadNotificationsResponse](
-			httpClient,
-			baseURL+PlatformNotificationServiceCountUnreadNotificationsProcedure,
-			connect.WithSchema(platformNotificationServiceMethods.ByName("CountUnreadNotifications")),
-			connect.WithClientOptions(opts...),
-		),
-		markNotificationAsRead: connect.NewClient[v1.MarkNotificationAsReadRequest, v1.MarkNotificationAsReadResponse](
-			httpClient,
-			baseURL+PlatformNotificationServiceMarkNotificationAsReadProcedure,
-			connect.WithSchema(platformNotificationServiceMethods.ByName("MarkNotificationAsRead")),
-			connect.WithClientOptions(opts...),
-		),
-		markAllNotificationsAsRead: connect.NewClient[v1.MarkAllNotificationsAsReadRequest, v1.MarkAllNotificationsAsReadResponse](
-			httpClient,
-			baseURL+PlatformNotificationServiceMarkAllNotificationsAsReadProcedure,
-			connect.WithSchema(platformNotificationServiceMethods.ByName("MarkAllNotificationsAsRead")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// platformNotificationServiceClient implements PlatformNotificationServiceClient.
-type platformNotificationServiceClient struct {
-	listNotifications          *connect.Client[v1.ListNotificationsRequest, v1.ListNotificationsResponse]
-	countUnreadNotifications   *connect.Client[v1.CountUnreadNotificationsRequest, v1.CountUnreadNotificationsResponse]
-	markNotificationAsRead     *connect.Client[v1.MarkNotificationAsReadRequest, v1.MarkNotificationAsReadResponse]
-	markAllNotificationsAsRead *connect.Client[v1.MarkAllNotificationsAsReadRequest, v1.MarkAllNotificationsAsReadResponse]
-}
-
-// ListNotifications calls publira.platform.v1.PlatformNotificationService.ListNotifications.
-func (c *platformNotificationServiceClient) ListNotifications(ctx context.Context, req *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.ListNotificationsResponse], error) {
-	return c.listNotifications.CallUnary(ctx, req)
-}
-
-// CountUnreadNotifications calls
-// publira.platform.v1.PlatformNotificationService.CountUnreadNotifications.
-func (c *platformNotificationServiceClient) CountUnreadNotifications(ctx context.Context, req *connect.Request[v1.CountUnreadNotificationsRequest]) (*connect.Response[v1.CountUnreadNotificationsResponse], error) {
-	return c.countUnreadNotifications.CallUnary(ctx, req)
-}
-
-// MarkNotificationAsRead calls
-// publira.platform.v1.PlatformNotificationService.MarkNotificationAsRead.
-func (c *platformNotificationServiceClient) MarkNotificationAsRead(ctx context.Context, req *connect.Request[v1.MarkNotificationAsReadRequest]) (*connect.Response[v1.MarkNotificationAsReadResponse], error) {
-	return c.markNotificationAsRead.CallUnary(ctx, req)
-}
-
-// MarkAllNotificationsAsRead calls
-// publira.platform.v1.PlatformNotificationService.MarkAllNotificationsAsRead.
-func (c *platformNotificationServiceClient) MarkAllNotificationsAsRead(ctx context.Context, req *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error) {
-	return c.markAllNotificationsAsRead.CallUnary(ctx, req)
+// publira.platform.v1.PlatformNotificationService service. Multiple service clients may share a
+// single connect.Client.
+func NewPlatformNotificationServiceClient(client *connect.Client) PlatformNotificationServiceClient {
+	return &platformNotificationServiceClient{client: client}
 }
 
 // PlatformNotificationServiceHandler is an implementation of the
 // publira.platform.v1.PlatformNotificationService service.
 type PlatformNotificationServiceHandler interface {
-	ListNotifications(context.Context, *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.ListNotificationsResponse], error)
-	CountUnreadNotifications(context.Context, *connect.Request[v1.CountUnreadNotificationsRequest]) (*connect.Response[v1.CountUnreadNotificationsResponse], error)
-	MarkNotificationAsRead(context.Context, *connect.Request[v1.MarkNotificationAsReadRequest]) (*connect.Response[v1.MarkNotificationAsReadResponse], error)
-	MarkAllNotificationsAsRead(context.Context, *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error)
+	ListNotifications(context.Context, *v1.ListNotificationsRequest) (*v1.ListNotificationsResponse, error)
+	CountUnreadNotifications(context.Context, *v1.CountUnreadNotificationsRequest) (*v1.CountUnreadNotificationsResponse, error)
+	MarkNotificationAsRead(context.Context, *v1.MarkNotificationAsReadRequest) (*v1.MarkNotificationAsReadResponse, error)
+	MarkAllNotificationsAsRead(context.Context, *v1.MarkAllNotificationsAsReadRequest) (*v1.MarkAllNotificationsAsReadResponse, error)
 }
 
-// NewPlatformNotificationServiceHandler builds an HTTP handler from the service implementation. It
-// returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewPlatformNotificationServiceHandler(svc PlatformNotificationServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	platformNotificationServiceMethods := v1.File_publira_platform_v1_notification_proto.Services().ByName("PlatformNotificationService").Methods()
-	platformNotificationServiceListNotificationsHandler := connect.NewUnaryHandler(
-		PlatformNotificationServiceListNotificationsProcedure,
-		svc.ListNotifications,
-		connect.WithSchema(platformNotificationServiceMethods.ByName("ListNotifications")),
-		connect.WithHandlerOptions(opts...),
+// RegisterPlatformNotificationServiceHandler registers svc as the
+// publira.platform.v1.PlatformNotificationService implementation on server.
+func RegisterPlatformNotificationServiceHandler(server *connect.Server, svc PlatformNotificationServiceHandler) {
+	adapter := platformNotificationServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: platformNotificationServiceListNotificationsSpec(), Handler: adapter.listNotifications},
+		connect.Method{Spec: platformNotificationServiceCountUnreadNotificationsSpec(), Handler: adapter.countUnreadNotifications},
+		connect.Method{Spec: platformNotificationServiceMarkNotificationAsReadSpec(), Handler: adapter.markNotificationAsRead},
+		connect.Method{Spec: platformNotificationServiceMarkAllNotificationsAsReadSpec(), Handler: adapter.markAllNotificationsAsRead},
 	)
-	platformNotificationServiceCountUnreadNotificationsHandler := connect.NewUnaryHandler(
-		PlatformNotificationServiceCountUnreadNotificationsProcedure,
-		svc.CountUnreadNotifications,
-		connect.WithSchema(platformNotificationServiceMethods.ByName("CountUnreadNotifications")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformNotificationServiceMarkNotificationAsReadHandler := connect.NewUnaryHandler(
-		PlatformNotificationServiceMarkNotificationAsReadProcedure,
-		svc.MarkNotificationAsRead,
-		connect.WithSchema(platformNotificationServiceMethods.ByName("MarkNotificationAsRead")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformNotificationServiceMarkAllNotificationsAsReadHandler := connect.NewUnaryHandler(
-		PlatformNotificationServiceMarkAllNotificationsAsReadProcedure,
-		svc.MarkAllNotificationsAsRead,
-		connect.WithSchema(platformNotificationServiceMethods.ByName("MarkAllNotificationsAsRead")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.platform.v1.PlatformNotificationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case PlatformNotificationServiceListNotificationsProcedure:
-			platformNotificationServiceListNotificationsHandler.ServeHTTP(w, r)
-		case PlatformNotificationServiceCountUnreadNotificationsProcedure:
-			platformNotificationServiceCountUnreadNotificationsHandler.ServeHTTP(w, r)
-		case PlatformNotificationServiceMarkNotificationAsReadProcedure:
-			platformNotificationServiceMarkNotificationAsReadHandler.ServeHTTP(w, r)
-		case PlatformNotificationServiceMarkAllNotificationsAsReadProcedure:
-			platformNotificationServiceMarkAllNotificationsAsReadHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedPlatformNotificationServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedPlatformNotificationServiceHandler struct{}
 
-func (UnimplementedPlatformNotificationServiceHandler) ListNotifications(context.Context, *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.ListNotificationsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformNotificationService.ListNotifications is not implemented"))
+func (UnimplementedPlatformNotificationServiceHandler) ListNotifications(context.Context, *v1.ListNotificationsRequest) (*v1.ListNotificationsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformNotificationService.ListNotifications is not implemented")
 }
 
-func (UnimplementedPlatformNotificationServiceHandler) CountUnreadNotifications(context.Context, *connect.Request[v1.CountUnreadNotificationsRequest]) (*connect.Response[v1.CountUnreadNotificationsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformNotificationService.CountUnreadNotifications is not implemented"))
+func (UnimplementedPlatformNotificationServiceHandler) CountUnreadNotifications(context.Context, *v1.CountUnreadNotificationsRequest) (*v1.CountUnreadNotificationsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformNotificationService.CountUnreadNotifications is not implemented")
 }
 
-func (UnimplementedPlatformNotificationServiceHandler) MarkNotificationAsRead(context.Context, *connect.Request[v1.MarkNotificationAsReadRequest]) (*connect.Response[v1.MarkNotificationAsReadResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformNotificationService.MarkNotificationAsRead is not implemented"))
+func (UnimplementedPlatformNotificationServiceHandler) MarkNotificationAsRead(context.Context, *v1.MarkNotificationAsReadRequest) (*v1.MarkNotificationAsReadResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformNotificationService.MarkNotificationAsRead is not implemented")
 }
 
-func (UnimplementedPlatformNotificationServiceHandler) MarkAllNotificationsAsRead(context.Context, *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformNotificationService.MarkAllNotificationsAsRead is not implemented"))
+func (UnimplementedPlatformNotificationServiceHandler) MarkAllNotificationsAsRead(context.Context, *v1.MarkAllNotificationsAsReadRequest) (*v1.MarkAllNotificationsAsReadResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformNotificationService.MarkAllNotificationsAsRead is not implemented")
+}
+
+type platformNotificationServiceClient struct {
+	client *connect.Client
+}
+
+func (c *platformNotificationServiceClient) ListNotifications(ctx context.Context, req *v1.ListNotificationsRequest) (*v1.ListNotificationsResponse, error) {
+	var res v1.ListNotificationsResponse
+	if err := c.client.CallUnary(ctx, platformNotificationServiceListNotificationsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformNotificationServiceClient) CountUnreadNotifications(ctx context.Context, req *v1.CountUnreadNotificationsRequest) (*v1.CountUnreadNotificationsResponse, error) {
+	var res v1.CountUnreadNotificationsResponse
+	if err := c.client.CallUnary(ctx, platformNotificationServiceCountUnreadNotificationsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformNotificationServiceClient) MarkNotificationAsRead(ctx context.Context, req *v1.MarkNotificationAsReadRequest) (*v1.MarkNotificationAsReadResponse, error) {
+	var res v1.MarkNotificationAsReadResponse
+	if err := c.client.CallUnary(ctx, platformNotificationServiceMarkNotificationAsReadSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformNotificationServiceClient) MarkAllNotificationsAsRead(ctx context.Context, req *v1.MarkAllNotificationsAsReadRequest) (*v1.MarkAllNotificationsAsReadResponse, error) {
+	var res v1.MarkAllNotificationsAsReadResponse
+	if err := c.client.CallUnary(ctx, platformNotificationServiceMarkAllNotificationsAsReadSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type platformNotificationServiceHandler struct {
+	svc PlatformNotificationServiceHandler
+}
+
+func (h platformNotificationServiceHandler) listNotifications(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListNotificationsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListNotifications(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformNotificationServiceHandler) countUnreadNotifications(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CountUnreadNotificationsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CountUnreadNotifications(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformNotificationServiceHandler) markNotificationAsRead(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.MarkNotificationAsReadRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.MarkNotificationAsRead(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformNotificationServiceHandler) markAllNotificationsAsRead(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.MarkAllNotificationsAsReadRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.MarkAllNotificationsAsRead(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

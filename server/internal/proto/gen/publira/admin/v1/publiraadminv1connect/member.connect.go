@@ -5,330 +5,374 @@
 package publiraadminv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AdminTenantMemberServiceName is the fully-qualified name of the AdminTenantMemberService service.
 	AdminTenantMemberServiceName = "publira.admin.v1.AdminTenantMemberService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AdminTenantMemberServiceListTenantMembersProcedure is the fully-qualified name of the
+	// AdminTenantMemberServiceListTenantMembersProcedure is the procedure name of the
 	// AdminTenantMemberService's ListTenantMembers RPC.
 	AdminTenantMemberServiceListTenantMembersProcedure = "/publira.admin.v1.AdminTenantMemberService/ListTenantMembers"
-	// AdminTenantMemberServiceAddTenantMemberProcedure is the fully-qualified name of the
+	// AdminTenantMemberServiceAddTenantMemberProcedure is the procedure name of the
 	// AdminTenantMemberService's AddTenantMember RPC.
 	AdminTenantMemberServiceAddTenantMemberProcedure = "/publira.admin.v1.AdminTenantMemberService/AddTenantMember"
-	// AdminTenantMemberServiceUpdateTenantMemberRoleProcedure is the fully-qualified name of the
+	// AdminTenantMemberServiceUpdateTenantMemberRoleProcedure is the procedure name of the
 	// AdminTenantMemberService's UpdateTenantMemberRole RPC.
 	AdminTenantMemberServiceUpdateTenantMemberRoleProcedure = "/publira.admin.v1.AdminTenantMemberService/UpdateTenantMemberRole"
-	// AdminTenantMemberServiceRemoveTenantMemberProcedure is the fully-qualified name of the
+	// AdminTenantMemberServiceRemoveTenantMemberProcedure is the procedure name of the
 	// AdminTenantMemberService's RemoveTenantMember RPC.
 	AdminTenantMemberServiceRemoveTenantMemberProcedure = "/publira.admin.v1.AdminTenantMemberService/RemoveTenantMember"
-	// AdminTenantMemberServiceListTenantAdminInvitationsProcedure is the fully-qualified name of the
+	// AdminTenantMemberServiceListTenantAdminInvitationsProcedure is the procedure name of the
 	// AdminTenantMemberService's ListTenantAdminInvitations RPC.
 	AdminTenantMemberServiceListTenantAdminInvitationsProcedure = "/publira.admin.v1.AdminTenantMemberService/ListTenantAdminInvitations"
-	// AdminTenantMemberServiceCreateTenantAdminInvitationProcedure is the fully-qualified name of the
+	// AdminTenantMemberServiceCreateTenantAdminInvitationProcedure is the procedure name of the
 	// AdminTenantMemberService's CreateTenantAdminInvitation RPC.
 	AdminTenantMemberServiceCreateTenantAdminInvitationProcedure = "/publira.admin.v1.AdminTenantMemberService/CreateTenantAdminInvitation"
-	// AdminTenantMemberServiceResendTenantAdminInvitationProcedure is the fully-qualified name of the
+	// AdminTenantMemberServiceResendTenantAdminInvitationProcedure is the procedure name of the
 	// AdminTenantMemberService's ResendTenantAdminInvitation RPC.
 	AdminTenantMemberServiceResendTenantAdminInvitationProcedure = "/publira.admin.v1.AdminTenantMemberService/ResendTenantAdminInvitation"
-	// AdminTenantMemberServiceCancelTenantAdminInvitationProcedure is the fully-qualified name of the
+	// AdminTenantMemberServiceCancelTenantAdminInvitationProcedure is the procedure name of the
 	// AdminTenantMemberService's CancelTenantAdminInvitation RPC.
 	AdminTenantMemberServiceCancelTenantAdminInvitationProcedure = "/publira.admin.v1.AdminTenantMemberService/CancelTenantAdminInvitation"
+)
+
+var (
+	adminTenantMemberServiceListTenantMembersSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_member_proto.Services().ByName("AdminTenantMemberService").Methods().ByName("ListTenantMembers"),
+			Procedure:  AdminTenantMemberServiceListTenantMembersProcedure,
+		}
+	})
+	adminTenantMemberServiceAddTenantMemberSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_member_proto.Services().ByName("AdminTenantMemberService").Methods().ByName("AddTenantMember"),
+			Procedure:  AdminTenantMemberServiceAddTenantMemberProcedure,
+		}
+	})
+	adminTenantMemberServiceUpdateTenantMemberRoleSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_member_proto.Services().ByName("AdminTenantMemberService").Methods().ByName("UpdateTenantMemberRole"),
+			Procedure:  AdminTenantMemberServiceUpdateTenantMemberRoleProcedure,
+		}
+	})
+	adminTenantMemberServiceRemoveTenantMemberSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_member_proto.Services().ByName("AdminTenantMemberService").Methods().ByName("RemoveTenantMember"),
+			Procedure:  AdminTenantMemberServiceRemoveTenantMemberProcedure,
+		}
+	})
+	adminTenantMemberServiceListTenantAdminInvitationsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_member_proto.Services().ByName("AdminTenantMemberService").Methods().ByName("ListTenantAdminInvitations"),
+			Procedure:  AdminTenantMemberServiceListTenantAdminInvitationsProcedure,
+		}
+	})
+	adminTenantMemberServiceCreateTenantAdminInvitationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_member_proto.Services().ByName("AdminTenantMemberService").Methods().ByName("CreateTenantAdminInvitation"),
+			Procedure:  AdminTenantMemberServiceCreateTenantAdminInvitationProcedure,
+		}
+	})
+	adminTenantMemberServiceResendTenantAdminInvitationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_member_proto.Services().ByName("AdminTenantMemberService").Methods().ByName("ResendTenantAdminInvitation"),
+			Procedure:  AdminTenantMemberServiceResendTenantAdminInvitationProcedure,
+		}
+	})
+	adminTenantMemberServiceCancelTenantAdminInvitationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_member_proto.Services().ByName("AdminTenantMemberService").Methods().ByName("CancelTenantAdminInvitation"),
+			Procedure:  AdminTenantMemberServiceCancelTenantAdminInvitationProcedure,
+		}
+	})
 )
 
 // AdminTenantMemberServiceClient is a client for the publira.admin.v1.AdminTenantMemberService
 // service.
 type AdminTenantMemberServiceClient interface {
 	// Minimum role: tenant_admin.
-	ListTenantMembers(context.Context, *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error)
+	ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error)
 	// Minimum role: tenant_admin.
-	AddTenantMember(context.Context, *connect.Request[v1.AddTenantMemberRequest]) (*connect.Response[v1.AddTenantMemberResponse], error)
+	AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantMemberRole(context.Context, *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error)
+	UpdateTenantMemberRole(context.Context, *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error)
 	// Minimum role: tenant_admin.
-	RemoveTenantMember(context.Context, *connect.Request[v1.RemoveTenantMemberRequest]) (*connect.Response[v1.RemoveTenantMemberResponse], error)
+	RemoveTenantMember(context.Context, *v1.RemoveTenantMemberRequest) (*v1.RemoveTenantMemberResponse, error)
 	// Minimum role: tenant_admin.
-	ListTenantAdminInvitations(context.Context, *connect.Request[v1.ListTenantAdminInvitationsRequest]) (*connect.Response[v1.ListTenantAdminInvitationsResponse], error)
+	ListTenantAdminInvitations(context.Context, *v1.ListTenantAdminInvitationsRequest) (*v1.ListTenantAdminInvitationsResponse, error)
 	// Minimum role: tenant_admin.
-	CreateTenantAdminInvitation(context.Context, *connect.Request[v1.CreateTenantAdminInvitationRequest]) (*connect.Response[v1.CreateTenantAdminInvitationResponse], error)
+	CreateTenantAdminInvitation(context.Context, *v1.CreateTenantAdminInvitationRequest) (*v1.CreateTenantAdminInvitationResponse, error)
 	// Minimum role: tenant_admin.
-	ResendTenantAdminInvitation(context.Context, *connect.Request[v1.ResendTenantAdminInvitationRequest]) (*connect.Response[v1.ResendTenantAdminInvitationResponse], error)
+	ResendTenantAdminInvitation(context.Context, *v1.ResendTenantAdminInvitationRequest) (*v1.ResendTenantAdminInvitationResponse, error)
 	// Minimum role: tenant_admin.
-	CancelTenantAdminInvitation(context.Context, *connect.Request[v1.CancelTenantAdminInvitationRequest]) (*connect.Response[v1.CancelTenantAdminInvitationResponse], error)
+	CancelTenantAdminInvitation(context.Context, *v1.CancelTenantAdminInvitationRequest) (*v1.CancelTenantAdminInvitationResponse, error)
 }
 
 // NewAdminTenantMemberServiceClient constructs a client for the
-// publira.admin.v1.AdminTenantMemberService service. By default, it uses the Connect protocol with
-// the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To use
-// the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewAdminTenantMemberServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdminTenantMemberServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	adminTenantMemberServiceMethods := v1.File_publira_admin_v1_member_proto.Services().ByName("AdminTenantMemberService").Methods()
-	return &adminTenantMemberServiceClient{
-		listTenantMembers: connect.NewClient[v1.ListTenantMembersRequest, v1.ListTenantMembersResponse](
-			httpClient,
-			baseURL+AdminTenantMemberServiceListTenantMembersProcedure,
-			connect.WithSchema(adminTenantMemberServiceMethods.ByName("ListTenantMembers")),
-			connect.WithClientOptions(opts...),
-		),
-		addTenantMember: connect.NewClient[v1.AddTenantMemberRequest, v1.AddTenantMemberResponse](
-			httpClient,
-			baseURL+AdminTenantMemberServiceAddTenantMemberProcedure,
-			connect.WithSchema(adminTenantMemberServiceMethods.ByName("AddTenantMember")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantMemberRole: connect.NewClient[v1.UpdateTenantMemberRoleRequest, v1.UpdateTenantMemberRoleResponse](
-			httpClient,
-			baseURL+AdminTenantMemberServiceUpdateTenantMemberRoleProcedure,
-			connect.WithSchema(adminTenantMemberServiceMethods.ByName("UpdateTenantMemberRole")),
-			connect.WithClientOptions(opts...),
-		),
-		removeTenantMember: connect.NewClient[v1.RemoveTenantMemberRequest, v1.RemoveTenantMemberResponse](
-			httpClient,
-			baseURL+AdminTenantMemberServiceRemoveTenantMemberProcedure,
-			connect.WithSchema(adminTenantMemberServiceMethods.ByName("RemoveTenantMember")),
-			connect.WithClientOptions(opts...),
-		),
-		listTenantAdminInvitations: connect.NewClient[v1.ListTenantAdminInvitationsRequest, v1.ListTenantAdminInvitationsResponse](
-			httpClient,
-			baseURL+AdminTenantMemberServiceListTenantAdminInvitationsProcedure,
-			connect.WithSchema(adminTenantMemberServiceMethods.ByName("ListTenantAdminInvitations")),
-			connect.WithClientOptions(opts...),
-		),
-		createTenantAdminInvitation: connect.NewClient[v1.CreateTenantAdminInvitationRequest, v1.CreateTenantAdminInvitationResponse](
-			httpClient,
-			baseURL+AdminTenantMemberServiceCreateTenantAdminInvitationProcedure,
-			connect.WithSchema(adminTenantMemberServiceMethods.ByName("CreateTenantAdminInvitation")),
-			connect.WithClientOptions(opts...),
-		),
-		resendTenantAdminInvitation: connect.NewClient[v1.ResendTenantAdminInvitationRequest, v1.ResendTenantAdminInvitationResponse](
-			httpClient,
-			baseURL+AdminTenantMemberServiceResendTenantAdminInvitationProcedure,
-			connect.WithSchema(adminTenantMemberServiceMethods.ByName("ResendTenantAdminInvitation")),
-			connect.WithClientOptions(opts...),
-		),
-		cancelTenantAdminInvitation: connect.NewClient[v1.CancelTenantAdminInvitationRequest, v1.CancelTenantAdminInvitationResponse](
-			httpClient,
-			baseURL+AdminTenantMemberServiceCancelTenantAdminInvitationProcedure,
-			connect.WithSchema(adminTenantMemberServiceMethods.ByName("CancelTenantAdminInvitation")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// adminTenantMemberServiceClient implements AdminTenantMemberServiceClient.
-type adminTenantMemberServiceClient struct {
-	listTenantMembers           *connect.Client[v1.ListTenantMembersRequest, v1.ListTenantMembersResponse]
-	addTenantMember             *connect.Client[v1.AddTenantMemberRequest, v1.AddTenantMemberResponse]
-	updateTenantMemberRole      *connect.Client[v1.UpdateTenantMemberRoleRequest, v1.UpdateTenantMemberRoleResponse]
-	removeTenantMember          *connect.Client[v1.RemoveTenantMemberRequest, v1.RemoveTenantMemberResponse]
-	listTenantAdminInvitations  *connect.Client[v1.ListTenantAdminInvitationsRequest, v1.ListTenantAdminInvitationsResponse]
-	createTenantAdminInvitation *connect.Client[v1.CreateTenantAdminInvitationRequest, v1.CreateTenantAdminInvitationResponse]
-	resendTenantAdminInvitation *connect.Client[v1.ResendTenantAdminInvitationRequest, v1.ResendTenantAdminInvitationResponse]
-	cancelTenantAdminInvitation *connect.Client[v1.CancelTenantAdminInvitationRequest, v1.CancelTenantAdminInvitationResponse]
-}
-
-// ListTenantMembers calls publira.admin.v1.AdminTenantMemberService.ListTenantMembers.
-func (c *adminTenantMemberServiceClient) ListTenantMembers(ctx context.Context, req *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error) {
-	return c.listTenantMembers.CallUnary(ctx, req)
-}
-
-// AddTenantMember calls publira.admin.v1.AdminTenantMemberService.AddTenantMember.
-func (c *adminTenantMemberServiceClient) AddTenantMember(ctx context.Context, req *connect.Request[v1.AddTenantMemberRequest]) (*connect.Response[v1.AddTenantMemberResponse], error) {
-	return c.addTenantMember.CallUnary(ctx, req)
-}
-
-// UpdateTenantMemberRole calls publira.admin.v1.AdminTenantMemberService.UpdateTenantMemberRole.
-func (c *adminTenantMemberServiceClient) UpdateTenantMemberRole(ctx context.Context, req *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error) {
-	return c.updateTenantMemberRole.CallUnary(ctx, req)
-}
-
-// RemoveTenantMember calls publira.admin.v1.AdminTenantMemberService.RemoveTenantMember.
-func (c *adminTenantMemberServiceClient) RemoveTenantMember(ctx context.Context, req *connect.Request[v1.RemoveTenantMemberRequest]) (*connect.Response[v1.RemoveTenantMemberResponse], error) {
-	return c.removeTenantMember.CallUnary(ctx, req)
-}
-
-// ListTenantAdminInvitations calls
-// publira.admin.v1.AdminTenantMemberService.ListTenantAdminInvitations.
-func (c *adminTenantMemberServiceClient) ListTenantAdminInvitations(ctx context.Context, req *connect.Request[v1.ListTenantAdminInvitationsRequest]) (*connect.Response[v1.ListTenantAdminInvitationsResponse], error) {
-	return c.listTenantAdminInvitations.CallUnary(ctx, req)
-}
-
-// CreateTenantAdminInvitation calls
-// publira.admin.v1.AdminTenantMemberService.CreateTenantAdminInvitation.
-func (c *adminTenantMemberServiceClient) CreateTenantAdminInvitation(ctx context.Context, req *connect.Request[v1.CreateTenantAdminInvitationRequest]) (*connect.Response[v1.CreateTenantAdminInvitationResponse], error) {
-	return c.createTenantAdminInvitation.CallUnary(ctx, req)
-}
-
-// ResendTenantAdminInvitation calls
-// publira.admin.v1.AdminTenantMemberService.ResendTenantAdminInvitation.
-func (c *adminTenantMemberServiceClient) ResendTenantAdminInvitation(ctx context.Context, req *connect.Request[v1.ResendTenantAdminInvitationRequest]) (*connect.Response[v1.ResendTenantAdminInvitationResponse], error) {
-	return c.resendTenantAdminInvitation.CallUnary(ctx, req)
-}
-
-// CancelTenantAdminInvitation calls
-// publira.admin.v1.AdminTenantMemberService.CancelTenantAdminInvitation.
-func (c *adminTenantMemberServiceClient) CancelTenantAdminInvitation(ctx context.Context, req *connect.Request[v1.CancelTenantAdminInvitationRequest]) (*connect.Response[v1.CancelTenantAdminInvitationResponse], error) {
-	return c.cancelTenantAdminInvitation.CallUnary(ctx, req)
+// publira.admin.v1.AdminTenantMemberService service. Multiple service clients may share a single
+// connect.Client.
+func NewAdminTenantMemberServiceClient(client *connect.Client) AdminTenantMemberServiceClient {
+	return &adminTenantMemberServiceClient{client: client}
 }
 
 // AdminTenantMemberServiceHandler is an implementation of the
 // publira.admin.v1.AdminTenantMemberService service.
 type AdminTenantMemberServiceHandler interface {
 	// Minimum role: tenant_admin.
-	ListTenantMembers(context.Context, *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error)
+	ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error)
 	// Minimum role: tenant_admin.
-	AddTenantMember(context.Context, *connect.Request[v1.AddTenantMemberRequest]) (*connect.Response[v1.AddTenantMemberResponse], error)
+	AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantMemberRole(context.Context, *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error)
+	UpdateTenantMemberRole(context.Context, *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error)
 	// Minimum role: tenant_admin.
-	RemoveTenantMember(context.Context, *connect.Request[v1.RemoveTenantMemberRequest]) (*connect.Response[v1.RemoveTenantMemberResponse], error)
+	RemoveTenantMember(context.Context, *v1.RemoveTenantMemberRequest) (*v1.RemoveTenantMemberResponse, error)
 	// Minimum role: tenant_admin.
-	ListTenantAdminInvitations(context.Context, *connect.Request[v1.ListTenantAdminInvitationsRequest]) (*connect.Response[v1.ListTenantAdminInvitationsResponse], error)
+	ListTenantAdminInvitations(context.Context, *v1.ListTenantAdminInvitationsRequest) (*v1.ListTenantAdminInvitationsResponse, error)
 	// Minimum role: tenant_admin.
-	CreateTenantAdminInvitation(context.Context, *connect.Request[v1.CreateTenantAdminInvitationRequest]) (*connect.Response[v1.CreateTenantAdminInvitationResponse], error)
+	CreateTenantAdminInvitation(context.Context, *v1.CreateTenantAdminInvitationRequest) (*v1.CreateTenantAdminInvitationResponse, error)
 	// Minimum role: tenant_admin.
-	ResendTenantAdminInvitation(context.Context, *connect.Request[v1.ResendTenantAdminInvitationRequest]) (*connect.Response[v1.ResendTenantAdminInvitationResponse], error)
+	ResendTenantAdminInvitation(context.Context, *v1.ResendTenantAdminInvitationRequest) (*v1.ResendTenantAdminInvitationResponse, error)
 	// Minimum role: tenant_admin.
-	CancelTenantAdminInvitation(context.Context, *connect.Request[v1.CancelTenantAdminInvitationRequest]) (*connect.Response[v1.CancelTenantAdminInvitationResponse], error)
+	CancelTenantAdminInvitation(context.Context, *v1.CancelTenantAdminInvitationRequest) (*v1.CancelTenantAdminInvitationResponse, error)
 }
 
-// NewAdminTenantMemberServiceHandler builds an HTTP handler from the service implementation. It
-// returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewAdminTenantMemberServiceHandler(svc AdminTenantMemberServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	adminTenantMemberServiceMethods := v1.File_publira_admin_v1_member_proto.Services().ByName("AdminTenantMemberService").Methods()
-	adminTenantMemberServiceListTenantMembersHandler := connect.NewUnaryHandler(
-		AdminTenantMemberServiceListTenantMembersProcedure,
-		svc.ListTenantMembers,
-		connect.WithSchema(adminTenantMemberServiceMethods.ByName("ListTenantMembers")),
-		connect.WithHandlerOptions(opts...),
+// RegisterAdminTenantMemberServiceHandler registers svc as the
+// publira.admin.v1.AdminTenantMemberService implementation on server.
+func RegisterAdminTenantMemberServiceHandler(server *connect.Server, svc AdminTenantMemberServiceHandler) {
+	adapter := adminTenantMemberServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: adminTenantMemberServiceListTenantMembersSpec(), Handler: adapter.listTenantMembers},
+		connect.Method{Spec: adminTenantMemberServiceAddTenantMemberSpec(), Handler: adapter.addTenantMember},
+		connect.Method{Spec: adminTenantMemberServiceUpdateTenantMemberRoleSpec(), Handler: adapter.updateTenantMemberRole},
+		connect.Method{Spec: adminTenantMemberServiceRemoveTenantMemberSpec(), Handler: adapter.removeTenantMember},
+		connect.Method{Spec: adminTenantMemberServiceListTenantAdminInvitationsSpec(), Handler: adapter.listTenantAdminInvitations},
+		connect.Method{Spec: adminTenantMemberServiceCreateTenantAdminInvitationSpec(), Handler: adapter.createTenantAdminInvitation},
+		connect.Method{Spec: adminTenantMemberServiceResendTenantAdminInvitationSpec(), Handler: adapter.resendTenantAdminInvitation},
+		connect.Method{Spec: adminTenantMemberServiceCancelTenantAdminInvitationSpec(), Handler: adapter.cancelTenantAdminInvitation},
 	)
-	adminTenantMemberServiceAddTenantMemberHandler := connect.NewUnaryHandler(
-		AdminTenantMemberServiceAddTenantMemberProcedure,
-		svc.AddTenantMember,
-		connect.WithSchema(adminTenantMemberServiceMethods.ByName("AddTenantMember")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminTenantMemberServiceUpdateTenantMemberRoleHandler := connect.NewUnaryHandler(
-		AdminTenantMemberServiceUpdateTenantMemberRoleProcedure,
-		svc.UpdateTenantMemberRole,
-		connect.WithSchema(adminTenantMemberServiceMethods.ByName("UpdateTenantMemberRole")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminTenantMemberServiceRemoveTenantMemberHandler := connect.NewUnaryHandler(
-		AdminTenantMemberServiceRemoveTenantMemberProcedure,
-		svc.RemoveTenantMember,
-		connect.WithSchema(adminTenantMemberServiceMethods.ByName("RemoveTenantMember")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminTenantMemberServiceListTenantAdminInvitationsHandler := connect.NewUnaryHandler(
-		AdminTenantMemberServiceListTenantAdminInvitationsProcedure,
-		svc.ListTenantAdminInvitations,
-		connect.WithSchema(adminTenantMemberServiceMethods.ByName("ListTenantAdminInvitations")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminTenantMemberServiceCreateTenantAdminInvitationHandler := connect.NewUnaryHandler(
-		AdminTenantMemberServiceCreateTenantAdminInvitationProcedure,
-		svc.CreateTenantAdminInvitation,
-		connect.WithSchema(adminTenantMemberServiceMethods.ByName("CreateTenantAdminInvitation")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminTenantMemberServiceResendTenantAdminInvitationHandler := connect.NewUnaryHandler(
-		AdminTenantMemberServiceResendTenantAdminInvitationProcedure,
-		svc.ResendTenantAdminInvitation,
-		connect.WithSchema(adminTenantMemberServiceMethods.ByName("ResendTenantAdminInvitation")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminTenantMemberServiceCancelTenantAdminInvitationHandler := connect.NewUnaryHandler(
-		AdminTenantMemberServiceCancelTenantAdminInvitationProcedure,
-		svc.CancelTenantAdminInvitation,
-		connect.WithSchema(adminTenantMemberServiceMethods.ByName("CancelTenantAdminInvitation")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.admin.v1.AdminTenantMemberService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case AdminTenantMemberServiceListTenantMembersProcedure:
-			adminTenantMemberServiceListTenantMembersHandler.ServeHTTP(w, r)
-		case AdminTenantMemberServiceAddTenantMemberProcedure:
-			adminTenantMemberServiceAddTenantMemberHandler.ServeHTTP(w, r)
-		case AdminTenantMemberServiceUpdateTenantMemberRoleProcedure:
-			adminTenantMemberServiceUpdateTenantMemberRoleHandler.ServeHTTP(w, r)
-		case AdminTenantMemberServiceRemoveTenantMemberProcedure:
-			adminTenantMemberServiceRemoveTenantMemberHandler.ServeHTTP(w, r)
-		case AdminTenantMemberServiceListTenantAdminInvitationsProcedure:
-			adminTenantMemberServiceListTenantAdminInvitationsHandler.ServeHTTP(w, r)
-		case AdminTenantMemberServiceCreateTenantAdminInvitationProcedure:
-			adminTenantMemberServiceCreateTenantAdminInvitationHandler.ServeHTTP(w, r)
-		case AdminTenantMemberServiceResendTenantAdminInvitationProcedure:
-			adminTenantMemberServiceResendTenantAdminInvitationHandler.ServeHTTP(w, r)
-		case AdminTenantMemberServiceCancelTenantAdminInvitationProcedure:
-			adminTenantMemberServiceCancelTenantAdminInvitationHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedAdminTenantMemberServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminTenantMemberServiceHandler struct{}
 
-func (UnimplementedAdminTenantMemberServiceHandler) ListTenantMembers(context.Context, *connect.Request[v1.ListTenantMembersRequest]) (*connect.Response[v1.ListTenantMembersResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminTenantMemberService.ListTenantMembers is not implemented"))
+func (UnimplementedAdminTenantMemberServiceHandler) ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminTenantMemberService.ListTenantMembers is not implemented")
 }
 
-func (UnimplementedAdminTenantMemberServiceHandler) AddTenantMember(context.Context, *connect.Request[v1.AddTenantMemberRequest]) (*connect.Response[v1.AddTenantMemberResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminTenantMemberService.AddTenantMember is not implemented"))
+func (UnimplementedAdminTenantMemberServiceHandler) AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminTenantMemberService.AddTenantMember is not implemented")
 }
 
-func (UnimplementedAdminTenantMemberServiceHandler) UpdateTenantMemberRole(context.Context, *connect.Request[v1.UpdateTenantMemberRoleRequest]) (*connect.Response[v1.UpdateTenantMemberRoleResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminTenantMemberService.UpdateTenantMemberRole is not implemented"))
+func (UnimplementedAdminTenantMemberServiceHandler) UpdateTenantMemberRole(context.Context, *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminTenantMemberService.UpdateTenantMemberRole is not implemented")
 }
 
-func (UnimplementedAdminTenantMemberServiceHandler) RemoveTenantMember(context.Context, *connect.Request[v1.RemoveTenantMemberRequest]) (*connect.Response[v1.RemoveTenantMemberResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminTenantMemberService.RemoveTenantMember is not implemented"))
+func (UnimplementedAdminTenantMemberServiceHandler) RemoveTenantMember(context.Context, *v1.RemoveTenantMemberRequest) (*v1.RemoveTenantMemberResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminTenantMemberService.RemoveTenantMember is not implemented")
 }
 
-func (UnimplementedAdminTenantMemberServiceHandler) ListTenantAdminInvitations(context.Context, *connect.Request[v1.ListTenantAdminInvitationsRequest]) (*connect.Response[v1.ListTenantAdminInvitationsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminTenantMemberService.ListTenantAdminInvitations is not implemented"))
+func (UnimplementedAdminTenantMemberServiceHandler) ListTenantAdminInvitations(context.Context, *v1.ListTenantAdminInvitationsRequest) (*v1.ListTenantAdminInvitationsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminTenantMemberService.ListTenantAdminInvitations is not implemented")
 }
 
-func (UnimplementedAdminTenantMemberServiceHandler) CreateTenantAdminInvitation(context.Context, *connect.Request[v1.CreateTenantAdminInvitationRequest]) (*connect.Response[v1.CreateTenantAdminInvitationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminTenantMemberService.CreateTenantAdminInvitation is not implemented"))
+func (UnimplementedAdminTenantMemberServiceHandler) CreateTenantAdminInvitation(context.Context, *v1.CreateTenantAdminInvitationRequest) (*v1.CreateTenantAdminInvitationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminTenantMemberService.CreateTenantAdminInvitation is not implemented")
 }
 
-func (UnimplementedAdminTenantMemberServiceHandler) ResendTenantAdminInvitation(context.Context, *connect.Request[v1.ResendTenantAdminInvitationRequest]) (*connect.Response[v1.ResendTenantAdminInvitationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminTenantMemberService.ResendTenantAdminInvitation is not implemented"))
+func (UnimplementedAdminTenantMemberServiceHandler) ResendTenantAdminInvitation(context.Context, *v1.ResendTenantAdminInvitationRequest) (*v1.ResendTenantAdminInvitationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminTenantMemberService.ResendTenantAdminInvitation is not implemented")
 }
 
-func (UnimplementedAdminTenantMemberServiceHandler) CancelTenantAdminInvitation(context.Context, *connect.Request[v1.CancelTenantAdminInvitationRequest]) (*connect.Response[v1.CancelTenantAdminInvitationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminTenantMemberService.CancelTenantAdminInvitation is not implemented"))
+func (UnimplementedAdminTenantMemberServiceHandler) CancelTenantAdminInvitation(context.Context, *v1.CancelTenantAdminInvitationRequest) (*v1.CancelTenantAdminInvitationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminTenantMemberService.CancelTenantAdminInvitation is not implemented")
+}
+
+type adminTenantMemberServiceClient struct {
+	client *connect.Client
+}
+
+func (c *adminTenantMemberServiceClient) ListTenantMembers(ctx context.Context, req *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error) {
+	var res v1.ListTenantMembersResponse
+	if err := c.client.CallUnary(ctx, adminTenantMemberServiceListTenantMembersSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminTenantMemberServiceClient) AddTenantMember(ctx context.Context, req *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error) {
+	var res v1.AddTenantMemberResponse
+	if err := c.client.CallUnary(ctx, adminTenantMemberServiceAddTenantMemberSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminTenantMemberServiceClient) UpdateTenantMemberRole(ctx context.Context, req *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error) {
+	var res v1.UpdateTenantMemberRoleResponse
+	if err := c.client.CallUnary(ctx, adminTenantMemberServiceUpdateTenantMemberRoleSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminTenantMemberServiceClient) RemoveTenantMember(ctx context.Context, req *v1.RemoveTenantMemberRequest) (*v1.RemoveTenantMemberResponse, error) {
+	var res v1.RemoveTenantMemberResponse
+	if err := c.client.CallUnary(ctx, adminTenantMemberServiceRemoveTenantMemberSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminTenantMemberServiceClient) ListTenantAdminInvitations(ctx context.Context, req *v1.ListTenantAdminInvitationsRequest) (*v1.ListTenantAdminInvitationsResponse, error) {
+	var res v1.ListTenantAdminInvitationsResponse
+	if err := c.client.CallUnary(ctx, adminTenantMemberServiceListTenantAdminInvitationsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminTenantMemberServiceClient) CreateTenantAdminInvitation(ctx context.Context, req *v1.CreateTenantAdminInvitationRequest) (*v1.CreateTenantAdminInvitationResponse, error) {
+	var res v1.CreateTenantAdminInvitationResponse
+	if err := c.client.CallUnary(ctx, adminTenantMemberServiceCreateTenantAdminInvitationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminTenantMemberServiceClient) ResendTenantAdminInvitation(ctx context.Context, req *v1.ResendTenantAdminInvitationRequest) (*v1.ResendTenantAdminInvitationResponse, error) {
+	var res v1.ResendTenantAdminInvitationResponse
+	if err := c.client.CallUnary(ctx, adminTenantMemberServiceResendTenantAdminInvitationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminTenantMemberServiceClient) CancelTenantAdminInvitation(ctx context.Context, req *v1.CancelTenantAdminInvitationRequest) (*v1.CancelTenantAdminInvitationResponse, error) {
+	var res v1.CancelTenantAdminInvitationResponse
+	if err := c.client.CallUnary(ctx, adminTenantMemberServiceCancelTenantAdminInvitationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type adminTenantMemberServiceHandler struct {
+	svc AdminTenantMemberServiceHandler
+}
+
+func (h adminTenantMemberServiceHandler) listTenantMembers(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListTenantMembersRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListTenantMembers(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminTenantMemberServiceHandler) addTenantMember(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AddTenantMemberRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.AddTenantMember(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminTenantMemberServiceHandler) updateTenantMemberRole(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantMemberRoleRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantMemberRole(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminTenantMemberServiceHandler) removeTenantMember(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RemoveTenantMemberRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RemoveTenantMember(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminTenantMemberServiceHandler) listTenantAdminInvitations(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListTenantAdminInvitationsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListTenantAdminInvitations(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminTenantMemberServiceHandler) createTenantAdminInvitation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateTenantAdminInvitationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateTenantAdminInvitation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminTenantMemberServiceHandler) resendTenantAdminInvitation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ResendTenantAdminInvitationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ResendTenantAdminInvitation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminTenantMemberServiceHandler) cancelTenantAdminInvitation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CancelTenantAdminInvitationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CancelTenantAdminInvitation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

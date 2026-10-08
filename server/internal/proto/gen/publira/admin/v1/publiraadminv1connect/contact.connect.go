@@ -5,52 +5,88 @@
 package publiraadminv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AdminContactServiceName is the fully-qualified name of the AdminContactService service.
 	AdminContactServiceName = "publira.admin.v1.AdminContactService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AdminContactServiceListContactMessagesProcedure is the fully-qualified name of the
+	// AdminContactServiceListContactMessagesProcedure is the procedure name of the
 	// AdminContactService's ListContactMessages RPC.
 	AdminContactServiceListContactMessagesProcedure = "/publira.admin.v1.AdminContactService/ListContactMessages"
-	// AdminContactServiceGetContactMessageProcedure is the fully-qualified name of the
-	// AdminContactService's GetContactMessage RPC.
+	// AdminContactServiceGetContactMessageProcedure is the procedure name of the AdminContactService's
+	// GetContactMessage RPC.
 	AdminContactServiceGetContactMessageProcedure = "/publira.admin.v1.AdminContactService/GetContactMessage"
-	// AdminContactServiceMarkContactMessageHandledProcedure is the fully-qualified name of the
+	// AdminContactServiceMarkContactMessageHandledProcedure is the procedure name of the
 	// AdminContactService's MarkContactMessageHandled RPC.
 	AdminContactServiceMarkContactMessageHandledProcedure = "/publira.admin.v1.AdminContactService/MarkContactMessageHandled"
-	// AdminContactServiceAssignContactMessageProcedure is the fully-qualified name of the
+	// AdminContactServiceAssignContactMessageProcedure is the procedure name of the
 	// AdminContactService's AssignContactMessage RPC.
 	AdminContactServiceAssignContactMessageProcedure = "/publira.admin.v1.AdminContactService/AssignContactMessage"
-	// AdminContactServiceUpdateContactMessageStaffNoteProcedure is the fully-qualified name of the
+	// AdminContactServiceUpdateContactMessageStaffNoteProcedure is the procedure name of the
 	// AdminContactService's UpdateContactMessageStaffNote RPC.
 	AdminContactServiceUpdateContactMessageStaffNoteProcedure = "/publira.admin.v1.AdminContactService/UpdateContactMessageStaffNote"
-	// AdminContactServiceReplyToContactMessageProcedure is the fully-qualified name of the
+	// AdminContactServiceReplyToContactMessageProcedure is the procedure name of the
 	// AdminContactService's ReplyToContactMessage RPC.
 	AdminContactServiceReplyToContactMessageProcedure = "/publira.admin.v1.AdminContactService/ReplyToContactMessage"
+)
+
+var (
+	adminContactServiceListContactMessagesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_contact_proto.Services().ByName("AdminContactService").Methods().ByName("ListContactMessages"),
+			Procedure:  AdminContactServiceListContactMessagesProcedure,
+		}
+	})
+	adminContactServiceGetContactMessageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_contact_proto.Services().ByName("AdminContactService").Methods().ByName("GetContactMessage"),
+			Procedure:  AdminContactServiceGetContactMessageProcedure,
+		}
+	})
+	adminContactServiceMarkContactMessageHandledSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_contact_proto.Services().ByName("AdminContactService").Methods().ByName("MarkContactMessageHandled"),
+			Procedure:  AdminContactServiceMarkContactMessageHandledProcedure,
+		}
+	})
+	adminContactServiceAssignContactMessageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_contact_proto.Services().ByName("AdminContactService").Methods().ByName("AssignContactMessage"),
+			Procedure:  AdminContactServiceAssignContactMessageProcedure,
+		}
+	})
+	adminContactServiceUpdateContactMessageStaffNoteSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_contact_proto.Services().ByName("AdminContactService").Methods().ByName("UpdateContactMessageStaffNote"),
+			Procedure:  AdminContactServiceUpdateContactMessageStaffNoteProcedure,
+		}
+	})
+	adminContactServiceReplyToContactMessageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_contact_proto.Services().ByName("AdminContactService").Methods().ByName("ReplyToContactMessage"),
+			Procedure:  AdminContactServiceReplyToContactMessageProcedure,
+		}
+	})
 )
 
 // AdminContactServiceClient is a client for the publira.admin.v1.AdminContactService service.
@@ -58,7 +94,7 @@ type AdminContactServiceClient interface {
 	// Lists the messages readers sent the tenant, newest first.
 	//
 	// Minimum role: tenant_admin.
-	ListContactMessages(context.Context, *connect.Request[v1.ListContactMessagesRequest]) (*connect.Response[v1.ListContactMessagesResponse], error)
+	ListContactMessages(context.Context, *v1.ListContactMessagesRequest) (*v1.ListContactMessagesResponse, error)
 	// Reads one message in full.
 	//
 	// Separate from the list because the list carries every message's whole body
@@ -67,7 +103,7 @@ type AdminContactServiceClient interface {
 	// to it.
 	//
 	// Minimum role: tenant_admin.
-	GetContactMessage(context.Context, *connect.Request[v1.GetContactMessageRequest]) (*connect.Response[v1.GetContactMessageResponse], error)
+	GetContactMessage(context.Context, *v1.GetContactMessageRequest) (*v1.GetContactMessageResponse, error)
 	// Marks one message dealt with, or puts it back among the ones waiting. A
 	// message put back keeps its assignee, so it is in_progress again when it
 	// has one and unhandled when it has none.
@@ -76,7 +112,7 @@ type AdminContactServiceClient interface {
 	// leaves the recorded time alone, so a repeated press does not move it.
 	//
 	// Minimum role: tenant_admin.
-	MarkContactMessageHandled(context.Context, *connect.Request[v1.MarkContactMessageHandledRequest]) (*connect.Response[v1.MarkContactMessageHandledResponse], error)
+	MarkContactMessageHandled(context.Context, *v1.MarkContactMessageHandledRequest) (*v1.MarkContactMessageHandledResponse, error)
 	// Assigns one message to a member of staff, moves it to another, or clears
 	// the assignment.
 	//
@@ -85,11 +121,11 @@ type AdminContactServiceClient interface {
 	// reopened message that has an assignee is in_progress again.
 	//
 	// Minimum role: tenant_admin.
-	AssignContactMessage(context.Context, *connect.Request[v1.AssignContactMessageRequest]) (*connect.Response[v1.AssignContactMessageResponse], error)
+	AssignContactMessage(context.Context, *v1.AssignContactMessageRequest) (*v1.AssignContactMessageResponse, error)
 	// Saves, replaces, or clears the internal note on one message.
 	//
 	// Minimum role: tenant_admin.
-	UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error)
+	UpdateContactMessageStaffNote(context.Context, *v1.UpdateContactMessageStaffNoteRequest) (*v1.UpdateContactMessageStaffNoteResponse, error)
 	// Answers one message: stores the answer as a staff entry under it, marks the
 	// message handled, and queues the mail that takes the answer to the reader's
 	// reply-to address.
@@ -101,98 +137,13 @@ type AdminContactServiceClient interface {
 	// handled keeps the time and the member of staff it was first marked with.
 	//
 	// Minimum role: tenant_admin.
-	ReplyToContactMessage(context.Context, *connect.Request[v1.ReplyToContactMessageRequest]) (*connect.Response[v1.ReplyToContactMessageResponse], error)
+	ReplyToContactMessage(context.Context, *v1.ReplyToContactMessageRequest) (*v1.ReplyToContactMessageResponse, error)
 }
 
 // NewAdminContactServiceClient constructs a client for the publira.admin.v1.AdminContactService
-// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
-// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
-// the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewAdminContactServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdminContactServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	adminContactServiceMethods := v1.File_publira_admin_v1_contact_proto.Services().ByName("AdminContactService").Methods()
-	return &adminContactServiceClient{
-		listContactMessages: connect.NewClient[v1.ListContactMessagesRequest, v1.ListContactMessagesResponse](
-			httpClient,
-			baseURL+AdminContactServiceListContactMessagesProcedure,
-			connect.WithSchema(adminContactServiceMethods.ByName("ListContactMessages")),
-			connect.WithClientOptions(opts...),
-		),
-		getContactMessage: connect.NewClient[v1.GetContactMessageRequest, v1.GetContactMessageResponse](
-			httpClient,
-			baseURL+AdminContactServiceGetContactMessageProcedure,
-			connect.WithSchema(adminContactServiceMethods.ByName("GetContactMessage")),
-			connect.WithClientOptions(opts...),
-		),
-		markContactMessageHandled: connect.NewClient[v1.MarkContactMessageHandledRequest, v1.MarkContactMessageHandledResponse](
-			httpClient,
-			baseURL+AdminContactServiceMarkContactMessageHandledProcedure,
-			connect.WithSchema(adminContactServiceMethods.ByName("MarkContactMessageHandled")),
-			connect.WithClientOptions(opts...),
-		),
-		assignContactMessage: connect.NewClient[v1.AssignContactMessageRequest, v1.AssignContactMessageResponse](
-			httpClient,
-			baseURL+AdminContactServiceAssignContactMessageProcedure,
-			connect.WithSchema(adminContactServiceMethods.ByName("AssignContactMessage")),
-			connect.WithClientOptions(opts...),
-		),
-		updateContactMessageStaffNote: connect.NewClient[v1.UpdateContactMessageStaffNoteRequest, v1.UpdateContactMessageStaffNoteResponse](
-			httpClient,
-			baseURL+AdminContactServiceUpdateContactMessageStaffNoteProcedure,
-			connect.WithSchema(adminContactServiceMethods.ByName("UpdateContactMessageStaffNote")),
-			connect.WithClientOptions(opts...),
-		),
-		replyToContactMessage: connect.NewClient[v1.ReplyToContactMessageRequest, v1.ReplyToContactMessageResponse](
-			httpClient,
-			baseURL+AdminContactServiceReplyToContactMessageProcedure,
-			connect.WithSchema(adminContactServiceMethods.ByName("ReplyToContactMessage")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// adminContactServiceClient implements AdminContactServiceClient.
-type adminContactServiceClient struct {
-	listContactMessages           *connect.Client[v1.ListContactMessagesRequest, v1.ListContactMessagesResponse]
-	getContactMessage             *connect.Client[v1.GetContactMessageRequest, v1.GetContactMessageResponse]
-	markContactMessageHandled     *connect.Client[v1.MarkContactMessageHandledRequest, v1.MarkContactMessageHandledResponse]
-	assignContactMessage          *connect.Client[v1.AssignContactMessageRequest, v1.AssignContactMessageResponse]
-	updateContactMessageStaffNote *connect.Client[v1.UpdateContactMessageStaffNoteRequest, v1.UpdateContactMessageStaffNoteResponse]
-	replyToContactMessage         *connect.Client[v1.ReplyToContactMessageRequest, v1.ReplyToContactMessageResponse]
-}
-
-// ListContactMessages calls publira.admin.v1.AdminContactService.ListContactMessages.
-func (c *adminContactServiceClient) ListContactMessages(ctx context.Context, req *connect.Request[v1.ListContactMessagesRequest]) (*connect.Response[v1.ListContactMessagesResponse], error) {
-	return c.listContactMessages.CallUnary(ctx, req)
-}
-
-// GetContactMessage calls publira.admin.v1.AdminContactService.GetContactMessage.
-func (c *adminContactServiceClient) GetContactMessage(ctx context.Context, req *connect.Request[v1.GetContactMessageRequest]) (*connect.Response[v1.GetContactMessageResponse], error) {
-	return c.getContactMessage.CallUnary(ctx, req)
-}
-
-// MarkContactMessageHandled calls publira.admin.v1.AdminContactService.MarkContactMessageHandled.
-func (c *adminContactServiceClient) MarkContactMessageHandled(ctx context.Context, req *connect.Request[v1.MarkContactMessageHandledRequest]) (*connect.Response[v1.MarkContactMessageHandledResponse], error) {
-	return c.markContactMessageHandled.CallUnary(ctx, req)
-}
-
-// AssignContactMessage calls publira.admin.v1.AdminContactService.AssignContactMessage.
-func (c *adminContactServiceClient) AssignContactMessage(ctx context.Context, req *connect.Request[v1.AssignContactMessageRequest]) (*connect.Response[v1.AssignContactMessageResponse], error) {
-	return c.assignContactMessage.CallUnary(ctx, req)
-}
-
-// UpdateContactMessageStaffNote calls
-// publira.admin.v1.AdminContactService.UpdateContactMessageStaffNote.
-func (c *adminContactServiceClient) UpdateContactMessageStaffNote(ctx context.Context, req *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error) {
-	return c.updateContactMessageStaffNote.CallUnary(ctx, req)
-}
-
-// ReplyToContactMessage calls publira.admin.v1.AdminContactService.ReplyToContactMessage.
-func (c *adminContactServiceClient) ReplyToContactMessage(ctx context.Context, req *connect.Request[v1.ReplyToContactMessageRequest]) (*connect.Response[v1.ReplyToContactMessageResponse], error) {
-	return c.replyToContactMessage.CallUnary(ctx, req)
+// service. Multiple service clients may share a single connect.Client.
+func NewAdminContactServiceClient(client *connect.Client) AdminContactServiceClient {
+	return &adminContactServiceClient{client: client}
 }
 
 // AdminContactServiceHandler is an implementation of the publira.admin.v1.AdminContactService
@@ -201,7 +152,7 @@ type AdminContactServiceHandler interface {
 	// Lists the messages readers sent the tenant, newest first.
 	//
 	// Minimum role: tenant_admin.
-	ListContactMessages(context.Context, *connect.Request[v1.ListContactMessagesRequest]) (*connect.Response[v1.ListContactMessagesResponse], error)
+	ListContactMessages(context.Context, *v1.ListContactMessagesRequest) (*v1.ListContactMessagesResponse, error)
 	// Reads one message in full.
 	//
 	// Separate from the list because the list carries every message's whole body
@@ -210,7 +161,7 @@ type AdminContactServiceHandler interface {
 	// to it.
 	//
 	// Minimum role: tenant_admin.
-	GetContactMessage(context.Context, *connect.Request[v1.GetContactMessageRequest]) (*connect.Response[v1.GetContactMessageResponse], error)
+	GetContactMessage(context.Context, *v1.GetContactMessageRequest) (*v1.GetContactMessageResponse, error)
 	// Marks one message dealt with, or puts it back among the ones waiting. A
 	// message put back keeps its assignee, so it is in_progress again when it
 	// has one and unhandled when it has none.
@@ -219,7 +170,7 @@ type AdminContactServiceHandler interface {
 	// leaves the recorded time alone, so a repeated press does not move it.
 	//
 	// Minimum role: tenant_admin.
-	MarkContactMessageHandled(context.Context, *connect.Request[v1.MarkContactMessageHandledRequest]) (*connect.Response[v1.MarkContactMessageHandledResponse], error)
+	MarkContactMessageHandled(context.Context, *v1.MarkContactMessageHandledRequest) (*v1.MarkContactMessageHandledResponse, error)
 	// Assigns one message to a member of staff, moves it to another, or clears
 	// the assignment.
 	//
@@ -228,11 +179,11 @@ type AdminContactServiceHandler interface {
 	// reopened message that has an assignee is in_progress again.
 	//
 	// Minimum role: tenant_admin.
-	AssignContactMessage(context.Context, *connect.Request[v1.AssignContactMessageRequest]) (*connect.Response[v1.AssignContactMessageResponse], error)
+	AssignContactMessage(context.Context, *v1.AssignContactMessageRequest) (*v1.AssignContactMessageResponse, error)
 	// Saves, replaces, or clears the internal note on one message.
 	//
 	// Minimum role: tenant_admin.
-	UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error)
+	UpdateContactMessageStaffNote(context.Context, *v1.UpdateContactMessageStaffNoteRequest) (*v1.UpdateContactMessageStaffNoteResponse, error)
 	// Answers one message: stores the answer as a staff entry under it, marks the
 	// message handled, and queues the mail that takes the answer to the reader's
 	// reply-to address.
@@ -244,95 +195,172 @@ type AdminContactServiceHandler interface {
 	// handled keeps the time and the member of staff it was first marked with.
 	//
 	// Minimum role: tenant_admin.
-	ReplyToContactMessage(context.Context, *connect.Request[v1.ReplyToContactMessageRequest]) (*connect.Response[v1.ReplyToContactMessageResponse], error)
+	ReplyToContactMessage(context.Context, *v1.ReplyToContactMessageRequest) (*v1.ReplyToContactMessageResponse, error)
 }
 
-// NewAdminContactServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewAdminContactServiceHandler(svc AdminContactServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	adminContactServiceMethods := v1.File_publira_admin_v1_contact_proto.Services().ByName("AdminContactService").Methods()
-	adminContactServiceListContactMessagesHandler := connect.NewUnaryHandler(
-		AdminContactServiceListContactMessagesProcedure,
-		svc.ListContactMessages,
-		connect.WithSchema(adminContactServiceMethods.ByName("ListContactMessages")),
-		connect.WithHandlerOptions(opts...),
+// RegisterAdminContactServiceHandler registers svc as the publira.admin.v1.AdminContactService
+// implementation on server.
+func RegisterAdminContactServiceHandler(server *connect.Server, svc AdminContactServiceHandler) {
+	adapter := adminContactServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: adminContactServiceListContactMessagesSpec(), Handler: adapter.listContactMessages},
+		connect.Method{Spec: adminContactServiceGetContactMessageSpec(), Handler: adapter.getContactMessage},
+		connect.Method{Spec: adminContactServiceMarkContactMessageHandledSpec(), Handler: adapter.markContactMessageHandled},
+		connect.Method{Spec: adminContactServiceAssignContactMessageSpec(), Handler: adapter.assignContactMessage},
+		connect.Method{Spec: adminContactServiceUpdateContactMessageStaffNoteSpec(), Handler: adapter.updateContactMessageStaffNote},
+		connect.Method{Spec: adminContactServiceReplyToContactMessageSpec(), Handler: adapter.replyToContactMessage},
 	)
-	adminContactServiceGetContactMessageHandler := connect.NewUnaryHandler(
-		AdminContactServiceGetContactMessageProcedure,
-		svc.GetContactMessage,
-		connect.WithSchema(adminContactServiceMethods.ByName("GetContactMessage")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminContactServiceMarkContactMessageHandledHandler := connect.NewUnaryHandler(
-		AdminContactServiceMarkContactMessageHandledProcedure,
-		svc.MarkContactMessageHandled,
-		connect.WithSchema(adminContactServiceMethods.ByName("MarkContactMessageHandled")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminContactServiceAssignContactMessageHandler := connect.NewUnaryHandler(
-		AdminContactServiceAssignContactMessageProcedure,
-		svc.AssignContactMessage,
-		connect.WithSchema(adminContactServiceMethods.ByName("AssignContactMessage")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminContactServiceUpdateContactMessageStaffNoteHandler := connect.NewUnaryHandler(
-		AdminContactServiceUpdateContactMessageStaffNoteProcedure,
-		svc.UpdateContactMessageStaffNote,
-		connect.WithSchema(adminContactServiceMethods.ByName("UpdateContactMessageStaffNote")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminContactServiceReplyToContactMessageHandler := connect.NewUnaryHandler(
-		AdminContactServiceReplyToContactMessageProcedure,
-		svc.ReplyToContactMessage,
-		connect.WithSchema(adminContactServiceMethods.ByName("ReplyToContactMessage")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.admin.v1.AdminContactService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case AdminContactServiceListContactMessagesProcedure:
-			adminContactServiceListContactMessagesHandler.ServeHTTP(w, r)
-		case AdminContactServiceGetContactMessageProcedure:
-			adminContactServiceGetContactMessageHandler.ServeHTTP(w, r)
-		case AdminContactServiceMarkContactMessageHandledProcedure:
-			adminContactServiceMarkContactMessageHandledHandler.ServeHTTP(w, r)
-		case AdminContactServiceAssignContactMessageProcedure:
-			adminContactServiceAssignContactMessageHandler.ServeHTTP(w, r)
-		case AdminContactServiceUpdateContactMessageStaffNoteProcedure:
-			adminContactServiceUpdateContactMessageStaffNoteHandler.ServeHTTP(w, r)
-		case AdminContactServiceReplyToContactMessageProcedure:
-			adminContactServiceReplyToContactMessageHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedAdminContactServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminContactServiceHandler struct{}
 
-func (UnimplementedAdminContactServiceHandler) ListContactMessages(context.Context, *connect.Request[v1.ListContactMessagesRequest]) (*connect.Response[v1.ListContactMessagesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminContactService.ListContactMessages is not implemented"))
+func (UnimplementedAdminContactServiceHandler) ListContactMessages(context.Context, *v1.ListContactMessagesRequest) (*v1.ListContactMessagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminContactService.ListContactMessages is not implemented")
 }
 
-func (UnimplementedAdminContactServiceHandler) GetContactMessage(context.Context, *connect.Request[v1.GetContactMessageRequest]) (*connect.Response[v1.GetContactMessageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminContactService.GetContactMessage is not implemented"))
+func (UnimplementedAdminContactServiceHandler) GetContactMessage(context.Context, *v1.GetContactMessageRequest) (*v1.GetContactMessageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminContactService.GetContactMessage is not implemented")
 }
 
-func (UnimplementedAdminContactServiceHandler) MarkContactMessageHandled(context.Context, *connect.Request[v1.MarkContactMessageHandledRequest]) (*connect.Response[v1.MarkContactMessageHandledResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminContactService.MarkContactMessageHandled is not implemented"))
+func (UnimplementedAdminContactServiceHandler) MarkContactMessageHandled(context.Context, *v1.MarkContactMessageHandledRequest) (*v1.MarkContactMessageHandledResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminContactService.MarkContactMessageHandled is not implemented")
 }
 
-func (UnimplementedAdminContactServiceHandler) AssignContactMessage(context.Context, *connect.Request[v1.AssignContactMessageRequest]) (*connect.Response[v1.AssignContactMessageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminContactService.AssignContactMessage is not implemented"))
+func (UnimplementedAdminContactServiceHandler) AssignContactMessage(context.Context, *v1.AssignContactMessageRequest) (*v1.AssignContactMessageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminContactService.AssignContactMessage is not implemented")
 }
 
-func (UnimplementedAdminContactServiceHandler) UpdateContactMessageStaffNote(context.Context, *connect.Request[v1.UpdateContactMessageStaffNoteRequest]) (*connect.Response[v1.UpdateContactMessageStaffNoteResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminContactService.UpdateContactMessageStaffNote is not implemented"))
+func (UnimplementedAdminContactServiceHandler) UpdateContactMessageStaffNote(context.Context, *v1.UpdateContactMessageStaffNoteRequest) (*v1.UpdateContactMessageStaffNoteResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminContactService.UpdateContactMessageStaffNote is not implemented")
 }
 
-func (UnimplementedAdminContactServiceHandler) ReplyToContactMessage(context.Context, *connect.Request[v1.ReplyToContactMessageRequest]) (*connect.Response[v1.ReplyToContactMessageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminContactService.ReplyToContactMessage is not implemented"))
+func (UnimplementedAdminContactServiceHandler) ReplyToContactMessage(context.Context, *v1.ReplyToContactMessageRequest) (*v1.ReplyToContactMessageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminContactService.ReplyToContactMessage is not implemented")
+}
+
+type adminContactServiceClient struct {
+	client *connect.Client
+}
+
+func (c *adminContactServiceClient) ListContactMessages(ctx context.Context, req *v1.ListContactMessagesRequest) (*v1.ListContactMessagesResponse, error) {
+	var res v1.ListContactMessagesResponse
+	if err := c.client.CallUnary(ctx, adminContactServiceListContactMessagesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminContactServiceClient) GetContactMessage(ctx context.Context, req *v1.GetContactMessageRequest) (*v1.GetContactMessageResponse, error) {
+	var res v1.GetContactMessageResponse
+	if err := c.client.CallUnary(ctx, adminContactServiceGetContactMessageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminContactServiceClient) MarkContactMessageHandled(ctx context.Context, req *v1.MarkContactMessageHandledRequest) (*v1.MarkContactMessageHandledResponse, error) {
+	var res v1.MarkContactMessageHandledResponse
+	if err := c.client.CallUnary(ctx, adminContactServiceMarkContactMessageHandledSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminContactServiceClient) AssignContactMessage(ctx context.Context, req *v1.AssignContactMessageRequest) (*v1.AssignContactMessageResponse, error) {
+	var res v1.AssignContactMessageResponse
+	if err := c.client.CallUnary(ctx, adminContactServiceAssignContactMessageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminContactServiceClient) UpdateContactMessageStaffNote(ctx context.Context, req *v1.UpdateContactMessageStaffNoteRequest) (*v1.UpdateContactMessageStaffNoteResponse, error) {
+	var res v1.UpdateContactMessageStaffNoteResponse
+	if err := c.client.CallUnary(ctx, adminContactServiceUpdateContactMessageStaffNoteSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminContactServiceClient) ReplyToContactMessage(ctx context.Context, req *v1.ReplyToContactMessageRequest) (*v1.ReplyToContactMessageResponse, error) {
+	var res v1.ReplyToContactMessageResponse
+	if err := c.client.CallUnary(ctx, adminContactServiceReplyToContactMessageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type adminContactServiceHandler struct{ svc AdminContactServiceHandler }
+
+func (h adminContactServiceHandler) listContactMessages(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListContactMessagesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListContactMessages(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminContactServiceHandler) getContactMessage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetContactMessageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetContactMessage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminContactServiceHandler) markContactMessageHandled(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.MarkContactMessageHandledRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.MarkContactMessageHandled(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminContactServiceHandler) assignContactMessage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AssignContactMessageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.AssignContactMessage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminContactServiceHandler) updateContactMessageStaffNote(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateContactMessageStaffNoteRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateContactMessageStaffNote(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminContactServiceHandler) replyToContactMessage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ReplyToContactMessageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ReplyToContactMessage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

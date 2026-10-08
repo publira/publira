@@ -5,64 +5,100 @@
 package publiraadminv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AdminCreatorServiceName is the fully-qualified name of the AdminCreatorService service.
 	AdminCreatorServiceName = "publira.admin.v1.AdminCreatorService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AdminCreatorServiceListCreatorsProcedure is the fully-qualified name of the AdminCreatorService's
+	// AdminCreatorServiceListCreatorsProcedure is the procedure name of the AdminCreatorService's
 	// ListCreators RPC.
 	AdminCreatorServiceListCreatorsProcedure = "/publira.admin.v1.AdminCreatorService/ListCreators"
-	// AdminCreatorServiceGetCreatorProcedure is the fully-qualified name of the AdminCreatorService's
+	// AdminCreatorServiceGetCreatorProcedure is the procedure name of the AdminCreatorService's
 	// GetCreator RPC.
 	AdminCreatorServiceGetCreatorProcedure = "/publira.admin.v1.AdminCreatorService/GetCreator"
-	// AdminCreatorServiceCreateCreatorProcedure is the fully-qualified name of the
-	// AdminCreatorService's CreateCreator RPC.
+	// AdminCreatorServiceCreateCreatorProcedure is the procedure name of the AdminCreatorService's
+	// CreateCreator RPC.
 	AdminCreatorServiceCreateCreatorProcedure = "/publira.admin.v1.AdminCreatorService/CreateCreator"
-	// AdminCreatorServiceUpdateCreatorProcedure is the fully-qualified name of the
-	// AdminCreatorService's UpdateCreator RPC.
+	// AdminCreatorServiceUpdateCreatorProcedure is the procedure name of the AdminCreatorService's
+	// UpdateCreator RPC.
 	AdminCreatorServiceUpdateCreatorProcedure = "/publira.admin.v1.AdminCreatorService/UpdateCreator"
-	// AdminCreatorServiceLinkCreatorAccountProcedure is the fully-qualified name of the
-	// AdminCreatorService's LinkCreatorAccount RPC.
+	// AdminCreatorServiceLinkCreatorAccountProcedure is the procedure name of the AdminCreatorService's
+	// LinkCreatorAccount RPC.
 	AdminCreatorServiceLinkCreatorAccountProcedure = "/publira.admin.v1.AdminCreatorService/LinkCreatorAccount"
-	// AdminCreatorServiceUnlinkCreatorAccountProcedure is the fully-qualified name of the
+	// AdminCreatorServiceUnlinkCreatorAccountProcedure is the procedure name of the
 	// AdminCreatorService's UnlinkCreatorAccount RPC.
 	AdminCreatorServiceUnlinkCreatorAccountProcedure = "/publira.admin.v1.AdminCreatorService/UnlinkCreatorAccount"
+)
+
+var (
+	adminCreatorServiceListCreatorsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_creator_proto.Services().ByName("AdminCreatorService").Methods().ByName("ListCreators"),
+			Procedure:  AdminCreatorServiceListCreatorsProcedure,
+		}
+	})
+	adminCreatorServiceGetCreatorSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_creator_proto.Services().ByName("AdminCreatorService").Methods().ByName("GetCreator"),
+			Procedure:  AdminCreatorServiceGetCreatorProcedure,
+		}
+	})
+	adminCreatorServiceCreateCreatorSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_creator_proto.Services().ByName("AdminCreatorService").Methods().ByName("CreateCreator"),
+			Procedure:  AdminCreatorServiceCreateCreatorProcedure,
+		}
+	})
+	adminCreatorServiceUpdateCreatorSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_creator_proto.Services().ByName("AdminCreatorService").Methods().ByName("UpdateCreator"),
+			Procedure:  AdminCreatorServiceUpdateCreatorProcedure,
+		}
+	})
+	adminCreatorServiceLinkCreatorAccountSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_creator_proto.Services().ByName("AdminCreatorService").Methods().ByName("LinkCreatorAccount"),
+			Procedure:  AdminCreatorServiceLinkCreatorAccountProcedure,
+		}
+	})
+	adminCreatorServiceUnlinkCreatorAccountSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_creator_proto.Services().ByName("AdminCreatorService").Methods().ByName("UnlinkCreatorAccount"),
+			Procedure:  AdminCreatorServiceUnlinkCreatorAccountProcedure,
+		}
+	})
 )
 
 // AdminCreatorServiceClient is a client for the publira.admin.v1.AdminCreatorService service.
 type AdminCreatorServiceClient interface {
 	// Minimum role: tenant_auditor.
-	ListCreators(context.Context, *connect.Request[v1.ListCreatorsRequest]) (*connect.Response[v1.ListCreatorsResponse], error)
+	ListCreators(context.Context, *v1.ListCreatorsRequest) (*v1.ListCreatorsResponse, error)
 	// Minimum role: tenant_auditor.
-	GetCreator(context.Context, *connect.Request[v1.GetCreatorRequest]) (*connect.Response[v1.GetCreatorResponse], error)
+	GetCreator(context.Context, *v1.GetCreatorRequest) (*v1.GetCreatorResponse, error)
 	// Minimum role: tenant_editor.
-	CreateCreator(context.Context, *connect.Request[v1.CreateCreatorRequest]) (*connect.Response[v1.CreateCreatorResponse], error)
+	CreateCreator(context.Context, *v1.CreateCreatorRequest) (*v1.CreateCreatorResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateCreator(context.Context, *connect.Request[v1.UpdateCreatorRequest]) (*connect.Response[v1.UpdateCreatorResponse], error)
+	UpdateCreator(context.Context, *v1.UpdateCreatorRequest) (*v1.UpdateCreatorResponse, error)
 	// Links a reader account to a creator. One account may be linked to several
 	// creators and one creator to several accounts. Linking a pair that is
 	// already linked changes nothing and records nothing. not_found for a
@@ -70,115 +106,31 @@ type AdminCreatorServiceClient interface {
 	// failed_precondition for a reader who is not active.
 	//
 	// Minimum role: tenant_admin.
-	LinkCreatorAccount(context.Context, *connect.Request[v1.LinkCreatorAccountRequest]) (*connect.Response[v1.LinkCreatorAccountResponse], error)
+	LinkCreatorAccount(context.Context, *v1.LinkCreatorAccountRequest) (*v1.LinkCreatorAccountResponse, error)
 	// Removes a link. Unlinking a pair that is not linked changes nothing and
 	// records nothing. not_found for a creator of another tenant.
 	//
 	// Minimum role: tenant_admin.
-	UnlinkCreatorAccount(context.Context, *connect.Request[v1.UnlinkCreatorAccountRequest]) (*connect.Response[v1.UnlinkCreatorAccountResponse], error)
+	UnlinkCreatorAccount(context.Context, *v1.UnlinkCreatorAccountRequest) (*v1.UnlinkCreatorAccountResponse, error)
 }
 
 // NewAdminCreatorServiceClient constructs a client for the publira.admin.v1.AdminCreatorService
-// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
-// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
-// the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewAdminCreatorServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdminCreatorServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	adminCreatorServiceMethods := v1.File_publira_admin_v1_creator_proto.Services().ByName("AdminCreatorService").Methods()
-	return &adminCreatorServiceClient{
-		listCreators: connect.NewClient[v1.ListCreatorsRequest, v1.ListCreatorsResponse](
-			httpClient,
-			baseURL+AdminCreatorServiceListCreatorsProcedure,
-			connect.WithSchema(adminCreatorServiceMethods.ByName("ListCreators")),
-			connect.WithClientOptions(opts...),
-		),
-		getCreator: connect.NewClient[v1.GetCreatorRequest, v1.GetCreatorResponse](
-			httpClient,
-			baseURL+AdminCreatorServiceGetCreatorProcedure,
-			connect.WithSchema(adminCreatorServiceMethods.ByName("GetCreator")),
-			connect.WithClientOptions(opts...),
-		),
-		createCreator: connect.NewClient[v1.CreateCreatorRequest, v1.CreateCreatorResponse](
-			httpClient,
-			baseURL+AdminCreatorServiceCreateCreatorProcedure,
-			connect.WithSchema(adminCreatorServiceMethods.ByName("CreateCreator")),
-			connect.WithClientOptions(opts...),
-		),
-		updateCreator: connect.NewClient[v1.UpdateCreatorRequest, v1.UpdateCreatorResponse](
-			httpClient,
-			baseURL+AdminCreatorServiceUpdateCreatorProcedure,
-			connect.WithSchema(adminCreatorServiceMethods.ByName("UpdateCreator")),
-			connect.WithClientOptions(opts...),
-		),
-		linkCreatorAccount: connect.NewClient[v1.LinkCreatorAccountRequest, v1.LinkCreatorAccountResponse](
-			httpClient,
-			baseURL+AdminCreatorServiceLinkCreatorAccountProcedure,
-			connect.WithSchema(adminCreatorServiceMethods.ByName("LinkCreatorAccount")),
-			connect.WithClientOptions(opts...),
-		),
-		unlinkCreatorAccount: connect.NewClient[v1.UnlinkCreatorAccountRequest, v1.UnlinkCreatorAccountResponse](
-			httpClient,
-			baseURL+AdminCreatorServiceUnlinkCreatorAccountProcedure,
-			connect.WithSchema(adminCreatorServiceMethods.ByName("UnlinkCreatorAccount")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// adminCreatorServiceClient implements AdminCreatorServiceClient.
-type adminCreatorServiceClient struct {
-	listCreators         *connect.Client[v1.ListCreatorsRequest, v1.ListCreatorsResponse]
-	getCreator           *connect.Client[v1.GetCreatorRequest, v1.GetCreatorResponse]
-	createCreator        *connect.Client[v1.CreateCreatorRequest, v1.CreateCreatorResponse]
-	updateCreator        *connect.Client[v1.UpdateCreatorRequest, v1.UpdateCreatorResponse]
-	linkCreatorAccount   *connect.Client[v1.LinkCreatorAccountRequest, v1.LinkCreatorAccountResponse]
-	unlinkCreatorAccount *connect.Client[v1.UnlinkCreatorAccountRequest, v1.UnlinkCreatorAccountResponse]
-}
-
-// ListCreators calls publira.admin.v1.AdminCreatorService.ListCreators.
-func (c *adminCreatorServiceClient) ListCreators(ctx context.Context, req *connect.Request[v1.ListCreatorsRequest]) (*connect.Response[v1.ListCreatorsResponse], error) {
-	return c.listCreators.CallUnary(ctx, req)
-}
-
-// GetCreator calls publira.admin.v1.AdminCreatorService.GetCreator.
-func (c *adminCreatorServiceClient) GetCreator(ctx context.Context, req *connect.Request[v1.GetCreatorRequest]) (*connect.Response[v1.GetCreatorResponse], error) {
-	return c.getCreator.CallUnary(ctx, req)
-}
-
-// CreateCreator calls publira.admin.v1.AdminCreatorService.CreateCreator.
-func (c *adminCreatorServiceClient) CreateCreator(ctx context.Context, req *connect.Request[v1.CreateCreatorRequest]) (*connect.Response[v1.CreateCreatorResponse], error) {
-	return c.createCreator.CallUnary(ctx, req)
-}
-
-// UpdateCreator calls publira.admin.v1.AdminCreatorService.UpdateCreator.
-func (c *adminCreatorServiceClient) UpdateCreator(ctx context.Context, req *connect.Request[v1.UpdateCreatorRequest]) (*connect.Response[v1.UpdateCreatorResponse], error) {
-	return c.updateCreator.CallUnary(ctx, req)
-}
-
-// LinkCreatorAccount calls publira.admin.v1.AdminCreatorService.LinkCreatorAccount.
-func (c *adminCreatorServiceClient) LinkCreatorAccount(ctx context.Context, req *connect.Request[v1.LinkCreatorAccountRequest]) (*connect.Response[v1.LinkCreatorAccountResponse], error) {
-	return c.linkCreatorAccount.CallUnary(ctx, req)
-}
-
-// UnlinkCreatorAccount calls publira.admin.v1.AdminCreatorService.UnlinkCreatorAccount.
-func (c *adminCreatorServiceClient) UnlinkCreatorAccount(ctx context.Context, req *connect.Request[v1.UnlinkCreatorAccountRequest]) (*connect.Response[v1.UnlinkCreatorAccountResponse], error) {
-	return c.unlinkCreatorAccount.CallUnary(ctx, req)
+// service. Multiple service clients may share a single connect.Client.
+func NewAdminCreatorServiceClient(client *connect.Client) AdminCreatorServiceClient {
+	return &adminCreatorServiceClient{client: client}
 }
 
 // AdminCreatorServiceHandler is an implementation of the publira.admin.v1.AdminCreatorService
 // service.
 type AdminCreatorServiceHandler interface {
 	// Minimum role: tenant_auditor.
-	ListCreators(context.Context, *connect.Request[v1.ListCreatorsRequest]) (*connect.Response[v1.ListCreatorsResponse], error)
+	ListCreators(context.Context, *v1.ListCreatorsRequest) (*v1.ListCreatorsResponse, error)
 	// Minimum role: tenant_auditor.
-	GetCreator(context.Context, *connect.Request[v1.GetCreatorRequest]) (*connect.Response[v1.GetCreatorResponse], error)
+	GetCreator(context.Context, *v1.GetCreatorRequest) (*v1.GetCreatorResponse, error)
 	// Minimum role: tenant_editor.
-	CreateCreator(context.Context, *connect.Request[v1.CreateCreatorRequest]) (*connect.Response[v1.CreateCreatorResponse], error)
+	CreateCreator(context.Context, *v1.CreateCreatorRequest) (*v1.CreateCreatorResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateCreator(context.Context, *connect.Request[v1.UpdateCreatorRequest]) (*connect.Response[v1.UpdateCreatorResponse], error)
+	UpdateCreator(context.Context, *v1.UpdateCreatorRequest) (*v1.UpdateCreatorResponse, error)
 	// Links a reader account to a creator. One account may be linked to several
 	// creators and one creator to several accounts. Linking a pair that is
 	// already linked changes nothing and records nothing. not_found for a
@@ -186,100 +138,177 @@ type AdminCreatorServiceHandler interface {
 	// failed_precondition for a reader who is not active.
 	//
 	// Minimum role: tenant_admin.
-	LinkCreatorAccount(context.Context, *connect.Request[v1.LinkCreatorAccountRequest]) (*connect.Response[v1.LinkCreatorAccountResponse], error)
+	LinkCreatorAccount(context.Context, *v1.LinkCreatorAccountRequest) (*v1.LinkCreatorAccountResponse, error)
 	// Removes a link. Unlinking a pair that is not linked changes nothing and
 	// records nothing. not_found for a creator of another tenant.
 	//
 	// Minimum role: tenant_admin.
-	UnlinkCreatorAccount(context.Context, *connect.Request[v1.UnlinkCreatorAccountRequest]) (*connect.Response[v1.UnlinkCreatorAccountResponse], error)
+	UnlinkCreatorAccount(context.Context, *v1.UnlinkCreatorAccountRequest) (*v1.UnlinkCreatorAccountResponse, error)
 }
 
-// NewAdminCreatorServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewAdminCreatorServiceHandler(svc AdminCreatorServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	adminCreatorServiceMethods := v1.File_publira_admin_v1_creator_proto.Services().ByName("AdminCreatorService").Methods()
-	adminCreatorServiceListCreatorsHandler := connect.NewUnaryHandler(
-		AdminCreatorServiceListCreatorsProcedure,
-		svc.ListCreators,
-		connect.WithSchema(adminCreatorServiceMethods.ByName("ListCreators")),
-		connect.WithHandlerOptions(opts...),
+// RegisterAdminCreatorServiceHandler registers svc as the publira.admin.v1.AdminCreatorService
+// implementation on server.
+func RegisterAdminCreatorServiceHandler(server *connect.Server, svc AdminCreatorServiceHandler) {
+	adapter := adminCreatorServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: adminCreatorServiceListCreatorsSpec(), Handler: adapter.listCreators},
+		connect.Method{Spec: adminCreatorServiceGetCreatorSpec(), Handler: adapter.getCreator},
+		connect.Method{Spec: adminCreatorServiceCreateCreatorSpec(), Handler: adapter.createCreator},
+		connect.Method{Spec: adminCreatorServiceUpdateCreatorSpec(), Handler: adapter.updateCreator},
+		connect.Method{Spec: adminCreatorServiceLinkCreatorAccountSpec(), Handler: adapter.linkCreatorAccount},
+		connect.Method{Spec: adminCreatorServiceUnlinkCreatorAccountSpec(), Handler: adapter.unlinkCreatorAccount},
 	)
-	adminCreatorServiceGetCreatorHandler := connect.NewUnaryHandler(
-		AdminCreatorServiceGetCreatorProcedure,
-		svc.GetCreator,
-		connect.WithSchema(adminCreatorServiceMethods.ByName("GetCreator")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminCreatorServiceCreateCreatorHandler := connect.NewUnaryHandler(
-		AdminCreatorServiceCreateCreatorProcedure,
-		svc.CreateCreator,
-		connect.WithSchema(adminCreatorServiceMethods.ByName("CreateCreator")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminCreatorServiceUpdateCreatorHandler := connect.NewUnaryHandler(
-		AdminCreatorServiceUpdateCreatorProcedure,
-		svc.UpdateCreator,
-		connect.WithSchema(adminCreatorServiceMethods.ByName("UpdateCreator")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminCreatorServiceLinkCreatorAccountHandler := connect.NewUnaryHandler(
-		AdminCreatorServiceLinkCreatorAccountProcedure,
-		svc.LinkCreatorAccount,
-		connect.WithSchema(adminCreatorServiceMethods.ByName("LinkCreatorAccount")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminCreatorServiceUnlinkCreatorAccountHandler := connect.NewUnaryHandler(
-		AdminCreatorServiceUnlinkCreatorAccountProcedure,
-		svc.UnlinkCreatorAccount,
-		connect.WithSchema(adminCreatorServiceMethods.ByName("UnlinkCreatorAccount")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.admin.v1.AdminCreatorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case AdminCreatorServiceListCreatorsProcedure:
-			adminCreatorServiceListCreatorsHandler.ServeHTTP(w, r)
-		case AdminCreatorServiceGetCreatorProcedure:
-			adminCreatorServiceGetCreatorHandler.ServeHTTP(w, r)
-		case AdminCreatorServiceCreateCreatorProcedure:
-			adminCreatorServiceCreateCreatorHandler.ServeHTTP(w, r)
-		case AdminCreatorServiceUpdateCreatorProcedure:
-			adminCreatorServiceUpdateCreatorHandler.ServeHTTP(w, r)
-		case AdminCreatorServiceLinkCreatorAccountProcedure:
-			adminCreatorServiceLinkCreatorAccountHandler.ServeHTTP(w, r)
-		case AdminCreatorServiceUnlinkCreatorAccountProcedure:
-			adminCreatorServiceUnlinkCreatorAccountHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedAdminCreatorServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminCreatorServiceHandler struct{}
 
-func (UnimplementedAdminCreatorServiceHandler) ListCreators(context.Context, *connect.Request[v1.ListCreatorsRequest]) (*connect.Response[v1.ListCreatorsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCreatorService.ListCreators is not implemented"))
+func (UnimplementedAdminCreatorServiceHandler) ListCreators(context.Context, *v1.ListCreatorsRequest) (*v1.ListCreatorsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCreatorService.ListCreators is not implemented")
 }
 
-func (UnimplementedAdminCreatorServiceHandler) GetCreator(context.Context, *connect.Request[v1.GetCreatorRequest]) (*connect.Response[v1.GetCreatorResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCreatorService.GetCreator is not implemented"))
+func (UnimplementedAdminCreatorServiceHandler) GetCreator(context.Context, *v1.GetCreatorRequest) (*v1.GetCreatorResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCreatorService.GetCreator is not implemented")
 }
 
-func (UnimplementedAdminCreatorServiceHandler) CreateCreator(context.Context, *connect.Request[v1.CreateCreatorRequest]) (*connect.Response[v1.CreateCreatorResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCreatorService.CreateCreator is not implemented"))
+func (UnimplementedAdminCreatorServiceHandler) CreateCreator(context.Context, *v1.CreateCreatorRequest) (*v1.CreateCreatorResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCreatorService.CreateCreator is not implemented")
 }
 
-func (UnimplementedAdminCreatorServiceHandler) UpdateCreator(context.Context, *connect.Request[v1.UpdateCreatorRequest]) (*connect.Response[v1.UpdateCreatorResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCreatorService.UpdateCreator is not implemented"))
+func (UnimplementedAdminCreatorServiceHandler) UpdateCreator(context.Context, *v1.UpdateCreatorRequest) (*v1.UpdateCreatorResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCreatorService.UpdateCreator is not implemented")
 }
 
-func (UnimplementedAdminCreatorServiceHandler) LinkCreatorAccount(context.Context, *connect.Request[v1.LinkCreatorAccountRequest]) (*connect.Response[v1.LinkCreatorAccountResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCreatorService.LinkCreatorAccount is not implemented"))
+func (UnimplementedAdminCreatorServiceHandler) LinkCreatorAccount(context.Context, *v1.LinkCreatorAccountRequest) (*v1.LinkCreatorAccountResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCreatorService.LinkCreatorAccount is not implemented")
 }
 
-func (UnimplementedAdminCreatorServiceHandler) UnlinkCreatorAccount(context.Context, *connect.Request[v1.UnlinkCreatorAccountRequest]) (*connect.Response[v1.UnlinkCreatorAccountResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCreatorService.UnlinkCreatorAccount is not implemented"))
+func (UnimplementedAdminCreatorServiceHandler) UnlinkCreatorAccount(context.Context, *v1.UnlinkCreatorAccountRequest) (*v1.UnlinkCreatorAccountResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCreatorService.UnlinkCreatorAccount is not implemented")
+}
+
+type adminCreatorServiceClient struct {
+	client *connect.Client
+}
+
+func (c *adminCreatorServiceClient) ListCreators(ctx context.Context, req *v1.ListCreatorsRequest) (*v1.ListCreatorsResponse, error) {
+	var res v1.ListCreatorsResponse
+	if err := c.client.CallUnary(ctx, adminCreatorServiceListCreatorsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCreatorServiceClient) GetCreator(ctx context.Context, req *v1.GetCreatorRequest) (*v1.GetCreatorResponse, error) {
+	var res v1.GetCreatorResponse
+	if err := c.client.CallUnary(ctx, adminCreatorServiceGetCreatorSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCreatorServiceClient) CreateCreator(ctx context.Context, req *v1.CreateCreatorRequest) (*v1.CreateCreatorResponse, error) {
+	var res v1.CreateCreatorResponse
+	if err := c.client.CallUnary(ctx, adminCreatorServiceCreateCreatorSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCreatorServiceClient) UpdateCreator(ctx context.Context, req *v1.UpdateCreatorRequest) (*v1.UpdateCreatorResponse, error) {
+	var res v1.UpdateCreatorResponse
+	if err := c.client.CallUnary(ctx, adminCreatorServiceUpdateCreatorSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCreatorServiceClient) LinkCreatorAccount(ctx context.Context, req *v1.LinkCreatorAccountRequest) (*v1.LinkCreatorAccountResponse, error) {
+	var res v1.LinkCreatorAccountResponse
+	if err := c.client.CallUnary(ctx, adminCreatorServiceLinkCreatorAccountSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCreatorServiceClient) UnlinkCreatorAccount(ctx context.Context, req *v1.UnlinkCreatorAccountRequest) (*v1.UnlinkCreatorAccountResponse, error) {
+	var res v1.UnlinkCreatorAccountResponse
+	if err := c.client.CallUnary(ctx, adminCreatorServiceUnlinkCreatorAccountSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type adminCreatorServiceHandler struct{ svc AdminCreatorServiceHandler }
+
+func (h adminCreatorServiceHandler) listCreators(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListCreatorsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListCreators(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCreatorServiceHandler) getCreator(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetCreatorRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetCreator(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCreatorServiceHandler) createCreator(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateCreatorRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateCreator(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCreatorServiceHandler) updateCreator(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateCreatorRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateCreator(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCreatorServiceHandler) linkCreatorAccount(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.LinkCreatorAccountRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.LinkCreatorAccount(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCreatorServiceHandler) unlinkCreatorAccount(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UnlinkCreatorAccountRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UnlinkCreatorAccount(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

@@ -5,222 +5,243 @@
 package publirasplatformv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// PlatformUserServiceName is the fully-qualified name of the PlatformUserService service.
 	PlatformUserServiceName = "publira.platform.v1.PlatformUserService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// PlatformUserServiceListEndUsersProcedure is the fully-qualified name of the PlatformUserService's
+	// PlatformUserServiceListEndUsersProcedure is the procedure name of the PlatformUserService's
 	// ListEndUsers RPC.
 	PlatformUserServiceListEndUsersProcedure = "/publira.platform.v1.PlatformUserService/ListEndUsers"
-	// PlatformUserServiceGetEndUserProcedure is the fully-qualified name of the PlatformUserService's
+	// PlatformUserServiceGetEndUserProcedure is the procedure name of the PlatformUserService's
 	// GetEndUser RPC.
 	PlatformUserServiceGetEndUserProcedure = "/publira.platform.v1.PlatformUserService/GetEndUser"
-	// PlatformUserServiceSuspendEndUserProcedure is the fully-qualified name of the
-	// PlatformUserService's SuspendEndUser RPC.
+	// PlatformUserServiceSuspendEndUserProcedure is the procedure name of the PlatformUserService's
+	// SuspendEndUser RPC.
 	PlatformUserServiceSuspendEndUserProcedure = "/publira.platform.v1.PlatformUserService/SuspendEndUser"
-	// PlatformUserServiceUnsuspendEndUserProcedure is the fully-qualified name of the
-	// PlatformUserService's UnsuspendEndUser RPC.
+	// PlatformUserServiceUnsuspendEndUserProcedure is the procedure name of the PlatformUserService's
+	// UnsuspendEndUser RPC.
 	PlatformUserServiceUnsuspendEndUserProcedure = "/publira.platform.v1.PlatformUserService/UnsuspendEndUser"
-	// PlatformUserServiceDeleteEndUserProcedure is the fully-qualified name of the
-	// PlatformUserService's DeleteEndUser RPC.
+	// PlatformUserServiceDeleteEndUserProcedure is the procedure name of the PlatformUserService's
+	// DeleteEndUser RPC.
 	PlatformUserServiceDeleteEndUserProcedure = "/publira.platform.v1.PlatformUserService/DeleteEndUser"
+)
+
+var (
+	platformUserServiceListEndUsersSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_user_proto.Services().ByName("PlatformUserService").Methods().ByName("ListEndUsers"),
+			Procedure:  PlatformUserServiceListEndUsersProcedure,
+		}
+	})
+	platformUserServiceGetEndUserSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_user_proto.Services().ByName("PlatformUserService").Methods().ByName("GetEndUser"),
+			Procedure:  PlatformUserServiceGetEndUserProcedure,
+		}
+	})
+	platformUserServiceSuspendEndUserSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_user_proto.Services().ByName("PlatformUserService").Methods().ByName("SuspendEndUser"),
+			Procedure:  PlatformUserServiceSuspendEndUserProcedure,
+		}
+	})
+	platformUserServiceUnsuspendEndUserSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_user_proto.Services().ByName("PlatformUserService").Methods().ByName("UnsuspendEndUser"),
+			Procedure:  PlatformUserServiceUnsuspendEndUserProcedure,
+		}
+	})
+	platformUserServiceDeleteEndUserSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_user_proto.Services().ByName("PlatformUserService").Methods().ByName("DeleteEndUser"),
+			Procedure:  PlatformUserServiceDeleteEndUserProcedure,
+		}
+	})
 )
 
 // PlatformUserServiceClient is a client for the publira.platform.v1.PlatformUserService service.
 type PlatformUserServiceClient interface {
-	ListEndUsers(context.Context, *connect.Request[v1.ListEndUsersRequest]) (*connect.Response[v1.ListEndUsersResponse], error)
-	GetEndUser(context.Context, *connect.Request[v1.GetEndUserRequest]) (*connect.Response[v1.GetEndUserResponse], error)
-	SuspendEndUser(context.Context, *connect.Request[v1.SuspendEndUserRequest]) (*connect.Response[v1.SuspendEndUserResponse], error)
-	UnsuspendEndUser(context.Context, *connect.Request[v1.UnsuspendEndUserRequest]) (*connect.Response[v1.UnsuspendEndUserResponse], error)
-	DeleteEndUser(context.Context, *connect.Request[v1.DeleteEndUserRequest]) (*connect.Response[v1.DeleteEndUserResponse], error)
+	ListEndUsers(context.Context, *v1.ListEndUsersRequest) (*v1.ListEndUsersResponse, error)
+	GetEndUser(context.Context, *v1.GetEndUserRequest) (*v1.GetEndUserResponse, error)
+	SuspendEndUser(context.Context, *v1.SuspendEndUserRequest) (*v1.SuspendEndUserResponse, error)
+	UnsuspendEndUser(context.Context, *v1.UnsuspendEndUserRequest) (*v1.UnsuspendEndUserResponse, error)
+	DeleteEndUser(context.Context, *v1.DeleteEndUserRequest) (*v1.DeleteEndUserResponse, error)
 }
 
 // NewPlatformUserServiceClient constructs a client for the publira.platform.v1.PlatformUserService
-// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
-// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
-// the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewPlatformUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PlatformUserServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	platformUserServiceMethods := v1.File_publira_platform_v1_user_proto.Services().ByName("PlatformUserService").Methods()
-	return &platformUserServiceClient{
-		listEndUsers: connect.NewClient[v1.ListEndUsersRequest, v1.ListEndUsersResponse](
-			httpClient,
-			baseURL+PlatformUserServiceListEndUsersProcedure,
-			connect.WithSchema(platformUserServiceMethods.ByName("ListEndUsers")),
-			connect.WithClientOptions(opts...),
-		),
-		getEndUser: connect.NewClient[v1.GetEndUserRequest, v1.GetEndUserResponse](
-			httpClient,
-			baseURL+PlatformUserServiceGetEndUserProcedure,
-			connect.WithSchema(platformUserServiceMethods.ByName("GetEndUser")),
-			connect.WithClientOptions(opts...),
-		),
-		suspendEndUser: connect.NewClient[v1.SuspendEndUserRequest, v1.SuspendEndUserResponse](
-			httpClient,
-			baseURL+PlatformUserServiceSuspendEndUserProcedure,
-			connect.WithSchema(platformUserServiceMethods.ByName("SuspendEndUser")),
-			connect.WithClientOptions(opts...),
-		),
-		unsuspendEndUser: connect.NewClient[v1.UnsuspendEndUserRequest, v1.UnsuspendEndUserResponse](
-			httpClient,
-			baseURL+PlatformUserServiceUnsuspendEndUserProcedure,
-			connect.WithSchema(platformUserServiceMethods.ByName("UnsuspendEndUser")),
-			connect.WithClientOptions(opts...),
-		),
-		deleteEndUser: connect.NewClient[v1.DeleteEndUserRequest, v1.DeleteEndUserResponse](
-			httpClient,
-			baseURL+PlatformUserServiceDeleteEndUserProcedure,
-			connect.WithSchema(platformUserServiceMethods.ByName("DeleteEndUser")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// platformUserServiceClient implements PlatformUserServiceClient.
-type platformUserServiceClient struct {
-	listEndUsers     *connect.Client[v1.ListEndUsersRequest, v1.ListEndUsersResponse]
-	getEndUser       *connect.Client[v1.GetEndUserRequest, v1.GetEndUserResponse]
-	suspendEndUser   *connect.Client[v1.SuspendEndUserRequest, v1.SuspendEndUserResponse]
-	unsuspendEndUser *connect.Client[v1.UnsuspendEndUserRequest, v1.UnsuspendEndUserResponse]
-	deleteEndUser    *connect.Client[v1.DeleteEndUserRequest, v1.DeleteEndUserResponse]
-}
-
-// ListEndUsers calls publira.platform.v1.PlatformUserService.ListEndUsers.
-func (c *platformUserServiceClient) ListEndUsers(ctx context.Context, req *connect.Request[v1.ListEndUsersRequest]) (*connect.Response[v1.ListEndUsersResponse], error) {
-	return c.listEndUsers.CallUnary(ctx, req)
-}
-
-// GetEndUser calls publira.platform.v1.PlatformUserService.GetEndUser.
-func (c *platformUserServiceClient) GetEndUser(ctx context.Context, req *connect.Request[v1.GetEndUserRequest]) (*connect.Response[v1.GetEndUserResponse], error) {
-	return c.getEndUser.CallUnary(ctx, req)
-}
-
-// SuspendEndUser calls publira.platform.v1.PlatformUserService.SuspendEndUser.
-func (c *platformUserServiceClient) SuspendEndUser(ctx context.Context, req *connect.Request[v1.SuspendEndUserRequest]) (*connect.Response[v1.SuspendEndUserResponse], error) {
-	return c.suspendEndUser.CallUnary(ctx, req)
-}
-
-// UnsuspendEndUser calls publira.platform.v1.PlatformUserService.UnsuspendEndUser.
-func (c *platformUserServiceClient) UnsuspendEndUser(ctx context.Context, req *connect.Request[v1.UnsuspendEndUserRequest]) (*connect.Response[v1.UnsuspendEndUserResponse], error) {
-	return c.unsuspendEndUser.CallUnary(ctx, req)
-}
-
-// DeleteEndUser calls publira.platform.v1.PlatformUserService.DeleteEndUser.
-func (c *platformUserServiceClient) DeleteEndUser(ctx context.Context, req *connect.Request[v1.DeleteEndUserRequest]) (*connect.Response[v1.DeleteEndUserResponse], error) {
-	return c.deleteEndUser.CallUnary(ctx, req)
+// service. Multiple service clients may share a single connect.Client.
+func NewPlatformUserServiceClient(client *connect.Client) PlatformUserServiceClient {
+	return &platformUserServiceClient{client: client}
 }
 
 // PlatformUserServiceHandler is an implementation of the publira.platform.v1.PlatformUserService
 // service.
 type PlatformUserServiceHandler interface {
-	ListEndUsers(context.Context, *connect.Request[v1.ListEndUsersRequest]) (*connect.Response[v1.ListEndUsersResponse], error)
-	GetEndUser(context.Context, *connect.Request[v1.GetEndUserRequest]) (*connect.Response[v1.GetEndUserResponse], error)
-	SuspendEndUser(context.Context, *connect.Request[v1.SuspendEndUserRequest]) (*connect.Response[v1.SuspendEndUserResponse], error)
-	UnsuspendEndUser(context.Context, *connect.Request[v1.UnsuspendEndUserRequest]) (*connect.Response[v1.UnsuspendEndUserResponse], error)
-	DeleteEndUser(context.Context, *connect.Request[v1.DeleteEndUserRequest]) (*connect.Response[v1.DeleteEndUserResponse], error)
+	ListEndUsers(context.Context, *v1.ListEndUsersRequest) (*v1.ListEndUsersResponse, error)
+	GetEndUser(context.Context, *v1.GetEndUserRequest) (*v1.GetEndUserResponse, error)
+	SuspendEndUser(context.Context, *v1.SuspendEndUserRequest) (*v1.SuspendEndUserResponse, error)
+	UnsuspendEndUser(context.Context, *v1.UnsuspendEndUserRequest) (*v1.UnsuspendEndUserResponse, error)
+	DeleteEndUser(context.Context, *v1.DeleteEndUserRequest) (*v1.DeleteEndUserResponse, error)
 }
 
-// NewPlatformUserServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewPlatformUserServiceHandler(svc PlatformUserServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	platformUserServiceMethods := v1.File_publira_platform_v1_user_proto.Services().ByName("PlatformUserService").Methods()
-	platformUserServiceListEndUsersHandler := connect.NewUnaryHandler(
-		PlatformUserServiceListEndUsersProcedure,
-		svc.ListEndUsers,
-		connect.WithSchema(platformUserServiceMethods.ByName("ListEndUsers")),
-		connect.WithHandlerOptions(opts...),
+// RegisterPlatformUserServiceHandler registers svc as the publira.platform.v1.PlatformUserService
+// implementation on server.
+func RegisterPlatformUserServiceHandler(server *connect.Server, svc PlatformUserServiceHandler) {
+	adapter := platformUserServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: platformUserServiceListEndUsersSpec(), Handler: adapter.listEndUsers},
+		connect.Method{Spec: platformUserServiceGetEndUserSpec(), Handler: adapter.getEndUser},
+		connect.Method{Spec: platformUserServiceSuspendEndUserSpec(), Handler: adapter.suspendEndUser},
+		connect.Method{Spec: platformUserServiceUnsuspendEndUserSpec(), Handler: adapter.unsuspendEndUser},
+		connect.Method{Spec: platformUserServiceDeleteEndUserSpec(), Handler: adapter.deleteEndUser},
 	)
-	platformUserServiceGetEndUserHandler := connect.NewUnaryHandler(
-		PlatformUserServiceGetEndUserProcedure,
-		svc.GetEndUser,
-		connect.WithSchema(platformUserServiceMethods.ByName("GetEndUser")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformUserServiceSuspendEndUserHandler := connect.NewUnaryHandler(
-		PlatformUserServiceSuspendEndUserProcedure,
-		svc.SuspendEndUser,
-		connect.WithSchema(platformUserServiceMethods.ByName("SuspendEndUser")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformUserServiceUnsuspendEndUserHandler := connect.NewUnaryHandler(
-		PlatformUserServiceUnsuspendEndUserProcedure,
-		svc.UnsuspendEndUser,
-		connect.WithSchema(platformUserServiceMethods.ByName("UnsuspendEndUser")),
-		connect.WithHandlerOptions(opts...),
-	)
-	platformUserServiceDeleteEndUserHandler := connect.NewUnaryHandler(
-		PlatformUserServiceDeleteEndUserProcedure,
-		svc.DeleteEndUser,
-		connect.WithSchema(platformUserServiceMethods.ByName("DeleteEndUser")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.platform.v1.PlatformUserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case PlatformUserServiceListEndUsersProcedure:
-			platformUserServiceListEndUsersHandler.ServeHTTP(w, r)
-		case PlatformUserServiceGetEndUserProcedure:
-			platformUserServiceGetEndUserHandler.ServeHTTP(w, r)
-		case PlatformUserServiceSuspendEndUserProcedure:
-			platformUserServiceSuspendEndUserHandler.ServeHTTP(w, r)
-		case PlatformUserServiceUnsuspendEndUserProcedure:
-			platformUserServiceUnsuspendEndUserHandler.ServeHTTP(w, r)
-		case PlatformUserServiceDeleteEndUserProcedure:
-			platformUserServiceDeleteEndUserHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedPlatformUserServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedPlatformUserServiceHandler struct{}
 
-func (UnimplementedPlatformUserServiceHandler) ListEndUsers(context.Context, *connect.Request[v1.ListEndUsersRequest]) (*connect.Response[v1.ListEndUsersResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformUserService.ListEndUsers is not implemented"))
+func (UnimplementedPlatformUserServiceHandler) ListEndUsers(context.Context, *v1.ListEndUsersRequest) (*v1.ListEndUsersResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformUserService.ListEndUsers is not implemented")
 }
 
-func (UnimplementedPlatformUserServiceHandler) GetEndUser(context.Context, *connect.Request[v1.GetEndUserRequest]) (*connect.Response[v1.GetEndUserResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformUserService.GetEndUser is not implemented"))
+func (UnimplementedPlatformUserServiceHandler) GetEndUser(context.Context, *v1.GetEndUserRequest) (*v1.GetEndUserResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformUserService.GetEndUser is not implemented")
 }
 
-func (UnimplementedPlatformUserServiceHandler) SuspendEndUser(context.Context, *connect.Request[v1.SuspendEndUserRequest]) (*connect.Response[v1.SuspendEndUserResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformUserService.SuspendEndUser is not implemented"))
+func (UnimplementedPlatformUserServiceHandler) SuspendEndUser(context.Context, *v1.SuspendEndUserRequest) (*v1.SuspendEndUserResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformUserService.SuspendEndUser is not implemented")
 }
 
-func (UnimplementedPlatformUserServiceHandler) UnsuspendEndUser(context.Context, *connect.Request[v1.UnsuspendEndUserRequest]) (*connect.Response[v1.UnsuspendEndUserResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformUserService.UnsuspendEndUser is not implemented"))
+func (UnimplementedPlatformUserServiceHandler) UnsuspendEndUser(context.Context, *v1.UnsuspendEndUserRequest) (*v1.UnsuspendEndUserResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformUserService.UnsuspendEndUser is not implemented")
 }
 
-func (UnimplementedPlatformUserServiceHandler) DeleteEndUser(context.Context, *connect.Request[v1.DeleteEndUserRequest]) (*connect.Response[v1.DeleteEndUserResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformUserService.DeleteEndUser is not implemented"))
+func (UnimplementedPlatformUserServiceHandler) DeleteEndUser(context.Context, *v1.DeleteEndUserRequest) (*v1.DeleteEndUserResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformUserService.DeleteEndUser is not implemented")
+}
+
+type platformUserServiceClient struct {
+	client *connect.Client
+}
+
+func (c *platformUserServiceClient) ListEndUsers(ctx context.Context, req *v1.ListEndUsersRequest) (*v1.ListEndUsersResponse, error) {
+	var res v1.ListEndUsersResponse
+	if err := c.client.CallUnary(ctx, platformUserServiceListEndUsersSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformUserServiceClient) GetEndUser(ctx context.Context, req *v1.GetEndUserRequest) (*v1.GetEndUserResponse, error) {
+	var res v1.GetEndUserResponse
+	if err := c.client.CallUnary(ctx, platformUserServiceGetEndUserSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformUserServiceClient) SuspendEndUser(ctx context.Context, req *v1.SuspendEndUserRequest) (*v1.SuspendEndUserResponse, error) {
+	var res v1.SuspendEndUserResponse
+	if err := c.client.CallUnary(ctx, platformUserServiceSuspendEndUserSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformUserServiceClient) UnsuspendEndUser(ctx context.Context, req *v1.UnsuspendEndUserRequest) (*v1.UnsuspendEndUserResponse, error) {
+	var res v1.UnsuspendEndUserResponse
+	if err := c.client.CallUnary(ctx, platformUserServiceUnsuspendEndUserSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformUserServiceClient) DeleteEndUser(ctx context.Context, req *v1.DeleteEndUserRequest) (*v1.DeleteEndUserResponse, error) {
+	var res v1.DeleteEndUserResponse
+	if err := c.client.CallUnary(ctx, platformUserServiceDeleteEndUserSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type platformUserServiceHandler struct{ svc PlatformUserServiceHandler }
+
+func (h platformUserServiceHandler) listEndUsers(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListEndUsersRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListEndUsers(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformUserServiceHandler) getEndUser(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetEndUserRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetEndUser(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformUserServiceHandler) suspendEndUser(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SuspendEndUserRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SuspendEndUser(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformUserServiceHandler) unsuspendEndUser(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UnsuspendEndUserRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UnsuspendEndUser(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformUserServiceHandler) deleteEndUser(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteEndUserRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteEndUser(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

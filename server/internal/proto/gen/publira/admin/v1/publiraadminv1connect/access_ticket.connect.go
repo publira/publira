@@ -5,171 +5,179 @@
 package publiraadminv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AdminAccessTicketServiceName is the fully-qualified name of the AdminAccessTicketService service.
 	AdminAccessTicketServiceName = "publira.admin.v1.AdminAccessTicketService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AdminAccessTicketServiceListAccessTicketsProcedure is the fully-qualified name of the
+	// AdminAccessTicketServiceListAccessTicketsProcedure is the procedure name of the
 	// AdminAccessTicketService's ListAccessTickets RPC.
 	AdminAccessTicketServiceListAccessTicketsProcedure = "/publira.admin.v1.AdminAccessTicketService/ListAccessTickets"
-	// AdminAccessTicketServiceIssueAccessTicketProcedure is the fully-qualified name of the
+	// AdminAccessTicketServiceIssueAccessTicketProcedure is the procedure name of the
 	// AdminAccessTicketService's IssueAccessTicket RPC.
 	AdminAccessTicketServiceIssueAccessTicketProcedure = "/publira.admin.v1.AdminAccessTicketService/IssueAccessTicket"
-	// AdminAccessTicketServiceRevokeAccessTicketProcedure is the fully-qualified name of the
+	// AdminAccessTicketServiceRevokeAccessTicketProcedure is the procedure name of the
 	// AdminAccessTicketService's RevokeAccessTicket RPC.
 	AdminAccessTicketServiceRevokeAccessTicketProcedure = "/publira.admin.v1.AdminAccessTicketService/RevokeAccessTicket"
+)
+
+var (
+	adminAccessTicketServiceListAccessTicketsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_access_ticket_proto.Services().ByName("AdminAccessTicketService").Methods().ByName("ListAccessTickets"),
+			Procedure:  AdminAccessTicketServiceListAccessTicketsProcedure,
+		}
+	})
+	adminAccessTicketServiceIssueAccessTicketSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_access_ticket_proto.Services().ByName("AdminAccessTicketService").Methods().ByName("IssueAccessTicket"),
+			Procedure:  AdminAccessTicketServiceIssueAccessTicketProcedure,
+		}
+	})
+	adminAccessTicketServiceRevokeAccessTicketSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_access_ticket_proto.Services().ByName("AdminAccessTicketService").Methods().ByName("RevokeAccessTicket"),
+			Procedure:  AdminAccessTicketServiceRevokeAccessTicketProcedure,
+		}
+	})
 )
 
 // AdminAccessTicketServiceClient is a client for the publira.admin.v1.AdminAccessTicketService
 // service.
 type AdminAccessTicketServiceClient interface {
 	// Minimum role: tenant_admin.
-	ListAccessTickets(context.Context, *connect.Request[v1.ListAccessTicketsRequest]) (*connect.Response[v1.ListAccessTicketsResponse], error)
+	ListAccessTickets(context.Context, *v1.ListAccessTicketsRequest) (*v1.ListAccessTicketsResponse, error)
 	// Minimum role: tenant_admin.
-	IssueAccessTicket(context.Context, *connect.Request[v1.IssueAccessTicketRequest]) (*connect.Response[v1.IssueAccessTicketResponse], error)
+	IssueAccessTicket(context.Context, *v1.IssueAccessTicketRequest) (*v1.IssueAccessTicketResponse, error)
 	// Minimum role: tenant_admin.
-	RevokeAccessTicket(context.Context, *connect.Request[v1.RevokeAccessTicketRequest]) (*connect.Response[v1.RevokeAccessTicketResponse], error)
+	RevokeAccessTicket(context.Context, *v1.RevokeAccessTicketRequest) (*v1.RevokeAccessTicketResponse, error)
 }
 
 // NewAdminAccessTicketServiceClient constructs a client for the
-// publira.admin.v1.AdminAccessTicketService service. By default, it uses the Connect protocol with
-// the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To use
-// the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewAdminAccessTicketServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdminAccessTicketServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	adminAccessTicketServiceMethods := v1.File_publira_admin_v1_access_ticket_proto.Services().ByName("AdminAccessTicketService").Methods()
-	return &adminAccessTicketServiceClient{
-		listAccessTickets: connect.NewClient[v1.ListAccessTicketsRequest, v1.ListAccessTicketsResponse](
-			httpClient,
-			baseURL+AdminAccessTicketServiceListAccessTicketsProcedure,
-			connect.WithSchema(adminAccessTicketServiceMethods.ByName("ListAccessTickets")),
-			connect.WithClientOptions(opts...),
-		),
-		issueAccessTicket: connect.NewClient[v1.IssueAccessTicketRequest, v1.IssueAccessTicketResponse](
-			httpClient,
-			baseURL+AdminAccessTicketServiceIssueAccessTicketProcedure,
-			connect.WithSchema(adminAccessTicketServiceMethods.ByName("IssueAccessTicket")),
-			connect.WithClientOptions(opts...),
-		),
-		revokeAccessTicket: connect.NewClient[v1.RevokeAccessTicketRequest, v1.RevokeAccessTicketResponse](
-			httpClient,
-			baseURL+AdminAccessTicketServiceRevokeAccessTicketProcedure,
-			connect.WithSchema(adminAccessTicketServiceMethods.ByName("RevokeAccessTicket")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// adminAccessTicketServiceClient implements AdminAccessTicketServiceClient.
-type adminAccessTicketServiceClient struct {
-	listAccessTickets  *connect.Client[v1.ListAccessTicketsRequest, v1.ListAccessTicketsResponse]
-	issueAccessTicket  *connect.Client[v1.IssueAccessTicketRequest, v1.IssueAccessTicketResponse]
-	revokeAccessTicket *connect.Client[v1.RevokeAccessTicketRequest, v1.RevokeAccessTicketResponse]
-}
-
-// ListAccessTickets calls publira.admin.v1.AdminAccessTicketService.ListAccessTickets.
-func (c *adminAccessTicketServiceClient) ListAccessTickets(ctx context.Context, req *connect.Request[v1.ListAccessTicketsRequest]) (*connect.Response[v1.ListAccessTicketsResponse], error) {
-	return c.listAccessTickets.CallUnary(ctx, req)
-}
-
-// IssueAccessTicket calls publira.admin.v1.AdminAccessTicketService.IssueAccessTicket.
-func (c *adminAccessTicketServiceClient) IssueAccessTicket(ctx context.Context, req *connect.Request[v1.IssueAccessTicketRequest]) (*connect.Response[v1.IssueAccessTicketResponse], error) {
-	return c.issueAccessTicket.CallUnary(ctx, req)
-}
-
-// RevokeAccessTicket calls publira.admin.v1.AdminAccessTicketService.RevokeAccessTicket.
-func (c *adminAccessTicketServiceClient) RevokeAccessTicket(ctx context.Context, req *connect.Request[v1.RevokeAccessTicketRequest]) (*connect.Response[v1.RevokeAccessTicketResponse], error) {
-	return c.revokeAccessTicket.CallUnary(ctx, req)
+// publira.admin.v1.AdminAccessTicketService service. Multiple service clients may share a single
+// connect.Client.
+func NewAdminAccessTicketServiceClient(client *connect.Client) AdminAccessTicketServiceClient {
+	return &adminAccessTicketServiceClient{client: client}
 }
 
 // AdminAccessTicketServiceHandler is an implementation of the
 // publira.admin.v1.AdminAccessTicketService service.
 type AdminAccessTicketServiceHandler interface {
 	// Minimum role: tenant_admin.
-	ListAccessTickets(context.Context, *connect.Request[v1.ListAccessTicketsRequest]) (*connect.Response[v1.ListAccessTicketsResponse], error)
+	ListAccessTickets(context.Context, *v1.ListAccessTicketsRequest) (*v1.ListAccessTicketsResponse, error)
 	// Minimum role: tenant_admin.
-	IssueAccessTicket(context.Context, *connect.Request[v1.IssueAccessTicketRequest]) (*connect.Response[v1.IssueAccessTicketResponse], error)
+	IssueAccessTicket(context.Context, *v1.IssueAccessTicketRequest) (*v1.IssueAccessTicketResponse, error)
 	// Minimum role: tenant_admin.
-	RevokeAccessTicket(context.Context, *connect.Request[v1.RevokeAccessTicketRequest]) (*connect.Response[v1.RevokeAccessTicketResponse], error)
+	RevokeAccessTicket(context.Context, *v1.RevokeAccessTicketRequest) (*v1.RevokeAccessTicketResponse, error)
 }
 
-// NewAdminAccessTicketServiceHandler builds an HTTP handler from the service implementation. It
-// returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewAdminAccessTicketServiceHandler(svc AdminAccessTicketServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	adminAccessTicketServiceMethods := v1.File_publira_admin_v1_access_ticket_proto.Services().ByName("AdminAccessTicketService").Methods()
-	adminAccessTicketServiceListAccessTicketsHandler := connect.NewUnaryHandler(
-		AdminAccessTicketServiceListAccessTicketsProcedure,
-		svc.ListAccessTickets,
-		connect.WithSchema(adminAccessTicketServiceMethods.ByName("ListAccessTickets")),
-		connect.WithHandlerOptions(opts...),
+// RegisterAdminAccessTicketServiceHandler registers svc as the
+// publira.admin.v1.AdminAccessTicketService implementation on server.
+func RegisterAdminAccessTicketServiceHandler(server *connect.Server, svc AdminAccessTicketServiceHandler) {
+	adapter := adminAccessTicketServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: adminAccessTicketServiceListAccessTicketsSpec(), Handler: adapter.listAccessTickets},
+		connect.Method{Spec: adminAccessTicketServiceIssueAccessTicketSpec(), Handler: adapter.issueAccessTicket},
+		connect.Method{Spec: adminAccessTicketServiceRevokeAccessTicketSpec(), Handler: adapter.revokeAccessTicket},
 	)
-	adminAccessTicketServiceIssueAccessTicketHandler := connect.NewUnaryHandler(
-		AdminAccessTicketServiceIssueAccessTicketProcedure,
-		svc.IssueAccessTicket,
-		connect.WithSchema(adminAccessTicketServiceMethods.ByName("IssueAccessTicket")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminAccessTicketServiceRevokeAccessTicketHandler := connect.NewUnaryHandler(
-		AdminAccessTicketServiceRevokeAccessTicketProcedure,
-		svc.RevokeAccessTicket,
-		connect.WithSchema(adminAccessTicketServiceMethods.ByName("RevokeAccessTicket")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.admin.v1.AdminAccessTicketService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case AdminAccessTicketServiceListAccessTicketsProcedure:
-			adminAccessTicketServiceListAccessTicketsHandler.ServeHTTP(w, r)
-		case AdminAccessTicketServiceIssueAccessTicketProcedure:
-			adminAccessTicketServiceIssueAccessTicketHandler.ServeHTTP(w, r)
-		case AdminAccessTicketServiceRevokeAccessTicketProcedure:
-			adminAccessTicketServiceRevokeAccessTicketHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedAdminAccessTicketServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminAccessTicketServiceHandler struct{}
 
-func (UnimplementedAdminAccessTicketServiceHandler) ListAccessTickets(context.Context, *connect.Request[v1.ListAccessTicketsRequest]) (*connect.Response[v1.ListAccessTicketsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAccessTicketService.ListAccessTickets is not implemented"))
+func (UnimplementedAdminAccessTicketServiceHandler) ListAccessTickets(context.Context, *v1.ListAccessTicketsRequest) (*v1.ListAccessTicketsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAccessTicketService.ListAccessTickets is not implemented")
 }
 
-func (UnimplementedAdminAccessTicketServiceHandler) IssueAccessTicket(context.Context, *connect.Request[v1.IssueAccessTicketRequest]) (*connect.Response[v1.IssueAccessTicketResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAccessTicketService.IssueAccessTicket is not implemented"))
+func (UnimplementedAdminAccessTicketServiceHandler) IssueAccessTicket(context.Context, *v1.IssueAccessTicketRequest) (*v1.IssueAccessTicketResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAccessTicketService.IssueAccessTicket is not implemented")
 }
 
-func (UnimplementedAdminAccessTicketServiceHandler) RevokeAccessTicket(context.Context, *connect.Request[v1.RevokeAccessTicketRequest]) (*connect.Response[v1.RevokeAccessTicketResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAccessTicketService.RevokeAccessTicket is not implemented"))
+func (UnimplementedAdminAccessTicketServiceHandler) RevokeAccessTicket(context.Context, *v1.RevokeAccessTicketRequest) (*v1.RevokeAccessTicketResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAccessTicketService.RevokeAccessTicket is not implemented")
+}
+
+type adminAccessTicketServiceClient struct {
+	client *connect.Client
+}
+
+func (c *adminAccessTicketServiceClient) ListAccessTickets(ctx context.Context, req *v1.ListAccessTicketsRequest) (*v1.ListAccessTicketsResponse, error) {
+	var res v1.ListAccessTicketsResponse
+	if err := c.client.CallUnary(ctx, adminAccessTicketServiceListAccessTicketsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAccessTicketServiceClient) IssueAccessTicket(ctx context.Context, req *v1.IssueAccessTicketRequest) (*v1.IssueAccessTicketResponse, error) {
+	var res v1.IssueAccessTicketResponse
+	if err := c.client.CallUnary(ctx, adminAccessTicketServiceIssueAccessTicketSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAccessTicketServiceClient) RevokeAccessTicket(ctx context.Context, req *v1.RevokeAccessTicketRequest) (*v1.RevokeAccessTicketResponse, error) {
+	var res v1.RevokeAccessTicketResponse
+	if err := c.client.CallUnary(ctx, adminAccessTicketServiceRevokeAccessTicketSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type adminAccessTicketServiceHandler struct {
+	svc AdminAccessTicketServiceHandler
+}
+
+func (h adminAccessTicketServiceHandler) listAccessTickets(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListAccessTicketsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListAccessTickets(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAccessTicketServiceHandler) issueAccessTicket(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.IssueAccessTicketRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.IssueAccessTicket(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAccessTicketServiceHandler) revokeAccessTicket(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RevokeAccessTicketRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RevokeAccessTicket(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

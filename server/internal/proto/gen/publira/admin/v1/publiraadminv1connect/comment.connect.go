@@ -5,58 +5,108 @@
 package publiraadminv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AdminCommentServiceName is the fully-qualified name of the AdminCommentService service.
 	AdminCommentServiceName = "publira.admin.v1.AdminCommentService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AdminCommentServiceListCommentsProcedure is the fully-qualified name of the AdminCommentService's
+	// AdminCommentServiceListCommentsProcedure is the procedure name of the AdminCommentService's
 	// ListComments RPC.
 	AdminCommentServiceListCommentsProcedure = "/publira.admin.v1.AdminCommentService/ListComments"
-	// AdminCommentServiceCountPendingCommentsProcedure is the fully-qualified name of the
+	// AdminCommentServiceCountPendingCommentsProcedure is the procedure name of the
 	// AdminCommentService's CountPendingComments RPC.
 	AdminCommentServiceCountPendingCommentsProcedure = "/publira.admin.v1.AdminCommentService/CountPendingComments"
-	// AdminCommentServiceApproveCommentProcedure is the fully-qualified name of the
-	// AdminCommentService's ApproveComment RPC.
+	// AdminCommentServiceApproveCommentProcedure is the procedure name of the AdminCommentService's
+	// ApproveComment RPC.
 	AdminCommentServiceApproveCommentProcedure = "/publira.admin.v1.AdminCommentService/ApproveComment"
-	// AdminCommentServiceHideCommentProcedure is the fully-qualified name of the AdminCommentService's
+	// AdminCommentServiceHideCommentProcedure is the procedure name of the AdminCommentService's
 	// HideComment RPC.
 	AdminCommentServiceHideCommentProcedure = "/publira.admin.v1.AdminCommentService/HideComment"
-	// AdminCommentServiceRestoreCommentProcedure is the fully-qualified name of the
-	// AdminCommentService's RestoreComment RPC.
+	// AdminCommentServiceRestoreCommentProcedure is the procedure name of the AdminCommentService's
+	// RestoreComment RPC.
 	AdminCommentServiceRestoreCommentProcedure = "/publira.admin.v1.AdminCommentService/RestoreComment"
-	// AdminCommentServicePurgeCommentProcedure is the fully-qualified name of the AdminCommentService's
+	// AdminCommentServicePurgeCommentProcedure is the procedure name of the AdminCommentService's
 	// PurgeComment RPC.
 	AdminCommentServicePurgeCommentProcedure = "/publira.admin.v1.AdminCommentService/PurgeComment"
-	// AdminCommentServiceListCommentReportsProcedure is the fully-qualified name of the
-	// AdminCommentService's ListCommentReports RPC.
+	// AdminCommentServiceListCommentReportsProcedure is the procedure name of the AdminCommentService's
+	// ListCommentReports RPC.
 	AdminCommentServiceListCommentReportsProcedure = "/publira.admin.v1.AdminCommentService/ListCommentReports"
-	// AdminCommentServiceResolveCommentReportProcedure is the fully-qualified name of the
+	// AdminCommentServiceResolveCommentReportProcedure is the procedure name of the
 	// AdminCommentService's ResolveCommentReport RPC.
 	AdminCommentServiceResolveCommentReportProcedure = "/publira.admin.v1.AdminCommentService/ResolveCommentReport"
+)
+
+var (
+	adminCommentServiceListCommentsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_comment_proto.Services().ByName("AdminCommentService").Methods().ByName("ListComments"),
+			Procedure:  AdminCommentServiceListCommentsProcedure,
+		}
+	})
+	adminCommentServiceCountPendingCommentsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_comment_proto.Services().ByName("AdminCommentService").Methods().ByName("CountPendingComments"),
+			Procedure:  AdminCommentServiceCountPendingCommentsProcedure,
+		}
+	})
+	adminCommentServiceApproveCommentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_comment_proto.Services().ByName("AdminCommentService").Methods().ByName("ApproveComment"),
+			Procedure:  AdminCommentServiceApproveCommentProcedure,
+		}
+	})
+	adminCommentServiceHideCommentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_comment_proto.Services().ByName("AdminCommentService").Methods().ByName("HideComment"),
+			Procedure:  AdminCommentServiceHideCommentProcedure,
+		}
+	})
+	adminCommentServiceRestoreCommentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_comment_proto.Services().ByName("AdminCommentService").Methods().ByName("RestoreComment"),
+			Procedure:  AdminCommentServiceRestoreCommentProcedure,
+		}
+	})
+	adminCommentServicePurgeCommentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_comment_proto.Services().ByName("AdminCommentService").Methods().ByName("PurgeComment"),
+			Procedure:  AdminCommentServicePurgeCommentProcedure,
+		}
+	})
+	adminCommentServiceListCommentReportsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_comment_proto.Services().ByName("AdminCommentService").Methods().ByName("ListCommentReports"),
+			Procedure:  AdminCommentServiceListCommentReportsProcedure,
+		}
+	})
+	adminCommentServiceResolveCommentReportSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_comment_proto.Services().ByName("AdminCommentService").Methods().ByName("ResolveCommentReport"),
+			Procedure:  AdminCommentServiceResolveCommentReportProcedure,
+		}
+	})
 )
 
 // AdminCommentServiceClient is a client for the publira.admin.v1.AdminCommentService service.
@@ -68,7 +118,7 @@ type AdminCommentServiceClient interface {
 	// so a report or a dispute raised before the deletion can still be settled.
 	//
 	// Minimum role: tenant_auditor.
-	ListComments(context.Context, *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error)
+	ListComments(context.Context, *v1.ListCommentsRequest) (*v1.ListCommentsResponse, error)
 	// Counts the comments waiting for approval across the tenant.
 	//
 	// Separate from ListComments so the console's navigation can carry the size
@@ -77,14 +127,14 @@ type AdminCommentServiceClient interface {
 	// expensive thing the console does per navigation.
 	//
 	// Minimum role: tenant_auditor.
-	CountPendingComments(context.Context, *connect.Request[v1.CountPendingCommentsRequest]) (*connect.Response[v1.CountPendingCommentsResponse], error)
+	CountPendingComments(context.Context, *v1.CountPendingCommentsRequest) (*v1.CountPendingCommentsResponse, error)
 	// Publishes one comment that was posted under approval_required.
 	//
 	// failed_precondition for a comment in any other state, because approving is
 	// what first makes a comment public and no other state is waiting for it.
 	//
 	// Minimum role: tenant_editor.
-	ApproveComment(context.Context, *connect.Request[v1.ApproveCommentRequest]) (*connect.Response[v1.ApproveCommentResponse], error)
+	ApproveComment(context.Context, *v1.ApproveCommentRequest) (*v1.ApproveCommentResponse, error)
 	// Removes one pending or published comment from every reader-facing response.
 	//
 	// The removal is silent: the comment keeps rendering to its author exactly as
@@ -92,7 +142,7 @@ type AdminCommentServiceClient interface {
 	// reversible through RestoreComment.
 	//
 	// Minimum role: tenant_editor.
-	HideComment(context.Context, *connect.Request[v1.HideCommentRequest]) (*connect.Response[v1.HideCommentResponse], error)
+	HideComment(context.Context, *v1.HideCommentRequest) (*v1.HideCommentResponse, error)
 	// Puts one removed comment back into the state the removal interrupted:
 	// public again when it had been published, back in the approval queue when it
 	// had not.
@@ -102,7 +152,7 @@ type AdminCommentServiceClient interface {
 	// would republish text its author deleted.
 	//
 	// Minimum role: tenant_editor.
-	RestoreComment(context.Context, *connect.Request[v1.RestoreCommentRequest]) (*connect.Response[v1.RestoreCommentResponse], error)
+	RestoreComment(context.Context, *v1.RestoreCommentRequest) (*v1.RestoreCommentResponse, error)
 	// Deletes one comment irreversibly, for content that must not be retained at
 	// all — a legal takedown, say.
 	//
@@ -110,7 +160,7 @@ type AdminCommentServiceClient interface {
 	// one that cannot be undone is asked for by name.
 	//
 	// Minimum role: tenant_editor.
-	PurgeComment(context.Context, *connect.Request[v1.PurgeCommentRequest]) (*connect.Response[v1.PurgeCommentResponse], error)
+	PurgeComment(context.Context, *v1.PurgeCommentRequest) (*v1.PurgeCommentResponse, error)
 	// Lists the tenant's comment reports for review, newest first.
 	//
 	// One entry per report, not per reported comment. A report is what staff
@@ -120,7 +170,7 @@ type AdminCommentServiceClient interface {
 	// many of those are still waiting.
 	//
 	// Minimum role: tenant_auditor.
-	ListCommentReports(context.Context, *connect.Request[v1.ListCommentReportsRequest]) (*connect.Response[v1.ListCommentReportsResponse], error)
+	ListCommentReports(context.Context, *v1.ListCommentReportsRequest) (*v1.ListCommentReportsResponse, error)
 	// Marks one open report resolved or rejected and records the decision.
 	//
 	// It leaves the comment itself untouched, whichever way it goes: agreeing
@@ -133,121 +183,13 @@ type AdminCommentServiceClient interface {
 	// for one of another tenant.
 	//
 	// Minimum role: tenant_editor.
-	ResolveCommentReport(context.Context, *connect.Request[v1.ResolveCommentReportRequest]) (*connect.Response[v1.ResolveCommentReportResponse], error)
+	ResolveCommentReport(context.Context, *v1.ResolveCommentReportRequest) (*v1.ResolveCommentReportResponse, error)
 }
 
 // NewAdminCommentServiceClient constructs a client for the publira.admin.v1.AdminCommentService
-// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
-// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
-// the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewAdminCommentServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdminCommentServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	adminCommentServiceMethods := v1.File_publira_admin_v1_comment_proto.Services().ByName("AdminCommentService").Methods()
-	return &adminCommentServiceClient{
-		listComments: connect.NewClient[v1.ListCommentsRequest, v1.ListCommentsResponse](
-			httpClient,
-			baseURL+AdminCommentServiceListCommentsProcedure,
-			connect.WithSchema(adminCommentServiceMethods.ByName("ListComments")),
-			connect.WithClientOptions(opts...),
-		),
-		countPendingComments: connect.NewClient[v1.CountPendingCommentsRequest, v1.CountPendingCommentsResponse](
-			httpClient,
-			baseURL+AdminCommentServiceCountPendingCommentsProcedure,
-			connect.WithSchema(adminCommentServiceMethods.ByName("CountPendingComments")),
-			connect.WithClientOptions(opts...),
-		),
-		approveComment: connect.NewClient[v1.ApproveCommentRequest, v1.ApproveCommentResponse](
-			httpClient,
-			baseURL+AdminCommentServiceApproveCommentProcedure,
-			connect.WithSchema(adminCommentServiceMethods.ByName("ApproveComment")),
-			connect.WithClientOptions(opts...),
-		),
-		hideComment: connect.NewClient[v1.HideCommentRequest, v1.HideCommentResponse](
-			httpClient,
-			baseURL+AdminCommentServiceHideCommentProcedure,
-			connect.WithSchema(adminCommentServiceMethods.ByName("HideComment")),
-			connect.WithClientOptions(opts...),
-		),
-		restoreComment: connect.NewClient[v1.RestoreCommentRequest, v1.RestoreCommentResponse](
-			httpClient,
-			baseURL+AdminCommentServiceRestoreCommentProcedure,
-			connect.WithSchema(adminCommentServiceMethods.ByName("RestoreComment")),
-			connect.WithClientOptions(opts...),
-		),
-		purgeComment: connect.NewClient[v1.PurgeCommentRequest, v1.PurgeCommentResponse](
-			httpClient,
-			baseURL+AdminCommentServicePurgeCommentProcedure,
-			connect.WithSchema(adminCommentServiceMethods.ByName("PurgeComment")),
-			connect.WithClientOptions(opts...),
-		),
-		listCommentReports: connect.NewClient[v1.ListCommentReportsRequest, v1.ListCommentReportsResponse](
-			httpClient,
-			baseURL+AdminCommentServiceListCommentReportsProcedure,
-			connect.WithSchema(adminCommentServiceMethods.ByName("ListCommentReports")),
-			connect.WithClientOptions(opts...),
-		),
-		resolveCommentReport: connect.NewClient[v1.ResolveCommentReportRequest, v1.ResolveCommentReportResponse](
-			httpClient,
-			baseURL+AdminCommentServiceResolveCommentReportProcedure,
-			connect.WithSchema(adminCommentServiceMethods.ByName("ResolveCommentReport")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// adminCommentServiceClient implements AdminCommentServiceClient.
-type adminCommentServiceClient struct {
-	listComments         *connect.Client[v1.ListCommentsRequest, v1.ListCommentsResponse]
-	countPendingComments *connect.Client[v1.CountPendingCommentsRequest, v1.CountPendingCommentsResponse]
-	approveComment       *connect.Client[v1.ApproveCommentRequest, v1.ApproveCommentResponse]
-	hideComment          *connect.Client[v1.HideCommentRequest, v1.HideCommentResponse]
-	restoreComment       *connect.Client[v1.RestoreCommentRequest, v1.RestoreCommentResponse]
-	purgeComment         *connect.Client[v1.PurgeCommentRequest, v1.PurgeCommentResponse]
-	listCommentReports   *connect.Client[v1.ListCommentReportsRequest, v1.ListCommentReportsResponse]
-	resolveCommentReport *connect.Client[v1.ResolveCommentReportRequest, v1.ResolveCommentReportResponse]
-}
-
-// ListComments calls publira.admin.v1.AdminCommentService.ListComments.
-func (c *adminCommentServiceClient) ListComments(ctx context.Context, req *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error) {
-	return c.listComments.CallUnary(ctx, req)
-}
-
-// CountPendingComments calls publira.admin.v1.AdminCommentService.CountPendingComments.
-func (c *adminCommentServiceClient) CountPendingComments(ctx context.Context, req *connect.Request[v1.CountPendingCommentsRequest]) (*connect.Response[v1.CountPendingCommentsResponse], error) {
-	return c.countPendingComments.CallUnary(ctx, req)
-}
-
-// ApproveComment calls publira.admin.v1.AdminCommentService.ApproveComment.
-func (c *adminCommentServiceClient) ApproveComment(ctx context.Context, req *connect.Request[v1.ApproveCommentRequest]) (*connect.Response[v1.ApproveCommentResponse], error) {
-	return c.approveComment.CallUnary(ctx, req)
-}
-
-// HideComment calls publira.admin.v1.AdminCommentService.HideComment.
-func (c *adminCommentServiceClient) HideComment(ctx context.Context, req *connect.Request[v1.HideCommentRequest]) (*connect.Response[v1.HideCommentResponse], error) {
-	return c.hideComment.CallUnary(ctx, req)
-}
-
-// RestoreComment calls publira.admin.v1.AdminCommentService.RestoreComment.
-func (c *adminCommentServiceClient) RestoreComment(ctx context.Context, req *connect.Request[v1.RestoreCommentRequest]) (*connect.Response[v1.RestoreCommentResponse], error) {
-	return c.restoreComment.CallUnary(ctx, req)
-}
-
-// PurgeComment calls publira.admin.v1.AdminCommentService.PurgeComment.
-func (c *adminCommentServiceClient) PurgeComment(ctx context.Context, req *connect.Request[v1.PurgeCommentRequest]) (*connect.Response[v1.PurgeCommentResponse], error) {
-	return c.purgeComment.CallUnary(ctx, req)
-}
-
-// ListCommentReports calls publira.admin.v1.AdminCommentService.ListCommentReports.
-func (c *adminCommentServiceClient) ListCommentReports(ctx context.Context, req *connect.Request[v1.ListCommentReportsRequest]) (*connect.Response[v1.ListCommentReportsResponse], error) {
-	return c.listCommentReports.CallUnary(ctx, req)
-}
-
-// ResolveCommentReport calls publira.admin.v1.AdminCommentService.ResolveCommentReport.
-func (c *adminCommentServiceClient) ResolveCommentReport(ctx context.Context, req *connect.Request[v1.ResolveCommentReportRequest]) (*connect.Response[v1.ResolveCommentReportResponse], error) {
-	return c.resolveCommentReport.CallUnary(ctx, req)
+// service. Multiple service clients may share a single connect.Client.
+func NewAdminCommentServiceClient(client *connect.Client) AdminCommentServiceClient {
+	return &adminCommentServiceClient{client: client}
 }
 
 // AdminCommentServiceHandler is an implementation of the publira.admin.v1.AdminCommentService
@@ -260,7 +202,7 @@ type AdminCommentServiceHandler interface {
 	// so a report or a dispute raised before the deletion can still be settled.
 	//
 	// Minimum role: tenant_auditor.
-	ListComments(context.Context, *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error)
+	ListComments(context.Context, *v1.ListCommentsRequest) (*v1.ListCommentsResponse, error)
 	// Counts the comments waiting for approval across the tenant.
 	//
 	// Separate from ListComments so the console's navigation can carry the size
@@ -269,14 +211,14 @@ type AdminCommentServiceHandler interface {
 	// expensive thing the console does per navigation.
 	//
 	// Minimum role: tenant_auditor.
-	CountPendingComments(context.Context, *connect.Request[v1.CountPendingCommentsRequest]) (*connect.Response[v1.CountPendingCommentsResponse], error)
+	CountPendingComments(context.Context, *v1.CountPendingCommentsRequest) (*v1.CountPendingCommentsResponse, error)
 	// Publishes one comment that was posted under approval_required.
 	//
 	// failed_precondition for a comment in any other state, because approving is
 	// what first makes a comment public and no other state is waiting for it.
 	//
 	// Minimum role: tenant_editor.
-	ApproveComment(context.Context, *connect.Request[v1.ApproveCommentRequest]) (*connect.Response[v1.ApproveCommentResponse], error)
+	ApproveComment(context.Context, *v1.ApproveCommentRequest) (*v1.ApproveCommentResponse, error)
 	// Removes one pending or published comment from every reader-facing response.
 	//
 	// The removal is silent: the comment keeps rendering to its author exactly as
@@ -284,7 +226,7 @@ type AdminCommentServiceHandler interface {
 	// reversible through RestoreComment.
 	//
 	// Minimum role: tenant_editor.
-	HideComment(context.Context, *connect.Request[v1.HideCommentRequest]) (*connect.Response[v1.HideCommentResponse], error)
+	HideComment(context.Context, *v1.HideCommentRequest) (*v1.HideCommentResponse, error)
 	// Puts one removed comment back into the state the removal interrupted:
 	// public again when it had been published, back in the approval queue when it
 	// had not.
@@ -294,7 +236,7 @@ type AdminCommentServiceHandler interface {
 	// would republish text its author deleted.
 	//
 	// Minimum role: tenant_editor.
-	RestoreComment(context.Context, *connect.Request[v1.RestoreCommentRequest]) (*connect.Response[v1.RestoreCommentResponse], error)
+	RestoreComment(context.Context, *v1.RestoreCommentRequest) (*v1.RestoreCommentResponse, error)
 	// Deletes one comment irreversibly, for content that must not be retained at
 	// all — a legal takedown, say.
 	//
@@ -302,7 +244,7 @@ type AdminCommentServiceHandler interface {
 	// one that cannot be undone is asked for by name.
 	//
 	// Minimum role: tenant_editor.
-	PurgeComment(context.Context, *connect.Request[v1.PurgeCommentRequest]) (*connect.Response[v1.PurgeCommentResponse], error)
+	PurgeComment(context.Context, *v1.PurgeCommentRequest) (*v1.PurgeCommentResponse, error)
 	// Lists the tenant's comment reports for review, newest first.
 	//
 	// One entry per report, not per reported comment. A report is what staff
@@ -312,7 +254,7 @@ type AdminCommentServiceHandler interface {
 	// many of those are still waiting.
 	//
 	// Minimum role: tenant_auditor.
-	ListCommentReports(context.Context, *connect.Request[v1.ListCommentReportsRequest]) (*connect.Response[v1.ListCommentReportsResponse], error)
+	ListCommentReports(context.Context, *v1.ListCommentReportsRequest) (*v1.ListCommentReportsResponse, error)
 	// Marks one open report resolved or rejected and records the decision.
 	//
 	// It leaves the comment itself untouched, whichever way it goes: agreeing
@@ -325,119 +267,222 @@ type AdminCommentServiceHandler interface {
 	// for one of another tenant.
 	//
 	// Minimum role: tenant_editor.
-	ResolveCommentReport(context.Context, *connect.Request[v1.ResolveCommentReportRequest]) (*connect.Response[v1.ResolveCommentReportResponse], error)
+	ResolveCommentReport(context.Context, *v1.ResolveCommentReportRequest) (*v1.ResolveCommentReportResponse, error)
 }
 
-// NewAdminCommentServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewAdminCommentServiceHandler(svc AdminCommentServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	adminCommentServiceMethods := v1.File_publira_admin_v1_comment_proto.Services().ByName("AdminCommentService").Methods()
-	adminCommentServiceListCommentsHandler := connect.NewUnaryHandler(
-		AdminCommentServiceListCommentsProcedure,
-		svc.ListComments,
-		connect.WithSchema(adminCommentServiceMethods.ByName("ListComments")),
-		connect.WithHandlerOptions(opts...),
+// RegisterAdminCommentServiceHandler registers svc as the publira.admin.v1.AdminCommentService
+// implementation on server.
+func RegisterAdminCommentServiceHandler(server *connect.Server, svc AdminCommentServiceHandler) {
+	adapter := adminCommentServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: adminCommentServiceListCommentsSpec(), Handler: adapter.listComments},
+		connect.Method{Spec: adminCommentServiceCountPendingCommentsSpec(), Handler: adapter.countPendingComments},
+		connect.Method{Spec: adminCommentServiceApproveCommentSpec(), Handler: adapter.approveComment},
+		connect.Method{Spec: adminCommentServiceHideCommentSpec(), Handler: adapter.hideComment},
+		connect.Method{Spec: adminCommentServiceRestoreCommentSpec(), Handler: adapter.restoreComment},
+		connect.Method{Spec: adminCommentServicePurgeCommentSpec(), Handler: adapter.purgeComment},
+		connect.Method{Spec: adminCommentServiceListCommentReportsSpec(), Handler: adapter.listCommentReports},
+		connect.Method{Spec: adminCommentServiceResolveCommentReportSpec(), Handler: adapter.resolveCommentReport},
 	)
-	adminCommentServiceCountPendingCommentsHandler := connect.NewUnaryHandler(
-		AdminCommentServiceCountPendingCommentsProcedure,
-		svc.CountPendingComments,
-		connect.WithSchema(adminCommentServiceMethods.ByName("CountPendingComments")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminCommentServiceApproveCommentHandler := connect.NewUnaryHandler(
-		AdminCommentServiceApproveCommentProcedure,
-		svc.ApproveComment,
-		connect.WithSchema(adminCommentServiceMethods.ByName("ApproveComment")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminCommentServiceHideCommentHandler := connect.NewUnaryHandler(
-		AdminCommentServiceHideCommentProcedure,
-		svc.HideComment,
-		connect.WithSchema(adminCommentServiceMethods.ByName("HideComment")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminCommentServiceRestoreCommentHandler := connect.NewUnaryHandler(
-		AdminCommentServiceRestoreCommentProcedure,
-		svc.RestoreComment,
-		connect.WithSchema(adminCommentServiceMethods.ByName("RestoreComment")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminCommentServicePurgeCommentHandler := connect.NewUnaryHandler(
-		AdminCommentServicePurgeCommentProcedure,
-		svc.PurgeComment,
-		connect.WithSchema(adminCommentServiceMethods.ByName("PurgeComment")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminCommentServiceListCommentReportsHandler := connect.NewUnaryHandler(
-		AdminCommentServiceListCommentReportsProcedure,
-		svc.ListCommentReports,
-		connect.WithSchema(adminCommentServiceMethods.ByName("ListCommentReports")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminCommentServiceResolveCommentReportHandler := connect.NewUnaryHandler(
-		AdminCommentServiceResolveCommentReportProcedure,
-		svc.ResolveCommentReport,
-		connect.WithSchema(adminCommentServiceMethods.ByName("ResolveCommentReport")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.admin.v1.AdminCommentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case AdminCommentServiceListCommentsProcedure:
-			adminCommentServiceListCommentsHandler.ServeHTTP(w, r)
-		case AdminCommentServiceCountPendingCommentsProcedure:
-			adminCommentServiceCountPendingCommentsHandler.ServeHTTP(w, r)
-		case AdminCommentServiceApproveCommentProcedure:
-			adminCommentServiceApproveCommentHandler.ServeHTTP(w, r)
-		case AdminCommentServiceHideCommentProcedure:
-			adminCommentServiceHideCommentHandler.ServeHTTP(w, r)
-		case AdminCommentServiceRestoreCommentProcedure:
-			adminCommentServiceRestoreCommentHandler.ServeHTTP(w, r)
-		case AdminCommentServicePurgeCommentProcedure:
-			adminCommentServicePurgeCommentHandler.ServeHTTP(w, r)
-		case AdminCommentServiceListCommentReportsProcedure:
-			adminCommentServiceListCommentReportsHandler.ServeHTTP(w, r)
-		case AdminCommentServiceResolveCommentReportProcedure:
-			adminCommentServiceResolveCommentReportHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedAdminCommentServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminCommentServiceHandler struct{}
 
-func (UnimplementedAdminCommentServiceHandler) ListComments(context.Context, *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.ListComments is not implemented"))
+func (UnimplementedAdminCommentServiceHandler) ListComments(context.Context, *v1.ListCommentsRequest) (*v1.ListCommentsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCommentService.ListComments is not implemented")
 }
 
-func (UnimplementedAdminCommentServiceHandler) CountPendingComments(context.Context, *connect.Request[v1.CountPendingCommentsRequest]) (*connect.Response[v1.CountPendingCommentsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.CountPendingComments is not implemented"))
+func (UnimplementedAdminCommentServiceHandler) CountPendingComments(context.Context, *v1.CountPendingCommentsRequest) (*v1.CountPendingCommentsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCommentService.CountPendingComments is not implemented")
 }
 
-func (UnimplementedAdminCommentServiceHandler) ApproveComment(context.Context, *connect.Request[v1.ApproveCommentRequest]) (*connect.Response[v1.ApproveCommentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.ApproveComment is not implemented"))
+func (UnimplementedAdminCommentServiceHandler) ApproveComment(context.Context, *v1.ApproveCommentRequest) (*v1.ApproveCommentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCommentService.ApproveComment is not implemented")
 }
 
-func (UnimplementedAdminCommentServiceHandler) HideComment(context.Context, *connect.Request[v1.HideCommentRequest]) (*connect.Response[v1.HideCommentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.HideComment is not implemented"))
+func (UnimplementedAdminCommentServiceHandler) HideComment(context.Context, *v1.HideCommentRequest) (*v1.HideCommentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCommentService.HideComment is not implemented")
 }
 
-func (UnimplementedAdminCommentServiceHandler) RestoreComment(context.Context, *connect.Request[v1.RestoreCommentRequest]) (*connect.Response[v1.RestoreCommentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.RestoreComment is not implemented"))
+func (UnimplementedAdminCommentServiceHandler) RestoreComment(context.Context, *v1.RestoreCommentRequest) (*v1.RestoreCommentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCommentService.RestoreComment is not implemented")
 }
 
-func (UnimplementedAdminCommentServiceHandler) PurgeComment(context.Context, *connect.Request[v1.PurgeCommentRequest]) (*connect.Response[v1.PurgeCommentResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.PurgeComment is not implemented"))
+func (UnimplementedAdminCommentServiceHandler) PurgeComment(context.Context, *v1.PurgeCommentRequest) (*v1.PurgeCommentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCommentService.PurgeComment is not implemented")
 }
 
-func (UnimplementedAdminCommentServiceHandler) ListCommentReports(context.Context, *connect.Request[v1.ListCommentReportsRequest]) (*connect.Response[v1.ListCommentReportsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.ListCommentReports is not implemented"))
+func (UnimplementedAdminCommentServiceHandler) ListCommentReports(context.Context, *v1.ListCommentReportsRequest) (*v1.ListCommentReportsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCommentService.ListCommentReports is not implemented")
 }
 
-func (UnimplementedAdminCommentServiceHandler) ResolveCommentReport(context.Context, *connect.Request[v1.ResolveCommentReportRequest]) (*connect.Response[v1.ResolveCommentReportResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCommentService.ResolveCommentReport is not implemented"))
+func (UnimplementedAdminCommentServiceHandler) ResolveCommentReport(context.Context, *v1.ResolveCommentReportRequest) (*v1.ResolveCommentReportResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminCommentService.ResolveCommentReport is not implemented")
+}
+
+type adminCommentServiceClient struct {
+	client *connect.Client
+}
+
+func (c *adminCommentServiceClient) ListComments(ctx context.Context, req *v1.ListCommentsRequest) (*v1.ListCommentsResponse, error) {
+	var res v1.ListCommentsResponse
+	if err := c.client.CallUnary(ctx, adminCommentServiceListCommentsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCommentServiceClient) CountPendingComments(ctx context.Context, req *v1.CountPendingCommentsRequest) (*v1.CountPendingCommentsResponse, error) {
+	var res v1.CountPendingCommentsResponse
+	if err := c.client.CallUnary(ctx, adminCommentServiceCountPendingCommentsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCommentServiceClient) ApproveComment(ctx context.Context, req *v1.ApproveCommentRequest) (*v1.ApproveCommentResponse, error) {
+	var res v1.ApproveCommentResponse
+	if err := c.client.CallUnary(ctx, adminCommentServiceApproveCommentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCommentServiceClient) HideComment(ctx context.Context, req *v1.HideCommentRequest) (*v1.HideCommentResponse, error) {
+	var res v1.HideCommentResponse
+	if err := c.client.CallUnary(ctx, adminCommentServiceHideCommentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCommentServiceClient) RestoreComment(ctx context.Context, req *v1.RestoreCommentRequest) (*v1.RestoreCommentResponse, error) {
+	var res v1.RestoreCommentResponse
+	if err := c.client.CallUnary(ctx, adminCommentServiceRestoreCommentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCommentServiceClient) PurgeComment(ctx context.Context, req *v1.PurgeCommentRequest) (*v1.PurgeCommentResponse, error) {
+	var res v1.PurgeCommentResponse
+	if err := c.client.CallUnary(ctx, adminCommentServicePurgeCommentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCommentServiceClient) ListCommentReports(ctx context.Context, req *v1.ListCommentReportsRequest) (*v1.ListCommentReportsResponse, error) {
+	var res v1.ListCommentReportsResponse
+	if err := c.client.CallUnary(ctx, adminCommentServiceListCommentReportsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminCommentServiceClient) ResolveCommentReport(ctx context.Context, req *v1.ResolveCommentReportRequest) (*v1.ResolveCommentReportResponse, error) {
+	var res v1.ResolveCommentReportResponse
+	if err := c.client.CallUnary(ctx, adminCommentServiceResolveCommentReportSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type adminCommentServiceHandler struct{ svc AdminCommentServiceHandler }
+
+func (h adminCommentServiceHandler) listComments(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListCommentsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListComments(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCommentServiceHandler) countPendingComments(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CountPendingCommentsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CountPendingComments(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCommentServiceHandler) approveComment(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ApproveCommentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ApproveComment(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCommentServiceHandler) hideComment(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.HideCommentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.HideComment(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCommentServiceHandler) restoreComment(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RestoreCommentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RestoreComment(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCommentServiceHandler) purgeComment(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.PurgeCommentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.PurgeComment(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCommentServiceHandler) listCommentReports(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListCommentReportsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListCommentReports(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminCommentServiceHandler) resolveCommentReport(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ResolveCommentReportRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ResolveCommentReport(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

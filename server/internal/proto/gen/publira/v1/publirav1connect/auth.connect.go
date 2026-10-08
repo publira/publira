@@ -5,801 +5,979 @@
 package publirav1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AuthServiceName is the fully-qualified name of the AuthService service.
 	AuthServiceName = "publira.v1.AuthService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AuthServiceLoginProcedure is the fully-qualified name of the AuthService's Login RPC.
+	// AuthServiceLoginProcedure is the procedure name of the AuthService's Login RPC.
 	AuthServiceLoginProcedure = "/publira.v1.AuthService/Login"
-	// AuthServiceLoginWithIdTokenProcedure is the fully-qualified name of the AuthService's
-	// LoginWithIdToken RPC.
+	// AuthServiceLoginWithIdTokenProcedure is the procedure name of the AuthService's LoginWithIdToken
+	// RPC.
 	AuthServiceLoginWithIdTokenProcedure = "/publira.v1.AuthService/LoginWithIdToken"
-	// AuthServiceListMyIdentitiesProcedure is the fully-qualified name of the AuthService's
-	// ListMyIdentities RPC.
+	// AuthServiceListMyIdentitiesProcedure is the procedure name of the AuthService's ListMyIdentities
+	// RPC.
 	AuthServiceListMyIdentitiesProcedure = "/publira.v1.AuthService/ListMyIdentities"
-	// AuthServiceUnlinkIdentityProcedure is the fully-qualified name of the AuthService's
-	// UnlinkIdentity RPC.
+	// AuthServiceUnlinkIdentityProcedure is the procedure name of the AuthService's UnlinkIdentity RPC.
 	AuthServiceUnlinkIdentityProcedure = "/publira.v1.AuthService/UnlinkIdentity"
-	// AuthServiceCreateUserProcedure is the fully-qualified name of the AuthService's CreateUser RPC.
+	// AuthServiceCreateUserProcedure is the procedure name of the AuthService's CreateUser RPC.
 	AuthServiceCreateUserProcedure = "/publira.v1.AuthService/CreateUser"
-	// AuthServiceVerifyUserEmailProcedure is the fully-qualified name of the AuthService's
-	// VerifyUserEmail RPC.
+	// AuthServiceVerifyUserEmailProcedure is the procedure name of the AuthService's VerifyUserEmail
+	// RPC.
 	AuthServiceVerifyUserEmailProcedure = "/publira.v1.AuthService/VerifyUserEmail"
-	// AuthServiceRequestEmailVerificationProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceRequestEmailVerificationProcedure is the procedure name of the AuthService's
 	// RequestEmailVerification RPC.
 	AuthServiceRequestEmailVerificationProcedure = "/publira.v1.AuthService/RequestEmailVerification"
-	// AuthServiceRequestEmailChangeProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceRequestEmailChangeProcedure is the procedure name of the AuthService's
 	// RequestEmailChange RPC.
 	AuthServiceRequestEmailChangeProcedure = "/publira.v1.AuthService/RequestEmailChange"
-	// AuthServiceConfirmEmailChangeProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceConfirmEmailChangeProcedure is the procedure name of the AuthService's
 	// ConfirmEmailChange RPC.
 	AuthServiceConfirmEmailChangeProcedure = "/publira.v1.AuthService/ConfirmEmailChange"
-	// AuthServiceRequestPasswordResetProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceRequestPasswordResetProcedure is the procedure name of the AuthService's
 	// RequestPasswordReset RPC.
 	AuthServiceRequestPasswordResetProcedure = "/publira.v1.AuthService/RequestPasswordReset"
-	// AuthServiceConfirmPasswordResetProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceConfirmPasswordResetProcedure is the procedure name of the AuthService's
 	// ConfirmPasswordReset RPC.
 	AuthServiceConfirmPasswordResetProcedure = "/publira.v1.AuthService/ConfirmPasswordReset"
-	// AuthServiceChangePasswordProcedure is the fully-qualified name of the AuthService's
-	// ChangePassword RPC.
+	// AuthServiceChangePasswordProcedure is the procedure name of the AuthService's ChangePassword RPC.
 	AuthServiceChangePasswordProcedure = "/publira.v1.AuthService/ChangePassword"
-	// AuthServiceLogoutProcedure is the fully-qualified name of the AuthService's Logout RPC.
+	// AuthServiceLogoutProcedure is the procedure name of the AuthService's Logout RPC.
 	AuthServiceLogoutProcedure = "/publira.v1.AuthService/Logout"
-	// AuthServiceGetMeProcedure is the fully-qualified name of the AuthService's GetMe RPC.
+	// AuthServiceGetMeProcedure is the procedure name of the AuthService's GetMe RPC.
 	AuthServiceGetMeProcedure = "/publira.v1.AuthService/GetMe"
-	// AuthServiceUpdateMeProcedure is the fully-qualified name of the AuthService's UpdateMe RPC.
+	// AuthServiceUpdateMeProcedure is the procedure name of the AuthService's UpdateMe RPC.
 	AuthServiceUpdateMeProcedure = "/publira.v1.AuthService/UpdateMe"
-	// AuthServiceDeleteMeProcedure is the fully-qualified name of the AuthService's DeleteMe RPC.
+	// AuthServiceDeleteMeProcedure is the procedure name of the AuthService's DeleteMe RPC.
 	AuthServiceDeleteMeProcedure = "/publira.v1.AuthService/DeleteMe"
-	// AuthServiceGetNotificationSettingsProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceGetNotificationSettingsProcedure is the procedure name of the AuthService's
 	// GetNotificationSettings RPC.
 	AuthServiceGetNotificationSettingsProcedure = "/publira.v1.AuthService/GetNotificationSettings"
-	// AuthServiceUpdateNotificationSettingsProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceUpdateNotificationSettingsProcedure is the procedure name of the AuthService's
 	// UpdateNotificationSettings RPC.
 	AuthServiceUpdateNotificationSettingsProcedure = "/publira.v1.AuthService/UpdateNotificationSettings"
-	// AuthServiceGetViewerPreferencesProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceGetViewerPreferencesProcedure is the procedure name of the AuthService's
 	// GetViewerPreferences RPC.
 	AuthServiceGetViewerPreferencesProcedure = "/publira.v1.AuthService/GetViewerPreferences"
-	// AuthServiceUpdateViewerPreferencesProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceUpdateViewerPreferencesProcedure is the procedure name of the AuthService's
 	// UpdateViewerPreferences RPC.
 	AuthServiceUpdateViewerPreferencesProcedure = "/publira.v1.AuthService/UpdateViewerPreferences"
-	// AuthServiceGetAnnouncementProcedure is the fully-qualified name of the AuthService's
-	// GetAnnouncement RPC.
+	// AuthServiceGetAnnouncementProcedure is the procedure name of the AuthService's GetAnnouncement
+	// RPC.
 	AuthServiceGetAnnouncementProcedure = "/publira.v1.AuthService/GetAnnouncement"
-	// AuthServiceGetPinnedAnnouncementProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceGetPinnedAnnouncementProcedure is the procedure name of the AuthService's
 	// GetPinnedAnnouncement RPC.
 	AuthServiceGetPinnedAnnouncementProcedure = "/publira.v1.AuthService/GetPinnedAnnouncement"
-	// AuthServiceListAnnouncementsProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceListAnnouncementsProcedure is the procedure name of the AuthService's
 	// ListAnnouncements RPC.
 	AuthServiceListAnnouncementsProcedure = "/publira.v1.AuthService/ListAnnouncements"
-	// AuthServiceMarkAnnouncementAsReadProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceMarkAnnouncementAsReadProcedure is the procedure name of the AuthService's
 	// MarkAnnouncementAsRead RPC.
 	AuthServiceMarkAnnouncementAsReadProcedure = "/publira.v1.AuthService/MarkAnnouncementAsRead"
-	// AuthServiceMarkAllAnnouncementsAsReadProcedure is the fully-qualified name of the AuthService's
+	// AuthServiceMarkAllAnnouncementsAsReadProcedure is the procedure name of the AuthService's
 	// MarkAllAnnouncementsAsRead RPC.
 	AuthServiceMarkAllAnnouncementsAsReadProcedure = "/publira.v1.AuthService/MarkAllAnnouncementsAsRead"
 )
 
+var (
+	authServiceLoginSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("Login"),
+			Procedure:  AuthServiceLoginProcedure,
+		}
+	})
+	authServiceLoginWithIdTokenSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("LoginWithIdToken"),
+			Procedure:  AuthServiceLoginWithIdTokenProcedure,
+		}
+	})
+	authServiceListMyIdentitiesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("ListMyIdentities"),
+			Procedure:  AuthServiceListMyIdentitiesProcedure,
+		}
+	})
+	authServiceUnlinkIdentitySpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("UnlinkIdentity"),
+			Procedure:  AuthServiceUnlinkIdentityProcedure,
+		}
+	})
+	authServiceCreateUserSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("CreateUser"),
+			Procedure:  AuthServiceCreateUserProcedure,
+		}
+	})
+	authServiceVerifyUserEmailSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("VerifyUserEmail"),
+			Procedure:  AuthServiceVerifyUserEmailProcedure,
+		}
+	})
+	authServiceRequestEmailVerificationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("RequestEmailVerification"),
+			Procedure:  AuthServiceRequestEmailVerificationProcedure,
+		}
+	})
+	authServiceRequestEmailChangeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("RequestEmailChange"),
+			Procedure:  AuthServiceRequestEmailChangeProcedure,
+		}
+	})
+	authServiceConfirmEmailChangeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("ConfirmEmailChange"),
+			Procedure:  AuthServiceConfirmEmailChangeProcedure,
+		}
+	})
+	authServiceRequestPasswordResetSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("RequestPasswordReset"),
+			Procedure:  AuthServiceRequestPasswordResetProcedure,
+		}
+	})
+	authServiceConfirmPasswordResetSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("ConfirmPasswordReset"),
+			Procedure:  AuthServiceConfirmPasswordResetProcedure,
+		}
+	})
+	authServiceChangePasswordSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("ChangePassword"),
+			Procedure:  AuthServiceChangePasswordProcedure,
+		}
+	})
+	authServiceLogoutSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("Logout"),
+			Procedure:  AuthServiceLogoutProcedure,
+		}
+	})
+	authServiceGetMeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("GetMe"),
+			Procedure:  AuthServiceGetMeProcedure,
+		}
+	})
+	authServiceUpdateMeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("UpdateMe"),
+			Procedure:  AuthServiceUpdateMeProcedure,
+		}
+	})
+	authServiceDeleteMeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("DeleteMe"),
+			Procedure:  AuthServiceDeleteMeProcedure,
+		}
+	})
+	authServiceGetNotificationSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("GetNotificationSettings"),
+			Procedure:  AuthServiceGetNotificationSettingsProcedure,
+		}
+	})
+	authServiceUpdateNotificationSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("UpdateNotificationSettings"),
+			Procedure:  AuthServiceUpdateNotificationSettingsProcedure,
+		}
+	})
+	authServiceGetViewerPreferencesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("GetViewerPreferences"),
+			Procedure:  AuthServiceGetViewerPreferencesProcedure,
+		}
+	})
+	authServiceUpdateViewerPreferencesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("UpdateViewerPreferences"),
+			Procedure:  AuthServiceUpdateViewerPreferencesProcedure,
+		}
+	})
+	authServiceGetAnnouncementSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("GetAnnouncement"),
+			Procedure:  AuthServiceGetAnnouncementProcedure,
+		}
+	})
+	authServiceGetPinnedAnnouncementSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("GetPinnedAnnouncement"),
+			Procedure:  AuthServiceGetPinnedAnnouncementProcedure,
+		}
+	})
+	authServiceListAnnouncementsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("ListAnnouncements"),
+			Procedure:  AuthServiceListAnnouncementsProcedure,
+		}
+	})
+	authServiceMarkAnnouncementAsReadSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("MarkAnnouncementAsRead"),
+			Procedure:  AuthServiceMarkAnnouncementAsReadProcedure,
+		}
+	})
+	authServiceMarkAllAnnouncementsAsReadSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("MarkAllAnnouncementsAsRead"),
+			Procedure:  AuthServiceMarkAllAnnouncementsAsReadProcedure,
+		}
+	})
+)
+
 // AuthServiceClient is a client for the publira.v1.AuthService service.
 type AuthServiceClient interface {
-	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
-	LoginWithIdToken(context.Context, *connect.Request[v1.LoginWithIdTokenRequest]) (*connect.Response[v1.LoginWithIdTokenResponse], error)
-	ListMyIdentities(context.Context, *connect.Request[v1.ListMyIdentitiesRequest]) (*connect.Response[v1.ListMyIdentitiesResponse], error)
-	UnlinkIdentity(context.Context, *connect.Request[v1.UnlinkIdentityRequest]) (*connect.Response[v1.UnlinkIdentityResponse], error)
-	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
-	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
-	RequestEmailVerification(context.Context, *connect.Request[v1.RequestEmailVerificationRequest]) (*connect.Response[v1.RequestEmailVerificationResponse], error)
-	RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error)
-	ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error)
-	RequestPasswordReset(context.Context, *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error)
-	ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error)
-	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
-	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
-	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
-	UpdateMe(context.Context, *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error)
+	Login(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error)
+	LoginWithIdToken(context.Context, *v1.LoginWithIdTokenRequest) (*v1.LoginWithIdTokenResponse, error)
+	ListMyIdentities(context.Context, *v1.ListMyIdentitiesRequest) (*v1.ListMyIdentitiesResponse, error)
+	UnlinkIdentity(context.Context, *v1.UnlinkIdentityRequest) (*v1.UnlinkIdentityResponse, error)
+	CreateUser(context.Context, *v1.CreateUserRequest) (*v1.CreateUserResponse, error)
+	VerifyUserEmail(context.Context, *v1.VerifyUserEmailRequest) (*v1.VerifyUserEmailResponse, error)
+	RequestEmailVerification(context.Context, *v1.RequestEmailVerificationRequest) (*v1.RequestEmailVerificationResponse, error)
+	RequestEmailChange(context.Context, *v1.RequestEmailChangeRequest) (*v1.RequestEmailChangeResponse, error)
+	ConfirmEmailChange(context.Context, *v1.ConfirmEmailChangeRequest) (*v1.ConfirmEmailChangeResponse, error)
+	RequestPasswordReset(context.Context, *v1.RequestPasswordResetRequest) (*v1.RequestPasswordResetResponse, error)
+	ConfirmPasswordReset(context.Context, *v1.ConfirmPasswordResetRequest) (*v1.ConfirmPasswordResetResponse, error)
+	ChangePassword(context.Context, *v1.ChangePasswordRequest) (*v1.ChangePasswordResponse, error)
+	Logout(context.Context, *v1.LogoutRequest) (*v1.LogoutResponse, error)
+	GetMe(context.Context, *v1.GetMeRequest) (*v1.GetMeResponse, error)
+	UpdateMe(context.Context, *v1.UpdateMeRequest) (*v1.UpdateMeResponse, error)
 	// Deletes the caller's account. A staff account is deleted too; the tenant's
 	// audit entries keep its name and public ID. failed_precondition, with the
 	// LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
-	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
-	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
-	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
-	GetViewerPreferences(context.Context, *connect.Request[v1.GetViewerPreferencesRequest]) (*connect.Response[v1.GetViewerPreferencesResponse], error)
-	UpdateViewerPreferences(context.Context, *connect.Request[v1.UpdateViewerPreferencesRequest]) (*connect.Response[v1.UpdateViewerPreferencesResponse], error)
-	GetAnnouncement(context.Context, *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error)
-	GetPinnedAnnouncement(context.Context, *connect.Request[v1.GetPinnedAnnouncementRequest]) (*connect.Response[v1.GetPinnedAnnouncementResponse], error)
-	ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error)
-	MarkAnnouncementAsRead(context.Context, *connect.Request[v1.MarkAnnouncementAsReadRequest]) (*connect.Response[v1.MarkAnnouncementAsReadResponse], error)
-	MarkAllAnnouncementsAsRead(context.Context, *connect.Request[v1.MarkAllAnnouncementsAsReadRequest]) (*connect.Response[v1.MarkAllAnnouncementsAsReadResponse], error)
+	DeleteMe(context.Context, *v1.DeleteMeRequest) (*v1.DeleteMeResponse, error)
+	GetNotificationSettings(context.Context, *v1.GetNotificationSettingsRequest) (*v1.GetNotificationSettingsResponse, error)
+	UpdateNotificationSettings(context.Context, *v1.UpdateNotificationSettingsRequest) (*v1.UpdateNotificationSettingsResponse, error)
+	GetViewerPreferences(context.Context, *v1.GetViewerPreferencesRequest) (*v1.GetViewerPreferencesResponse, error)
+	UpdateViewerPreferences(context.Context, *v1.UpdateViewerPreferencesRequest) (*v1.UpdateViewerPreferencesResponse, error)
+	GetAnnouncement(context.Context, *v1.GetAnnouncementRequest) (*v1.GetAnnouncementResponse, error)
+	GetPinnedAnnouncement(context.Context, *v1.GetPinnedAnnouncementRequest) (*v1.GetPinnedAnnouncementResponse, error)
+	ListAnnouncements(context.Context, *v1.ListAnnouncementsRequest) (*v1.ListAnnouncementsResponse, error)
+	MarkAnnouncementAsRead(context.Context, *v1.MarkAnnouncementAsReadRequest) (*v1.MarkAnnouncementAsReadResponse, error)
+	MarkAllAnnouncementsAsRead(context.Context, *v1.MarkAllAnnouncementsAsReadRequest) (*v1.MarkAllAnnouncementsAsReadResponse, error)
 }
 
-// NewAuthServiceClient constructs a client for the publira.v1.AuthService service. By default, it
-// uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and sends
-// uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
-// connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AuthServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	authServiceMethods := v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods()
-	return &authServiceClient{
-		login: connect.NewClient[v1.LoginRequest, v1.LoginResponse](
-			httpClient,
-			baseURL+AuthServiceLoginProcedure,
-			connect.WithSchema(authServiceMethods.ByName("Login")),
-			connect.WithClientOptions(opts...),
-		),
-		loginWithIdToken: connect.NewClient[v1.LoginWithIdTokenRequest, v1.LoginWithIdTokenResponse](
-			httpClient,
-			baseURL+AuthServiceLoginWithIdTokenProcedure,
-			connect.WithSchema(authServiceMethods.ByName("LoginWithIdToken")),
-			connect.WithClientOptions(opts...),
-		),
-		listMyIdentities: connect.NewClient[v1.ListMyIdentitiesRequest, v1.ListMyIdentitiesResponse](
-			httpClient,
-			baseURL+AuthServiceListMyIdentitiesProcedure,
-			connect.WithSchema(authServiceMethods.ByName("ListMyIdentities")),
-			connect.WithClientOptions(opts...),
-		),
-		unlinkIdentity: connect.NewClient[v1.UnlinkIdentityRequest, v1.UnlinkIdentityResponse](
-			httpClient,
-			baseURL+AuthServiceUnlinkIdentityProcedure,
-			connect.WithSchema(authServiceMethods.ByName("UnlinkIdentity")),
-			connect.WithClientOptions(opts...),
-		),
-		createUser: connect.NewClient[v1.CreateUserRequest, v1.CreateUserResponse](
-			httpClient,
-			baseURL+AuthServiceCreateUserProcedure,
-			connect.WithSchema(authServiceMethods.ByName("CreateUser")),
-			connect.WithClientOptions(opts...),
-		),
-		verifyUserEmail: connect.NewClient[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse](
-			httpClient,
-			baseURL+AuthServiceVerifyUserEmailProcedure,
-			connect.WithSchema(authServiceMethods.ByName("VerifyUserEmail")),
-			connect.WithClientOptions(opts...),
-		),
-		requestEmailVerification: connect.NewClient[v1.RequestEmailVerificationRequest, v1.RequestEmailVerificationResponse](
-			httpClient,
-			baseURL+AuthServiceRequestEmailVerificationProcedure,
-			connect.WithSchema(authServiceMethods.ByName("RequestEmailVerification")),
-			connect.WithClientOptions(opts...),
-		),
-		requestEmailChange: connect.NewClient[v1.RequestEmailChangeRequest, v1.RequestEmailChangeResponse](
-			httpClient,
-			baseURL+AuthServiceRequestEmailChangeProcedure,
-			connect.WithSchema(authServiceMethods.ByName("RequestEmailChange")),
-			connect.WithClientOptions(opts...),
-		),
-		confirmEmailChange: connect.NewClient[v1.ConfirmEmailChangeRequest, v1.ConfirmEmailChangeResponse](
-			httpClient,
-			baseURL+AuthServiceConfirmEmailChangeProcedure,
-			connect.WithSchema(authServiceMethods.ByName("ConfirmEmailChange")),
-			connect.WithClientOptions(opts...),
-		),
-		requestPasswordReset: connect.NewClient[v1.RequestPasswordResetRequest, v1.RequestPasswordResetResponse](
-			httpClient,
-			baseURL+AuthServiceRequestPasswordResetProcedure,
-			connect.WithSchema(authServiceMethods.ByName("RequestPasswordReset")),
-			connect.WithClientOptions(opts...),
-		),
-		confirmPasswordReset: connect.NewClient[v1.ConfirmPasswordResetRequest, v1.ConfirmPasswordResetResponse](
-			httpClient,
-			baseURL+AuthServiceConfirmPasswordResetProcedure,
-			connect.WithSchema(authServiceMethods.ByName("ConfirmPasswordReset")),
-			connect.WithClientOptions(opts...),
-		),
-		changePassword: connect.NewClient[v1.ChangePasswordRequest, v1.ChangePasswordResponse](
-			httpClient,
-			baseURL+AuthServiceChangePasswordProcedure,
-			connect.WithSchema(authServiceMethods.ByName("ChangePassword")),
-			connect.WithClientOptions(opts...),
-		),
-		logout: connect.NewClient[v1.LogoutRequest, v1.LogoutResponse](
-			httpClient,
-			baseURL+AuthServiceLogoutProcedure,
-			connect.WithSchema(authServiceMethods.ByName("Logout")),
-			connect.WithClientOptions(opts...),
-		),
-		getMe: connect.NewClient[v1.GetMeRequest, v1.GetMeResponse](
-			httpClient,
-			baseURL+AuthServiceGetMeProcedure,
-			connect.WithSchema(authServiceMethods.ByName("GetMe")),
-			connect.WithClientOptions(opts...),
-		),
-		updateMe: connect.NewClient[v1.UpdateMeRequest, v1.UpdateMeResponse](
-			httpClient,
-			baseURL+AuthServiceUpdateMeProcedure,
-			connect.WithSchema(authServiceMethods.ByName("UpdateMe")),
-			connect.WithClientOptions(opts...),
-		),
-		deleteMe: connect.NewClient[v1.DeleteMeRequest, v1.DeleteMeResponse](
-			httpClient,
-			baseURL+AuthServiceDeleteMeProcedure,
-			connect.WithSchema(authServiceMethods.ByName("DeleteMe")),
-			connect.WithClientOptions(opts...),
-		),
-		getNotificationSettings: connect.NewClient[v1.GetNotificationSettingsRequest, v1.GetNotificationSettingsResponse](
-			httpClient,
-			baseURL+AuthServiceGetNotificationSettingsProcedure,
-			connect.WithSchema(authServiceMethods.ByName("GetNotificationSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updateNotificationSettings: connect.NewClient[v1.UpdateNotificationSettingsRequest, v1.UpdateNotificationSettingsResponse](
-			httpClient,
-			baseURL+AuthServiceUpdateNotificationSettingsProcedure,
-			connect.WithSchema(authServiceMethods.ByName("UpdateNotificationSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		getViewerPreferences: connect.NewClient[v1.GetViewerPreferencesRequest, v1.GetViewerPreferencesResponse](
-			httpClient,
-			baseURL+AuthServiceGetViewerPreferencesProcedure,
-			connect.WithSchema(authServiceMethods.ByName("GetViewerPreferences")),
-			connect.WithClientOptions(opts...),
-		),
-		updateViewerPreferences: connect.NewClient[v1.UpdateViewerPreferencesRequest, v1.UpdateViewerPreferencesResponse](
-			httpClient,
-			baseURL+AuthServiceUpdateViewerPreferencesProcedure,
-			connect.WithSchema(authServiceMethods.ByName("UpdateViewerPreferences")),
-			connect.WithClientOptions(opts...),
-		),
-		getAnnouncement: connect.NewClient[v1.GetAnnouncementRequest, v1.GetAnnouncementResponse](
-			httpClient,
-			baseURL+AuthServiceGetAnnouncementProcedure,
-			connect.WithSchema(authServiceMethods.ByName("GetAnnouncement")),
-			connect.WithClientOptions(opts...),
-		),
-		getPinnedAnnouncement: connect.NewClient[v1.GetPinnedAnnouncementRequest, v1.GetPinnedAnnouncementResponse](
-			httpClient,
-			baseURL+AuthServiceGetPinnedAnnouncementProcedure,
-			connect.WithSchema(authServiceMethods.ByName("GetPinnedAnnouncement")),
-			connect.WithClientOptions(opts...),
-		),
-		listAnnouncements: connect.NewClient[v1.ListAnnouncementsRequest, v1.ListAnnouncementsResponse](
-			httpClient,
-			baseURL+AuthServiceListAnnouncementsProcedure,
-			connect.WithSchema(authServiceMethods.ByName("ListAnnouncements")),
-			connect.WithClientOptions(opts...),
-		),
-		markAnnouncementAsRead: connect.NewClient[v1.MarkAnnouncementAsReadRequest, v1.MarkAnnouncementAsReadResponse](
-			httpClient,
-			baseURL+AuthServiceMarkAnnouncementAsReadProcedure,
-			connect.WithSchema(authServiceMethods.ByName("MarkAnnouncementAsRead")),
-			connect.WithClientOptions(opts...),
-		),
-		markAllAnnouncementsAsRead: connect.NewClient[v1.MarkAllAnnouncementsAsReadRequest, v1.MarkAllAnnouncementsAsReadResponse](
-			httpClient,
-			baseURL+AuthServiceMarkAllAnnouncementsAsReadProcedure,
-			connect.WithSchema(authServiceMethods.ByName("MarkAllAnnouncementsAsRead")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// authServiceClient implements AuthServiceClient.
-type authServiceClient struct {
-	login                      *connect.Client[v1.LoginRequest, v1.LoginResponse]
-	loginWithIdToken           *connect.Client[v1.LoginWithIdTokenRequest, v1.LoginWithIdTokenResponse]
-	listMyIdentities           *connect.Client[v1.ListMyIdentitiesRequest, v1.ListMyIdentitiesResponse]
-	unlinkIdentity             *connect.Client[v1.UnlinkIdentityRequest, v1.UnlinkIdentityResponse]
-	createUser                 *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
-	verifyUserEmail            *connect.Client[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse]
-	requestEmailVerification   *connect.Client[v1.RequestEmailVerificationRequest, v1.RequestEmailVerificationResponse]
-	requestEmailChange         *connect.Client[v1.RequestEmailChangeRequest, v1.RequestEmailChangeResponse]
-	confirmEmailChange         *connect.Client[v1.ConfirmEmailChangeRequest, v1.ConfirmEmailChangeResponse]
-	requestPasswordReset       *connect.Client[v1.RequestPasswordResetRequest, v1.RequestPasswordResetResponse]
-	confirmPasswordReset       *connect.Client[v1.ConfirmPasswordResetRequest, v1.ConfirmPasswordResetResponse]
-	changePassword             *connect.Client[v1.ChangePasswordRequest, v1.ChangePasswordResponse]
-	logout                     *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
-	getMe                      *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
-	updateMe                   *connect.Client[v1.UpdateMeRequest, v1.UpdateMeResponse]
-	deleteMe                   *connect.Client[v1.DeleteMeRequest, v1.DeleteMeResponse]
-	getNotificationSettings    *connect.Client[v1.GetNotificationSettingsRequest, v1.GetNotificationSettingsResponse]
-	updateNotificationSettings *connect.Client[v1.UpdateNotificationSettingsRequest, v1.UpdateNotificationSettingsResponse]
-	getViewerPreferences       *connect.Client[v1.GetViewerPreferencesRequest, v1.GetViewerPreferencesResponse]
-	updateViewerPreferences    *connect.Client[v1.UpdateViewerPreferencesRequest, v1.UpdateViewerPreferencesResponse]
-	getAnnouncement            *connect.Client[v1.GetAnnouncementRequest, v1.GetAnnouncementResponse]
-	getPinnedAnnouncement      *connect.Client[v1.GetPinnedAnnouncementRequest, v1.GetPinnedAnnouncementResponse]
-	listAnnouncements          *connect.Client[v1.ListAnnouncementsRequest, v1.ListAnnouncementsResponse]
-	markAnnouncementAsRead     *connect.Client[v1.MarkAnnouncementAsReadRequest, v1.MarkAnnouncementAsReadResponse]
-	markAllAnnouncementsAsRead *connect.Client[v1.MarkAllAnnouncementsAsReadRequest, v1.MarkAllAnnouncementsAsReadResponse]
-}
-
-// Login calls publira.v1.AuthService.Login.
-func (c *authServiceClient) Login(ctx context.Context, req *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
-	return c.login.CallUnary(ctx, req)
-}
-
-// LoginWithIdToken calls publira.v1.AuthService.LoginWithIdToken.
-func (c *authServiceClient) LoginWithIdToken(ctx context.Context, req *connect.Request[v1.LoginWithIdTokenRequest]) (*connect.Response[v1.LoginWithIdTokenResponse], error) {
-	return c.loginWithIdToken.CallUnary(ctx, req)
-}
-
-// ListMyIdentities calls publira.v1.AuthService.ListMyIdentities.
-func (c *authServiceClient) ListMyIdentities(ctx context.Context, req *connect.Request[v1.ListMyIdentitiesRequest]) (*connect.Response[v1.ListMyIdentitiesResponse], error) {
-	return c.listMyIdentities.CallUnary(ctx, req)
-}
-
-// UnlinkIdentity calls publira.v1.AuthService.UnlinkIdentity.
-func (c *authServiceClient) UnlinkIdentity(ctx context.Context, req *connect.Request[v1.UnlinkIdentityRequest]) (*connect.Response[v1.UnlinkIdentityResponse], error) {
-	return c.unlinkIdentity.CallUnary(ctx, req)
-}
-
-// CreateUser calls publira.v1.AuthService.CreateUser.
-func (c *authServiceClient) CreateUser(ctx context.Context, req *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {
-	return c.createUser.CallUnary(ctx, req)
-}
-
-// VerifyUserEmail calls publira.v1.AuthService.VerifyUserEmail.
-func (c *authServiceClient) VerifyUserEmail(ctx context.Context, req *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error) {
-	return c.verifyUserEmail.CallUnary(ctx, req)
-}
-
-// RequestEmailVerification calls publira.v1.AuthService.RequestEmailVerification.
-func (c *authServiceClient) RequestEmailVerification(ctx context.Context, req *connect.Request[v1.RequestEmailVerificationRequest]) (*connect.Response[v1.RequestEmailVerificationResponse], error) {
-	return c.requestEmailVerification.CallUnary(ctx, req)
-}
-
-// RequestEmailChange calls publira.v1.AuthService.RequestEmailChange.
-func (c *authServiceClient) RequestEmailChange(ctx context.Context, req *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error) {
-	return c.requestEmailChange.CallUnary(ctx, req)
-}
-
-// ConfirmEmailChange calls publira.v1.AuthService.ConfirmEmailChange.
-func (c *authServiceClient) ConfirmEmailChange(ctx context.Context, req *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error) {
-	return c.confirmEmailChange.CallUnary(ctx, req)
-}
-
-// RequestPasswordReset calls publira.v1.AuthService.RequestPasswordReset.
-func (c *authServiceClient) RequestPasswordReset(ctx context.Context, req *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error) {
-	return c.requestPasswordReset.CallUnary(ctx, req)
-}
-
-// ConfirmPasswordReset calls publira.v1.AuthService.ConfirmPasswordReset.
-func (c *authServiceClient) ConfirmPasswordReset(ctx context.Context, req *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error) {
-	return c.confirmPasswordReset.CallUnary(ctx, req)
-}
-
-// ChangePassword calls publira.v1.AuthService.ChangePassword.
-func (c *authServiceClient) ChangePassword(ctx context.Context, req *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
-	return c.changePassword.CallUnary(ctx, req)
-}
-
-// Logout calls publira.v1.AuthService.Logout.
-func (c *authServiceClient) Logout(ctx context.Context, req *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error) {
-	return c.logout.CallUnary(ctx, req)
-}
-
-// GetMe calls publira.v1.AuthService.GetMe.
-func (c *authServiceClient) GetMe(ctx context.Context, req *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {
-	return c.getMe.CallUnary(ctx, req)
-}
-
-// UpdateMe calls publira.v1.AuthService.UpdateMe.
-func (c *authServiceClient) UpdateMe(ctx context.Context, req *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error) {
-	return c.updateMe.CallUnary(ctx, req)
-}
-
-// DeleteMe calls publira.v1.AuthService.DeleteMe.
-func (c *authServiceClient) DeleteMe(ctx context.Context, req *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error) {
-	return c.deleteMe.CallUnary(ctx, req)
-}
-
-// GetNotificationSettings calls publira.v1.AuthService.GetNotificationSettings.
-func (c *authServiceClient) GetNotificationSettings(ctx context.Context, req *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error) {
-	return c.getNotificationSettings.CallUnary(ctx, req)
-}
-
-// UpdateNotificationSettings calls publira.v1.AuthService.UpdateNotificationSettings.
-func (c *authServiceClient) UpdateNotificationSettings(ctx context.Context, req *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error) {
-	return c.updateNotificationSettings.CallUnary(ctx, req)
-}
-
-// GetViewerPreferences calls publira.v1.AuthService.GetViewerPreferences.
-func (c *authServiceClient) GetViewerPreferences(ctx context.Context, req *connect.Request[v1.GetViewerPreferencesRequest]) (*connect.Response[v1.GetViewerPreferencesResponse], error) {
-	return c.getViewerPreferences.CallUnary(ctx, req)
-}
-
-// UpdateViewerPreferences calls publira.v1.AuthService.UpdateViewerPreferences.
-func (c *authServiceClient) UpdateViewerPreferences(ctx context.Context, req *connect.Request[v1.UpdateViewerPreferencesRequest]) (*connect.Response[v1.UpdateViewerPreferencesResponse], error) {
-	return c.updateViewerPreferences.CallUnary(ctx, req)
-}
-
-// GetAnnouncement calls publira.v1.AuthService.GetAnnouncement.
-func (c *authServiceClient) GetAnnouncement(ctx context.Context, req *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error) {
-	return c.getAnnouncement.CallUnary(ctx, req)
-}
-
-// GetPinnedAnnouncement calls publira.v1.AuthService.GetPinnedAnnouncement.
-func (c *authServiceClient) GetPinnedAnnouncement(ctx context.Context, req *connect.Request[v1.GetPinnedAnnouncementRequest]) (*connect.Response[v1.GetPinnedAnnouncementResponse], error) {
-	return c.getPinnedAnnouncement.CallUnary(ctx, req)
-}
-
-// ListAnnouncements calls publira.v1.AuthService.ListAnnouncements.
-func (c *authServiceClient) ListAnnouncements(ctx context.Context, req *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error) {
-	return c.listAnnouncements.CallUnary(ctx, req)
-}
-
-// MarkAnnouncementAsRead calls publira.v1.AuthService.MarkAnnouncementAsRead.
-func (c *authServiceClient) MarkAnnouncementAsRead(ctx context.Context, req *connect.Request[v1.MarkAnnouncementAsReadRequest]) (*connect.Response[v1.MarkAnnouncementAsReadResponse], error) {
-	return c.markAnnouncementAsRead.CallUnary(ctx, req)
-}
-
-// MarkAllAnnouncementsAsRead calls publira.v1.AuthService.MarkAllAnnouncementsAsRead.
-func (c *authServiceClient) MarkAllAnnouncementsAsRead(ctx context.Context, req *connect.Request[v1.MarkAllAnnouncementsAsReadRequest]) (*connect.Response[v1.MarkAllAnnouncementsAsReadResponse], error) {
-	return c.markAllAnnouncementsAsRead.CallUnary(ctx, req)
+// NewAuthServiceClient constructs a client for the publira.v1.AuthService service. Multiple service
+// clients may share a single connect.Client.
+func NewAuthServiceClient(client *connect.Client) AuthServiceClient {
+	return &authServiceClient{client: client}
 }
 
 // AuthServiceHandler is an implementation of the publira.v1.AuthService service.
 type AuthServiceHandler interface {
-	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
-	LoginWithIdToken(context.Context, *connect.Request[v1.LoginWithIdTokenRequest]) (*connect.Response[v1.LoginWithIdTokenResponse], error)
-	ListMyIdentities(context.Context, *connect.Request[v1.ListMyIdentitiesRequest]) (*connect.Response[v1.ListMyIdentitiesResponse], error)
-	UnlinkIdentity(context.Context, *connect.Request[v1.UnlinkIdentityRequest]) (*connect.Response[v1.UnlinkIdentityResponse], error)
-	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
-	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
-	RequestEmailVerification(context.Context, *connect.Request[v1.RequestEmailVerificationRequest]) (*connect.Response[v1.RequestEmailVerificationResponse], error)
-	RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error)
-	ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error)
-	RequestPasswordReset(context.Context, *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error)
-	ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error)
-	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
-	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
-	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
-	UpdateMe(context.Context, *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error)
+	Login(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error)
+	LoginWithIdToken(context.Context, *v1.LoginWithIdTokenRequest) (*v1.LoginWithIdTokenResponse, error)
+	ListMyIdentities(context.Context, *v1.ListMyIdentitiesRequest) (*v1.ListMyIdentitiesResponse, error)
+	UnlinkIdentity(context.Context, *v1.UnlinkIdentityRequest) (*v1.UnlinkIdentityResponse, error)
+	CreateUser(context.Context, *v1.CreateUserRequest) (*v1.CreateUserResponse, error)
+	VerifyUserEmail(context.Context, *v1.VerifyUserEmailRequest) (*v1.VerifyUserEmailResponse, error)
+	RequestEmailVerification(context.Context, *v1.RequestEmailVerificationRequest) (*v1.RequestEmailVerificationResponse, error)
+	RequestEmailChange(context.Context, *v1.RequestEmailChangeRequest) (*v1.RequestEmailChangeResponse, error)
+	ConfirmEmailChange(context.Context, *v1.ConfirmEmailChangeRequest) (*v1.ConfirmEmailChangeResponse, error)
+	RequestPasswordReset(context.Context, *v1.RequestPasswordResetRequest) (*v1.RequestPasswordResetResponse, error)
+	ConfirmPasswordReset(context.Context, *v1.ConfirmPasswordResetRequest) (*v1.ConfirmPasswordResetResponse, error)
+	ChangePassword(context.Context, *v1.ChangePasswordRequest) (*v1.ChangePasswordResponse, error)
+	Logout(context.Context, *v1.LogoutRequest) (*v1.LogoutResponse, error)
+	GetMe(context.Context, *v1.GetMeRequest) (*v1.GetMeResponse, error)
+	UpdateMe(context.Context, *v1.UpdateMeRequest) (*v1.UpdateMeResponse, error)
 	// Deletes the caller's account. A staff account is deleted too; the tenant's
 	// audit entries keep its name and public ID. failed_precondition, with the
 	// LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
-	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
-	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
-	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
-	GetViewerPreferences(context.Context, *connect.Request[v1.GetViewerPreferencesRequest]) (*connect.Response[v1.GetViewerPreferencesResponse], error)
-	UpdateViewerPreferences(context.Context, *connect.Request[v1.UpdateViewerPreferencesRequest]) (*connect.Response[v1.UpdateViewerPreferencesResponse], error)
-	GetAnnouncement(context.Context, *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error)
-	GetPinnedAnnouncement(context.Context, *connect.Request[v1.GetPinnedAnnouncementRequest]) (*connect.Response[v1.GetPinnedAnnouncementResponse], error)
-	ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error)
-	MarkAnnouncementAsRead(context.Context, *connect.Request[v1.MarkAnnouncementAsReadRequest]) (*connect.Response[v1.MarkAnnouncementAsReadResponse], error)
-	MarkAllAnnouncementsAsRead(context.Context, *connect.Request[v1.MarkAllAnnouncementsAsReadRequest]) (*connect.Response[v1.MarkAllAnnouncementsAsReadResponse], error)
+	DeleteMe(context.Context, *v1.DeleteMeRequest) (*v1.DeleteMeResponse, error)
+	GetNotificationSettings(context.Context, *v1.GetNotificationSettingsRequest) (*v1.GetNotificationSettingsResponse, error)
+	UpdateNotificationSettings(context.Context, *v1.UpdateNotificationSettingsRequest) (*v1.UpdateNotificationSettingsResponse, error)
+	GetViewerPreferences(context.Context, *v1.GetViewerPreferencesRequest) (*v1.GetViewerPreferencesResponse, error)
+	UpdateViewerPreferences(context.Context, *v1.UpdateViewerPreferencesRequest) (*v1.UpdateViewerPreferencesResponse, error)
+	GetAnnouncement(context.Context, *v1.GetAnnouncementRequest) (*v1.GetAnnouncementResponse, error)
+	GetPinnedAnnouncement(context.Context, *v1.GetPinnedAnnouncementRequest) (*v1.GetPinnedAnnouncementResponse, error)
+	ListAnnouncements(context.Context, *v1.ListAnnouncementsRequest) (*v1.ListAnnouncementsResponse, error)
+	MarkAnnouncementAsRead(context.Context, *v1.MarkAnnouncementAsReadRequest) (*v1.MarkAnnouncementAsReadResponse, error)
+	MarkAllAnnouncementsAsRead(context.Context, *v1.MarkAllAnnouncementsAsReadRequest) (*v1.MarkAllAnnouncementsAsReadResponse, error)
 }
 
-// NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
-// on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	authServiceMethods := v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods()
-	authServiceLoginHandler := connect.NewUnaryHandler(
-		AuthServiceLoginProcedure,
-		svc.Login,
-		connect.WithSchema(authServiceMethods.ByName("Login")),
-		connect.WithHandlerOptions(opts...),
+// RegisterAuthServiceHandler registers svc as the publira.v1.AuthService implementation on server.
+func RegisterAuthServiceHandler(server *connect.Server, svc AuthServiceHandler) {
+	adapter := authServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: authServiceLoginSpec(), Handler: adapter.login},
+		connect.Method{Spec: authServiceLoginWithIdTokenSpec(), Handler: adapter.loginWithIdToken},
+		connect.Method{Spec: authServiceListMyIdentitiesSpec(), Handler: adapter.listMyIdentities},
+		connect.Method{Spec: authServiceUnlinkIdentitySpec(), Handler: adapter.unlinkIdentity},
+		connect.Method{Spec: authServiceCreateUserSpec(), Handler: adapter.createUser},
+		connect.Method{Spec: authServiceVerifyUserEmailSpec(), Handler: adapter.verifyUserEmail},
+		connect.Method{Spec: authServiceRequestEmailVerificationSpec(), Handler: adapter.requestEmailVerification},
+		connect.Method{Spec: authServiceRequestEmailChangeSpec(), Handler: adapter.requestEmailChange},
+		connect.Method{Spec: authServiceConfirmEmailChangeSpec(), Handler: adapter.confirmEmailChange},
+		connect.Method{Spec: authServiceRequestPasswordResetSpec(), Handler: adapter.requestPasswordReset},
+		connect.Method{Spec: authServiceConfirmPasswordResetSpec(), Handler: adapter.confirmPasswordReset},
+		connect.Method{Spec: authServiceChangePasswordSpec(), Handler: adapter.changePassword},
+		connect.Method{Spec: authServiceLogoutSpec(), Handler: adapter.logout},
+		connect.Method{Spec: authServiceGetMeSpec(), Handler: adapter.getMe},
+		connect.Method{Spec: authServiceUpdateMeSpec(), Handler: adapter.updateMe},
+		connect.Method{Spec: authServiceDeleteMeSpec(), Handler: adapter.deleteMe},
+		connect.Method{Spec: authServiceGetNotificationSettingsSpec(), Handler: adapter.getNotificationSettings},
+		connect.Method{Spec: authServiceUpdateNotificationSettingsSpec(), Handler: adapter.updateNotificationSettings},
+		connect.Method{Spec: authServiceGetViewerPreferencesSpec(), Handler: adapter.getViewerPreferences},
+		connect.Method{Spec: authServiceUpdateViewerPreferencesSpec(), Handler: adapter.updateViewerPreferences},
+		connect.Method{Spec: authServiceGetAnnouncementSpec(), Handler: adapter.getAnnouncement},
+		connect.Method{Spec: authServiceGetPinnedAnnouncementSpec(), Handler: adapter.getPinnedAnnouncement},
+		connect.Method{Spec: authServiceListAnnouncementsSpec(), Handler: adapter.listAnnouncements},
+		connect.Method{Spec: authServiceMarkAnnouncementAsReadSpec(), Handler: adapter.markAnnouncementAsRead},
+		connect.Method{Spec: authServiceMarkAllAnnouncementsAsReadSpec(), Handler: adapter.markAllAnnouncementsAsRead},
 	)
-	authServiceLoginWithIdTokenHandler := connect.NewUnaryHandler(
-		AuthServiceLoginWithIdTokenProcedure,
-		svc.LoginWithIdToken,
-		connect.WithSchema(authServiceMethods.ByName("LoginWithIdToken")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceListMyIdentitiesHandler := connect.NewUnaryHandler(
-		AuthServiceListMyIdentitiesProcedure,
-		svc.ListMyIdentities,
-		connect.WithSchema(authServiceMethods.ByName("ListMyIdentities")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceUnlinkIdentityHandler := connect.NewUnaryHandler(
-		AuthServiceUnlinkIdentityProcedure,
-		svc.UnlinkIdentity,
-		connect.WithSchema(authServiceMethods.ByName("UnlinkIdentity")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceCreateUserHandler := connect.NewUnaryHandler(
-		AuthServiceCreateUserProcedure,
-		svc.CreateUser,
-		connect.WithSchema(authServiceMethods.ByName("CreateUser")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceVerifyUserEmailHandler := connect.NewUnaryHandler(
-		AuthServiceVerifyUserEmailProcedure,
-		svc.VerifyUserEmail,
-		connect.WithSchema(authServiceMethods.ByName("VerifyUserEmail")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceRequestEmailVerificationHandler := connect.NewUnaryHandler(
-		AuthServiceRequestEmailVerificationProcedure,
-		svc.RequestEmailVerification,
-		connect.WithSchema(authServiceMethods.ByName("RequestEmailVerification")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceRequestEmailChangeHandler := connect.NewUnaryHandler(
-		AuthServiceRequestEmailChangeProcedure,
-		svc.RequestEmailChange,
-		connect.WithSchema(authServiceMethods.ByName("RequestEmailChange")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceConfirmEmailChangeHandler := connect.NewUnaryHandler(
-		AuthServiceConfirmEmailChangeProcedure,
-		svc.ConfirmEmailChange,
-		connect.WithSchema(authServiceMethods.ByName("ConfirmEmailChange")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceRequestPasswordResetHandler := connect.NewUnaryHandler(
-		AuthServiceRequestPasswordResetProcedure,
-		svc.RequestPasswordReset,
-		connect.WithSchema(authServiceMethods.ByName("RequestPasswordReset")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceConfirmPasswordResetHandler := connect.NewUnaryHandler(
-		AuthServiceConfirmPasswordResetProcedure,
-		svc.ConfirmPasswordReset,
-		connect.WithSchema(authServiceMethods.ByName("ConfirmPasswordReset")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceChangePasswordHandler := connect.NewUnaryHandler(
-		AuthServiceChangePasswordProcedure,
-		svc.ChangePassword,
-		connect.WithSchema(authServiceMethods.ByName("ChangePassword")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceLogoutHandler := connect.NewUnaryHandler(
-		AuthServiceLogoutProcedure,
-		svc.Logout,
-		connect.WithSchema(authServiceMethods.ByName("Logout")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceGetMeHandler := connect.NewUnaryHandler(
-		AuthServiceGetMeProcedure,
-		svc.GetMe,
-		connect.WithSchema(authServiceMethods.ByName("GetMe")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceUpdateMeHandler := connect.NewUnaryHandler(
-		AuthServiceUpdateMeProcedure,
-		svc.UpdateMe,
-		connect.WithSchema(authServiceMethods.ByName("UpdateMe")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceDeleteMeHandler := connect.NewUnaryHandler(
-		AuthServiceDeleteMeProcedure,
-		svc.DeleteMe,
-		connect.WithSchema(authServiceMethods.ByName("DeleteMe")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceGetNotificationSettingsHandler := connect.NewUnaryHandler(
-		AuthServiceGetNotificationSettingsProcedure,
-		svc.GetNotificationSettings,
-		connect.WithSchema(authServiceMethods.ByName("GetNotificationSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceUpdateNotificationSettingsHandler := connect.NewUnaryHandler(
-		AuthServiceUpdateNotificationSettingsProcedure,
-		svc.UpdateNotificationSettings,
-		connect.WithSchema(authServiceMethods.ByName("UpdateNotificationSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceGetViewerPreferencesHandler := connect.NewUnaryHandler(
-		AuthServiceGetViewerPreferencesProcedure,
-		svc.GetViewerPreferences,
-		connect.WithSchema(authServiceMethods.ByName("GetViewerPreferences")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceUpdateViewerPreferencesHandler := connect.NewUnaryHandler(
-		AuthServiceUpdateViewerPreferencesProcedure,
-		svc.UpdateViewerPreferences,
-		connect.WithSchema(authServiceMethods.ByName("UpdateViewerPreferences")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceGetAnnouncementHandler := connect.NewUnaryHandler(
-		AuthServiceGetAnnouncementProcedure,
-		svc.GetAnnouncement,
-		connect.WithSchema(authServiceMethods.ByName("GetAnnouncement")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceGetPinnedAnnouncementHandler := connect.NewUnaryHandler(
-		AuthServiceGetPinnedAnnouncementProcedure,
-		svc.GetPinnedAnnouncement,
-		connect.WithSchema(authServiceMethods.ByName("GetPinnedAnnouncement")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceListAnnouncementsHandler := connect.NewUnaryHandler(
-		AuthServiceListAnnouncementsProcedure,
-		svc.ListAnnouncements,
-		connect.WithSchema(authServiceMethods.ByName("ListAnnouncements")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceMarkAnnouncementAsReadHandler := connect.NewUnaryHandler(
-		AuthServiceMarkAnnouncementAsReadProcedure,
-		svc.MarkAnnouncementAsRead,
-		connect.WithSchema(authServiceMethods.ByName("MarkAnnouncementAsRead")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authServiceMarkAllAnnouncementsAsReadHandler := connect.NewUnaryHandler(
-		AuthServiceMarkAllAnnouncementsAsReadProcedure,
-		svc.MarkAllAnnouncementsAsRead,
-		connect.WithSchema(authServiceMethods.ByName("MarkAllAnnouncementsAsRead")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case AuthServiceLoginProcedure:
-			authServiceLoginHandler.ServeHTTP(w, r)
-		case AuthServiceLoginWithIdTokenProcedure:
-			authServiceLoginWithIdTokenHandler.ServeHTTP(w, r)
-		case AuthServiceListMyIdentitiesProcedure:
-			authServiceListMyIdentitiesHandler.ServeHTTP(w, r)
-		case AuthServiceUnlinkIdentityProcedure:
-			authServiceUnlinkIdentityHandler.ServeHTTP(w, r)
-		case AuthServiceCreateUserProcedure:
-			authServiceCreateUserHandler.ServeHTTP(w, r)
-		case AuthServiceVerifyUserEmailProcedure:
-			authServiceVerifyUserEmailHandler.ServeHTTP(w, r)
-		case AuthServiceRequestEmailVerificationProcedure:
-			authServiceRequestEmailVerificationHandler.ServeHTTP(w, r)
-		case AuthServiceRequestEmailChangeProcedure:
-			authServiceRequestEmailChangeHandler.ServeHTTP(w, r)
-		case AuthServiceConfirmEmailChangeProcedure:
-			authServiceConfirmEmailChangeHandler.ServeHTTP(w, r)
-		case AuthServiceRequestPasswordResetProcedure:
-			authServiceRequestPasswordResetHandler.ServeHTTP(w, r)
-		case AuthServiceConfirmPasswordResetProcedure:
-			authServiceConfirmPasswordResetHandler.ServeHTTP(w, r)
-		case AuthServiceChangePasswordProcedure:
-			authServiceChangePasswordHandler.ServeHTTP(w, r)
-		case AuthServiceLogoutProcedure:
-			authServiceLogoutHandler.ServeHTTP(w, r)
-		case AuthServiceGetMeProcedure:
-			authServiceGetMeHandler.ServeHTTP(w, r)
-		case AuthServiceUpdateMeProcedure:
-			authServiceUpdateMeHandler.ServeHTTP(w, r)
-		case AuthServiceDeleteMeProcedure:
-			authServiceDeleteMeHandler.ServeHTTP(w, r)
-		case AuthServiceGetNotificationSettingsProcedure:
-			authServiceGetNotificationSettingsHandler.ServeHTTP(w, r)
-		case AuthServiceUpdateNotificationSettingsProcedure:
-			authServiceUpdateNotificationSettingsHandler.ServeHTTP(w, r)
-		case AuthServiceGetViewerPreferencesProcedure:
-			authServiceGetViewerPreferencesHandler.ServeHTTP(w, r)
-		case AuthServiceUpdateViewerPreferencesProcedure:
-			authServiceUpdateViewerPreferencesHandler.ServeHTTP(w, r)
-		case AuthServiceGetAnnouncementProcedure:
-			authServiceGetAnnouncementHandler.ServeHTTP(w, r)
-		case AuthServiceGetPinnedAnnouncementProcedure:
-			authServiceGetPinnedAnnouncementHandler.ServeHTTP(w, r)
-		case AuthServiceListAnnouncementsProcedure:
-			authServiceListAnnouncementsHandler.ServeHTTP(w, r)
-		case AuthServiceMarkAnnouncementAsReadProcedure:
-			authServiceMarkAnnouncementAsReadHandler.ServeHTTP(w, r)
-		case AuthServiceMarkAllAnnouncementsAsReadProcedure:
-			authServiceMarkAllAnnouncementsAsReadHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedAuthServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAuthServiceHandler struct{}
 
-func (UnimplementedAuthServiceHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.Login is not implemented"))
+func (UnimplementedAuthServiceHandler) Login(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.Login is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) LoginWithIdToken(context.Context, *connect.Request[v1.LoginWithIdTokenRequest]) (*connect.Response[v1.LoginWithIdTokenResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.LoginWithIdToken is not implemented"))
+func (UnimplementedAuthServiceHandler) LoginWithIdToken(context.Context, *v1.LoginWithIdTokenRequest) (*v1.LoginWithIdTokenResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.LoginWithIdToken is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) ListMyIdentities(context.Context, *connect.Request[v1.ListMyIdentitiesRequest]) (*connect.Response[v1.ListMyIdentitiesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ListMyIdentities is not implemented"))
+func (UnimplementedAuthServiceHandler) ListMyIdentities(context.Context, *v1.ListMyIdentitiesRequest) (*v1.ListMyIdentitiesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.ListMyIdentities is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) UnlinkIdentity(context.Context, *connect.Request[v1.UnlinkIdentityRequest]) (*connect.Response[v1.UnlinkIdentityResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.UnlinkIdentity is not implemented"))
+func (UnimplementedAuthServiceHandler) UnlinkIdentity(context.Context, *v1.UnlinkIdentityRequest) (*v1.UnlinkIdentityResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.UnlinkIdentity is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.CreateUser is not implemented"))
+func (UnimplementedAuthServiceHandler) CreateUser(context.Context, *v1.CreateUserRequest) (*v1.CreateUserResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.CreateUser is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.VerifyUserEmail is not implemented"))
+func (UnimplementedAuthServiceHandler) VerifyUserEmail(context.Context, *v1.VerifyUserEmailRequest) (*v1.VerifyUserEmailResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.VerifyUserEmail is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) RequestEmailVerification(context.Context, *connect.Request[v1.RequestEmailVerificationRequest]) (*connect.Response[v1.RequestEmailVerificationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.RequestEmailVerification is not implemented"))
+func (UnimplementedAuthServiceHandler) RequestEmailVerification(context.Context, *v1.RequestEmailVerificationRequest) (*v1.RequestEmailVerificationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.RequestEmailVerification is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.RequestEmailChange is not implemented"))
+func (UnimplementedAuthServiceHandler) RequestEmailChange(context.Context, *v1.RequestEmailChangeRequest) (*v1.RequestEmailChangeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.RequestEmailChange is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ConfirmEmailChange is not implemented"))
+func (UnimplementedAuthServiceHandler) ConfirmEmailChange(context.Context, *v1.ConfirmEmailChangeRequest) (*v1.ConfirmEmailChangeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.ConfirmEmailChange is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) RequestPasswordReset(context.Context, *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.RequestPasswordReset is not implemented"))
+func (UnimplementedAuthServiceHandler) RequestPasswordReset(context.Context, *v1.RequestPasswordResetRequest) (*v1.RequestPasswordResetResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.RequestPasswordReset is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ConfirmPasswordReset is not implemented"))
+func (UnimplementedAuthServiceHandler) ConfirmPasswordReset(context.Context, *v1.ConfirmPasswordResetRequest) (*v1.ConfirmPasswordResetResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.ConfirmPasswordReset is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ChangePassword is not implemented"))
+func (UnimplementedAuthServiceHandler) ChangePassword(context.Context, *v1.ChangePasswordRequest) (*v1.ChangePasswordResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.ChangePassword is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.Logout is not implemented"))
+func (UnimplementedAuthServiceHandler) Logout(context.Context, *v1.LogoutRequest) (*v1.LogoutResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.Logout is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetMe is not implemented"))
+func (UnimplementedAuthServiceHandler) GetMe(context.Context, *v1.GetMeRequest) (*v1.GetMeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.GetMe is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) UpdateMe(context.Context, *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.UpdateMe is not implemented"))
+func (UnimplementedAuthServiceHandler) UpdateMe(context.Context, *v1.UpdateMeRequest) (*v1.UpdateMeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.UpdateMe is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.DeleteMe is not implemented"))
+func (UnimplementedAuthServiceHandler) DeleteMe(context.Context, *v1.DeleteMeRequest) (*v1.DeleteMeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.DeleteMe is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetNotificationSettings is not implemented"))
+func (UnimplementedAuthServiceHandler) GetNotificationSettings(context.Context, *v1.GetNotificationSettingsRequest) (*v1.GetNotificationSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.GetNotificationSettings is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.UpdateNotificationSettings is not implemented"))
+func (UnimplementedAuthServiceHandler) UpdateNotificationSettings(context.Context, *v1.UpdateNotificationSettingsRequest) (*v1.UpdateNotificationSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.UpdateNotificationSettings is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) GetViewerPreferences(context.Context, *connect.Request[v1.GetViewerPreferencesRequest]) (*connect.Response[v1.GetViewerPreferencesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetViewerPreferences is not implemented"))
+func (UnimplementedAuthServiceHandler) GetViewerPreferences(context.Context, *v1.GetViewerPreferencesRequest) (*v1.GetViewerPreferencesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.GetViewerPreferences is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) UpdateViewerPreferences(context.Context, *connect.Request[v1.UpdateViewerPreferencesRequest]) (*connect.Response[v1.UpdateViewerPreferencesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.UpdateViewerPreferences is not implemented"))
+func (UnimplementedAuthServiceHandler) UpdateViewerPreferences(context.Context, *v1.UpdateViewerPreferencesRequest) (*v1.UpdateViewerPreferencesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.UpdateViewerPreferences is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) GetAnnouncement(context.Context, *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetAnnouncement is not implemented"))
+func (UnimplementedAuthServiceHandler) GetAnnouncement(context.Context, *v1.GetAnnouncementRequest) (*v1.GetAnnouncementResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.GetAnnouncement is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) GetPinnedAnnouncement(context.Context, *connect.Request[v1.GetPinnedAnnouncementRequest]) (*connect.Response[v1.GetPinnedAnnouncementResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetPinnedAnnouncement is not implemented"))
+func (UnimplementedAuthServiceHandler) GetPinnedAnnouncement(context.Context, *v1.GetPinnedAnnouncementRequest) (*v1.GetPinnedAnnouncementResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.GetPinnedAnnouncement is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ListAnnouncements is not implemented"))
+func (UnimplementedAuthServiceHandler) ListAnnouncements(context.Context, *v1.ListAnnouncementsRequest) (*v1.ListAnnouncementsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.ListAnnouncements is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) MarkAnnouncementAsRead(context.Context, *connect.Request[v1.MarkAnnouncementAsReadRequest]) (*connect.Response[v1.MarkAnnouncementAsReadResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.MarkAnnouncementAsRead is not implemented"))
+func (UnimplementedAuthServiceHandler) MarkAnnouncementAsRead(context.Context, *v1.MarkAnnouncementAsReadRequest) (*v1.MarkAnnouncementAsReadResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.MarkAnnouncementAsRead is not implemented")
 }
 
-func (UnimplementedAuthServiceHandler) MarkAllAnnouncementsAsRead(context.Context, *connect.Request[v1.MarkAllAnnouncementsAsReadRequest]) (*connect.Response[v1.MarkAllAnnouncementsAsReadResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.MarkAllAnnouncementsAsRead is not implemented"))
+func (UnimplementedAuthServiceHandler) MarkAllAnnouncementsAsRead(context.Context, *v1.MarkAllAnnouncementsAsReadRequest) (*v1.MarkAllAnnouncementsAsReadResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.MarkAllAnnouncementsAsRead is not implemented")
+}
+
+type authServiceClient struct {
+	client *connect.Client
+}
+
+func (c *authServiceClient) Login(ctx context.Context, req *v1.LoginRequest) (*v1.LoginResponse, error) {
+	var res v1.LoginResponse
+	if err := c.client.CallUnary(ctx, authServiceLoginSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) LoginWithIdToken(ctx context.Context, req *v1.LoginWithIdTokenRequest) (*v1.LoginWithIdTokenResponse, error) {
+	var res v1.LoginWithIdTokenResponse
+	if err := c.client.CallUnary(ctx, authServiceLoginWithIdTokenSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) ListMyIdentities(ctx context.Context, req *v1.ListMyIdentitiesRequest) (*v1.ListMyIdentitiesResponse, error) {
+	var res v1.ListMyIdentitiesResponse
+	if err := c.client.CallUnary(ctx, authServiceListMyIdentitiesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) UnlinkIdentity(ctx context.Context, req *v1.UnlinkIdentityRequest) (*v1.UnlinkIdentityResponse, error) {
+	var res v1.UnlinkIdentityResponse
+	if err := c.client.CallUnary(ctx, authServiceUnlinkIdentitySpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) CreateUser(ctx context.Context, req *v1.CreateUserRequest) (*v1.CreateUserResponse, error) {
+	var res v1.CreateUserResponse
+	if err := c.client.CallUnary(ctx, authServiceCreateUserSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) VerifyUserEmail(ctx context.Context, req *v1.VerifyUserEmailRequest) (*v1.VerifyUserEmailResponse, error) {
+	var res v1.VerifyUserEmailResponse
+	if err := c.client.CallUnary(ctx, authServiceVerifyUserEmailSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) RequestEmailVerification(ctx context.Context, req *v1.RequestEmailVerificationRequest) (*v1.RequestEmailVerificationResponse, error) {
+	var res v1.RequestEmailVerificationResponse
+	if err := c.client.CallUnary(ctx, authServiceRequestEmailVerificationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) RequestEmailChange(ctx context.Context, req *v1.RequestEmailChangeRequest) (*v1.RequestEmailChangeResponse, error) {
+	var res v1.RequestEmailChangeResponse
+	if err := c.client.CallUnary(ctx, authServiceRequestEmailChangeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) ConfirmEmailChange(ctx context.Context, req *v1.ConfirmEmailChangeRequest) (*v1.ConfirmEmailChangeResponse, error) {
+	var res v1.ConfirmEmailChangeResponse
+	if err := c.client.CallUnary(ctx, authServiceConfirmEmailChangeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) RequestPasswordReset(ctx context.Context, req *v1.RequestPasswordResetRequest) (*v1.RequestPasswordResetResponse, error) {
+	var res v1.RequestPasswordResetResponse
+	if err := c.client.CallUnary(ctx, authServiceRequestPasswordResetSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) ConfirmPasswordReset(ctx context.Context, req *v1.ConfirmPasswordResetRequest) (*v1.ConfirmPasswordResetResponse, error) {
+	var res v1.ConfirmPasswordResetResponse
+	if err := c.client.CallUnary(ctx, authServiceConfirmPasswordResetSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) ChangePassword(ctx context.Context, req *v1.ChangePasswordRequest) (*v1.ChangePasswordResponse, error) {
+	var res v1.ChangePasswordResponse
+	if err := c.client.CallUnary(ctx, authServiceChangePasswordSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) Logout(ctx context.Context, req *v1.LogoutRequest) (*v1.LogoutResponse, error) {
+	var res v1.LogoutResponse
+	if err := c.client.CallUnary(ctx, authServiceLogoutSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) GetMe(ctx context.Context, req *v1.GetMeRequest) (*v1.GetMeResponse, error) {
+	var res v1.GetMeResponse
+	if err := c.client.CallUnary(ctx, authServiceGetMeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) UpdateMe(ctx context.Context, req *v1.UpdateMeRequest) (*v1.UpdateMeResponse, error) {
+	var res v1.UpdateMeResponse
+	if err := c.client.CallUnary(ctx, authServiceUpdateMeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) DeleteMe(ctx context.Context, req *v1.DeleteMeRequest) (*v1.DeleteMeResponse, error) {
+	var res v1.DeleteMeResponse
+	if err := c.client.CallUnary(ctx, authServiceDeleteMeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) GetNotificationSettings(ctx context.Context, req *v1.GetNotificationSettingsRequest) (*v1.GetNotificationSettingsResponse, error) {
+	var res v1.GetNotificationSettingsResponse
+	if err := c.client.CallUnary(ctx, authServiceGetNotificationSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) UpdateNotificationSettings(ctx context.Context, req *v1.UpdateNotificationSettingsRequest) (*v1.UpdateNotificationSettingsResponse, error) {
+	var res v1.UpdateNotificationSettingsResponse
+	if err := c.client.CallUnary(ctx, authServiceUpdateNotificationSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) GetViewerPreferences(ctx context.Context, req *v1.GetViewerPreferencesRequest) (*v1.GetViewerPreferencesResponse, error) {
+	var res v1.GetViewerPreferencesResponse
+	if err := c.client.CallUnary(ctx, authServiceGetViewerPreferencesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) UpdateViewerPreferences(ctx context.Context, req *v1.UpdateViewerPreferencesRequest) (*v1.UpdateViewerPreferencesResponse, error) {
+	var res v1.UpdateViewerPreferencesResponse
+	if err := c.client.CallUnary(ctx, authServiceUpdateViewerPreferencesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) GetAnnouncement(ctx context.Context, req *v1.GetAnnouncementRequest) (*v1.GetAnnouncementResponse, error) {
+	var res v1.GetAnnouncementResponse
+	if err := c.client.CallUnary(ctx, authServiceGetAnnouncementSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) GetPinnedAnnouncement(ctx context.Context, req *v1.GetPinnedAnnouncementRequest) (*v1.GetPinnedAnnouncementResponse, error) {
+	var res v1.GetPinnedAnnouncementResponse
+	if err := c.client.CallUnary(ctx, authServiceGetPinnedAnnouncementSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) ListAnnouncements(ctx context.Context, req *v1.ListAnnouncementsRequest) (*v1.ListAnnouncementsResponse, error) {
+	var res v1.ListAnnouncementsResponse
+	if err := c.client.CallUnary(ctx, authServiceListAnnouncementsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) MarkAnnouncementAsRead(ctx context.Context, req *v1.MarkAnnouncementAsReadRequest) (*v1.MarkAnnouncementAsReadResponse, error) {
+	var res v1.MarkAnnouncementAsReadResponse
+	if err := c.client.CallUnary(ctx, authServiceMarkAnnouncementAsReadSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) MarkAllAnnouncementsAsRead(ctx context.Context, req *v1.MarkAllAnnouncementsAsReadRequest) (*v1.MarkAllAnnouncementsAsReadResponse, error) {
+	var res v1.MarkAllAnnouncementsAsReadResponse
+	if err := c.client.CallUnary(ctx, authServiceMarkAllAnnouncementsAsReadSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type authServiceHandler struct{ svc AuthServiceHandler }
+
+func (h authServiceHandler) login(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.LoginRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.Login(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) loginWithIdToken(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.LoginWithIdTokenRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.LoginWithIdToken(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) listMyIdentities(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListMyIdentitiesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListMyIdentities(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) unlinkIdentity(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UnlinkIdentityRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UnlinkIdentity(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) createUser(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateUserRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateUser(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) verifyUserEmail(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.VerifyUserEmailRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.VerifyUserEmail(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) requestEmailVerification(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RequestEmailVerificationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RequestEmailVerification(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) requestEmailChange(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RequestEmailChangeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RequestEmailChange(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) confirmEmailChange(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ConfirmEmailChangeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ConfirmEmailChange(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) requestPasswordReset(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RequestPasswordResetRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RequestPasswordReset(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) confirmPasswordReset(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ConfirmPasswordResetRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ConfirmPasswordReset(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) changePassword(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ChangePasswordRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ChangePassword(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) logout(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.LogoutRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.Logout(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) getMe(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetMeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetMe(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) updateMe(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateMeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateMe(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) deleteMe(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteMeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteMe(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) getNotificationSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetNotificationSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetNotificationSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) updateNotificationSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateNotificationSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateNotificationSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) getViewerPreferences(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetViewerPreferencesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetViewerPreferences(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) updateViewerPreferences(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateViewerPreferencesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateViewerPreferences(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) getAnnouncement(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetAnnouncementRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetAnnouncement(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) getPinnedAnnouncement(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetPinnedAnnouncementRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetPinnedAnnouncement(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) listAnnouncements(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListAnnouncementsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListAnnouncements(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) markAnnouncementAsRead(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.MarkAnnouncementAsReadRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.MarkAnnouncementAsRead(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) markAllAnnouncementsAsRead(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.MarkAllAnnouncementsAsReadRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.MarkAllAnnouncementsAsRead(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }
