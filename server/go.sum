@@ -1,9 +1,11 @@
 cloud.google.com/go/compute/metadata v0.9.0 h1:pDUj4QMoPejqq20dK0Pg2N4yG9zIkYGdBtwLoEkH9Zs=
 cloud.google.com/go/compute/metadata v0.9.0/go.mod h1:E0bWwX5wTnLPedCKqk3pJmVgCBSM6qQI1yTBdEb3C10=
+connectrpc.com/connect v1.19.1 h1:R5M57z05+90EfEvCY1b7hBxDVOUl45PrtXtAV2fOC14=
+connectrpc.com/connect v1.19.1/go.mod h1:tN20fjdGlewnSFeZxLKb0xwIZ6ozc3OQs2hTXy4du9w=
 connectrpc.com/connect/v2 v2.0.0 h1:PVVpWl2Xv9dIWN2gijs4HK40NSnPFzLqCEEmZ8fCUQ8=
 connectrpc.com/connect/v2 v2.0.0/go.mod h1:N32OLrstcPUzkykFynnefFro3+xzSdOrZlK2jHmS/xo=
-connectrpc.com/otelconnect v0.11.0 h1:n1HjvoZLzsGJ5nb2PGnFH2msXPQLf4j3EWzLDylhdWQ=
-connectrpc.com/otelconnect v0.11.0/go.mod h1:xE0w5pyAk519Nub9zP63x9oOIBwcKofv5IYKQAhzQF4=
+connectrpc.com/otelconnect v0.12.0 h1:SOQ2LvyPUON2WekzWUWhXEy2NHusTevV64xa6kAHsrQ=
+connectrpc.com/otelconnect v0.12.0/go.mod h1:BB9a3Z9DDsx8AAJREAdKVIENfa70XB1KQXWKRbfpLxw=
 dario.cat/mergo v1.0.2 h1:85+piFYR1tMbRrLcDwR18y4UKJ3aH1Tbzi24VRW1TK8=
 dario.cat/mergo v1.0.2/go.mod h1:E/hbnu0NxMFBjpMIE34DRGLWqDy0g5FuKDhCb31ngxA=
 github.com/AdaLogics/go-fuzz-headers v0.0.0-20240806141605-e8a1dd7889d6 h1:He8afgbRMd7mFxO99hRNu+6tazq8nFF9lIwo9JFroBk=
