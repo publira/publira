@@ -62,12 +62,17 @@ type PlatformEntry struct {
 	// row accepts without an operator beside it.
 	ActorPlatformUserID uuid.UUID
 	ActorRole           string
-	Action              string
-	TargetType          string // e.g. "series", "episode", "tenant", "operator", "user"
-	TargetID            string // ID of the affected resource
-	Outcome             string // "success" or "failure"
-	Reason              string // populated on failure
-	ClientIP            string
+	// The tenant the entry is about, or uuid.Nil for one about no tenant, such
+	// as a platform setting or an operator. It is stored with the entry rather
+	// than read through the target, so the entry stays in the tenant's log
+	// once the target is deleted.
+	TenantID   uuid.UUID
+	Action     string
+	TargetType string // e.g. "series", "episode", "tenant", "operator", "user"
+	TargetID   string // ID of the affected resource
+	Outcome    string // "success" or "failure"
+	Reason     string // populated on failure
+	ClientIP   string
 }
 
 // TenantEntry holds the data for a tenant audit log event.
@@ -130,6 +135,7 @@ func logPlatformEntry(ctx context.Context, logger *slog.Logger, e PlatformEntry)
 	logger.InfoContext(ctx, "audit",
 		"actor_platform_user_id", e.ActorPlatformUserID,
 		"actor_role", e.ActorRole,
+		"tenant_id", e.TenantID,
 		"action", e.Action,
 		"target_type", e.TargetType,
 		"target_id", e.TargetID,
@@ -155,6 +161,7 @@ func platformEntryParams(e PlatformEntry) (dbmodels.InsertPlatformAuditLogParams
 		Outcome:             e.Outcome,
 		Reason:              sql.NullString{String: e.Reason, Valid: e.Reason != ""},
 		ClientIp:            sql.NullString{String: e.ClientIP, Valid: e.ClientIP != ""},
+		TenantID:            uuid.NullUUID{UUID: e.TenantID, Valid: e.TenantID != uuid.Nil},
 	}, nil
 }
 

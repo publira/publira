@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_platform_audit_logs_tenant_created_at;

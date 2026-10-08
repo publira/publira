@@ -178,3 +178,93 @@ func TestDBCreateTenantAdminInvitationGrantsTheRoleToAnAddressLongerThanAnAuditT
 		t.Fatalf("CreateTenantAdminInvitation = %+v, want the role granted", created)
 	}
 }
+
+// Deleting a reader takes the users row an entry would have found its tenant
+// through, so the entries about the reader, the deletion's own included, keep
+// the tenant they were written for.
+func TestDBListAuditLogsKeepsTheTenantOfADeletedReader(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
+	first := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	second := pg.SeedTenant(t, "TENANTB", "tenant-b.example.com", "Tenant B")
+	reader := pg.SeedEndUser(t, first.ID, "TAREADER", "reader@example.com", "Reader A")
+	pg.SeedEndUser(t, second.ID, "TBREADER", "reader@example.com", "Reader B")
+	users := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	audit := publirasplatformv1connect.NewPlatformAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	ctx := context.Background()
+
+	if _, err := users.SuspendEndUser(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.SuspendEndUserRequest{UserId: reader.ID.String()}); err != nil {
+		t.Fatalf("SuspendEndUser: %v", err)
+	}
+	if _, err := users.DeleteEndUser(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.DeleteEndUserRequest{UserId: reader.ID.String()}); err != nil {
+		t.Fatalf("DeleteEndUser: %v", err)
+	}
+
+	list := func(tenantID string) string {
+		t.Helper()
+		res, err := audit.ListAuditLogs(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.ListAuditLogsRequest{TenantId: tenantID})
+		if err != nil {
+			t.Fatalf("ListAuditLogs: %v", err)
+		}
+		entries := make([]string, 0, len(res.AuditLogs))
+		for _, log := range res.AuditLogs {
+			entries = append(entries, strings.Join([]string{log.GetAction(), log.GetTargetType(), log.GetTenantPublicId(), log.GetTenantName()}, " "))
+		}
+		return strings.Join(entries, "\n")
+	}
+	want := strings.Join([]string{
+		"user_deleted user TENANTA Tenant A",
+		"user_suspended user TENANTA Tenant A",
+	}, "\n")
+	if got := list(first.ID.String()); got != want {
+		t.Fatalf("entries for tenant A =\n%s\nwant\n%s", got, want)
+	}
+	if got := list(second.ID.String()); got != "" {
+		t.Fatalf("entries for tenant B =\n%s\nwant none", got)
+	}
+}
+
+// The processes of the previous release keep serving between db migrate and
+// their restart, and write their entries without tenant_id. The database fills
+// it from the target, as the platform role, so those entries are in the
+// tenant's log too.
+func TestDBListAuditLogsFillsTheTenantOfAnEntryWrittenWithoutOne(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
+	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	pg.SeedTenant(t, "TENANTB", "tenant-b.example.com", "Tenant B")
+	reader := pg.SeedEndUser(t, tenant.ID, "TAREADER", "reader@example.com", "Reader A")
+	audit := publirasplatformv1connect.NewPlatformAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	ctx := context.Background()
+
+	for _, entry := range []struct{ action, targetType, targetID string }{
+		{"tenant_suspended", "tenant", tenant.ID.String()},
+		{"user_suspended", "user", reader.ID.String()},
+		{"operator_updated", "operator", operator.ID.String()},
+	} {
+		if _, err := pg.OpenPlatformDB(t).ExecContext(ctx, `
+			INSERT INTO platform_audit_logs (id, actor_platform_user_id, actor_role, action, target_type, target_id, outcome)
+			VALUES (gen_random_uuid(), $1, 'platform_operator', $2, $3, $4, 'success')
+		`, operator.ID, entry.action, entry.targetType, entry.targetID); err != nil {
+			t.Fatalf("insert %s without tenant_id: %v", entry.action, err)
+		}
+	}
+
+	res, err := audit.ListAuditLogs(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.ListAuditLogsRequest{TenantId: tenant.ID.String()})
+	if err != nil {
+		t.Fatalf("ListAuditLogs: %v", err)
+	}
+	actions := make([]string, 0, len(res.AuditLogs))
+	for _, log := range res.AuditLogs {
+		actions = append(actions, log.GetAction()+" "+log.GetTenantName())
+	}
+	got := strings.Join(actions, "\n")
+	for _, want := range []string{"tenant_suspended Tenant A", "user_suspended Tenant A"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("entries for tenant A =\n%s\nwant %q among them", got, want)
+		}
+	}
+	if strings.Contains(got, "operator_updated") {
+		t.Fatalf("entries for tenant A =\n%s\nwant no operator entry", got)
+	}
+}

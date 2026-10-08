@@ -227,6 +227,7 @@ func setStatus(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor audit
 
 func writeTenantEntry(ctx context.Context, q *dbmodels.Queries, logger *slog.Logger, actor auditlog.PlatformActor, action string, tenant dbmodels.Tenant) error {
 	if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
+		TenantID:   tenant.ID,
 		Action:     action,
 		TargetType: "tenant",
 		TargetID:   tenant.ID.String(),

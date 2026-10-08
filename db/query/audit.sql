@@ -8,8 +8,9 @@ INSERT INTO platform_audit_logs (
     target_id,
     outcome,
     reason,
-    client_ip
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+    client_ip,
+    tenant_id
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 
 -- An entry can land after its actor's account is gone: the async recorder
 -- writes it once the request has answered, and the account can be deleted in
@@ -55,9 +56,9 @@ FROM (SELECT 1) AS entry
 -- query; backward uses ASC so the index can be scanned in reverse. The handler
 -- flips ASC rows back into display order. A parameterized ORDER BY cannot be
 -- read in index order, so each scan direction gets its own query.
--- An invitation entry names the invitation, whose row carries its tenant and
--- the invited address; a user entry names the user, whose row carries its
--- tenant.
+-- The tenant is the one the entry was written for, which stays on the entry
+-- after its target is deleted; an invitation entry still names the invited
+-- address through the invitation's row.
 -- cursor rules: proto/README.md.
 -- name: ListPlatformAuditLogsDesc :many
 SELECT a.id,
@@ -72,8 +73,8 @@ SELECT a.id,
     a.created_at,
     COALESCE(actor_pu.name, ''::text) AS actor_name,
     COALESCE(actor_pu.public_id, ''::text) AS actor_public_id,
-    COALESCE(target_t.name, invitation_t.name, user_t.name, ''::text) AS tenant_name,
-    COALESCE(target_t.public_id, invitation_t.public_id, user_t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(entry_t.name, ''::text) AS tenant_name,
+    COALESCE(entry_t.public_id, ''::text) AS tenant_public_id,
     CASE
         WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.public_id, ''::text)
@@ -93,14 +94,13 @@ FROM platform_audit_logs a
     AND a.target_type = 'operator'
     LEFT JOIN users target_u ON target_u.id::text = a.target_id
     AND a.target_type = 'user'
-    LEFT JOIN tenants user_t ON user_t.id = target_u.tenant_id
     LEFT JOIN tenants target_t ON target_t.id::text = a.target_id
     AND a.target_type = 'tenant'
     LEFT JOIN tenant_admin_invitations target_inv ON target_inv.id::text = a.target_id
     AND a.target_type = 'tenant_admin_invitation'
-    LEFT JOIN tenants invitation_t ON invitation_t.id = target_inv.tenant_id
+    LEFT JOIN tenants entry_t ON entry_t.id = a.tenant_id
 WHERE (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_pu.public_id = sqlc.narg('filter_actor_user_public_id')::text)
-    AND (sqlc.narg('filter_tenant_id')::uuid IS NULL OR COALESCE(target_t.id, invitation_t.id, user_t.id) = sqlc.narg('filter_tenant_id')::uuid)
+    AND (sqlc.narg('filter_tenant_id')::uuid IS NULL OR a.tenant_id = sqlc.narg('filter_tenant_id')::uuid)
     AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -129,8 +129,8 @@ SELECT a.id,
     a.created_at,
     COALESCE(actor_pu.name, ''::text) AS actor_name,
     COALESCE(actor_pu.public_id, ''::text) AS actor_public_id,
-    COALESCE(target_t.name, invitation_t.name, user_t.name, ''::text) AS tenant_name,
-    COALESCE(target_t.public_id, invitation_t.public_id, user_t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(entry_t.name, ''::text) AS tenant_name,
+    COALESCE(entry_t.public_id, ''::text) AS tenant_public_id,
     CASE
         WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, ''::text)
         WHEN a.target_type = 'operator' THEN COALESCE(target_pu.public_id, ''::text)
@@ -150,14 +150,13 @@ FROM platform_audit_logs a
     AND a.target_type = 'operator'
     LEFT JOIN users target_u ON target_u.id::text = a.target_id
     AND a.target_type = 'user'
-    LEFT JOIN tenants user_t ON user_t.id = target_u.tenant_id
     LEFT JOIN tenants target_t ON target_t.id::text = a.target_id
     AND a.target_type = 'tenant'
     LEFT JOIN tenant_admin_invitations target_inv ON target_inv.id::text = a.target_id
     AND a.target_type = 'tenant_admin_invitation'
-    LEFT JOIN tenants invitation_t ON invitation_t.id = target_inv.tenant_id
+    LEFT JOIN tenants entry_t ON entry_t.id = a.tenant_id
 WHERE (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_pu.public_id = sqlc.narg('filter_actor_user_public_id')::text)
-    AND (sqlc.narg('filter_tenant_id')::uuid IS NULL OR COALESCE(target_t.id, invitation_t.id, user_t.id) = sqlc.narg('filter_tenant_id')::uuid)
+    AND (sqlc.narg('filter_tenant_id')::uuid IS NULL OR a.tenant_id = sqlc.narg('filter_tenant_id')::uuid)
     AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
