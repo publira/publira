@@ -19,10 +19,15 @@ message CreatePageResponse {
   publira.types.v1.Page page = 1;
 }
 
+// Sets at least one of title and display_in_footer; a request with neither is
+// refused rather than recorded as an update.
 message UpdatePageRequest {
   publira.types.v1.TenantContext tenant = 1;
   string page_id = 2;
-  string title = 3;
+  // optional so a footer-only update does not write back a title the client
+  // read before someone else renamed the translation. Unset leaves the stored
+  // title; a set one must not be blank.
+  optional string title = 3;
   // optional so title-only updates do not clear an existing true value
   // (proto3 non-optional bool maps omitted fields to false).
   optional bool display_in_footer = 4;

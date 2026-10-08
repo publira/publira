@@ -402,7 +402,7 @@ func TestUpdatePageTitleOnlyPreservesDisplayInFooter(t *testing.T) {
 	req := &publiraadminv1.UpdatePageRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PageId: pageID.String(),
-		Title:  "Updated Title",
+		Title:  new("Updated Title"),
 		// DisplayInFooter intentionally omitted
 	}
 
@@ -458,7 +458,7 @@ func TestUpdatePageSetsDisplayInFooterWhenPresent(t *testing.T) {
 	req := &publiraadminv1.UpdatePageRequest{
 		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PageId:          pageID.String(),
-		Title:           "Title",
+		Title:           new("Title"),
 		DisplayInFooter: &displayInFooter,
 	}
 
@@ -472,5 +472,82 @@ func TestUpdatePageSetsDisplayInFooterWhenPresent(t *testing.T) {
 	if resp.Page.DisplayInFooter {
 		t.Fatalf("display_in_footer = true, want false")
 	}
+	assertExpectations(t, mock)
+}
+
+// A footer-only UpdatePage carries no title, so the translation's title is
+// never written: one read before another operator's rename cannot put the old
+// title back.
+func TestUpdatePageFooterOnlyLeavesTitle(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	pageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
+
+	translationID := uuid.Must(uuid.NewV7())
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPageByIDForTenant)).
+		WithArgs("ja", pageID, tenantID).
+		WillReturnRows(pageRows().AddRow(
+			pageID, tenantID, "/privacy", false, now, now,
+			translationID, pageID, tenantID, "ja", "Renamed elsewhere", uuid.NullUUID{}, now, now,
+		))
+	// No UpdatePageTranslationTitle: sqlmock fails on a query it was not told to expect.
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePage)).
+		WithArgs(sql.NullBool{Bool: true, Valid: true}, pageID, tenantID).
+		WillReturnRows(sqlmock.NewRows(pageOnlyColumns()).
+			AddRow(pageID, tenantID, "/privacy", true, now, now))
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+
+	resp, err := client.UpdatePage(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdatePageRequest{
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PageId:          pageID.String(),
+		DisplayInFooter: new(true),
+	})
+	if err != nil {
+		t.Fatalf("UpdatePage: %v", err)
+	}
+	if resp.Page.Title != "Renamed elsewhere" {
+		t.Fatalf("title = %q, want the stored Renamed elsewhere", resp.Page.Title)
+	}
+	if !resp.Page.DisplayInFooter {
+		t.Fatalf("display_in_footer = false, want true")
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUpdatePageRefusesABlankTitle(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
+
+	_, err := client.UpdatePage(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdatePageRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PageId: uuid.Must(uuid.NewV7()).String(),
+		Title:  new("   "),
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdatePage code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUpdatePageRefusesARequestThatChangesNothing(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
+
+	_, err := client.UpdatePage(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdatePageRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PageId: uuid.Must(uuid.NewV7()).String(),
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdatePage code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	// No transaction began, so no updated_at, revalidation, or audit entry.
 	assertExpectations(t, mock)
 }

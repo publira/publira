@@ -370,9 +370,19 @@ func (s *adminServer) UpdatePage(
 	if err != nil {
 		return nil, err
 	}
-	title, err := validatePageTitle(req.Title)
-	if err != nil {
-		return nil, err
+	// Each half is written only when the request carries it, so a footer-only
+	// update never writes back a title the client read before a rename. One
+	// that carries neither would still touch updated_at and write an audit
+	// entry for a change nobody made.
+	if req.Title == nil && req.DisplayInFooter == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "title or display_in_footer is required")
+	}
+	var title string
+	if req.Title != nil {
+		title, err = validatePageTitle(req.GetTitle())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -386,13 +396,16 @@ func (s *adminServer) UpdatePage(
 	if err != nil {
 		return nil, err
 	}
-	translation, err := s.queriesFor(txCtx).UpdatePageTranslationTitle(txCtx, dbmodels.UpdatePageTranslationTitleParams{
-		Title:    title,
-		ID:       current.PageTranslation.ID,
-		TenantID: tenant.ID,
-	})
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to update page translation", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+	translation := current.PageTranslation
+	if req.Title != nil {
+		translation, err = s.queriesFor(txCtx).UpdatePageTranslationTitle(txCtx, dbmodels.UpdatePageTranslationTitleParams{
+			Title:    title,
+			ID:       current.PageTranslation.ID,
+			TenantID: tenant.ID,
+		})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to update page translation", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+		}
 	}
 	// Only overwrite display_in_footer when the client sets the optional field.
 	// Omitted values stay as the existing row (COALESCE in UpdatePage).

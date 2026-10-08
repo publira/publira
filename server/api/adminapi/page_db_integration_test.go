@@ -117,7 +117,7 @@ func TestDBPageStaysEditableAfterADefaultLocaleChange(t *testing.T) {
 	updated, err := client.UpdatePage(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdatePageRequest{
 		Tenant: tenant.tenantContext(),
 		PageId: page.Page.Id,
-		Title:  "About Us",
+		Title:  new("About Us"),
 	})
 	if err != nil {
 		t.Fatalf("UpdatePage: %v", err)
@@ -535,7 +535,7 @@ func TestDBPageTranslationsAreEditedAndPublishedIndependently(t *testing.T) {
 		Tenant: tenant.tenantContext(),
 		PageId: pageID,
 		Locale: "en",
-		Title:  "Privacy Policy",
+		Title:  new("Privacy Policy"),
 	}); err != nil {
 		t.Fatalf("UpdatePage en: %v", err)
 	}
@@ -665,7 +665,7 @@ func TestDBPageContentInAMissingLocaleIsNotFound(t *testing.T) {
 		Tenant: tenant.tenantContext(),
 		PageId: page.Page.Id,
 		Locale: "en",
-		Title:  "About",
+		Title:  new("About"),
 	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("UpdatePage en: code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
