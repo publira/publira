@@ -77,7 +77,7 @@ const serverAttributes = (url: string): Attributes => {
  * writes the W3C trace context into the request headers.
  *
  * The Go servers trust that `traceparent` as the parent of their own span
- * (`tracing.ConnectHandlerOption`), so an SSR render, the RPC it issues, and
+ * (`tracing.ConnectServerInterceptors`), so an SSR render, the RPC it issues, and
  * the DB queries behind it form one trace. Without a registered
  * TracerProvider every call below records into OpenTelemetry's no-op
  * implementation and no header is written, so the interceptor is safe to
