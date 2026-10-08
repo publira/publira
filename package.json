@@ -30,7 +30,7 @@
     "opentype.js": "catalog:",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
-    "oxlint-plugin-react-doctor": "0.9.16",
+    "oxlint-plugin-react-doctor": "0.9.17",
     "sharp": "0.35.5",
     "temporal-polyfill": "catalog:",
     "turbo": "2.11.7",
