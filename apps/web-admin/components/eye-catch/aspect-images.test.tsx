@@ -148,9 +148,51 @@ afterEach(() => {
 it("shows a slot for every delivered ratio", () => {
   renderImages({ variants: [variant("portrait", 1200, 1600)] });
 
-  for (const variantType of ["portrait", "square", "landscape", "og"]) {
-    expect(screen.getByText(variantType)).toBeTruthy();
+  for (const name of [
+    "Portrait (3:4)",
+    "Square (1:1)",
+    "Landscape (16:9)",
+    "Link preview (1200:630)",
+  ]) {
+    expect(screen.getByText(name)).toBeTruthy();
   }
+});
+
+it("says where the storefront uses each ratio", () => {
+  renderImages({ variants: [variant("portrait", 1200, 1600)] });
+
+  expect(
+    screen.getByText("The preview shown when a link to the page is shared.")
+  ).toBeTruthy();
+  expect(
+    screen.getByText(
+      "Square tiles in the app, and one of the images offered to search engines."
+    )
+  ).toBeTruthy();
+});
+
+// The ratio keys are what the RPCs take, and a staff member reading or
+// hearing one learns nothing about the image it stands for.
+it("neither shows nor reads out a ratio by its key", () => {
+  const { container } = renderImages({
+    variants: [
+      variant("portrait", 1200, 1600),
+      variant("square", 1200, 1200),
+      variant("landscape", 1600, 900),
+      variant("og", 1200, 630),
+    ],
+  });
+
+  const keys = /\b(?:portrait|square|landscape|og)\b/u;
+  const accessibleNames = [
+    ...screen
+      .getAllByRole("button")
+      .map((button) => button.getAttribute("aria-label")),
+    ...screen.getAllByRole("img").map((image) => image.getAttribute("alt")),
+  ];
+
+  expect(container.textContent).not.toMatch(keys);
+  expect(accessibleNames.filter((name) => keys.test(name ?? ""))).toEqual([]);
 });
 
 it("shows the size of the image a ratio currently holds", () => {
@@ -175,7 +217,7 @@ it("marks a ratio the eye-catch holds no image for", () => {
 it("asks for a cover image before opening the ratio slots", () => {
   renderImages({ variants: [] });
 
-  expect(screen.queryByText("portrait")).toBeNull();
+  expect(screen.queryByText("Portrait (3:4)")).toBeNull();
   expect(screen.getByText(/Register a cover image first/u)).toBeTruthy();
 });
 
@@ -190,7 +232,7 @@ it("shows what is stored once the upload is on its way", async () => {
   const stored = "/images/series/img/landscape/1600";
   const image = () =>
     container
-      .querySelector<HTMLImageElement>('img[alt="Generated image landscape"]')
+      .querySelector<HTMLImageElement>('img[alt="Landscape (16:9) image"]')
       ?.getAttribute("src");
 
   expect(image()).toBe(stored);
@@ -240,6 +282,9 @@ it("frames the picked file where the API would have cut it anyway", () => {
   });
 
   const form = pickImage(container, "landscape");
+  expect(
+    screen.getByRole("heading", { name: "Frame the Landscape (16:9) image" })
+  ).toBeTruthy();
   // Nothing has been decoded yet, so the upload states no rectangle and the
   // API takes the cut from the centre as it always has.
   expect(form.querySelector('input[name="crop"]')).toBeNull();
@@ -263,7 +308,7 @@ it("previews the framed region rather than the whole picked file", () => {
   decodePickedImage(2400, 3200);
 
   const preview = container.querySelector<HTMLImageElement>(
-    'img[alt="Generated image landscape"]'
+    'img[alt="Landscape (16:9) image"]'
   );
   // The file is 2400 wide and the frame keeps all of that width, so the slot
   // shows it at its own width, shifted up by the part above the frame.
@@ -288,7 +333,7 @@ it("closes the slot's picker while its upload is in flight", async () => {
     throw new Error("the landscape slot has no file input");
   }
   const picker = screen.getByRole<HTMLButtonElement>("button", {
-    name: "Select an image for landscape",
+    name: "Select an image for Landscape (16:9)",
   });
 
   expect(picker.matches(":disabled")).toBe(false);

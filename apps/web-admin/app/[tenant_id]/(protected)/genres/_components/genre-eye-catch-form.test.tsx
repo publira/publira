@@ -74,10 +74,10 @@ afterEach(() => {
 });
 
 const imageControls = () => [
-  screen.getByLabelText<HTMLInputElement>("Eye-catch image"),
-  screen.getByRole<HTMLButtonElement>("button", { name: /square/u }),
+  screen.getByLabelText<HTMLInputElement>("Cover image"),
+  screen.getByRole<HTMLButtonElement>("button", { name: /Square \(1:1\)/u }),
   screen.getByRole<HTMLButtonElement>("button", {
-    name: "Delete the current eye-catch image",
+    name: "Delete the current cover image",
   }),
 ];
 
@@ -117,7 +117,7 @@ describe("GenreEyeCatchForm", () => {
     });
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Delete the current eye-catch image" })
+      screen.getByRole("button", { name: "Delete the current cover image" })
     );
     fireEvent.click(screen.getByRole("button", { name: "Update cover image" }));
 

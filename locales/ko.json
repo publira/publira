@@ -935,12 +935,25 @@
       "undo_delete": "삭제 취소",
       "description": "비율별 이미지를 클릭하면 교체할 수 있습니다. 삭제를 선택하면 이미지는 미설정 상태가 됩니다. JPEG, PNG, WebP 형식으로 10MB 이하, 2400x3200px 이상인 이미지를 선택해 주세요.",
       "variants_empty": "아직 등록된 이미지가 없습니다.",
-      "variant_alt": "생성 이미지 {$variant_type}",
+      "variant_alt": "{$aspect} 이미지",
       "aspect": {
         "title": "비율별 이미지",
         "description": "비율마다 각각의 이미지를 가집니다. 위에서 커버 이미지를 올리면 네 비율이 한꺼번에 채워지고, 여기에서 하나를 교체해도 나머지 셋은 그대로 남습니다.",
+        "names": {
+          "portrait": "세로형 (3:4)",
+          "square": "정사각형 (1:1)",
+          "landscape": "가로형 (16:9)",
+          "og": "링크 미리보기 (1200:630)",
+          "other": "기타 비율"
+        },
+        "usages": {
+          "portrait": "목록과 타일의 표지, 시리즈 페이지의 표지에 쓰입니다.",
+          "square": "앱의 정사각형 타일과 검색 엔진에 제공하는 이미지 중 하나로 쓰입니다.",
+          "landscape": "가로 배너와 페이지 상단, 목록의 각 항목 옆 이미지에 쓰입니다.",
+          "og": "페이지 링크를 공유할 때 표시되는 미리보기에 쓰입니다."
+        },
         "eye_catch_required": "먼저 커버 이미지를 등록해 주세요. 비율별 교체는 등록한 뒤에 할 수 있습니다.",
-        "select_aria": "{$variant_type} 이미지 선택",
+        "select_aria": "{$aspect} 이미지 선택",
         "empty": "이미지 없음",
         "minimum": "{$width}x{$height}px 이상",
         "upload": "교체",
@@ -948,7 +961,7 @@
         "uploaded": "이 비율의 이미지를 교체했습니다.",
         "image_required": "업로드할 이미지를 선택해 주세요.",
         "image_invalid": "이미지를 확인해 주세요. 이 비율에는 JPEG, PNG, WebP 형식으로 10MB 이하, {$width}x{$height}px 이상인 이미지를 선택한 뒤 다시 시도해 주세요.",
-        "crop_title": "{$variant_type} 이미지 자르기 범위",
+        "crop_title": "{$aspect} 이미지 자르기 범위",
         "variant_type_missing": "대상 비율이 지정되지 않았습니다."
       }
     },

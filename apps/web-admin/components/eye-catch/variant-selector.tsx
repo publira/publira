@@ -6,7 +6,11 @@ import { useCallback } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
 
-import { eyeCatchAspectClassName, eyeCatchAspectOrder } from "./aspects";
+import {
+  eyeCatchAspectClassName,
+  eyeCatchAspectName,
+  eyeCatchAspectOrder,
+} from "./aspects";
 import type { EyeCatchVariantItem } from "./types";
 
 interface EyeCatchVariantSelectorProps {
@@ -67,8 +71,9 @@ export const EyeCatchVariantSelector = ({
     <div className="grid gap-3 sm:grid-cols-2">
       {displayGroups.map(([typeKey, typeVariants]) => {
         const isSelected = selectedVariantType === typeKey;
+        const aspectName = eyeCatchAspectName(t, typeKey);
         const variantAlt = t("admin.eye_catch.variant_alt", {
-          variant_type: typeKey,
+          aspect: aspectName,
         });
         const fallbackVariant = typeVariants.at(-1);
         if (!fallbackVariant) {
@@ -92,7 +97,7 @@ export const EyeCatchVariantSelector = ({
             onClick={handleButtonClick}
             type="button"
           >
-            <p className="text-xs text-muted-foreground">{typeKey}</p>
+            <p className="text-xs text-muted-foreground">{aspectName}</p>
             <div
               className={cn(
                 "relative overflow-hidden rounded-surface border bg-muted/40",

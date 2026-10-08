@@ -22,6 +22,7 @@ import {
 import type { EyeCatchAspect } from "../src/scenarios/eye-catch";
 import {
   EYE_CATCH_ASPECT_FIXTURES,
+  EYE_CATCH_ASPECT_NAMES,
   EYE_CATCH_ASPECTS,
   EYE_CATCH_SOURCE_FIXTURE,
   EYE_CATCH_UNDERSIZED_ASPECT,
@@ -52,13 +53,15 @@ const eyeCatchDeliveryURL = (entityPath: string, aspect: string): RegExp =>
   );
 
 /**
- * The card for one ratio. The slot's picker button carries the ratio in its
- * label, and the card is its parent — which is also where that slot's upload
+ * The card for one ratio. The slot's picker button carries the ratio's name in
+ * its label, and the card is its parent — which is also where that slot's upload
  * form and result message live, so four slots sharing one Action stay apart.
  */
 const aspectSlot = (page: Page, aspect: EyeCatchAspect): Locator =>
   page
-    .getByRole("button", { name: `Select an image for ${aspect}` })
+    .getByRole("button", {
+      name: `Select an image for ${EYE_CATCH_ASPECT_NAMES[aspect]}`,
+    })
     .locator("xpath=..");
 
 const expectMessage = (scope: Page | Locator, text: string): Promise<void> =>
@@ -590,7 +593,7 @@ test.describe("admin eye-catch upload", () => {
 
     await openEyeCatchTab();
     await page
-      .getByRole("button", { name: "Delete the current eye-catch image" })
+      .getByRole("button", { name: "Delete the current cover image" })
       .click();
     await page.getByRole("button", { name: "Update cover image" }).click();
     await expectMessage(page, "Cover image updated.");
@@ -653,7 +656,7 @@ test.describe("admin eye-catch upload", () => {
 
     await openEyeCatchTab();
     await page
-      .getByRole("button", { name: "Delete the current eye-catch image" })
+      .getByRole("button", { name: "Delete the current cover image" })
       .click();
     await page.getByRole("button", { name: "Update cover image" }).click();
     await expectMessage(page, "Cover image updated.");

@@ -19,6 +19,7 @@ import { Message } from "#components/message";
 import {
   EyeCatchAspectAdjust,
   EyeCatchAspectCropDialog,
+  EyeCatchAspectCropTitle,
   EyeCatchAspectFileInput,
   EyeCatchAspectPicker,
   EyeCatchAspectSlot,
@@ -106,13 +107,23 @@ export const EyeCatchAspectImages = ({
                 currentUrl={current?.url ?? ""}
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-sm font-medium">{variantType}</p>
+                  <p className="text-sm font-medium">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                      <Message message={aspect.nameMessage} />
+                    </Suspense>
+                  </p>
                   {current ? (
                     <p className="text-xs text-muted-foreground">
                       {current.width}&times;{current.height}
                     </p>
                   ) : null}
                 </div>
+
+                <p className="text-xs text-muted-foreground">
+                  <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
+                    <Message message={aspect.usageMessage} />
+                  </Suspense>
+                </p>
 
                 <EyeCatchAspectPicker>
                   <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
@@ -159,12 +170,7 @@ export const EyeCatchAspectImages = ({
 
                 <EyeCatchAspectCropDialog>
                   <ImageCropDialogTitle>
-                    <Suspense fallback={<SkeletonLine className="h-6 w-48" />}>
-                      <Message
-                        message="admin.eye_catch.aspect.crop_title"
-                        values={{ variant_type: variantType }}
-                      />
-                    </Suspense>
+                    <EyeCatchAspectCropTitle />
                   </ImageCropDialogTitle>
                 </EyeCatchAspectCropDialog>
               </EyeCatchAspectSlot>

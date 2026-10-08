@@ -1,4 +1,7 @@
-import type { AdminMessageAccessor } from "#lib/messages";
+import type {
+  AdminClientMessageAccessor,
+  AdminMessageAccessor,
+} from "#lib/messages";
 
 /**
  * The aspect ratios an eye-catch is delivered in, in the order the console
@@ -6,6 +9,10 @@ import type { AdminMessageAccessor } from "#lib/messages";
  * ratio keys are the `variant_type` values the RPCs accept, the minimums are
  * the sizes an image uploaded for that ratio has to meet, and the ratio itself
  * is what a crop frame is locked to.
+ *
+ * The ratio key is an identifier, never copy: `nameMessage` is what a ratio is
+ * called on screen and in an accessible name, and `usageMessage` says where
+ * the storefront and the app draw it.
  *
  * The ratio is stated rather than derived from the minimums. They agree today,
  * but a minimum is the largest width generated for the ratio paired with a
@@ -19,6 +26,8 @@ export const EYE_CATCH_ASPECTS = [
     aspectWidth: 3,
     minHeight: 1600,
     minWidth: 1200,
+    nameMessage: "admin.eye_catch.aspect.names.portrait",
+    usageMessage: "admin.eye_catch.aspect.usages.portrait",
     variantType: "portrait",
   },
   {
@@ -27,6 +36,8 @@ export const EYE_CATCH_ASPECTS = [
     aspectWidth: 1,
     minHeight: 1200,
     minWidth: 1200,
+    nameMessage: "admin.eye_catch.aspect.names.square",
+    usageMessage: "admin.eye_catch.aspect.usages.square",
     variantType: "square",
   },
   {
@@ -35,6 +46,8 @@ export const EYE_CATCH_ASPECTS = [
     aspectWidth: 16,
     minHeight: 900,
     minWidth: 1600,
+    nameMessage: "admin.eye_catch.aspect.names.landscape",
+    usageMessage: "admin.eye_catch.aspect.usages.landscape",
     variantType: "landscape",
   },
   {
@@ -43,6 +56,8 @@ export const EYE_CATCH_ASPECTS = [
     aspectWidth: 1200,
     minHeight: 630,
     minWidth: 1200,
+    nameMessage: "admin.eye_catch.aspect.names.og",
+    usageMessage: "admin.eye_catch.aspect.usages.og",
     variantType: "og",
   },
 ] as const;
@@ -67,6 +82,22 @@ export const eyeCatchAspectClassName = (variantType: string): string =>
 const ASPECT_ORDER: string[] = EYE_CATCH_ASPECTS.map(
   (aspect) => aspect.variantType
 );
+
+/**
+ * What a ratio is called on screen. A key the API starts delivering before
+ * this list learns about it is named as an unknown ratio rather than by its
+ * key, which is an identifier a reader has no use for.
+ */
+export const eyeCatchAspectName = (
+  t: AdminClientMessageAccessor,
+  variantType: string
+): string => {
+  const aspect = EYE_CATCH_ASPECTS.find(
+    (entry) => entry.variantType === variantType
+  );
+
+  return t(aspect?.nameMessage ?? "admin.eye_catch.aspect.names.other");
+};
 
 /** Sort key for a ratio, putting unknown keys after the known ones. */
 export const eyeCatchAspectOrder = (variantType: string): number => {

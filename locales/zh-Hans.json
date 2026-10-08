@@ -935,12 +935,25 @@
       "undo_delete": "撤销删除",
       "description": "点击某个比例的图片即可替换它。选择删除后，图片将变为未设置。请选择不超过10MB、尺寸至少为2400x3200px的JPEG、PNG或WebP图片。",
       "variants_empty": "尚未登记任何图片。",
-      "variant_alt": "生成的图片{$variant_type}",
+      "variant_alt": "{$aspect}图片",
       "aspect": {
         "title": "各比例图片",
         "description": "每种比例都有各自独立的图片。在上方上传封面图会一次性填充全部四种比例；在这里替换其中一种，不会影响其余三种。",
+        "names": {
+          "portrait": "竖版 (3:4)",
+          "square": "方形 (1:1)",
+          "landscape": "横版 (16:9)",
+          "og": "链接预览 (1200:630)",
+          "other": "其他比例"
+        },
+        "usages": {
+          "portrait": "用作列表和卡片中的封面，以及系列页面上的封面。",
+          "square": "用于应用中的方形卡片，也是提供给搜索引擎的图片之一。",
+          "landscape": "用于横幅、页面顶部，以及列表中每一项旁边的图片。",
+          "og": "用于分享页面链接时显示的预览。"
+        },
         "eye_catch_required": "请先登记封面图。封面图存在后才能单独替换各个比例。",
-        "select_aria": "为{$variant_type}选择图片",
+        "select_aria": "为{$aspect}选择图片",
         "empty": "暂无图片",
         "minimum": "至少{$width}x{$height}px",
         "upload": "替换",
@@ -948,7 +961,7 @@
         "uploaded": "该比例的图片已替换。",
         "image_required": "请选择要上传的图片。",
         "image_invalid": "请检查图片。该比例需要不超过10MB、尺寸至少为{$width}x{$height}px的JPEG、PNG或WebP图片，请重新尝试。",
-        "crop_title": "调整{$variant_type}图片的取景",
+        "crop_title": "调整{$aspect}图片的取景",
         "variant_type_missing": "缺少图片比例。"
       }
     },
