@@ -135,7 +135,7 @@ The **In-app purchase** section decides how the tenant's app sells an episode it
 
 With **In-app purchase**, the app needs no payment provider from [Choosing a payment provider](#choosing-a-payment-provider): it buys through the store and the install verifies the purchase with the store.
 
-On an episode sold **App only**, the site shows the episode as sold in the app and links to the stores only while the app can sell it: with **Web checkout**, while a payment provider is **Ready**; with **In-app purchase**, while a store is **Ready**, and then only to the listing of a store that is. Until then the site quotes the episode's price and tells readers it cannot take purchases.
+On an episode sold **App only**, the site shows the episode as sold in the app and links to the stores only while the app can sell it: with **Web checkout**, while a payment provider is **Ready**; with **In-app purchase**, while a store is **Ready**, and then only to the listing of a store that is. Until then the site quotes the episode's price and tells readers it cannot take purchases. An episode sold **Web and app** is bought on the site while a payment provider is **Ready**; while none is and the app can sell it, the site treats it the same way as one sold **App only**.
 
 **In-app purchase** can be chosen once at least one store is **Ready**: turned on with **Use the App Store** or **Use Google Play**, with its key entered, and with its app named under **Integrations** › **App links**.
 

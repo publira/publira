@@ -16,6 +16,7 @@ import {
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { ShareControl } from "#components/share-control";
 import { ShareMenuSkeleton } from "#components/share-menu";
+import type { TenantSales } from "#lib/app-payments";
 import type {
   EpisodeDetail,
   EpisodeNeighborItem,
@@ -41,17 +42,17 @@ const RELATED_SERIES_COUNT = 3;
  * `EpisodeNeighborDirection` above the title.
  */
 const EpisodeNeighborRow = ({
-  appAcceptsPayments,
   children,
   episode,
   locale,
+  sales,
   series,
 }: {
-  appAcceptsPayments: boolean;
   /** `EpisodeNeighborDirection`. */
   children: ReactNode;
   episode: EpisodeNeighborItem;
   locale: Locale;
+  sales: TenantSales;
   series: EpisodeSeriesSummary;
 }) => (
   <li>
@@ -87,7 +88,7 @@ const EpisodeNeighborRow = ({
         </span>
         <span className="mt-1 block text-sm text-muted-foreground tabular-nums sm:mt-0 sm:w-56 sm:shrink-0">
           <EpisodePrice
-            appAcceptsPayments={appAcceptsPayments}
+            sales={sales}
             locale={locale}
             price={episode.isFree ? 0 : episode.price}
             purchaseSurface={episode.purchaseSurface}
@@ -115,22 +116,22 @@ const EpisodeNeighborDirection = ({ children }: { children: ReactNode }) => (
  * series is still the way on from it.
  */
 export const EpisodeEndPanel = async ({
-  appAcceptsPayments,
   episode,
   nextEpisode,
   previousEpisode,
+  sales,
   series,
   shareText,
   shareTitle,
   tenantId,
 }: {
-  /** Whether the tenant's app can sell an episode on either platform. */
-  appAcceptsPayments: boolean;
   episode: EpisodeDetail;
   /** Absent on the last published episode of the series. */
   nextEpisode?: EpisodeNeighborItem;
   /** Absent on the first one. */
   previousEpisode?: EpisodeNeighborItem;
+  /** Where the tenant can sell an episode right now. */
+  sales: TenantSales;
   series: EpisodeSeriesSummary;
   /**
    * What a share of this episode says in words: the work and its credits.
@@ -172,7 +173,7 @@ export const EpisodeEndPanel = async ({
           <ol className="divide-y divide-border border-b border-border">
             {previousEpisode ? (
               <EpisodeNeighborRow
-                appAcceptsPayments={appAcceptsPayments}
+                sales={sales}
                 episode={previousEpisode}
                 locale={locale}
                 series={series}
@@ -186,7 +187,7 @@ export const EpisodeEndPanel = async ({
             ) : null}
             {nextEpisode ? (
               <EpisodeNeighborRow
-                appAcceptsPayments={appAcceptsPayments}
+                sales={sales}
                 episode={nextEpisode}
                 locale={locale}
                 series={series}

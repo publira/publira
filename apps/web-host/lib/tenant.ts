@@ -11,8 +11,8 @@ import type { TenantTheme } from "@publira/utils/theme-css-variables";
 import { cacheLife } from "next/cache";
 
 import { apiClient } from "./api-client";
-import { appAcceptsPayments, toTenantAppPayments } from "./app-payments";
-import type { TenantAppPayments } from "./app-payments";
+import { toTenantAppPayments, toTenantSales } from "./app-payments";
+import type { TenantAppPayments, TenantSales } from "./app-payments";
 import { applyCacheTag, tenantSiteTag, tenantThemeTag } from "./cache-tags";
 import { getMessagesFor } from "./messages";
 import { publishedPageHrefFromSlug } from "./pages";
@@ -135,8 +135,8 @@ export interface TenantSiteInfo {
    */
   appleServicesId?: string;
   /**
-   * The store listings of the tenant's app, where an episode sold in the app
-   * alone sends the reader. Absent where the app is not listed in that store.
+   * The store listings of the tenant's app, where the site sends a reader to
+   * buy an episode in the app. Absent where the app is not listed in that store.
    */
   appStoreUrl?: string;
   /** Whether episode pages offer a comment section, and how a post reaches it. */
@@ -396,15 +396,15 @@ export const getTenantDisplayTimeZone = async (
 };
 
 /**
- * Whether the tenant's app can sell an episode on either platform right now,
- * for a page that quotes what an episode sold there alone costs. A tenant that
- * could not be read sells nowhere.
+ * Where the tenant can sell an episode right now, for a page that says what
+ * each episode costs and where it is bought. A tenant that could not be read
+ * sells nowhere.
  */
-export const getTenantAppAcceptsPayments = async (
+export const getTenantSales = async (
   tenantId: string
-): Promise<boolean> => {
+): Promise<TenantSales> => {
   const tenant = await getTenantSiteInfo(tenantId);
-  return tenant ? appAcceptsPayments(tenant.appPayments) : false;
+  return tenant ? toTenantSales(tenant) : { app: false, web: false };
 };
 
 /**

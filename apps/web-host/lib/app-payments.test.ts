@@ -1,7 +1,11 @@
 import { AppPurchaseRoute } from "@publira/api-client/public/types";
 import { describe, expect, it } from "vitest";
 
-import { appAcceptsPayments, toTenantAppPayments } from "./app-payments";
+import {
+  appAcceptsPayments,
+  episodeSaleDestination,
+  toTenantAppPayments,
+} from "./app-payments";
 
 const response = (
   overrides: Partial<Parameters<typeof toTenantAppPayments>[0]>
@@ -90,6 +94,34 @@ describe("appAcceptsPayments", () => {
   it("Count the app as selling nowhere while neither platform does", () => {
     expect(appAcceptsPayments({ appStore: false, googlePlay: false })).toBe(
       false
+    );
+  });
+});
+
+describe("episodeSaleDestination", () => {
+  it("Sell an episode sold on both through the site while it takes payments", () => {
+    expect(episodeSaleDestination("all", { app: true, web: true })).toBe("web");
+  });
+
+  it("Send an episode sold on both to the app while only the app can sell it", () => {
+    expect(episodeSaleDestination("all", { app: true, web: false })).toBe(
+      "app"
+    );
+  });
+
+  it("Send an episode sold in the app alone to the app even where the site takes payments", () => {
+    expect(episodeSaleDestination("app", { app: true, web: true })).toBe("app");
+  });
+
+  it("Never send an episode sold on the web alone to the app", () => {
+    expect(episodeSaleDestination("web", { app: true, web: false })).toBe(
+      "none"
+    );
+  });
+
+  it("Sell an episode nowhere while neither the site nor the app can sell it", () => {
+    expect(episodeSaleDestination("all", { app: false, web: false })).toBe(
+      "none"
     );
   });
 });

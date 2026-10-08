@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import { appAcceptsPayments } from "#lib/app-payments";
+import { episodeSaleDestination, toTenantSales } from "#lib/app-payments";
 import type { TenantAppPayments } from "#lib/app-payments";
 import type { EpisodeNeighborItem, EpisodePurchaseSurface } from "#lib/catalog";
 
@@ -74,13 +74,13 @@ const AppStoreLinks = ({
 const ClosedBecause = ({
   payable,
   signedIn,
-  soldInAppOnly,
+  soldInApp,
 }: {
   payable: boolean;
   signedIn: boolean;
-  soldInAppOnly: boolean;
+  soldInApp: boolean;
 }) => {
-  if (signedIn && soldInAppOnly) {
+  if (signedIn && soldInApp) {
     return (
       <Message message="host.episode.gate.signed_in_app_only_description" />
     );
@@ -95,7 +95,7 @@ const ClosedBecause = ({
       <Message message="host.episode.gate.signed_in_unpayable_description" />
     );
   }
-  if (soldInAppOnly) {
+  if (soldInApp) {
     return <Message message="host.episode.gate.guest_app_only_description" />;
   }
   if (payable) {
@@ -291,12 +291,15 @@ export const EpisodeAccessGate = ({
   /** Absent on a series that does not offer wait-for-free. */
   waitFree?: WaitFreeOffer;
 }) => {
-  // An app that cannot sell the episode is nowhere to send the reader, so the
-  // gate then says what it says for any episode nobody can buy right now. The
-  // site's checkout never sells one the app alone may sell.
-  const soldInAppOnly =
-    purchaseSurface === "app" && appAcceptsPayments(appPayments);
-  const payable = acceptsPayments && purchaseSurface !== "app";
+  // An episode the site cannot sell goes to the app while the app can sell it,
+  // whether the app alone may sell it or the site takes no payments. Where
+  // neither can, the gate says what it says for any episode nobody can buy.
+  const destination = episodeSaleDestination(
+    purchaseSurface,
+    toTenantSales({ acceptsPayments, appPayments })
+  );
+  const soldInApp = destination === "app";
+  const payable = destination === "web";
   // A listing whose app offers no purchase would send the reader on to nothing.
   const sellingAppStoreUrl = appPayments.appStore ? appStoreUrl : undefined;
   const sellingGooglePlayUrl = appPayments.googlePlay
@@ -360,7 +363,7 @@ export const EpisodeAccessGate = ({
             <ClosedBecause
               payable={payable}
               signedIn={signedIn}
-              soldInAppOnly={soldInAppOnly}
+              soldInApp={soldInApp}
             />
           </Suspense>
         </p>
@@ -380,7 +383,7 @@ export const EpisodeAccessGate = ({
         {/* Signed in, the store is the one way into this episode and carries
           the Shu, unless a ready ticket opens it for nothing. A guest who
           bought it in the app still has to sign in, so signing in keeps it. */}
-        {soldInAppOnly && (sellingAppStoreUrl || sellingGooglePlayUrl) ? (
+        {soldInApp && (sellingAppStoreUrl || sellingGooglePlayUrl) ? (
           <AppStoreLinks
             appStoreUrl={sellingAppStoreUrl}
             googlePlayUrl={sellingGooglePlayUrl}

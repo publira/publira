@@ -230,6 +230,44 @@ describe("EpisodeAccessGate", () => {
     });
   });
 
+  describe("an episode sold on both while only the app can sell it", () => {
+    const appSells = {
+      ...props,
+      acceptsPayments: false,
+      appPayments: { appStore: true, googlePlay: false },
+      appStoreUrl: "https://apps.apple.com/app/id123",
+      googlePlayUrl: "https://play.google.com/store/apps/details?id=test",
+    };
+
+    it("Point to the app that sells it instead of saying nobody can", () => {
+      render(<EpisodeAccessGate {...appSells} />);
+
+      expect(
+        screen.getByText("host.episode.gate.signed_in_app_only_description")
+      ).toBeDefined();
+      expect(
+        screen.getByRole("link", { name: "host.episode.gate.app_store" })
+      ).toBeDefined();
+      expect(
+        screen.queryByRole("link", { name: "host.episode.gate.google_play" })
+      ).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "host.episode.gate.purchase" })
+      ).toBeNull();
+    });
+
+    it("Offer the checkout instead once the site takes payments", () => {
+      render(<EpisodeAccessGate {...appSells} acceptsPayments />);
+
+      expect(
+        screen.getByRole("button", { name: "host.episode.gate.purchase" })
+      ).toBeDefined();
+      expect(
+        screen.queryByRole("link", { name: "host.episode.gate.app_store" })
+      ).toBeNull();
+    });
+  });
+
   it("Offer the checkout for an episode sold on the web alone", () => {
     render(
       <EpisodeAccessGate {...props} acceptsPayments purchaseSurface="web" />

@@ -5,6 +5,8 @@ import { Suspense } from "react";
 
 import { FreeUntilBadge } from "#components/free-until-badge";
 import { Message } from "#components/message";
+import { episodeSaleDestination } from "#lib/app-payments";
+import type { TenantSales } from "#lib/app-payments";
 import type { EpisodePurchaseSurface } from "#lib/catalog";
 
 /**
@@ -22,29 +24,28 @@ type FreeUntilProps =
     };
 
 /**
- * What an episode costs on this site: free, its price, or — where it is sold
- * in the app alone — that it is sold there, because a price the web cannot
- * take leads nowhere. That holds only while the app can sell it; until then
- * the episode is quoted like any other nobody can buy right now, as the access
- * gate treats it.
+ * What an episode costs on this site: free, its price, or — where the site
+ * sends the reader to the app to buy it, as the access gate does — that it is
+ * sold there, because a price the web cannot take leads nowhere. An episode
+ * nobody can buy right now is quoted like any other.
  *
  * A priced episode inside an open free reading period says until when it is
  * free instead of quoting the price, because the price is what it costs only
  * after that.
  */
 export const EpisodePrice = ({
-  appAcceptsPayments,
   freeUntil,
   locale,
   price,
   purchaseSurface,
+  sales,
   timeZone,
 }: FreeUntilProps & {
-  /** Whether the tenant's app can sell an episode on either platform. */
-  appAcceptsPayments: boolean;
   locale: Locale;
   price: number;
   purchaseSurface: EpisodePurchaseSurface;
+  /** Where the tenant can sell an episode right now. */
+  sales: TenantSales;
 }) => {
   if (freeUntil && timeZone) {
     return (
@@ -62,7 +63,7 @@ export const EpisodePrice = ({
       </Suspense>
     );
   }
-  if (purchaseSurface === "app" && appAcceptsPayments) {
+  if (episodeSaleDestination(purchaseSurface, sales) === "app") {
     return (
       <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
         <Message message="host.common.sold_in_app" />

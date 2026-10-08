@@ -29,7 +29,7 @@ import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { adultContentMetadata } from "#lib/age-rating";
-import { appAcceptsPayments } from "#lib/app-payments";
+import { toTenantSales } from "#lib/app-payments";
 import { getEpisodeDetail, getSeriesDetail } from "#lib/catalog";
 import type { EpisodeSeriesSummary } from "#lib/catalog";
 import { breadcrumbJsonLd, episodeJsonLd } from "#lib/json-ld";
@@ -304,6 +304,10 @@ const EpisodeContent = async (
     appStore: false,
     googlePlay: false,
   };
+  const sales = toTenantSales({
+    acceptsPayments: tenant?.acceptsPayments ?? false,
+    appPayments,
+  });
   // Empty where the episode carries no such moment, and the colophon leaves
   // the fact out rather than standing "Not set" where a date would be.
   const publishedAt = formatDateTime(episode.publishedAt, {
@@ -427,7 +431,7 @@ const EpisodeContent = async (
                 <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   <span className="tabular-nums">
                     <EpisodePrice
-                      appAcceptsPayments={appAcceptsPayments(appPayments)}
+                      sales={sales}
                       freeUntil={episode.freeUntil}
                       locale={locale}
                       price={episode.price}
@@ -497,7 +501,7 @@ const EpisodeContent = async (
               {/* Directly under the running head, because finishing the pages is
               when a reader decides whether to keep going. */}
               <EpisodeEndPanel
-                appAcceptsPayments={appAcceptsPayments(appPayments)}
+                sales={sales}
                 episode={episode}
                 nextEpisode={nextEpisode}
                 previousEpisode={previousEpisode}
