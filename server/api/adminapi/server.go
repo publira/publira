@@ -311,10 +311,11 @@ func New(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *
 // The asynchronous writer acquires a fresh tenant-scoped connection for every
 // tenant audit entry.
 //
-// login is the sign-in limit the process hands every namespace it serves, as
-// publicapi.New describes; a nil one counts on its own.
-func NewWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, reval *revalidate.Client, recorder *auditlog.AsyncRecorder, serviceToken *auth.ServiceToken, login *loginguard.Guard) (*API, error) {
-	api, err := newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, reval, recorder, nil)
+// login and mail are the sign-in limit and the mail limit the process hands
+// every namespace it serves, as publicapi.New describes; a nil one counts on
+// its own.
+func NewWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, reval *revalidate.Client, recorder *auditlog.AsyncRecorder, serviceToken *auth.ServiceToken, login *loginguard.Guard, mail *mailguard.Guard) (*API, error) {
+	api, err := newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, reval, recorder, mail)
 	if err != nil {
 		return nil, err
 	}

@@ -174,7 +174,7 @@ func TestDBLoginSharesTheAccountAllowanceWithTheTenantConsole(t *testing.T) {
 	adminDB := env.PG.OpenAdminDB(t)
 	recorder := auditlog.NewAsync(dbmodels.New(adminDB), adminDB, slog.Default())
 	t.Cleanup(recorder.Close)
-	adminAPI, err := adminapi.NewWithAsyncRecorder(adminDB, dbmodels.New(adminDB), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager(), nil, recorder, nil, login)
+	adminAPI, err := adminapi.NewWithAsyncRecorder(adminDB, dbmodels.New(adminDB), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager(), nil, recorder, nil, login, openMailGuard())
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
