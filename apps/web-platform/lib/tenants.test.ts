@@ -644,11 +644,22 @@ describe("createPlatformTenant", () => {
     mockUpdateTenant.mockResolvedValueOnce({});
 
     await expect(
-      updatePlatformTenant(tenantId, "Blue Maple", "example.com", "en")
+      updatePlatformTenant(
+        tenantId,
+        "Blue Maple",
+        "example.com",
+        "en",
+        "console.example.net"
+      )
     ).resolves.toEqual({ ok: true });
 
     expect(mockUpdateTenant).toHaveBeenCalledWith(
-      { adminDomain: "", domain: "example.com", name: "Blue Maple", tenantId },
+      {
+        adminDomain: "console.example.net",
+        domain: "example.com",
+        name: "Blue Maple",
+        tenantId,
+      },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
   });

@@ -62,8 +62,6 @@ A tenant's name, domain, and console host can be changed after it is created. It
 
 Open the tenant from **Tenants**. **Profile** changes its **Tenant name**, and **Domain settings** changes its **Domain** and **Admin domain**. Emptying **Admin domain** moves the console back to `admin.<domain>`.
 
-Saving **Profile** also empties a tenant's **Admin domain**, which moves a console with a host of its own back to `admin.<domain>` ([#3751](https://github.com/publira/publira/issues/3751)). For a tenant with an admin domain, change the name with `publiractl tenant update` instead, or enter the admin domain again under **Domain settings** right after saving.
-
 ### From publiractl
 
 ```bash

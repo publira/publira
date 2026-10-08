@@ -250,6 +250,11 @@ const TenantDetailContent = async ({
                   type="hidden"
                   value={tenant.domain}
                 />
+                <input
+                  name="tenant_current_admin_domain"
+                  type="hidden"
+                  value={tenant.adminDomain}
+                />
                 <div className="grid gap-4">
                   <Field>
                     <FieldLabel required>

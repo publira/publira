@@ -128,6 +128,32 @@ describe("tenant detail actions", () => {
     ]);
   });
 
+  it("renaming a tenant keeps its domain and admin domain", async () => {
+    mockUpdatePlatformTenant.mockResolvedValueOnce({ ok: true });
+
+    const { updateTenantNameAction } = await import("./actions");
+
+    await expect(
+      updateTenantNameAction(
+        null,
+        formData({
+          tenant_current_admin_domain: "console.example.net",
+          tenant_current_domain: "tenant.example.com",
+          tenant_id: "01a0deb5-0000-7000-8000-000000000002",
+          tenant_name: "Renamed Tenant",
+        })
+      )
+    ).resolves.toMatchObject({ ok: true });
+
+    expect(mockUpdatePlatformTenant).toHaveBeenCalledWith(
+      "01a0deb5-0000-7000-8000-000000000002",
+      "Renamed Tenant",
+      "tenant.example.com",
+      "en",
+      "console.example.net"
+    );
+  });
+
   it("changing a tenant's domain clears the tenants and the audit log", async () => {
     mockUpdatePlatformTenant.mockResolvedValueOnce({ ok: true });
 

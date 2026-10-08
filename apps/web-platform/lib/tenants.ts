@@ -828,12 +828,19 @@ export const cancelPlatformTenantAdminInvitation = async (
   }
 };
 
+/**
+ * `UpdateTenant` replaces the name, the domain, and the admin domain together,
+ * and an empty admin domain clears it. Every caller therefore passes all three,
+ * including the ones its form does not edit, so `adminDomain` is required: a
+ * form that saves only the name would otherwise move a console with a host of
+ * its own back to `admin.<domain>`.
+ */
 export const updatePlatformTenant = async (
   tenantId: string,
   name: string,
   domain: string,
   locale: Locale,
-  adminDomain?: string
+  adminDomain: string
 ): Promise<UpdatePlatformTenantResult> => {
   const {
     locale: resolvedLocale,
@@ -848,7 +855,7 @@ export const updatePlatformTenant = async (
   }
   const trimmedName = name.trim();
   const trimmedDomain = domain.trim();
-  const trimmedAdminDomain = adminDomain?.trim() ?? "";
+  const trimmedAdminDomain = adminDomain.trim();
   if (!trimmedName) {
     return {
       message: t("platform.tenants.name_required"),

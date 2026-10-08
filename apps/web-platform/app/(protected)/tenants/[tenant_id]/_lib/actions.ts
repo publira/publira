@@ -66,6 +66,7 @@ const updateTenantNameFormSchema = async (locale: Locale) => {
   ]);
 
   return z.object({
+    currentAdminDomain: optionalTrimmedString(),
     currentDomain: optionalTrimmedString(),
     name: requiredTrimmedString(t("platform.tenants.name_required")),
     tenantId,
@@ -199,6 +200,10 @@ export const updateTenantNameAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
+      currentAdminDomain: {
+        kind: "value",
+        name: "tenant_current_admin_domain",
+      },
       currentDomain: { kind: "value", name: "tenant_current_domain" },
       name: { kind: "value", name: "tenant_name" },
       tenantId: { kind: "value", name: "tenant_id" },
@@ -213,7 +218,8 @@ export const updateTenantNameAction = async (
       parsed.data.tenantId,
       parsed.data.name,
       parsed.data.currentDomain,
-      locale
+      locale,
+      parsed.data.currentAdminDomain
     )
   );
   updateTag(platformTenantsCacheTag);
