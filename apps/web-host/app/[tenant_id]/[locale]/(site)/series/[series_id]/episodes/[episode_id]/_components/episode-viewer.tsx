@@ -11,6 +11,7 @@ import { EpisodeReactionControl } from "#components/episode-reaction-control";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { resolveAccessToken } from "#lib/api-client";
+import type { TenantSales } from "#lib/app-payments";
 import type {
   EpisodeDetail,
   EpisodeImageItem,
@@ -60,6 +61,7 @@ export const EpisodeViewer = async ({
   images,
   nextEpisode,
   previousEpisode,
+  sales,
   series,
 }: {
   /** The series' resolved comment mode from GetSeriesDetail. */
@@ -72,6 +74,8 @@ export const EpisodeViewer = async ({
   nextEpisode?: EpisodeNeighborItem;
   /** Absent on the first one. */
   previousEpisode?: EpisodeNeighborItem;
+  /** Where the tenant can sell an episode, for what the next one costs. */
+  sales: TenantSales;
   series: EpisodeSeriesSummary;
 }) => {
   // An episode whose pages are not published yet says so and nothing else,
@@ -137,6 +141,7 @@ export const EpisodeViewer = async ({
               </Suspense>
             </SectionErrorBoundary>
             <EpisodeNextEpisodeOffer
+              sales={sales}
               episodePublicId={episode.publicId}
               nextEpisode={nextEpisode}
               series={series}

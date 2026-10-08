@@ -9,6 +9,7 @@ import { FollowControl } from "#components/follow-control";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import type { TenantSales } from "#lib/app-payments";
 import type { EpisodeNeighborItem, EpisodeSeriesSummary } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
 
@@ -26,12 +27,15 @@ import { episodePath } from "../_lib/episode-path";
 export const EpisodeNextEpisodeOffer = async ({
   episodePublicId,
   nextEpisode,
+  sales,
   series,
   tenantId,
 }: {
   episodePublicId: string;
   /** Absent on the last published episode of the series. */
   nextEpisode?: EpisodeNeighborItem;
+  /** Where the tenant can sell an episode right now. */
+  sales: TenantSales;
   series: EpisodeSeriesSummary;
   tenantId: string;
 }) => {
@@ -103,6 +107,7 @@ export const EpisodeNextEpisodeOffer = async ({
           </span>
           <span>
             <EpisodePrice
+              sales={sales}
               locale={locale}
               price={nextEpisode.isFree ? 0 : nextEpisode.price}
               purchaseSurface={nextEpisode.purchaseSurface}

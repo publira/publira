@@ -16,6 +16,7 @@ import {
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { ShareControl } from "#components/share-control";
 import { ShareMenuSkeleton } from "#components/share-menu";
+import type { TenantSales } from "#lib/app-payments";
 import type {
   EpisodeDetail,
   EpisodeNeighborItem,
@@ -44,12 +45,14 @@ const EpisodeNeighborRow = ({
   children,
   episode,
   locale,
+  sales,
   series,
 }: {
   /** `EpisodeNeighborDirection`. */
   children: ReactNode;
   episode: EpisodeNeighborItem;
   locale: Locale;
+  sales: TenantSales;
   series: EpisodeSeriesSummary;
 }) => (
   <li>
@@ -85,6 +88,7 @@ const EpisodeNeighborRow = ({
         </span>
         <span className="mt-1 block text-sm text-muted-foreground tabular-nums sm:mt-0 sm:w-56 sm:shrink-0">
           <EpisodePrice
+            sales={sales}
             locale={locale}
             price={episode.isFree ? 0 : episode.price}
             purchaseSurface={episode.purchaseSurface}
@@ -115,6 +119,7 @@ export const EpisodeEndPanel = async ({
   episode,
   nextEpisode,
   previousEpisode,
+  sales,
   series,
   shareText,
   shareTitle,
@@ -125,6 +130,8 @@ export const EpisodeEndPanel = async ({
   nextEpisode?: EpisodeNeighborItem;
   /** Absent on the first one. */
   previousEpisode?: EpisodeNeighborItem;
+  /** Where the tenant can sell an episode right now. */
+  sales: TenantSales;
   series: EpisodeSeriesSummary;
   /**
    * What a share of this episode says in words: the work and its credits.
@@ -166,6 +173,7 @@ export const EpisodeEndPanel = async ({
           <ol className="divide-y divide-border border-b border-border">
             {previousEpisode ? (
               <EpisodeNeighborRow
+                sales={sales}
                 episode={previousEpisode}
                 locale={locale}
                 series={series}
@@ -179,6 +187,7 @@ export const EpisodeEndPanel = async ({
             ) : null}
             {nextEpisode ? (
               <EpisodeNeighborRow
+                sales={sales}
                 episode={nextEpisode}
                 locale={locale}
                 series={series}

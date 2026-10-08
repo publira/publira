@@ -11,6 +11,8 @@ import type { TenantTheme } from "@publira/utils/theme-css-variables";
 import { cacheLife } from "next/cache";
 
 import { apiClient } from "./api-client";
+import { toTenantAppPayments, toTenantSales } from "./app-payments";
+import type { TenantAppPayments, TenantSales } from "./app-payments";
 import { applyCacheTag, tenantSiteTag, tenantThemeTag } from "./cache-tags";
 import { getMessagesFor } from "./messages";
 import { publishedPageHrefFromSlug } from "./pages";
@@ -125,14 +127,16 @@ export interface TenantSiteInfo {
   acceptsPayments: boolean;
   /** Which ratings this tenant makes a reader prove an age for. */
   ageVerification: TenantAgeVerification;
+  /** Where the tenant's app can sell an episode right now. */
+  appPayments: TenantAppPayments;
   /**
    * The Services ID the site signs a reader in with Apple through. Absent
    * where the tenant does not offer Apple on the site.
    */
   appleServicesId?: string;
   /**
-   * The store listings of the tenant's app, where an episode sold in the app
-   * alone sends the reader. Absent where the app is not listed in that store.
+   * The store listings of the tenant's app, where the site sends a reader to
+   * buy an episode in the app. Absent where the app is not listed in that store.
    */
   appStoreUrl?: string;
   /** Whether episode pages offer a comment section, and how a post reaches it. */
@@ -273,6 +277,7 @@ export const getTenantSiteInfo = async (
     return {
       acceptsPayments: response.acceptsPayments === true,
       ageVerification: toTenantAgeVerification(response.ageVerification),
+      appPayments: toTenantAppPayments(response),
       appStoreUrl: nonEmpty(response.appStoreUrl),
       appleServicesId: nonEmpty(response.appleSignIn?.servicesId),
       commentMode: toTenantCommentMode(response.commentMode),
@@ -388,6 +393,18 @@ export const getTenantDisplayTimeZone = async (
 ): Promise<string> => {
   const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.timeZone ?? DEFAULT_TIME_ZONE;
+};
+
+/**
+ * Where the tenant can sell an episode right now, for a page that says what
+ * each episode costs and where it is bought. A tenant that could not be read
+ * sells nowhere.
+ */
+export const getTenantSales = async (
+  tenantId: string
+): Promise<TenantSales> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  return tenant ? toTenantSales(tenant) : { app: false, web: false };
 };
 
 /**

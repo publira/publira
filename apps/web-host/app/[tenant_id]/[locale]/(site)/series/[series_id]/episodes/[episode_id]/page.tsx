@@ -29,6 +29,7 @@ import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { adultContentMetadata } from "#lib/age-rating";
+import { toTenantSales } from "#lib/app-payments";
 import { getEpisodeDetail, getSeriesDetail } from "#lib/catalog";
 import type { EpisodeSeriesSummary } from "#lib/catalog";
 import { breadcrumbJsonLd, episodeJsonLd } from "#lib/json-ld";
@@ -298,6 +299,15 @@ const EpisodeContent = async (
   // The site-info read resolves the tenant zone. The fallback only covers an
   // unavailable tenant read, never the host machine's local zone.
   const timeZone = tenant?.timeZone ?? DEFAULT_TIME_ZONE;
+  // A tenant that could not be read sells nowhere, in the app as on the site.
+  const appPayments = tenant?.appPayments ?? {
+    appStore: false,
+    googlePlay: false,
+  };
+  const sales = toTenantSales({
+    acceptsPayments: tenant?.acceptsPayments ?? false,
+    appPayments,
+  });
   // Empty where the episode carries no such moment, and the colophon leaves
   // the fact out rather than standing "Not set" where a date would be.
   const publishedAt = formatDateTime(episode.publishedAt, {
@@ -366,6 +376,7 @@ const EpisodeContent = async (
                   <EpisodeBody
                     access={access}
                     acceptsPayments={tenant?.acceptsPayments ?? false}
+                    appPayments={appPayments}
                     appStoreUrl={tenant?.appStoreUrl}
                     checkoutSessionId={checkoutSessionId}
                     commentMode={commentMode}
@@ -420,6 +431,7 @@ const EpisodeContent = async (
                 <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   <span className="tabular-nums">
                     <EpisodePrice
+                      sales={sales}
                       freeUntil={episode.freeUntil}
                       locale={locale}
                       price={episode.price}
@@ -489,6 +501,7 @@ const EpisodeContent = async (
               {/* Directly under the running head, because finishing the pages is
               when a reader decides whether to keep going. */}
               <EpisodeEndPanel
+                sales={sales}
                 episode={episode}
                 nextEpisode={nextEpisode}
                 previousEpisode={previousEpisode}

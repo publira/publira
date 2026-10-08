@@ -55,6 +55,10 @@
       "types": "./dist/public/page.d.mts",
       "default": "./dist/public/page.mjs"
     },
+    "./public/tenant": {
+      "types": "./dist/public/tenant.d.mts",
+      "default": "./dist/public/tenant.mjs"
+    },
     "./public/types": {
       "types": "./dist/public/types.d.mts",
       "default": "./dist/public/types.mjs"

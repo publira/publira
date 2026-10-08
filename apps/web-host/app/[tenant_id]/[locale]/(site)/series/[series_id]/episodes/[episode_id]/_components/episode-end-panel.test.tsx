@@ -141,6 +141,7 @@ const renderPanel = async ({
       episode,
       nextEpisode: neighbor,
       previousEpisode: previousNeighbor,
+      sales: { app: true, web: true },
       series,
       shareText: "Long nights by Nightly Author",
       shareTitle: "Episode 2 Second light",

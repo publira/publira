@@ -10,6 +10,8 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { resolveAccessToken } from "#lib/api-client";
+import { toTenantSales } from "#lib/app-payments";
+import type { TenantAppPayments } from "#lib/app-payments";
 import type {
   EpisodeAccessState,
   EpisodeDetail,
@@ -35,6 +37,7 @@ import { EpisodeViewer } from "./episode-viewer";
 export const EpisodeBody = async ({
   acceptsPayments,
   access,
+  appPayments,
   appStoreUrl,
   checkoutSessionId,
   commentMode,
@@ -53,7 +56,9 @@ export const EpisodeBody = async ({
 }: {
   acceptsPayments: boolean;
   access: EpisodeAccessState;
-  /** Where the tenant's app is listed, for an episode sold there alone. */
+  /** Where the tenant's app can sell an episode the site sends there. */
+  appPayments: TenantAppPayments;
+  /** Where the tenant's app is listed, for an episode the site sends there. */
   appStoreUrl?: string;
   checkoutSessionId: string;
   /** Passed to the viewer, which ends the episode on the comment section. */
@@ -80,6 +85,7 @@ export const EpisodeBody = async ({
   if (isPublicEpisodeBody(access)) {
     return (
       <EpisodeViewer
+        sales={toTenantSales({ acceptsPayments, appPayments })}
         commentMode={commentMode}
         commentToken={commentToken}
         episode={episode}
@@ -103,6 +109,7 @@ export const EpisodeBody = async ({
       >
         <EpisodeAccessGate
           acceptsPayments={acceptsPayments}
+          appPayments={appPayments}
           appStoreUrl={appStoreUrl}
           episodeId={episode.id}
           episodePublicId={episode.publicId}
@@ -159,6 +166,7 @@ export const EpisodeBody = async ({
   ) {
     return (
       <EpisodeViewer
+        sales={toTenantSales({ acceptsPayments, appPayments })}
         commentMode={commentMode}
         commentToken={commentToken}
         episode={episode}
@@ -183,6 +191,7 @@ export const EpisodeBody = async ({
     >
       <EpisodeAccessGate
         acceptsPayments={acceptsPayments}
+        appPayments={appPayments}
         appStoreUrl={appStoreUrl}
         episodeId={episode.id}
         episodePublicId={episode.publicId}
