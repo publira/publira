@@ -21,7 +21,10 @@ import {
 
 const DEFAULT_GRPC_URL = "http://localhost:8100";
 
-const readForwardedHeaders = async () => forwardedHeadersOf(await headers());
+const readForwardedHeaders = async () => {
+  const requestHeaders = await headers();
+  return forwardedHeadersOf(requestHeaders);
+};
 
 export const apiClient = createPublicApiClient({
   baseUrl: process.env.PUBLIRA_GRPC_URL ?? DEFAULT_GRPC_URL,
@@ -34,9 +37,10 @@ export const apiClient = createPublicApiClient({
  * address: sign-in, sign-up, a password reset, a guest's contact message. Only a call
  * with a session gets the address from the interceptor.
  */
-export const buildClientAddressHeaders = async () => ({
-  headers: await readForwardedHeaders(),
-});
+export const buildClientAddressHeaders = async () => {
+  const forwarded = await readForwardedHeaders();
+  return { headers: forwarded };
+};
 
 export const buildSessionHeaders = (accessToken: string) =>
   buildBearerHeaders(accessToken);

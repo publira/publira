@@ -131,7 +131,10 @@ import {
 } from "@publira/api-client/forwarded";
 import { headers } from "next/headers";
 
-const readForwardedHeaders = async () => forwardedHeadersOf(await headers());
+const readForwardedHeaders = async () => {
+  const requestHeaders = await headers();
+  return forwardedHeadersOf(requestHeaders);
+};
 
 export const apiClient = createAdminApiClient({
   baseUrl,

@@ -8,7 +8,10 @@ import { headers } from "next/headers";
 
 import { resolveWebServiceToken } from "./web-service-token";
 
-const readForwardedHeaders = async () => forwardedHeadersOf(await headers());
+const readForwardedHeaders = async () => {
+  const requestHeaders = await headers();
+  return forwardedHeadersOf(requestHeaders);
+};
 
 // gRPC transport is used for internal Next.js -> Go API communication.
 export const apiClient = createAdminApiClient({
@@ -45,6 +48,7 @@ export const withServiceHeaders = (): SessionCallOptions => ({
  * Only a call with a session gets the address from the interceptor.
  */
 export const withClientAddressHeaders =
-  async (): Promise<SessionCallOptions> => ({
-    headers: await readForwardedHeaders(),
-  });
+  async (): Promise<SessionCallOptions> => {
+    const forwarded = await readForwardedHeaders();
+    return { headers: forwarded };
+  };

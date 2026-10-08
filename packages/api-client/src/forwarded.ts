@@ -74,7 +74,8 @@ export const createForwardedInterceptor =
       !req.header.has(FORWARDED_HEADER) &&
       !req.contextValues.get(serviceCallKey)
     ) {
-      for (const [name, value] of Object.entries(await resolve())) {
+      const forwarded = await resolve();
+      for (const [name, value] of Object.entries(forwarded)) {
         req.header.set(name, value);
       }
     }
