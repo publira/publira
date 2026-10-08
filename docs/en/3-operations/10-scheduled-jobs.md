@@ -186,7 +186,7 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
 
 A run rebuilds that day for every tenant. The rankings and the recommendations are rebuilt here for every tenant's yesterday, since the storefront only shows the newest leaderboard and the weekly one ending yesterday covers the last seven days; give them a date, with `PUBLIRA_CONTENT_RANKING_DATE` and `PUBLIRA_RECOMMEND_FEATURES_DATE`, only to rebuild an older leaderboard.
 
-Do not rebuild a day whose analytics events have passed their content event retention period. The worker skips such a day, but a run by hand rebuilds it from what is left, and replaces the day's views, completed reads, and ratings with nothing ([#3785](https://github.com/publira/publira/issues/3785)).
+A tenant whose content event retention period no longer covers the day is left out of the run, the same way the worker skips such a day: its analytics events for the day are already gone, so its statistics are kept as they are rather than rebuilt from what is left. The run logs each such tenant as skipped and still rebuilds the day for every other tenant.
 
 A run by hand does not move the worker's record of how far each tenant has got, so the worker neither skips nor repeats a day because of it.
 

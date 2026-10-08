@@ -46,7 +46,7 @@ func TestRunStoresTheTenantRatingTotals(t *testing.T) {
 	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "rating", userID: reader.ID, seriesID: series.ID, episodeID: episode.ID, ratingScore: 5, occurredAt: statDate.Add(time.Hour)})
 	insertEvent(t, pg.DB, eventSeed{tenantID: tenant.ID, eventType: "episode_complete", userID: reader.ID, seriesID: series.ID, episodeID: episode.ID, occurredAt: statDate.Add(2 * time.Hour)})
 
-	aggregator := New(pg.OpenPlatformDB(t))
+	aggregator := newAggregator(pg.OpenPlatformDB(t))
 	if _, err := aggregator.Run(context.Background(), Options{StatDate: statDate}); err != nil {
 		t.Fatalf("Run for the day of the reaction: %v", err)
 	}

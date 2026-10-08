@@ -93,12 +93,7 @@ func (s ContentStatsAggregation) CatchUp(ctx context.Context, deps Deps) error {
 	return catchUp(ctx, deps, catchUpLink{
 		name: "content stats",
 		lost: func(tenant tenantday.Tenant, day time.Time) (bool, error) {
-			location, err := time.LoadLocation(tenant.TimeZone)
-			if err != nil {
-				return false, fmt.Errorf("load time zone %q: %w", tenant.TimeZone, err)
-			}
-			start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, location)
-			return start.Before(table.For(tenant.ID).ContentEventCutoff(now)), nil
+			return contentstats.PastRetention(tenant, day, table.For(tenant.ID), now)
 		},
 		pending: func(tenant tenantday.Tenant, p dbmodels.ListDailyRebuildProgressRow) (time.Time, time.Time, error) {
 			last, err := tenant.Date(time.Time{}, p.EpisodeReadsProjectedAt)

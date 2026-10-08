@@ -451,6 +451,8 @@ Fully rebuilds `content_daily_stats` for one calendar day across every tenant. V
 
 A day is the tenant's own: the window runs from that tenant's local midnight to the next, resolved from `tenants.timezone` (falling back to `platform_config.default_timezone`). So one run covers different instants for tenants in different zones, and a tenant whose stored zone cannot be loaded fails on its own without stopping the rest.
 
+A tenant whose day began before its content event retention cutoff is skipped: the purge has taken that day's events, so a rebuild would replace its views, completions and ratings with nothing. Its rows for the day are left as they are, the way the worker's catch-up passes over such a day.
+
 The same transaction restates `tenant_rating_totals`, the tenant's all-time reaction points and completed reads over its series rows. It is the mean a series with few finished reads is rated against, and storing it here is what keeps the series page from summing the tenant's whole history on every read.
 
 For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
@@ -465,7 +467,7 @@ Environment variables:
 - `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_DB_URL`.
 - `PUBLIRA_CONTENT_STATS_DATE`: the calendar date to rebuild as `YYYY-MM-DD`, read as each tenant's own local date. Unset rebuilds every tenant's own yesterday, which is not the same day for all of them.
 
-The structured log records the target date, how many tenants the run finished, the rows created, and the elapsed time — on failure too, since each tenant commits on its own.
+The structured log records the target date, how many tenants the run finished, how many it skipped, the rows created, and the elapsed time — on failure too, since each tenant commits on its own — and a warning naming each skipped tenant.
 
 ## aggregate-rankings
 
