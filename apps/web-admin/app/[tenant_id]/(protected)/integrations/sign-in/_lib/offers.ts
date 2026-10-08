@@ -27,8 +27,9 @@ export interface SignInOffers {
  * this as well.
  *
  * `androidApplicationId` is the Android app named under App links, empty where
- * none is named and absent where that read failed, which leaves Apple's
- * Android row out rather than state it wrongly.
+ * none is named and absent where that read failed. Apple's Android row is left
+ * out then, for the caller to say why rather than state an answer it does not
+ * have.
  */
 export const signInOffers = (
   { apple, google }: TenantSignInSettings,
@@ -54,7 +55,8 @@ export const signInOffers = (
       { offered: googleWeb, surface: "site" },
       // The App Store requires Apple beside any other third-party sign-in, so
       // the iOS app shows Google only where it shows Apple. The app also has
-      // to be built with this client, which the console cannot see.
+      // to be built with this client, which the console cannot see, so the
+      // form words this row as conditional on the build.
       {
         offered: google.ready && google.iosClientId !== "" && appleIos,
         surface: "ios",

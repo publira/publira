@@ -165,6 +165,21 @@ const GoogleNotOffered = ({ surface }: { surface: SignInSurface }) => {
   }
 };
 
+const Shown = ({
+  provider,
+  surface,
+}: {
+  provider: SignInProvider;
+  surface: SignInSurface;
+}) =>
+  // The iOS app also has to be built with the iOS client ID, which the console
+  // cannot see, so that row says so instead of claiming the button.
+  provider === "google" && surface === "ios" ? (
+    <Message message="admin.settings.sign_in.google.shown_ios" />
+  ) : (
+    <Message message="admin.settings.sign_in.offers.shown" />
+  );
+
 const NotOffered = ({
   provider,
   surface,
@@ -183,9 +198,15 @@ const NotOffered = ({
  * still be missing from the site, which its state alone does not say.
  */
 const ProviderOffers = ({
+  appLinksErrorMessage,
   offers,
   provider,
 }: {
+  /**
+   * Why the Android app named under App links could not be read, which leaves
+   * the Android app's row without an answer.
+   */
+  appLinksErrorMessage?: string;
   offers: SignInOffer[];
   provider: SignInProvider;
 }) => (
@@ -206,7 +227,7 @@ const ProviderOffers = ({
           <dd className={offered ? "text-foreground" : "text-muted-foreground"}>
             <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
               {offered ? (
-                <Message message="admin.settings.sign_in.offers.shown" />
+                <Shown provider={provider} surface={surface} />
               ) : (
                 <NotOffered provider={provider} surface={surface} />
               )}
@@ -214,6 +235,20 @@ const ProviderOffers = ({
           </dd>
         </div>
       ))}
+      {appLinksErrorMessage ? (
+        <div className="grid gap-1 sm:grid-cols-[8rem_1fr]">
+          <dt className="text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <SurfaceLabel surface="android" />
+            </Suspense>
+          </dt>
+          <dd>
+            <FormMessage variant="destructive">
+              {appLinksErrorMessage}
+            </FormMessage>
+          </dd>
+        </div>
+      ) : null}
     </dl>
   </div>
 );
@@ -232,6 +267,8 @@ interface TenantSignInSettingsFormProps {
    * absent where that read failed.
    */
   androidApplicationId?: string;
+  /** Why App links could not be read, absent when they were. */
+  appLinksErrorMessage?: string;
   /** The callback URLs to register, absent while the tenant has no domain. */
   callbackUrls?: SignInCallbackUrls;
   canEdit: boolean;
@@ -243,6 +280,7 @@ interface TenantSignInSettingsFormProps {
 
 export const TenantSignInSettingsForm = ({
   androidApplicationId,
+  appLinksErrorMessage,
   callbackUrls,
   canEdit,
   initialSettings: settings,
@@ -293,7 +331,11 @@ export const TenantSignInSettingsForm = ({
                   })}
                 />
                 {settings.apple.ready && offers ? (
-                  <ProviderOffers offers={offers.apple} provider="apple" />
+                  <ProviderOffers
+                    appLinksErrorMessage={appLinksErrorMessage}
+                    offers={offers.apple}
+                    provider="apple"
+                  />
                 ) : null}
                 {/* Registered with the provider rather than saved here, so it
                     sits outside the fieldset an operator without edit access

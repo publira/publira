@@ -213,11 +213,18 @@ describe("TenantSignInSettingsForm", () => {
         "Not shown. Enter a Web client ID to show it in the Android app."
       )
     ).toBeDefined();
+    // Whether the iOS app shows it also depends on the client the app was
+    // built with, which the console cannot see.
+    expect(
+      screen.getByText("Shown in an iOS app built with this iOS client ID.")
+    ).toBeDefined();
   });
 
-  it("leaves Apple's Android app out when App links could not be read", async () => {
+  it("says why Apple's Android app has no answer when App links could not be read", async () => {
+    const failure = "Could not load the app links. Please try again later.";
     await renderForm(
       <TenantSignInSettingsForm
+        appLinksErrorMessage={failure}
         canEdit
         initialSettings={savedSettings}
         tenantId="TENANT001"
@@ -226,7 +233,8 @@ describe("TenantSignInSettingsForm", () => {
 
     expect(screen.getByText("Site")).toBeDefined();
     expect(screen.getByText("iOS app")).toBeDefined();
-    expect(screen.queryByText("Android app")).toBeNull();
+    expect(screen.getByText("Android app")).toBeDefined();
+    expect(screen.getByText(failure)).toBeDefined();
   });
 
   it("posts a removal until the operator keeps the key again", async () => {

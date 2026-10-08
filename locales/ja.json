@@ -2682,6 +2682,7 @@
           "web_client_id_description": "Google Cloudコンソールで作成した、種類が「ウェブ アプリケーション」のOAuthクライアントのクライアントIDです。サイトとAndroidアプリがこれでログインします。",
           "ios_client_id": "iOSクライアントID",
           "ios_client_id_description": "iOSアプリがログインに使う、種類が「iOS」のOAuthクライアントのクライアントIDです。テナントにiOSアプリがない場合は空欄にしてください。",
+          "shown_ios": "このiOSクライアントIDでビルドしたiOSアプリに表示されます。",
           "not_offered": {
             "site": "表示されません。サイトに表示するには、ウェブクライアントIDを入力してください。",
             "ios": "表示されません。iOSアプリはAppleと一緒にしかGoogleを表示しないため、iOSクライアントIDを入力し、iOSアプリにAppleでサインインが表示されている必要があります。",

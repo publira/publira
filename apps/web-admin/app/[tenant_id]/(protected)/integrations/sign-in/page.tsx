@@ -88,6 +88,9 @@ const SignInSettingsSection = async () => {
           ? (associationResult.association.android?.applicationId ?? "")
           : undefined
       }
+      appLinksErrorMessage={
+        associationResult.ok ? undefined : associationResult.message
+      }
       callbackUrls={{
         apple: signInCallbackUrl(domain, "apple"),
         appleAndroid: appleAndroidCallbackUrl(domain),

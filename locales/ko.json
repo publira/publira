@@ -2682,6 +2682,7 @@
           "web_client_id_description": "Google Cloud 콘솔에서 만든 유형이 웹 애플리케이션인 OAuth 클라이언트의 클라이언트 ID입니다. 사이트와 Android 앱이 이 값으로 로그인합니다.",
           "ios_client_id": "iOS 클라이언트 ID",
           "ios_client_id_description": "iOS 앱이 로그인에 사용하는, 유형이 iOS인 OAuth 클라이언트의 클라이언트 ID입니다. 테넌트에 iOS 앱이 없다면 비워 두세요.",
+          "shown_ios": "이 iOS 클라이언트 ID로 빌드한 iOS 앱에 표시됩니다.",
           "not_offered": {
             "site": "표시되지 않습니다. 사이트에 표시하려면 웹 클라이언트 ID를 입력하세요.",
             "ios": "표시되지 않습니다. iOS 앱은 Google을 Apple과 함께일 때만 표시하므로, iOS 클라이언트 ID와 iOS 앱에 표시되는 Apple로 로그인이 필요합니다.",

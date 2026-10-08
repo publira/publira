@@ -2682,6 +2682,7 @@
           "web_client_id_description": "Google Cloud控制台中类型为“Web应用”的OAuth客户端的客户端ID。网站和Android应用用它登录。",
           "ios_client_id": "iOS客户端ID",
           "ios_client_id_description": "iOS应用登录所用的、类型为“iOS”的OAuth客户端的客户端ID。如果租户没有iOS应用，请留空。",
+          "shown_ios": "在使用此iOS客户端ID构建的iOS应用中显示。",
           "not_offered": {
             "site": "未显示。要在网站上显示，请填写Web客户端ID。",
             "ios": "未显示。iOS应用只在显示Apple时才一并显示Google，因此需要iOS客户端ID，并且iOS应用中要显示通过Apple登录。",

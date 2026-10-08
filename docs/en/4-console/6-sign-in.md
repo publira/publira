@@ -93,7 +93,7 @@ An **Offered** provider also lists, under **Where readers see its button**, each
 | iOS app | The iOS app named under **App links** | An **iOS client ID**, and Apple shown in the iOS app, since the app offers Google only beside Apple |
 | Android app | A **Services ID**, and the Android app named under **App links** | A **Web client ID** |
 
-A provider can therefore be **Offered** and still say the site does not show it: Apple without a **Services ID**, or Google without a **Web client ID**, is set up for the apps alone. **Shown** for an app means the setup covers it; the app itself also has to be built for it, as the [app's page](../5-mobile-app/5-purchases-and-sign-in.md#sign-in-with-apple-and-google) describes.
+A provider can therefore be **Offered** and still say the site does not show it: Apple without a **Services ID**, or Google without a **Web client ID**, is set up for the apps alone. **Shown** for an app means the setup covers it; the app itself also has to be built for it, as the [app's page](../5-mobile-app/5-purchases-and-sign-in.md#sign-in-with-apple-and-google) describes. Google in the iOS app depends on the build more than the rest, since the app shows it only when built with the same **iOS client ID**, so that row says **Shown in an iOS app built with this iOS client ID** instead.
 
 The site picks up a change moments after it is saved. Open the site's sign-in page in a private window, choose **Continue with Apple** or **Continue with Google**, and sign in. A provider that sends you back to an error page of its own usually has an address that does not match: compare the address it reports with the **Callback URL**, character for character.
 

@@ -2682,6 +2682,7 @@
           "web_client_id_description": "Google Cloud主控台中類型為「網頁應用程式」的OAuth用戶端的用戶端ID。網站與Android應用程式以它登入。",
           "ios_client_id": "iOS用戶端ID",
           "ios_client_id_description": "iOS應用程式登入所用、類型為「iOS」的OAuth用戶端的用戶端ID。若租戶沒有iOS應用程式，請留空。",
+          "shown_ios": "在使用此iOS用戶端ID建置的iOS應用程式中顯示。",
           "not_offered": {
             "site": "未顯示。若要在網站上顯示，請填寫網頁用戶端ID。",
             "ios": "未顯示。iOS應用程式只在顯示Apple時才一併顯示Google，因此需要iOS用戶端ID，且iOS應用程式中要顯示使用Apple登入。",
