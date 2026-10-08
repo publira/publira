@@ -33,6 +33,7 @@ const ticketButton = () =>
   });
 
 const props = {
+  appPayments: { appStore: false, googlePlay: false },
   episodeId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   episodePublicId: "EPISODE_001",
   locale: "en" as const,
@@ -72,6 +73,7 @@ describe("EpisodeAccessGate", () => {
     const appOnly = {
       ...props,
       acceptsPayments: true,
+      appPayments: { appStore: true, googlePlay: true },
       appStoreUrl: "https://apps.apple.com/app/id123",
       googlePlayUrl: "https://play.google.com/store/apps/details?id=test",
       purchaseSurface: "app" as const,
@@ -157,9 +159,68 @@ describe("EpisodeAccessGate", () => {
       ).toBeDefined();
     });
 
-    it("Say the site cannot take purchases when the tenant cannot take payments", () => {
+    it("Point to the app that sells through the stores without a web payment provider", () => {
       render(<EpisodeAccessGate {...appOnly} acceptsPayments={false} />);
 
+      expect(
+        screen.getByText("host.episode.gate.signed_in_app_only_description")
+      ).toBeDefined();
+      expect(
+        screen.getByRole("link", { name: "host.episode.gate.app_store" })
+      ).toBeDefined();
+      expect(
+        screen.getByRole("link", { name: "host.episode.gate.google_play" })
+      ).toBeDefined();
+    });
+
+    it("Leave out a store whose app cannot sell it", () => {
+      render(
+        <EpisodeAccessGate
+          {...appOnly}
+          acceptsPayments={false}
+          appPayments={{ appStore: true, googlePlay: false }}
+        />
+      );
+
+      expect(
+        screen.getByText("host.episode.gate.signed_in_app_only_description")
+      ).toBeDefined();
+      expect(
+        screen.getByRole("link", { name: "host.episode.gate.app_store" })
+      ).toBeDefined();
+      expect(
+        screen.queryByRole("link", { name: "host.episode.gate.google_play" })
+      ).toBeNull();
+    });
+
+    it("Say the site cannot take purchases when neither the site nor the app can sell it", () => {
+      render(
+        <EpisodeAccessGate
+          {...appOnly}
+          acceptsPayments={false}
+          appPayments={{ appStore: false, googlePlay: false }}
+        />
+      );
+
+      expect(
+        screen.getByText("host.episode.gate.signed_in_unpayable_description")
+      ).toBeDefined();
+      expect(
+        screen.queryByRole("link", { name: "host.episode.gate.app_store" })
+      ).toBeNull();
+    });
+
+    it("Offer no checkout while the app cannot sell it, even where the site takes payments", () => {
+      render(
+        <EpisodeAccessGate
+          {...appOnly}
+          appPayments={{ appStore: false, googlePlay: false }}
+        />
+      );
+
+      expect(
+        screen.queryByRole("button", { name: "host.episode.gate.purchase" })
+      ).toBeNull();
       expect(
         screen.getByText("host.episode.gate.signed_in_unpayable_description")
       ).toBeDefined();

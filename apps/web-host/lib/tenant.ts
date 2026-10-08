@@ -11,6 +11,8 @@ import type { TenantTheme } from "@publira/utils/theme-css-variables";
 import { cacheLife } from "next/cache";
 
 import { apiClient } from "./api-client";
+import { appAcceptsPayments, toTenantAppPayments } from "./app-payments";
+import type { TenantAppPayments } from "./app-payments";
 import { applyCacheTag, tenantSiteTag, tenantThemeTag } from "./cache-tags";
 import { getMessagesFor } from "./messages";
 import { publishedPageHrefFromSlug } from "./pages";
@@ -125,6 +127,8 @@ export interface TenantSiteInfo {
   acceptsPayments: boolean;
   /** Which ratings this tenant makes a reader prove an age for. */
   ageVerification: TenantAgeVerification;
+  /** Where the tenant's app can sell an episode right now. */
+  appPayments: TenantAppPayments;
   /**
    * The Services ID the site signs a reader in with Apple through. Absent
    * where the tenant does not offer Apple on the site.
@@ -273,6 +277,7 @@ export const getTenantSiteInfo = async (
     return {
       acceptsPayments: response.acceptsPayments === true,
       ageVerification: toTenantAgeVerification(response.ageVerification),
+      appPayments: toTenantAppPayments(response),
       appStoreUrl: nonEmpty(response.appStoreUrl),
       appleServicesId: nonEmpty(response.appleSignIn?.servicesId),
       commentMode: toTenantCommentMode(response.commentMode),
@@ -388,6 +393,18 @@ export const getTenantDisplayTimeZone = async (
 ): Promise<string> => {
   const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.timeZone ?? DEFAULT_TIME_ZONE;
+};
+
+/**
+ * Whether the tenant's app can sell an episode on either platform right now,
+ * for a page that quotes what an episode sold there alone costs. A tenant that
+ * could not be read sells nowhere.
+ */
+export const getTenantAppAcceptsPayments = async (
+  tenantId: string
+): Promise<boolean> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  return tenant ? appAcceptsPayments(tenant.appPayments) : false;
 };
 
 /**

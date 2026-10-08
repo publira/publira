@@ -138,6 +138,7 @@ const renderPanel = async ({
 } = {}) =>
   render(
     await EpisodeEndPanel({
+      appAcceptsPayments: true,
       episode,
       nextEpisode: neighbor,
       previousEpisode: previousNeighbor,

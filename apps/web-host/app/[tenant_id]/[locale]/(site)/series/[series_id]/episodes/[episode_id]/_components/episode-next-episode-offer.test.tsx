@@ -72,6 +72,7 @@ const nextEpisode: EpisodeNeighborItem = {
 const renderOffer = async (neighbor?: EpisodeNeighborItem) =>
   render(
     await EpisodeNextEpisodeOffer({
+      appAcceptsPayments: true,
       episodePublicId: "EPISODE_002",
       nextEpisode: neighbor,
       series,

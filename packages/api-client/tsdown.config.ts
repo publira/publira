@@ -15,6 +15,7 @@ export default defineConfig({
     "src/public/comment.ts",
     "src/public/notification.ts",
     "src/public/page.ts",
+    "src/public/tenant.ts",
     "src/public/types.ts",
     "src/admin/index.ts",
     "src/admin/client.ts",

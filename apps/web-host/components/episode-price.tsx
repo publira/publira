@@ -24,19 +24,24 @@ type FreeUntilProps =
 /**
  * What an episode costs on this site: free, its price, or — where it is sold
  * in the app alone — that it is sold there, because a price the web cannot
- * take leads nowhere.
+ * take leads nowhere. That holds only while the app can sell it; until then
+ * the episode is quoted like any other nobody can buy right now, as the access
+ * gate treats it.
  *
  * A priced episode inside an open free reading period says until when it is
  * free instead of quoting the price, because the price is what it costs only
  * after that.
  */
 export const EpisodePrice = ({
+  appAcceptsPayments,
   freeUntil,
   locale,
   price,
   purchaseSurface,
   timeZone,
 }: FreeUntilProps & {
+  /** Whether the tenant's app can sell an episode on either platform. */
+  appAcceptsPayments: boolean;
   locale: Locale;
   price: number;
   purchaseSurface: EpisodePurchaseSurface;
@@ -57,7 +62,7 @@ export const EpisodePrice = ({
       </Suspense>
     );
   }
-  if (purchaseSurface === "app") {
+  if (purchaseSurface === "app" && appAcceptsPayments) {
     return (
       <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
         <Message message="host.common.sold_in_app" />

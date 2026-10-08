@@ -54,6 +54,7 @@ import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recor
  * turned, because none of it is a reader's to give or to read until then.
  */
 export const EpisodeViewer = async ({
+  appAcceptsPayments,
   commentMode,
   commentToken,
   episode,
@@ -62,6 +63,8 @@ export const EpisodeViewer = async ({
   previousEpisode,
   series,
 }: {
+  /** Whether the tenant's app can sell an episode on either platform. */
+  appAcceptsPayments: boolean;
   /** The series' resolved comment mode from GetSeriesDetail. */
   commentMode: SeriesCommentMode;
   /** Cursor of the comment page the URL asks for. Empty on the newest page. */
@@ -137,6 +140,7 @@ export const EpisodeViewer = async ({
               </Suspense>
             </SectionErrorBoundary>
             <EpisodeNextEpisodeOffer
+              appAcceptsPayments={appAcceptsPayments}
               episodePublicId={episode.publicId}
               nextEpisode={nextEpisode}
               series={series}

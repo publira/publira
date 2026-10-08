@@ -24,11 +24,14 @@ import { episodePath } from "../_lib/episode-path";
  * disabled but focusable, and says below it that the reader has caught up.
  */
 export const EpisodeNextEpisodeOffer = async ({
+  appAcceptsPayments,
   episodePublicId,
   nextEpisode,
   series,
   tenantId,
 }: {
+  /** Whether the tenant's app can sell an episode on either platform. */
+  appAcceptsPayments: boolean;
   episodePublicId: string;
   /** Absent on the last published episode of the series. */
   nextEpisode?: EpisodeNeighborItem;
@@ -103,6 +106,7 @@ export const EpisodeNextEpisodeOffer = async ({
           </span>
           <span>
             <EpisodePrice
+              appAcceptsPayments={appAcceptsPayments}
               locale={locale}
               price={nextEpisode.isFree ? 0 : nextEpisode.price}
               purchaseSurface={nextEpisode.purchaseSurface}

@@ -9,6 +9,8 @@ import type { ReactNode } from "react";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
+import { appAcceptsPayments } from "#lib/app-payments";
+import type { TenantAppPayments } from "#lib/app-payments";
 import type { EpisodeNeighborItem, EpisodePurchaseSurface } from "#lib/catalog";
 
 import { episodeLoginHref } from "../_lib/access-gate";
@@ -70,11 +72,11 @@ const AppStoreLinks = ({
  * value is one that nothing reading this file can account for.
  */
 const ClosedBecause = ({
-  acceptsPayments,
+  payable,
   signedIn,
   soldInAppOnly,
 }: {
-  acceptsPayments: boolean;
+  payable: boolean;
   signedIn: boolean;
   soldInAppOnly: boolean;
 }) => {
@@ -83,7 +85,7 @@ const ClosedBecause = ({
       <Message message="host.episode.gate.signed_in_app_only_description" />
     );
   }
-  if (signedIn && acceptsPayments) {
+  if (signedIn && payable) {
     return (
       <Message message="host.episode.gate.signed_in_payable_description" />
     );
@@ -96,7 +98,7 @@ const ClosedBecause = ({
   if (soldInAppOnly) {
     return <Message message="host.episode.gate.guest_app_only_description" />;
   }
-  if (acceptsPayments) {
+  if (payable) {
     return <Message message="host.episode.gate.guest_payable_description" />;
   }
   return <Message message="host.episode.gate.guest_unpayable_description" />;
@@ -256,6 +258,7 @@ const WaitFreeSection = ({
  */
 export const EpisodeAccessGate = ({
   acceptsPayments,
+  appPayments,
   appStoreUrl,
   episodeId,
   episodePublicId,
@@ -270,6 +273,7 @@ export const EpisodeAccessGate = ({
   waitFree,
 }: {
   acceptsPayments: boolean;
+  appPayments: TenantAppPayments;
   /** Where the tenant's app is listed; absent where it is not. */
   appStoreUrl?: string;
   episodeId: string;
@@ -287,14 +291,22 @@ export const EpisodeAccessGate = ({
   /** Absent on a series that does not offer wait-for-free. */
   waitFree?: WaitFreeOffer;
 }) => {
-  // The app buys through the same checkout, so a tenant that cannot take
-  // payments has nothing to send the reader to the app for.
-  const soldInAppOnly = acceptsPayments && purchaseSurface === "app";
+  // An app that cannot sell the episode is nowhere to send the reader, so the
+  // gate then says what it says for any episode nobody can buy right now. The
+  // site's checkout never sells one the app alone may sell.
+  const soldInAppOnly =
+    purchaseSurface === "app" && appAcceptsPayments(appPayments);
+  const payable = acceptsPayments && purchaseSurface !== "app";
+  // A listing whose app offers no purchase would send the reader on to nothing.
+  const sellingAppStoreUrl = appPayments.appStore ? appStoreUrl : undefined;
+  const sellingGooglePlayUrl = appPayments.googlePlay
+    ? googlePlayUrl
+    : undefined;
 
   const ticketReady = waitFree?.kind === "ready";
 
   let accessAction: ReactNode = null;
-  if (signedIn && acceptsPayments && !soldInAppOnly) {
+  if (signedIn && payable) {
     accessAction = (
       <form action={startEpisodeCheckoutAction}>
         <LocaleField />
@@ -346,7 +358,7 @@ export const EpisodeAccessGate = ({
         <p className="text-sm text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <ClosedBecause
-              acceptsPayments={acceptsPayments}
+              payable={payable}
               signedIn={signedIn}
               soldInAppOnly={soldInAppOnly}
             />
@@ -368,10 +380,10 @@ export const EpisodeAccessGate = ({
         {/* Signed in, the store is the one way into this episode and carries
           the Shu, unless a ready ticket opens it for nothing. A guest who
           bought it in the app still has to sign in, so signing in keeps it. */}
-        {soldInAppOnly && (appStoreUrl || googlePlayUrl) ? (
+        {soldInAppOnly && (sellingAppStoreUrl || sellingGooglePlayUrl) ? (
           <AppStoreLinks
-            appStoreUrl={appStoreUrl}
-            googlePlayUrl={googlePlayUrl}
+            appStoreUrl={sellingAppStoreUrl}
+            googlePlayUrl={sellingGooglePlayUrl}
             variant={signedIn && !ticketReady ? "secondary" : "outline"}
           />
         ) : null}

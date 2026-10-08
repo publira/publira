@@ -1,5 +1,8 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { AgeVerification } from "@publira/api-client/public/types";
+import {
+  AgeVerification,
+  AppPurchaseRoute,
+} from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -110,6 +113,20 @@ describe("tenant", () => {
     const info = await getTenantSiteInfo("TENANT_001");
 
     expect(info?.acceptsPayments).toBe(false);
+  });
+
+  it("Carry where the app sells through the stores without a web payment provider", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      acceptsAppStorePayments: false,
+      acceptsGooglePlayPayments: true,
+      acceptsPayments: false,
+      appPurchaseRoute: AppPurchaseRoute.STORE,
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.appPayments).toEqual({ appStore: false, googlePlay: true });
   });
 
   it("Carry the store listings of the tenant's app", async () => {

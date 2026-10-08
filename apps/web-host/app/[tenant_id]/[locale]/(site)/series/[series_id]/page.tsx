@@ -62,7 +62,11 @@ import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
 import { getReaderProvenAgeRating } from "#lib/reader-age";
 import { shareText } from "#lib/share-text";
-import { getTenantDisplayTimeZone, getTenantSiteLabel } from "#lib/tenant";
+import {
+  getTenantAppAcceptsPayments,
+  getTenantDisplayTimeZone,
+  getTenantSiteLabel,
+} from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
@@ -297,9 +301,10 @@ const SeriesDetailContent = async (
   // public site must not tell those apart. A failed read is a value as well:
   // a `"use cache"` fill that throws fails the whole request, so neither this
   // page nor any boundary would get to render anything.
-  const [result, timeZone] = await Promise.all([
+  const [result, timeZone, appAcceptsPayments] = await Promise.all([
     getSeriesDetail(tenantId, series_id, locale),
     getTenantDisplayTimeZone(tenantId),
+    getTenantAppAcceptsPayments(tenantId),
   ]);
 
   if (!result.ok) {
@@ -650,6 +655,7 @@ const SeriesDetailContent = async (
                             <span className="flex items-baseline gap-3">
                               <span className="tabular-nums">
                                 <EpisodePrice
+                                  appAcceptsPayments={appAcceptsPayments}
                                   freeUntil={episode.freeUntil}
                                   locale={locale}
                                   price={episode.price}

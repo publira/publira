@@ -6,6 +6,7 @@ import { resolveTenantLogoVariant } from "./tenant-logo";
 const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
   acceptsPayments: false,
   ageVerification: "none",
+  appPayments: { appStore: false, googlePlay: false },
   commentMode: "disabled",
   defaultLocale: "ja",
   domain: "example.test",

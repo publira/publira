@@ -41,11 +41,13 @@ const RELATED_SERIES_COUNT = 3;
  * `EpisodeNeighborDirection` above the title.
  */
 const EpisodeNeighborRow = ({
+  appAcceptsPayments,
   children,
   episode,
   locale,
   series,
 }: {
+  appAcceptsPayments: boolean;
   /** `EpisodeNeighborDirection`. */
   children: ReactNode;
   episode: EpisodeNeighborItem;
@@ -85,6 +87,7 @@ const EpisodeNeighborRow = ({
         </span>
         <span className="mt-1 block text-sm text-muted-foreground tabular-nums sm:mt-0 sm:w-56 sm:shrink-0">
           <EpisodePrice
+            appAcceptsPayments={appAcceptsPayments}
             locale={locale}
             price={episode.isFree ? 0 : episode.price}
             purchaseSurface={episode.purchaseSurface}
@@ -112,6 +115,7 @@ const EpisodeNeighborDirection = ({ children }: { children: ReactNode }) => (
  * series is still the way on from it.
  */
 export const EpisodeEndPanel = async ({
+  appAcceptsPayments,
   episode,
   nextEpisode,
   previousEpisode,
@@ -120,6 +124,8 @@ export const EpisodeEndPanel = async ({
   shareTitle,
   tenantId,
 }: {
+  /** Whether the tenant's app can sell an episode on either platform. */
+  appAcceptsPayments: boolean;
   episode: EpisodeDetail;
   /** Absent on the last published episode of the series. */
   nextEpisode?: EpisodeNeighborItem;
@@ -166,6 +172,7 @@ export const EpisodeEndPanel = async ({
           <ol className="divide-y divide-border border-b border-border">
             {previousEpisode ? (
               <EpisodeNeighborRow
+                appAcceptsPayments={appAcceptsPayments}
                 episode={previousEpisode}
                 locale={locale}
                 series={series}
@@ -179,6 +186,7 @@ export const EpisodeEndPanel = async ({
             ) : null}
             {nextEpisode ? (
               <EpisodeNeighborRow
+                appAcceptsPayments={appAcceptsPayments}
                 episode={nextEpisode}
                 locale={locale}
                 series={series}
