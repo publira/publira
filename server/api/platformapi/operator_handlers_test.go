@@ -4,16 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 )
@@ -51,17 +51,17 @@ func TestListOperatorsFirstPageReportsNextToken(t *testing.T) {
 			ids[2], "PLATUSER003", now.Add(-2*time.Minute),
 		))
 
-	resp, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{Limit: 2}))
+	resp, err := server.ListOperators(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListOperatorsRequest{Limit: 2})
 	if err != nil {
 		t.Fatalf("ListOperators: %v", err)
 	}
-	if len(resp.Msg.Operators) != 2 {
-		t.Fatalf("operator count = %d, want the over-fetched row dropped", len(resp.Msg.Operators))
+	if len(resp.Operators) != 2 {
+		t.Fatalf("operator count = %d, want the over-fetched row dropped", len(resp.Operators))
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -87,20 +87,20 @@ func TestListOperatorsFollowsNextToken(t *testing.T) {
 			sqlmock.NewRows(operatorTestColumns()), resultID, "PLATUSER003", resultAt,
 		))
 
-	resp, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{
+	resp, err := server.ListOperators(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListOperatorsRequest{
 		Limit: 2,
 		Token: pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListOperators: %v", err)
 	}
-	if len(resp.Msg.Operators) != 1 || resp.Msg.Operators[0].PublicId != "PLATUSER003" {
-		t.Fatalf("operators = %+v, want PLATUSER003", resp.Msg.Operators)
+	if len(resp.Operators) != 1 || resp.Operators[0].PublicId != "PLATUSER003" {
+		t.Fatalf("operators = %+v, want PLATUSER003", resp.Operators)
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the previous page")
 	}
-	cursor, err := pagination.Decode(resp.Msg.PreviousToken)
+	cursor, err := pagination.Decode(resp.PreviousToken)
 	if err != nil {
 		t.Fatalf("decode previous_token: %v", err)
 	}
@@ -108,8 +108,8 @@ func TestListOperatorsFollowsNextToken(t *testing.T) {
 	if cursor.Direction != pagination.Backward || !slices.Equal(cursor.Keys, wantKeys) {
 		t.Fatalf("previous_token = %+v, want backward keys %v", cursor, wantKeys)
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -128,21 +128,21 @@ func TestListOperatorsFollowsPreviousTokenBackwards(t *testing.T) {
 			uuid.Must(uuid.NewV7()), "PLATUSER001", now.Add(-time.Minute),
 		))
 
-	resp, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{
+	resp, err := server.ListOperators(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListOperatorsRequest{
 		Limit: 2,
 		Token: pagination.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListOperators: %v", err)
 	}
-	publicIDs := []string{resp.Msg.Operators[0].PublicId, resp.Msg.Operators[1].PublicId}
+	publicIDs := []string{resp.Operators[0].PublicId, resp.Operators[1].PublicId}
 	if !slices.Equal(publicIDs, []string{"PLATUSER001", "PLATUSER002"}) {
 		t.Fatalf("public IDs = %v, want backward page restored to descending order", publicIDs)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertOperatorHandlerExpectations(t, mock)
@@ -169,21 +169,21 @@ func TestListOperatorsEmptyPageReturnsOneRecoveryToken(t *testing.T) {
 				WithArgs(boundaryID, false, now, int32(21)).
 				WillReturnRows(sqlmock.NewRows(operatorTestColumns()))
 
-			resp, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{
+			resp, err := server.ListOperators(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListOperatorsRequest{
 				Token: pagination.EncodeTimeUUID(test.direction, now, boundaryID),
-			}))
+			})
 			if err != nil {
 				t.Fatalf("ListOperators: %v", err)
 			}
 			if test.direction == pagination.Forward {
 				want := pagination.EncodeTimeUUIDRecovery(pagination.Backward, now, boundaryID)
-				if resp.Msg.PreviousToken != want || resp.Msg.NextToken != "" {
-					t.Fatalf("tokens = (%q, %q), want recovery previous token %q", resp.Msg.PreviousToken, resp.Msg.NextToken, want)
+				if resp.PreviousToken != want || resp.NextToken != "" {
+					t.Fatalf("tokens = (%q, %q), want recovery previous token %q", resp.PreviousToken, resp.NextToken, want)
 				}
 			} else {
 				want := pagination.EncodeTimeUUIDRecovery(pagination.Forward, now, boundaryID)
-				if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != want {
-					t.Fatalf("tokens = (%q, %q), want recovery next token %q", resp.Msg.PreviousToken, resp.Msg.NextToken, want)
+				if resp.PreviousToken != "" || resp.NextToken != want {
+					t.Fatalf("tokens = (%q, %q), want recovery next token %q", resp.PreviousToken, resp.NextToken, want)
 				}
 			}
 			assertOperatorHandlerExpectations(t, mock)
@@ -201,14 +201,14 @@ func TestListOperatorsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 		WithArgs(boundaryID, true, now, int32(21)).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()))
 
-	resp, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{
+	resp, err := server.ListOperators(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListOperatorsRequest{
 		Token: pagination.EncodeTimeUUIDRecovery(pagination.Forward, now, boundaryID),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListOperators: %v", err)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty after one recovery", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty after one recovery", resp.PreviousToken, resp.NextToken)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -224,7 +224,7 @@ func TestListOperatorsRejectsInvalidToken(t *testing.T) {
 		server, mock := newOperatorHandlerTestServer(t)
 		now := time.Now().UTC().Truncate(time.Microsecond)
 		expectOperatorAuth(mock, uuid.Must(uuid.NewV7()), rolePlatformOperator, now)
-		_, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{Token: token}))
+		_, err := server.ListOperators(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListOperatorsRequest{Token: token})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("ListOperators code = %v, want invalid_argument", connect.CodeOf(err))
 		}
@@ -243,7 +243,7 @@ func TestListOperatorsHidesDatabaseError(t *testing.T) {
 		WithArgs(uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New("relation platform_users does not exist"))
 
-	_, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{}))
+	_, err := server.ListOperators(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListOperatorsRequest{})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ListOperators code = %v, want internal", connect.CodeOf(err))
 	}
@@ -261,7 +261,7 @@ func TestListOperatorsPreservesContextCanceled(t *testing.T) {
 		WithArgs(uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(context.Canceled)
 
-	_, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{}))
+	_, err := server.ListOperators(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.ListOperatorsRequest{})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("ListOperators error = %v, want context.Canceled", err)
 	}
@@ -279,15 +279,15 @@ func TestGetOperator(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
 			AddRow(targetID, "PLATUSER002", "operator2@example.com", "Operator Two", rolePlatformOperator, "active", now))
 
-	resp, err := server.GetOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.GetOperatorRequest{PublicId: "PLATUSER002"}))
+	resp, err := server.GetOperator(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.GetOperatorRequest{PublicId: "PLATUSER002"})
 	if err != nil {
 		t.Fatalf("GetOperator: %v", err)
 	}
-	if resp.Msg.Operator == nil || resp.Msg.Operator.PublicId != "PLATUSER002" {
-		t.Fatalf("operator = %v, want public_id=PLATUSER002", resp.Msg.Operator)
+	if resp.Operator == nil || resp.Operator.PublicId != "PLATUSER002" {
+		t.Fatalf("operator = %v, want public_id=PLATUSER002", resp.Operator)
 	}
-	if resp.Msg.Operator.Email != "operator2@example.com" {
-		t.Fatalf("email = %q, want operator2@example.com", resp.Msg.Operator.Email)
+	if resp.Operator.Email != "operator2@example.com" {
+		t.Fatalf("email = %q, want operator2@example.com", resp.Operator.Email)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -300,7 +300,7 @@ func TestGetOperatorNotFound(t *testing.T) {
 		WithArgs("MISSINGUSER1").
 		WillReturnError(sql.ErrNoRows)
 
-	_, err := server.GetOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.GetOperatorRequest{PublicId: "MISSINGUSER1"}))
+	_, err := server.GetOperator(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.GetOperatorRequest{PublicId: "MISSINGUSER1"})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetOperator code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -312,7 +312,7 @@ func TestGetOperatorRequiresPublicID(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	expectOperatorAuth(mock, uuid.Must(uuid.NewV7()), rolePlatformOperator, now)
 
-	_, err := server.GetOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.GetOperatorRequest{PublicId: "   "}))
+	_, err := server.GetOperator(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.GetOperatorRequest{PublicId: "   "})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("GetOperator code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -350,16 +350,16 @@ func TestCreateOperatorSuccess(t *testing.T) {
 	mock.ExpectCommit()
 	expectOperatorAuditLogInsert(mock)
 
-	resp, err := server.CreateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.CreateOperatorRequest{
+	resp, err := server.CreateOperator(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.CreateOperatorRequest{
 		Name:  "New Operator",
 		Email: "new-operator@example.com",
 		Role:  "platform_operator",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateOperator: %v", err)
 	}
-	if resp.Msg.Operator == nil || resp.Msg.Operator.PublicId != "PLATNEW001" || resp.Msg.Operator.Id != newOperatorID.String() {
-		t.Fatalf("operator = %v, want id=%s public_id=PLATNEW001", resp.Msg.Operator, newOperatorID)
+	if resp.Operator == nil || resp.Operator.PublicId != "PLATNEW001" || resp.Operator.Id != newOperatorID.String() {
+		t.Fatalf("operator = %v, want id=%s public_id=PLATNEW001", resp.Operator, newOperatorID)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -370,11 +370,11 @@ func TestCreateOperatorRequiresSuperAdmin(t *testing.T) {
 	operatorID := uuid.Must(uuid.NewV7())
 	expectOperatorAuth(mock, operatorID, "platform_operator", now)
 
-	_, err := server.CreateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.CreateOperatorRequest{
+	_, err := server.CreateOperator(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.CreateOperatorRequest{
 		Name:  "New Operator",
 		Email: "new-operator@example.com",
 		Role:  "platform_operator",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("CreateOperator code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -407,15 +407,15 @@ func TestUpdateOperatorRoleSuccess(t *testing.T) {
 	mock.ExpectCommit()
 	expectOperatorAuditLogInsert(mock)
 
-	resp, err := server.UpdateOperatorRole(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.UpdateOperatorRoleRequest{
+	resp, err := server.UpdateOperatorRole(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.UpdateOperatorRoleRequest{
 		OperatorId: targetID.String(),
 		Role:       "platform_auditor",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateOperatorRole: %v", err)
 	}
-	if resp.Msg.Operator == nil || resp.Msg.Operator.Role != "platform_auditor" {
-		t.Fatalf("operator.role = %v, want platform_auditor", resp.Msg.Operator)
+	if resp.Operator == nil || resp.Operator.Role != "platform_auditor" {
+		t.Fatalf("operator.role = %v, want platform_auditor", resp.Operator)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -447,12 +447,12 @@ func TestSuspendOperatorSuccess(t *testing.T) {
 	mock.ExpectCommit()
 	expectOperatorAuditLogInsert(mock)
 
-	resp, err := server.SuspendOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.SuspendOperatorRequest{OperatorId: targetID.String()}))
+	resp, err := server.SuspendOperator(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.SuspendOperatorRequest{OperatorId: targetID.String()})
 	if err != nil {
 		t.Fatalf("SuspendOperator: %v", err)
 	}
-	if resp.Msg.Operator == nil || resp.Msg.Operator.Status != "suspended" {
-		t.Fatalf("operator.status = %v, want suspended", resp.Msg.Operator)
+	if resp.Operator == nil || resp.Operator.Status != "suspended" {
+		t.Fatalf("operator.status = %v, want suspended", resp.Operator)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -471,7 +471,7 @@ func TestUnsuspendOperatorRejectsInvalidState(t *testing.T) {
 			AddRow(targetID, "PLATUSER004", "operator4@example.com", "Operator Four", "platform_operator", "active", now))
 	mock.ExpectRollback()
 
-	_, err := server.UnsuspendOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.UnsuspendOperatorRequest{OperatorId: targetID.String()}))
+	_, err := server.UnsuspendOperator(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.UnsuspendOperatorRequest{OperatorId: targetID.String()})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UnsuspendOperator code = %v, want failed_precondition", connect.CodeOf(err))
 	}
@@ -505,12 +505,12 @@ func TestDeactivateOperatorSuccess(t *testing.T) {
 	mock.ExpectCommit()
 	expectOperatorAuditLogInsert(mock)
 
-	resp, err := server.DeactivateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeactivateOperatorRequest{OperatorId: targetID.String()}))
+	resp, err := server.DeactivateOperator(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.DeactivateOperatorRequest{OperatorId: targetID.String()})
 	if err != nil {
 		t.Fatalf("DeactivateOperator: %v", err)
 	}
-	if resp.Msg.Operator == nil || resp.Msg.Operator.Status != "inactive" {
-		t.Fatalf("operator.status = %v, want inactive", resp.Msg.Operator)
+	if resp.Operator == nil || resp.Operator.Status != "inactive" {
+		t.Fatalf("operator.status = %v, want inactive", resp.Operator)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -521,7 +521,7 @@ func TestDeactivateOperatorRequiresSuperAdmin(t *testing.T) {
 	operatorID := uuid.Must(uuid.NewV7())
 	expectOperatorAuth(mock, operatorID, "platform_operator", now)
 
-	_, err := server.DeactivateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeactivateOperatorRequest{OperatorId: uuid.Must(uuid.NewV7()).String()}))
+	_, err := server.DeactivateOperator(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.DeactivateOperatorRequest{OperatorId: uuid.Must(uuid.NewV7()).String()})
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("DeactivateOperator code = %v, want permission_denied", connect.CodeOf(err))
 	}
@@ -541,7 +541,7 @@ func TestDeactivateOperatorSelfDeactivationForbidden(t *testing.T) {
 			AddRow(adminID, "PLATUSER001", "platform@example.com", "Platform User", "platform_super_admin", "active", now))
 	mock.ExpectRollback()
 
-	_, err := server.DeactivateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeactivateOperatorRequest{OperatorId: adminID.String()}))
+	_, err := server.DeactivateOperator(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.DeactivateOperatorRequest{OperatorId: adminID.String()})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeactivateOperator code = %v, want failed_precondition", connect.CodeOf(err))
 	}
@@ -562,7 +562,7 @@ func TestDeactivateOperatorAlreadyInactiveRejected(t *testing.T) {
 			AddRow(targetID, "PLATUSER006", "operator6@example.com", "Operator Six", "platform_operator", "inactive", now))
 	mock.ExpectRollback()
 
-	_, err := server.DeactivateOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.DeactivateOperatorRequest{OperatorId: targetID.String()}))
+	_, err := server.DeactivateOperator(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.DeactivateOperatorRequest{OperatorId: targetID.String()})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeactivateOperator code = %v, want failed_precondition", connect.CodeOf(err))
 	}
@@ -575,7 +575,7 @@ func TestSuspendOperatorRejectsMalformedOperatorID(t *testing.T) {
 	adminID := uuid.Must(uuid.NewV7())
 	expectOperatorAuth(mock, adminID, "platform_super_admin", now)
 
-	_, err := server.SuspendOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.SuspendOperatorRequest{OperatorId: "PLATUSER003"}))
+	_, err := server.SuspendOperator(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.SuspendOperatorRequest{OperatorId: "PLATUSER003"})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("SuspendOperator code = %v, want invalid_argument", connect.CodeOf(err))
 	}

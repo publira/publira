@@ -11,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -52,7 +53,7 @@ func newInboundHarness(t *testing.T) *inboundHarness {
 		pg:        pg,
 		encryptor: encryptor,
 		server:    server,
-		client:    publirav1connect.NewContactServiceClient(ts.Client(), ts.URL),
+		client:    publirav1connect.NewContactServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 	}
 }
 
@@ -115,12 +116,12 @@ func (h *inboundHarness) deliver(t *testing.T, tenant testutil.Tenant, providerI
 	for name := range headers {
 		forwarded[name] = headers.Get(name)
 	}
-	_, err := h.client.ProcessInboundEmailWebhook(context.Background(), connect.NewRequest(&publirav1.ProcessInboundEmailWebhookRequest{
+	_, err := h.client.ProcessInboundEmailWebhook(context.Background(), &publirav1.ProcessInboundEmailWebhookRequest{
 		Tenant:   tenantContext(tenant),
 		Provider: providerID,
 		Payload:  payload,
 		Headers:  forwarded,
-	}))
+	})
 	return err
 }
 

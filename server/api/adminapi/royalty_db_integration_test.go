@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -22,7 +23,7 @@ const royaltyZoneName = "Asia/Seoul"
 var royaltyZone = time.FixedZone(royaltyZoneName, 9*60*60)
 
 func (e *adminDBEnv) royaltyClient() publiraadminv1connect.AdminRoyaltyServiceClient {
-	return publiraadminv1connect.NewAdminRoyaltyServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminRoyaltyServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 // royaltyFixture is one tenant with a priced episode and a reader to buy it.
@@ -86,38 +87,38 @@ func (e *adminDBEnv) seedSale(t *testing.T, f royaltyFixture, episodeID uuid.UUI
 func (e *adminDBEnv) previewRoyalties(t *testing.T, tenant adminDBTenant, period string) *publiraadminv1.PreviewRoyaltyStatementResponse {
 	t.Helper()
 
-	res, err := e.royaltyClient().PreviewRoyaltyStatement(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.PreviewRoyaltyStatementRequest{
+	res, err := e.royaltyClient().PreviewRoyaltyStatement(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.PreviewRoyaltyStatementRequest{
 		Tenant: tenant.tenantContext(),
 		Period: period,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("PreviewRoyaltyStatement %s: %v", period, err)
 	}
-	return res.Msg
+	return res
 }
 
 func (e *adminDBEnv) closeRoyalties(t *testing.T, tenant adminDBTenant, period string) *publiraadminv1.RoyaltyStatement {
 	t.Helper()
 
-	res, err := e.royaltyClient().CloseRoyaltyStatement(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CloseRoyaltyStatementRequest{
+	res, err := e.royaltyClient().CloseRoyaltyStatement(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CloseRoyaltyStatementRequest{
 		Tenant: tenant.tenantContext(),
 		Period: period,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CloseRoyaltyStatement %s: %v", period, err)
 	}
-	return res.Msg.Statement
+	return res.Statement
 }
 
 func (e *adminDBEnv) getRoyalties(t *testing.T, tenant adminDBTenant, req *publiraadminv1.GetRoyaltyStatementRequest) *publiraadminv1.GetRoyaltyStatementResponse {
 	t.Helper()
 
 	req.Tenant = tenant.tenantContext()
-	res, err := e.royaltyClient().GetRoyaltyStatement(context.Background(), newAdminDBRequest(tenant, req))
+	res, err := e.royaltyClient().GetRoyaltyStatement(testutil.WithBearer(context.Background(), tenant.token()), req)
 	if err != nil {
 		t.Fatalf("GetRoyaltyStatement %s: %v", req.Period, err)
 	}
-	return res.Msg
+	return res
 }
 
 // royaltyLineFigures is what a line says about money, without the names.
@@ -235,17 +236,17 @@ func TestDBAdminCloseRoyaltyStatementClosesAMonthOnce(t *testing.T) {
 	env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inRoyaltyZone(2026, time.July, 4, 9, 0, 0)})
 
 	client := env.royaltyClient()
-	_, err := client.CloseRoyaltyStatement(context.Background(), newAdminDBRequest(f.admin, &publiraadminv1.CloseRoyaltyStatementRequest{
+	_, err := client.CloseRoyaltyStatement(testutil.WithBearer(context.Background(), f.admin.token()), &publiraadminv1.CloseRoyaltyStatementRequest{
 		Tenant: f.admin.tenantContext(),
 		Period: "2026-07",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("second close error = %v, want already_exists", err)
 	}
-	_, err = client.PreviewRoyaltyStatement(context.Background(), newAdminDBRequest(f.admin, &publiraadminv1.PreviewRoyaltyStatementRequest{
+	_, err = client.PreviewRoyaltyStatement(testutil.WithBearer(context.Background(), f.admin.token()), &publiraadminv1.PreviewRoyaltyStatementRequest{
 		Tenant: f.admin.tenantContext(),
 		Period: "2026-07",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("preview of a closed month error = %v, want failed_precondition", err)
 	}
@@ -387,27 +388,27 @@ func TestDBAdminRoyaltyStatementRefusesMonthsNotOverAndOtherCallers(t *testing.T
 	current := now.Format("2006-01")
 	next := now.AddDate(0, 0, -now.Day()+1).AddDate(0, 1, 0).Format("2006-01")
 
-	_, err := client.CloseRoyaltyStatement(ctx, newAdminDBRequest(f.admin, &publiraadminv1.CloseRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: current}))
+	_, err := client.CloseRoyaltyStatement(testutil.WithBearer(ctx, f.admin.token()), &publiraadminv1.CloseRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: current})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("close of the current month error = %v, want failed_precondition", err)
 	}
 	env.previewRoyalties(t, f.admin, current)
-	_, err = client.PreviewRoyaltyStatement(ctx, newAdminDBRequest(f.admin, &publiraadminv1.PreviewRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: next}))
+	_, err = client.PreviewRoyaltyStatement(testutil.WithBearer(ctx, f.admin.token()), &publiraadminv1.PreviewRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: next})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("preview of next month error = %v, want failed_precondition", err)
 	}
-	_, err = client.CloseRoyaltyStatement(ctx, newAdminDBRequest(f.admin, &publiraadminv1.CloseRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: "2026-7"}))
+	_, err = client.CloseRoyaltyStatement(testutil.WithBearer(ctx, f.admin.token()), &publiraadminv1.CloseRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: "2026-7"})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("close of a malformed period error = %v, want invalid_argument", err)
 	}
 
-	_, err = client.CloseRoyaltyStatement(ctx, newAdminDBRequest(f.admin.as(editor), &publiraadminv1.CloseRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: "2026-07"}))
+	_, err = client.CloseRoyaltyStatement(testutil.WithBearer(ctx, f.admin.as(editor).token()), &publiraadminv1.CloseRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: "2026-07"})
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("close by an editor error = %v, want permission_denied", err)
 	}
 
 	env.closeRoyalties(t, f.admin, "2026-07")
-	_, err = client.GetRoyaltyStatement(ctx, newAdminDBRequest(other, &publiraadminv1.GetRoyaltyStatementRequest{Tenant: other.tenantContext(), Period: "2026-07"}))
+	_, err = client.GetRoyaltyStatement(testutil.WithBearer(ctx, other.token()), &publiraadminv1.GetRoyaltyStatementRequest{Tenant: other.tenantContext(), Period: "2026-07"})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("another tenant's read error = %v, want not_found", err)
 	}
@@ -432,11 +433,11 @@ func TestDBAdminRoyaltyStatementsPage(t *testing.T) {
 
 	list := func(token string) *publiraadminv1.ListRoyaltyStatementsResponse {
 		t.Helper()
-		res, err := client.ListRoyaltyStatements(ctx, newAdminDBRequest(f.admin, &publiraadminv1.ListRoyaltyStatementsRequest{Tenant: f.admin.tenantContext(), Limit: 2, Token: token}))
+		res, err := client.ListRoyaltyStatements(testutil.WithBearer(ctx, f.admin.token()), &publiraadminv1.ListRoyaltyStatementsRequest{Tenant: f.admin.tenantContext(), Limit: 2, Token: token})
 		if err != nil {
 			t.Fatalf("ListRoyaltyStatements: %v", err)
 		}
-		return res.Msg
+		return res
 	}
 	periods := func(statements []*publiraadminv1.RoyaltyStatement) []string {
 		out := make([]string, 0, len(statements))
@@ -472,7 +473,7 @@ func TestDBAdminRoyaltyStatementsPage(t *testing.T) {
 	}
 
 	// A line token names the statement it was issued for.
-	_, err := client.GetRoyaltyStatement(ctx, newAdminDBRequest(f.admin, &publiraadminv1.GetRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: "2026-06", Token: page.NextToken}))
+	_, err := client.GetRoyaltyStatement(testutil.WithBearer(ctx, f.admin.token()), &publiraadminv1.GetRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: "2026-06", Token: page.NextToken})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("line token of another period error = %v, want invalid_argument", err)
 	}
@@ -525,14 +526,14 @@ func TestDBRoyaltyStatementCannotBeRewrittenButGoesWithItsTenant(t *testing.T) {
 func (e *adminDBEnv) exportRoyalties(t *testing.T, tenant adminDBTenant, period string) string {
 	t.Helper()
 
-	res, err := e.royaltyClient().ExportRoyaltyStatement(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ExportRoyaltyStatementRequest{
+	res, err := e.royaltyClient().ExportRoyaltyStatement(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ExportRoyaltyStatementRequest{
 		Tenant: tenant.tenantContext(),
 		Period: period,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ExportRoyaltyStatement %s: %v", period, err)
 	}
-	return string(res.Msg.Csv)
+	return string(res.Csv)
 }
 
 func TestDBAdminExportRoyaltyStatementWritesTheClosedLines(t *testing.T) {
@@ -601,7 +602,7 @@ func TestDBAdminExportRoyaltyStatementRefusesOpenMonthsAndOtherCallers(t *testin
 	client := env.royaltyClient()
 	ctx := context.Background()
 	export := func(tenant adminDBTenant, period string) error {
-		_, err := client.ExportRoyaltyStatement(ctx, newAdminDBRequest(tenant, &publiraadminv1.ExportRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: period}))
+		_, err := client.ExportRoyaltyStatement(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.ExportRoyaltyStatementRequest{Tenant: f.admin.tenantContext(), Period: period})
 		return err
 	}
 

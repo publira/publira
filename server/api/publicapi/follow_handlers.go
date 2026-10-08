@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -43,7 +43,7 @@ func (s *apiServer) resolveFollowTarget(
 	target *publirav1.FollowTarget,
 ) (resolvedFollowTarget, error) {
 	if target == nil || strings.TrimSpace(target.Id) == "" {
-		return resolvedFollowTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("target is required"))
+		return resolvedFollowTarget{}, connect.NewError(connect.CodeInvalidArgument, "target is required")
 	}
 	targetID, err := requestRecordID("target.id", target.Id)
 	if err != nil {
@@ -62,7 +62,7 @@ func (s *apiServer) resolveFollowTarget(
 			return resolvedFollowTarget{typeName: followTargetEpisode, id: row.ID}, nil
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			return resolvedFollowTarget{}, connect.NewError(connect.CodeNotFound, errors.New("target not found"))
+			return resolvedFollowTarget{}, connect.NewError(connect.CodeNotFound, "target not found")
 		}
 		return resolvedFollowTarget{}, s.internalDBError(ctx, "failed to get follow episode target", err, "tenant_id", tenantID.String())
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_CREATOR:
@@ -75,7 +75,7 @@ func (s *apiServer) resolveFollowTarget(
 			return resolvedFollowTarget{typeName: followTargetCreator, id: row.ID}, nil
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			return resolvedFollowTarget{}, connect.NewError(connect.CodeNotFound, errors.New("target not found"))
+			return resolvedFollowTarget{}, connect.NewError(connect.CodeNotFound, "target not found")
 		}
 		return resolvedFollowTarget{}, s.internalDBError(ctx, "failed to get follow creator target", err, "tenant_id", tenantID.String())
 	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_SERIES:
@@ -88,11 +88,11 @@ func (s *apiServer) resolveFollowTarget(
 			return resolvedFollowTarget{typeName: followTargetSeries, id: row}, nil
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			return resolvedFollowTarget{}, connect.NewError(connect.CodeNotFound, errors.New("target not found"))
+			return resolvedFollowTarget{}, connect.NewError(connect.CodeNotFound, "target not found")
 		}
 		return resolvedFollowTarget{}, s.internalDBError(ctx, "failed to get follow series target", err, "tenant_id", tenantID.String())
 	default:
-		return resolvedFollowTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("target type is invalid"))
+		return resolvedFollowTarget{}, connect.NewError(connect.CodeInvalidArgument, "target type is invalid")
 	}
 }
 
@@ -144,20 +144,20 @@ func (s *apiServer) followStatus(
 
 func (s *apiServer) GetMyFollowStatus(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetMyFollowStatusRequest],
-) (*connect.Response[publirav1.GetMyFollowStatusResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.GetMyFollowStatusRequest,
+) (*publirav1.GetMyFollowStatusResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.scopeFollowUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	target, err := s.resolveFollowTarget(ctx, tenant.ID, surface, req.Msg.Target)
+	target, err := s.resolveFollowTarget(ctx, tenant.ID, surface, req.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -165,25 +165,25 @@ func (s *apiServer) GetMyFollowStatus(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get follow status", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	return noStorePrivateResponse(&publirav1.GetMyFollowStatusResponse{IsFollowing: following}), nil
+	return noStorePrivateResponse(ctx, &publirav1.GetMyFollowStatusResponse{IsFollowing: following}), nil
 }
 
 func (s *apiServer) Follow(
 	ctx context.Context,
-	req *connect.Request[publirav1.FollowRequest],
-) (*connect.Response[publirav1.FollowResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.FollowRequest,
+) (*publirav1.FollowResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.scopeFollowUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	target, err := s.resolveFollowTarget(ctx, tenant.ID, surface, req.Msg.Target)
+	target, err := s.resolveFollowTarget(ctx, tenant.ID, surface, req.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -202,25 +202,25 @@ func (s *apiServer) Follow(
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to follow target", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	return noStorePrivateResponse(&publirav1.FollowResponse{IsFollowing: true}), nil
+	return noStorePrivateResponse(ctx, &publirav1.FollowResponse{IsFollowing: true}), nil
 }
 
 func (s *apiServer) Unfollow(
 	ctx context.Context,
-	req *connect.Request[publirav1.UnfollowRequest],
-) (*connect.Response[publirav1.UnfollowResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.UnfollowRequest,
+) (*publirav1.UnfollowResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.scopeFollowUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	target, err := s.resolveFollowTarget(ctx, tenant.ID, surface, req.Msg.Target)
+	target, err := s.resolveFollowTarget(ctx, tenant.ID, surface, req.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +237,7 @@ func (s *apiServer) Unfollow(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to unfollow target", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	return noStorePrivateResponse(&publirav1.UnfollowResponse{IsFollowing: false}), nil
+	return noStorePrivateResponse(ctx, &publirav1.UnfollowResponse{IsFollowing: false}), nil
 }
 
 type followCursorKeys struct {
@@ -248,7 +248,7 @@ type followCursorKeys struct {
 }
 
 func decodeFollowCursorKeys(cursor pagination.Cursor) (followCursorKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	invalid := connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	if len(cursor.Keys) != 3 && len(cursor.Keys) != 4 {
 		return followCursorKeys{}, invalid
 	}
@@ -428,23 +428,23 @@ func encodeFollowRecoveryToken(direction pagination.Direction, keys followCursor
 
 func (s *apiServer) ListMyFollows(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListMyFollowsRequest],
-) (*connect.Response[publirav1.ListMyFollowsResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.ListMyFollowsRequest,
+) (*publirav1.ListMyFollowsResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.scopeFollowUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultFollowPageSize, maxFollowPageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultFollowPageSize, maxFollowPageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys followCursorKeys
 	if !cursor.IsZero() {
@@ -507,5 +507,5 @@ func (s *apiServer) ListMyFollows(
 		res.NextToken = encodeFollowRecoveryToken(pagination.Forward, keys)
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
-	return noStorePrivateResponse(res), nil
+	return noStorePrivateResponse(ctx, res), nil
 }

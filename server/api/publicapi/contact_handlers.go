@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -18,6 +18,7 @@ import (
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -143,13 +144,13 @@ func (s *apiServer) storeContactMessage(
 // account from one about the site.
 func (s *apiServer) SubmitContactMessage(
 	ctx context.Context,
-	req *connect.Request[publirav1.SubmitContactMessageRequest],
-) (*connect.Response[publirav1.SubmitContactMessageResponse], error) {
-	tenant, reader, err := s.optionalReaderFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.SubmitContactMessageRequest,
+) (*publirav1.SubmitContactMessageResponse, error) {
+	tenant, reader, err := s.optionalReaderFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	message, err := validateContactMessage(req.Msg)
+	message, err := validateContactMessage(req)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +159,7 @@ func (s *apiServer) SubmitContactMessage(
 	// one a sender signed in to nothing spends. The account's goes on top of it
 	// rather than instead of it, so signing up does not widen what one client may
 	// send.
-	if err := s.chargeClientAction(ctx, actionSubmitContactMessageFromClient, tenant.ID, req); err != nil {
+	if err := s.chargeClientAction(ctx, actionSubmitContactMessageFromClient, tenant.ID); err != nil {
 		return nil, err
 	}
 	if reader.Valid {
@@ -177,5 +178,5 @@ func (s *apiServer) SubmitContactMessage(
 		return nil, s.internalDBError(ctx, "failed to store the contact message", err, "tenant_id", tenant.ID.String())
 	}
 
-	return noStorePrivateResponse(&publirav1.SubmitContactMessageResponse{}), nil
+	return noStorePrivateResponse(ctx, &publirav1.SubmitContactMessageResponse{}), nil
 }

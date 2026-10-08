@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+	"connectrpc.com/connect/v2/connectproto"
 	"github.com/google/uuid"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
@@ -23,7 +25,7 @@ import (
 )
 
 func (e *adminDBEnv) tenantMemberClient() publiraadminv1connect.AdminTenantMemberServiceClient {
-	return publiraadminv1connect.NewAdminTenantMemberServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminTenantMemberServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 // seedMember adds a console member to the tenant in the given role.
@@ -58,7 +60,7 @@ func requireLastTenantAdminRefusal(t *testing.T, err error) {
 		t.Fatalf("error is not a connect error: %v", err)
 	}
 	for _, detail := range connectErr.Details() {
-		value, valueErr := detail.Value()
+		value, valueErr := connectproto.UnmarshalErrorDetail(detail)
 		if valueErr != nil {
 			continue
 		}
@@ -83,35 +85,35 @@ func TestDBTenantMemberRPCsRefuseSessionsThatAreNotTenantAdmin(t *testing.T) {
 		as := tenant.as(seat)
 		calls := map[string]func() error{
 			"ListTenantMembers": func() error {
-				_, err := client.ListTenantMembers(ctx, newAdminDBRequest(as, &publiraadminv1.ListTenantMembersRequest{Tenant: as.tenantContext()}))
+				_, err := client.ListTenantMembers(testutil.WithBearer(ctx, as.token()), &publiraadminv1.ListTenantMembersRequest{Tenant: as.tenantContext()})
 				return err
 			},
 			"AddTenantMember": func() error {
-				_, err := client.AddTenantMember(ctx, newAdminDBRequest(as, &publiraadminv1.AddTenantMemberRequest{Tenant: as.tenantContext(), Email: "reader@tenant-a.example.com", Role: auth.RoleTenantEditor}))
+				_, err := client.AddTenantMember(testutil.WithBearer(ctx, as.token()), &publiraadminv1.AddTenantMemberRequest{Tenant: as.tenantContext(), Email: "reader@tenant-a.example.com", Role: auth.RoleTenantEditor})
 				return err
 			},
 			"UpdateTenantMemberRole": func() error {
-				_, err := client.UpdateTenantMemberRole(ctx, newAdminDBRequest(as, &publiraadminv1.UpdateTenantMemberRoleRequest{Tenant: as.tenantContext(), UserId: seat.ID.String(), Role: auth.RoleTenantAdmin}))
+				_, err := client.UpdateTenantMemberRole(testutil.WithBearer(ctx, as.token()), &publiraadminv1.UpdateTenantMemberRoleRequest{Tenant: as.tenantContext(), UserId: seat.ID.String(), Role: auth.RoleTenantAdmin})
 				return err
 			},
 			"RemoveTenantMember": func() error {
-				_, err := client.RemoveTenantMember(ctx, newAdminDBRequest(as, &publiraadminv1.RemoveTenantMemberRequest{Tenant: as.tenantContext(), UserId: tenant.User.ID.String()}))
+				_, err := client.RemoveTenantMember(testutil.WithBearer(ctx, as.token()), &publiraadminv1.RemoveTenantMemberRequest{Tenant: as.tenantContext(), UserId: tenant.User.ID.String()})
 				return err
 			},
 			"ListTenantAdminInvitations": func() error {
-				_, err := client.ListTenantAdminInvitations(ctx, newAdminDBRequest(as, &publiraadminv1.ListTenantAdminInvitationsRequest{Tenant: as.tenantContext()}))
+				_, err := client.ListTenantAdminInvitations(testutil.WithBearer(ctx, as.token()), &publiraadminv1.ListTenantAdminInvitationsRequest{Tenant: as.tenantContext()})
 				return err
 			},
 			"CreateTenantAdminInvitation": func() error {
-				_, err := client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(as, &publiraadminv1.CreateTenantAdminInvitationRequest{Tenant: as.tenantContext(), Email: "new@tenant-a.example.com"}))
+				_, err := client.CreateTenantAdminInvitation(testutil.WithBearer(ctx, as.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{Tenant: as.tenantContext(), Email: "new@tenant-a.example.com"})
 				return err
 			},
 			"ResendTenantAdminInvitation": func() error {
-				_, err := client.ResendTenantAdminInvitation(ctx, newAdminDBRequest(as, &publiraadminv1.ResendTenantAdminInvitationRequest{Tenant: as.tenantContext(), InvitationId: "0190c0de-0000-7000-8000-000000000000"}))
+				_, err := client.ResendTenantAdminInvitation(testutil.WithBearer(ctx, as.token()), &publiraadminv1.ResendTenantAdminInvitationRequest{Tenant: as.tenantContext(), InvitationId: "0190c0de-0000-7000-8000-000000000000"})
 				return err
 			},
 			"CancelTenantAdminInvitation": func() error {
-				_, err := client.CancelTenantAdminInvitation(ctx, newAdminDBRequest(as, &publiraadminv1.CancelTenantAdminInvitationRequest{Tenant: as.tenantContext(), InvitationId: "0190c0de-0000-7000-8000-000000000000"}))
+				_, err := client.CancelTenantAdminInvitation(testutil.WithBearer(ctx, as.token()), &publiraadminv1.CancelTenantAdminInvitationRequest{Tenant: as.tenantContext(), InvitationId: "0190c0de-0000-7000-8000-000000000000"})
 				return err
 			},
 		}
@@ -139,51 +141,51 @@ func TestDBTenantMemberRPCsStayInsideTheCallingTenant(t *testing.T) {
 	client := env.tenantMemberClient()
 	ctx := context.Background()
 
-	invited, err := client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(second, &publiraadminv1.CreateTenantAdminInvitationRequest{
+	invited, err := client.CreateTenantAdminInvitation(testutil.WithBearer(ctx, second.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 		Tenant: second.tenantContext(),
 		Email:  "invitee@tenant-b.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation for tenant B: %v", err)
 	}
-	secondInvitationID := invited.Msg.Invitation.Id
+	secondInvitationID := invited.Invitation.Id
 
-	members, err := client.ListTenantMembers(ctx, newAdminDBRequest(first, &publiraadminv1.ListTenantMembersRequest{Tenant: first.tenantContext()}))
+	members, err := client.ListTenantMembers(testutil.WithBearer(ctx, first.token()), &publiraadminv1.ListTenantMembersRequest{Tenant: first.tenantContext()})
 	if err != nil {
 		t.Fatalf("ListTenantMembers: %v", err)
 	}
-	if len(members.Msg.Members) != 1 || members.Msg.Members[0].UserPublicId != first.User.PublicID {
-		t.Fatalf("tenant A members = %+v, want only its own admin", members.Msg.Members)
+	if len(members.Members) != 1 || members.Members[0].UserPublicId != first.User.PublicID {
+		t.Fatalf("tenant A members = %+v, want only its own admin", members.Members)
 	}
-	invitations, err := client.ListTenantAdminInvitations(ctx, newAdminDBRequest(first, &publiraadminv1.ListTenantAdminInvitationsRequest{Tenant: first.tenantContext()}))
+	invitations, err := client.ListTenantAdminInvitations(testutil.WithBearer(ctx, first.token()), &publiraadminv1.ListTenantAdminInvitationsRequest{Tenant: first.tenantContext()})
 	if err != nil {
 		t.Fatalf("ListTenantAdminInvitations: %v", err)
 	}
-	if len(invitations.Msg.Invitations) != 0 {
-		t.Fatalf("tenant A invitations = %+v, want none", invitations.Msg.Invitations)
+	if len(invitations.Invitations) != 0 {
+		t.Fatalf("tenant A invitations = %+v, want none", invitations.Invitations)
 	}
 
-	_, err = client.UpdateTenantMemberRole(ctx, newAdminDBRequest(first, &publiraadminv1.UpdateTenantMemberRoleRequest{
+	_, err = client.UpdateTenantMemberRole(testutil.WithBearer(ctx, first.token()), &publiraadminv1.UpdateTenantMemberRoleRequest{
 		Tenant: first.tenantContext(), UserId: secondEditor.ID.String(), Role: auth.RoleTenantAdmin,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("UpdateTenantMemberRole on tenant B's member: code = %v, want not_found", connect.CodeOf(err))
 	}
-	_, err = client.RemoveTenantMember(ctx, newAdminDBRequest(first, &publiraadminv1.RemoveTenantMemberRequest{
+	_, err = client.RemoveTenantMember(testutil.WithBearer(ctx, first.token()), &publiraadminv1.RemoveTenantMemberRequest{
 		Tenant: first.tenantContext(), UserId: secondEditor.ID.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("RemoveTenantMember on tenant B's member: code = %v, want not_found", connect.CodeOf(err))
 	}
-	_, err = client.ResendTenantAdminInvitation(ctx, newAdminDBRequest(first, &publiraadminv1.ResendTenantAdminInvitationRequest{
+	_, err = client.ResendTenantAdminInvitation(testutil.WithBearer(ctx, first.token()), &publiraadminv1.ResendTenantAdminInvitationRequest{
 		Tenant: first.tenantContext(), InvitationId: secondInvitationID,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ResendTenantAdminInvitation on tenant B's invitation: code = %v, want not_found", connect.CodeOf(err))
 	}
-	_, err = client.CancelTenantAdminInvitation(ctx, newAdminDBRequest(first, &publiraadminv1.CancelTenantAdminInvitationRequest{
+	_, err = client.CancelTenantAdminInvitation(testutil.WithBearer(ctx, first.token()), &publiraadminv1.CancelTenantAdminInvitationRequest{
 		Tenant: first.tenantContext(), InvitationId: secondInvitationID,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("CancelTenantAdminInvitation on tenant B's invitation: code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -202,13 +204,13 @@ func TestDBTenantMemberRPCsKeepAnActiveTenantAdmin(t *testing.T) {
 	client := env.tenantMemberClient()
 	ctx := context.Background()
 
-	_, err := client.UpdateTenantMemberRole(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantMemberRoleRequest{
+	_, err := client.UpdateTenantMemberRole(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateTenantMemberRoleRequest{
 		Tenant: tenant.tenantContext(), UserId: tenant.User.ID.String(), Role: auth.RoleTenantEditor,
-	}))
+	})
 	requireLastTenantAdminRefusal(t, err)
-	_, err = client.RemoveTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
+	_, err = client.RemoveTenantMember(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.RemoveTenantMemberRequest{
 		Tenant: tenant.tenantContext(), UserId: tenant.User.ID.String(),
-	}))
+	})
 	requireLastTenantAdminRefusal(t, err)
 
 	// A suspended administrator cannot sign in, so it does not keep the tenant
@@ -217,35 +219,35 @@ func TestDBTenantMemberRPCsKeepAnActiveTenantAdmin(t *testing.T) {
 	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE users SET status = 'suspended' WHERE id = $1", suspended.ID); err != nil {
 		t.Fatalf("suspend second admin: %v", err)
 	}
-	_, err = client.RemoveTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
+	_, err = client.RemoveTenantMember(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.RemoveTenantMemberRequest{
 		Tenant: tenant.tenantContext(), UserId: tenant.User.ID.String(),
-	}))
+	})
 	requireLastTenantAdminRefusal(t, err)
 
 	second := env.seedMember(t, tenant, "TASECOND", "second@tenant-a.example.com", auth.RoleTenantAdmin)
-	updated, err := client.UpdateTenantMemberRole(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantMemberRoleRequest{
+	updated, err := client.UpdateTenantMemberRole(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateTenantMemberRoleRequest{
 		Tenant: tenant.tenantContext(), UserId: second.ID.String(), Role: auth.RoleTenantAuditor,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("demote the second admin: %v", err)
 	}
-	if updated.Msg.Member.Role != auth.RoleTenantAuditor {
-		t.Fatalf("member.role = %q, want %q", updated.Msg.Member.Role, auth.RoleTenantAuditor)
+	if updated.Member.Role != auth.RoleTenantAuditor {
+		t.Fatalf("member.role = %q, want %q", updated.Member.Role, auth.RoleTenantAuditor)
 	}
-	_, err = client.RemoveTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
+	_, err = client.RemoveTenantMember(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.RemoveTenantMemberRequest{
 		Tenant: tenant.tenantContext(), UserId: tenant.User.ID.String(),
-	}))
+	})
 	requireLastTenantAdminRefusal(t, err)
 
 	// With another active administrator left, the caller may step down.
-	if _, err := client.UpdateTenantMemberRole(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantMemberRoleRequest{
+	if _, err := client.UpdateTenantMemberRole(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateTenantMemberRoleRequest{
 		Tenant: tenant.tenantContext(), UserId: second.ID.String(), Role: auth.RoleTenantAdmin,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("promote the second admin back: %v", err)
 	}
-	if _, err := client.RemoveTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
+	if _, err := client.RemoveTenantMember(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.RemoveTenantMemberRequest{
 		Tenant: tenant.tenantContext(), UserId: tenant.User.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("remove self with another admin left: %v", err)
 	}
 	if role := env.roleOf(t, tenant.User); role != "" {
@@ -263,35 +265,35 @@ func TestDBTenantMemberChangesAreAuditedUnderTheActingAdmin(t *testing.T) {
 	client := env.tenantMemberClient()
 	ctx := context.Background()
 
-	if _, err := client.UpdateTenantMemberRole(ctx, newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantMemberRoleRequest{
+	if _, err := client.UpdateTenantMemberRole(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateTenantMemberRoleRequest{
 		Tenant: tenant.tenantContext(), UserId: editor.ID.String(), Role: auth.RoleTenantAuditor,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("UpdateTenantMemberRole: %v", err)
 	}
-	if _, err := client.RemoveTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.RemoveTenantMemberRequest{
+	if _, err := client.RemoveTenantMember(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.RemoveTenantMemberRequest{
 		Tenant: tenant.tenantContext(), UserId: editor.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RemoveTenantMember: %v", err)
 	}
-	created, err := client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+	created, err := client.CreateTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 		Tenant: tenant.tenantContext(), Email: " Invitee@Tenant-A.example.com ",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation: %v", err)
 	}
-	if _, err := client.ResendTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.ResendTenantAdminInvitationRequest{
-		Tenant: tenant.tenantContext(), InvitationId: created.Msg.Invitation.Id,
-	})); err != nil {
+	if _, err := client.ResendTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.ResendTenantAdminInvitationRequest{
+		Tenant: tenant.tenantContext(), InvitationId: created.Invitation.Id,
+	}); err != nil {
 		t.Fatalf("ResendTenantAdminInvitation: %v", err)
 	}
-	canceled, err := client.CancelTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CancelTenantAdminInvitationRequest{
-		Tenant: tenant.tenantContext(), InvitationId: created.Msg.Invitation.Id,
-	}))
+	canceled, err := client.CancelTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CancelTenantAdminInvitationRequest{
+		Tenant: tenant.tenantContext(), InvitationId: created.Invitation.Id,
+	})
 	if err != nil {
 		t.Fatalf("CancelTenantAdminInvitation: %v", err)
 	}
-	if canceled.Msg.Invitation.Status != "canceled" {
-		t.Fatalf("invitation status = %q, want canceled", canceled.Msg.Invitation.Status)
+	if canceled.Invitation.Status != "canceled" {
+		t.Fatalf("invitation status = %q, want canceled", canceled.Invitation.Status)
 	}
 
 	for _, want := range []struct{ action, targetType, targetID string }{
@@ -318,14 +320,14 @@ func TestDBCreateTenantAdminInvitationQueuesTheMailTheAcceptanceFlowTakes(t *tes
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	ctx := context.Background()
 
-	created, err := env.tenantMemberClient().CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+	created, err := env.tenantMemberClient().CreateTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 		Tenant: tenant.tenantContext(), Email: "invitee@tenant-a.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation: %v", err)
 	}
-	if created.Msg.RoleGrantedImmediately || created.Msg.Invitation.GetStatus() != "pending" {
-		t.Fatalf("response = %+v, want a pending invitation", created.Msg)
+	if created.RoleGrantedImmediately || created.Invitation.GetStatus() != "pending" {
+		t.Fatalf("response = %+v, want a pending invitation", created)
 	}
 
 	var eventType string
@@ -342,21 +344,21 @@ func TestDBCreateTenantAdminInvitationQueuesTheMailTheAcceptanceFlowTakes(t *tes
 	if err := json.Unmarshal(payload, &body); err != nil {
 		t.Fatalf("decode outbox payload: %v", err)
 	}
-	if body.InvitationID != created.Msg.Invitation.Id || body.TenantID != tenant.Tenant.ID.String() {
+	if body.InvitationID != created.Invitation.Id || body.TenantID != tenant.Tenant.ID.String() {
 		t.Fatalf("outbox payload = %+v, want the invitation of tenant %s", body, tenant.Tenant.ID)
 	}
 
-	accepted, err := env.authClient().AcceptTenantAdminInvitation(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
+	accepted, err := env.authClient().AcceptTenantAdminInvitation(ctx, &publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
 		Tenant:   tenant.tenantContext(),
 		Token:    body.Token,
 		Name:     "Invitee",
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("AcceptTenantAdminInvitation: %v", err)
 	}
-	if !accepted.Msg.Accepted || !accepted.Msg.AccountCreated {
-		t.Fatalf("accept response = %+v, want an accepted invitation with a new account", accepted.Msg)
+	if !accepted.Accepted || !accepted.AccountCreated {
+		t.Fatalf("accept response = %+v, want an accepted invitation with a new account", accepted)
 	}
 	if count := env.countRows(t, `
 		SELECT count(*) FROM tenant_user_roles tur JOIN users u ON u.id = tur.user_id
@@ -384,14 +386,14 @@ func TestDBAddTenantMemberGivesAReaderTheRoleDirectly(t *testing.T) {
 		{editor, " Editor@Tenant-A.example.com ", auth.RoleTenantEditor},
 		{auditor, "auditor@tenant-a.example.com", auth.RoleTenantAuditor},
 	} {
-		added, err := client.AddTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.AddTenantMemberRequest{
+		added, err := client.AddTenantMember(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.AddTenantMemberRequest{
 			Tenant: tenant.tenantContext(), Email: want.email, Role: want.role,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("AddTenantMember %s: %v", want.role, err)
 		}
-		if added.Msg.Member.GetUserId() != want.user.ID.String() || added.Msg.Member.GetRole() != want.role {
-			t.Fatalf("member = %+v, want %s as %s", added.Msg.Member, want.user.PublicID, want.role)
+		if added.Member.GetUserId() != want.user.ID.String() || added.Member.GetRole() != want.role {
+			t.Fatalf("member = %+v, want %s as %s", added.Member, want.user.PublicID, want.role)
 		}
 		if role := env.roleOf(t, want.user); role != want.role {
 			t.Fatalf("roles of %s = %q, want %q", want.user.PublicID, role, want.role)
@@ -428,9 +430,9 @@ func TestDBAddTenantMemberRefusesWhatItCannotGrant(t *testing.T) {
 		{"a role that is not one", "editor@tenant-a.example.com", "tenant_owner", connect.CodeInvalidArgument},
 	} {
 		t.Run(refusal.name, func(t *testing.T) {
-			_, err := client.AddTenantMember(ctx, newAdminDBRequest(tenant, &publiraadminv1.AddTenantMemberRequest{
+			_, err := client.AddTenantMember(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.AddTenantMemberRequest{
 				Tenant: tenant.tenantContext(), Email: refusal.email, Role: refusal.role,
-			}))
+			})
 			if code := connect.CodeOf(err); code != refusal.want {
 				t.Fatalf("code = %v, want %v (err = %v)", code, refusal.want, err)
 			}
@@ -455,21 +457,21 @@ func TestDBAnInvitationGrantsTheRoleItNames(t *testing.T) {
 			ctx := context.Background()
 			const email = "invitee@tenant-a.example.com"
 
-			created, err := env.tenantMemberClient().CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+			created, err := env.tenantMemberClient().CreateTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 				Tenant: tenant.tenantContext(), Email: email, Role: role,
-			}))
+			})
 			if err != nil {
 				t.Fatalf("CreateTenantAdminInvitation: %v", err)
 			}
-			if created.Msg.RoleGrantedImmediately || created.Msg.Invitation.GetRole() != role {
-				t.Fatalf("response = %+v, want a pending invitation as %s", created.Msg, role)
+			if created.RoleGrantedImmediately || created.Invitation.GetRole() != role {
+				t.Fatalf("response = %+v, want a pending invitation as %s", created, role)
 			}
-			listed, err := env.tenantMemberClient().ListTenantAdminInvitations(ctx, newAdminDBRequest(tenant, &publiraadminv1.ListTenantAdminInvitationsRequest{Tenant: tenant.tenantContext()}))
+			listed, err := env.tenantMemberClient().ListTenantAdminInvitations(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.ListTenantAdminInvitationsRequest{Tenant: tenant.tenantContext()})
 			if err != nil {
 				t.Fatalf("ListTenantAdminInvitations: %v", err)
 			}
-			if len(listed.Msg.Invitations) != 1 || listed.Msg.Invitations[0].GetRole() != role {
-				t.Fatalf("invitations = %+v, want the one as %s", listed.Msg.Invitations, role)
+			if len(listed.Invitations) != 1 || listed.Invitations[0].GetRole() != role {
+				t.Fatalf("invitations = %+v, want the one as %s", listed.Invitations, role)
 			}
 
 			var payload []byte
@@ -483,22 +485,22 @@ func TestDBAnInvitationGrantsTheRoleItNames(t *testing.T) {
 				t.Fatalf("decode outbox payload: %v", err)
 			}
 
-			state, err := env.authClient().GetTenantAdminInvitationState(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceGetTenantAdminInvitationStateRequest{
+			state, err := env.authClient().GetTenantAdminInvitationState(ctx, &publiraadminv1.AdminAuthServiceGetTenantAdminInvitationStateRequest{
 				Tenant: tenant.tenantContext(), Token: body.Token,
-			}))
+			})
 			if err != nil {
 				t.Fatalf("GetTenantAdminInvitationState: %v", err)
 			}
-			if state.Msg.Role != role || state.Msg.Status != "pending" {
-				t.Fatalf("state = %+v, want a pending invitation as %s", state.Msg, role)
+			if state.Role != role || state.Status != "pending" {
+				t.Fatalf("state = %+v, want a pending invitation as %s", state, role)
 			}
 
-			if _, err := env.authClient().AcceptTenantAdminInvitation(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
+			if _, err := env.authClient().AcceptTenantAdminInvitation(ctx, &publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
 				Tenant:   tenant.tenantContext(),
 				Token:    body.Token,
 				Name:     "Invitee",
 				Password: testutil.SeededPassword,
-			})); err != nil {
+			}); err != nil {
 				t.Fatalf("AcceptTenantAdminInvitation: %v", err)
 			}
 
@@ -545,22 +547,22 @@ func TestDBAnInvitationToAnExistingAccountGrantsTheRoleOnlyToAReader(t *testing.
 	client := env.tenantMemberClient()
 	ctx := context.Background()
 
-	granted, err := client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+	granted, err := client.CreateTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 		Tenant: tenant.tenantContext(), Email: "reader@tenant-a.example.com", Role: auth.RoleTenantAuditor,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation for a reader: %v", err)
 	}
-	if !granted.Msg.RoleGrantedImmediately {
-		t.Fatalf("response = %+v, want the role granted at once", granted.Msg)
+	if !granted.RoleGrantedImmediately {
+		t.Fatalf("response = %+v, want the role granted at once", granted)
 	}
 	if role := env.roleOf(t, reader); role != auth.RoleTenantAuditor {
 		t.Fatalf("reader roles = %q, want %q", role, auth.RoleTenantAuditor)
 	}
 
-	_, err = client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+	_, err = client.CreateTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 		Tenant: tenant.tenantContext(), Email: "second@tenant-a.example.com", Role: auth.RoleTenantEditor,
-	}))
+	})
 	if code := connect.CodeOf(err); code != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenantAdminInvitation demoting an admin: code = %v, want already_exists", code)
 	}
@@ -569,9 +571,9 @@ func TestDBAnInvitationToAnExistingAccountGrantsTheRoleOnlyToAReader(t *testing.
 	}
 
 	// No role named is the tenant_admin invitation the console has always sent.
-	if _, err := client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+	if _, err := client.CreateTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 		Tenant: tenant.tenantContext(), Email: "reader@tenant-a.example.com",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateTenantAdminInvitation with no role: %v", err)
 	}
 	if role := env.roleOf(t, reader); role != auth.RoleTenantAdmin {
@@ -596,9 +598,9 @@ func TestDBAcceptingAnInvitationNeverLowersARole(t *testing.T) {
 	}
 	invitee := env.seedMember(t, tenant, "TAINVITEE", email, auth.RoleTenantAdmin)
 
-	if _, err := env.authClient().AcceptTenantAdminInvitation(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
+	if _, err := env.authClient().AcceptTenantAdminInvitation(ctx, &publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
 		Tenant: tenant.tenantContext(), Token: token,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("AcceptTenantAdminInvitation: %v", err)
 	}
 	if role := env.roleOf(t, invitee); role != auth.RoleTenantAdmin {
@@ -661,9 +663,9 @@ func TestDBAcceptingAnInvitationWaitsForAPromotionUnderWay(t *testing.T) {
 	invitee := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAINVITEE", email, "Invitee")
 
 	err := env.promoteWhileGrantWaits(t, tenant, invitee, func() error {
-		_, err := env.authClient().AcceptTenantAdminInvitation(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
+		_, err := env.authClient().AcceptTenantAdminInvitation(ctx, &publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
 			Tenant: tenant.tenantContext(), Token: token,
-		}))
+		})
 		return err
 	})
 	if err != nil {
@@ -683,9 +685,9 @@ func TestDBAnInvitationWaitsForAPromotionUnderWay(t *testing.T) {
 	ctx := context.Background()
 
 	err := env.promoteWhileGrantWaits(t, tenant, reader, func() error {
-		_, err := env.tenantMemberClient().CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+		_, err := env.tenantMemberClient().CreateTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 			Tenant: tenant.tenantContext(), Email: "reader@tenant-a.example.com", Role: auth.RoleTenantEditor,
-		}))
+		})
 		return err
 	})
 	if code := connect.CodeOf(err); code != connect.CodeAlreadyExists {
@@ -756,15 +758,15 @@ func TestDBConcurrentAcceptancesOfOneInvitationCreateOneAccount(t *testing.T) {
 	for i := range acceptances {
 		wg.Go(func() {
 			<-start
-			res, err := env.authClient().AcceptTenantAdminInvitation(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
+			res, err := env.authClient().AcceptTenantAdminInvitation(ctx, &publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
 				Tenant:   tenant.tenantContext(),
 				Token:    token,
 				Name:     "Invitee",
 				Password: testutil.SeededPassword,
-			}))
+			})
 			errs[i] = err
 			if err == nil {
-				responses[i] = res.Msg
+				responses[i] = res
 			}
 		})
 	}
@@ -823,13 +825,13 @@ func TestDBAcceptanceRacingASignUpAnswersAlreadyExists(t *testing.T) {
 		t.Fatalf("insert the signing-up reader: %v", err)
 	}
 
-	accept := func() (*connect.Response[publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationResponse], error) {
-		return env.authClient().AcceptTenantAdminInvitation(ctx, connect.NewRequest(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
+	accept := func() (*publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationResponse, error) {
+		return env.authClient().AcceptTenantAdminInvitation(ctx, &publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
 			Tenant:   tenant.tenantContext(),
 			Token:    token,
 			Name:     "Invitee",
 			Password: testutil.SeededPassword,
-		}))
+		})
 	}
 	var racingErr error
 	done := make(chan struct{})
@@ -852,8 +854,8 @@ func TestDBAcceptanceRacingASignUpAnswersAlreadyExists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("retried AcceptTenantAdminInvitation: %v", err)
 	}
-	if !retried.Msg.Accepted || retried.Msg.AccountCreated {
-		t.Fatalf("retried response = %+v, want an accepted invitation on the existing account", retried.Msg)
+	if !retried.Accepted || retried.AccountCreated {
+		t.Fatalf("retried response = %+v, want an accepted invitation on the existing account", retried)
 	}
 	if count := env.countRows(t, `
 		SELECT count(*) FROM tenant_user_roles tur JOIN users u ON u.id = tur.user_id
@@ -868,14 +870,14 @@ func TestDBCreateTenantAdminInvitationGrantsAnExistingUserAtOnce(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")
 
-	created, err := env.tenantMemberClient().CreateTenantAdminInvitation(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+	created, err := env.tenantMemberClient().CreateTenantAdminInvitation(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 		Tenant: tenant.tenantContext(), Email: reader.Email,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation: %v", err)
 	}
-	if !created.Msg.RoleGrantedImmediately || created.Msg.Invitation != nil {
-		t.Fatalf("response = %+v, want the role granted with no invitation", created.Msg)
+	if !created.RoleGrantedImmediately || created.Invitation != nil {
+		t.Fatalf("response = %+v, want the role granted with no invitation", created)
 	}
 	if role := env.roleOf(t, reader); role != auth.RoleTenantAdmin {
 		t.Fatalf("reader roles = %q, want %q", role, auth.RoleTenantAdmin)
@@ -893,21 +895,21 @@ func TestDBTenantAdminInvitationMailStopsAtTheLimit(t *testing.T) {
 	client := env.tenantMemberClient()
 	ctx := context.Background()
 
-	created, err := client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+	created, err := client.CreateTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 		Tenant: tenant.tenantContext(), Email: "invitee@tenant-a.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("the first CreateTenantAdminInvitation: %v", err)
 	}
-	_, err = client.CreateTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+	_, err = client.CreateTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 		Tenant: tenant.tenantContext(), Email: "invitee@tenant-a.example.com",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("the second CreateTenantAdminInvitation code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
-	_, err = client.ResendTenantAdminInvitation(ctx, newAdminDBRequest(tenant, &publiraadminv1.ResendTenantAdminInvitationRequest{
-		Tenant: tenant.tenantContext(), InvitationId: created.Msg.Invitation.Id,
-	}))
+	_, err = client.ResendTenantAdminInvitation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.ResendTenantAdminInvitationRequest{
+		Tenant: tenant.tenantContext(), InvitationId: created.Invitation.Id,
+	})
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("ResendTenantAdminInvitation code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
@@ -928,14 +930,14 @@ func TestDBTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T) {
 	client := env.tenantMemberClient()
 
 	for attempt := 1; attempt <= 2; attempt++ {
-		created, err := client.CreateTenantAdminInvitation(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateTenantAdminInvitationRequest{
+		created, err := client.CreateTenantAdminInvitation(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 			Tenant: tenant.tenantContext(), Email: reader.Email,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("CreateTenantAdminInvitation attempt %d: %v", attempt, err)
 		}
-		if !created.Msg.RoleGrantedImmediately {
-			t.Fatalf("attempt %d response = %+v, want the role granted", attempt, created.Msg)
+		if !created.RoleGrantedImmediately {
+			t.Fatalf("attempt %d response = %+v, want the role granted", attempt, created)
 		}
 	}
 }

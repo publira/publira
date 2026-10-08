@@ -6,8 +6,10 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"slices"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -19,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/platformsearch"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage/s3"
 	"github.com/publira/publira/server/internal/storagesettings"
@@ -69,7 +72,7 @@ func (s *platformServer) internalError(ctx context.Context, msg string, err erro
 	args = append(args, keyvals...)
 	args = append(args, "error", err)
 	s.logger.ErrorContext(ctx, msg, args...)
-	return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+	return connect.NewError(connect.CodeInternal, "internal server error")
 }
 
 type platformActor struct {
@@ -170,102 +173,50 @@ func handlerFromServer(server *platformServer) http.Handler {
 }
 
 func registerPlatformRoutes(mux *http.ServeMux, server *platformServer) {
-	authInterceptor := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			if actor, ok, err := server.serviceActor(req); ok {
+	authInterceptor := func(next connect.ServerFunc) connect.ServerFunc {
+		return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {
+			headers := rpcmiddleware.RequestHeader(ctx)
+			if actor, ok, err := server.serviceActor(headers, spec.Procedure); ok {
 				if err != nil {
-					return nil, err
+					return err
 				}
-				return next(context.WithValue(ctx, platformActorContextKey{}, actor), req)
+				return next(context.WithValue(ctx, platformActorContextKey{}, actor), spec, stream)
 			}
-			_, user, role, err := server.authenticatePlatformSession(ctx, "", req.Header())
+			_, user, role, err := server.authenticatePlatformSession(ctx, "", headers)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			ctx = context.WithValue(ctx, platformActorContextKey{}, platformActor{UserID: user.ID, Role: role, Email: user.Email})
-			if isPlatformWriteProcedure(req.Spec().Procedure) {
+			if isPlatformWriteProcedure(spec.Procedure) {
 				if err := ensurePlatformWriteRole(role); err != nil {
-					return nil, err
+					return err
 				}
 			}
-			return next(ctx, req)
+			return next(ctx, spec, stream)
 		}
-	})
+	}
 
-	traced := tracing.ConnectHandlerOption(ServiceName)
+	traced := tracing.ConnectServerInterceptors(ServiceName)
 
-	tenantPath, tenantHandler := publirasplatformv1connect.NewPlatformTenantServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(authInterceptor),
-	)
-	mux.Handle(tenantPath, tenantHandler)
-	emailPath, emailHandler := publirasplatformv1connect.NewPlatformEmailSettingsServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(authInterceptor),
-	)
-	mux.Handle(emailPath, emailHandler)
-	settingsPath, settingsHandler := publirasplatformv1connect.NewPlatformSettingsServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(authInterceptor),
-	)
-	mux.Handle(settingsPath, settingsHandler)
-	storagePath, storageHandler := publirasplatformv1connect.NewPlatformStorageSettingsServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(authInterceptor),
-	)
-	mux.Handle(storagePath, storageHandler)
-	searchPath, searchHandler := publirasplatformv1connect.NewPlatformSearchSettingsServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(authInterceptor),
-	)
-	mux.Handle(searchPath, searchHandler)
-	webPushPath, webPushHandler := publirasplatformv1connect.NewPlatformWebPushSettingsServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(authInterceptor),
-	)
-	mux.Handle(webPushPath, webPushHandler)
-	policyPath, policyHandler := publirasplatformv1connect.NewPlatformPolicyServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(authInterceptor),
-	)
-	mux.Handle(policyPath, policyHandler)
-	operatorPath, operatorHandler := publirasplatformv1connect.NewPlatformOperatorServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(authInterceptor),
-	)
-	mux.Handle(operatorPath, operatorHandler)
-	notificationPath, notificationHandler := publirasplatformv1connect.NewPlatformNotificationServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(authInterceptor),
-	)
-	mux.Handle(notificationPath, notificationHandler)
-	authPath, authHandler := publirasplatformv1connect.NewPlatformAuthServiceHandler(server, traced)
-	mux.Handle(authPath, authHandler)
-	// The setup service is served without authentication.
-	setupPath, setupHandler := publirasplatformv1connect.NewPlatformSetupServiceHandler(server, traced)
-	mux.Handle(setupPath, setupHandler)
-	// End user administration.
-	userPath, userHandler := publirasplatformv1connect.NewPlatformUserServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(authInterceptor),
-	)
-	mux.Handle(userPath, userHandler)
-	dashboardPath, dashboardHandler := publirasplatformv1connect.NewPlatformDashboardServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(authInterceptor),
-	)
-	mux.Handle(dashboardPath, dashboardHandler)
-	auditPath, auditHandler := publirasplatformv1connect.NewPlatformAuditLogServiceHandler(server, traced)
-	mux.Handle(auditPath, auditHandler)
+	services := connect.NewServer(slices.Concat(traced, []connect.ServerInterceptor{authInterceptor})...)
+	publirasplatformv1connect.RegisterPlatformTenantServiceHandler(services, server)
+	publirasplatformv1connect.RegisterPlatformEmailSettingsServiceHandler(services, server)
+	publirasplatformv1connect.RegisterPlatformSettingsServiceHandler(services, server)
+	publirasplatformv1connect.RegisterPlatformStorageSettingsServiceHandler(services, server)
+	publirasplatformv1connect.RegisterPlatformSearchSettingsServiceHandler(services, server)
+	publirasplatformv1connect.RegisterPlatformWebPushSettingsServiceHandler(services, server)
+	publirasplatformv1connect.RegisterPlatformPolicyServiceHandler(services, server)
+	publirasplatformv1connect.RegisterPlatformOperatorServiceHandler(services, server)
+	publirasplatformv1connect.RegisterPlatformNotificationServiceHandler(services, server)
+	publirasplatformv1connect.RegisterPlatformUserServiceHandler(services, server)
+	publirasplatformv1connect.RegisterPlatformDashboardServiceHandler(services, server)
+	connecthttp.Mount(mux, services)
+
+	// Signing in and the first-run setup are served without a session, and
+	// the audit log authenticates its caller itself.
+	open := connect.NewServer(traced...)
+	publirasplatformv1connect.RegisterPlatformAuthServiceHandler(open, server)
+	publirasplatformv1connect.RegisterPlatformSetupServiceHandler(open, server)
+	publirasplatformv1connect.RegisterPlatformAuditLogServiceHandler(open, server)
+	connecthttp.Mount(mux, open)
 }

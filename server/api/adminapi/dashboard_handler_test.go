@@ -3,17 +3,19 @@ package adminapi
 import (
 	"context"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestGetDashboardDatabaseErrorIsHidden(t *testing.T) {
@@ -29,13 +31,12 @@ func TestGetDashboardDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(errors.New(`pq: relation "series" does not exist`))
 
-	client := publiraadminv1connect.NewAdminDashboardServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.GetDashboardRequest{
+	client := publiraadminv1connect.NewAdminDashboardServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.GetDashboardRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.GetDashboard(context.Background(), req)
+	_, err := client.GetDashboard(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetDashboard code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -58,13 +59,12 @@ func TestGetDashboardPreservesContextCanceled(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(context.Canceled)
 
-	client := publiraadminv1connect.NewAdminDashboardServiceClient(ts.Client(), ts.URL)
-	req := connect.NewRequest(&publiraadminv1.GetDashboardRequest{
+	client := publiraadminv1connect.NewAdminDashboardServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	req := &publiraadminv1.GetDashboardRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.GetDashboard(context.Background(), req)
+	_, err := client.GetDashboard(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeCanceled {
 		t.Fatalf("GetDashboard code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
 	}

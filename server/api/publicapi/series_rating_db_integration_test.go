@@ -4,18 +4,18 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func mySeriesRatingRequest(tenant testutil.Tenant, seriesID, token string) *connect.Request[publirav1.GetMySeriesRatingRequest] {
-	return newBearerRequest(&publirav1.GetMySeriesRatingRequest{
+func mySeriesRatingRequest(tenant testutil.Tenant, seriesID string) *publirav1.GetMySeriesRatingRequest {
+	return &publirav1.GetMySeriesRatingRequest{
 		Tenant:   tenantContext(tenant),
 		SeriesId: seriesID,
-	}, token)
+	}
 }
 
 // seedSeriesDailyStats writes one day of a series' aggregates and the tenant
@@ -58,25 +58,25 @@ func TestDBGetSeriesDetailCarriesTheDerivedRating(t *testing.T) {
 		Status:   testutil.EpisodeStatusPublished,
 	})
 
-	detailRequest := func() *connect.Request[publirav1.GetSeriesDetailRequest] {
-		return connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	detailRequest := func() *publirav1.GetSeriesDetailRequest {
+		return &publirav1.GetSeriesDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: series.PublicID,
-		})
+		}
 	}
 
 	before, err := env.catalogClient().GetSeriesDetail(context.Background(), detailRequest())
 	if err != nil {
 		t.Fatalf("GetSeriesDetail before any reaction: %v", err)
 	}
-	if got := before.Msg.GetSeries().GetRatingAverage(); got != 0 {
+	if got := before.GetSeries().GetRatingAverage(); got != 0 {
 		t.Fatalf("rating_average before any reaction = %v, want none", got)
 	}
-	if got := before.Msg.GetSeries().GetRatingCount(); got != 0 {
+	if got := before.GetSeries().GetRatingCount(); got != 0 {
 		t.Fatalf("rating_count before any reaction = %d, want 0", got)
 	}
 
-	if _, err := env.ratingClient().RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), tokenFor(t, tenant, member), 1)); err != nil {
+	if _, err := env.ratingClient().RateEpisode(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), rateEpisodeRequest(tenant, episode.ID.String(), 1)); err != nil {
 		t.Fatalf("RateEpisode: %v", err)
 	}
 
@@ -86,10 +86,10 @@ func TestDBGetSeriesDetailCarriesTheDerivedRating(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSeriesDetail before the aggregation: %v", err)
 	}
-	if got := pending.Msg.GetSeries().GetRatingAverage(); got != 0 {
+	if got := pending.GetSeries().GetRatingAverage(); got != 0 {
 		t.Fatalf("rating_average before the aggregation = %v, want none", got)
 	}
-	if got := pending.Msg.GetSeries().GetRatingCount(); got != 0 {
+	if got := pending.GetSeries().GetRatingCount(); got != 0 {
 		t.Fatalf("rating_count before the aggregation = %d, want none", got)
 	}
 
@@ -101,10 +101,10 @@ func TestDBGetSeriesDetailCarriesTheDerivedRating(t *testing.T) {
 	}
 	// 500 points over 200 completed reads, with the tenant's own mean of 2.5
 	// standing in for twenty reads nobody has finished yet.
-	if got := after.Msg.GetSeries().GetRatingAverage(); got != 2.5 {
+	if got := after.GetSeries().GetRatingAverage(); got != 2.5 {
 		t.Fatalf("rating_average = %v, want 2.5", got)
 	}
-	if got := after.Msg.GetSeries().GetRatingCount(); got != 1 {
+	if got := after.GetSeries().GetRatingCount(); got != 1 {
 		t.Fatalf("rating_count = %d, want the one reader who reacted", got)
 	}
 }
@@ -127,44 +127,44 @@ func TestDBGetMySeriesRatingAnswersTheReadersOwnReactions(t *testing.T) {
 	token := tokenFor(t, tenant, member)
 	otherToken := tokenFor(t, tenant, other)
 
-	none, err := client.GetMySeriesRating(context.Background(), mySeriesRatingRequest(tenant, series.ID.String(), token))
+	none, err := client.GetMySeriesRating(testutil.WithBearer(context.Background(), token), mySeriesRatingRequest(tenant, series.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMySeriesRating before any reaction: %v", err)
 	}
-	if none.Msg.RatingAverage != 0 || none.Msg.RatedEpisodeCount != 0 {
-		t.Fatalf("GetMySeriesRating before any reaction = %+v, want nothing", none.Msg)
+	if none.RatingAverage != 0 || none.RatedEpisodeCount != 0 {
+		t.Fatalf("GetMySeriesRating before any reaction = %+v, want nothing", none)
 	}
 
-	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, first.ID.String(), token, 5)); err != nil {
+	if _, err := client.RateEpisode(testutil.WithBearer(context.Background(), token), rateEpisodeRequest(tenant, first.ID.String(), 5)); err != nil {
 		t.Fatalf("RateEpisode on the first episode: %v", err)
 	}
-	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, second.ID.String(), token, 2)); err != nil {
+	if _, err := client.RateEpisode(testutil.WithBearer(context.Background(), token), rateEpisodeRequest(tenant, second.ID.String(), 2)); err != nil {
 		t.Fatalf("RateEpisode on the second episode: %v", err)
 	}
 	// Another reader's reaction to the same series, which is none of this
 	// reader's business.
-	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, first.ID.String(), otherToken, 1)); err != nil {
+	if _, err := client.RateEpisode(testutil.WithBearer(context.Background(), otherToken), rateEpisodeRequest(tenant, first.ID.String(), 1)); err != nil {
 		t.Fatalf("RateEpisode as the other member: %v", err)
 	}
 
-	mine, err := client.GetMySeriesRating(context.Background(), mySeriesRatingRequest(tenant, series.ID.String(), token))
+	mine, err := client.GetMySeriesRating(testutil.WithBearer(context.Background(), token), mySeriesRatingRequest(tenant, series.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMySeriesRating: %v", err)
 	}
 	// The third episode was never reacted to and is not in the mean.
-	if mine.Msg.RatingAverage != 3.5 {
-		t.Fatalf("rating_average = %v, want 3.5", mine.Msg.RatingAverage)
+	if mine.RatingAverage != 3.5 {
+		t.Fatalf("rating_average = %v, want 3.5", mine.RatingAverage)
 	}
-	if mine.Msg.RatedEpisodeCount != 2 {
-		t.Fatalf("rated_episode_count = %d, want 2", mine.Msg.RatedEpisodeCount)
+	if mine.RatedEpisodeCount != 2 {
+		t.Fatalf("rated_episode_count = %d, want 2", mine.RatedEpisodeCount)
 	}
 
-	theirs, err := client.GetMySeriesRating(context.Background(), mySeriesRatingRequest(tenant, series.ID.String(), otherToken))
+	theirs, err := client.GetMySeriesRating(testutil.WithBearer(context.Background(), otherToken), mySeriesRatingRequest(tenant, series.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMySeriesRating as the other member: %v", err)
 	}
-	if theirs.Msg.RatingAverage != 1 || theirs.Msg.RatedEpisodeCount != 1 {
-		t.Fatalf("the other member's rating = %+v, want 1 over one episode", theirs.Msg)
+	if theirs.RatingAverage != 1 || theirs.RatedEpisodeCount != 1 {
+		t.Fatalf("the other member's rating = %+v, want 1 over one episode", theirs)
 	}
 }
 
@@ -183,16 +183,16 @@ func TestDBGetMySeriesRatingHidesSeriesTheReaderCannotSee(t *testing.T) {
 	client := env.ratingClient()
 	token := tokenFor(t, tenant, member)
 	for _, id := range []string{unpublished.ID.String(), foreign.ID.String(), uuid.NewString()} {
-		_, err := client.GetMySeriesRating(context.Background(), mySeriesRatingRequest(tenant, id, token))
+		_, err := client.GetMySeriesRating(testutil.WithBearer(context.Background(), token), mySeriesRatingRequest(tenant, id))
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("GetMySeriesRating %s code = %v, want not_found (err=%v)", id, connect.CodeOf(err), err)
 		}
 	}
 
-	_, err := client.GetMySeriesRating(context.Background(), connect.NewRequest(&publirav1.GetMySeriesRatingRequest{
+	_, err := client.GetMySeriesRating(context.Background(), &publirav1.GetMySeriesRatingRequest{
 		Tenant:   tenantContext(tenant),
 		SeriesId: published.ID.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMySeriesRating without a session code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}

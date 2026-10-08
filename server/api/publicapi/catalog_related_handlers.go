@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -80,7 +80,7 @@ type relatedSeriesCursorKeys struct {
 }
 
 func decodeRelatedSeriesCursorKeys(cursor pagination.Cursor, seriesID string) (relatedSeriesCursorKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	invalid := connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	if len(cursor.Keys) != 5 && len(cursor.Keys) != 6 {
 		return relatedSeriesCursorKeys{}, invalid
 	}
@@ -89,7 +89,7 @@ func decodeRelatedSeriesCursorKeys(cursor pagination.Cursor, seriesID string) (r
 		return relatedSeriesCursorKeys{}, invalid
 	}
 	if cursor.Keys[0] != seriesID {
-		return relatedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another series"))
+		return relatedSeriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, "token was issued for another series")
 	}
 	score, err := strconv.ParseInt(cursor.Keys[1], 10, 32)
 	if err != nil {
@@ -204,24 +204,24 @@ func (s *apiServer) relatedSeriesPageRows(
 // for everyone who asks and can be cached and shared.
 func (s *apiServer) ListRelatedSeries(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListRelatedSeriesRequest],
-) (*connect.Response[publirav1.ListRelatedSeriesResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ListRelatedSeriesRequest,
+) (*publirav1.ListRelatedSeriesResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	subjectID, err := requestRecordID("series_id", req.Msg.SeriesId)
+	subjectID, err := requestRecordID("series_id", req.SeriesId)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRelatedSeriesPageSize, maxRelatedSeriesPageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultRelatedSeriesPageSize, maxRelatedSeriesPageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 
 	// The subject is resolved through the same read every member-facing series
@@ -233,7 +233,7 @@ func (s *apiServer) ListRelatedSeries(
 		ID:       subjectID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
+		return nil, connect.NewError(connect.CodeNotFound, "series not found")
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get the series to relate to", err, "tenant_id", tenant.ID.String(), "series_id", subjectID.String())
@@ -309,5 +309,5 @@ func (s *apiServer) ListRelatedSeries(
 		res.NextToken = encodeRelatedSeriesRecoveryToken(pagination.Forward, subject, keys)
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
-	return connect.NewResponse(res), nil
+	return res, nil
 }

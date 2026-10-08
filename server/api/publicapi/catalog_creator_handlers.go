@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -41,7 +41,7 @@ func encodeCreatorRecoveryToken(direction pagination.Direction, keys creatorCurs
 }
 
 func decodeCreatorCursorKeys(cursor pagination.Cursor) (creatorCursorKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	invalid := connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	if len(cursor.Keys) != 2 && len(cursor.Keys) != 3 {
 		return creatorCursorKeys{}, invalid
 	}
@@ -183,20 +183,20 @@ func (s *apiServer) publishedCreatorRowsInOrder(
 
 func (s *apiServer) ListPublishedCreators(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListPublishedCreatorsRequest],
-) (*connect.Response[publirav1.ListPublishedCreatorsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ListPublishedCreatorsRequest,
+) (*publirav1.ListPublishedCreatorsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCreatorPageSize, maxCreatorPageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultCreatorPageSize, maxCreatorPageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys creatorCursorKeys
 	if !cursor.IsZero() {
@@ -237,31 +237,31 @@ func (s *apiServer) ListPublishedCreators(
 		res.NextToken = encodeCreatorRecoveryToken(pagination.Forward, keys)
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *apiServer) GetPublishedCreatorDetail(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetPublishedCreatorDetailRequest],
-) (*connect.Response[publirav1.GetPublishedCreatorDetailResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.GetPublishedCreatorDetailRequest,
+) (*publirav1.GetPublishedCreatorDetailResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 	row, err := s.queriesFor(ctx).GetPublishedCreatorForTenant(ctx, dbmodels.GetPublishedCreatorForTenantParams{
 		TenantID: tenant.ID,
 		Surface:  surface,
-		PublicID: publicIDKey(req.Msg.PublicId),
+		PublicID: publicIDKey(req.PublicId),
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "creator not found")
 		}
-		return nil, s.internalDBError(ctx, "failed to get published creator", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get published creator", err, "tenant_id", tenant.ID.String(), "public_id", req.PublicId)
 	}
 
 	series, previousToken, nextToken, err := s.publishedCreatorSeriesPage(
@@ -269,19 +269,19 @@ func (s *apiServer) GetPublishedCreatorDetail(
 		tenant.ID,
 		surface,
 		row.ID,
-		req.Msg.Limit,
-		req.Msg.Token,
+		req.Limit,
+		req.Token,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return connect.NewResponse(&publirav1.GetPublishedCreatorDetailResponse{
+	return &publirav1.GetPublishedCreatorDetailResponse{
 		Creator:       publishedCreatorFromDetailRow(row),
 		Series:        series,
 		PreviousToken: previousToken,
 		NextToken:     nextToken,
-	}), nil
+	}, nil
 }
 
 // publishedCreatorSeriesPage is the related-series half of GetPublishedCreatorDetail.
@@ -299,7 +299,7 @@ func (s *apiServer) publishedCreatorSeriesPage(
 	limit := pagination.NormalizeLimit(requestedLimit, defaultSeriesPageSize, maxSeriesPageSize)
 	cursor, err := decodeSurfaceToken(token, surface)
 	if err != nil {
-		return nil, "", "", connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, "", "", connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys seriesCursorKeys
 	if !cursor.IsZero() {

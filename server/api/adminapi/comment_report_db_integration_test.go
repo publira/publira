@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // The report queue is worked from stored rows the same way the comment queues
@@ -86,11 +87,11 @@ func (f commentModerationFixture) listReports(t *testing.T, req *publiraadminv1.
 	t.Helper()
 
 	req.Tenant = f.admin.tenantContext()
-	res, err := f.env.commentClient().ListCommentReports(context.Background(), newAdminDBRequest(f.admin, req))
+	res, err := f.env.commentClient().ListCommentReports(testutil.WithBearer(context.Background(), f.admin.token()), req)
 	if err != nil {
 		t.Fatalf("ListCommentReports %+v: %v", req, err)
 	}
-	return res.Msg
+	return res
 }
 
 func (f commentModerationFixture) resolveReport(
@@ -100,16 +101,16 @@ func (f commentModerationFixture) resolveReport(
 ) *publiraadminv1.CommentReport {
 	t.Helper()
 
-	res, err := f.env.commentClient().ResolveCommentReport(context.Background(), newAdminDBRequest(f.admin, &publiraadminv1.ResolveCommentReportRequest{
+	res, err := f.env.commentClient().ResolveCommentReport(testutil.WithBearer(context.Background(), f.admin.token()), &publiraadminv1.ResolveCommentReportRequest{
 		Tenant:     f.admin.tenantContext(),
 		ReportId:   reportID.String(),
 		Resolution: resolution,
 		Reason:     reason,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ResolveCommentReport(%s, %s): %v", reportID, resolution, err)
 	}
-	return res.Msg.Report
+	return res.Report
 }
 
 func commentReportIDs(reports []*publiraadminv1.CommentReport) []string {
@@ -230,11 +231,11 @@ func TestDBAdminResolvingAReportLeavesTheCommentAlone(t *testing.T) {
 
 	// A decision is made once. The second attempt is refused rather than
 	// overwriting the moderator who got there first.
-	_, err := env.commentClient().ResolveCommentReport(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ResolveCommentReportRequest{
+	_, err := env.commentClient().ResolveCommentReport(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ResolveCommentReportRequest{
 		Tenant:     fixture.admin.tenantContext(),
 		ReportId:   first.String(),
 		Resolution: "rejected",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ResolveCommentReport on a decided report error = %v, want failed_precondition", err)
 	}
@@ -293,20 +294,20 @@ func TestDBAdminRestoringACommentClearsTheReportsThatRemovedIt(t *testing.T) {
 		"spam", "")
 	fixture.hideCommentAutomatically(t, comment.ID)
 
-	restored, err := env.commentClient().RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
+	restored, err := env.commentClient().RestoreComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.RestoreCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
 		Reason:    "Read it in full; it is within the rules.",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RestoreComment: %v", err)
 	}
 	// Putting the comment back is staff saying it stands, so the reports
 	// against it do not: leaving them open would let the very same reports
 	// carry it past the removal threshold again straight away.
-	if restored.Msg.Comment.Status != "published" || restored.Msg.Comment.OpenReportCount != 0 {
+	if restored.Comment.Status != "published" || restored.Comment.OpenReportCount != 0 {
 		t.Fatalf("restored comment = (%s, %d open reports), want it published with the counter reset",
-			restored.Msg.Comment.Status, restored.Msg.Comment.OpenReportCount)
+			restored.Comment.Status, restored.Comment.OpenReportCount)
 	}
 	if got := env.countRows(t,
 		"SELECT count(*) FROM episode_comment_reports WHERE comment_id = $1 AND status = 'open'", comment.ID,
@@ -402,11 +403,11 @@ func TestDBAdminListCommentReportsFiltersAndPages(t *testing.T) {
 		{token: page.NextToken, status: "open"},
 		{token: recovery, status: "rejected"},
 	} {
-		_, err := env.commentClient().ListCommentReports(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ListCommentReportsRequest{
+		_, err := env.commentClient().ListCommentReports(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ListCommentReportsRequest{
 			Tenant: fixture.admin.tenantContext(),
 			Status: test.status,
 			Token:  test.token,
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("ListCommentReports status=%q with another filter's token error = %v, want invalid_argument", test.status, err)
 		}
@@ -434,11 +435,11 @@ func TestDBAdminCommentReportsStopAtTheTenantBoundary(t *testing.T) {
 	}
 
 	// Naming another tenant's report is not found rather than forbidden.
-	_, err := env.commentClient().ResolveCommentReport(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.ResolveCommentReportRequest{
+	_, err := env.commentClient().ResolveCommentReport(testutil.WithBearer(context.Background(), mine.admin.token()), &publiraadminv1.ResolveCommentReportRequest{
 		Tenant:     mine.admin.tenantContext(),
 		ReportId:   foreign.String(),
 		Resolution: "resolved",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ResolveCommentReport on another tenant's report error = %v, want not_found", err)
 	}
@@ -457,30 +458,30 @@ func TestDBAdminCommentReportsRejectInvalidArguments(t *testing.T) {
 		"spam", "")
 	client := env.commentClient()
 
-	if _, err := client.ListCommentReports(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ListCommentReportsRequest{
+	if _, err := client.ListCommentReports(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ListCommentReportsRequest{
 		Tenant: fixture.admin.tenantContext(),
 		Status: "closed",
-	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListCommentReports with an unknown status error = %v, want invalid_argument", err)
 	}
 
 	// Which way the decision went is the whole content of the call, so neither
 	// an empty resolution nor the state the report is already in is accepted.
 	for _, resolution := range []string{"", "open", "dismissed"} {
-		if _, err := client.ResolveCommentReport(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ResolveCommentReportRequest{
+		if _, err := client.ResolveCommentReport(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ResolveCommentReportRequest{
 			Tenant:     fixture.admin.tenantContext(),
 			ReportId:   reportID.String(),
 			Resolution: resolution,
-		})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		}); connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("ResolveCommentReport with resolution %q error = %v, want invalid_argument", resolution, err)
 		}
 	}
 
-	if _, err := client.ResolveCommentReport(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ResolveCommentReportRequest{
+	if _, err := client.ResolveCommentReport(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ResolveCommentReportRequest{
 		Tenant:     fixture.admin.tenantContext(),
 		ReportId:   "not-an-identifier",
 		Resolution: "resolved",
-	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ResolveCommentReport with a malformed report id error = %v, want invalid_argument", err)
 	}
 }
@@ -499,28 +500,28 @@ func TestDBAdminCommentReportsRequireTheEditorRole(t *testing.T) {
 	auditor := fixture.admin.as(env.PG.SeedTenantUser(t, fixture.admin.Tenant.ID, "RROAUDITOR01", "auditor@report-role.example.com", "Auditor", auth.RoleTenantAuditor))
 	client := env.commentClient()
 
-	listed, err := client.ListCommentReports(context.Background(), newAdminDBRequest(auditor, &publiraadminv1.ListCommentReportsRequest{
+	listed, err := client.ListCommentReports(testutil.WithBearer(context.Background(), auditor.token()), &publiraadminv1.ListCommentReportsRequest{
 		Tenant: auditor.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListCommentReports as an auditor: %v", err)
 	}
-	if got := len(listed.Msg.Reports); got != 1 {
+	if got := len(listed.Reports); got != 1 {
 		t.Fatalf("reports listed to an auditor = %d, want 1", got)
 	}
-	if _, err := client.ResolveCommentReport(context.Background(), newAdminDBRequest(auditor, &publiraadminv1.ResolveCommentReportRequest{
+	if _, err := client.ResolveCommentReport(testutil.WithBearer(context.Background(), auditor.token()), &publiraadminv1.ResolveCommentReportRequest{
 		Tenant:     auditor.tenantContext(),
 		ReportId:   reportID.String(),
 		Resolution: "resolved",
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("ResolveCommentReport as an auditor error = %v, want permission_denied", err)
 	}
 
-	if _, err := client.ResolveCommentReport(context.Background(), newAdminDBRequest(editor, &publiraadminv1.ResolveCommentReportRequest{
+	if _, err := client.ResolveCommentReport(testutil.WithBearer(context.Background(), editor.token()), &publiraadminv1.ResolveCommentReportRequest{
 		Tenant:     editor.tenantContext(),
 		ReportId:   reportID.String(),
 		Resolution: "resolved",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("ResolveCommentReport as an editor: %v", err)
 	}
 }

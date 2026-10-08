@@ -2,12 +2,12 @@ package emailrenderer
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	publiraemailv1 "github.com/publira/publira/server/internal/proto/gen/publira/email/v1"
 	publiraemailv1connect "github.com/publira/publira/server/internal/proto/gen/publira/email/v1/publiraemailv1connect"
@@ -19,19 +19,20 @@ type rendererServiceStub struct {
 	err     error
 }
 
-func (s *rendererServiceStub) RenderEmail(_ context.Context, req *connect.Request[publiraemailv1.RenderEmailRequest]) (*connect.Response[publiraemailv1.RenderEmailResponse], error) {
-	s.request = req.Msg
+func (s *rendererServiceStub) RenderEmail(_ context.Context, req *publiraemailv1.RenderEmailRequest) (*publiraemailv1.RenderEmailResponse, error) {
+	s.request = req
 	if s.err != nil {
 		return nil, s.err
 	}
-	return connect.NewResponse(&publiraemailv1.RenderEmailResponse{Html: "<p>HTML</p>"}), nil
+	return &publiraemailv1.RenderEmailResponse{Html: "<p>HTML</p>"}, nil
 }
 
 func newRendererTestServer(t *testing.T, service *rendererServiceStub) *httptest.Server {
 	t.Helper()
-	path, handler := publiraemailv1connect.NewEmailRendererServiceHandler(service)
+	rpc := connect.NewServer()
+	publiraemailv1connect.RegisterEmailRendererServiceHandler(rpc, service)
 	mux := http.NewServeMux()
-	mux.Handle(path, handler)
+	connecthttp.Mount(mux, rpc)
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 	return server
@@ -66,7 +67,7 @@ func TestClientRender(t *testing.T) {
 }
 
 func TestClientRenderPropagatesRendererError(t *testing.T) {
-	service := &rendererServiceStub{err: connect.NewError(connect.CodeInvalidArgument, errors.New("invalid template data"))}
+	service := &rendererServiceStub{err: connect.NewError(connect.CodeInvalidArgument, "invalid template data")}
 	server := newRendererTestServer(t, service)
 
 	_, err := NewClient(server.URL).Render(context.Background(), Request{})

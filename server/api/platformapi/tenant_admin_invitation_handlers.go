@@ -2,11 +2,10 @@ package platformapi
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -43,17 +42,17 @@ func tenantAdminInvitationToProto(invitation dbmodels.TenantAdminInvitation, now
 
 func (s *platformServer) ListTenantAdminInvitations(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.ListTenantAdminInvitationsRequest],
-) (*connect.Response[publirasplatformv1.ListTenantAdminInvitationsResponse], error) {
-	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.Msg.TenantId, req.Header())
+	req *publirasplatformv1.ListTenantAdminInvitationsRequest,
+) (*publirasplatformv1.ListTenantAdminInvitationsResponse, error) {
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.TenantId, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultListLimit, maxListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultListLimit, maxListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	listKey := pagination.NewListKey("created_at_desc").Value("tenant_id", tenantID.String())
 	var keys pagination.TimeUUIDKeys
@@ -103,22 +102,22 @@ func (s *platformServer) ListTenantAdminInvitations(
 		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *platformServer) CreateTenantAdminInvitation(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.CreateTenantAdminInvitationRequest],
-) (*connect.Response[publirasplatformv1.CreateTenantAdminInvitationResponse], error) {
-	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.Msg.TenantId, req.Header())
+	req *publirasplatformv1.CreateTenantAdminInvitationRequest,
+) (*publirasplatformv1.CreateTenantAdminInvitationResponse, error) {
+	tenantID, err := rpcmiddleware.ResolveTenantIDValue(req.TenantId, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	params := tenantmembers.InviteParams{Email: req.Msg.Email, AllowMail: s.allowInvitationMail(ctx, req)}
+	params := tenantmembers.InviteParams{Email: req.Email, AllowMail: s.allowInvitationMail(ctx)}
 	if err := params.Validate(); err != nil {
 		return nil, s.tenantError(ctx, "invalid tenant admin invitation request", err)
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -144,24 +143,24 @@ func (s *platformServer) CreateTenantAdminInvitation(
 	}
 
 	if invited.RoleGrantedImmediately {
-		return connect.NewResponse(&publirasplatformv1.CreateTenantAdminInvitationResponse{
+		return &publirasplatformv1.CreateTenantAdminInvitationResponse{
 			RoleGrantedImmediately: true,
-		}), nil
+		}, nil
 	}
-	return connect.NewResponse(&publirasplatformv1.CreateTenantAdminInvitationResponse{
+	return &publirasplatformv1.CreateTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(invited.Invitation, time.Now()),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) ResendTenantAdminInvitation(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.ResendTenantAdminInvitationRequest],
-) (*connect.Response[publirasplatformv1.ResendTenantAdminInvitationResponse], error) {
-	tenant, invitationID, err := s.tenantInvitationTarget(ctx, req.Msg.TenantId, req.Msg.InvitationId)
+	req *publirasplatformv1.ResendTenantAdminInvitationRequest,
+) (*publirasplatformv1.ResendTenantAdminInvitationResponse, error) {
+	tenant, invitationID, err := s.tenantInvitationTarget(ctx, req.TenantId, req.InvitationId)
 	if err != nil {
 		return nil, err
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +174,7 @@ func (s *platformServer) ResendTenantAdminInvitation(
 	updated, err := platformtenants.ResendInvitation(ctx, tx, s.logger, actor, tenantmembers.ResendParams{
 		TenantID:     tenant.ID,
 		InvitationID: invitationID,
-		AllowMail:    s.allowInvitationMail(ctx, req),
+		AllowMail:    s.allowInvitationMail(ctx),
 	})
 	if err != nil {
 		return nil, s.tenantError(ctx, "failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
@@ -184,20 +183,20 @@ func (s *platformServer) ResendTenantAdminInvitation(
 		return nil, s.internalDBError(ctx, "failed to commit resend tenant admin invitation transaction", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}
 
-	return connect.NewResponse(&publirasplatformv1.ResendTenantAdminInvitationResponse{
+	return &publirasplatformv1.ResendTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(updated, time.Now()),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) CancelTenantAdminInvitation(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.CancelTenantAdminInvitationRequest],
-) (*connect.Response[publirasplatformv1.CancelTenantAdminInvitationResponse], error) {
-	tenant, invitationID, err := s.tenantInvitationTarget(ctx, req.Msg.TenantId, req.Msg.InvitationId)
+	req *publirasplatformv1.CancelTenantAdminInvitationRequest,
+) (*publirasplatformv1.CancelTenantAdminInvitationResponse, error) {
+	tenant, invitationID, err := s.tenantInvitationTarget(ctx, req.TenantId, req.InvitationId)
 	if err != nil {
 		return nil, err
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -216,23 +215,23 @@ func (s *platformServer) CancelTenantAdminInvitation(
 		return nil, s.internalDBError(ctx, "failed to commit cancel tenant admin invitation transaction", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}
 
-	return connect.NewResponse(&publirasplatformv1.CancelTenantAdminInvitationResponse{
+	return &publirasplatformv1.CancelTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(updated, time.Now()),
-	}), nil
+	}, nil
 }
 
 // allowInvitationMail charges the console's mail allowance for an invitation
 // sent to an address nobody has confirmed.
-func (s *platformServer) allowInvitationMail(ctx context.Context, req connect.AnyRequest) func(string) error {
+func (s *platformServer) allowInvitationMail(ctx context.Context) func(string) error {
 	return func(email string) error {
-		return s.mail.Allow(ctx, req, mailguard.PlatformScope, email)
+		return s.mail.Allow(ctx, mailguard.PlatformScope, email)
 	}
 }
 
 func (s *platformServer) tenantInvitationTarget(ctx context.Context, rawTenantID, rawInvitationID string) (dbmodels.Tenant, uuid.UUID, error) {
 	invitationID := strings.TrimSpace(rawInvitationID)
 	if strings.TrimSpace(rawTenantID) == "" || invitationID == "" {
-		return dbmodels.Tenant{}, uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_id and invitation_id are required"))
+		return dbmodels.Tenant{}, uuid.Nil, connect.NewError(connect.CodeInvalidArgument, "tenant_id and invitation_id are required")
 	}
 	tenantID, err := rpcmiddleware.ResolveTenantIDValue(rawTenantID, nil)
 	if err != nil {

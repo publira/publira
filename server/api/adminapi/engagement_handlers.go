@@ -3,10 +3,9 @@ package adminapi
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -148,26 +147,26 @@ func (s *adminServer) episodeReadThroughPage(
 // not the moment the member finishes it.
 func (s *adminServer) ListEpisodeReadThrough(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListEpisodeReadThroughRequest],
-) (*connect.Response[publiraadminv1.ListEpisodeReadThroughResponse], error) {
+	req *publiraadminv1.ListEpisodeReadThroughRequest,
+) (*publiraadminv1.ListEpisodeReadThroughResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultEpisodeReadThroughPageSize, maxEpisodeReadThroughPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultEpisodeReadThroughPageSize, maxEpisodeReadThroughPageSize)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.CountUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeCountUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -238,5 +237,5 @@ func (s *adminServer) ListEpisodeReadThrough(
 		res.NextToken = pagination.EncodeCountUUIDRecovery(pagination.Forward, keys.Count, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }

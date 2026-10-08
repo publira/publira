@@ -5,12 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/cenkalti/backoff/v7"
 	"github.com/google/uuid"
 
@@ -58,7 +57,7 @@ type UploadRequest struct {
 	ArchiveData     []byte
 	ArchiveFilename string
 	ArchiveType     string
-	Headers         http.Header
+	Headers         *connect.Header
 }
 
 func storageUploadError(err error) error {
@@ -68,7 +67,7 @@ func storageUploadError(err error) error {
 	if errors.Is(err, storage.ErrNotConfigured) {
 		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, storage.ErrNotConfigured, rpcerrors.ReasonStorageNotConfigured)
 	}
-	return connect.NewError(connect.CodeInternal, err)
+	return connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 }
 
 // Upload stores the pages after the episode's last one and answers with them
@@ -108,13 +107,13 @@ func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattype
 func collectInputs(images []*publiraadminv1.EpisodeImageUpload, archiveData []byte, archiveFilename string, archiveType string, hasSeries bool) ([]archiveimages.Input, error) {
 	hasArchive := len(archiveData) > 0
 	if hasArchive && len(images) > 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("images and archive_data cannot be used together"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "images and archive_data cannot be used together")
 	}
 	if hasArchive && !hasSeries {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_id is required when archive_data is provided"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "series_id is required when archive_data is provided")
 	}
 	if !hasArchive && len(images) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("images are required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "images are required")
 	}
 
 	if hasArchive {
@@ -158,7 +157,7 @@ func archiveRejectionError(err error) error {
 	if rejection, ok := archiveimages.RejectionOf(err); ok && rejection == archiveimages.RejectionInvalidPath {
 		return rpcerrors.NewErrorInfoError(connect.CodeInvalidArgument, err, rpcerrors.ReasonArchiveInvalidPath)
 	}
-	return connect.NewError(connect.CodeInvalidArgument, err)
+	return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 }
 
 func shouldExtractFromEPUB(archiveFilename string, archiveContentType string) bool {
@@ -174,12 +173,12 @@ func (s Service) resolveEpisode(ctx context.Context, tenantID, seriesID, episode
 	episode, err := s.Queries.GetEpisodeSeriesByIDForTenant(ctx, dbmodels.GetEpisodeSeriesByIDForTenantParams{TenantID: tenantID, ID: episodeID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return uuid.Nil, "", connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+			return uuid.Nil, "", connect.NewError(connect.CodeNotFound, "episode not found")
 		}
-		return uuid.Nil, "", connect.NewError(connect.CodeInternal, err)
+		return uuid.Nil, "", connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	if seriesID != uuid.Nil && episode.SeriesID != seriesID {
-		return uuid.Nil, "", connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		return uuid.Nil, "", connect.NewError(connect.CodeNotFound, "episode not found")
 	}
 	return episode.ID, episode.PublicID, nil
 }
@@ -190,11 +189,11 @@ func (s Service) storeImages(
 	episodeID uuid.UUID,
 	episodePublicID string,
 	imageInputs []archiveimages.Input,
-	headers http.Header,
+	headers *connect.Header,
 ) (items []*publirattypesv1.EpisodeImage, wrote bool, err error) {
 	maxDisplayOrder, err := s.Queries.GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx, episodeID)
 	if err != nil {
-		return nil, false, connect.NewError(connect.CodeInternal, err)
+		return nil, false, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	items = make([]*publirattypesv1.EpisodeImage, 0, len(imageInputs))
@@ -204,18 +203,19 @@ func (s Service) storeImages(
 
 	for index, imageInput := range imageInputs {
 		if len(imageInput.Data) == 0 {
-			return nil, wrote, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d].data is required", index))
+			return nil, wrote, connect.Errorf(connect.CodeInvalidArgument, "images[%d].data is required", index)
 		}
 
 		variants, buildErr := imageproc.BuildVariants(imageInput.Data, imageInput.ContentType)
 		if buildErr != nil {
-			return nil, wrote, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d]: %w", index, buildErr))
+			err := fmt.Errorf("images[%d]: %w", index, buildErr)
+			return nil, wrote, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 		}
 
 		displayOrder++
 		episodeImageID, idErr := uuid.NewV7()
 		if idErr != nil {
-			return nil, wrote, connect.NewError(connect.CodeInternal, idErr)
+			return nil, wrote, connect.NewError(connect.CodeInternal, idErr.Error()).WithCause(idErr)
 		}
 		createdImage, createErr := s.Queries.CreateEpisodeImage(ctx, dbmodels.CreateEpisodeImageParams{
 			ID:           episodeImageID,
@@ -224,7 +224,7 @@ func (s Service) storeImages(
 			DisplayOrder: displayOrder,
 		})
 		if createErr != nil {
-			return nil, wrote, connect.NewError(connect.CodeInternal, createErr)
+			return nil, wrote, connect.NewError(connect.CodeInternal, createErr.Error()).WithCause(createErr)
 		}
 		wrote = true
 

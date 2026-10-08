@@ -5,7 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/ageverification"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -32,44 +33,38 @@ func (e *publicDBEnv) openAdminReaderConsole(t *testing.T, tenant testutil.Tenan
 	staff := e.PG.SeedTenantAdmin(t, tenant.ID, "READERADMIN1", "admin@"+tenant.Domain, "Admin")
 	console := e.openAdminConsole(t, tenant, staff)
 	return adminReaderConsole{
-		client: publiraadminv1connect.NewAdminUserServiceClient(console.server.Client(), console.server.URL),
+		client: publiraadminv1connect.NewAdminUserServiceClient(connect.NewClient(connecthttp.NewTransport(console.server.Client(), console.server.URL))),
 		tenant: &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		token:  console.token,
 	}
 }
 
-func adminReaderRequest[T any](console adminReaderConsole, msg *T) *connect.Request[T] {
-	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+console.token)
-	return req
-}
-
 func (c adminReaderConsole) suspend(t *testing.T, readerID string) *publiraadminv1.AdminReader {
 	t.Helper()
 
-	res, err := c.client.SuspendReader(context.Background(), adminReaderRequest(c, &publiraadminv1.SuspendReaderRequest{Tenant: c.tenant, ReaderId: readerID}))
+	res, err := c.client.SuspendReader(testutil.WithBearer(context.Background(), c.token), &publiraadminv1.SuspendReaderRequest{Tenant: c.tenant, ReaderId: readerID})
 	if err != nil {
 		t.Fatalf("SuspendReader %s: %v", readerID, err)
 	}
-	return res.Msg.Reader
+	return res.Reader
 }
 
 func (c adminReaderConsole) unsuspend(t *testing.T, readerID string) *publiraadminv1.AdminReader {
 	t.Helper()
 
-	res, err := c.client.UnsuspendReader(context.Background(), adminReaderRequest(c, &publiraadminv1.UnsuspendReaderRequest{Tenant: c.tenant, ReaderId: readerID}))
+	res, err := c.client.UnsuspendReader(testutil.WithBearer(context.Background(), c.token), &publiraadminv1.UnsuspendReaderRequest{Tenant: c.tenant, ReaderId: readerID})
 	if err != nil {
 		t.Fatalf("UnsuspendReader %s: %v", readerID, err)
 	}
-	return res.Msg.Reader
+	return res.Reader
 }
 
-func loginReader(client publirav1connect.AuthServiceClient, tenant testutil.Tenant, email string) (*connect.Response[publirav1.LoginResponse], error) {
-	return client.Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+func loginReader(client publirav1connect.AuthServiceClient, tenant testutil.Tenant, email string) (*publirav1.LoginResponse, error) {
+	return client.Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(tenant),
 		Email:    email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 }
 
 func TestDBAdminSuspensionRefusesTheReaderUntilItIsLifted(t *testing.T) {
@@ -83,13 +78,13 @@ func TestDBAdminSuspensionRefusesTheReaderUntilItIsLifted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Login before the suspension: %v", err)
 	}
-	session := login.Msg.AccessToken.Token
+	session := login.AccessToken.Token
 
 	if got := console.suspend(t, reader.ID.String()); got.Status != "suspended" {
 		t.Fatalf("suspended reader status = %q, want suspended", got.Status)
 	}
 
-	if _, err := client.GetMe(context.Background(), newBearerRequest(&publirav1.GetMeRequest{Tenant: tenantContext(tenant)}, session)); connect.CodeOf(err) != connect.CodeUnauthenticated {
+	if _, err := client.GetMe(testutil.WithBearer(context.Background(), session), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)}); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMe with a session from before the suspension = %v, want unauthenticated", err)
 	}
 	// The same refusal a platform suspension produces.
@@ -102,14 +97,14 @@ func TestDBAdminSuspensionRefusesTheReaderUntilItIsLifted(t *testing.T) {
 	}
 
 	// Lifting the suspension does not bring back the sessions it ended.
-	if _, err := client.GetMe(context.Background(), newBearerRequest(&publirav1.GetMeRequest{Tenant: tenantContext(tenant)}, session)); connect.CodeOf(err) != connect.CodeUnauthenticated {
+	if _, err := client.GetMe(testutil.WithBearer(context.Background(), session), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)}); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMe with a session from before the suspension after it was lifted = %v, want unauthenticated", err)
 	}
 	relogin, err := loginReader(client, tenant, reader.Email)
 	if err != nil {
 		t.Fatalf("Login after the suspension was lifted: %v", err)
 	}
-	if _, err := client.GetMe(context.Background(), newBearerRequest(&publirav1.GetMeRequest{Tenant: tenantContext(tenant)}, relogin.Msg.AccessToken.Token)); err != nil {
+	if _, err := client.GetMe(testutil.WithBearer(context.Background(), relogin.AccessToken.Token), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)}); err != nil {
 		t.Fatalf("GetMe with a session from after the suspension was lifted: %v", err)
 	}
 }
@@ -126,10 +121,10 @@ func TestDBVerifyUserEmailDoesNotLiftAnAdminSuspension(t *testing.T) {
 
 	console.suspend(t, pending.ID.String())
 
-	if _, err := client.VerifyUserEmail(context.Background(), connect.NewRequest(&publirav1.VerifyUserEmailRequest{
+	if _, err := client.VerifyUserEmail(context.Background(), &publirav1.VerifyUserEmailRequest{
 		Tenant: tenantContext(tenant),
 		Token:  "pending-token",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("VerifyUserEmail while suspended: %v", err)
 	}
 	if _, err := loginReader(client, tenant, pending.Email); connect.CodeOf(err) != connect.CodeFailedPrecondition {
@@ -161,10 +156,10 @@ func TestDBAdminUnsuspendReturnsAnUnconfirmedReaderToInactive(t *testing.T) {
 		t.Fatalf("unsuspended unconfirmed reader status = %q, want inactive", got.Status)
 	}
 
-	if _, err := client.VerifyUserEmail(context.Background(), connect.NewRequest(&publirav1.VerifyUserEmailRequest{
+	if _, err := client.VerifyUserEmail(context.Background(), &publirav1.VerifyUserEmailRequest{
 		Tenant: tenantContext(tenant),
 		Token:  "pending-token",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("VerifyUserEmail after the suspension was lifted: %v", err)
 	}
 	if _, err := loginReader(client, tenant, pending.Email); err != nil {
@@ -189,15 +184,15 @@ func TestDBAdminDeleteReaderLeavesWhatDeleteMeLeaves(t *testing.T) {
 	console := env.openAdminReaderConsole(t, tenant)
 	client := env.authClient()
 
-	res, err := console.client.DeleteReader(context.Background(), adminReaderRequest(console, &publiraadminv1.DeleteReaderRequest{
+	res, err := console.client.DeleteReader(testutil.WithBearer(context.Background(), console.token), &publiraadminv1.DeleteReaderRequest{
 		Tenant:   console.tenant,
 		ReaderId: buyer.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("DeleteReader: %v", err)
 	}
-	if res.Msg.PublicId != buyer.PublicID {
-		t.Fatalf("deleted public_id = %q, want %q", res.Msg.PublicId, buyer.PublicID)
+	if res.PublicId != buyer.PublicID {
+		t.Fatalf("deleted public_id = %q, want %q", res.PublicId, buyer.PublicID)
 	}
 
 	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1", buyer.ID); count != 0 {
@@ -210,7 +205,7 @@ func TestDBAdminDeleteReaderLeavesWhatDeleteMeLeaves(t *testing.T) {
 		t.Fatalf("purchases kept without the buyer = %d, want 1", count)
 	}
 
-	if _, err := client.GetMe(context.Background(), newBearerRequest(&publirav1.GetMeRequest{Tenant: tenantContext(tenant)}, session)); connect.CodeOf(err) != connect.CodeUnauthenticated {
+	if _, err := client.GetMe(testutil.WithBearer(context.Background(), session), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)}); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMe with the deleted reader's session = %v, want unauthenticated", err)
 	}
 	if _, err := loginReader(client, tenant, buyer.Email); connect.CodeOf(err) != connect.CodeUnauthenticated {
@@ -243,22 +238,19 @@ func TestDBAdminBirthDateCorrectionDecidesTheNextAgeGatedRead(t *testing.T) {
 
 	access := func(t *testing.T) publirav1.EpisodeAccess {
 		t.Helper()
-		resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), newBearerRequest(
-			&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID},
-			session,
-		))
+		resp, err := env.catalogClient().GetEpisodeDetail(testutil.WithBearer(context.Background(), session), &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID})
 		if err != nil {
 			t.Fatalf("GetEpisodeDetail: %v", err)
 		}
-		return resp.Msg.Access
+		return resp.Access
 	}
 	setByStaff := func(t *testing.T, birthDate string) {
 		t.Helper()
-		if _, err := console.client.SetReaderBirthDate(context.Background(), adminReaderRequest(console, &publiraadminv1.SetReaderBirthDateRequest{
+		if _, err := console.client.SetReaderBirthDate(testutil.WithBearer(context.Background(), console.token), &publiraadminv1.SetReaderBirthDateRequest{
 			Tenant:    console.tenant,
 			ReaderId:  reader.ID.String(),
 			BirthDate: birthDate,
-		})); err != nil {
+		}); err != nil {
 			t.Fatalf("SetReaderBirthDate %q: %v", birthDate, err)
 		}
 	}

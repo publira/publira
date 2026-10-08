@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mailguard"
@@ -62,10 +62,10 @@ func TestDBSavedPlatformPolicyLimitsMailRequests(t *testing.T) {
 	member := env.PG.SeedEndUser(t, tenant.ID, "POLMEMBER", "policy-member@example.com", "Policy Member")
 
 	reset := func() error {
-		_, err := env.authClient().RequestPasswordReset(context.Background(), connect.NewRequest(&publirav1.RequestPasswordResetRequest{
+		_, err := env.authClient().RequestPasswordReset(context.Background(), &publirav1.RequestPasswordResetRequest{
 			Tenant: tenantContext(tenant),
 			Email:  member.Email,
-		}))
+		})
 		return err
 	}
 	if err := reset(); err != nil {

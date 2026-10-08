@@ -4,10 +4,9 @@ import (
 	"context"
 	"time"
 
-	"connectrpc.com/connect"
-
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -32,9 +31,9 @@ func toDashboardRecentEvent(row dbmodels.ListRecentPlatformEventsRow) *publirasp
 
 func (s *platformServer) GetDashboardSummary(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.GetDashboardSummaryRequest],
-) (*connect.Response[publirasplatformv1.GetDashboardSummaryResponse], error) {
-	if _, err := s.requirePlatformActor(ctx, req.Header()); err != nil {
+	req *publirasplatformv1.GetDashboardSummaryRequest,
+) (*publirasplatformv1.GetDashboardSummaryResponse, error) {
+	if _, err := s.requirePlatformActor(ctx, rpcmiddleware.RequestHeader(ctx)); err != nil {
 		return nil, err
 	}
 
@@ -55,7 +54,7 @@ func (s *platformServer) GetDashboardSummary(
 		return nil, s.internalDBError(ctx, "failed to count pending end users for dashboard", err)
 	}
 
-	limit := req.Msg.RecentEventsLimit
+	limit := req.RecentEventsLimit
 	if limit <= 0 {
 		limit = defaultDashboardRecentEventsLimit
 	}
@@ -73,11 +72,11 @@ func (s *platformServer) GetDashboardSummary(
 		items = append(items, toDashboardRecentEvent(event))
 	}
 
-	return connect.NewResponse(&publirasplatformv1.GetDashboardSummaryResponse{
+	return &publirasplatformv1.GetDashboardSummaryResponse{
 		TotalTenants:     totalTenants,
 		ActiveTenants:    activeTenants,
 		SuspendedTenants: suspendedTenants,
 		PendingEndUsers:  pendingEndUsers,
 		RecentEvents:     items,
-	}), nil
+	}, nil
 }

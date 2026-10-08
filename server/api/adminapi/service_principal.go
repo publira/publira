@@ -2,10 +2,9 @@ package adminapi
 
 import (
 	"context"
-	"errors"
-	"net/http"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/publira/publira/server/internal/auth"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
@@ -35,7 +34,7 @@ var serviceProcedures = map[string]struct{}{
 }
 
 func serviceProcedureDeniedError() error {
-	return connect.NewError(connect.CodePermissionDenied, errors.New("procedure is not available to the service credential"))
+	return connect.NewError(connect.CodePermissionDenied, "procedure is not available to the service credential")
 }
 
 // sessionContextBuilder authenticates a request carrying the service token as
@@ -43,22 +42,22 @@ func serviceProcedureDeniedError() error {
 func (s *adminServer) sessionContextBuilder() rpcmiddleware.UnaryContextBuilder {
 	operator := rpcmiddleware.BuildAdminSessionContext(s.authenticateSession)
 	service := rpcmiddleware.BuildAdminSessionContext(s.authenticateService)
-	return func(ctx context.Context, req connect.AnyRequest) (context.Context, error) {
-		bearer, ok := auth.BearerTokenFromHeader(req.Header())
+	return func(ctx context.Context, spec connect.Spec, req proto.Message) (context.Context, error) {
+		bearer, ok := auth.BearerTokenFromHeader(rpcmiddleware.RequestHeader(ctx))
 		if !ok || !s.serviceToken.Matches(bearer) {
-			return operator(ctx, req)
+			return operator(ctx, spec, req)
 		}
-		if _, allowed := serviceProcedures[req.Spec().Procedure]; !allowed {
+		if _, allowed := serviceProcedures[spec.Procedure]; !allowed {
 			return nil, serviceProcedureDeniedError()
 		}
-		return service(ctx, req)
+		return service(ctx, spec, req)
 	}
 }
 
 func (s *adminServer) authenticateService(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	_ http.Header,
+	_ *connect.Header,
 ) (rpcmiddleware.SessionContext, error) {
 	tenant, err := s.tenantByContext(ctx, tenantCtx)
 	if err != nil {

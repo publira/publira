@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -118,11 +118,11 @@ func (e *publicDBEnv) listRankedSeries(
 ) *publirav1.ListRankedSeriesResponse {
 	t.Helper()
 
-	resp, err := e.catalogClient().ListRankedSeries(context.Background(), connect.NewRequest(req))
+	resp, err := e.catalogClient().ListRankedSeries(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListRankedSeries: %v", err)
 	}
-	return resp.Msg
+	return resp
 }
 
 func TestDBListRankedSeriesKeepsSnapshotOrderAndTenantsApart(t *testing.T) {
@@ -539,14 +539,14 @@ func TestDBRankingReadsTheLeaderboardOfTheCallingSurface(t *testing.T) {
 				t.Fatalf("next_token after the last position = %q, want empty", second.NextToken)
 			}
 
-			genres, err := env.catalogClient().ListPublishedGenres(ctx, connect.NewRequest(&publirav1.ListPublishedGenresRequest{
+			genres, err := env.catalogClient().ListPublishedGenres(ctx, &publirav1.ListPublishedGenresRequest{
 				Tenant:  tenantContext(tenant),
 				Surface: tc.surface,
-			}))
+			})
 			if err != nil {
 				t.Fatalf("ListPublishedGenres: %v", err)
 			}
-			if got := featuredSeriesPublicIDs(genres.Msg.Genres[0]); !slices.Equal(got, tc.ordered) {
+			if got := featuredSeriesPublicIDs(genres.Genres[0]); !slices.Equal(got, tc.ordered) {
 				t.Fatalf("Drama featured_series = %v, want %v", got, tc.ordered)
 			}
 
@@ -729,19 +729,21 @@ func TestDBListRankedSeriesAppliesTheTenantAgeRule(t *testing.T) {
 			})
 			env.seedRatedPeriodRankingSnapshot(t, tenant.ID, stored, contentranking.DailyRankingKey, rankingPeriodDate(0), series.ID)
 
-			request := connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+			request := &publirav1.ListRankedSeriesRequest{
 				Tenant:    tenantContext(tenant),
 				AgeRating: tt.ageRating,
-			})
+			}
+			ctx := context.Background()
 			if tt.signedIn {
 				reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 				if tt.hasBirthDate {
 					setBirthDate(t, env, reader.ID, birthDateForAge(t, tenant, tt.age, false))
 				}
-				request = newBearerRequest(request.Msg, tokenFor(t, tenant, reader))
+				ctx = testutil.WithBearer(ctx, tokenFor(t, tenant, reader))
 			}
 
-			resp, err := env.catalogClient().ListRankedSeries(context.Background(), request)
+			respCtx, respCall := testutil.NewClientContext(ctx)
+			resp, err := env.catalogClient().ListRankedSeries(respCtx, request)
 			if tt.wantCode != 0 {
 				if connect.CodeOf(err) != tt.wantCode {
 					t.Fatalf("error code = %v (%v), want %v", connect.CodeOf(err), err, tt.wantCode)
@@ -751,10 +753,10 @@ func TestDBListRankedSeriesAppliesTheTenantAgeRule(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ListRankedSeries: %v", err)
 			}
-			if got, want := rankedPositions(resp.Msg.RankedSeries), []string{"SERIESA00001@1"}; !slices.Equal(got, want) {
+			if got, want := rankedPositions(resp.RankedSeries), []string{"SERIESA00001@1"}; !slices.Equal(got, want) {
 				t.Fatalf("ranked series = %v, want %v", got, want)
 			}
-			if got := resp.Header().Get("Cache-Control"); (got == "private, no-store") != tt.wantPrivate {
+			if got := respCall.ResponseHeader().Get("Cache-Control"); (got == "private, no-store") != tt.wantPrivate {
 				t.Fatalf("Cache-Control = %q, want private: %v", got, tt.wantPrivate)
 			}
 		})
@@ -883,12 +885,12 @@ func TestDBListRankedSeriesPagesAGenresOwnRanking(t *testing.T) {
 
 	// A genre's token continues that genre's chart and nothing else.
 	for _, genre := range []string{"", drama.PublicID} {
-		_, err := env.catalogClient().ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+		_, err := env.catalogClient().ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 			GenrePublicId: genre,
 			Limit:         2,
 			Tenant:        tenantContext(tenant),
 			Token:         first.NextToken,
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("Action's token under genre %q: error code = %v, want InvalidArgument", genre, connect.CodeOf(err))
 		}
@@ -967,10 +969,10 @@ func TestDBListRankedSeriesRejectsAnotherTenantsGenre(t *testing.T) {
 	foreign := env.PG.SeedGenre(t, second.ID, testutil.GenreSeed{PublicID: "GENREFOREIGN", Name: "Foreign"})
 
 	for _, genre := range []string{foreign.PublicID, "GENRENOWHERE"} {
-		_, err := env.catalogClient().ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+		_, err := env.catalogClient().ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 			GenrePublicId: genre,
 			Tenant:        tenantContext(first),
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("genre %q: error code = %v, want NotFound", genre, connect.CodeOf(err))
 		}

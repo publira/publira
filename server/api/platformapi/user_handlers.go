@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -99,11 +100,11 @@ func (s *platformServer) endUserTenant(ctx context.Context, userID uuid.UUID) (p
 func parseEndUserID(raw string) (uuid.UUID, error) {
 	id := strings.TrimSpace(raw)
 	if id == "" {
-		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id is required"))
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, "user_id is required")
 	}
 	parsed, err := uuid.Parse(id)
 	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id is not an identifier"))
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, "user_id is not an identifier")
 	}
 	return parsed, nil
 }
@@ -114,7 +115,7 @@ func (s *platformServer) ensureManageableEndUser(ctx context.Context, userID uui
 	user, err := s.queriesFor(ctx).GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.User{}, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+			return dbmodels.User{}, connect.NewError(connect.CodeNotFound, "user not found")
 		}
 		return dbmodels.User{}, s.internalDBError(ctx, "failed to get user", err, "user_id", userID.String())
 	}
@@ -124,7 +125,7 @@ func (s *platformServer) ensureManageableEndUser(ctx context.Context, userID uui
 		return dbmodels.User{}, s.internalDBError(ctx, "failed to list tenant user roles", err, "user_id", user.ID.String())
 	}
 	if len(tenantRoles) > 0 {
-		return dbmodels.User{}, connect.NewError(connect.CodePermissionDenied, errors.New("cannot operate tenant member users"))
+		return dbmodels.User{}, connect.NewError(connect.CodePermissionDenied, "cannot operate tenant member users")
 	}
 
 	return user, nil
@@ -142,7 +143,7 @@ func parseUserIDs(values []string) ([]uuid.UUID, error) {
 		}
 		id, err := uuid.Parse(trimmed)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_ids contains a value that is not an identifier"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "user_ids contains a value that is not an identifier")
 		}
 		if _, ok := seen[id]; ok {
 			continue
@@ -219,42 +220,42 @@ func (s *platformServer) endUserPage(
 
 func (s *platformServer) ListEndUsers(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.ListEndUsersRequest],
-) (*connect.Response[publirasplatformv1.ListEndUsersResponse], error) {
+	req *publirasplatformv1.ListEndUsersRequest,
+) (*publirasplatformv1.ListEndUsersResponse, error) {
 	// Check for platform operator permission.
-	if _, err := s.requirePlatformActor(ctx, req.Header()); err != nil {
+	if _, err := s.requirePlatformActor(ctx, rpcmiddleware.RequestHeader(ctx)); err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultListLimit, maxListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultListLimit, maxListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 
 	var createdAfterFilter sql.NullTime
-	if req.Msg.CreatedAfter != "" {
-		t, parseErr := time.Parse(time.RFC3339, req.Msg.CreatedAfter)
+	if req.CreatedAfter != "" {
+		t, parseErr := time.Parse(time.RFC3339, req.CreatedAfter)
 		if parseErr != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid created_after format"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "invalid created_after format")
 		}
 		createdAfterFilter = sql.NullTime{Time: t, Valid: true}
 	}
 	var createdBeforeFilter sql.NullTime
-	if req.Msg.CreatedBefore != "" {
-		t, parseErr := time.Parse(time.RFC3339, req.Msg.CreatedBefore)
+	if req.CreatedBefore != "" {
+		t, parseErr := time.Parse(time.RFC3339, req.CreatedBefore)
 		if parseErr != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid created_before format"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "invalid created_before format")
 		}
 		createdBeforeFilter = sql.NullTime{Time: t, Valid: true}
 	}
 
-	userIDs, err := parseUserIDs(req.Msg.UserIds)
+	userIDs, err := parseUserIDs(req.UserIds)
 	if err != nil {
 		return nil, err
 	}
-	filterStatus := strings.TrimSpace(req.Msg.Status)
-	filterTenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
+	filterStatus := strings.TrimSpace(req.Status)
+	filterTenantPublicID := strings.TrimSpace(req.TenantPublicId)
 	filters := endUserQueryFilters{
 		createdAfter:   createdAfterFilter,
 		createdBefore:  createdBeforeFilter,
@@ -309,27 +310,27 @@ func (s *platformServer) ListEndUsers(
 		resp.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }
 
 func (s *platformServer) GetEndUser(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.GetEndUserRequest],
-) (*connect.Response[publirasplatformv1.GetEndUserResponse], error) {
+	req *publirasplatformv1.GetEndUserRequest,
+) (*publirasplatformv1.GetEndUserResponse, error) {
 	// Check for platform operator permission.
-	if _, err := s.requirePlatformActor(ctx, req.Header()); err != nil {
+	if _, err := s.requirePlatformActor(ctx, rpcmiddleware.RequestHeader(ctx)); err != nil {
 		return nil, err
 	}
 
-	publicID := strings.TrimSpace(req.Msg.PublicId)
+	publicID := strings.TrimSpace(req.PublicId)
 	if publicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "public_id is required")
 	}
 
 	user, err := s.queriesFor(ctx).GetUserByPublicID(ctx, publicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "user not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get end user", err, "public_id", publicID)
 	}
@@ -339,22 +340,22 @@ func (s *platformServer) GetEndUser(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publirasplatformv1.GetEndUserResponse{
+	return &publirasplatformv1.GetEndUserResponse{
 		User: newEndUser(user.ID, user.PublicID, user.Name, user.Email, user.Status, user.CreatedAt, tenantPublicID, tenantName),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) SuspendEndUser(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.SuspendEndUserRequest],
-) (*connect.Response[publirasplatformv1.SuspendEndUserResponse], error) {
+	req *publirasplatformv1.SuspendEndUserRequest,
+) (*publirasplatformv1.SuspendEndUserResponse, error) {
 	// Check for platform operator permission.
-	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
+	actor, err := s.requirePlatformWriteActor(ctx, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	userID, err := parseEndUserID(req.Msg.UserId)
+	userID, err := parseEndUserID(req.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -389,25 +390,25 @@ func (s *platformServer) SuspendEndUser(
 		TargetType:          "user",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publirasplatformv1.SuspendEndUserResponse{
+	return &publirasplatformv1.SuspendEndUserResponse{
 		User: newEndUser(updated.ID, updated.PublicID, updated.Name, updated.Email, updated.Status, updated.CreatedAt, tenantPublicID, tenantName),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) UnsuspendEndUser(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.UnsuspendEndUserRequest],
-) (*connect.Response[publirasplatformv1.UnsuspendEndUserResponse], error) {
+	req *publirasplatformv1.UnsuspendEndUserRequest,
+) (*publirasplatformv1.UnsuspendEndUserResponse, error) {
 	// Check for platform operator permission.
-	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
+	actor, err := s.requirePlatformWriteActor(ctx, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	userID, err := parseEndUserID(req.Msg.UserId)
+	userID, err := parseEndUserID(req.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -419,7 +420,7 @@ func (s *platformServer) UnsuspendEndUser(
 	updated, err := s.queriesFor(ctx).UnsuspendUserByID(ctx, user.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "user not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to unsuspend end user", err, "user_id", user.ID.String())
 	}
@@ -436,25 +437,25 @@ func (s *platformServer) UnsuspendEndUser(
 		TargetType:          "user",
 		TargetID:            updated.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publirasplatformv1.UnsuspendEndUserResponse{
+	return &publirasplatformv1.UnsuspendEndUserResponse{
 		User: newEndUser(updated.ID, updated.PublicID, updated.Name, updated.Email, updated.Status, updated.CreatedAt, tenantPublicID, tenantName),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) DeleteEndUser(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.DeleteEndUserRequest],
-) (*connect.Response[publirasplatformv1.DeleteEndUserResponse], error) {
+	req *publirasplatformv1.DeleteEndUserRequest,
+) (*publirasplatformv1.DeleteEndUserResponse, error) {
 	// Check for platform operator permission.
-	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
+	actor, err := s.requirePlatformWriteActor(ctx, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	userID, err := parseEndUserID(req.Msg.UserId)
+	userID, err := parseEndUserID(req.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -489,10 +490,10 @@ func (s *platformServer) DeleteEndUser(
 		TargetType:          "user",
 		TargetID:            user.ID.String(),
 		Outcome:             auditlog.OutcomeSuccess,
-		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:            auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publirasplatformv1.DeleteEndUserResponse{
+	return &publirasplatformv1.DeleteEndUserResponse{
 		PublicId: user.PublicID,
-	}), nil
+	}, nil
 }

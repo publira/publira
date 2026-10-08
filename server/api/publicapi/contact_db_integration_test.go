@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/outbox"
@@ -35,7 +36,7 @@ func (e *publicDBEnv) openAdminContactConsole(t *testing.T, tenant testutil.Tena
 
 	console := e.openAdminConsole(t, tenant, staff)
 	return adminContactConsole{
-		client: publiraadminv1connect.NewAdminContactServiceClient(console.server.Client(), console.server.URL),
+		client: publiraadminv1connect.NewAdminContactServiceClient(connect.NewClient(connecthttp.NewTransport(console.server.Client(), console.server.URL))),
 		token:  console.token,
 		tenant: tenant,
 	}
@@ -44,16 +45,16 @@ func (e *publicDBEnv) openAdminContactConsole(t *testing.T, tenant testutil.Tena
 func (c adminContactConsole) list(t *testing.T, status string, limit int32, token string) *publiraadminv1.ListContactMessagesResponse {
 	t.Helper()
 
-	res, err := c.client.ListContactMessages(context.Background(), newBearerRequest(&publiraadminv1.ListContactMessagesRequest{
+	res, err := c.client.ListContactMessages(testutil.WithBearer(context.Background(), c.token), &publiraadminv1.ListContactMessagesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: c.tenant.ID.String()},
 		Status: status,
 		Limit:  limit,
 		Token:  token,
-	}, c.token))
+	})
 	if err != nil {
 		t.Fatalf("ListContactMessages(%q): %v", status, err)
 	}
-	return res.Msg
+	return res
 }
 
 // submitContactMessage sends the form as a guest, which is how a reader who
@@ -66,7 +67,7 @@ func (e *publicDBEnv) submitContactMessage(
 	t.Helper()
 
 	msg.Tenant = tenantContext(tenant)
-	_, err := e.contactClient().SubmitContactMessage(context.Background(), connect.NewRequest(msg))
+	_, err := e.contactClient().SubmitContactMessage(context.Background(), msg)
 	return err
 }
 
@@ -196,11 +197,11 @@ func TestDBContactMessageFromASignedInReaderCarriesTheAccount(t *testing.T) {
 
 	// The reply-to address is the reader's to choose, and is deliberately not
 	// the one on their account: staff answer where they were asked to.
-	if _, err := env.contactClient().SubmitContactMessage(context.Background(), newBearerRequest(&publirav1.SubmitContactMessageRequest{
+	if _, err := env.contactClient().SubmitContactMessage(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reader)), &publirav1.SubmitContactMessageRequest{
 		Tenant:       tenantContext(tenant),
 		ReplyToEmail: "elsewhere@example.test",
 		Body:         "The date of birth on my account is wrong.",
-	}, tokenFor(t, tenant, reader))); err != nil {
+	}); err != nil {
 		t.Fatalf("SubmitContactMessage: %v", err)
 	}
 
@@ -317,11 +318,11 @@ func TestDBContactMessageRefusesAReaderPastTheAccountAllowance(t *testing.T) {
 	token := tokenFor(t, tenant, reader)
 
 	send := func(body string) error {
-		_, err := env.contactClient().SubmitContactMessage(context.Background(), newBearerRequest(&publirav1.SubmitContactMessageRequest{
+		_, err := env.contactClient().SubmitContactMessage(testutil.WithBearer(context.Background(), token), &publirav1.SubmitContactMessageRequest{
 			Tenant:       tenantContext(tenant),
 			ReplyToEmail: "reader@contact6.example.com",
 			Body:         body,
-		}, token))
+		})
 		return err
 	}
 
@@ -351,30 +352,30 @@ func TestDBContactMessageIsMarkedHandledAndPutBack(t *testing.T) {
 		t.Fatalf("the listed message carries no primary key: id = %q", listed.Id)
 	}
 
-	marked, err := console.client.MarkContactMessageHandled(context.Background(), newBearerRequest(&publiraadminv1.MarkContactMessageHandledRequest{
+	marked, err := console.client.MarkContactMessageHandled(testutil.WithBearer(context.Background(), console.token), &publiraadminv1.MarkContactMessageHandledRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		ContactMessageId: listed.Id,
 		Handled:          true,
-	}, console.token))
+	})
 	if err != nil {
 		t.Fatalf("MarkContactMessageHandled(true): %v", err)
 	}
-	if marked.Msg.Message.HandledAt == "" {
+	if marked.Message.HandledAt == "" {
 		t.Fatal("the message was marked handled and carries no handled time")
 	}
-	handledAt := marked.Msg.Message.HandledAt
+	handledAt := marked.Message.HandledAt
 
 	// A second press is not a second handling, so the recorded time stands.
-	again, err := console.client.MarkContactMessageHandled(context.Background(), newBearerRequest(&publiraadminv1.MarkContactMessageHandledRequest{
+	again, err := console.client.MarkContactMessageHandled(testutil.WithBearer(context.Background(), console.token), &publiraadminv1.MarkContactMessageHandledRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		ContactMessageId: listed.Id,
 		Handled:          true,
-	}, console.token))
+	})
 	if err != nil {
 		t.Fatalf("the second MarkContactMessageHandled(true): %v", err)
 	}
-	if again.Msg.Message.HandledAt != handledAt {
-		t.Errorf("handled_at moved from %q to %q", handledAt, again.Msg.Message.HandledAt)
+	if again.Message.HandledAt != handledAt {
+		t.Errorf("handled_at moved from %q to %q", handledAt, again.Message.HandledAt)
 	}
 
 	if len(console.list(t, "unhandled", 20, "").Messages) != 0 {
@@ -384,26 +385,26 @@ func TestDBContactMessageIsMarkedHandledAndPutBack(t *testing.T) {
 		t.Error("a handled message is not in the handled list")
 	}
 
-	reopened, err := console.client.MarkContactMessageHandled(context.Background(), newBearerRequest(&publiraadminv1.MarkContactMessageHandledRequest{
+	reopened, err := console.client.MarkContactMessageHandled(testutil.WithBearer(context.Background(), console.token), &publiraadminv1.MarkContactMessageHandledRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		ContactMessageId: listed.Id,
 		Handled:          false,
-	}, console.token))
+	})
 	if err != nil {
 		t.Fatalf("MarkContactMessageHandled(false): %v", err)
 	}
-	if reopened.Msg.Message.HandledAt != "" {
-		t.Errorf("a reopened message still carries handled_at = %q", reopened.Msg.Message.HandledAt)
+	if reopened.Message.HandledAt != "" {
+		t.Errorf("a reopened message still carries handled_at = %q", reopened.Message.HandledAt)
 	}
 	if len(console.list(t, "unhandled", 20, "").Messages) != 1 {
 		t.Error("a reopened message is not back in the unhandled list")
 	}
 
-	_, err = console.client.MarkContactMessageHandled(context.Background(), newBearerRequest(&publiraadminv1.MarkContactMessageHandledRequest{
+	_, err = console.client.MarkContactMessageHandled(testutil.WithBearer(context.Background(), console.token), &publiraadminv1.MarkContactMessageHandledRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		ContactMessageId: "not-a-uuid",
 		Handled:          true,
-	}, console.token))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("MarkContactMessageHandled with a malformed contact_message_id = %v, want invalid_argument", err)
 	}
@@ -424,21 +425,21 @@ func TestDBContactMessageIsReadableOneAtATime(t *testing.T) {
 	console := env.openAdminContactConsole(t, tenant, staff)
 	publicID := console.list(t, "", 20, "").Messages[0].PublicId
 
-	got, err := console.client.GetContactMessage(context.Background(), newBearerRequest(&publiraadminv1.GetContactMessageRequest{
+	got, err := console.client.GetContactMessage(testutil.WithBearer(context.Background(), console.token), &publiraadminv1.GetContactMessageRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		PublicId: publicID,
-	}, console.token))
+	})
 	if err != nil {
 		t.Fatalf("GetContactMessage: %v", err)
 	}
-	if got.Msg.Message.Body != "A question." {
-		t.Errorf("body = %q", got.Msg.Message.Body)
+	if got.Message.Body != "A question." {
+		t.Errorf("body = %q", got.Message.Body)
 	}
 
-	_, err = console.client.GetContactMessage(context.Background(), newBearerRequest(&publiraadminv1.GetContactMessageRequest{
+	_, err = console.client.GetContactMessage(testutil.WithBearer(context.Background(), console.token), &publiraadminv1.GetContactMessageRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		PublicId: "NOSUCHMSG01",
-	}, console.token))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetContactMessage of a message that does not exist = %v, want not_found", err)
 	}
@@ -464,18 +465,18 @@ func TestDBContactMessageStaysOnItsOwnTenant(t *testing.T) {
 	if listed := other.list(t, "", 20, ""); len(listed.Messages) != 0 {
 		t.Errorf("the other tenant listed %d of these messages", len(listed.Messages))
 	}
-	_, err := other.client.GetContactMessage(context.Background(), newBearerRequest(&publiraadminv1.GetContactMessageRequest{
+	_, err := other.client.GetContactMessage(testutil.WithBearer(context.Background(), other.token), &publiraadminv1.GetContactMessageRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: second.ID.String()},
 		PublicId: message.PublicId,
-	}, other.token))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetContactMessage across tenants = %v, want not_found", err)
 	}
-	_, err = other.client.MarkContactMessageHandled(context.Background(), newBearerRequest(&publiraadminv1.MarkContactMessageHandledRequest{
+	_, err = other.client.MarkContactMessageHandled(testutil.WithBearer(context.Background(), other.token), &publiraadminv1.MarkContactMessageHandledRequest{
 		Tenant:           &publirattypesv1.TenantContext{TenantId: second.ID.String()},
 		ContactMessageId: message.Id,
 		Handled:          true,
-	}, other.token))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("MarkContactMessageHandled across tenants = %v, want not_found", err)
 	}

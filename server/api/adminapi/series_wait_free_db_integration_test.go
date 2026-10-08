@@ -4,17 +4,19 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/publira/publira/server/internal/auth"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func (e *adminDBEnv) accessTicketClient() publiraadminv1connect.AdminAccessTicketServiceClient {
-	return publiraadminv1connect.NewAdminAccessTicketServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminAccessTicketServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 // A series nobody configured answers the defaults, an editor saves the whole
@@ -28,26 +30,26 @@ func TestDBSeriesWaitFreeSettingsRoundTrip(t *testing.T) {
 
 	get := func(t *testing.T) *publiraadminv1.SeriesWaitFreeSettings {
 		t.Helper()
-		resp, err := client.GetSeriesWaitFreeSettings(context.Background(), newAdminDBRequest(editor, &publiraadminv1.GetSeriesWaitFreeSettingsRequest{
+		resp, err := client.GetSeriesWaitFreeSettings(testutil.WithBearer(context.Background(), editor.token()), &publiraadminv1.GetSeriesWaitFreeSettingsRequest{
 			Tenant:   editor.tenantContext(),
 			SeriesId: seriesID,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("GetSeriesWaitFreeSettings: %v", err)
 		}
-		return resp.Msg.Settings
+		return resp.Settings
 	}
 	update := func(t *testing.T, settings *publiraadminv1.SeriesWaitFreeSettings) *publiraadminv1.SeriesWaitFreeSettings {
 		t.Helper()
-		resp, err := client.UpdateSeriesWaitFreeSettings(context.Background(), newAdminDBRequest(editor, &publiraadminv1.UpdateSeriesWaitFreeSettingsRequest{
+		resp, err := client.UpdateSeriesWaitFreeSettings(testutil.WithBearer(context.Background(), editor.token()), &publiraadminv1.UpdateSeriesWaitFreeSettingsRequest{
 			Tenant:   editor.tenantContext(),
 			SeriesId: seriesID,
 			Settings: settings,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("UpdateSeriesWaitFreeSettings: %v", err)
 		}
-		return resp.Msg.Settings
+		return resp.Settings
 	}
 
 	defaults := &publiraadminv1.SeriesWaitFreeSettings{RechargeHours: 23, AccessHours: 72}
@@ -103,21 +105,21 @@ func TestDBUpdateSeriesWaitFreeSettingsRefusals(t *testing.T) {
 		{name: "another tenant's series", seriesID: otherSeriesID, settings: valid(), code: connect.CodeNotFound},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := client.UpdateSeriesWaitFreeSettings(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesWaitFreeSettingsRequest{
+			_, err := client.UpdateSeriesWaitFreeSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateSeriesWaitFreeSettingsRequest{
 				Tenant:   tenant.tenantContext(),
 				SeriesId: tt.seriesID,
 				Settings: tt.settings,
-			}))
+			})
 			if connect.CodeOf(err) != tt.code {
 				t.Fatalf("code = %v, want %v (err=%v)", connect.CodeOf(err), tt.code, err)
 			}
 		})
 	}
 
-	_, err := client.GetSeriesWaitFreeSettings(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesWaitFreeSettingsRequest{
+	_, err := client.GetSeriesWaitFreeSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetSeriesWaitFreeSettingsRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: otherSeriesID,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetSeriesWaitFreeSettings of another tenant's series: code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
@@ -145,30 +147,30 @@ func TestDBIssueAccessTicketBesideAWaitFreeTicket(t *testing.T) {
 	}
 
 	client := env.accessTicketClient()
-	issued, err := client.IssueAccessTicket(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.IssueAccessTicketRequest{
+	issued, err := client.IssueAccessTicket(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.IssueAccessTicketRequest{
 		Tenant:    tenant.tenantContext(),
 		UserId:    reader.ID.String(),
 		EpisodeId: episodeID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("IssueAccessTicket: %v", err)
 	}
-	if issued.Msg.Ticket.PublicId == "TICKETWAIT01" || issued.Msg.Ticket.Source != "staff" {
-		t.Fatalf("issued ticket = %s (%s), want a new staff ticket", issued.Msg.Ticket.PublicId, issued.Msg.Ticket.Source)
+	if issued.Ticket.PublicId == "TICKETWAIT01" || issued.Ticket.Source != "staff" {
+		t.Fatalf("issued ticket = %s (%s), want a new staff ticket", issued.Ticket.PublicId, issued.Ticket.Source)
 	}
 
-	listed, err := client.ListAccessTickets(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListAccessTicketsRequest{
+	listed, err := client.ListAccessTickets(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListAccessTicketsRequest{
 		Tenant:          tenant.tenantContext(),
 		EpisodePublicId: episodePublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListAccessTickets: %v", err)
 	}
 	sources := map[string]string{}
-	for _, ticket := range listed.Msg.Tickets {
+	for _, ticket := range listed.Tickets {
 		sources[ticket.PublicId] = ticket.Source
 	}
-	if len(sources) != 2 || sources["TICKETWAIT01"] != "wait_free" || sources[issued.Msg.Ticket.PublicId] != "staff" {
+	if len(sources) != 2 || sources["TICKETWAIT01"] != "wait_free" || sources[issued.Ticket.PublicId] != "staff" {
 		t.Fatalf("listed sources = %v, want the wait-free ticket and the staff one", sources)
 	}
 }

@@ -7,7 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectproto"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -35,7 +36,7 @@ func errorInfoReason(t *testing.T, err error) string {
 		t.Fatalf("error is not a connect error: %v", err)
 	}
 	for _, detail := range connectErr.Details() {
-		value, valueErr := detail.Value()
+		value, valueErr := connectproto.UnmarshalErrorDetail(detail)
 		if valueErr != nil {
 			continue
 		}
@@ -59,24 +60,15 @@ func seedMfaTenant(t *testing.T, env *adminDBEnv) adminDBTenant {
 func mfaLogin(t *testing.T, env *adminDBEnv, tenant adminDBTenant) *publiraadminv1.AdminAuthServiceLoginResponse {
 	t.Helper()
 
-	resp, err := env.authClient().Login(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceLoginRequest{
+	resp, err := env.authClient().Login(context.Background(), &publiraadminv1.AdminAuthServiceLoginRequest{
 		Tenant:   tenant.tenantContext(),
 		Email:    tenant.User.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
-	return resp.Msg
-}
-
-// withBearer signs a request with a token the test has in hand, rather than
-// with the one newAdminDBRequest mints: what an MFA step hands back is the
-// thing under test.
-func withBearer[T any](msg *T, token string) *connect.Request[T] {
-	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+token)
-	return req
+	return resp
 }
 
 func mfaCode(t *testing.T, secret string) string {
@@ -109,32 +101,32 @@ func mfaNextCode(t *testing.T, secret string) string {
 func enrollMfa(t *testing.T, env *adminDBEnv, tenant adminDBTenant) (string, []string) {
 	t.Helper()
 
-	started, err := env.authClient().StartMfaEnrollment(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
+	started, err := env.authClient().StartMfaEnrollment(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("StartMfaEnrollment: %v", err)
 	}
-	secret := started.Msg.Secret
-	if secret == "" || started.Msg.OtpauthUri == "" {
-		t.Fatalf("StartMfaEnrollment returned secret=%q otpauth_uri=%q", secret, started.Msg.OtpauthUri)
+	secret := started.Secret
+	if secret == "" || started.OtpauthUri == "" {
+		t.Fatalf("StartMfaEnrollment returned secret=%q otpauth_uri=%q", secret, started.OtpauthUri)
 	}
 
-	confirmed, err := env.authClient().ConfirmMfaEnrollment(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest{
+	confirmed, err := env.authClient().ConfirmMfaEnrollment(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest{
 		Tenant: tenant.tenantContext(),
 		Code:   mfaCode(t, secret),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ConfirmMfaEnrollment: %v", err)
 	}
-	if len(confirmed.Msg.RecoveryCodes) != mfa.RecoveryCodeCount {
-		t.Fatalf("recovery codes = %d, want %d", len(confirmed.Msg.RecoveryCodes), mfa.RecoveryCodeCount)
+	if len(confirmed.RecoveryCodes) != mfa.RecoveryCodeCount {
+		t.Fatalf("recovery codes = %d, want %d", len(confirmed.RecoveryCodes), mfa.RecoveryCodeCount)
 	}
 	// A session enrolled voluntarily already has one; nothing new is issued.
-	if confirmed.Msg.AccessToken != nil {
+	if confirmed.AccessToken != nil {
 		t.Fatal("ConfirmMfaEnrollment issued an access token to an account that was already signed in")
 	}
-	return secret, confirmed.Msg.RecoveryCodes
+	return secret, confirmed.RecoveryCodes
 }
 
 func TestAdminLoginIssuesASessionWhenNoFactorIsEnrolled(t *testing.T) {
@@ -202,31 +194,31 @@ func TestAdminLoginStopsAtAVerifyChallengeOnceTheFactorIsEnrolled(t *testing.T) 
 		t.Fatalf("challenge kind = %v, want VERIFY", login.MfaChallenge.Kind)
 	}
 
-	verified, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+	verified, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
 		Code:           mfaNextCode(t, secret),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("VerifyMfa: %v", err)
 	}
-	if verified.Msg.AccessToken == nil || verified.Msg.AccessToken.Token == "" {
+	if verified.AccessToken == nil || verified.AccessToken.Token == "" {
 		t.Fatal("VerifyMfa returned no access token")
 	}
-	if verified.Msg.RecoveryCodeUsed {
+	if verified.RecoveryCodeUsed {
 		t.Fatal("recovery_code_used = true for a code from the authenticator")
 	}
-	if verified.Msg.RemainingRecoveryCodes != mfa.RecoveryCodeCount {
-		t.Fatalf("remaining recovery codes = %d, want %d", verified.Msg.RemainingRecoveryCodes, mfa.RecoveryCodeCount)
+	if verified.RemainingRecoveryCodes != mfa.RecoveryCodeCount {
+		t.Fatalf("remaining recovery codes = %d, want %d", verified.RemainingRecoveryCodes, mfa.RecoveryCodeCount)
 	}
 
 	// The token VerifyMfa handed back is the session the login was after.
-	me, err := env.authClient().GetMe(context.Background(), withBearer(&publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: tenant.tenantContext()}, verified.Msg.AccessToken.Token))
+	me, err := env.authClient().GetMe(testutil.WithBearer(context.Background(), verified.AccessToken.Token), &publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: tenant.tenantContext()})
 	if err != nil {
 		t.Fatalf("GetMe with the token VerifyMfa issued: %v", err)
 	}
-	if me.Msg.User.PublicId != tenant.User.PublicID {
-		t.Fatalf("GetMe user = %q, want %q", me.Msg.User.PublicId, tenant.User.PublicID)
+	if me.User.PublicId != tenant.User.PublicID {
+		t.Fatalf("GetMe user = %q, want %q", me.User.PublicId, tenant.User.PublicID)
 	}
 }
 
@@ -242,7 +234,7 @@ func TestAdminMfaChallengeTokenIsNotASession(t *testing.T) {
 		t.Fatal("Login returned no mfa challenge")
 	}
 
-	_, err := env.authClient().GetMe(context.Background(), withBearer(&publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: tenant.tenantContext()}, login.MfaChallenge.Token))
+	_, err := env.authClient().GetMe(testutil.WithBearer(context.Background(), login.MfaChallenge.Token), &publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: tenant.tenantContext()})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMe with a challenge token = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -260,10 +252,10 @@ func TestAdminMfaVerifyChallengeCannotStartAnEnrollment(t *testing.T) {
 		t.Fatal("Login returned no mfa challenge")
 	}
 
-	_, err := env.authClient().StartMfaEnrollment(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
+	_, err := env.authClient().StartMfaEnrollment(context.Background(), &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("StartMfaEnrollment with a verify challenge = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -276,27 +268,27 @@ func TestAdminMfaVerifySpendsARecoveryCodeOnce(t *testing.T) {
 	code := codes[0]
 
 	login := mfaLogin(t, env, tenant)
-	verified, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+	verified, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
 		Code:           code,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("VerifyMfa with a recovery code: %v", err)
 	}
-	if !verified.Msg.RecoveryCodeUsed {
+	if !verified.RecoveryCodeUsed {
 		t.Fatal("recovery_code_used = false for a recovery code")
 	}
-	if verified.Msg.RemainingRecoveryCodes != mfa.RecoveryCodeCount-1 {
-		t.Fatalf("remaining recovery codes = %d, want %d", verified.Msg.RemainingRecoveryCodes, mfa.RecoveryCodeCount-1)
+	if verified.RemainingRecoveryCodes != mfa.RecoveryCodeCount-1 {
+		t.Fatalf("remaining recovery codes = %d, want %d", verified.RemainingRecoveryCodes, mfa.RecoveryCodeCount-1)
 	}
 
 	second := mfaLogin(t, env, tenant)
-	_, err = env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+	_, err = env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: second.MfaChallenge.Token,
 		Code:           code,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("VerifyMfa reusing a spent recovery code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -311,20 +303,20 @@ func TestAdminMfaVerifyRefusesAReplayedCode(t *testing.T) {
 	code := mfaNextCode(t, secret)
 
 	first := mfaLogin(t, env, tenant)
-	if _, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+	if _, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: first.MfaChallenge.Token,
 		Code:           code,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("VerifyMfa: %v", err)
 	}
 
 	second := mfaLogin(t, env, tenant)
-	_, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+	_, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: second.MfaChallenge.Token,
 		Code:           code,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("VerifyMfa replaying a code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -343,20 +335,20 @@ func TestAdminMfaVerifyRefusesAReusedChallenge(t *testing.T) {
 	// A recovery code for the first exchange, so the TOTP step the second one
 	// presents is still unspent and the challenge is the only thing that can
 	// refuse it.
-	verified, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+	verified, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
 		Code:           codes[0],
-	}))
+	})
 	if err != nil {
 		t.Fatalf("VerifyMfa: %v", err)
 	}
 
-	_, err = env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+	_, err = env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
 		Code:           mfaNextCode(t, secret),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("VerifyMfa reusing a challenge = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -372,14 +364,14 @@ func TestAdminMfaVerifyRefusesAReusedChallenge(t *testing.T) {
 
 	// The refusal is about the challenge, not the account: the session the
 	// first exchange handed out keeps working.
-	status, err := env.authClient().GetMfaStatus(context.Background(), withBearer(&publiraadminv1.AdminAuthServiceGetMfaStatusRequest{
+	status, err := env.authClient().GetMfaStatus(testutil.WithBearer(context.Background(), verified.AccessToken.Token), &publiraadminv1.AdminAuthServiceGetMfaStatusRequest{
 		Tenant: tenant.tenantContext(),
-	}, verified.Msg.AccessToken.Token))
+	})
 	if err != nil {
 		t.Fatalf("GetMfaStatus: %v", err)
 	}
-	if status.Msg.RemainingRecoveryCodes != mfa.RecoveryCodeCount-1 {
-		t.Fatalf("remaining recovery codes = %d, want %d", status.Msg.RemainingRecoveryCodes, mfa.RecoveryCodeCount-1)
+	if status.RemainingRecoveryCodes != mfa.RecoveryCodeCount-1 {
+		t.Fatalf("remaining recovery codes = %d, want %d", status.RemainingRecoveryCodes, mfa.RecoveryCodeCount-1)
 	}
 }
 
@@ -403,11 +395,11 @@ func TestAdminMfaVerifyAcceptsAConcurrentlyPresentedCodeOnce(t *testing.T) {
 	for _, challenge := range challenges {
 		go func() {
 			start.Wait()
-			_, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+			_, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 				Tenant:         tenant.tenantContext(),
 				ChallengeToken: challenge,
 				Code:           code,
-			}))
+			})
 			results <- err
 		}()
 	}
@@ -433,11 +425,11 @@ func TestAdminMfaVerifyLocksTheAccountAfterRepeatedFailures(t *testing.T) {
 
 	for attempt := 1; attempt <= mfa.MaxFailedAttempts; attempt++ {
 		login := mfaLogin(t, env, tenant)
-		_, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+		_, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 			Tenant:         tenant.tenantContext(),
 			ChallengeToken: login.MfaChallenge.Token,
 			Code:           "000000",
-		}))
+		})
 		want := connect.CodeUnauthenticated
 		wantReason := rpcerrors.ReasonMfaInvalidCode
 		if attempt == mfa.MaxFailedAttempts {
@@ -454,11 +446,11 @@ func TestAdminMfaVerifyLocksTheAccountAfterRepeatedFailures(t *testing.T) {
 
 	// The lock holds even for the code that would otherwise be right.
 	login := mfaLogin(t, env, tenant)
-	_, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+	_, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
 		Code:           mfaCode(t, secret),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("VerifyMfa while locked = %v, want resource exhausted (err=%v)", connect.CodeOf(err), err)
 	}
@@ -469,26 +461,26 @@ func TestAdminMfaRegenerateReplacesEveryRecoveryCode(t *testing.T) {
 	tenant := seedMfaTenant(t, env)
 	secret, old := enrollMfa(t, env, tenant)
 
-	regenerated, err := env.authClient().RegenerateMfaRecoveryCodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest{
+	regenerated, err := env.authClient().RegenerateMfaRecoveryCodes(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest{
 		Tenant: tenant.tenantContext(),
 		Code:   mfaNextCode(t, secret),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RegenerateMfaRecoveryCodes: %v", err)
 	}
-	if len(regenerated.Msg.RecoveryCodes) != mfa.RecoveryCodeCount {
-		t.Fatalf("recovery codes = %d, want %d", len(regenerated.Msg.RecoveryCodes), mfa.RecoveryCodeCount)
+	if len(regenerated.RecoveryCodes) != mfa.RecoveryCodeCount {
+		t.Fatalf("recovery codes = %d, want %d", len(regenerated.RecoveryCodes), mfa.RecoveryCodeCount)
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_recovery_codes WHERE user_id = $1", tenant.User.ID); got != mfa.RecoveryCodeCount {
 		t.Fatalf("stored recovery codes = %d, want %d", got, mfa.RecoveryCodeCount)
 	}
 
 	login := mfaLogin(t, env, tenant)
-	_, err = env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+	_, err = env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
 		Code:           old[0],
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("VerifyMfa with a replaced recovery code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -501,10 +493,10 @@ func TestAdminMfaRegenerateRefusesARecoveryCode(t *testing.T) {
 	tenant := seedMfaTenant(t, env)
 	_, codes := enrollMfa(t, env, tenant)
 
-	_, err := env.authClient().RegenerateMfaRecoveryCodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest{
+	_, err := env.authClient().RegenerateMfaRecoveryCodes(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest{
 		Tenant: tenant.tenantContext(),
 		Code:   codes[0],
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("RegenerateMfaRecoveryCodes with a recovery code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -518,10 +510,10 @@ func TestAdminMfaDisableRemovesTheFactorAndItsRecoveryCodes(t *testing.T) {
 	tenant := seedMfaTenant(t, env)
 	secret, _ := enrollMfa(t, env, tenant)
 
-	if _, err := env.authClient().DisableMfa(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceDisableMfaRequest{
+	if _, err := env.authClient().DisableMfa(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceDisableMfaRequest{
 		Tenant: tenant.tenantContext(),
 		Code:   mfaNextCode(t, secret),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("DisableMfa: %v", err)
 	}
 
@@ -548,10 +540,10 @@ func TestAdminMfaDisableAcceptsARecoveryCode(t *testing.T) {
 	tenant := seedMfaTenant(t, env)
 	_, codes := enrollMfa(t, env, tenant)
 
-	if _, err := env.authClient().DisableMfa(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceDisableMfaRequest{
+	if _, err := env.authClient().DisableMfa(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceDisableMfaRequest{
 		Tenant: tenant.tenantContext(),
 		Code:   codes[0],
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("DisableMfa with a recovery code: %v", err)
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_totp WHERE user_id = $1", tenant.User.ID); got != 0 {
@@ -564,9 +556,9 @@ func TestAdminMfaStartRefusesToReplaceAConfirmedFactor(t *testing.T) {
 	tenant := seedMfaTenant(t, env)
 	enrollMfa(t, env, tenant)
 
-	_, err := env.authClient().StartMfaEnrollment(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
+	_, err := env.authClient().StartMfaEnrollment(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartMfaEnrollment on an enrolled account = %v, want failed precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -576,37 +568,37 @@ func TestAdminMfaStatusReportsTheEnrollmentAndWhatIsLeft(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 
-	before, err := env.authClient().GetMfaStatus(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceGetMfaStatusRequest{
+	before, err := env.authClient().GetMfaStatus(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceGetMfaStatusRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetMfaStatus: %v", err)
 	}
-	if before.Msg.Enabled || before.Msg.Required {
-		t.Fatalf("status before enrollment = %+v, want neither enabled nor required", before.Msg)
+	if before.Enabled || before.Required {
+		t.Fatalf("status before enrollment = %+v, want neither enabled nor required", before)
 	}
 
 	_, codes := enrollMfa(t, env, tenant)
 	login := mfaLogin(t, env, tenant)
-	if _, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+	if _, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
 		Code:           codes[0],
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("VerifyMfa: %v", err)
 	}
 
-	after, err := env.authClient().GetMfaStatus(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceGetMfaStatusRequest{
+	after, err := env.authClient().GetMfaStatus(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceGetMfaStatusRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetMfaStatus: %v", err)
 	}
-	if !after.Msg.Enabled || after.Msg.EnabledAt == "" {
-		t.Fatalf("status after enrollment = %+v, want enabled with a timestamp", after.Msg)
+	if !after.Enabled || after.EnabledAt == "" {
+		t.Fatalf("status after enrollment = %+v, want enabled with a timestamp", after)
 	}
-	if after.Msg.RemainingRecoveryCodes != mfa.RecoveryCodeCount-1 {
-		t.Fatalf("remaining recovery codes = %d, want %d", after.Msg.RemainingRecoveryCodes, mfa.RecoveryCodeCount-1)
+	if after.RemainingRecoveryCodes != mfa.RecoveryCodeCount-1 {
+		t.Fatalf("remaining recovery codes = %d, want %d", after.RemainingRecoveryCodes, mfa.RecoveryCodeCount-1)
 	}
 }
 
@@ -626,30 +618,30 @@ func TestAdminLoginForcesEnrollmentWhenTheFactorIsRequired(t *testing.T) {
 		t.Fatalf("mfa challenge = %v, want an ENROLL challenge", login.MfaChallenge)
 	}
 
-	started, err := env.authClient().StartMfaEnrollment(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
+	started, err := env.authClient().StartMfaEnrollment(context.Background(), &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("StartMfaEnrollment with an enroll challenge: %v", err)
 	}
 
-	confirmed, err := env.authClient().ConfirmMfaEnrollment(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest{
+	confirmed, err := env.authClient().ConfirmMfaEnrollment(context.Background(), &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
-		Code:           mfaCode(t, started.Msg.Secret),
-	}))
+		Code:           mfaCode(t, started.Secret),
+	})
 	if err != nil {
 		t.Fatalf("ConfirmMfaEnrollment with an enroll challenge: %v", err)
 	}
-	if confirmed.Msg.AccessToken == nil || confirmed.Msg.AccessToken.Token == "" {
+	if confirmed.AccessToken == nil || confirmed.AccessToken.Token == "" {
 		t.Fatal("ConfirmMfaEnrollment did not finish the login it was reached from")
 	}
-	if len(confirmed.Msg.RecoveryCodes) != mfa.RecoveryCodeCount {
-		t.Fatalf("recovery codes = %d, want %d", len(confirmed.Msg.RecoveryCodes), mfa.RecoveryCodeCount)
+	if len(confirmed.RecoveryCodes) != mfa.RecoveryCodeCount {
+		t.Fatalf("recovery codes = %d, want %d", len(confirmed.RecoveryCodes), mfa.RecoveryCodeCount)
 	}
 
-	if _, err := env.authClient().GetMe(context.Background(), withBearer(&publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: tenant.tenantContext()}, confirmed.Msg.AccessToken.Token)); err != nil {
+	if _, err := env.authClient().GetMe(testutil.WithBearer(context.Background(), confirmed.AccessToken.Token), &publiraadminv1.AdminAuthServiceGetMeRequest{Tenant: tenant.tenantContext()}); err != nil {
 		t.Fatalf("GetMe with the token ConfirmMfaEnrollment issued: %v", err)
 	}
 }
@@ -677,27 +669,27 @@ func TestAdminMfaWritesTheAuditTrail(t *testing.T) {
 	secret, codes := enrollMfa(t, env, tenant)
 
 	login := mfaLogin(t, env, tenant)
-	if _, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+	if _, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
 		Code:           codes[0],
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("VerifyMfa: %v", err)
 	}
 
 	failed := mfaLogin(t, env, tenant)
-	if _, err := env.authClient().VerifyMfa(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+	if _, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: failed.MfaChallenge.Token,
 		Code:           "000000",
-	})); err == nil {
+	}); err == nil {
 		t.Fatal("VerifyMfa accepted a wrong code")
 	}
 
-	if _, err := env.authClient().DisableMfa(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.AdminAuthServiceDisableMfaRequest{
+	if _, err := env.authClient().DisableMfa(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceDisableMfaRequest{
 		Tenant: tenant.tenantContext(),
 		Code:   mfaNextCode(t, secret),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("DisableMfa: %v", err)
 	}
 

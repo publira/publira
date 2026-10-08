@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/appstore"
@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/googleplay/googleplaytest"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/storepurchase"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // notify posts an App Store Server Notifications V2 body, signed by signer,
@@ -25,10 +26,10 @@ func (e *storePurchaseEnv) notify(t *testing.T, signer *appstoretest.Signer, not
 	if err != nil {
 		t.Fatalf("encode notification: %v", err)
 	}
-	_, err = e.client.ProcessAppStoreNotification(context.Background(), connect.NewRequest(&publirav1.ProcessAppStoreNotificationRequest{
+	_, err = e.client.ProcessAppStoreNotification(context.Background(), &publirav1.ProcessAppStoreNotificationRequest{
 		Tenant:  tenantContext(e.tenant),
 		Payload: body,
-	}))
+	})
 	return err
 }
 
@@ -63,13 +64,13 @@ func (e *storePurchaseEnv) royaltyGross(t *testing.T) int64 {
 
 func (e *storePurchaseEnv) listPurchases(t *testing.T) []*publirav1.MyPurchase {
 	t.Helper()
-	res, err := e.client.ListMyPurchases(context.Background(), newBearerRequest(&publirav1.ListMyPurchasesRequest{
+	res, err := e.client.ListMyPurchases(testutil.WithBearer(context.Background(), e.token), &publirav1.ListMyPurchasesRequest{
 		Tenant: tenantContext(e.tenant),
-	}, e.token))
+	})
 	if err != nil {
 		t.Fatalf("ListMyPurchases: %v", err)
 	}
-	return res.Msg.Purchases
+	return res.Purchases
 }
 
 func TestDBAppStoreRefundClosesTheReadingRightAndLeavesTheRoyaltyStatement(t *testing.T) {

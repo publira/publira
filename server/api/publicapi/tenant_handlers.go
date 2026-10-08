@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -21,9 +20,9 @@ import (
 
 func (s *apiServer) GetTenant(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetTenantRequest],
-) (*connect.Response[publirav1.GetTenantResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.GetTenantRequest,
+) (*publirav1.GetTenantResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +123,7 @@ func (s *apiServer) GetTenant(
 		}
 	}
 
-	return connect.NewResponse(&publirav1.GetTenantResponse{
+	return &publirav1.GetTenantResponse{
 		TenantPublicId:            tenant.PublicID,
 		TenantName:                tenant.Name,
 		TenantDomain:              tenant.Domain,
@@ -145,7 +144,7 @@ func (s *apiServer) GetTenant(
 		AcceptsGooglePlayPayments: acceptsGooglePlayPayments,
 		AppleSignIn:               appleSignIn,
 		GoogleSignIn:              googleSignIn,
-	}), nil
+	}, nil
 }
 
 // GetTenantLegalPages answers the terms and privacy pages the tenant names,
@@ -154,14 +153,14 @@ func (s *apiServer) GetTenant(
 // serve.
 func (s *apiServer) GetTenantLegalPages(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetTenantLegalPagesRequest],
-) (*connect.Response[publirav1.GetTenantLegalPagesResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.GetTenantLegalPagesRequest,
+) (*publirav1.GetTenantLegalPagesResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	readerLocale, err := readerPageLocale(req.Msg.Locale, tenant)
+	readerLocale, err := readerPageLocale(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +171,7 @@ func (s *apiServer) GetTenantLegalPages(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return connect.NewResponse(&publirav1.GetTenantLegalPagesResponse{}), nil
+			return &publirav1.GetTenantLegalPagesResponse{}, nil
 		}
 		return nil, s.internalDBError(ctx, "failed to read the tenant legal pages", err, "tenant_id", tenant.ID.String())
 	}
@@ -194,7 +193,7 @@ func (s *apiServer) GetTenantLegalPages(
 			Locale:    row.PrivacyLocale.String,
 		}
 	}
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }
 
 // tenantAcceptsPayments deliberately fails closed. The public response only

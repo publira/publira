@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auth"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // createDBPage creates a page with one version and publishes it unless told
@@ -18,29 +19,29 @@ func createDBPage(t *testing.T, env *adminDBEnv, tenant adminDBTenant, slug, tit
 
 	client := env.pagesClient()
 	ctx := context.Background()
-	page, err := client.CreatePage(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreatePageRequest{
+	page, err := client.CreatePage(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreatePageRequest{
 		Tenant: tenant.tenantContext(),
 		Slug:   slug,
 		Title:  title,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreatePage(%s): %v", slug, err)
 	}
-	pageID := page.Msg.Page.Id
-	version, err := client.CreateVersion(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateVersionRequest{
+	pageID := page.Page.Id
+	version, err := client.CreateVersion(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateVersionRequest{
 		Tenant:          tenant.tenantContext(),
 		PageId:          pageID,
 		ContentMarkdown: "# " + title,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateVersion(%s): %v", slug, err)
 	}
 	if publish {
-		if _, err := client.PublishVersion(ctx, newAdminDBRequest(tenant, &publiraadminv1.PublishVersionRequest{
+		if _, err := client.PublishVersion(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.PublishVersionRequest{
 			Tenant:    tenant.tenantContext(),
 			PageId:    pageID,
-			VersionId: version.Msg.Version.Id,
-		})); err != nil {
+			VersionId: version.Version.Id,
+		}); err != nil {
 			t.Fatalf("PublishVersion(%s): %v", slug, err)
 		}
 	}
@@ -50,25 +51,25 @@ func createDBPage(t *testing.T, env *adminDBEnv, tenant adminDBTenant, slug, tit
 func getDBTenantLegalPages(t *testing.T, env *adminDBEnv, tenant adminDBTenant) *publiraadminv1.TenantLegalPages {
 	t.Helper()
 
-	resp, err := env.tenantSettingsClient().GetTenantLegalPages(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantLegalPagesRequest{
+	resp, err := env.tenantSettingsClient().GetTenantLegalPages(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetTenantLegalPagesRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantLegalPages: %v", err)
 	}
-	return resp.Msg.Pages
+	return resp.Pages
 }
 
 func updateDBTenantLegalPages(env *adminDBEnv, tenant adminDBTenant, termsPageID, privacyPageID string) (*publiraadminv1.TenantLegalPages, error) {
-	resp, err := env.tenantSettingsClient().UpdateTenantLegalPages(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantLegalPagesRequest{
+	resp, err := env.tenantSettingsClient().UpdateTenantLegalPages(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateTenantLegalPagesRequest{
 		Tenant:        tenant.tenantContext(),
 		TermsPageId:   termsPageID,
 		PrivacyPageId: privacyPageID,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg.Pages, nil
+	return resp.Pages, nil
 }
 
 func assertLegalPage(t *testing.T, role string, got *publiraadminv1.TenantLegalPage, wantID, wantSlug string, wantPublished bool) {
@@ -107,10 +108,10 @@ func TestDBTenantLegalPagesAreNominatedReportedAndCleared(t *testing.T) {
 		t.Fatalf("terms title = %q, want Terms of Service", saved.TermsPage.Title)
 	}
 
-	if _, err := pagesClient.UnpublishPage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UnpublishPageRequest{
+	if _, err := pagesClient.UnpublishPage(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UnpublishPageRequest{
 		Tenant: tenant.tenantContext(),
 		PageId: termsID,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("UnpublishPage: %v", err)
 	}
 	read := getDBTenantLegalPages(t, env, tenant)
@@ -221,29 +222,29 @@ func TestDBTenantLegalPagesNameAPagePublishedOnlyInAnotherLocale(t *testing.T) {
 	ctx := context.Background()
 
 	termsID := createDBPage(t, env, tenant, "tos", "Terms (ja draft)", false)
-	if _, err := client.CreatePageTranslation(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreatePageTranslationRequest{
+	if _, err := client.CreatePageTranslation(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreatePageTranslationRequest{
 		Tenant: tenant.tenantContext(),
 		PageId: termsID,
 		Locale: "en",
 		Title:  "Terms of Service",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreatePageTranslation: %v", err)
 	}
-	version, err := client.CreateVersion(ctx, newAdminDBRequest(tenant, &publiraadminv1.CreateVersionRequest{
+	version, err := client.CreateVersion(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.CreateVersionRequest{
 		Tenant:          tenant.tenantContext(),
 		PageId:          termsID,
 		Locale:          "en",
 		ContentMarkdown: "# Terms of Service",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateVersion en: %v", err)
 	}
-	if _, err := client.PublishVersion(ctx, newAdminDBRequest(tenant, &publiraadminv1.PublishVersionRequest{
+	if _, err := client.PublishVersion(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.PublishVersionRequest{
 		Tenant:    tenant.tenantContext(),
 		PageId:    termsID,
 		Locale:    "en",
-		VersionId: version.Msg.Version.Id,
-	})); err != nil {
+		VersionId: version.Version.Id,
+	}); err != nil {
 		t.Fatalf("PublishVersion en: %v", err)
 	}
 

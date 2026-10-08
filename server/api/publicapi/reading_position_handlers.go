@@ -4,10 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -15,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -28,17 +28,17 @@ const (
 // unpublished or a rental that has expired while it was open.
 func (s *apiServer) SaveReadingPosition(
 	ctx context.Context,
-	req *connect.Request[publirav1.SaveReadingPositionRequest],
-) (*connect.Response[publirav1.SaveReadingPositionResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.SaveReadingPositionRequest,
+) (*publirav1.SaveReadingPositionResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	episodeID, err := requestRecordID("episode_id", req.Msg.EpisodeId)
+	episodeID, err := requestRecordID("episode_id", req.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -50,14 +50,14 @@ func (s *apiServer) SaveReadingPosition(
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
 		EpisodeID: episodeID,
-		PageIndex: req.Msg.PageIndex,
+		PageIndex: req.PageIndex,
 		Surface:   surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		// Publication, tenant, and entitlement failures share one response for
 		// the reason MarkEpisodeAsRead gives them one: this member cannot probe
 		// for episode IDs they are not allowed to see.
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		return nil, connect.NewError(connect.CodeNotFound, "episode not found")
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to save reading position", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -66,12 +66,12 @@ func (s *apiServer) SaveReadingPosition(
 	// was measured against is the member's own to see.
 	if !row.PageIndex.Valid {
 		if row.EpisodePageCount == 0 {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("episode has no pages"))
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "episode has no pages")
 		}
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("page index must be between 0 and %d", row.EpisodePageCount-1))
+		return nil, connect.Errorf(connect.CodeInvalidArgument, "page index must be between 0 and %d", row.EpisodePageCount-1)
 	}
 
-	return noStorePrivateResponse(&publirav1.SaveReadingPositionResponse{
+	return noStorePrivateResponse(ctx, &publirav1.SaveReadingPositionResponse{
 		Position: &publirav1.ReadingPosition{
 			EpisodePublicId: row.EpisodePublicID,
 			PageIndex:       row.PageIndex.Int32,
@@ -87,17 +87,17 @@ func (s *apiServer) SaveReadingPosition(
 // them nothing about what the tenant holds.
 func (s *apiServer) GetMyReadingPosition(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetMyReadingPositionRequest],
-) (*connect.Response[publirav1.GetMyReadingPositionResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.GetMyReadingPositionRequest,
+) (*publirav1.GetMyReadingPositionResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	episodeID, err := requestRecordID("episode_id", req.Msg.EpisodeId)
+	episodeID, err := requestRecordID("episode_id", req.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -112,13 +112,13 @@ func (s *apiServer) GetMyReadingPosition(
 		Surface:   surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return noStorePrivateResponse(&publirav1.GetMyReadingPositionResponse{}), nil
+		return noStorePrivateResponse(ctx, &publirav1.GetMyReadingPositionResponse{}), nil
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get reading position", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
-	return noStorePrivateResponse(&publirav1.GetMyReadingPositionResponse{
+	return noStorePrivateResponse(ctx, &publirav1.GetMyReadingPositionResponse{
 		Position: &publirav1.ReadingPosition{
 			EpisodePublicId: row.EpisodePublicID,
 			PageIndex:       row.PageIndex,
@@ -140,17 +140,17 @@ func (s *apiServer) GetMyReadingPosition(
 // finished episodes and no position at all.
 func (s *apiServer) GetMySeriesProgress(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetMySeriesProgressRequest],
-) (*connect.Response[publirav1.GetMySeriesProgressResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.GetMySeriesProgressRequest,
+) (*publirav1.GetMySeriesProgressResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	seriesID, err := requestRecordID("series_id", req.Msg.SeriesId)
+	seriesID, err := requestRecordID("series_id", req.SeriesId)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (s *apiServer) GetMySeriesProgress(
 		Surface:  surface,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return noStorePrivateResponse(res), nil
+		return noStorePrivateResponse(ctx, res), nil
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get series reading progress", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -191,7 +191,7 @@ func (s *apiServer) GetMySeriesProgress(
 		},
 		IsFinished: row.IsFinished,
 	}
-	return noStorePrivateResponse(res), nil
+	return noStorePrivateResponse(ctx, res), nil
 }
 
 // ListMyRecentSeries answers what a "continue reading" row shows: the series
@@ -203,29 +203,29 @@ func (s *apiServer) GetMySeriesProgress(
 // paginated series list here is built.
 func (s *apiServer) ListMyRecentSeries(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListMyRecentSeriesRequest],
-) (*connect.Response[publirav1.ListMyRecentSeriesResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.ListMyRecentSeriesRequest,
+) (*publirav1.ListMyRecentSeriesResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.scopeEpisodeReadUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRecentSeriesPageSize, maxRecentSeriesPageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultRecentSeriesPageSize, maxRecentSeriesPageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -278,7 +278,7 @@ func (s *apiServer) ListMyRecentSeries(
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 
-	return noStorePrivateResponse(res), nil
+	return noStorePrivateResponse(ctx, res), nil
 }
 
 // recentSeriesPage runs the keyset scan in the direction the cursor asks for.

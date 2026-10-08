@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/platformpolicy"
@@ -14,19 +14,19 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func rateEpisodeRequest(tenant testutil.Tenant, episodeID, token string, presses int32) *connect.Request[publirav1.RateEpisodeRequest] {
-	return newBearerRequest(&publirav1.RateEpisodeRequest{
+func rateEpisodeRequest(tenant testutil.Tenant, episodeID string, presses int32) *publirav1.RateEpisodeRequest {
+	return &publirav1.RateEpisodeRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episodeID,
 		Presses:   presses,
-	}, token)
+	}
 }
 
-func myEpisodeRatingRequest(tenant testutil.Tenant, episodeID, token string) *connect.Request[publirav1.GetMyEpisodeRatingRequest] {
-	return newBearerRequest(&publirav1.GetMyEpisodeRatingRequest{
+func myEpisodeRatingRequest(tenant testutil.Tenant, episodeID string) *publirav1.GetMyEpisodeRatingRequest {
+	return &publirav1.GetMyEpisodeRatingRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episodeID,
-	}, token)
+	}
 }
 
 // setEpisodeRatingMode writes the tenant's press mode, the way the console will.
@@ -51,24 +51,24 @@ func TestDBRateEpisodeStoresTheWholeRatingInSingleMode(t *testing.T) {
 	client := env.ratingClient()
 	token := tokenFor(t, tenant, member)
 
-	first, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), token, 1))
+	first, err := client.RateEpisode(testutil.WithBearer(context.Background(), token), rateEpisodeRequest(tenant, episode.ID.String(), 1))
 	if err != nil {
 		t.Fatalf("first RateEpisode: %v", err)
 	}
-	if first.Msg.Score != 5 || first.Msg.RatingCount != 1 {
-		t.Fatalf("first RateEpisode = %+v, want score 5 and one reader", first.Msg)
+	if first.Score != 5 || first.RatingCount != 1 {
+		t.Fatalf("first RateEpisode = %+v, want score 5 and one reader", first)
 	}
-	if first.Msg.Mode != publirav1.EpisodeRatingMode_EPISODE_RATING_MODE_SINGLE {
-		t.Fatalf("mode = %s, want single", first.Msg.Mode)
+	if first.Mode != publirav1.EpisodeRatingMode_EPISODE_RATING_MODE_SINGLE {
+		t.Fatalf("mode = %s, want single", first.Mode)
 	}
 
 	// A second press has nothing left to add, and files no event.
-	second, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), token, 1))
+	second, err := client.RateEpisode(testutil.WithBearer(context.Background(), token), rateEpisodeRequest(tenant, episode.ID.String(), 1))
 	if err != nil {
 		t.Fatalf("second RateEpisode: %v", err)
 	}
-	if second.Msg.Score != 5 || second.Msg.RatingCount != 1 {
-		t.Fatalf("second RateEpisode = %+v, want score 5 and one reader", second.Msg)
+	if second.Score != 5 || second.RatingCount != 1 {
+		t.Fatalf("second RateEpisode = %+v, want score 5 and one reader", second)
 	}
 	if got := env.countRows(t,
 		"SELECT COUNT(*) FROM content_events WHERE tenant_id = $1 AND event_type = 'rating' AND episode_id = $2",
@@ -101,25 +101,25 @@ func TestDBRateEpisodeClimbsAndCapsInMultipleMode(t *testing.T) {
 	client := env.ratingClient()
 	token := tokenFor(t, tenant, member)
 
-	first, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), token, 3))
+	first, err := client.RateEpisode(testutil.WithBearer(context.Background(), token), rateEpisodeRequest(tenant, episode.ID.String(), 3))
 	if err != nil {
 		t.Fatalf("RateEpisode with three presses: %v", err)
 	}
-	if first.Msg.Score != 3 || first.Msg.RatingCount != 1 {
-		t.Fatalf("three presses = %+v, want score 3 and one reader", first.Msg)
+	if first.Score != 3 || first.RatingCount != 1 {
+		t.Fatalf("three presses = %+v, want score 3 and one reader", first)
 	}
-	if first.Msg.Mode != publirav1.EpisodeRatingMode_EPISODE_RATING_MODE_MULTIPLE {
-		t.Fatalf("mode = %s, want multiple", first.Msg.Mode)
+	if first.Mode != publirav1.EpisodeRatingMode_EPISODE_RATING_MODE_MULTIPLE {
+		t.Fatalf("mode = %s, want multiple", first.Mode)
 	}
 
 	// Three more would be six; five is the ceiling, and only the two points
 	// that landed are filed.
-	second, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), token, 3))
+	second, err := client.RateEpisode(testutil.WithBearer(context.Background(), token), rateEpisodeRequest(tenant, episode.ID.String(), 3))
 	if err != nil {
 		t.Fatalf("RateEpisode past the ceiling: %v", err)
 	}
-	if second.Msg.Score != 5 || second.Msg.RatingCount != 1 {
-		t.Fatalf("past the ceiling = %+v, want score 5 and one reader", second.Msg)
+	if second.Score != 5 || second.RatingCount != 1 {
+		t.Fatalf("past the ceiling = %+v, want score 5 and one reader", second)
 	}
 
 	if got := env.countRows(t,
@@ -152,7 +152,7 @@ func TestDBConcurrentPressesFileExactlyThePointsTheyAdded(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), token, 1)); err != nil {
+			if _, err := client.RateEpisode(testutil.WithBearer(context.Background(), token), rateEpisodeRequest(tenant, episode.ID.String(), 1)); err != nil {
 				errs <- err
 			}
 		}()
@@ -194,12 +194,12 @@ func TestDBChangingTheRatingModeLeavesStoredScoresAlone(t *testing.T) {
 	client := env.ratingClient()
 
 	env.setEpisodeRatingMode(t, tenant.ID, "multiple")
-	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), tokenFor(t, tenant, pressedUp), 3)); err != nil {
+	if _, err := client.RateEpisode(testutil.WithBearer(context.Background(), tokenFor(t, tenant, pressedUp)), rateEpisodeRequest(tenant, episode.ID.String(), 3)); err != nil {
 		t.Fatalf("RateEpisode in multiple mode: %v", err)
 	}
 
 	env.setEpisodeRatingMode(t, tenant.ID, "single")
-	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), tokenFor(t, tenant, pressedOnce), 1)); err != nil {
+	if _, err := client.RateEpisode(testutil.WithBearer(context.Background(), tokenFor(t, tenant, pressedOnce)), rateEpisodeRequest(tenant, episode.ID.String(), 1)); err != nil {
 		t.Fatalf("RateEpisode in single mode: %v", err)
 	}
 
@@ -242,16 +242,16 @@ func TestDBRateEpisodeRequiresCurrentPublicationAndBodyAccess(t *testing.T) {
 	client := env.ratingClient()
 	token := tokenFor(t, tenant, member)
 	for _, episode := range []testutil.Episode{free, purchased, ticketed} {
-		response, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), token, 1))
+		response, err := client.RateEpisode(testutil.WithBearer(context.Background(), token), rateEpisodeRequest(tenant, episode.ID.String(), 1))
 		if err != nil {
 			t.Fatalf("RateEpisode %s: %v", episode.PublicID, err)
 		}
-		if response.Msg.Score == 0 {
+		if response.Score == 0 {
 			t.Fatalf("RateEpisode %s left the reader at a score of 0", episode.PublicID)
 		}
 	}
 	for _, id := range []string{paid.ID.String(), draft.ID.String(), foreign.ID.String(), uuid.NewString()} {
-		_, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, id, token, 1))
+		_, err := client.RateEpisode(testutil.WithBearer(context.Background(), token), rateEpisodeRequest(tenant, id, 1))
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("RateEpisode %s code = %v, want not_found (err=%v)", id, connect.CodeOf(err), err)
 		}
@@ -281,28 +281,28 @@ func TestDBGetMyEpisodeRatingAnswersTheReadersOwnScoreAndThePublicTally(t *testi
 	firstToken := tokenFor(t, tenant, first)
 	secondToken := tokenFor(t, tenant, second)
 
-	before, err := client.GetMyEpisodeRating(context.Background(), myEpisodeRatingRequest(tenant, episode.ID.String(), secondToken))
+	before, err := client.GetMyEpisodeRating(testutil.WithBearer(context.Background(), secondToken), myEpisodeRatingRequest(tenant, episode.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMyEpisodeRating before any rating: %v", err)
 	}
-	if before.Msg.Score != 0 || before.Msg.RatingCount != 0 {
-		t.Fatalf("GetMyEpisodeRating before any rating = %+v, want score 0 and no readers", before.Msg)
+	if before.Score != 0 || before.RatingCount != 0 {
+		t.Fatalf("GetMyEpisodeRating before any rating = %+v, want score 0 and no readers", before)
 	}
 
-	if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), firstToken, 1)); err != nil {
+	if _, err := client.RateEpisode(testutil.WithBearer(context.Background(), firstToken), rateEpisodeRequest(tenant, episode.ID.String(), 1)); err != nil {
 		t.Fatalf("RateEpisode: %v", err)
 	}
 
 	// The second reader gave nothing and still sees the first one in the tally.
-	other, err := client.GetMyEpisodeRating(context.Background(), myEpisodeRatingRequest(tenant, episode.ID.String(), secondToken))
+	other, err := client.GetMyEpisodeRating(testutil.WithBearer(context.Background(), secondToken), myEpisodeRatingRequest(tenant, episode.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMyEpisodeRating as the other member: %v", err)
 	}
-	if other.Msg.Score != 0 {
-		t.Fatalf("GetMyEpisodeRating as the other member reported a score of %d", other.Msg.Score)
+	if other.Score != 0 {
+		t.Fatalf("GetMyEpisodeRating as the other member reported a score of %d", other.Score)
 	}
-	if other.Msg.RatingCount != 1 {
-		t.Fatalf("GetMyEpisodeRating as the other member count = %d, want 1", other.Msg.RatingCount)
+	if other.RatingCount != 1 {
+		t.Fatalf("GetMyEpisodeRating as the other member count = %d, want 1", other.RatingCount)
 	}
 
 	// The rental runs out. The rating is still theirs to read back.
@@ -310,12 +310,12 @@ func TestDBGetMyEpisodeRatingAnswersTheReadersOwnScoreAndThePublicTally(t *testi
 		"UPDATE access_tickets SET expires_at = $1 WHERE id = $2", time.Now().Add(-time.Minute), ticket); err != nil {
 		t.Fatalf("expire the access ticket: %v", err)
 	}
-	mine, err := client.GetMyEpisodeRating(context.Background(), myEpisodeRatingRequest(tenant, episode.ID.String(), firstToken))
+	mine, err := client.GetMyEpisodeRating(testutil.WithBearer(context.Background(), firstToken), myEpisodeRatingRequest(tenant, episode.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMyEpisodeRating after the rental ran out: %v", err)
 	}
-	if mine.Msg.Score != 5 {
-		t.Fatalf("own score after the rental ran out = %d, want 5", mine.Msg.Score)
+	if mine.Score != 5 {
+		t.Fatalf("own score after the rental ran out = %d, want 5", mine.Score)
 	}
 }
 
@@ -327,22 +327,22 @@ func TestDBEpisodeDetailCarriesTheStoredRatingCount(t *testing.T) {
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEL", "member-rate-l@example.com", "Member L", "tenant_member")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATEG", Title: "Public series", Published: true})
 	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERATEL", Title: "Free episode", Status: testutil.EpisodeStatusPublished})
-	detailRequest := func() *connect.Request[publirav1.GetEpisodeDetailRequest] {
-		return connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	detailRequest := func() *publirav1.GetEpisodeDetailRequest {
+		return &publirav1.GetEpisodeDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: episode.PublicID,
-		})
+		}
 	}
 
 	detail, err := env.catalogClient().GetEpisodeDetail(context.Background(), detailRequest())
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail before any rating: %v", err)
 	}
-	if got := detail.Msg.GetEpisode().GetRatingCount(); got != 0 {
+	if got := detail.GetEpisode().GetRatingCount(); got != 0 {
 		t.Fatalf("rating_count before any rating = %d, want 0", got)
 	}
 
-	if _, err := env.ratingClient().RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), tokenFor(t, tenant, member), 1)); err != nil {
+	if _, err := env.ratingClient().RateEpisode(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), rateEpisodeRequest(tenant, episode.ID.String(), 1)); err != nil {
 		t.Fatalf("RateEpisode: %v", err)
 	}
 
@@ -350,7 +350,7 @@ func TestDBEpisodeDetailCarriesTheStoredRatingCount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail after the rating: %v", err)
 	}
-	if got := detail.Msg.GetEpisode().GetRatingCount(); got != 1 {
+	if got := detail.GetEpisode().GetRatingCount(); got != 1 {
 		t.Fatalf("rating_count after the rating = %d, want 1", got)
 	}
 }
@@ -369,11 +369,11 @@ func TestDBRateEpisodeChargesTheSharedFloodControl(t *testing.T) {
 	token := tokenFor(t, tenant, member)
 
 	for range 2 {
-		if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), token, 1)); err != nil {
+		if _, err := client.RateEpisode(testutil.WithBearer(context.Background(), token), rateEpisodeRequest(tenant, episode.ID.String(), 1)); err != nil {
 			t.Fatalf("RateEpisode within the allowance: %v", err)
 		}
 	}
-	_, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), token, 1))
+	_, err := client.RateEpisode(testutil.WithBearer(context.Background(), token), rateEpisodeRequest(tenant, episode.ID.String(), 1))
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("RateEpisode past the allowance code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}

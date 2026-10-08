@@ -4,22 +4,24 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"image/color"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func creatorColumns() *sqlmock.Rows {
@@ -57,14 +59,13 @@ func newCreatorClient(
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	return publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+	return publiraadminv1connect.NewAdminCreatorServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))), mock, sessionToken
 }
 
-func newCreatorRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListCreatorsRequest] {
-	req := connect.NewRequest(&publiraadminv1.ListCreatorsRequest{
+func newCreatorRequest(tenantID uuid.UUID) *publiraadminv1.ListCreatorsRequest {
+	req := &publiraadminv1.ListCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 	return req
 }
 
@@ -99,14 +100,13 @@ func newLabelClient(
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	return publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+	return publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))), mock, sessionToken
 }
 
-func newLabelRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListLabelsRequest] {
-	req := connect.NewRequest(&publiraadminv1.ListLabelsRequest{
+func newLabelRequest(tenantID uuid.UUID) *publiraadminv1.ListLabelsRequest {
+	req := &publiraadminv1.ListLabelsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 	return req
 }
 
@@ -120,18 +120,18 @@ func TestListCreatorsSuccess(t *testing.T) {
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addCreatorRow(creatorColumns(), uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", now))
 
-	resp, err := client.ListCreators(context.Background(), newCreatorRequest(tenantID, sessionToken))
+	resp, err := client.ListCreators(testutil.WithBearer(context.Background(), sessionToken), newCreatorRequest(tenantID))
 	if err != nil {
 		t.Fatalf("ListCreators: %v", err)
 	}
-	if len(resp.Msg.Creators) != 1 {
-		t.Fatalf("creators count = %d, want 1", len(resp.Msg.Creators))
+	if len(resp.Creators) != 1 {
+		t.Fatalf("creators count = %d, want 1", len(resp.Creators))
 	}
-	if resp.Msg.Creators[0].PublicId != "CREATOR001" {
-		t.Fatalf("creator public_id = %q, want CREATOR001", resp.Msg.Creators[0].PublicId)
+	if resp.Creators[0].PublicId != "CREATOR001" {
+		t.Fatalf("creator public_id = %q, want CREATOR001", resp.Creators[0].PublicId)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty", resp.PreviousToken, resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -153,19 +153,19 @@ func TestListCreatorsFirstPageReportsNextToken(t *testing.T) {
 			ids[2], tenantID, "CREATOR003", "Third", now.Add(-2*time.Minute),
 		))
 
-	req := newCreatorRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	resp, err := client.ListCreators(context.Background(), req)
+	req := newCreatorRequest(tenantID)
+	req.Limit = 2
+	resp, err := client.ListCreators(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListCreators: %v", err)
 	}
-	if len(resp.Msg.Creators) != 2 {
-		t.Fatalf("creators count = %d, want the over-fetched row dropped", len(resp.Msg.Creators))
+	if len(resp.Creators) != 2 {
+		t.Fatalf("creators count = %d, want the over-fetched row dropped", len(resp.Creators))
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -188,18 +188,18 @@ func TestListCreatorsFollowsNextToken(t *testing.T) {
 		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addCreatorRow(creatorColumns(), uuid.Must(uuid.NewV7()), tenantID, "CREATOR003", "Last", now.Add(-2*time.Minute)))
 
-	req := newCreatorRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID)
-	resp, err := client.ListCreators(context.Background(), req)
+	req := newCreatorRequest(tenantID)
+	req.Limit = 2
+	req.Token = pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID)
+	resp, err := client.ListCreators(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListCreators: %v", err)
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the page the client came from")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -221,24 +221,24 @@ func TestListCreatorsFollowsPreviousTokenBackwards(t *testing.T) {
 			newerID, tenantID, "CREATOR001", "Newer", now.Add(-time.Minute),
 		))
 
-	req := newCreatorRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID)
-	resp, err := client.ListCreators(context.Background(), req)
+	req := newCreatorRequest(tenantID)
+	req.Limit = 2
+	req.Token = pagination.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID)
+	resp, err := client.ListCreators(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListCreators: %v", err)
 	}
-	publicIDs := make([]string, 0, len(resp.Msg.Creators))
-	for _, creator := range resp.Msg.Creators {
+	publicIDs := make([]string, 0, len(resp.Creators))
+	for _, creator := range resp.Creators {
 		publicIDs = append(publicIDs, creator.PublicId)
 	}
 	if !slices.Equal(publicIDs, []string{"CREATOR001", "CREATOR002"}) {
 		t.Fatalf("public_ids = %v, want backward page restored to descending order", publicIDs)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertExpectations(t, mock)
@@ -277,15 +277,15 @@ func TestListCreatorsEmptyPageKeepsAWayBack(t *testing.T) {
 				WithArgs(tenantID, boundaryID, false, now, int32(21)).
 				WillReturnRows(creatorColumns())
 
-			req := newCreatorRequest(tenantID, sessionToken)
-			req.Msg.Token = pagination.EncodeTimeUUID(test.direction, now, boundaryID)
-			resp, err := client.ListCreators(context.Background(), req)
+			req := newCreatorRequest(tenantID)
+			req.Token = pagination.EncodeTimeUUID(test.direction, now, boundaryID)
+			resp, err := client.ListCreators(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err != nil {
 				t.Fatalf("ListCreators: %v", err)
 			}
-			recoveryToken := resp.Msg.PreviousToken
+			recoveryToken := resp.PreviousToken
 			if test.direction == pagination.Backward {
-				recoveryToken = resp.Msg.NextToken
+				recoveryToken = resp.NextToken
 			}
 			wantRecoveryToken := pagination.EncodeTimeUUIDRecovery(test.recoveryDirection, now, boundaryID)
 			if recoveryToken != wantRecoveryToken {
@@ -307,17 +307,17 @@ func TestListCreatorsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 		WithArgs(tenantID, boundaryID, true, now, int32(21)).
 		WillReturnRows(creatorColumns())
 
-	req := newCreatorRequest(tenantID, sessionToken)
-	req.Msg.Token = pagination.EncodeTimeUUIDRecovery(pagination.Backward, now, boundaryID)
-	resp, err := client.ListCreators(context.Background(), req)
+	req := newCreatorRequest(tenantID)
+	req.Token = pagination.EncodeTimeUUIDRecovery(pagination.Backward, now, boundaryID)
+	resp, err := client.ListCreators(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListCreators: %v", err)
 	}
-	if len(resp.Msg.Creators) != 0 {
-		t.Fatalf("creators = %d rows, want an empty page", len(resp.Msg.Creators))
+	if len(resp.Creators) != 0 {
+		t.Fatalf("creators = %d rows, want an empty page", len(resp.Creators))
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty once recovery also came back empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty once recovery also came back empty", resp.PreviousToken, resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -337,10 +337,10 @@ func TestListCreatorsRejectsInvalidToken(t *testing.T) {
 			userID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
-			req := newCreatorRequest(tenantID, sessionToken)
-			req.Msg.Token = test.token
+			req := newCreatorRequest(tenantID)
+			req.Token = test.token
 
-			_, err := client.ListCreators(context.Background(), req)
+			_, err := client.ListCreators(testutil.WithBearer(context.Background(), sessionToken), req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("ListCreators code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 			}
@@ -362,7 +362,7 @@ func TestListCreatorsDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "creators" does not exist`))
 
-	_, err := client.ListCreators(context.Background(), newCreatorRequest(tenantID, sessionToken))
+	_, err := client.ListCreators(testutil.WithBearer(context.Background(), sessionToken), newCreatorRequest(tenantID))
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ListCreators code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -382,9 +382,9 @@ func TestListCreatorsLimitOutOfRangeUsesDefault(t *testing.T) {
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(creatorColumns())
 
-	req := newCreatorRequest(tenantID, sessionToken)
-	req.Msg.Limit = 101
-	if _, err := client.ListCreators(context.Background(), req); err != nil {
+	req := newCreatorRequest(tenantID)
+	req.Limit = 101
+	if _, err := client.ListCreators(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("ListCreators: %v", err)
 	}
 	assertExpectations(t, mock)
@@ -462,20 +462,19 @@ func TestCreateCreatorValidationAndSuccess(t *testing.T) {
 				tc.setup(mock, tenantID, now)
 			}
 
-			client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
-			req := connect.NewRequest(tc.request)
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			client := publiraadminv1connect.NewAdminCreatorServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			req := tc.request
 
-			resp, err := client.CreateCreator(context.Background(), req)
+			resp, err := client.CreateCreator(testutil.WithBearer(context.Background(), sessionToken), req)
 			if tc.wantCode == 0 {
 				if err != nil {
 					t.Fatalf("CreateCreator: %v", err)
 				}
-				if resp.Msg.Creator == nil {
+				if resp.Creator == nil {
 					t.Fatalf("creator is nil")
 				}
-				if resp.Msg.Creator.PublicId != "CREATOR001" {
-					t.Fatalf("creator public_id = %q, want CREATOR001", resp.Msg.Creator.PublicId)
+				if resp.Creator.PublicId != "CREATOR001" {
+					t.Fatalf("creator public_id = %q, want CREATOR001", resp.Creator.PublicId)
 				}
 			} else if connect.CodeOf(err) != tc.wantCode {
 				t.Fatalf("CreateCreator code = %v, want %v", connect.CodeOf(err), tc.wantCode)
@@ -512,24 +511,23 @@ func TestUpdateCreatorSuccess(t *testing.T) {
 			AddRow(creatorID, tenantID, "CREATOR001", "After", "new", now, nil, nil, int64(0), int32(0), int32(0)))
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateCreatorRequest{
+	client := publiraadminv1connect.NewAdminCreatorServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateCreatorRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		CreatorId:   creatorID.String(),
 		Name:        "After",
 		ProfileText: "new",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UpdateCreator(context.Background(), req)
+	resp, err := client.UpdateCreator(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UpdateCreator: %v", err)
 	}
-	if resp.Msg.Creator == nil {
+	if resp.Creator == nil {
 		t.Fatalf("creator is nil")
 	}
-	if resp.Msg.Creator.Name != "After" {
-		t.Fatalf("creator name = %q, want After", resp.Msg.Creator.Name)
+	if resp.Creator.Name != "After" {
+		t.Fatalf("creator name = %q, want After", resp.Creator.Name)
 	}
 	assertExpectations(t, mock)
 }
@@ -545,18 +543,17 @@ func TestUpdateCreatorRejectsACropTheUploadCannotHold(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateCreatorRequest{
+	client := publiraadminv1connect.NewAdminCreatorServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateCreatorRequest{
 		Tenant:               &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		CreatorId:            "0190f0b5-7c1a-7000-8000-000000000001",
 		Name:                 "After",
 		IconImageData:        halvedImage(t, 600, 400, color.RGBA{R: 255, A: 255}, color.RGBA{B: 255, A: 255}),
 		IconImageContentType: "image/png",
 		IconImageCrop:        &publirattypesv1.ImageCropRect{X: 400, Y: 0, Width: 300, Height: 300},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.UpdateCreator(context.Background(), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.UpdateCreator(testutil.WithBearer(context.Background(), sessionToken), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateCreator code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
 	assertExpectations(t, mock)
@@ -608,23 +605,22 @@ func TestGetCreatorSuccessAndNotFound(t *testing.T) {
 				WithArgs(tenantID, tc.publicID).
 				WillReturnRows(tc.rows)
 
-			client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
-			req := connect.NewRequest(&publiraadminv1.GetCreatorRequest{
+			client := publiraadminv1connect.NewAdminCreatorServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			req := &publiraadminv1.GetCreatorRequest{
 				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				PublicId: tc.publicID,
-			})
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			}
 
-			resp, err := client.GetCreator(context.Background(), req)
+			resp, err := client.GetCreator(testutil.WithBearer(context.Background(), sessionToken), req)
 			if tc.wantCode == 0 {
 				if err != nil {
 					t.Fatalf("GetCreator: %v", err)
 				}
-				if resp.Msg.Creator == nil {
+				if resp.Creator == nil {
 					t.Fatalf("creator is nil")
 				}
-				if resp.Msg.Creator.PublicId != tc.wantCreatorID {
-					t.Fatalf("creator public_id = %q, want %q", resp.Msg.Creator.PublicId, tc.wantCreatorID)
+				if resp.Creator.PublicId != tc.wantCreatorID {
+					t.Fatalf("creator public_id = %q, want %q", resp.Creator.PublicId, tc.wantCreatorID)
 				}
 			} else if connect.CodeOf(err) != tc.wantCode {
 				t.Fatalf("GetCreator code = %v, want %v", connect.CodeOf(err), tc.wantCode)
@@ -648,14 +644,13 @@ func TestGetCreatorDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnError(errors.New(`pq: relation "creators" does not exist`))
 
-	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.GetCreatorRequest{
+	client := publiraadminv1connect.NewAdminCreatorServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.GetCreatorRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "CREATOR001",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.GetCreator(context.Background(), req)
+	_, err := client.GetCreator(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetCreator code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -711,23 +706,22 @@ func TestGetLabelSuccessAndNotFound(t *testing.T) {
 				WithArgs(tenantID, tc.publicID).
 				WillReturnRows(tc.rows)
 
-			client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
-			req := connect.NewRequest(&publiraadminv1.GetLabelRequest{
+			client := publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			req := &publiraadminv1.GetLabelRequest{
 				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				PublicId: tc.publicID,
-			})
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			}
 
-			resp, err := client.GetLabel(context.Background(), req)
+			resp, err := client.GetLabel(testutil.WithBearer(context.Background(), sessionToken), req)
 			if tc.wantCode == 0 {
 				if err != nil {
 					t.Fatalf("GetLabel: %v", err)
 				}
-				if resp.Msg.Label == nil {
+				if resp.Label == nil {
 					t.Fatalf("label is nil")
 				}
-				if resp.Msg.Label.PublicId != tc.wantLabelID {
-					t.Fatalf("label public_id = %q, want %q", resp.Msg.Label.PublicId, tc.wantLabelID)
+				if resp.Label.PublicId != tc.wantLabelID {
+					t.Fatalf("label public_id = %q, want %q", resp.Label.PublicId, tc.wantLabelID)
 				}
 			} else if connect.CodeOf(err) != tc.wantCode {
 				t.Fatalf("GetLabel code = %v, want %v", connect.CodeOf(err), tc.wantCode)
@@ -759,24 +753,23 @@ func TestGetLabelReturnsEyeCatchVariants(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "label_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
 			AddRow(variantID, imageID, "square", "md", "image/webp", int64(2048), int32(512), int32(512)))
 
-	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.GetLabelRequest{
+	client := publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.GetLabelRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "LABEL001",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.GetLabel(context.Background(), req)
+	resp, err := client.GetLabel(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("GetLabel: %v", err)
 	}
-	if resp.Msg.Label == nil {
+	if resp.Label == nil {
 		t.Fatalf("label is nil")
 	}
-	if got := len(resp.Msg.Label.EyeCatchImageVariants); got != 1 {
+	if got := len(resp.Label.EyeCatchImageVariants); got != 1 {
 		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
 	}
-	variant := resp.Msg.Label.EyeCatchImageVariants[0]
+	variant := resp.Label.EyeCatchImageVariants[0]
 	if variant.Url != protomapper.EyeCatchVariantURL("labels", imageID, "square", 512, variantID) {
 		t.Fatalf("eye_catch_image_variants url = %q, want the row's delivery url", variant.Url)
 	}
@@ -800,14 +793,13 @@ func TestGetLabelDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs(tenantID, "LABEL001").
 		WillReturnError(errors.New(`pq: relation "labels" does not exist`))
 
-	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.GetLabelRequest{
+	client := publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.GetLabelRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "LABEL001",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.GetLabel(context.Background(), req)
+	_, err := client.GetLabel(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetLabel code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -827,18 +819,18 @@ func TestListLabelsSuccess(t *testing.T) {
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addLabelRow(labelColumns(), uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now))
 
-	resp, err := client.ListLabels(context.Background(), newLabelRequest(tenantID, sessionToken))
+	resp, err := client.ListLabels(testutil.WithBearer(context.Background(), sessionToken), newLabelRequest(tenantID))
 	if err != nil {
 		t.Fatalf("ListLabels: %v", err)
 	}
-	if len(resp.Msg.Labels) != 1 {
-		t.Fatalf("labels count = %d, want 1", len(resp.Msg.Labels))
+	if len(resp.Labels) != 1 {
+		t.Fatalf("labels count = %d, want 1", len(resp.Labels))
 	}
-	if resp.Msg.Labels[0].PublicId != "LABEL001" {
-		t.Fatalf("label public_id = %q, want LABEL001", resp.Msg.Labels[0].PublicId)
+	if resp.Labels[0].PublicId != "LABEL001" {
+		t.Fatalf("label public_id = %q, want LABEL001", resp.Labels[0].PublicId)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty", resp.PreviousToken, resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -860,19 +852,19 @@ func TestListLabelsFirstPageReportsNextToken(t *testing.T) {
 			ids[2], tenantID, "LABEL003", "Third", now.Add(-2*time.Minute),
 		))
 
-	req := newLabelRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	resp, err := client.ListLabels(context.Background(), req)
+	req := newLabelRequest(tenantID)
+	req.Limit = 2
+	resp, err := client.ListLabels(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListLabels: %v", err)
 	}
-	if len(resp.Msg.Labels) != 2 {
-		t.Fatalf("labels count = %d, want the over-fetched row dropped", len(resp.Msg.Labels))
+	if len(resp.Labels) != 2 {
+		t.Fatalf("labels count = %d, want the over-fetched row dropped", len(resp.Labels))
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -895,18 +887,18 @@ func TestListLabelsFollowsNextToken(t *testing.T) {
 		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addLabelRow(labelColumns(), uuid.Must(uuid.NewV7()), tenantID, "LABEL003", "Last", now.Add(-2*time.Minute)))
 
-	req := newLabelRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
-	resp, err := client.ListLabels(context.Background(), req)
+	req := newLabelRequest(tenantID)
+	req.Limit = 2
+	req.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListLabels(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListLabels: %v", err)
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the page the client came from")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -928,24 +920,24 @@ func TestListLabelsFollowsPreviousTokenBackwards(t *testing.T) {
 			newerID, tenantID, "LABEL001", "Newer", now.Add(-time.Minute),
 		))
 
-	req := newLabelRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
-	resp, err := client.ListLabels(context.Background(), req)
+	req := newLabelRequest(tenantID)
+	req.Limit = 2
+	req.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListLabels(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListLabels: %v", err)
 	}
-	publicIDs := make([]string, 0, len(resp.Msg.Labels))
-	for _, label := range resp.Msg.Labels {
+	publicIDs := make([]string, 0, len(resp.Labels))
+	for _, label := range resp.Labels {
 		publicIDs = append(publicIDs, label.PublicId)
 	}
 	if !slices.Equal(publicIDs, []string{"LABEL001", "LABEL002"}) {
 		t.Fatalf("public_ids = %v, want backward page restored to descending order", publicIDs)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertExpectations(t, mock)
@@ -987,16 +979,16 @@ func TestListLabelsEmptyPageKeepsAWayBack(t *testing.T) {
 				WithArgs(tenantID, boundaryID, false, now, int32(21)).
 				WillReturnRows(labelColumns())
 
-			req := newLabelRequest(tenantID, sessionToken)
-			req.Msg.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
-			resp, err := client.ListLabels(context.Background(), req)
+			req := newLabelRequest(tenantID)
+			req.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
+			resp, err := client.ListLabels(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err != nil {
 				t.Fatalf("ListLabels: %v", err)
 			}
-			recoveryToken := resp.Msg.PreviousToken
+			recoveryToken := resp.PreviousToken
 			recoveryDirection := pagination.Backward
 			if test.direction == pagination.Backward {
-				recoveryToken = resp.Msg.NextToken
+				recoveryToken = resp.NextToken
 				recoveryDirection = pagination.Forward
 			}
 			wantRecoveryToken := pagination.EncodeTimeUUIDRecovery(recoveryDirection, now, boundaryID)
@@ -1018,14 +1010,14 @@ func TestListLabelsEmptyPageKeepsAWayBack(t *testing.T) {
 				WithArgs(tenantID, boundaryID, true, now, int32(21)).
 				WillReturnRows(recoveryRows)
 
-			recoveryReq := newLabelRequest(tenantID, sessionToken)
-			recoveryReq.Msg.Token = recoveryToken
-			recovered, err := client.ListLabels(context.Background(), recoveryReq)
+			recoveryReq := newLabelRequest(tenantID)
+			recoveryReq.Token = recoveryToken
+			recovered, err := client.ListLabels(testutil.WithBearer(context.Background(), sessionToken), recoveryReq)
 			if err != nil {
 				t.Fatalf("ListLabels recovery: %v", err)
 			}
-			publicIDs := make([]string, 0, len(recovered.Msg.Labels))
-			for _, label := range recovered.Msg.Labels {
+			publicIDs := make([]string, 0, len(recovered.Labels))
+			for _, label := range recovered.Labels {
 				publicIDs = append(publicIDs, label.PublicId)
 			}
 			if !slices.Equal(publicIDs, test.wantRecoveredLabels) {
@@ -1069,19 +1061,19 @@ func TestListLabelsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 				WithArgs(tenantID, boundaryID, true, now, int32(21)).
 				WillReturnRows(labelColumns())
 
-			req := newLabelRequest(tenantID, sessionToken)
-			req.Msg.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
-			resp, err := client.ListLabels(context.Background(), req)
+			req := newLabelRequest(tenantID)
+			req.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
+			resp, err := client.ListLabels(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err != nil {
 				t.Fatalf("ListLabels: %v", err)
 			}
-			if len(resp.Msg.Labels) != 0 {
-				t.Fatalf("labels = %d rows, want an empty page", len(resp.Msg.Labels))
+			if len(resp.Labels) != 0 {
+				t.Fatalf("labels = %d rows, want an empty page", len(resp.Labels))
 			}
-			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+			if resp.PreviousToken != "" || resp.NextToken != "" {
 				t.Fatalf(
 					"previous_token = %q / next_token = %q, want both empty once recovery also came back empty",
-					resp.Msg.PreviousToken, resp.Msg.NextToken,
+					resp.PreviousToken, resp.NextToken,
 				)
 			}
 			assertExpectations(t, mock)
@@ -1094,10 +1086,10 @@ func TestListLabelsInvalidToken(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newLabelClient(t, tenantID, userID, now)
-	req := newLabelRequest(tenantID, sessionToken)
-	req.Msg.Token = "not-a-valid-token"
+	req := newLabelRequest(tenantID)
+	req.Token = "not-a-valid-token"
 
-	_, err := client.ListLabels(context.Background(), req)
+	_, err := client.ListLabels(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListLabels code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -1165,20 +1157,19 @@ func TestCreateLabelValidationAndSuccess(t *testing.T) {
 				tc.setup(mock, tenantID, now)
 			}
 
-			client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
-			req := connect.NewRequest(tc.request)
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			client := publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			req := tc.request
 
-			resp, err := client.CreateLabel(context.Background(), req)
+			resp, err := client.CreateLabel(testutil.WithBearer(context.Background(), sessionToken), req)
 			if tc.wantCode == 0 {
 				if err != nil {
 					t.Fatalf("CreateLabel: %v", err)
 				}
-				if resp.Msg.Label == nil {
+				if resp.Label == nil {
 					t.Fatalf("label is nil")
 				}
-				if resp.Msg.Label.PublicId != "LABEL001" {
-					t.Fatalf("label public_id = %q, want LABEL001", resp.Msg.Label.PublicId)
+				if resp.Label.PublicId != "LABEL001" {
+					t.Fatalf("label public_id = %q, want LABEL001", resp.Label.PublicId)
 				}
 			} else if connect.CodeOf(err) != tc.wantCode {
 				t.Fatalf("CreateLabel code = %v, want %v", connect.CodeOf(err), tc.wantCode)
@@ -1215,23 +1206,22 @@ func TestUpdateLabelSuccess(t *testing.T) {
 			AddRow(labelID, tenantID, "LABEL001", "After", now, nil, nil))
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateLabelRequest{
+	client := publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateLabelRequest{
 		Tenant:  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		LabelId: labelID.String(),
 		Name:    "After",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UpdateLabel(context.Background(), req)
+	resp, err := client.UpdateLabel(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UpdateLabel: %v", err)
 	}
-	if resp.Msg.Label == nil {
+	if resp.Label == nil {
 		t.Fatalf("label is nil")
 	}
-	if resp.Msg.Label.Name != "After" {
-		t.Fatalf("label name = %q, want After", resp.Msg.Label.Name)
+	if resp.Label.Name != "After" {
+		t.Fatalf("label name = %q, want After", resp.Label.Name)
 	}
 	assertExpectations(t, mock)
 }
@@ -1247,18 +1237,17 @@ func TestUpdateLabelRejectsClearAndImageTogether(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateLabelRequest{
+	client := publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateLabelRequest{
 		Tenant:                   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		LabelId:                  "0190f0b5-7c1a-7000-8000-000000000001",
 		Name:                     "After",
 		ClearEyeCatchImage:       true,
 		EyeCatchImageData:        oneByOnePNG,
 		EyeCatchImageContentType: "image/png",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.UpdateLabel(context.Background(), req)
+	_, err := client.UpdateLabel(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateLabel code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -1311,14 +1300,13 @@ func TestCreateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil, nil))
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateLabelRequest{
+	client := publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateLabelRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Name:   "Weekly",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.CreateLabel(context.Background(), req); err != nil {
+	if _, err := client.CreateLabel(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("CreateLabel: %v", err)
 	}
 	revalidations.waitForTags(t, wantLabelRevalidateTags(tenantID))
@@ -1354,15 +1342,14 @@ func TestUpdateLabelRevalidatesTheLabelAndSeriesCaches(t *testing.T) {
 			AddRow(labelID, tenantID, "LABEL001", "After", now, nil, nil))
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateLabelRequest{
+	client := publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateLabelRequest{
 		Tenant:  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		LabelId: labelID.String(),
 		Name:    "After",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.UpdateLabel(context.Background(), req); err != nil {
+	if _, err := client.UpdateLabel(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UpdateLabel: %v", err)
 	}
 	revalidations.waitForTags(t, wantLabelRevalidateTags(tenantID))
@@ -1413,14 +1400,13 @@ func TestCreateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", nil, now, nil, nil, int64(0), int32(0), int32(0)))
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateCreatorRequest{
+	client := publiraadminv1connect.NewAdminCreatorServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateCreatorRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Name:   "Creator One",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.CreateCreator(context.Background(), req); err != nil {
+	if _, err := client.CreateCreator(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("CreateCreator: %v", err)
 	}
 	revalidations.waitForTags(t, wantCreatorRevalidateTags(tenantID))
@@ -1456,16 +1442,15 @@ func TestUpdateCreatorRevalidatesTheCreatorAndSeriesCaches(t *testing.T) {
 			AddRow(creatorID, tenantID, "CREATOR001", "After", "new", now, nil, nil, int64(0), int32(0), int32(0)))
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateCreatorRequest{
+	client := publiraadminv1connect.NewAdminCreatorServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateCreatorRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		CreatorId:   creatorID.String(),
 		Name:        "After",
 		ProfileText: "new",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.UpdateCreator(context.Background(), req); err != nil {
+	if _, err := client.UpdateCreator(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UpdateCreator: %v", err)
 	}
 	revalidations.waitForTags(t, wantCreatorRevalidateTags(tenantID))

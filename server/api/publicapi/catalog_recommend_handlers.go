@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/contentranking"
@@ -129,7 +129,7 @@ type recommendedCursorKeys struct {
 }
 
 func decodeRecommendedCursorKeys(cursor pagination.Cursor) (recommendedCursorKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	invalid := connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	if len(cursor.Keys) != 3 && len(cursor.Keys) != 4 {
 		return recommendedCursorKeys{}, invalid
 	}
@@ -227,20 +227,20 @@ func (s *apiServer) recommendedSeriesPageRows(
 // a statement about what is published now.
 func (s *apiServer) ListRecommendedSeries(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListRecommendedSeriesRequest],
-) (*connect.Response[publirav1.ListRecommendedSeriesResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ListRecommendedSeriesRequest,
+) (*publirav1.ListRecommendedSeriesResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRecommendedSeriesPageSize, maxRecommendedSeriesPageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultRecommendedSeriesPageSize, maxRecommendedSeriesPageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 
 	res, err := s.tenantRecommendedSeriesPage(ctx, tenant.ID, surface, limit, cursor)
@@ -248,7 +248,7 @@ func (s *apiServer) ListRecommendedSeries(
 		return nil, err
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 // tenantRecommendedSeriesPage answers one page of the tenant-wide

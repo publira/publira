@@ -3,11 +3,10 @@ package adminapi
 import (
 	"context"
 	"errors"
-	"net/http"
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -78,13 +77,13 @@ func (s *adminServer) tenantMembersError(ctx context.Context, msg string, err er
 		errors.Is(err, tenantmembers.ErrInvalidRole),
 		errors.Is(err, tenantmembers.ErrEmailRequired),
 		errors.Is(err, tenantmembers.ErrInvalidEmail):
-		return connect.NewError(connect.CodeInvalidArgument, err)
+		return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	case errors.Is(err, tenantmembers.ErrMemberNotFound), errors.Is(err, tenantmembers.ErrInvitationNotFound):
-		return connect.NewError(connect.CodeNotFound, err)
+		return connect.NewError(connect.CodeNotFound, err.Error()).WithCause(err)
 	case errors.Is(err, tenantmembers.ErrAlreadyMember), errors.Is(err, tenantmembers.ErrRoleAlreadyHeld):
-		return connect.NewError(connect.CodeAlreadyExists, err)
+		return connect.NewError(connect.CodeAlreadyExists, err.Error()).WithCause(err)
 	case errors.Is(err, tenantmembers.ErrInvitationAccepted):
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	case errors.Is(err, tenantmembers.ErrInvitationWasCanceled):
 		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, err, rpcerrors.ReasonInvitationCanceled)
 	default:
@@ -92,7 +91,7 @@ func (s *adminServer) tenantMembersError(ctx context.Context, msg string, err er
 	}
 }
 
-func (s *adminServer) recordTenantMemberChange(ctx context.Context, header http.Header, tenant dbmodels.Tenant, session rpcmiddleware.SessionContext, action, targetType, targetID, reason string) {
+func (s *adminServer) recordTenantMemberChange(ctx context.Context, header *connect.Header, tenant dbmodels.Tenant, session rpcmiddleware.SessionContext, action, targetType, targetID, reason string) {
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: session.User.ID,
@@ -109,13 +108,13 @@ func (s *adminServer) recordTenantMemberChange(ctx context.Context, header http.
 func decodeTimeUUIDToken(token string) (pagination.Cursor, pagination.TimeUUIDKeys, error) {
 	cursor, err := pagination.Decode(token)
 	if err != nil {
-		return pagination.Cursor{}, pagination.TimeUUIDKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return pagination.Cursor{}, pagination.TimeUUIDKeys{}, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return pagination.Cursor{}, pagination.TimeUUIDKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return pagination.Cursor{}, pagination.TimeUUIDKeys{}, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 	return cursor, keys, nil
@@ -123,17 +122,17 @@ func decodeTimeUUIDToken(token string) (pagination.Cursor, pagination.TimeUUIDKe
 
 func (s *adminServer) ListTenantMembers(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListTenantMembersRequest],
-) (*connect.Response[publiraadminv1.ListTenantMembersResponse], error) {
+	req *publiraadminv1.ListTenantMembersRequest,
+) (*publiraadminv1.ListTenantMembersResponse, error) {
 	if _, err := s.requireTenantAdmin(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultTenantMemberListLimit, maxTenantMemberListLimit)
-	cursor, keys, err := decodeTimeUUIDToken(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultTenantMemberListLimit, maxTenantMemberListLimit)
+	cursor, keys, err := decodeTimeUUIDToken(req.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -168,23 +167,23 @@ func (s *adminServer) ListTenantMembers(
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *adminServer) UpdateTenantMemberRole(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantMemberRoleRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantMemberRoleResponse], error) {
+	req *publiraadminv1.UpdateTenantMemberRoleRequest,
+) (*publiraadminv1.UpdateTenantMemberRoleResponse, error) {
 	session, err := s.requireTenantAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	userID, err := memberUserID(req.Msg.UserId)
+	userID, err := memberUserID(req.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +197,7 @@ func (s *adminServer) UpdateTenantMemberRole(
 	member, err := tenantmembers.UpdateRole(ctx, tx, tenantmembers.UpdateRoleParams{
 		TenantID:    tenant.ID,
 		UserID:      userID,
-		Role:        req.Msg.Role,
+		Role:        req.Role,
 		KeepAnAdmin: true,
 	})
 	if err != nil {
@@ -208,30 +207,30 @@ func (s *adminServer) UpdateTenantMemberRole(
 		return nil, s.internalDBError(ctx, "failed to commit update tenant member role", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_member_role_updated", "user", member.PublicID, roleGrantedReason(member.Role))
+	s.recordTenantMemberChange(ctx, rpcmiddleware.RequestHeader(ctx), tenant, session, "tenant_member_role_updated", "user", member.PublicID, roleGrantedReason(member.Role))
 
-	return connect.NewResponse(&publiraadminv1.UpdateTenantMemberRoleResponse{Member: tenantMemberToProto(member)}), nil
+	return &publiraadminv1.UpdateTenantMemberRoleResponse{Member: tenantMemberToProto(member)}, nil
 }
 
 func (s *adminServer) AddTenantMember(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.AddTenantMemberRequest],
-) (*connect.Response[publiraadminv1.AddTenantMemberResponse], error) {
+	req *publiraadminv1.AddTenantMemberRequest,
+) (*publiraadminv1.AddTenantMemberResponse, error) {
 	session, err := s.requireTenantAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
 	// The console names the user by address alone, so an empty one is the
 	// address missing rather than tenantmembers' user-or-address refusal.
-	if strings.TrimSpace(req.Msg.Email) == "" {
+	if strings.TrimSpace(req.Email) == "" {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, tenantmembers.ErrEmailRequired, tenantmembers.FieldEmail)
 	}
-	params := tenantmembers.AddParams{TenantID: tenant.ID, Email: req.Msg.Email, Role: req.Msg.Role}
+	params := tenantmembers.AddParams{TenantID: tenant.ID, Email: req.Email, Role: req.Role}
 	if err := params.Validate(); err != nil {
 		return nil, s.tenantMembersError(ctx, "invalid add tenant member request", err, "tenant_id", tenant.ID.String())
 	}
@@ -250,25 +249,25 @@ func (s *adminServer) AddTenantMember(
 		return nil, s.internalDBError(ctx, "failed to commit add tenant member", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_member_added", "user", member.PublicID, roleGrantedReason(member.Role))
+	s.recordTenantMemberChange(ctx, rpcmiddleware.RequestHeader(ctx), tenant, session, "tenant_member_added", "user", member.PublicID, roleGrantedReason(member.Role))
 
-	return connect.NewResponse(&publiraadminv1.AddTenantMemberResponse{Member: tenantMemberToProto(member)}), nil
+	return &publiraadminv1.AddTenantMemberResponse{Member: tenantMemberToProto(member)}, nil
 }
 
 func (s *adminServer) RemoveTenantMember(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.RemoveTenantMemberRequest],
-) (*connect.Response[publiraadminv1.RemoveTenantMemberResponse], error) {
+	req *publiraadminv1.RemoveTenantMemberRequest,
+) (*publiraadminv1.RemoveTenantMemberResponse, error) {
 	session, err := s.requireTenantAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	userID, err := memberUserID(req.Msg.UserId)
+	userID, err := memberUserID(req.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -291,9 +290,9 @@ func (s *adminServer) RemoveTenantMember(
 		return nil, s.internalDBError(ctx, "failed to commit remove tenant member", err, "tenant_id", tenant.ID.String(), "user_id", member.UserID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_member_removed", "user", member.PublicID, "")
+	s.recordTenantMemberChange(ctx, rpcmiddleware.RequestHeader(ctx), tenant, session, "tenant_member_removed", "user", member.PublicID, "")
 
-	return connect.NewResponse(&publiraadminv1.RemoveTenantMemberResponse{UserPublicId: member.PublicID, UserId: member.UserID.String()}), nil
+	return &publiraadminv1.RemoveTenantMemberResponse{UserPublicId: member.PublicID, UserId: member.UserID.String()}, nil
 }
 
 // memberUserID parses the user_id a member request names.
@@ -311,17 +310,17 @@ func memberUserID(raw string) (uuid.UUID, error) {
 
 func (s *adminServer) ListTenantAdminInvitations(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListTenantAdminInvitationsRequest],
-) (*connect.Response[publiraadminv1.ListTenantAdminInvitationsResponse], error) {
+	req *publiraadminv1.ListTenantAdminInvitationsRequest,
+) (*publiraadminv1.ListTenantAdminInvitationsResponse, error) {
 	if _, err := s.requireTenantAdmin(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultTenantMemberListLimit, maxTenantMemberListLimit)
-	cursor, keys, err := decodeTimeUUIDToken(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultTenantMemberListLimit, maxTenantMemberListLimit)
+	cursor, keys, err := decodeTimeUUIDToken(req.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -357,18 +356,18 @@ func (s *adminServer) ListTenantAdminInvitations(
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *adminServer) CreateTenantAdminInvitation(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreateTenantAdminInvitationRequest],
-) (*connect.Response[publiraadminv1.CreateTenantAdminInvitationResponse], error) {
+	req *publiraadminv1.CreateTenantAdminInvitationRequest,
+) (*publiraadminv1.CreateTenantAdminInvitationResponse, error) {
 	session, err := s.requireTenantAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -381,9 +380,9 @@ func (s *adminServer) CreateTenantAdminInvitation(
 
 	invited, err := tenantmembers.Invite(ctx, tx, tenantmembers.InviteParams{
 		TenantID:  tenant.ID,
-		Email:     req.Msg.Email,
-		Role:      req.Msg.Role,
-		AllowMail: s.allowInvitationMail(ctx, req, tenant),
+		Email:     req.Email,
+		Role:      req.Role,
+		AllowMail: s.allowInvitationMail(ctx, tenant),
 	})
 	if err != nil {
 		return nil, s.tenantMembersError(ctx, "failed to invite tenant admin", err, "tenant_id", tenant.ID.String())
@@ -392,29 +391,29 @@ func (s *adminServer) CreateTenantAdminInvitation(
 		return nil, s.internalDBError(ctx, "failed to commit tenant admin invitation transaction", err, "tenant_id", tenant.ID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_admin_invited", "tenant_admin_invitation", invited.Email, roleGrantedReason(invited.Role))
+	s.recordTenantMemberChange(ctx, rpcmiddleware.RequestHeader(ctx), tenant, session, "tenant_admin_invited", "tenant_admin_invitation", invited.Email, roleGrantedReason(invited.Role))
 
 	if invited.RoleGrantedImmediately {
-		return connect.NewResponse(&publiraadminv1.CreateTenantAdminInvitationResponse{RoleGrantedImmediately: true}), nil
+		return &publiraadminv1.CreateTenantAdminInvitationResponse{RoleGrantedImmediately: true}, nil
 	}
-	return connect.NewResponse(&publiraadminv1.CreateTenantAdminInvitationResponse{
+	return &publiraadminv1.CreateTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(invited.Invitation, time.Now()),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) ResendTenantAdminInvitation(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ResendTenantAdminInvitationRequest],
-) (*connect.Response[publiraadminv1.ResendTenantAdminInvitationResponse], error) {
+	req *publiraadminv1.ResendTenantAdminInvitationRequest,
+) (*publiraadminv1.ResendTenantAdminInvitationResponse, error) {
 	session, err := s.requireTenantAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	invitationID, err := parseInvitationID(req.Msg.InvitationId)
+	invitationID, err := parseInvitationID(req.InvitationId)
 	if err != nil {
 		return nil, err
 	}
@@ -428,7 +427,7 @@ func (s *adminServer) ResendTenantAdminInvitation(
 	updated, err := tenantmembers.Resend(ctx, tx, tenantmembers.ResendParams{
 		TenantID:     tenant.ID,
 		InvitationID: invitationID,
-		AllowMail:    s.allowInvitationMail(ctx, req, tenant),
+		AllowMail:    s.allowInvitationMail(ctx, tenant),
 	})
 	if err != nil {
 		return nil, s.tenantMembersError(ctx, "failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
@@ -437,26 +436,26 @@ func (s *adminServer) ResendTenantAdminInvitation(
 		return nil, s.internalDBError(ctx, "failed to commit resend tenant admin invitation transaction", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_admin_invite_resent", "tenant_admin_invitation", updated.Email, roleGrantedReason(updated.Role))
+	s.recordTenantMemberChange(ctx, rpcmiddleware.RequestHeader(ctx), tenant, session, "tenant_admin_invite_resent", "tenant_admin_invitation", updated.Email, roleGrantedReason(updated.Role))
 
-	return connect.NewResponse(&publiraadminv1.ResendTenantAdminInvitationResponse{
+	return &publiraadminv1.ResendTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(updated, time.Now()),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) CancelTenantAdminInvitation(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CancelTenantAdminInvitationRequest],
-) (*connect.Response[publiraadminv1.CancelTenantAdminInvitationResponse], error) {
+	req *publiraadminv1.CancelTenantAdminInvitationRequest,
+) (*publiraadminv1.CancelTenantAdminInvitationResponse, error) {
 	session, err := s.requireTenantAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	invitationID, err := parseInvitationID(req.Msg.InvitationId)
+	invitationID, err := parseInvitationID(req.InvitationId)
 	if err != nil {
 		return nil, err
 	}
@@ -466,30 +465,30 @@ func (s *adminServer) CancelTenantAdminInvitation(
 		return nil, s.tenantMembersError(ctx, "failed to cancel tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID.String())
 	}
 
-	s.recordTenantMemberChange(ctx, req.Header(), tenant, session, "tenant_admin_invite_canceled", "tenant_admin_invitation", updated.Email, "")
+	s.recordTenantMemberChange(ctx, rpcmiddleware.RequestHeader(ctx), tenant, session, "tenant_admin_invite_canceled", "tenant_admin_invitation", updated.Email, "")
 
-	return connect.NewResponse(&publiraadminv1.CancelTenantAdminInvitationResponse{
+	return &publiraadminv1.CancelTenantAdminInvitationResponse{
 		Invitation: tenantAdminInvitationToProto(updated, time.Now()),
-	}), nil
+	}, nil
 }
 
 // allowInvitationMail charges the mail guard for an invitation mail. It runs
 // after the lookups that decide whether a mail goes out, since an address that
 // already has an account is granted the role and mailed nothing.
-func (s *adminServer) allowInvitationMail(ctx context.Context, req connect.AnyRequest, tenant dbmodels.Tenant) func(string) error {
+func (s *adminServer) allowInvitationMail(ctx context.Context, tenant dbmodels.Tenant) func(string) error {
 	return func(email string) error {
-		return s.mail.Allow(ctx, req, tenant.ID.String(), email)
+		return s.mail.Allow(ctx, tenant.ID.String(), email)
 	}
 }
 
 func parseInvitationID(raw string) (uuid.UUID, error) {
 	id := strings.TrimSpace(raw)
 	if id == "" {
-		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invitation_id is required"))
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, "invitation_id is required")
 	}
 	parsed, err := uuid.Parse(id)
 	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid invitation_id"))
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, "invalid invitation_id")
 	}
 	return parsed, nil
 }

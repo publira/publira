@@ -7,7 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -26,19 +27,19 @@ func TestDBListEndUsersExcludesTenantMembers(t *testing.T) {
 	member := seedEndUser(t, pg, tenantID, "MEMBER000001", "member@example.com", "Tenant Member")
 	seedTenantMember(t, pg, tenantID, member.ID, "tenant_editor")
 
-	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
-	listResp, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{}))
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	listResp, err := client.ListEndUsers(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListEndUsersRequest{})
 	if err != nil {
 		t.Fatalf("ListEndUsers: %v", err)
 	}
-	publicIDs := endUserPublicIDs(listResp.Msg.Users)
+	publicIDs := endUserPublicIDs(listResp.Users)
 	if !slices.Equal(publicIDs, []string{reader.PublicID}) {
 		t.Fatalf("listed public IDs = %v, want only the end user %q", publicIDs, reader.PublicID)
 	}
-	if got := listResp.Msg.Users[0].TenantIds; !slices.Equal(got, []string{"TENANT000001"}) {
+	if got := listResp.Users[0].TenantIds; !slices.Equal(got, []string{"TENANT000001"}) {
 		t.Fatalf("tenant_ids = %v, want the tenant the user belongs to", got)
 	}
-	if got := listResp.Msg.Users[0].TenantName; got != "Readers" {
+	if got := listResp.Users[0].TenantName; got != "Readers" {
 		t.Fatalf("tenant_name = %q, want Readers", got)
 	}
 }
@@ -51,17 +52,17 @@ func TestDBListEndUsersFiltersByTenantPublicID(t *testing.T) {
 	reader := seedEndUser(t, pg, readersID, "ENDUSER00001", "reader@example.com", "Reader One")
 	_ = seedEndUser(t, pg, writersID, "ENDUSER00002", "writer@example.com", "Writer One")
 
-	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
-	listResp, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	listResp, err := client.ListEndUsers(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListEndUsersRequest{
 		TenantPublicId: "TENANT000001",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListEndUsers: %v", err)
 	}
-	if got := endUserPublicIDs(listResp.Msg.Users); !slices.Equal(got, []string{reader.PublicID}) {
+	if got := endUserPublicIDs(listResp.Users); !slices.Equal(got, []string{reader.PublicID}) {
 		t.Fatalf("tenant filter public IDs = %v, want only %q", got, reader.PublicID)
 	}
-	if got := listResp.Msg.Users[0].TenantName; got != "Readers" {
+	if got := listResp.Users[0].TenantName; got != "Readers" {
 		t.Fatalf("tenant_name = %q, want Readers", got)
 	}
 }
@@ -76,21 +77,21 @@ func TestDBListEndUsersPagesAreStableWhenCreatedAtTies(t *testing.T) {
 	setUserCreatedAt(t, pg, older.ID, tiedAt)
 	setUserCreatedAt(t, pg, newer.ID, tiedAt)
 
-	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
-	first, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	first, err := client.ListEndUsers(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListEndUsersRequest{
 		Limit: 1,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListEndUsers first page: %v", err)
 	}
-	second, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
+	second, err := client.ListEndUsers(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListEndUsersRequest{
 		Limit: 1,
-		Token: first.Msg.NextToken,
-	}))
+		Token: first.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("ListEndUsers second page: %v", err)
 	}
-	got := append(endUserPublicIDs(first.Msg.Users), endUserPublicIDs(second.Msg.Users)...)
+	got := append(endUserPublicIDs(first.Users), endUserPublicIDs(second.Users)...)
 	want := []string{newer.PublicID, older.PublicID}
 	if !slices.Equal(got, want) {
 		t.Fatalf("adjacent pages = %v, want %v (id DESC on a created_at tie)", got, want)
@@ -105,25 +106,25 @@ func TestDBListEndUsersFiltersByStatusAndUserIDs(t *testing.T) {
 	suspended := seedEndUser(t, pg, tenantID, "ENDUSER00002", "suspended@example.com", "Suspended Reader")
 	setUserStatus(t, pg, suspended.PublicID, userStatusSuspended)
 
-	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	byStatus, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
+	byStatus, err := client.ListEndUsers(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListEndUsersRequest{
 		Status: userStatusSuspended,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListEndUsers by status: %v", err)
 	}
-	if got := endUserPublicIDs(byStatus.Msg.Users); !slices.Equal(got, []string{suspended.PublicID}) {
+	if got := endUserPublicIDs(byStatus.Users); !slices.Equal(got, []string{suspended.PublicID}) {
 		t.Fatalf("status filter public IDs = %v, want only %q", got, suspended.PublicID)
 	}
 
-	byID, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
+	byID, err := client.ListEndUsers(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListEndUsersRequest{
 		UserIds: []string{active.ID.String(), active.ID.String(), "  "},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListEndUsers by user_ids: %v", err)
 	}
-	if got := endUserPublicIDs(byID.Msg.Users); !slices.Equal(got, []string{active.PublicID}) {
+	if got := endUserPublicIDs(byID.Users); !slices.Equal(got, []string{active.PublicID}) {
 		t.Fatalf("user_ids filter = %v, want only %q", got, active.PublicID)
 	}
 }
@@ -134,15 +135,15 @@ func TestDBSuspendAndUnsuspendEndUser(t *testing.T) {
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
 	reader := seedEndUser(t, pg, tenantID, "ENDUSER00001", "reader@example.com", "Reader One")
 
-	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
-	suspendResp, err := client.SuspendEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.SuspendEndUserRequest{
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	suspendResp, err := client.SuspendEndUser(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.SuspendEndUserRequest{
 		UserId: reader.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SuspendEndUser: %v", err)
 	}
-	if suspendResp.Msg.User.Status != userStatusSuspended {
-		t.Fatalf("status = %q, want %s", suspendResp.Msg.User.Status, userStatusSuspended)
+	if suspendResp.User.Status != userStatusSuspended {
+		t.Fatalf("status = %q, want %s", suspendResp.User.Status, userStatusSuspended)
 	}
 
 	// Suspension has to invalidate the reader's sessions as well as the flag.
@@ -150,24 +151,24 @@ func TestDBSuspendAndUnsuspendEndUser(t *testing.T) {
 		t.Fatalf("credentials_version = %d, want a bump from %d", got, reader.CredentialsVersion)
 	}
 
-	unsuspendResp, err := client.UnsuspendEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UnsuspendEndUserRequest{
+	unsuspendResp, err := client.UnsuspendEndUser(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UnsuspendEndUserRequest{
 		UserId: reader.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UnsuspendEndUser: %v", err)
 	}
-	if unsuspendResp.Msg.User.Status != userStatusActive {
-		t.Fatalf("status = %q, want %s", unsuspendResp.Msg.User.Status, userStatusActive)
+	if unsuspendResp.User.Status != userStatusActive {
+		t.Fatalf("status = %q, want %s", unsuspendResp.User.Status, userStatusActive)
 	}
 
-	getResp, err := client.GetEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetEndUserRequest{
+	getResp, err := client.GetEndUser(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetEndUserRequest{
 		PublicId: reader.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEndUser: %v", err)
 	}
-	if getResp.Msg.User.Status != userStatusActive {
-		t.Fatalf("GetEndUser status = %q, want %s", getResp.Msg.User.Status, userStatusActive)
+	if getResp.User.Status != userStatusActive {
+		t.Fatalf("GetEndUser status = %q, want %s", getResp.User.Status, userStatusActive)
 	}
 }
 
@@ -179,20 +180,20 @@ func TestDBUnsuspendUnconfirmedEndUserLeavesItInactive(t *testing.T) {
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
 	reader := pg.SeedUnverifiedEndUser(t, tenantID, "ENDUSER00001", "reader@example.com", "Reader One")
 
-	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
-	if _, err := client.SuspendEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.SuspendEndUserRequest{
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	if _, err := client.SuspendEndUser(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.SuspendEndUserRequest{
 		UserId: reader.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("SuspendEndUser: %v", err)
 	}
-	unsuspendResp, err := client.UnsuspendEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UnsuspendEndUserRequest{
+	unsuspendResp, err := client.UnsuspendEndUser(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UnsuspendEndUserRequest{
 		UserId: reader.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UnsuspendEndUser: %v", err)
 	}
-	if unsuspendResp.Msg.User.Status != userStatusInactive {
-		t.Fatalf("status = %q, want %s", unsuspendResp.Msg.User.Status, userStatusInactive)
+	if unsuspendResp.User.Status != userStatusInactive {
+		t.Fatalf("status = %q, want %s", unsuspendResp.User.Status, userStatusInactive)
 	}
 	// The audit trail names the lifted suspension, not an activation that did not happen.
 	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_audit_logs WHERE action = 'user_unsuspended' AND target_id = $1`, reader.ID.String()); got != 1 {
@@ -213,14 +214,14 @@ func TestDBUnsuspendUnconfirmedEndUserLeavesItInactive(t *testing.T) {
 		t.Fatalf("ActivateInactiveUserByID: %v", err)
 	}
 
-	getResp, err := client.GetEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetEndUserRequest{
+	getResp, err := client.GetEndUser(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetEndUserRequest{
 		PublicId: reader.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEndUser: %v", err)
 	}
-	if getResp.Msg.User.Status != userStatusActive {
-		t.Fatalf("GetEndUser status = %q, want %s", getResp.Msg.User.Status, userStatusActive)
+	if getResp.User.Status != userStatusActive {
+		t.Fatalf("GetEndUser status = %q, want %s", getResp.User.Status, userStatusActive)
 	}
 }
 
@@ -233,16 +234,16 @@ func TestDBEndUserOperationsRejectTenantMembers(t *testing.T) {
 	member := seedEndUser(t, pg, tenantID, "MEMBER000001", "member@example.com", "Tenant Member")
 	seedTenantMember(t, pg, tenantID, member.ID, "tenant_editor")
 
-	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	if _, err := client.SuspendEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.SuspendEndUserRequest{
+	if _, err := client.SuspendEndUser(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.SuspendEndUserRequest{
 		UserId: member.ID.String(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("SuspendEndUser code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
 	}
-	if _, err := client.DeleteEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.DeleteEndUserRequest{
+	if _, err := client.DeleteEndUser(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.DeleteEndUserRequest{
 		UserId: member.ID.String(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("DeleteEndUser code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
 	}
 
@@ -266,15 +267,15 @@ func TestDBDeleteEndUserCascadesRelatedRows(t *testing.T) {
 	seedUserNotificationSetting(t, pg, tenantID, reader.ID)
 	seedUserNotificationSetting(t, pg, tenantID, kept.ID)
 
-	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
-	deleteResp, err := client.DeleteEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.DeleteEndUserRequest{
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	deleteResp, err := client.DeleteEndUser(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.DeleteEndUserRequest{
 		UserId: reader.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("DeleteEndUser: %v", err)
 	}
-	if deleteResp.Msg.PublicId != reader.PublicID {
-		t.Fatalf("deleted public_id = %q, want %q", deleteResp.Msg.PublicId, reader.PublicID)
+	if deleteResp.PublicId != reader.PublicID {
+		t.Fatalf("deleted public_id = %q, want %q", deleteResp.PublicId, reader.PublicID)
 	}
 
 	if _, ok := userByPublicID(t, pg, reader.PublicID); ok {
@@ -287,9 +288,9 @@ func TestDBDeleteEndUserCascadesRelatedRows(t *testing.T) {
 		t.Fatalf("notification settings for the other user = %d, want 1", got)
 	}
 
-	_, err = client.GetEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetEndUserRequest{
+	_, err = client.GetEndUser(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetEndUserRequest{
 		PublicId: reader.PublicID,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetEndUser after delete code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
@@ -311,10 +312,10 @@ func TestDBDeleteEndUserKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
 	})
 	pg.SeedPurchase(t, tenantID, reader.ID, episode.ID, 500)
 
-	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
-	if _, err := client.DeleteEndUser(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.DeleteEndUserRequest{
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	if _, err := client.DeleteEndUser(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.DeleteEndUserRequest{
 		UserId: reader.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("DeleteEndUser for a reader who bought an episode: %v", err)
 	}
 
@@ -334,8 +335,8 @@ func TestDBEndUserRPCsRequirePlatformSession(t *testing.T) {
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
 	seedEndUser(t, pg, tenantID, "ENDUSER00001", "reader@example.com", "Reader One")
 
-	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
-	_, err := client.ListEndUsers(context.Background(), connect.NewRequest(&publirasplatformv1.ListEndUsersRequest{}))
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.ListEndUsers(context.Background(), &publirasplatformv1.ListEndUsersRequest{})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("ListEndUsers without a token code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}

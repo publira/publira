@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -58,16 +58,16 @@ func royaltyCloseModeFromProto(mode publiraadminv1.RoyaltyCloseMode) (string, er
 	case publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_AUTOMATIC:
 		return royaltyCloseModeAuto, nil
 	default:
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("close_mode must be manual or automatic"))
+		return "", connect.NewError(connect.CodeInvalidArgument, "close_mode must be manual or automatic")
 	}
 }
 
 // GetRoyaltyConfig returns manual for tenants that have not chosen a policy.
 func (s *adminServer) GetRoyaltyConfig(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetRoyaltyConfigRequest],
-) (*connect.Response[publiraadminv1.GetRoyaltyConfigResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.GetRoyaltyConfigRequest,
+) (*publiraadminv1.GetRoyaltyConfigResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -77,21 +77,21 @@ func (s *adminServer) GetRoyaltyConfig(
 
 	config, err := s.queriesFor(ctx).GetTenantRoyaltyConfigByTenantID(ctx, tenant.ID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return connect.NewResponse(&publiraadminv1.GetRoyaltyConfigResponse{
+		return &publiraadminv1.GetRoyaltyConfigResponse{
 			Config: &publiraadminv1.RoyaltyConfig{CloseMode: publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_MANUAL},
-		}), nil
+		}, nil
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get royalty config", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetRoyaltyConfigResponse{Config: royaltyConfigToProto(config)}), nil
+	return &publiraadminv1.GetRoyaltyConfigResponse{Config: royaltyConfigToProto(config)}, nil
 }
 
 func (s *adminServer) UpdateRoyaltyConfig(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateRoyaltyConfigRequest],
-) (*connect.Response[publiraadminv1.UpdateRoyaltyConfigResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateRoyaltyConfigRequest,
+) (*publiraadminv1.UpdateRoyaltyConfigResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -100,22 +100,22 @@ func (s *adminServer) UpdateRoyaltyConfig(
 		return nil, err
 	}
 
-	closeMode, err := royaltyCloseModeFromProto(req.Msg.CloseMode)
+	closeMode, err := royaltyCloseModeFromProto(req.CloseMode)
 	if err != nil {
 		return nil, err
 	}
 	day := sql.NullInt32{}
-	if req.Msg.AutoCloseDay != nil {
-		day = sql.NullInt32{Int32: *req.Msg.AutoCloseDay, Valid: true}
+	if req.AutoCloseDay != nil {
+		day = sql.NullInt32{Int32: *req.AutoCloseDay, Valid: true}
 	}
 	if closeMode == royaltyCloseModeAuto && !day.Valid {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("auto_close_day is required when close_mode is automatic"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "auto_close_day is required when close_mode is automatic")
 	}
 	if closeMode == royaltyCloseModeManual && day.Valid {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("auto_close_day must not be set when close_mode is manual"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "auto_close_day must not be set when close_mode is manual")
 	}
 	if day.Valid && (day.Int32 < 1 || day.Int32 > 28) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("auto_close_day must be between 1 and 28"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "auto_close_day must be between 1 and 28")
 	}
 
 	config, err := s.queriesFor(ctx).UpsertTenantRoyaltyConfig(ctx, dbmodels.UpsertTenantRoyaltyConfigParams{
@@ -127,9 +127,9 @@ func (s *adminServer) UpdateRoyaltyConfig(
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID: tenant.ID, ActorUserID: sessionCtx.User.ID, ActorRole: sessionCtx.Role,
 		Action: "royalty_config_updated", TargetType: "royalty_config", TargetID: tenant.PublicID,
-		Outcome: auditlog.OutcomeSuccess, ClientIP: auditlog.ClientIPFromHeader(req.Header()),
+		Outcome: auditlog.OutcomeSuccess, ClientIP: auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
-	return connect.NewResponse(&publiraadminv1.UpdateRoyaltyConfigResponse{Config: royaltyConfigToProto(config)}), nil
+	return &publiraadminv1.UpdateRoyaltyConfigResponse{Config: royaltyConfigToProto(config)}, nil
 }
 
 // royaltyMonth resolves the requested period of the tenant in the tenant's
@@ -158,16 +158,16 @@ func (s *adminServer) royaltyDB(ctx context.Context) (royalties.TxBeginner, erro
 // PreviewRoyaltyStatement computes a month that is not closed yet.
 func (s *adminServer) PreviewRoyaltyStatement(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.PreviewRoyaltyStatementRequest],
-) (*connect.Response[publiraadminv1.PreviewRoyaltyStatementResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.PreviewRoyaltyStatementRequest,
+) (*publiraadminv1.PreviewRoyaltyStatementResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := s.requireTenantAdmin(ctx); err != nil {
 		return nil, err
 	}
-	month, err := s.royaltyMonth(ctx, tenant, req.Msg.Period)
+	month, err := s.royaltyMonth(ctx, tenant, req.Period)
 	if err != nil {
 		return nil, err
 	}
@@ -179,10 +179,10 @@ func (s *adminServer) PreviewRoyaltyStatement(
 	computation, err := royalties.PreviewStatement(ctx, db, month, time.Now())
 	switch {
 	case errors.Is(err, royalties.ErrAlreadyClosed), errors.Is(err, royalties.ErrNotStarted):
-		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	case err != nil:
 		return nil, s.internalDBError(ctx, "failed to preview royalty statement", err,
-			"tenant_id", tenant.ID.String(), "period", req.Msg.Period)
+			"tenant_id", tenant.ID.String(), "period", req.Period)
 	}
 
 	lines := make([]*publiraadminv1.RoyaltyStatementLine, 0, len(computation.Lines))
@@ -205,7 +205,7 @@ func (s *adminServer) PreviewRoyaltyStatement(
 		})
 	}
 
-	return connect.NewResponse(&publiraadminv1.PreviewRoyaltyStatementResponse{
+	return &publiraadminv1.PreviewRoyaltyStatementResponse{
 		Period:   royalties.FormatPeriod(month.Period),
 		TimeZone: month.TimeZone,
 		Totals: &publiraadminv1.RoyaltyStatementTotals{
@@ -214,7 +214,7 @@ func (s *adminServer) PreviewRoyaltyStatement(
 			Payout:   computation.Totals.Payout,
 		},
 		Lines: lines,
-	}), nil
+	}, nil
 }
 
 // CloseRoyaltyStatement closes a month that is over. The audit entry commits
@@ -222,9 +222,9 @@ func (s *adminServer) PreviewRoyaltyStatement(
 // recorder dropped could never be written again.
 func (s *adminServer) CloseRoyaltyStatement(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CloseRoyaltyStatementRequest],
-) (*connect.Response[publiraadminv1.CloseRoyaltyStatementResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.CloseRoyaltyStatementRequest,
+) (*publiraadminv1.CloseRoyaltyStatementResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func (s *adminServer) CloseRoyaltyStatement(
 	if err != nil {
 		return nil, err
 	}
-	month, err := s.royaltyMonth(ctx, tenant, req.Msg.Period)
+	month, err := s.royaltyMonth(ctx, tenant, req.Period)
 	if err != nil {
 		return nil, err
 	}
@@ -253,22 +253,22 @@ func (s *adminServer) CloseRoyaltyStatement(
 				TargetType:  "royalty_statement",
 				TargetID:    period,
 				Outcome:     auditlog.OutcomeSuccess,
-				ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+				ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 			})
 		})
 	switch {
 	case errors.Is(err, royalties.ErrAlreadyClosed):
-		return nil, connect.NewError(connect.CodeAlreadyExists, err)
+		return nil, connect.NewError(connect.CodeAlreadyExists, err.Error()).WithCause(err)
 	case errors.Is(err, royalties.ErrNotOver):
-		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	case err != nil:
 		return nil, s.internalDBError(ctx, "failed to close royalty statement", err,
 			"tenant_id", tenant.ID.String(), "period", period)
 	}
 
-	return connect.NewResponse(&publiraadminv1.CloseRoyaltyStatementResponse{
+	return &publiraadminv1.CloseRoyaltyStatementResponse{
 		Statement: royaltyStatementToProto(statement, sessionCtx.User.PublicID, sessionCtx.User.Name),
-	}), nil
+	}, nil
 }
 
 // ListRoyaltyStatements lists the closed months, newest first. A statement is
@@ -276,9 +276,9 @@ func (s *adminServer) CloseRoyaltyStatement(
 // and the list issues no recovery token.
 func (s *adminServer) ListRoyaltyStatements(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListRoyaltyStatementsRequest],
-) (*connect.Response[publiraadminv1.ListRoyaltyStatementsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ListRoyaltyStatementsRequest,
+) (*publiraadminv1.ListRoyaltyStatementsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -286,8 +286,8 @@ func (s *adminServer) ListRoyaltyStatements(
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRoyaltyPageSize, maxRoyaltyPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultRoyaltyPageSize, maxRoyaltyPageSize)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
 		return nil, invalidRoyaltyTokenError()
 	}
@@ -342,7 +342,7 @@ func (s *adminServer) ListRoyaltyStatements(
 			res.NextToken = pagination.Encode(pagination.Forward, royalties.FormatPeriod(rows[len(rows)-1].Period))
 		}
 	}
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 // GetRoyaltyStatement reads a closed month and a page of its lines. The token
@@ -351,23 +351,23 @@ func (s *adminServer) ListRoyaltyStatements(
 // issued, as in ListRoyaltyStatements.
 func (s *adminServer) GetRoyaltyStatement(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetRoyaltyStatementRequest],
-) (*connect.Response[publiraadminv1.GetRoyaltyStatementResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.GetRoyaltyStatementRequest,
+) (*publiraadminv1.GetRoyaltyStatementResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := s.requireTenantAdmin(ctx); err != nil {
 		return nil, err
 	}
-	period, err := royalties.ParsePeriod(req.Msg.Period)
+	period, err := royalties.ParsePeriod(req.Period)
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "period")
 	}
 	periodKey := royalties.FormatPeriod(period)
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultRoyaltyPageSize, maxRoyaltyPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultRoyaltyPageSize, maxRoyaltyPageSize)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
 		return nil, invalidRoyaltyTokenError()
 	}
@@ -389,7 +389,7 @@ func (s *adminServer) GetRoyaltyStatement(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("royalty statement not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "royalty statement not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get royalty statement", err, "tenant_id", tenant.ID.String(), "period", periodKey)
 	}
@@ -454,16 +454,16 @@ func (s *adminServer) GetRoyaltyStatement(
 			res.NextToken = pagination.Encode(pagination.Forward, periodKey, strconv.Itoa(int(rows[len(rows)-1].LineNumber)))
 		}
 	}
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 // ExportRoyaltyStatement encodes a closed month as CSV from its stored lines
 // alone, so the same month always exports the same bytes.
 func (s *adminServer) ExportRoyaltyStatement(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ExportRoyaltyStatementRequest],
-) (*connect.Response[publiraadminv1.ExportRoyaltyStatementResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ExportRoyaltyStatementRequest,
+) (*publiraadminv1.ExportRoyaltyStatementResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -471,7 +471,7 @@ func (s *adminServer) ExportRoyaltyStatement(
 	if err != nil {
 		return nil, err
 	}
-	period, err := royalties.ParsePeriod(req.Msg.Period)
+	period, err := royalties.ParsePeriod(req.Period)
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "period")
 	}
@@ -483,7 +483,7 @@ func (s *adminServer) ExportRoyaltyStatement(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the month is not closed"))
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "the month is not closed")
 		}
 		return nil, s.internalDBError(ctx, "failed to get royalty statement", err, "tenant_id", tenant.ID.String(), "period", periodKey)
 	}
@@ -499,9 +499,9 @@ func (s *adminServer) ExportRoyaltyStatement(
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID: tenant.ID, ActorUserID: sessionCtx.User.ID, ActorRole: sessionCtx.Role,
 		Action: "royalty_statement_exported", TargetType: "royalty_statement", TargetID: periodKey,
-		Outcome: auditlog.OutcomeSuccess, ClientIP: auditlog.ClientIPFromHeader(req.Header()),
+		Outcome: auditlog.OutcomeSuccess, ClientIP: auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
-	return connect.NewResponse(&publiraadminv1.ExportRoyaltyStatementResponse{Csv: body}), nil
+	return &publiraadminv1.ExportRoyaltyStatementResponse{Csv: body}, nil
 }
 
 // royaltyStatementCSV writes the columns ExportRoyaltyStatementResponse
@@ -540,7 +540,7 @@ func nullUUIDString(id uuid.NullUUID) string {
 }
 
 func invalidRoyaltyTokenError() error {
-	return connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	return connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 }
 
 func royaltyStatementOf(row dbmodels.ListRoyaltyStatementsDescRow) dbmodels.RoyaltyStatement {

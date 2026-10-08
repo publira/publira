@@ -8,12 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/mail"
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -24,6 +23,7 @@ import (
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tracing"
 )
 
@@ -34,11 +34,11 @@ const (
 )
 
 func invalidSessionError() error {
-	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid token"))
+	return connect.NewError(connect.CodeUnauthenticated, "invalid token")
 }
 
 func platformRoleRequiredError() error {
-	return connect.NewError(connect.CodePermissionDenied, errors.New("platform operator role required"))
+	return connect.NewError(connect.CodePermissionDenied, "platform operator role required")
 }
 
 func (s *platformServer) platformRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error) {
@@ -52,7 +52,7 @@ func (s *platformServer) platformRoles(ctx context.Context, platformUserID uuid.
 func (s *platformServer) authenticatePlatformSession(
 	ctx context.Context,
 	_ string,
-	headers http.Header,
+	headers *connect.Header,
 ) (dbmodels.PlatformUser, dbmodels.PlatformUser, string, error) {
 	// First return value kept for call-site arity; use the user as both (session removed).
 	rawToken, ok := auth.BearerTokenFromHeader(headers)
@@ -166,21 +166,21 @@ func insertPlatformOutboxEvent(
 
 func (s *platformServer) Login(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.PlatformAuthServiceLoginRequest],
-) (*connect.Response[publirasplatformv1.PlatformAuthServiceLoginResponse], error) {
-	email := strings.TrimSpace(req.Msg.Email)
-	password := req.Msg.Password
+	req *publirasplatformv1.PlatformAuthServiceLoginRequest,
+) (*publirasplatformv1.PlatformAuthServiceLoginResponse, error) {
+	email := strings.TrimSpace(req.Email)
+	password := req.Password
 	if email == "" || strings.TrimSpace(password) == "" {
-		auth.AuditEvent(req.Header(), "platform_login", "failure", "", "", "invalid_credentials")
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_login", "failure", "", "", "invalid_credentials")
+		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 	}
 	platformUser, err := s.queriesFor(ctx).GetPlatformUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "platform_login", "failure", "", "", "invalid_credentials")
-			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_login", "failure", "", "", "invalid_credentials")
+			return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 		}
-		auth.AuditEvent(req.Header(), "platform_login", "failure", "", "", "user_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_login", "failure", "", "", "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to get platform user for login", err)
 	}
 	roles, err := s.platformRoles(ctx, platformUser.ID)
@@ -189,201 +189,201 @@ func (s *platformServer) Login(
 	}
 	resolvedRole := auth.ResolvePlatformRole(roles)
 	if !auth.IsPlatformRole(resolvedRole) || !auth.VerifyPassword(password, platformUser.PasswordHash) {
-		auth.AuditEvent(req.Header(), "platform_login", "failure", "", platformUser.PublicID, "invalid_credentials")
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_login", "failure", "", platformUser.PublicID, "invalid_credentials")
+		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 	}
 	if platformUser.Status != "active" {
-		auth.AuditEvent(req.Header(), "platform_login", "failure", "", platformUser.PublicID, "user_inactive")
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_login", "failure", "", platformUser.PublicID, "user_inactive")
+		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 	}
 	if s.tokens == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
+		return nil, connect.NewError(connect.CodeInternal, "token manager is not configured")
 	}
 	token, expiresAt, err := s.tokens.Issue(platformUser.PublicID, auth.AudiencePlatform, "", resolvedRole, platformUser.CredentialsVersion, time.Now())
 	if err != nil {
-		auth.AuditEvent(req.Header(), "platform_login", "failure", "", platformUser.PublicID, "token_issue_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_login", "failure", "", platformUser.PublicID, "token_issue_failed")
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	resp := &publirasplatformv1.PlatformAuthServiceLoginResponse{
 		User:        &publirattypesv1.User{PublicId: platformUser.PublicID, Name: platformUser.Name, Role: resolvedRole},
 		AccessToken: &publirattypesv1.AccessToken{Token: token, ExpiresAt: auth.FormatExpiresAt(expiresAt)},
 	}
-	auth.AuditEvent(req.Header(), "platform_login", "success", "", platformUser.PublicID, "token_issued")
-	return connect.NewResponse(resp), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_login", "success", "", platformUser.PublicID, "token_issued")
+	return resp, nil
 }
 
 func (s *platformServer) Logout(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.PlatformAuthServiceLogoutRequest],
-) (*connect.Response[publirasplatformv1.PlatformAuthServiceLogoutResponse], error) {
-	if _, ok := auth.BearerTokenFromHeader(req.Header()); ok {
-		auth.AuditEvent(req.Header(), "platform_logout", "success", "", "", "client_logout")
+	req *publirasplatformv1.PlatformAuthServiceLogoutRequest,
+) (*publirasplatformv1.PlatformAuthServiceLogoutResponse, error) {
+	if _, ok := auth.BearerTokenFromHeader(rpcmiddleware.RequestHeader(ctx)); ok {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_logout", "success", "", "", "client_logout")
 	} else {
-		auth.AuditEvent(req.Header(), "platform_logout", "success", "", "", "no_token")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_logout", "success", "", "", "no_token")
 	}
-	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceLogoutResponse{}), nil
+	return &publirasplatformv1.PlatformAuthServiceLogoutResponse{}, nil
 }
 
 func (s *platformServer) RequestPasswordReset(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest],
-) (*connect.Response[publirasplatformv1.PlatformAuthServiceRequestPasswordResetResponse], error) {
-	email := strings.TrimSpace(req.Msg.Email)
+	req *publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest,
+) (*publirasplatformv1.PlatformAuthServiceRequestPasswordResetResponse, error) {
+	email := strings.TrimSpace(req.Email)
 	if email == "" {
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email is required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_request", "failure", "", "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "email is required")
 	}
 	if _, err := mail.ParseAddress(email); err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "invalid_email")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_request", "failure", "", "", "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid email address")
 	}
-	if err := s.mail.Allow(ctx, req, mailguard.PlatformScope, email); err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "rate_limited")
+	if err := s.mail.Allow(ctx, mailguard.PlatformScope, email); err != nil {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_request", "failure", "", "", "rate_limited")
 		return nil, err
 	}
 
 	// Recorded for the worker whether or not the address has an account, so an
 	// unknown address takes as long to answer as a registered one.
 	if err := queuePlatformPasswordResetRequest(ctx, s.queriesFor(ctx), email); err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "request_enqueue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_request", "failure", "", "", "request_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue platform password reset request", err)
 	}
 
-	auth.AuditEvent(req.Header(), "platform_password_reset_request", "success", "", "", "requested")
-	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetResponse{Requested: true}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_request", "success", "", "", "requested")
+	return &publirasplatformv1.PlatformAuthServiceRequestPasswordResetResponse{Requested: true}, nil
 }
 
 func (s *platformServer) VerifyPasswordResetToken(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenRequest],
-) (*connect.Response[publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse], error) {
-	token := strings.TrimSpace(req.Msg.Token)
+	req *publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenRequest,
+) (*publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse, error) {
+	token := strings.TrimSpace(req.Token)
 	if token == "" {
-		return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse{Valid: false}), nil
+		return &publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse{Valid: false}, nil
 	}
 
 	resetToken, err := s.queriesFor(ctx).GetPlatformUserPasswordResetTokenByHash(ctx, auth.HashToken(token))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse{Valid: false}), nil
+			return &publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse{Valid: false}, nil
 		}
 		return nil, s.internalDBError(ctx, "failed to get password reset token", err)
 	}
 
 	valid := !resetToken.CompletedAt.Valid && resetToken.ExpiresAt.After(time.Now())
-	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse{Valid: valid}), nil
+	return &publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse{Valid: valid}, nil
 }
 
 func (s *platformServer) ConfirmPasswordReset(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest],
-) (*connect.Response[publirasplatformv1.PlatformAuthServiceConfirmPasswordResetResponse], error) {
-	token := strings.TrimSpace(req.Msg.Token)
-	newPassword := req.Msg.NewPassword
+	req *publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest,
+) (*publirasplatformv1.PlatformAuthServiceConfirmPasswordResetResponse, error) {
+	token := strings.TrimSpace(req.Token)
+	newPassword := req.NewPassword
 	if token == "" || strings.TrimSpace(newPassword) == "" {
-		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token and new_password are required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_confirm", "failure", "", "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token and new_password are required")
 	}
 
 	resetToken, err := s.queriesFor(ctx).GetPlatformUserPasswordResetTokenByHash(ctx, auth.HashToken(token))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "invalid_token")
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("password reset token is invalid or expired"))
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_confirm", "failure", "", "", "invalid_token")
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "password reset token is invalid or expired")
 		}
-		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "token_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_confirm", "failure", "", "", "token_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to get password reset token", err)
 	}
 
 	if resetToken.CompletedAt.Valid {
-		return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceConfirmPasswordResetResponse{Confirmed: true}), nil
+		return &publirasplatformv1.PlatformAuthServiceConfirmPasswordResetResponse{Confirmed: true}, nil
 	}
 	if !resetToken.ExpiresAt.After(time.Now()) {
-		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "expired_token")
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("password reset token is invalid or expired"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_confirm", "failure", "", "", "expired_token")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "password reset token is invalid or expired")
 	}
 
 	platformUser, err := s.queriesFor(ctx).GetPlatformUserByID(ctx, resetToken.PlatformUserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "user_not_found")
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("password reset token is invalid or expired"))
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_confirm", "failure", "", "", "user_not_found")
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "password reset token is invalid or expired")
 		}
-		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "user_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_confirm", "failure", "", "", "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to get platform user for password reset confirm", err, "platform_user_id", resetToken.PlatformUserID.String())
 	}
 
 	passwordHash, err := auth.HashPassword(newPassword)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "password_hash_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	if _, err := s.queriesFor(ctx).UpdatePlatformUserPasswordHashByID(ctx, dbmodels.UpdatePlatformUserPasswordHashByIDParams{
 		ID:           platformUser.ID,
 		PasswordHash: passwordHash,
 	}); err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "password_update_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "password_update_failed")
 		return nil, s.internalDBError(ctx, "failed to update password", err, "platform_user_id", platformUser.ID.String())
 	}
 	if _, err := s.queriesFor(ctx).BumpPlatformUserCredentialsVersion(ctx, platformUser.ID); err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "session_terminate_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "session_terminate_failed")
 		return nil, s.internalDBError(ctx, "failed to bump credentials version", err, "platform_user_id", platformUser.ID.String())
 	}
 	if err := s.queriesFor(ctx).MarkPlatformUserPasswordResetTokenCompleted(ctx, resetToken.ID); err != nil {
-		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "token_complete_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "token_complete_failed")
 		return nil, s.internalDBError(ctx, "failed to complete password reset token", err, "platform_user_id", platformUser.ID.String(), "token_id", resetToken.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "success", "", platformUser.PublicID, "confirmed")
-	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceConfirmPasswordResetResponse{Confirmed: true}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_password_reset_confirm", "success", "", platformUser.PublicID, "confirmed")
+	return &publirasplatformv1.PlatformAuthServiceConfirmPasswordResetResponse{Confirmed: true}, nil
 }
 
 func (s *platformServer) RequestEmailChange(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.PlatformAuthServiceRequestEmailChangeRequest],
-) (*connect.Response[publirasplatformv1.PlatformAuthServiceRequestEmailChangeResponse], error) {
-	_, platformUser, _, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	req *publirasplatformv1.PlatformAuthServiceRequestEmailChangeRequest,
+) (*publirasplatformv1.PlatformAuthServiceRequestEmailChangeResponse, error) {
+	_, platformUser, _, err := s.authenticatePlatformSession(ctx, "", rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", "", "invalid_session")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", "", "invalid_session")
 		return nil, err
 	}
 
-	newEmail := strings.TrimSpace(req.Msg.NewEmail)
-	currentEmail := strings.TrimSpace(req.Msg.CurrentEmail)
-	currentPassword := req.Msg.CurrentPassword
+	newEmail := strings.TrimSpace(req.NewEmail)
+	currentEmail := strings.TrimSpace(req.CurrentEmail)
+	currentPassword := req.CurrentPassword
 	if currentEmail == "" || newEmail == "" || strings.TrimSpace(currentPassword) == "" {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_email, new_email and current_password are required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "current_email, new_email and current_password are required")
 	}
 	if _, err := mail.ParseAddress(currentEmail); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_current_email")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid current email address"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_current_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid current email address")
 	}
 	if _, err := mail.ParseAddress(newEmail); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_email")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid email address")
 	}
 	if !strings.EqualFold(currentEmail, platformUser.Email) {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "current_email_mismatch")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current email does not match"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "current_email_mismatch")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "current email does not match")
 	}
 	if strings.EqualFold(newEmail, platformUser.Email) {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "same_email")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("new email must be different from current email"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "same_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "new email must be different from current email")
 	}
 	if !auth.VerifyPassword(currentPassword, platformUser.PasswordHash) {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_password")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_password")
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
 	}
 
 	_, err = s.queriesFor(ctx).GetPlatformUserByEmail(ctx, newEmail)
 	if err == nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "email_already_exists")
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "email_already_exists")
+		return nil, connect.NewError(connect.CodeAlreadyExists, "email already exists")
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "user_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "platform_user_id", platformUser.ID.String())
 	}
 
@@ -396,39 +396,39 @@ func (s *platformServer) RequestEmailChange(
 	// purpose and mails nothing when it does, so charging first would let any
 	// signed-in caller spend the allowance of every address they can name by
 	// naming ones that already have accounts.
-	if err := s.mail.Allow(ctx, req, mailguard.PlatformScope, newEmail); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "rate_limited")
+	if err := s.mail.Allow(ctx, mailguard.PlatformScope, newEmail); err != nil {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "rate_limited")
 		return nil, err
 	}
 
 	rawToken := make([]byte, 32)
 	if _, err := rand.Read(rawToken); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	currentEmailToken := hex.EncodeToString(rawToken)
 	rawToken = make([]byte, 32)
 	if _, err := rand.Read(rawToken); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	newEmailToken := hex.EncodeToString(rawToken)
 	tokenID, err := uuid.NewV7()
 	if err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_id_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "transaction_begin_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "transaction_begin_failed")
 		return nil, s.internalDBError(ctx, "failed to begin email change transaction", err, "platform_user_id", platformUser.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
 
 	if err := txq.DeletePlatformUserEmailChangeTokensByUserID(ctx, platformUser.ID); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_delete_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_delete_failed")
 		return nil, s.internalDBError(ctx, "failed to delete email change tokens", err, "platform_user_id", platformUser.ID.String())
 	}
 	if _, err := txq.CreatePlatformUserEmailChangeToken(ctx, dbmodels.CreatePlatformUserEmailChangeTokenParams{
@@ -440,98 +440,98 @@ func (s *platformServer) RequestEmailChange(
 		NewEmailTokenHash:     auth.HashToken(newEmailToken),
 		ExpiresAt:             time.Now().Add(platformEmailChangeTokenTTL),
 	}); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_create_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_create_failed")
 		return nil, s.internalDBError(ctx, "failed to create email change token", err, "platform_user_id", platformUser.ID.String())
 	}
 	if err := enqueuePlatformEmailChangeConfirmationEmail(ctx, txq, tokenID, "current_email", currentEmailToken); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "current_email_enqueue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "current_email_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue platform email change confirmation email", err, "platform_user_id", platformUser.ID.String())
 	}
 	if err := enqueuePlatformEmailChangeConfirmationEmail(ctx, txq, tokenID, "new_email", newEmailToken); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "new_email_enqueue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "new_email_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue platform email change confirmation email", err, "platform_user_id", platformUser.ID.String())
 	}
 	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "transaction_commit_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "failure", "", platformUser.PublicID, "transaction_commit_failed")
 		return nil, s.internalDBError(ctx, "failed to commit email change transaction", err, "platform_user_id", platformUser.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "platform_email_change_request", "success", "", platformUser.PublicID, "confirmation_emails_queued")
-	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceRequestEmailChangeResponse{Requested: true}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_request", "success", "", platformUser.PublicID, "confirmation_emails_queued")
+	return &publirasplatformv1.PlatformAuthServiceRequestEmailChangeResponse{Requested: true}, nil
 }
 
 func (s *platformServer) VerifyEmailChangeToken(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenRequest],
-) (*connect.Response[publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse], error) {
-	token := strings.TrimSpace(req.Msg.Token)
+	req *publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenRequest,
+) (*publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse, error) {
+	token := strings.TrimSpace(req.Token)
 	if token == "" {
-		return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse{Valid: false}), nil
+		return &publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse{Valid: false}, nil
 	}
 
 	changeToken, err := s.queriesFor(ctx).GetPlatformUserEmailChangeTokenByHash(ctx, auth.HashToken(token))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse{Valid: false}), nil
+			return &publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse{Valid: false}, nil
 		}
 		return nil, s.internalDBError(ctx, "failed to get email change token", err)
 	}
 
 	valid := !changeToken.CompletedAt.Valid && changeToken.ExpiresAt.After(time.Now())
-	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse{Valid: valid}), nil
+	return &publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse{Valid: valid}, nil
 }
 
 func (s *platformServer) ConfirmEmailChange(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.PlatformAuthServiceConfirmEmailChangeRequest],
-) (*connect.Response[publirasplatformv1.PlatformAuthServiceConfirmEmailChangeResponse], error) {
-	token := strings.TrimSpace(req.Msg.Token)
+	req *publirasplatformv1.PlatformAuthServiceConfirmEmailChangeRequest,
+) (*publirasplatformv1.PlatformAuthServiceConfirmEmailChangeResponse, error) {
+	token := strings.TrimSpace(req.Token)
 	if token == "" {
-		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "invalid_token")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", "", "invalid_token")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is required")
 	}
 
 	changeToken, err := s.queriesFor(ctx).GetPlatformUserEmailChangeTokenByHash(ctx, auth.HashToken(token))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "token_not_found")
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change token is invalid or expired"))
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", "", "token_not_found")
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "email change token is invalid or expired")
 		}
-		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "token_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", "", "token_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to get email change token", err)
 	}
 
 	if changeToken.CompletedAt.Valid {
-		return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceConfirmEmailChangeResponse{Confirmed: true, Changed: true}), nil
+		return &publirasplatformv1.PlatformAuthServiceConfirmEmailChangeResponse{Confirmed: true, Changed: true}, nil
 	}
 	if !changeToken.ExpiresAt.After(time.Now()) {
-		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "expired_token")
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change token is invalid or expired"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", "", "expired_token")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "email change token is invalid or expired")
 	}
 
 	platformUser, err := s.queriesFor(ctx).GetPlatformUserByID(ctx, changeToken.PlatformUserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "user_not_found")
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change token is invalid or expired"))
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", "", "user_not_found")
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "email change token is invalid or expired")
 		}
-		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "user_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", "", "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to get platform user for email change confirm", err, "platform_user_id", changeToken.PlatformUserID.String())
 	}
 	if !strings.EqualFold(platformUser.Email, changeToken.CurrentEmail) {
-		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "stale_request")
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change request is no longer valid"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "stale_request")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "email change request is no longer valid")
 	}
 
 	matchedTarget := changeToken.MatchedTarget
 	if matchedTarget == "current_email" {
 		if err := s.queriesFor(ctx).MarkPlatformUserEmailChangeCurrentEmailConfirmed(ctx, changeToken.ID); err != nil {
-			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "current_email_confirm_failed")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "current_email_confirm_failed")
 			return nil, s.internalDBError(ctx, "failed to confirm current email", err, "platform_user_id", platformUser.ID.String(), "token_id", changeToken.ID.String())
 		}
 	} else {
 		if err := s.queriesFor(ctx).MarkPlatformUserEmailChangeNewEmailConfirmed(ctx, changeToken.ID); err != nil {
-			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "new_email_confirm_failed")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "new_email_confirm_failed")
 			return nil, s.internalDBError(ctx, "failed to confirm new email", err, "platform_user_id", platformUser.ID.String(), "token_id", changeToken.ID.String())
 		}
 	}
@@ -543,17 +543,17 @@ func (s *platformServer) ConfirmEmailChange(
 		if !newEmailConfirmed {
 			pendingTarget = "new_email"
 		}
-		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "success", "", platformUser.PublicID, "waiting_for_"+pendingTarget)
-		return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceConfirmEmailChangeResponse{
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "success", "", platformUser.PublicID, "waiting_for_"+pendingTarget)
+		return &publirasplatformv1.PlatformAuthServiceConfirmEmailChangeResponse{
 			Confirmed:              true,
 			Changed:                false,
 			PendingConfirmationFor: pendingTarget,
-		}), nil
+		}, nil
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "transaction_begin_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "transaction_begin_failed")
 		return nil, s.internalDBError(ctx, "failed to begin email change confirmation transaction", err, "platform_user_id", platformUser.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
@@ -564,38 +564,38 @@ func (s *platformServer) ConfirmEmailChange(
 		Email: changeToken.NewEmail,
 	}); err != nil {
 		if dberr.IsUniqueViolation(err) {
-			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "email_already_exists")
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "email_already_exists")
+			return nil, connect.NewError(connect.CodeAlreadyExists, "email already exists")
 		}
-		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "email_update_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "email_update_failed")
 		return nil, s.internalDBError(ctx, "failed to update platform user email", err, "platform_user_id", platformUser.ID.String())
 	}
 	if err := txq.MarkPlatformUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "request_complete_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "request_complete_failed")
 		return nil, s.internalDBError(ctx, "failed to complete email change token", err, "platform_user_id", platformUser.ID.String(), "token_id", changeToken.ID.String())
 	}
 	if err := enqueuePlatformEmailChangedNoticeEmail(ctx, txq, changeToken.ID); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "old_email_notice_enqueue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "old_email_notice_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue platform email changed notice email", err, "platform_user_id", platformUser.ID.String(), "token_id", changeToken.ID.String())
 	}
 	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "transaction_commit_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "transaction_commit_failed")
 		return nil, s.internalDBError(ctx, "failed to commit email change confirmation transaction", err, "platform_user_id", platformUser.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "platform_email_change_confirm", "success", "", platformUser.PublicID, "email_changed")
-	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceConfirmEmailChangeResponse{Confirmed: true, Changed: true}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_email_change_confirm", "success", "", platformUser.PublicID, "email_changed")
+	return &publirasplatformv1.PlatformAuthServiceConfirmEmailChangeResponse{Confirmed: true, Changed: true}, nil
 }
 
 func (s *platformServer) GetMe(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.PlatformAuthServiceGetMeRequest],
-) (*connect.Response[publirasplatformv1.PlatformAuthServiceGetMeResponse], error) {
-	_, platformUser, role, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	req *publirasplatformv1.PlatformAuthServiceGetMeRequest,
+) (*publirasplatformv1.PlatformAuthServiceGetMeResponse, error) {
+	_, platformUser, role, err := s.authenticatePlatformSession(ctx, "", rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceGetMeResponse{
+	return &publirasplatformv1.PlatformAuthServiceGetMeResponse{
 		User: &publirattypesv1.User{PublicId: platformUser.PublicID, Name: platformUser.Name, Role: role},
-	}), nil
+	}, nil
 }

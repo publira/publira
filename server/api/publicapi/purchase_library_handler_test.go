@@ -3,20 +3,22 @@ package publicapi
 import (
 	"context"
 	"database/sql"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
@@ -45,17 +47,17 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 			"Series title",
 		))
 
-	client := publirav1connect.NewPurchaseServiceClient(testServer.Client(), testServer.URL)
-	response, err := client.ListMyPurchases(context.Background(), newAuthedPublicRequest(&publirav1.ListMyPurchasesRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	response, err := client.ListMyPurchases(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyPurchasesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, tenantID.String()))
+	})
 	if err != nil {
 		t.Fatalf("ListMyPurchases: %v", err)
 	}
-	if len(response.Msg.Purchases) != 1 {
-		t.Fatalf("purchase count = %d, want 1", len(response.Msg.Purchases))
+	if len(response.Purchases) != 1 {
+		t.Fatalf("purchase count = %d, want 1", len(response.Purchases))
 	}
-	purchase := response.Msg.Purchases[0]
+	purchase := response.Purchases[0]
 	if !purchase.IsActive {
 		t.Fatal("is_active = false, want true")
 	}
@@ -96,17 +98,17 @@ func TestPurchaseListReportsARefundedPurchaseAsInactive(t *testing.T) {
 			"Series title",
 		))
 
-	client := publirav1connect.NewPurchaseServiceClient(testServer.Client(), testServer.URL)
-	response, err := client.ListMyPurchases(context.Background(), newAuthedPublicRequest(&publirav1.ListMyPurchasesRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	response, err := client.ListMyPurchases(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyPurchasesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, tenantID.String()))
+	})
 	if err != nil {
 		t.Fatalf("ListMyPurchases: %v", err)
 	}
-	if len(response.Msg.Purchases) != 1 {
-		t.Fatalf("purchase count = %d, want 1", len(response.Msg.Purchases))
+	if len(response.Purchases) != 1 {
+		t.Fatalf("purchase count = %d, want 1", len(response.Purchases))
 	}
-	if response.Msg.Purchases[0].IsActive {
+	if response.Purchases[0].IsActive {
 		t.Fatal("is_active = true for a refunded purchase, want false")
 	}
 	assertPublicExpectations(t, mock)
@@ -139,18 +141,18 @@ func TestPurchaseListForwardPageReturnsNeighborTokens(t *testing.T) {
 		).
 		WillReturnRows(addPurchaseRow(addPurchaseRow(addPurchaseRow(purchaseRows(), firstID, firstAt), secondID, secondAt), extraID, secondAt.Add(-time.Minute)))
 
-	client := publirav1connect.NewPurchaseServiceClient(testServer.Client(), testServer.URL)
-	response, err := client.ListMyPurchases(context.Background(), newAuthedPublicRequest(&publirav1.ListMyPurchasesRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	response, err := client.ListMyPurchases(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyPurchasesRequest{
 		Limit:  2,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  onWeb(pagination.EncodeTimeUUID(pagination.Forward, cursorAt, cursorID)),
-	}, tenantID.String()))
+	})
 	if err != nil {
 		t.Fatalf("ListMyPurchases: %v", err)
 	}
-	assertPurchaseIDs(t, response.Msg.Purchases, []uuid.UUID{firstID, secondID})
-	assertPurchaseToken(t, response.Msg.PreviousToken, pagination.Backward, firstAt, firstID)
-	assertPurchaseToken(t, response.Msg.NextToken, pagination.Forward, secondAt, secondID)
+	assertPurchaseIDs(t, response.Purchases, []uuid.UUID{firstID, secondID})
+	assertPurchaseToken(t, response.PreviousToken, pagination.Backward, firstAt, firstID)
+	assertPurchaseToken(t, response.NextToken, pagination.Forward, secondAt, secondID)
 	assertPublicExpectations(t, mock)
 }
 
@@ -181,18 +183,18 @@ func TestPurchaseListBackwardPageReturnsDisplayOrderAndNeighborTokens(t *testing
 		).
 		WillReturnRows(addPurchaseRow(addPurchaseRow(addPurchaseRow(purchaseRows(), oldestID, oldestAt), middleID, middleAt), newestID, middleAt.Add(time.Minute)))
 
-	client := publirav1connect.NewPurchaseServiceClient(testServer.Client(), testServer.URL)
-	response, err := client.ListMyPurchases(context.Background(), newAuthedPublicRequest(&publirav1.ListMyPurchasesRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	response, err := client.ListMyPurchases(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyPurchasesRequest{
 		Limit:  2,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  onWeb(pagination.EncodeTimeUUID(pagination.Backward, cursorAt, cursorID)),
-	}, tenantID.String()))
+	})
 	if err != nil {
 		t.Fatalf("ListMyPurchases: %v", err)
 	}
-	assertPurchaseIDs(t, response.Msg.Purchases, []uuid.UUID{middleID, oldestID})
-	assertPurchaseToken(t, response.Msg.PreviousToken, pagination.Backward, middleAt, middleID)
-	assertPurchaseToken(t, response.Msg.NextToken, pagination.Forward, oldestAt, oldestID)
+	assertPurchaseIDs(t, response.Purchases, []uuid.UUID{middleID, oldestID})
+	assertPurchaseToken(t, response.PreviousToken, pagination.Backward, middleAt, middleID)
+	assertPurchaseToken(t, response.NextToken, pagination.Forward, oldestAt, oldestID)
 	assertPublicExpectations(t, mock)
 }
 
@@ -252,12 +254,12 @@ func TestPurchaseListEmptyPagesReturnRecoveryTokens(t *testing.T) {
 			if tt.inclusive {
 				token = onWeb(pagination.EncodeTimeUUIDRecovery(tt.direction, cursorAt, cursorID))
 			}
-			client := publirav1connect.NewPurchaseServiceClient(testServer.Client(), testServer.URL)
-			response, err := client.ListMyPurchases(context.Background(), newAuthedPublicRequest(&publirav1.ListMyPurchasesRequest{
+			client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			response, err := client.ListMyPurchases(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyPurchasesRequest{
 				Limit:  2,
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Token:  token,
-			}, tenantID.String()))
+			})
 			if err != nil {
 				t.Fatalf("ListMyPurchases: %v", err)
 			}
@@ -270,8 +272,8 @@ func TestPurchaseListEmptyPagesReturnRecoveryTokens(t *testing.T) {
 			if wantNextToken == "recovery forward" {
 				wantNextToken = onWeb(pagination.EncodeTimeUUIDRecovery(pagination.Forward, cursorAt, cursorID))
 			}
-			if response.Msg.PreviousToken != wantPreviousToken || response.Msg.NextToken != wantNextToken {
-				t.Fatalf("tokens = (%q, %q), want (%q, %q)", response.Msg.PreviousToken, response.Msg.NextToken, wantPreviousToken, wantNextToken)
+			if response.PreviousToken != wantPreviousToken || response.NextToken != wantNextToken {
+				t.Fatalf("tokens = (%q, %q), want (%q, %q)", response.PreviousToken, response.NextToken, wantPreviousToken, wantNextToken)
 			}
 			assertPublicExpectations(t, mock)
 		})
@@ -286,11 +288,11 @@ func TestPurchaseListRejectsInvalidToken(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
 
-	client := publirav1connect.NewPurchaseServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListMyPurchases(context.Background(), newAuthedPublicRequest(&publirav1.ListMyPurchasesRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListMyPurchases(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyPurchasesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  "not-a-token",
-	}, tenantID.String()))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListMyPurchases code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -303,10 +305,10 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	client := publirav1connect.NewPurchaseServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListMyPurchases(context.Background(), connect.NewRequest(&publirav1.ListMyPurchasesRequest{
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListMyPurchases(context.Background(), &publirav1.ListMyPurchasesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("ListMyPurchases code = %v, want %v", connect.CodeOf(err), connect.CodeUnauthenticated)
 	}

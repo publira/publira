@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -180,60 +181,52 @@ func (a adminDBTenant) token() string {
 	return token
 }
 
-// newAdminDBRequest signs the request as the tenant's current user. The tenant context
-// stays with the caller because it lives in the message, not in the header.
-func newAdminDBRequest[T any](tenant adminDBTenant, msg *T) *connect.Request[T] {
-	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+tenant.token())
-	return req
-}
-
 func (e *adminDBEnv) seriesClient() publiraadminv1connect.AdminSeriesServiceClient {
-	return publiraadminv1connect.NewAdminSeriesServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *adminDBEnv) creatorClient() publiraadminv1connect.AdminCreatorServiceClient {
-	return publiraadminv1connect.NewAdminCreatorServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminCreatorServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *adminDBEnv) labelClient() publiraadminv1connect.AdminLabelServiceClient {
-	return publiraadminv1connect.NewAdminLabelServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminLabelServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *adminDBEnv) genreClient() publiraadminv1connect.AdminGenreServiceClient {
-	return publiraadminv1connect.NewAdminGenreServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminGenreServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *adminDBEnv) creatorRoleClient() publiraadminv1connect.AdminCreatorRoleServiceClient {
-	return publiraadminv1connect.NewAdminCreatorRoleServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminCreatorRoleServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *adminDBEnv) themeClient() publiraadminv1connect.TenantThemeServiceClient {
-	return publiraadminv1connect.NewTenantThemeServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *adminDBEnv) tenantSettingsClient() publiraadminv1connect.TenantSettingsServiceClient {
-	return publiraadminv1connect.NewTenantSettingsServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *adminDBEnv) authClient() publiraadminv1connect.AdminAuthServiceClient {
-	return publiraadminv1connect.NewAdminAuthServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminAuthServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *adminDBEnv) auditClient() publiraadminv1connect.AdminAuditLogServiceClient {
-	return publiraadminv1connect.NewAdminAuditLogServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *adminDBEnv) notificationClient() publiraadminv1connect.AdminNotificationServiceClient {
-	return publiraadminv1connect.NewAdminNotificationServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminNotificationServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *adminDBEnv) userClient() publiraadminv1connect.AdminUserServiceClient {
-	return publiraadminv1connect.NewAdminUserServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminUserServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func (e *adminDBEnv) commentClient() publiraadminv1connect.AdminCommentServiceClient {
-	return publiraadminv1connect.NewAdminCommentServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminCommentServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 // withTenantConn hands fn a publira_admin connection scoped to one tenant, the

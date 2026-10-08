@@ -2,10 +2,9 @@ package adminapi
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -20,12 +19,12 @@ func serviceContext(t *testing.T) context.Context {
 	t.Helper()
 
 	tenant := dbmodels.Tenant{ID: uuid.Must(uuid.NewV7()), PublicID: "TENANTA"}
-	build := rpcmiddleware.BuildAdminSessionContext(func(context.Context, *publirattypesv1.TenantContext, http.Header) (rpcmiddleware.SessionContext, error) {
+	build := rpcmiddleware.BuildAdminSessionContext(func(context.Context, *publirattypesv1.TenantContext, *connect.Header) (rpcmiddleware.SessionContext, error) {
 		return rpcmiddleware.SessionContext{Tenant: tenant, Service: true}, nil
 	})
-	ctx, err := build(t.Context(), connect.NewRequest(&publiraadminv1.ListGenresRequest{
+	ctx, err := build(t.Context(), connect.Spec{}, &publiraadminv1.ListGenresRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("build service context: %v", err)
 	}

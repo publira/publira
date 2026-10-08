@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -44,21 +44,21 @@ func TestDBListPublishedPagesReturnsOnlyPublishedFooterPages(t *testing.T) {
 		DisplayInFooter: true,
 	})
 
-	resp, err := env.pagesClient().ListPublishedPages(context.Background(), connect.NewRequest(&publirav1.ListPublishedPagesRequest{
+	resp, err := env.pagesClient().ListPublishedPages(context.Background(), &publirav1.ListPublishedPagesRequest{
 		Tenant: tenantContext(first),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedPages: %v", err)
 	}
-	if len(resp.Msg.Pages) != 1 {
-		titles := make([]string, 0, len(resp.Msg.Pages))
-		for _, page := range resp.Msg.Pages {
+	if len(resp.Pages) != 1 {
+		titles := make([]string, 0, len(resp.Pages))
+		for _, page := range resp.Pages {
 			titles = append(titles, page.Title)
 		}
 		t.Fatalf("pages = %v, want only the published footer page of tenant A", titles)
 	}
-	if resp.Msg.Pages[0].Title != "Privacy Policy" {
-		t.Fatalf("page title = %q, want Privacy Policy", resp.Msg.Pages[0].Title)
+	if resp.Pages[0].Title != "Privacy Policy" {
+		t.Fatalf("page title = %q, want Privacy Policy", resp.Pages[0].Title)
 	}
 }
 
@@ -94,13 +94,13 @@ func TestDBListPublishedPageSlugsReturnsEveryPublishedPageOfTheTenant(t *testing
 		Published: true,
 	})
 
-	resp, err := env.pagesClient().ListPublishedPageSlugs(context.Background(), connect.NewRequest(&publirav1.ListPublishedPageSlugsRequest{
+	resp, err := env.pagesClient().ListPublishedPageSlugs(context.Background(), &publirav1.ListPublishedPageSlugsRequest{
 		Tenant: tenantContext(first),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedPageSlugs: %v", err)
 	}
-	if got := strings.Join(resp.Msg.Slugs, ","); got != "/privacy,/series" {
+	if got := strings.Join(resp.Slugs, ","); got != "/privacy,/series" {
 		t.Fatalf("slugs = %q, want the published pages of tenant A, footer or not, less the reserved one", got)
 	}
 }
@@ -119,18 +119,18 @@ func TestDBGetPublishedPageServesTheStoredVersion(t *testing.T) {
 	// The storefront may ask with or without the leading slash, and with the
 	// duplicated slashes a path join can produce.
 	for _, slug := range []string{"legal/terms", "/legal/terms", "//legal//terms//"} {
-		resp, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+		resp, err := client.GetPublishedPage(context.Background(), &publirav1.GetPublishedPageRequest{
 			Tenant: tenantContext(tenant),
 			Slug:   slug,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("GetPublishedPage %q: %v", slug, err)
 		}
-		if resp.Msg.Page.Slug != "/legal/terms" {
-			t.Fatalf("GetPublishedPage %q slug = %q, want /legal/terms", slug, resp.Msg.Page.Slug)
+		if resp.Page.Slug != "/legal/terms" {
+			t.Fatalf("GetPublishedPage %q slug = %q, want /legal/terms", slug, resp.Page.Slug)
 		}
-		if resp.Msg.Version.ContentMarkdown != "# Terms\n\nThe stored body." {
-			t.Fatalf("GetPublishedPage %q content = %q, want the stored body", slug, resp.Msg.Version.ContentMarkdown)
+		if resp.Version.ContentMarkdown != "# Terms\n\nThe stored body." {
+			t.Fatalf("GetPublishedPage %q content = %q, want the stored body", slug, resp.Version.ContentMarkdown)
 		}
 	}
 }
@@ -154,10 +154,10 @@ func TestDBGetPublishedPageHidesPagesThatAreNotPublishedYet(t *testing.T) {
 
 	client := env.pagesClient()
 	for _, slug := range []string{draft.Slug, embargoed.Slug, theirs.Slug} {
-		_, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+		_, err := client.GetPublishedPage(context.Background(), &publirav1.GetPublishedPageRequest{
 			Tenant: tenantContext(first),
 			Slug:   slug,
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("GetPublishedPage %q code = %v, want not_found (err=%v)", slug, connect.CodeOf(err), err)
 		}
@@ -184,25 +184,25 @@ func TestDBPublishedPagesSurviveADefaultLocaleChange(t *testing.T) {
 		t.Fatalf("change default locale: %v", err)
 	}
 
-	list, err := env.pagesClient().ListPublishedPages(context.Background(), connect.NewRequest(&publirav1.ListPublishedPagesRequest{
+	list, err := env.pagesClient().ListPublishedPages(context.Background(), &publirav1.ListPublishedPagesRequest{
 		Tenant: tenantContext(first),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedPages: %v", err)
 	}
-	if len(list.Msg.Pages) != 1 || list.Msg.Pages[0].Title != "Privacy Policy" {
-		t.Fatalf("pages = %v, want the privacy policy", list.Msg.Pages)
+	if len(list.Pages) != 1 || list.Pages[0].Title != "Privacy Policy" {
+		t.Fatalf("pages = %v, want the privacy policy", list.Pages)
 	}
 
-	page, err := env.pagesClient().GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+	page, err := env.pagesClient().GetPublishedPage(context.Background(), &publirav1.GetPublishedPageRequest{
 		Tenant: tenantContext(first),
 		Slug:   "privacy",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedPage: %v", err)
 	}
-	if page.Msg.Version.GetContentMarkdown() != "# Privacy" {
-		t.Fatalf("content = %q, want # Privacy", page.Msg.Version.GetContentMarkdown())
+	if page.Version.GetContentMarkdown() != "# Privacy" {
+		t.Fatalf("content = %q, want # Privacy", page.Version.GetContentMarkdown())
 	}
 }
 
@@ -261,15 +261,15 @@ func TestDBPublishedPagesAreServedInTheReadersLocale(t *testing.T) {
 		{locale: "ja", want: []string{"ja:Privacy Policy (ja)", "ja:Terms (ja)"}},
 		{locale: "", want: []string{"ja:Privacy Policy (ja)", "ja:Terms (ja)"}},
 	} {
-		list, err := client.ListPublishedPages(context.Background(), connect.NewRequest(&publirav1.ListPublishedPagesRequest{
+		list, err := client.ListPublishedPages(context.Background(), &publirav1.ListPublishedPagesRequest{
 			Tenant: tenantContext(first),
 			Locale: tc.locale,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("ListPublishedPages %q: %v", tc.locale, err)
 		}
-		got := make([]string, 0, len(list.Msg.Pages))
-		for _, page := range list.Msg.Pages {
+		got := make([]string, 0, len(list.Pages))
+		for _, page := range list.Pages {
 			got = append(got, page.Locale+":"+page.Title)
 		}
 		if strings.Join(got, ",") != strings.Join(tc.want, ",") {
@@ -286,19 +286,19 @@ func TestDBPublishedPagesAreServedInTheReadersLocale(t *testing.T) {
 		{slug: "terms", locale: "en", wantLocale: "ja", wantBody: "# Terms (ja)", wantAlternates: "ja"},
 		{slug: "terms", locale: "", wantLocale: "ja", wantBody: "# Terms (ja)", wantAlternates: "ja"},
 	} {
-		page, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+		page, err := client.GetPublishedPage(context.Background(), &publirav1.GetPublishedPageRequest{
 			Tenant: tenantContext(first),
 			Slug:   tc.slug,
 			Locale: tc.locale,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("GetPublishedPage %s %q: %v", tc.slug, tc.locale, err)
 		}
-		if page.Msg.Page.Locale != tc.wantLocale || page.Msg.Version.ContentMarkdown != tc.wantBody {
+		if page.Page.Locale != tc.wantLocale || page.Version.ContentMarkdown != tc.wantBody {
 			t.Fatalf("GetPublishedPage %s %q = %s %q, want %s %q",
-				tc.slug, tc.locale, page.Msg.Page.Locale, page.Msg.Version.ContentMarkdown, tc.wantLocale, tc.wantBody)
+				tc.slug, tc.locale, page.Page.Locale, page.Version.ContentMarkdown, tc.wantLocale, tc.wantBody)
 		}
-		if got := strings.Join(page.Msg.PublishedLocales, ","); got != tc.wantAlternates {
+		if got := strings.Join(page.PublishedLocales, ","); got != tc.wantAlternates {
 			t.Fatalf("GetPublishedPage %s %q published_locales = %q, want %q", tc.slug, tc.locale, got, tc.wantAlternates)
 		}
 	}
@@ -324,39 +324,39 @@ func TestDBPageWithOnlyANonDefaultTranslationPublishedIsServed(t *testing.T) {
 	})
 
 	client := env.pagesClient()
-	slugs, err := client.ListPublishedPageSlugs(context.Background(), connect.NewRequest(&publirav1.ListPublishedPageSlugsRequest{
+	slugs, err := client.ListPublishedPageSlugs(context.Background(), &publirav1.ListPublishedPageSlugsRequest{
 		Tenant: tenantContext(tenant),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedPageSlugs: %v", err)
 	}
-	if got := strings.Join(slugs.Msg.Slugs, ","); got != "/notice" {
+	if got := strings.Join(slugs.Slugs, ","); got != "/notice" {
 		t.Fatalf("slugs = %q, want /notice", got)
 	}
 
-	list, err := client.ListPublishedPages(context.Background(), connect.NewRequest(&publirav1.ListPublishedPagesRequest{
+	list, err := client.ListPublishedPages(context.Background(), &publirav1.ListPublishedPagesRequest{
 		Tenant: tenantContext(tenant),
 		Locale: "ja",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedPages: %v", err)
 	}
-	if len(list.Msg.Pages) != 1 || list.Msg.Pages[0].Locale != "en" || list.Msg.Pages[0].Title != "Notice" {
-		t.Fatalf("pages = %v, want the en notice", list.Msg.Pages)
+	if len(list.Pages) != 1 || list.Pages[0].Locale != "en" || list.Pages[0].Title != "Notice" {
+		t.Fatalf("pages = %v, want the en notice", list.Pages)
 	}
 
-	served, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+	served, err := client.GetPublishedPage(context.Background(), &publirav1.GetPublishedPageRequest{
 		Tenant: tenantContext(tenant),
 		Slug:   "notice",
 		Locale: "ja",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedPage: %v", err)
 	}
-	if served.Msg.Page.Locale != "en" || served.Msg.Version.ContentMarkdown != "# Notice" {
-		t.Fatalf("served = %s %q, want the en notice", served.Msg.Page.Locale, served.Msg.Version.ContentMarkdown)
+	if served.Page.Locale != "en" || served.Version.ContentMarkdown != "# Notice" {
+		t.Fatalf("served = %s %q, want the en notice", served.Page.Locale, served.Version.ContentMarkdown)
 	}
-	if got := strings.Join(served.Msg.PublishedLocales, ","); got != "en" {
+	if got := strings.Join(served.PublishedLocales, ","); got != "en" {
 		t.Fatalf("published_locales = %q, want en alone", got)
 	}
 }

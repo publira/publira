@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentsettings"
@@ -119,12 +119,12 @@ func tenantMobileAppAssociationFromConfig(config dbmodels.TenantConfig) *publira
 
 func (s *adminServer) GetTenantMobileAppAssociation(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantMobileAppAssociationRequest],
-) (*connect.Response[publiraadminv1.GetTenantMobileAppAssociationResponse], error) {
+	req *publiraadminv1.GetTenantMobileAppAssociationRequest,
+) (*publiraadminv1.GetTenantMobileAppAssociationResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -133,22 +133,22 @@ func (s *adminServer) GetTenantMobileAppAssociation(
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// A tenant with no config row has no app on either platform.
-			return connect.NewResponse(&publiraadminv1.GetTenantMobileAppAssociationResponse{
+			return &publiraadminv1.GetTenantMobileAppAssociationResponse{
 				Association: &publiraadminv1.TenantMobileAppAssociation{},
-			}), nil
+			}, nil
 		}
 		return nil, s.internalDBError(ctx, "failed to get tenant mobile app association", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetTenantMobileAppAssociationResponse{
+	return &publiraadminv1.GetTenantMobileAppAssociationResponse{
 		Association: tenantMobileAppAssociationFromConfig(config),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) UpdateTenantMobileAppAssociation(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantMobileAppAssociationRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantMobileAppAssociationResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantMobileAppAssociationRequest,
+) (*publiraadminv1.UpdateTenantMobileAppAssociationResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func (s *adminServer) UpdateTenantMobileAppAssociation(
 		return nil, err
 	}
 
-	requested := req.Msg.GetAssociation()
+	requested := req.GetAssociation()
 	android, err := normalizeAndroidAssociation(requested.GetAndroid())
 	if err != nil {
 		return nil, err
@@ -191,7 +191,7 @@ func (s *adminServer) UpdateTenantMobileAppAssociation(
 	if err := paymentsettings.NewAppStores(qtx, s.encryptor).RequireReadyStoreForRoute(ctx, tenant.ID); err != nil {
 		if errors.Is(err, paymentsettings.ErrStoreRouteRequiresReadyStore) {
 			return nil, connect.NewError(connect.CodeFailedPrecondition,
-				errors.New("the app sells through the store, so a store has to keep an app it can sell in"))
+				"the app sells through the store, so a store has to keep an app it can sell in")
 		}
 		if errors.Is(err, paymentsettings.ErrUnresolvedAppPurchaseRoute) {
 			return nil, s.internalError(ctx, "tenant app purchase route is not a supported value", err, "tenant_id", tenant.ID.String())
@@ -206,7 +206,7 @@ func (s *adminServer) UpdateTenantMobileAppAssociation(
 		return nil, s.internalDBError(ctx, "failed to commit tenant mobile app association", err, "tenant_id", tenant.ID.String())
 	}
 	s.reval.Send(ctx, owed)
-	return connect.NewResponse(&publiraadminv1.UpdateTenantMobileAppAssociationResponse{
+	return &publiraadminv1.UpdateTenantMobileAppAssociationResponse{
 		Association: tenantMobileAppAssociationFromConfig(updated),
-	}), nil
+	}, nil
 }

@@ -2,27 +2,27 @@ package platformapi
 
 import (
 	"context"
-	"errors"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // requireRateLimited fails unless err is the mail guard's refusal, which tells
 // the caller when to come back.
-func requireRateLimited(t *testing.T, what string, err error) {
+func requireRateLimited(t *testing.T, what string, call *connect.CallInfo, err error) {
 	t.Helper()
 
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) || connectErr.Code() != connect.CodeResourceExhausted {
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("%s code = %v, want resource_exhausted (err=%v)", what, connect.CodeOf(err), err)
 	}
-	if connectErr.Meta().Get("Retry-After") == "" {
+	if call.ResponseHeader().Get("Retry-After") == "" {
 		t.Fatalf("%s carries no Retry-After", what)
 	}
 }
@@ -33,33 +33,35 @@ func TestDBPlatformTenantAdminInvitationMailStopsAtTheLimit(t *testing.T) {
 	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	ctx := context.Background()
 
-	created, err := client.CreateTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
+	created, err := client.CreateTenantAdminInvitation(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantAdminInvitationRequest{
 		TenantId: tenant.ID.String(), Email: "invitee@tenant-a.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("the first CreateTenantAdminInvitation: %v", err)
 	}
 	tokenHash := func() string {
 		var hash []byte
-		if err := pg.DB.QueryRowContext(ctx, "SELECT token_hash FROM tenant_admin_invitations WHERE id = $1", created.Msg.Invitation.Id).Scan(&hash); err != nil {
+		if err := pg.DB.QueryRowContext(ctx, "SELECT token_hash FROM tenant_admin_invitations WHERE id = $1", created.Invitation.Id).Scan(&hash); err != nil {
 			t.Fatalf("read the invitation's token hash: %v", err)
 		}
 		return string(hash)
 	}
 	issuedTokenHash := tokenHash()
 
-	_, err = client.CreateTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
+	createCtx, createCall := testutil.NewClientContext(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)))
+	_, err = client.CreateTenantAdminInvitation(createCtx, &publirasplatformv1.CreateTenantAdminInvitationRequest{
 		TenantId: tenant.ID.String(), Email: "invitee@tenant-a.example.com",
-	}))
-	requireRateLimited(t, "the second CreateTenantAdminInvitation", err)
+	})
+	requireRateLimited(t, "the second CreateTenantAdminInvitation", createCall, err)
 
-	_, err = client.ResendTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.ResendTenantAdminInvitationRequest{
-		TenantId: tenant.ID.String(), InvitationId: created.Msg.Invitation.Id,
-	}))
-	requireRateLimited(t, "ResendTenantAdminInvitation", err)
+	resendCtx, resendCall := testutil.NewClientContext(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)))
+	_, err = client.ResendTenantAdminInvitation(resendCtx, &publirasplatformv1.ResendTenantAdminInvitationRequest{
+		TenantId: tenant.ID.String(), InvitationId: created.Invitation.Id,
+	})
+	requireRateLimited(t, "ResendTenantAdminInvitation", resendCall, err)
 
 	if got := countOutboxEvents(t, pg, outbox.EventTypeTenantAdminInvitationEmail); got != 1 {
 		t.Fatalf("queued invitation mails = %d, want the one the allowance paid for", got)
@@ -76,17 +78,17 @@ func TestDBPlatformTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := pg.SeedEndUser(t, tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	for attempt := 1; attempt <= 2; attempt++ {
-		created, err := client.CreateTenantAdminInvitation(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
+		created, err := client.CreateTenantAdminInvitation(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantAdminInvitationRequest{
 			TenantId: tenant.ID.String(), Email: reader.Email,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("CreateTenantAdminInvitation attempt %d: %v", attempt, err)
 		}
-		if !created.Msg.RoleGrantedImmediately {
-			t.Fatalf("attempt %d response = %+v, want the role granted", attempt, created.Msg)
+		if !created.RoleGrantedImmediately {
+			t.Fatalf("attempt %d response = %+v, want the role granted", attempt, created)
 		}
 	}
 }
@@ -97,23 +99,25 @@ func TestDBPlatformTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T)
 func TestDBCreateTenantInitialAdminMailStopsAtTheLimit(t *testing.T) {
 	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 100, PerDay: 100}, platformpolicy.HourDay{PerHour: 2, PerDay: 100}))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	createTenant := func(emails ...string) error {
-		_, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	createTenant := func(emails ...string) (*connect.CallInfo, error) {
+		ctx, call := testutil.NewClientContext(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)))
+		_, err := client.CreateTenant(ctx, &publirasplatformv1.CreateTenantRequest{
 			DefaultLocale:      "en",
 			Name:               "Tenant A",
 			Domain:             "tenant-a.example.com",
 			InitialAdminEmails: emails,
-		}))
-		return err
+		})
+		return call, err
 	}
 
-	requireRateLimited(t, "CreateTenant", createTenant(
+	call, err := createTenant(
 		"first@tenant-a.example.com",
 		"second@tenant-a.example.com",
 		"third@tenant-a.example.com",
-	))
+	)
+	requireRateLimited(t, "CreateTenant", call, err)
 
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM tenants"); got != 0 {
 		t.Fatalf("tenant rows = %d, want the refused request to have written none", got)
@@ -122,7 +126,7 @@ func TestDBCreateTenantInitialAdminMailStopsAtTheLimit(t *testing.T) {
 		t.Fatalf("queued invitation mails = %d, want none", got)
 	}
 
-	if err := createTenant("first@tenant-a.example.com", "second@tenant-a.example.com"); err != nil {
+	if _, err := createTenant("first@tenant-a.example.com", "second@tenant-a.example.com"); err != nil {
 		t.Fatalf("CreateTenant within the allowance after the refusal: %v", err)
 	}
 }
@@ -132,22 +136,24 @@ func TestDBCreateTenantInitialAdminMailStopsAtTheLimit(t *testing.T) {
 func TestDBCreateTenantInitialAdminMailStopsAtTheAddressLimit(t *testing.T) {
 	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	createTenant := func(domain string) error {
-		_, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	createTenant := func(domain string) (*connect.CallInfo, error) {
+		ctx, call := testutil.NewClientContext(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)))
+		_, err := client.CreateTenant(ctx, &publirasplatformv1.CreateTenantRequest{
 			DefaultLocale:      "en",
 			Name:               domain,
 			Domain:             domain,
 			InitialAdminEmails: []string{"admin@example.com"},
-		}))
-		return err
+		})
+		return call, err
 	}
 
-	if err := createTenant("tenant-a.example.com"); err != nil {
+	if _, err := createTenant("tenant-a.example.com"); err != nil {
 		t.Fatalf("the first CreateTenant: %v", err)
 	}
-	requireRateLimited(t, "the second CreateTenant", createTenant("tenant-b.example.com"))
+	call, err := createTenant("tenant-b.example.com")
+	requireRateLimited(t, "the second CreateTenant", call, err)
 
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM tenants"); got != 1 {
 		t.Fatalf("tenant rows = %d, want only the one the allowance paid for", got)

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -14,14 +14,14 @@ import (
 func getDBTenantLegalPages(t *testing.T, env *publicDBEnv, tenant testutil.Tenant, locale string) *publirav1.GetTenantLegalPagesResponse {
 	t.Helper()
 
-	resp, err := env.tenantAPIClient().GetTenantLegalPages(context.Background(), connect.NewRequest(&publirav1.GetTenantLegalPagesRequest{
+	resp, err := env.tenantAPIClient().GetTenantLegalPages(context.Background(), &publirav1.GetTenantLegalPagesRequest{
 		Tenant: tenantContext(tenant),
 		Locale: locale,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantLegalPages(%q): %v", locale, err)
 	}
-	return resp.Msg
+	return resp
 }
 
 // wantLegalPage fails unless page is the given translation of a page at slug.
@@ -109,10 +109,10 @@ func TestDBGetTenantLegalPagesReadsEachPageInTheReadersLocale(t *testing.T) {
 		wantLegalPage(t, "privacy_page for "+locale, got.PrivacyPage, "/privacy", "Privacy Policy (ja)", "ja", japanesePrivacy)
 	}
 
-	_, err := env.tenantAPIClient().GetTenantLegalPages(context.Background(), connect.NewRequest(&publirav1.GetTenantLegalPagesRequest{
+	_, err := env.tenantAPIClient().GetTenantLegalPages(context.Background(), &publirav1.GetTenantLegalPagesRequest{
 		Tenant: tenantContext(tenant),
 		Locale: "xx",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("GetTenantLegalPages for an unsupported locale code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}

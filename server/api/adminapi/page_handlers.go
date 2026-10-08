@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -85,7 +85,7 @@ func (s *adminServer) getPage(ctx context.Context, tenant dbmodels.Tenant, pageI
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return pageRow{}, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
+			return pageRow{}, connect.NewError(connect.CodeNotFound, "page not found")
 		}
 		return pageRow{}, s.internalDBError(ctx, "failed to get page for "+operation, err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
@@ -110,7 +110,7 @@ func (s *adminServer) pageTranslation(ctx context.Context, tenant dbmodels.Tenan
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return pageRow{}, connect.NewError(connect.CodeNotFound, errors.New("page translation not found"))
+			return pageRow{}, connect.NewError(connect.CodeNotFound, "page translation not found")
 		}
 		return pageRow{}, s.internalDBError(ctx, "failed to get page translation for "+operation, err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "locale", code)
 	}
@@ -245,7 +245,7 @@ func validateSlug(slug string) (string, error) {
 func validatePageTitle(title string) (string, error) {
 	normalized := strings.TrimSpace(title)
 	if normalized == "" {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("title is required"))
+		return "", connect.NewError(connect.CodeInvalidArgument, "title is required")
 	}
 	return normalized, nil
 }
@@ -264,7 +264,7 @@ func pageRevalidateTags(tenantID, pageID uuid.UUID) []string {
 func parsePageID(raw string) (uuid.UUID, error) {
 	id, err := uuid.Parse(strings.TrimSpace(raw))
 	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("page_id is invalid"))
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, "page_id is invalid")
 	}
 	return id, nil
 }
@@ -272,16 +272,16 @@ func parsePageID(raw string) (uuid.UUID, error) {
 func parseVersionID(raw string) (uuid.UUID, error) {
 	id, err := uuid.Parse(strings.TrimSpace(raw))
 	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("version_id is invalid"))
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, "version_id is invalid")
 	}
 	return id, nil
 }
 
 func (s *adminServer) CreatePage(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreatePageRequest],
-) (*connect.Response[publiraadminv1.CreatePageResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.CreatePageRequest,
+) (*publiraadminv1.CreatePageResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -289,21 +289,21 @@ func (s *adminServer) CreatePage(
 	if err != nil {
 		return nil, err
 	}
-	slug, err := validateSlug(req.Msg.Slug)
+	slug, err := validateSlug(req.Slug)
 	if err != nil {
 		return nil, err
 	}
-	title, err := validatePageTitle(req.Msg.Title)
+	title, err := validatePageTitle(req.Title)
 	if err != nil {
 		return nil, err
 	}
 	pageID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	translationID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -317,11 +317,11 @@ func (s *adminServer) CreatePage(
 		ID:              pageID,
 		TenantID:        tenant.ID,
 		Slug:            slug,
-		DisplayInFooter: req.Msg.DisplayInFooter,
+		DisplayInFooter: req.DisplayInFooter,
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a page with this slug already exists"))
+			return nil, connect.NewError(connect.CodeAlreadyExists, "a page with this slug already exists")
 		}
 		return nil, s.internalDBError(ctx, "failed to create page", err, "tenant_id", tenant.ID.String())
 	}
@@ -346,18 +346,18 @@ func (s *adminServer) CreatePage(
 		TargetType:  "page",
 		TargetID:    page.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
-	return connect.NewResponse(&publiraadminv1.CreatePageResponse{
+	return &publiraadminv1.CreatePageResponse{
 		Page: pageFromModel(page, translation),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) UpdatePage(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdatePageRequest],
-) (*connect.Response[publiraadminv1.UpdatePageResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdatePageRequest,
+) (*publiraadminv1.UpdatePageResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -365,11 +365,11 @@ func (s *adminServer) UpdatePage(
 	if err != nil {
 		return nil, err
 	}
-	pageID, err := parsePageID(req.Msg.PageId)
+	pageID, err := parsePageID(req.PageId)
 	if err != nil {
 		return nil, err
 	}
-	title, err := validatePageTitle(req.Msg.Title)
+	title, err := validatePageTitle(req.Title)
 	if err != nil {
 		return nil, err
 	}
@@ -381,7 +381,7 @@ func (s *adminServer) UpdatePage(
 	defer tx.Rollback() //nolint:errcheck
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 
-	current, err := s.pageTranslation(txCtx, tenant, pageID, req.Msg.Locale, "update page")
+	current, err := s.pageTranslation(txCtx, tenant, pageID, req.Locale, "update page")
 	if err != nil {
 		return nil, err
 	}
@@ -399,8 +399,8 @@ func (s *adminServer) UpdatePage(
 		ID:       pageID,
 		TenantID: tenant.ID,
 	}
-	if req.Msg.DisplayInFooter != nil {
-		params.DisplayInFooter = sql.NullBool{Bool: req.Msg.GetDisplayInFooter(), Valid: true}
+	if req.DisplayInFooter != nil {
+		params.DisplayInFooter = sql.NullBool{Bool: req.GetDisplayInFooter(), Valid: true}
 	}
 	page, err := s.queriesFor(txCtx).UpdatePage(txCtx, params)
 	if err != nil {
@@ -423,18 +423,18 @@ func (s *adminServer) UpdatePage(
 		TargetType:  "page",
 		TargetID:    page.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
-	return connect.NewResponse(&publiraadminv1.UpdatePageResponse{
+	return &publiraadminv1.UpdatePageResponse{
 		Page: pageFromModel(page, translation),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) ListPages(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListPagesRequest],
-) (*connect.Response[publiraadminv1.ListPagesResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ListPagesRequest,
+) (*publiraadminv1.ListPagesResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -442,16 +442,16 @@ func (s *adminServer) ListPages(
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultPageListLimit, maxPageListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultPageListLimit, maxPageListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -484,38 +484,38 @@ func (s *adminServer) ListPages(
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *adminServer) GetPage(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetPageRequest],
-) (*connect.Response[publiraadminv1.GetPageResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.GetPageRequest,
+) (*publiraadminv1.GetPageResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	pageID, err := parsePageID(req.Msg.PageId)
+	pageID, err := parsePageID(req.PageId)
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.pageTranslation(ctx, tenant, pageID, req.Msg.Locale, "get page")
+	page, err := s.pageTranslation(ctx, tenant, pageID, req.Locale, "get page")
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publiraadminv1.GetPageResponse{
+	return &publiraadminv1.GetPageResponse{
 		Page: pageFromModel(page.Page, page.PageTranslation),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) CreateVersion(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreateVersionRequest],
-) (*connect.Response[publiraadminv1.CreateVersionResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.CreateVersionRequest,
+) (*publiraadminv1.CreateVersionResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -523,11 +523,11 @@ func (s *adminServer) CreateVersion(
 	if err != nil {
 		return nil, err
 	}
-	pageID, err := parsePageID(req.Msg.PageId)
+	pageID, err := parsePageID(req.PageId)
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.pageTranslation(ctx, tenant, pageID, req.Msg.Locale, "create version")
+	page, err := s.pageTranslation(ctx, tenant, pageID, req.Locale, "create version")
 	if err != nil {
 		return nil, err
 	}
@@ -537,14 +537,14 @@ func (s *adminServer) CreateVersion(
 	}
 	versionID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	params := dbmodels.CreatePageVersionParams{
 		ID:              versionID,
 		PageID:          pageID,
 		TranslationID:   page.PageTranslation.ID,
 		VersionNumber:   maxVersion + 1,
-		ContentMarkdown: req.Msg.ContentMarkdown,
+		ContentMarkdown: req.ContentMarkdown,
 	}
 	params.AuthorUserID = uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true}
 	params.TenantID = tenant.ID
@@ -560,29 +560,29 @@ func (s *adminServer) CreateVersion(
 		TargetType:  "page_version",
 		TargetID:    version.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
-	return connect.NewResponse(&publiraadminv1.CreateVersionResponse{
+	return &publiraadminv1.CreateVersionResponse{
 		Version: pageVersionFromModel(version),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) ListVersions(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListVersionsRequest],
-) (*connect.Response[publiraadminv1.ListVersionsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ListVersionsRequest,
+) (*publiraadminv1.ListVersionsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	pageID, err := parsePageID(req.Msg.PageId)
+	pageID, err := parsePageID(req.PageId)
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.pageTranslation(ctx, tenant, pageID, req.Msg.Locale, "list versions")
+	page, err := s.pageTranslation(ctx, tenant, pageID, req.Locale, "list versions")
 	if err != nil {
 		return nil, err
 	}
@@ -594,16 +594,16 @@ func (s *adminServer) ListVersions(
 	for _, v := range rows {
 		versions = append(versions, pageVersionFromModel(v))
 	}
-	return connect.NewResponse(&publiraadminv1.ListVersionsResponse{
+	return &publiraadminv1.ListVersionsResponse{
 		Versions: versions,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) PublishVersion(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.PublishVersionRequest],
-) (*connect.Response[publiraadminv1.PublishVersionResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.PublishVersionRequest,
+) (*publiraadminv1.PublishVersionResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -611,15 +611,15 @@ func (s *adminServer) PublishVersion(
 	if err != nil {
 		return nil, err
 	}
-	pageID, err := parsePageID(req.Msg.PageId)
+	pageID, err := parsePageID(req.PageId)
 	if err != nil {
 		return nil, err
 	}
-	versionID, err := parseVersionID(req.Msg.VersionId)
+	versionID, err := parseVersionID(req.VersionId)
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.pageTranslation(ctx, tenant, pageID, req.Msg.Locale, "publish version")
+	page, err := s.pageTranslation(ctx, tenant, pageID, req.Locale, "publish version")
 	if err != nil {
 		return nil, err
 	}
@@ -631,7 +631,7 @@ func (s *adminServer) PublishVersion(
 		})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeNotFound, errors.New("page version not found"))
+				return nil, connect.NewError(connect.CodeNotFound, "page version not found")
 			}
 			return nil, s.internalDBError(ctx, "failed to publish page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", versionID.String())
 		}
@@ -656,11 +656,11 @@ func (s *adminServer) PublishVersion(
 		TargetType:  "page_version",
 		TargetID:    version.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
-	return connect.NewResponse(&publiraadminv1.PublishVersionResponse{
+	return &publiraadminv1.PublishVersionResponse{
 		Version: pageVersionFromModel(version),
-	}), nil
+	}, nil
 }
 
 // UnpublishPage takes a page off the public site by clearing its published
@@ -670,9 +670,9 @@ func (s *adminServer) PublishVersion(
 // body back up without it being entered again.
 func (s *adminServer) UnpublishPage(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UnpublishPageRequest],
-) (*connect.Response[publiraadminv1.UnpublishPageResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UnpublishPageRequest,
+) (*publiraadminv1.UnpublishPageResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -680,11 +680,11 @@ func (s *adminServer) UnpublishPage(
 	if err != nil {
 		return nil, err
 	}
-	pageID, err := parsePageID(req.Msg.PageId)
+	pageID, err := parsePageID(req.PageId)
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.pageTranslation(ctx, tenant, pageID, req.Msg.Locale, "unpublish page")
+	page, err := s.pageTranslation(ctx, tenant, pageID, req.Locale, "unpublish page")
 	if err != nil {
 		return nil, err
 	}
@@ -697,7 +697,7 @@ func (s *adminServer) UnpublishPage(
 		})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
+				return nil, connect.NewError(connect.CodeNotFound, "page not found")
 			}
 			return nil, s.internalDBError(ctx, "failed to unpublish page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 		}
@@ -715,18 +715,18 @@ func (s *adminServer) UnpublishPage(
 		TargetType:  "page",
 		TargetID:    page.Page.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
-	return connect.NewResponse(&publiraadminv1.UnpublishPageResponse{
+	return &publiraadminv1.UnpublishPageResponse{
 		Page: pageFromModel(page.Page, translation),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) RollbackToVersion(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.RollbackToVersionRequest],
-) (*connect.Response[publiraadminv1.RollbackToVersionResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.RollbackToVersionRequest,
+) (*publiraadminv1.RollbackToVersionResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -734,15 +734,15 @@ func (s *adminServer) RollbackToVersion(
 	if err != nil {
 		return nil, err
 	}
-	pageID, err := parsePageID(req.Msg.PageId)
+	pageID, err := parsePageID(req.PageId)
 	if err != nil {
 		return nil, err
 	}
-	versionID, err := parseVersionID(req.Msg.VersionId)
+	versionID, err := parseVersionID(req.VersionId)
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.pageTranslation(ctx, tenant, pageID, req.Msg.Locale, "rollback")
+	page, err := s.pageTranslation(ctx, tenant, pageID, req.Locale, "rollback")
 	if err != nil {
 		return nil, err
 	}
@@ -753,7 +753,7 @@ func (s *adminServer) RollbackToVersion(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("page version not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "page version not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get page version for rollback", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", versionID.String())
 	}
@@ -763,7 +763,7 @@ func (s *adminServer) RollbackToVersion(
 	}
 	newVersionID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	params := dbmodels.CreatePageVersionParams{
 		ID:              newVersionID,
@@ -786,18 +786,18 @@ func (s *adminServer) RollbackToVersion(
 		TargetType:  "page_version",
 		TargetID:    newVersion.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
-	return connect.NewResponse(&publiraadminv1.RollbackToVersionResponse{
+	return &publiraadminv1.RollbackToVersionResponse{
 		Version: pageVersionFromModel(newVersion),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) CreatePageTranslation(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreatePageTranslationRequest],
-) (*connect.Response[publiraadminv1.CreatePageTranslationResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.CreatePageTranslationRequest,
+) (*publiraadminv1.CreatePageTranslationResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -805,15 +805,15 @@ func (s *adminServer) CreatePageTranslation(
 	if err != nil {
 		return nil, err
 	}
-	pageID, err := parsePageID(req.Msg.PageId)
+	pageID, err := parsePageID(req.PageId)
 	if err != nil {
 		return nil, err
 	}
-	code, err := parsePageLocale(req.Msg.Locale)
+	code, err := parsePageLocale(req.Locale)
 	if err != nil {
 		return nil, err
 	}
-	title, err := validatePageTitle(req.Msg.Title)
+	title, err := validatePageTitle(req.Title)
 	if err != nil {
 		return nil, err
 	}
@@ -822,7 +822,7 @@ func (s *adminServer) CreatePageTranslation(
 	}
 	translationID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	translation, err := s.queriesFor(ctx).CreatePageTranslation(ctx, dbmodels.CreatePageTranslationParams{
 		ID:       translationID,
@@ -833,7 +833,7 @@ func (s *adminServer) CreatePageTranslation(
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "page_translations_page_id_locale_key") {
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("the page already has a translation in this locale"))
+			return nil, connect.NewError(connect.CodeAlreadyExists, "the page already has a translation in this locale")
 		}
 		return nil, s.internalDBError(ctx, "failed to create page translation", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "locale", code)
 	}
@@ -845,25 +845,25 @@ func (s *adminServer) CreatePageTranslation(
 		TargetType:  "page_translation",
 		TargetID:    translation.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
-	return connect.NewResponse(&publiraadminv1.CreatePageTranslationResponse{
+	return &publiraadminv1.CreatePageTranslationResponse{
 		Translation: pageTranslationFromModel(translation),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) ListPageTranslations(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListPageTranslationsRequest],
-) (*connect.Response[publiraadminv1.ListPageTranslationsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ListPageTranslationsRequest,
+) (*publiraadminv1.ListPageTranslationsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	pageID, err := parsePageID(req.Msg.PageId)
+	pageID, err := parsePageID(req.PageId)
 	if err != nil {
 		return nil, err
 	}
@@ -875,22 +875,22 @@ func (s *adminServer) ListPageTranslations(
 		return nil, s.internalDBError(ctx, "failed to list page translations", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	if len(rows) == 0 {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
+		return nil, connect.NewError(connect.CodeNotFound, "page not found")
 	}
 	translations := make([]*publirattypesv1.PageTranslation, 0, len(rows))
 	for _, row := range rows {
 		translations = append(translations, pageTranslationFromModel(row))
 	}
-	return connect.NewResponse(&publiraadminv1.ListPageTranslationsResponse{
+	return &publiraadminv1.ListPageTranslationsResponse{
 		Translations: translations,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) DeletePageTranslation(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.DeletePageTranslationRequest],
-) (*connect.Response[publiraadminv1.DeletePageTranslationResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.DeletePageTranslationRequest,
+) (*publiraadminv1.DeletePageTranslationResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -898,11 +898,11 @@ func (s *adminServer) DeletePageTranslation(
 	if err != nil {
 		return nil, err
 	}
-	pageID, err := parsePageID(req.Msg.PageId)
+	pageID, err := parsePageID(req.PageId)
 	if err != nil {
 		return nil, err
 	}
-	code, err := parsePageLocale(req.Msg.Locale)
+	code, err := parsePageLocale(req.Locale)
 	if err != nil {
 		return nil, err
 	}
@@ -919,7 +919,7 @@ func (s *adminServer) DeletePageTranslation(
 	// still there and together leaving the page with none.
 	if _, err := queries.LockPageForTenant(txCtx, dbmodels.LockPageForTenantParams{ID: pageID, TenantID: tenant.ID}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "page not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to lock page for translation deletion", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
@@ -932,7 +932,7 @@ func (s *adminServer) DeletePageTranslation(
 		return nil, s.internalDBError(ctx, "failed to count page translations", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	if count <= 1 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("a page must keep at least one translation"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "a page must keep at least one translation")
 	}
 	if _, err := queries.DeletePageTranslation(txCtx, dbmodels.DeletePageTranslationParams{
 		ID:       target.PageTranslation.ID,
@@ -957,7 +957,7 @@ func (s *adminServer) DeletePageTranslation(
 		TargetType:  "page_translation",
 		TargetID:    target.PageTranslation.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
-	return connect.NewResponse(&publiraadminv1.DeletePageTranslationResponse{}), nil
+	return &publiraadminv1.DeletePageTranslationResponse{}, nil
 }

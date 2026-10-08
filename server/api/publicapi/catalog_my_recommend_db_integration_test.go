@@ -124,14 +124,15 @@ func (e *publicDBEnv) listMyRecommendedSeries(
 	t.Helper()
 
 	req.Tenant = tenantContext(tenant)
-	resp, err := e.catalogClient().ListMyRecommendedSeries(context.Background(), newBearerRequest(req, tokenFor(t, tenant, user)))
+	respCtx, respCall := testutil.NewClientContext(testutil.WithBearer(context.Background(), tokenFor(t, tenant, user)))
+	resp, err := e.catalogClient().ListMyRecommendedSeries(respCtx, req)
 	if err != nil {
 		t.Fatalf("ListMyRecommendedSeries: %v", err)
 	}
-	if got := resp.Header().Get("Cache-Control"); got != "private, no-store" {
+	if got := respCall.ResponseHeader().Get("Cache-Control"); got != "private, no-store" {
 		t.Fatalf("Cache-Control = %q, want private, no-store", got)
 	}
-	return resp.Msg
+	return resp
 }
 
 // allMyRecommendedSeries walks every page of the reader's list.

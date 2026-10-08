@@ -1,9 +1,7 @@
 package platformapi
 
 import (
-	"errors"
-
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auth"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
@@ -36,18 +34,18 @@ var serviceProcedures = map[string]struct{}{
 }
 
 func serviceProcedureDeniedError() error {
-	return connect.NewError(connect.CodePermissionDenied, errors.New("procedure is not available to the service credential"))
+	return connect.NewError(connect.CodePermissionDenied, "procedure is not available to the service credential")
 }
 
 // serviceActor answers the service principal for a request carrying the
 // service token: ok reports whether it carries the token at all, and err
 // refuses a procedure outside [serviceProcedures].
-func (s *platformServer) serviceActor(req connect.AnyRequest) (actor platformActor, ok bool, err error) {
-	bearer, hasBearer := auth.BearerTokenFromHeader(req.Header())
+func (s *platformServer) serviceActor(headers *connect.Header, procedure string) (actor platformActor, ok bool, err error) {
+	bearer, hasBearer := auth.BearerTokenFromHeader(headers)
 	if !hasBearer || !s.serviceToken.Matches(bearer) {
 		return platformActor{}, false, nil
 	}
-	if _, allowed := serviceProcedures[req.Spec().Procedure]; !allowed {
+	if _, allowed := serviceProcedures[procedure]; !allowed {
 		return platformActor{}, true, serviceProcedureDeniedError()
 	}
 	return platformActor{Service: true}, true, nil
@@ -58,7 +56,7 @@ func (s *platformServer) serviceActor(req connect.AnyRequest) (actor platformAct
 // there.
 func (a platformActor) requirePerson() error {
 	if a.Service {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("an operator is required"))
+		return connect.NewError(connect.CodePermissionDenied, "an operator is required")
 	}
 	return nil
 }

@@ -5,23 +5,25 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/lib/pq"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func seriesColumns() *sqlmock.Rows {
@@ -106,14 +108,13 @@ func newSeriesClient(
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	return publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+	return publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))), mock, sessionToken
 }
 
-func newListSeriesRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListSeriesRequest] {
-	req := connect.NewRequest(&publiraadminv1.ListSeriesRequest{
+func newListSeriesRequest(tenantID uuid.UUID) *publiraadminv1.ListSeriesRequest {
+	req := &publiraadminv1.ListSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 	return req
 }
 
@@ -132,10 +133,10 @@ func TestAdminSeriesRequiresSession(t *testing.T) {
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListSeries(context.Background(), connect.NewRequest(&publiraadminv1.ListSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListSeries(context.Background(), &publiraadminv1.ListSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("ListSeries error code = %v, want %v", connect.CodeOf(err), connect.CodeUnauthenticated)
 	}
@@ -157,21 +158,21 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 		WillReturnRows(addSeriesRow(seriesColumns(), seriesID, "SERIES001", "Series Title", now))
 	expectSeriesRelationLookups(mock)
 
-	resp, err := client.ListSeries(context.Background(), newListSeriesRequest(tenantID, sessionToken))
+	resp, err := client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), newListSeriesRequest(tenantID))
 	if err != nil {
 		t.Fatalf("ListSeries: %v", err)
 	}
-	if len(resp.Msg.Series) != 1 {
-		t.Fatalf("series count = %d, want 1", len(resp.Msg.Series))
+	if len(resp.Series) != 1 {
+		t.Fatalf("series count = %d, want 1", len(resp.Series))
 	}
-	if resp.Msg.Series[0].PublicId != "SERIES001" {
-		t.Fatalf("series public_id = %q, want SERIES001", resp.Msg.Series[0].PublicId)
+	if resp.Series[0].PublicId != "SERIES001" {
+		t.Fatalf("series public_id = %q, want SERIES001", resp.Series[0].PublicId)
 	}
-	if !resp.Msg.Series[0].IsPublished {
-		t.Fatalf("series is_published = %v, want true", resp.Msg.Series[0].IsPublished)
+	if !resp.Series[0].IsPublished {
+		t.Fatalf("series is_published = %v, want true", resp.Series[0].IsPublished)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty", resp.PreviousToken, resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -194,19 +195,19 @@ func TestListSeriesFirstPageReportsNextToken(t *testing.T) {
 		))
 	expectSeriesRelationLookups(mock)
 
-	req := newListSeriesRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	resp, err := client.ListSeries(context.Background(), req)
+	req := newListSeriesRequest(tenantID)
+	req.Limit = 2
+	resp, err := client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListSeries: %v", err)
 	}
-	if len(resp.Msg.Series) != 2 {
-		t.Fatalf("series count = %d, want the over-fetched row dropped", len(resp.Msg.Series))
+	if len(resp.Series) != 2 {
+		t.Fatalf("series count = %d, want the over-fetched row dropped", len(resp.Series))
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -240,18 +241,18 @@ func TestListSeriesFiltersRowsAndBindsTheCursor(t *testing.T) {
 		))
 	expectSeriesRelationLookups(mock)
 
-	req := newListSeriesRequest(tenantID, sessionToken)
-	req.Msg.AgeRating = publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15
-	req.Msg.Limit = 1
-	req.Msg.Status = publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED
-	resp, err := client.ListSeries(context.Background(), req)
+	req := newListSeriesRequest(tenantID)
+	req.AgeRating = publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15
+	req.Limit = 1
+	req.Status = publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED
+	resp, err := client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListSeries: %v", err)
 	}
-	if !slices.Equal(seriesPublicIDs(resp.Msg.Series), []string{"SERIES001"}) {
-		t.Fatalf("public_ids = %v, want the completed R15 row", seriesPublicIDs(resp.Msg.Series))
+	if !slices.Equal(seriesPublicIDs(resp.Series), []string{"SERIES001"}) {
+		t.Fatalf("public_ids = %v, want the completed R15 row", seriesPublicIDs(resp.Series))
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -268,11 +269,11 @@ func TestListSeriesFiltersRowsAndBindsTheCursor(t *testing.T) {
 	// reinterpret its keyset position under that filter.
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	changedFilterReq := newListSeriesRequest(tenantID, sessionToken)
-	changedFilterReq.Msg.AgeRating = publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15
-	changedFilterReq.Msg.Status = publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS
-	changedFilterReq.Msg.Token = resp.Msg.NextToken
-	_, err = client.ListSeries(context.Background(), changedFilterReq)
+	changedFilterReq := newListSeriesRequest(tenantID)
+	changedFilterReq.AgeRating = publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15
+	changedFilterReq.Status = publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS
+	changedFilterReq.Token = resp.NextToken
+	_, err = client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), changedFilterReq)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListSeries changed-filter token code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -296,21 +297,21 @@ func TestListSeriesFollowsNextToken(t *testing.T) {
 		WillReturnRows(addSeriesRow(seriesColumns(), uuid.Must(uuid.NewV7()), "SERIES003", "Last", now.Add(-2*time.Minute)))
 	expectSeriesRelationLookups(mock)
 
-	req := newListSeriesRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
-	resp, err := client.ListSeries(context.Background(), req)
+	req := newListSeriesRequest(tenantID)
+	req.Limit = 2
+	req.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListSeries: %v", err)
 	}
-	if !slices.Equal(seriesPublicIDs(resp.Msg.Series), []string{"SERIES003"}) {
-		t.Fatalf("public_ids = %v, want the page after the boundary row", seriesPublicIDs(resp.Msg.Series))
+	if !slices.Equal(seriesPublicIDs(resp.Series), []string{"SERIES003"}) {
+		t.Fatalf("public_ids = %v, want the page after the boundary row", seriesPublicIDs(resp.Series))
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the page the client came from")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -331,20 +332,20 @@ func TestListSeriesFollowsPreviousTokenBackwards(t *testing.T) {
 		))
 	expectSeriesRelationLookups(mock)
 
-	req := newListSeriesRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
-	resp, err := client.ListSeries(context.Background(), req)
+	req := newListSeriesRequest(tenantID)
+	req.Limit = 2
+	req.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListSeries: %v", err)
 	}
-	if !slices.Equal(seriesPublicIDs(resp.Msg.Series), []string{"SERIES001", "SERIES002"}) {
-		t.Fatalf("public_ids = %v, want backward page restored to descending order", seriesPublicIDs(resp.Msg.Series))
+	if !slices.Equal(seriesPublicIDs(resp.Series), []string{"SERIES001", "SERIES002"}) {
+		t.Fatalf("public_ids = %v, want backward page restored to descending order", seriesPublicIDs(resp.Series))
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertExpectations(t, mock)
@@ -386,16 +387,16 @@ func TestListSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, false, now, int32(21)).
 				WillReturnRows(seriesColumns())
 
-			req := newListSeriesRequest(tenantID, sessionToken)
-			req.Msg.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
-			resp, err := client.ListSeries(context.Background(), req)
+			req := newListSeriesRequest(tenantID)
+			req.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
+			resp, err := client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err != nil {
 				t.Fatalf("ListSeries: %v", err)
 			}
-			recoveryToken := resp.Msg.PreviousToken
+			recoveryToken := resp.PreviousToken
 			recoveryDirection := pagination.Backward
 			if test.direction == pagination.Backward {
-				recoveryToken = resp.Msg.NextToken
+				recoveryToken = resp.NextToken
 				recoveryDirection = pagination.Forward
 			}
 			wantRecoveryToken := pagination.EncodeTimeUUIDRecovery(recoveryDirection, now, boundaryID)
@@ -416,14 +417,14 @@ func TestListSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 				WillReturnRows(recoveryRows)
 			expectSeriesRelationLookups(mock)
 
-			recoveryReq := newListSeriesRequest(tenantID, sessionToken)
-			recoveryReq.Msg.Token = recoveryToken
-			recovered, err := client.ListSeries(context.Background(), recoveryReq)
+			recoveryReq := newListSeriesRequest(tenantID)
+			recoveryReq.Token = recoveryToken
+			recovered, err := client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), recoveryReq)
 			if err != nil {
 				t.Fatalf("ListSeries recovery: %v", err)
 			}
-			if !slices.Equal(seriesPublicIDs(recovered.Msg.Series), test.wantRecoveredSeries) {
-				t.Fatalf("recovered public_ids = %v, want %v", seriesPublicIDs(recovered.Msg.Series), test.wantRecoveredSeries)
+			if !slices.Equal(seriesPublicIDs(recovered.Series), test.wantRecoveredSeries) {
+				t.Fatalf("recovered public_ids = %v, want %v", seriesPublicIDs(recovered.Series), test.wantRecoveredSeries)
 			}
 			assertExpectations(t, mock)
 		})
@@ -463,19 +464,19 @@ func TestListSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, boundaryID, true, now, int32(21)).
 				WillReturnRows(seriesColumns())
 
-			req := newListSeriesRequest(tenantID, sessionToken)
-			req.Msg.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
-			resp, err := client.ListSeries(context.Background(), req)
+			req := newListSeriesRequest(tenantID)
+			req.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
+			resp, err := client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err != nil {
 				t.Fatalf("ListSeries: %v", err)
 			}
-			if len(resp.Msg.Series) != 0 {
-				t.Fatalf("series = %d rows, want an empty page", len(resp.Msg.Series))
+			if len(resp.Series) != 0 {
+				t.Fatalf("series = %d rows, want an empty page", len(resp.Series))
 			}
-			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+			if resp.PreviousToken != "" || resp.NextToken != "" {
 				t.Fatalf(
 					"previous_token = %q / next_token = %q, want both empty once recovery also came back empty",
-					resp.Msg.PreviousToken, resp.Msg.NextToken,
+					resp.PreviousToken, resp.NextToken,
 				)
 			}
 			assertExpectations(t, mock)
@@ -489,9 +490,9 @@ func TestListSeriesInvalidToken(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
 
-	req := newListSeriesRequest(tenantID, sessionToken)
-	req.Msg.Token = "not-a-valid-token"
-	_, err := client.ListSeries(context.Background(), req)
+	req := newListSeriesRequest(tenantID)
+	req.Token = "not-a-valid-token"
+	_, err := client.ListSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -511,14 +512,13 @@ func TestCreateSeriesRequiresTitle(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:  "   ",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.CreateSeries(context.Background(), req)
+	_, err := client.CreateSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -561,25 +561,24 @@ func TestCreateSeriesSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIESNEW001", "New Series", testSeriesLabelID, "LABEL001", "Weekly", "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateSeriesRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:       "New Series",
 		Synopsis:    "Synopsis",
 		LabelId:     labelID.String(),
 		IsPublished: true,
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.CreateSeries(context.Background(), req)
+	resp, err := client.CreateSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
 	}
-	if resp.Msg.Series == nil {
+	if resp.Series == nil {
 		t.Fatalf("series is nil")
 	}
-	if resp.Msg.Series.Title != "New Series" {
-		t.Fatalf("series title = %q, want New Series", resp.Msg.Series.Title)
+	if resp.Series.Title != "New Series" {
+		t.Fatalf("series title = %q, want New Series", resp.Series.Title)
 	}
 	assertExpectations(t, mock)
 }
@@ -626,19 +625,18 @@ func TestCreateSeriesRetriesDuplicatePublicID(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "4ERDqTx5YB8m", "New Series", nil, nil, nil, nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, false, nil, nil, nil, int64(0), "all", nil))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:  "New Series",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.CreateSeries(context.Background(), req)
+	resp, err := client.CreateSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
 	}
-	if resp.Msg.Series.PublicId != "4ERDqTx5YB8m" {
-		t.Fatalf("series public_id = %q, want 4ERDqTx5YB8m", resp.Msg.Series.PublicId)
+	if resp.Series.PublicId != "4ERDqTx5YB8m" {
+		t.Fatalf("series public_id = %q, want 4ERDqTx5YB8m", resp.Series.PublicId)
 	}
 	if len(attempted.values) != 2 {
 		t.Fatalf("public_id attempts = %v, want 2", attempted.values)
@@ -680,15 +678,14 @@ func TestUpdateSeriesRequiresTitle(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateSeriesRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId: testSeriesID.String(),
 		Title:    "\t",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.UpdateSeries(context.Background(), req)
+	_, err := client.UpdateSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
@@ -737,28 +734,27 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 			AddRow(seriesID, "SERIES001", "After", nil, nil, nil, "New synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateSeriesRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:    seriesID.String(),
 		Title:       "After",
 		Synopsis:    new("New synopsis"),
 		IsPublished: true,
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UpdateSeries(context.Background(), req)
+	resp, err := client.UpdateSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
 	}
-	if resp.Msg.Series == nil {
+	if resp.Series == nil {
 		t.Fatalf("series is nil")
 	}
-	if resp.Msg.Series.Title != "After" {
-		t.Fatalf("series title = %q, want After", resp.Msg.Series.Title)
+	if resp.Series.Title != "After" {
+		t.Fatalf("series title = %q, want After", resp.Series.Title)
 	}
-	if !resp.Msg.Series.IsPublished {
-		t.Fatalf("series is_published = %v, want true", resp.Msg.Series.IsPublished)
+	if !resp.Series.IsPublished {
+		t.Fatalf("series is_published = %v, want true", resp.Series.IsPublished)
 	}
 	assertExpectations(t, mock)
 }
@@ -806,8 +802,8 @@ func TestUpdateSeriesStoresTheListingMetadataItWasGiven(t *testing.T) {
 			AddRow(seriesID, "SERIES001", "After", nil, nil, nil, "Synopsis", nil, "hiatus", []byte("{1,4}"), "r18", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateSeriesRequest{
 		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:       seriesID.String(),
 		Title:          "After",
@@ -816,21 +812,20 @@ func TestUpdateSeriesStoresTheListingMetadataItWasGiven(t *testing.T) {
 		Status:         publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS.Enum(),
 		WeeklySchedule: &publiraadminv1.SeriesScheduleWeekdays{Weekdays: []int32{4, 1, 4}},
 		AgeRating:      publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18.Enum(),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UpdateSeries(context.Background(), req)
+	resp, err := client.UpdateSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
 	}
-	if resp.Msg.Series.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS {
-		t.Fatalf("series status = %s, want HIATUS", resp.Msg.Series.Status)
+	if resp.Series.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_HIATUS {
+		t.Fatalf("series status = %s, want HIATUS", resp.Series.Status)
 	}
-	if resp.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18 {
-		t.Fatalf("series age_rating = %s, want R18", resp.Msg.Series.AgeRating)
+	if resp.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18 {
+		t.Fatalf("series age_rating = %s, want R18", resp.Series.AgeRating)
 	}
-	if want := []int32{1, 4}; !slices.Equal(resp.Msg.Series.ScheduleWeekdays, want) {
-		t.Fatalf("series schedule_weekdays = %v, want %v", resp.Msg.Series.ScheduleWeekdays, want)
+	if want := []int32{1, 4}; !slices.Equal(resp.Series.ScheduleWeekdays, want) {
+		t.Fatalf("series schedule_weekdays = %v, want %v", resp.Series.ScheduleWeekdays, want)
 	}
 	assertExpectations(t, mock)
 }
@@ -847,16 +842,15 @@ func TestUpdateSeriesRejectsAWeekdayOutsideTheWeek(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateSeriesRequest{
 		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:       testSeriesID.String(),
 		Title:          "After",
 		WeeklySchedule: &publiraadminv1.SeriesScheduleWeekdays{Weekdays: []int32{7}},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.UpdateSeries(context.Background(), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.UpdateSeries(testutil.WithBearer(context.Background(), sessionToken), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
 	assertExpectations(t, mock)
@@ -881,14 +875,13 @@ func TestGetSeriesFailsOnAStoredStatusItDoesNotKnow(t *testing.T) {
 			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "cancelled", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 	expectSeriesRelationLookups(mock)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.GetSeriesRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIES001",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.GetSeries(context.Background(), req); connect.CodeOf(err) != connect.CodeInternal {
+	if _, err := client.GetSeries(testutil.WithBearer(context.Background(), sessionToken), req); connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
 	assertExpectations(t, mock)
@@ -971,25 +964,24 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(seriesDetailColumns()).
 			AddRow(seriesID, "SERIESNEW001", "New Series", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateSeriesRequest{
 		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:          "New Series",
 		Synopsis:       "Synopsis",
 		IsPublished:    true,
 		CreatorCredits: testCreatorCredits(creatorID1, creatorID2),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.CreateSeries(context.Background(), req)
+	resp, err := client.CreateSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
 	}
-	if len(resp.Msg.Series.Creators) != 2 {
-		t.Fatalf("creator count = %d, want 2", len(resp.Msg.Series.Creators))
+	if len(resp.Series.Creators) != 2 {
+		t.Fatalf("creator count = %d, want 2", len(resp.Series.Creators))
 	}
-	if resp.Msg.Series.Creators[0].PublicId != "CREATOR001" {
-		t.Fatalf("creator[0].public_id = %q, want CREATOR001", resp.Msg.Series.Creators[0].PublicId)
+	if resp.Series.Creators[0].PublicId != "CREATOR001" {
+		t.Fatalf("creator[0].public_id = %q, want CREATOR001", resp.Series.Creators[0].PublicId)
 	}
 	assertExpectations(t, mock)
 }
@@ -1059,26 +1051,25 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 			AddRow(seriesID, "SERIES001", "After", nil, nil, nil, "New synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateSeriesRequest{
 		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:       seriesID.String(),
 		Title:          "After",
 		Synopsis:       new("New synopsis"),
 		IsPublished:    true,
 		CreatorCredits: testCreatorCredits(creatorID1, creatorID2),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UpdateSeries(context.Background(), req)
+	resp, err := client.UpdateSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UpdateSeries: %v", err)
 	}
-	if len(resp.Msg.Series.Creators) != 2 {
-		t.Fatalf("creator count = %d, want 2", len(resp.Msg.Series.Creators))
+	if len(resp.Series.Creators) != 2 {
+		t.Fatalf("creator count = %d, want 2", len(resp.Series.Creators))
 	}
-	if resp.Msg.Series.Creators[1].PublicId != "CREATOR002" {
-		t.Fatalf("creator[1].public_id = %q, want CREATOR002", resp.Msg.Series.Creators[1].PublicId)
+	if resp.Series.Creators[1].PublicId != "CREATOR002" {
+		t.Fatalf("creator[1].public_id = %q, want CREATOR002", resp.Series.Creators[1].PublicId)
 	}
 	assertExpectations(t, mock)
 }
@@ -1097,15 +1088,14 @@ func TestCreateSeriesUnknownCreatorDoesNotBeginTransaction(t *testing.T) {
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateSeriesRequest{
 		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:          "New Series",
 		CreatorCredits: testCreatorCredits(uuid.Must(uuid.NewV7())),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.CreateSeries(context.Background(), req)
+	_, err := client.CreateSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInvalidArgument, err)
 	}
@@ -1126,18 +1116,17 @@ func TestCreateSeriesRefusesCreditSharesAboveOneWholeEpisode(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:  "New Series",
 		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{
 			{CreatorId: episodeTestID(11).String(), RoleId: testCreatorRoleID.String(), ShareBps: 6000},
 			{CreatorId: episodeTestID(12).String(), RoleId: testCreatorRoleID.String(), ShareBps: 5000},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.CreateSeries(context.Background(), req)
+	_, err := client.CreateSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
@@ -1163,16 +1152,15 @@ func TestUpdateSeriesUnknownCreatorDoesNotBeginTransaction(t *testing.T) {
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateSeriesRequest{
 		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:       seriesID.String(),
 		Title:          "After",
 		CreatorCredits: testCreatorCredits(uuid.Must(uuid.NewV7())),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.UpdateSeries(context.Background(), req)
+	_, err := client.UpdateSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateSeries code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInvalidArgument, err)
 	}
@@ -1200,14 +1188,13 @@ func TestCreateSeriesRollsBackWhenListingInsertFails(t *testing.T) {
 		WillReturnError(sql.ErrConnDone)
 	mock.ExpectRollback()
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:  "New Series",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.CreateSeries(context.Background(), req)
+	_, err := client.CreateSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("CreateSeries code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInternal, err)
 	}
@@ -1265,23 +1252,22 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 				expectSeriesRelationLookups(mock)
 			}
 
-			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-			req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
+			client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			req := &publiraadminv1.GetSeriesRequest{
 				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				PublicId: tc.publicID,
-			})
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			}
 
-			resp, err := client.GetSeries(context.Background(), req)
+			resp, err := client.GetSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 			if tc.wantCode == 0 {
 				if err != nil {
 					t.Fatalf("GetSeries: %v", err)
 				}
-				if resp.Msg.Series == nil {
+				if resp.Series == nil {
 					t.Fatalf("series is nil")
 				}
-				if resp.Msg.Series.PublicId != tc.wantSeriesID {
-					t.Fatalf("series public_id = %q, want %q", resp.Msg.Series.PublicId, tc.wantSeriesID)
+				if resp.Series.PublicId != tc.wantSeriesID {
+					t.Fatalf("series public_id = %q, want %q", resp.Series.PublicId, tc.wantSeriesID)
 				}
 			} else {
 				if connect.CodeOf(err) != tc.wantCode {
@@ -1307,14 +1293,13 @@ func TestAdminGetSeriesDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs(tenantID, "SERIES001").
 		WillReturnError(errors.New(`pq: relation "series" does not exist`))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.GetSeriesRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIES001",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.GetSeries(context.Background(), req)
+	_, err := client.GetSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -1338,14 +1323,13 @@ func TestAdminGetSeriesPreservesContextCanceled(t *testing.T) {
 		WithArgs(tenantID, "SERIES001").
 		WillReturnError(context.Canceled)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.GetSeriesRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIES001",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.GetSeries(context.Background(), req)
+	_, err := client.GetSeries(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeCanceled {
 		t.Fatalf("GetSeries code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
 	}

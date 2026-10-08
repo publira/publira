@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
-
 	"github.com/publira/publira/server/internal/ageverification"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -46,20 +44,20 @@ func TestDBGetEpisodeDetailOffersThePreviewOfALockedBody(t *testing.T) {
 	first := env.PG.SeedEpisodeImage(t, tenant.ID, episode.ID, 1)
 	second := env.PG.SeedEpisodeImage(t, tenant.ID, episode.ID, 2)
 
-	locked, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	locked, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: episode.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail as a guest: %v", err)
 	}
-	if locked.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
-		t.Fatalf("access = %v, want locked", locked.Msg.Access)
+	if locked.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+		t.Fatalf("access = %v, want locked", locked.Access)
 	}
-	if len(locked.Msg.Images) != 0 {
-		t.Fatalf("images = %d, want no full-size page", len(locked.Msg.Images))
+	if len(locked.Images) != 0 {
+		t.Fatalf("images = %d, want no full-size page", len(locked.Images))
 	}
-	if got, want := previewImageIDs(t, locked.Msg.PreviewImages), []string{first.String(), second.String()}; !slices.Equal(got, want) {
+	if got, want := previewImageIDs(t, locked.PreviewImages), []string{first.String(), second.String()}; !slices.Equal(got, want) {
 		t.Fatalf("preview pages = %v, want the opening two %v", got, want)
 	}
 
@@ -67,21 +65,18 @@ func TestDBGetEpisodeDetailOffersThePreviewOfALockedBody(t *testing.T) {
 	// that stood in for it is not sent beside it.
 	reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	env.PG.SeedPurchase(t, tenant.ID, reader.ID, episode.ID, 500)
-	entitled, err := env.catalogClient().GetEpisodeDetail(context.Background(), newBearerRequest(
-		&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID},
-		tokenFor(t, tenant, reader),
-	))
+	entitled, err := env.catalogClient().GetEpisodeDetail(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reader)), &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail as the buyer: %v", err)
 	}
-	if entitled.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
-		t.Fatalf("access = %v, want entitled", entitled.Msg.Access)
+	if entitled.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
+		t.Fatalf("access = %v, want entitled", entitled.Access)
 	}
-	if len(entitled.Msg.Images) != 3 {
-		t.Fatalf("images = %d, want the whole body", len(entitled.Msg.Images))
+	if len(entitled.Images) != 3 {
+		t.Fatalf("images = %d, want the whole body", len(entitled.Images))
 	}
-	if len(entitled.Msg.PreviewImages) != 0 {
-		t.Fatalf("preview images = %d, want none beside an open body", len(entitled.Msg.PreviewImages))
+	if len(entitled.PreviewImages) != 0 {
+		t.Fatalf("preview images = %d, want none beside an open body", len(entitled.PreviewImages))
 	}
 }
 
@@ -104,21 +99,21 @@ func TestDBGetEpisodeDetailOffersThePreviewOfAnAgeRestrictedBody(t *testing.T) {
 	})
 	page := env.PG.SeedEpisodeImage(t, tenant.ID, episode.ID, 1)
 
-	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: episode.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_AGE_RESTRICTED {
-		t.Fatalf("access = %v, want age restricted", resp.Msg.Access)
+	if resp.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_AGE_RESTRICTED {
+		t.Fatalf("access = %v, want age restricted", resp.Access)
 	}
-	if len(resp.Msg.Images) != 0 {
-		t.Fatalf("images = %d, want no full-size page", len(resp.Msg.Images))
+	if len(resp.Images) != 0 {
+		t.Fatalf("images = %d, want no full-size page", len(resp.Images))
 	}
 	// A body shorter than the preview is previewed whole.
-	if got, want := previewImageIDs(t, resp.Msg.PreviewImages), []string{page.String()}; !slices.Equal(got, want) {
+	if got, want := previewImageIDs(t, resp.PreviewImages), []string{page.String()}; !slices.Equal(got, want) {
 		t.Fatalf("preview pages = %v, want %v", got, want)
 	}
 }
@@ -152,14 +147,14 @@ func TestDBGetEpisodeDetailNamesTheNextFreeEpisode(t *testing.T) {
 
 	read := func(publicID string) *publirav1.GetEpisodeDetailResponse {
 		t.Helper()
-		resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: publicID,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("GetEpisodeDetail %s: %v", publicID, err)
 		}
-		return resp.Msg
+		return resp
 	}
 
 	nextFree := read(current.PublicID).NextFreeEpisode
@@ -187,17 +182,17 @@ func TestDBGetEpisodeDetailLeavesTheNextFreeEpisodeUnsetWhenNoneIsLeft(t *testin
 	first := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEONE01", Title: "One", Status: testutil.EpisodeStatusPublished, Price: 500})
 	env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODETWO01", Title: "Two", Status: testutil.EpisodeStatusPublished, Price: 500})
 
-	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: first.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	if resp.Msg.NextEpisode.GetPublicId() != "EPISODETWO01" {
-		t.Fatalf("next_episode = %q, want EPISODETWO01", resp.Msg.NextEpisode.GetPublicId())
+	if resp.NextEpisode.GetPublicId() != "EPISODETWO01" {
+		t.Fatalf("next_episode = %q, want EPISODETWO01", resp.NextEpisode.GetPublicId())
 	}
-	if resp.Msg.NextFreeEpisode != nil {
-		t.Fatalf("next_free_episode = %+v, want unset", resp.Msg.NextFreeEpisode)
+	if resp.NextFreeEpisode != nil {
+		t.Fatalf("next_free_episode = %+v, want unset", resp.NextFreeEpisode)
 	}
 }

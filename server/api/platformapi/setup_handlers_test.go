@@ -4,15 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
@@ -24,17 +24,17 @@ func TestCheckSetupStatusNotCompleted(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).WillReturnError(sql.ErrNoRows)
 
-	resp, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
+	resp, err := server.CheckSetupStatus(context.Background(), &publirasplatformv1.CheckSetupStatusRequest{})
 	if err != nil {
 		t.Fatalf("CheckSetupStatus: %v", err)
 	}
-	if resp.Msg.SetupCompleted {
+	if resp.SetupCompleted {
 		t.Fatalf("setup_completed = true, want false")
 	}
 	// No settings row yet, so there is no saved language to report and the
 	// setup screen negotiates one from Accept-Language instead.
-	if resp.Msg.DefaultLocale != "" {
-		t.Fatalf("default_locale = %q, want empty", resp.Msg.DefaultLocale)
+	if resp.DefaultLocale != "" {
+		t.Fatalf("default_locale = %q, want empty", resp.DefaultLocale)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -46,17 +46,17 @@ func TestCheckSetupStatusCompleted(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
 	expectPlatformConfigLookup(mock, tenanttz.Default, "en", time.Now())
 
-	resp, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
+	resp, err := server.CheckSetupStatus(context.Background(), &publirasplatformv1.CheckSetupStatusRequest{})
 	if err != nil {
 		t.Fatalf("CheckSetupStatus: %v", err)
 	}
-	if !resp.Msg.SetupCompleted {
+	if !resp.SetupCompleted {
 		t.Fatalf("setup_completed = false, want true")
 	}
 	// The login screen renders in the language the platform saved, not in the
 	// one the visitor's browser happens to ask for.
-	if resp.Msg.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
+	if resp.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.DefaultLocale)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -82,7 +82,7 @@ func TestCheckSetupStatusFailsOnAnUnusableSavedLocale(t *testing.T) {
 				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
 			expectPlatformConfigLookup(mock, tenanttz.Default, tt.stored, time.Now())
 
-			_, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
+			_, err := server.CheckSetupStatus(context.Background(), &publirasplatformv1.CheckSetupStatusRequest{})
 			if connect.CodeOf(err) != connect.CodeInternal {
 				t.Fatalf("CheckSetupStatus code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 			}
@@ -101,15 +101,15 @@ func TestCheckSetupStatusReportsNoLocaleForAnAbsentSettingsRow(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).WillReturnError(sql.ErrNoRows)
 
-	resp, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
+	resp, err := server.CheckSetupStatus(context.Background(), &publirasplatformv1.CheckSetupStatusRequest{})
 	if err != nil {
 		t.Fatalf("CheckSetupStatus: %v", err)
 	}
-	if !resp.Msg.SetupCompleted {
+	if !resp.SetupCompleted {
 		t.Fatal("setup_completed = false, want true")
 	}
-	if resp.Msg.DefaultLocale != "" {
-		t.Fatalf("default_locale = %q, want empty", resp.Msg.DefaultLocale)
+	if resp.DefaultLocale != "" {
+		t.Fatalf("default_locale = %q, want empty", resp.DefaultLocale)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -119,7 +119,7 @@ func TestCheckSetupStatusDatabaseErrorIsHidden(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 		WillReturnError(errors.New(`pq: relation "platform_users" does not exist`))
 
-	_, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
+	_, err := server.CheckSetupStatus(context.Background(), &publirasplatformv1.CheckSetupStatusRequest{})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("CheckSetupStatus code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -134,7 +134,7 @@ func TestCheckSetupStatusPreservesContextCanceled(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 		WillReturnError(context.Canceled)
 
-	_, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
+	_, err := server.CheckSetupStatus(context.Background(), &publirasplatformv1.CheckSetupStatusRequest{})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("CheckSetupStatus error = %v, want context.Canceled", err)
 	}
@@ -168,12 +168,12 @@ func TestCreateInitialUserSuccess(t *testing.T) {
 		WillReturnRows(platformConfigRow("UTC", "en", 1, now))
 	mock.ExpectCommit()
 
-	_, err := server.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
+	_, err := server.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Admin User",
 		Email:         "admin@example.com",
 		Password:      "secure-password-123",
 		DefaultLocale: "en",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateInitialUser: %v", err)
 	}
@@ -186,12 +186,12 @@ func TestCreateInitialUserAlreadySetup(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountPlatformUsers)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
 
-	_, err := server.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
+	_, err := server.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Admin User",
 		Email:         "admin@example.com",
 		Password:      "secure-password-123",
 		DefaultLocale: "ja",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateInitialUser code = %v, want already_exists", connect.CodeOf(err))
 	}
@@ -212,12 +212,12 @@ func TestCreateInitialUserLosesToAConcurrentSetup(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
 	mock.ExpectRollback()
 
-	_, err := server.CreateInitialUser(context.Background(), connect.NewRequest(&publirasplatformv1.CreateInitialUserRequest{
+	_, err := server.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Admin User",
 		Email:         "admin@example.com",
 		Password:      "secure-password-123",
 		DefaultLocale: "ja",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateInitialUser code = %v, want already_exists", connect.CodeOf(err))
 	}
@@ -256,7 +256,7 @@ func TestCreateInitialUserInvalidInput(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := server.CreateInitialUser(context.Background(), connect.NewRequest(tc.req()))
+			_, err := server.CreateInitialUser(context.Background(), tc.req())
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("CreateInitialUser code = %v, want invalid_argument", connect.CodeOf(err))
 			}

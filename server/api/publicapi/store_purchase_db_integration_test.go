@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/appstore"
@@ -132,22 +133,22 @@ func newStorePurchaseEnvWithGuards(t *testing.T, guards readerGuards) *storePurc
 		signer:   signer,
 		appStore: fake,
 		play:     play,
-		client:   publirav1connect.NewPurchaseServiceClient(ts.Client(), ts.URL),
-		tenants:  publirav1connect.NewTenantServiceClient(ts.Client(), ts.URL),
+		client:   publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
+		tenants:  publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 	}
 }
 
 func (e *storePurchaseEnv) start(t *testing.T, token string) *publirav1.StartStorePurchaseResponse {
 	t.Helper()
-	res, err := e.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
+	res, err := e.client.StartStorePurchase(testutil.WithBearer(context.Background(), token), &publirav1.StartStorePurchaseRequest{
 		Tenant:    tenantContext(e.tenant),
 		EpisodeId: e.episode.ID.String(),
 		Store:     publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
-	}, token))
+	})
 	if err != nil {
 		t.Fatalf("StartStorePurchase: %v", err)
 	}
-	return res.Msg
+	return res
 }
 
 // appStoreTransaction is what the App Store holds for a purchase of the intent,
@@ -168,29 +169,29 @@ func (e *storePurchaseEnv) appStoreTransaction(id string, intent *publirav1.Star
 
 func (e *storePurchaseEnv) confirmAppStore(t *testing.T, token string, transaction appstoretest.Transaction) (*publirav1.MyPurchase, error) {
 	t.Helper()
-	res, err := e.client.ConfirmStorePurchase(context.Background(), newBearerRequest(&publirav1.ConfirmStorePurchaseRequest{
+	res, err := e.client.ConfirmStorePurchase(testutil.WithBearer(context.Background(), token), &publirav1.ConfirmStorePurchaseRequest{
 		Tenant:      tenantContext(e.tenant),
 		Store:       publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
 		Transaction: e.signer.Sign(t, transaction),
-	}, token))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return res.Msg.Purchase, nil
+	return res.Purchase, nil
 }
 
 func (e *storePurchaseEnv) confirmGooglePlay(t *testing.T, productID, purchaseToken string) (*publirav1.MyPurchase, error) {
 	t.Helper()
-	res, err := e.client.ConfirmStorePurchase(context.Background(), newBearerRequest(&publirav1.ConfirmStorePurchaseRequest{
+	res, err := e.client.ConfirmStorePurchase(testutil.WithBearer(context.Background(), e.token), &publirav1.ConfirmStorePurchaseRequest{
 		Tenant:      tenantContext(e.tenant),
 		Store:       publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY,
 		Transaction: purchaseToken,
 		ProductId:   productID,
-	}, e.token))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return res.Msg.Purchase, nil
+	return res.Purchase, nil
 }
 
 func (e *storePurchaseEnv) count(t *testing.T, query string, args ...any) int {
@@ -227,11 +228,11 @@ func TestDBStartStorePurchaseRefusesATenantThatSellsThroughTheCheckout(t *testin
 		"UPDATE tenant_config SET app_purchase_route = 'external_checkout' WHERE tenant_id = $1", env.tenant.ID); err != nil {
 		t.Fatalf("switch route: %v", err)
 	}
-	_, err := env.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
+	_, err := env.client.StartStorePurchase(testutil.WithBearer(context.Background(), env.token), &publirav1.StartStorePurchaseRequest{
 		Tenant:    tenantContext(env.tenant),
 		EpisodeId: env.episode.ID.String(),
 		Store:     publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
-	}, env.token))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartStorePurchase code = %v, want failed_precondition", connect.CodeOf(err))
 	}
@@ -243,13 +244,13 @@ func TestDBGetTenantAnswersWhichStoreTheAppSellsThrough(t *testing.T) {
 	env := newStorePurchaseEnv(t)
 	storePayments := func() (bool, bool) {
 		t.Helper()
-		res, err := env.tenants.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		res, err := env.tenants.GetTenant(context.Background(), &publirav1.GetTenantRequest{
 			Tenant: tenantContext(env.tenant),
-		}))
+		})
 		if err != nil {
 			t.Fatalf("GetTenant: %v", err)
 		}
-		return res.Msg.AcceptsAppStorePayments, res.Msg.AcceptsGooglePlayPayments
+		return res.AcceptsAppStorePayments, res.AcceptsGooglePlayPayments
 	}
 	exec := func(query string) {
 		t.Helper()
@@ -358,11 +359,11 @@ func TestDBConfirmStorePurchaseRefusesAnAppStoreTransactionItCannotMatch(t *test
 
 	t.Run("a chain Apple did not issue", func(t *testing.T) {
 		transaction := env.appStoreTransaction("2000000000000007", intent)
-		_, err := env.client.ConfirmStorePurchase(context.Background(), newBearerRequest(&publirav1.ConfirmStorePurchaseRequest{
+		_, err := env.client.ConfirmStorePurchase(testutil.WithBearer(context.Background(), env.token), &publirav1.ConfirmStorePurchaseRequest{
 			Tenant:      tenantContext(env.tenant),
 			Store:       publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
 			Transaction: appstoretest.NewUnmarkedSigner(t).Sign(t, transaction),
-		}, env.token))
+		})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("ConfirmStorePurchase code = %v, want invalid_argument", connect.CodeOf(err))
 		}
@@ -538,11 +539,11 @@ func TestDBStartStorePurchaseRefusesAStoreThatIsNotReady(t *testing.T) {
 		"UPDATE tenant_google_play_config SET enabled = false WHERE tenant_id = $1", env.tenant.ID); err != nil {
 		t.Fatalf("switch Google Play off: %v", err)
 	}
-	_, err := env.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
+	_, err := env.client.StartStorePurchase(testutil.WithBearer(context.Background(), env.token), &publirav1.StartStorePurchaseRequest{
 		Tenant:    tenantContext(env.tenant),
 		EpisodeId: env.episode.ID.String(),
 		Store:     publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY,
-	}, env.token))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartStorePurchase through a store that is off: code = %v, want failed_precondition", connect.CodeOf(err))
 	}
@@ -557,11 +558,11 @@ func TestDBStartStorePurchaseRefusesAStoreWhoseKeyDoesNotDecrypt(t *testing.T) {
 		"UPDATE tenant_app_store_config SET private_key_encrypted = 'enc:v1:not-a-key' WHERE tenant_id = $1", env.tenant.ID); err != nil {
 		t.Fatalf("store a key that does not decrypt: %v", err)
 	}
-	_, err := env.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
+	_, err := env.client.StartStorePurchase(testutil.WithBearer(context.Background(), env.token), &publirav1.StartStorePurchaseRequest{
 		Tenant:    tenantContext(env.tenant),
 		EpisodeId: env.episode.ID.String(),
 		Store:     publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
-	}, env.token))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("StartStorePurchase through a store whose key does not decrypt: code = %v, want failed_precondition", connect.CodeOf(err))
 	}

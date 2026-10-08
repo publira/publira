@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"net/url"
 	"regexp"
 	"slices"
@@ -12,12 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -63,51 +64,51 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
 			AddRow(uuid.Must(uuid.NewV7()), seriesImageID, "square", "md", "image/webp", int64(2048), int32(512), int32(512)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
-	if len(resp.Msg.Series) != 1 {
-		t.Fatalf("series count = %d, want 1", len(resp.Msg.Series))
+	if len(resp.Series) != 1 {
+		t.Fatalf("series count = %d, want 1", len(resp.Series))
 	}
-	if resp.Msg.Series[0].PublicId != "SERIESPUB" {
-		t.Fatalf("series public_id = %q, want SERIESPUB", resp.Msg.Series[0].PublicId)
+	if resp.Series[0].PublicId != "SERIESPUB" {
+		t.Fatalf("series public_id = %q, want SERIESPUB", resp.Series[0].PublicId)
 	}
-	if len(resp.Msg.Series[0].Creators) != 1 || resp.Msg.Series[0].Creators[0].IconImageUrl == "" {
-		t.Fatalf("series creators = %+v, want creator icon_image_url", resp.Msg.Series[0].Creators)
+	if len(resp.Series[0].Creators) != 1 || resp.Series[0].Creators[0].IconImageUrl == "" {
+		t.Fatalf("series creators = %+v, want creator icon_image_url", resp.Series[0].Creators)
 	}
-	assertCreatorRole(t, resp.Msg.Series[0].Creators[0])
-	if got := len(resp.Msg.Series[0].EyeCatchImageVariants); got != 1 {
+	assertCreatorRole(t, resp.Series[0].Creators[0])
+	if got := len(resp.Series[0].EyeCatchImageVariants); got != 1 {
 		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
 	}
-	if resp.Msg.Series[0].EyeCatchImageVariants[0].Url == "" {
+	if resp.Series[0].EyeCatchImageVariants[0].Url == "" {
 		t.Fatalf("eye_catch_image_variants url is empty")
 	}
 	// A list card states the same three things the detail page does, so a
 	// storefront does not have to open a series to know it has ended or who it
 	// is for.
-	if resp.Msg.Series[0].Status != publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED {
-		t.Fatalf("series status = %s, want COMPLETED", resp.Msg.Series[0].Status)
+	if resp.Series[0].Status != publirattypesv1.SeriesStatus_SERIES_STATUS_COMPLETED {
+		t.Fatalf("series status = %s, want COMPLETED", resp.Series[0].Status)
 	}
-	if want := []int32{2, 6}; !slices.Equal(resp.Msg.Series[0].ScheduleWeekdays, want) {
-		t.Fatalf("series schedule_weekdays = %v, want %v", resp.Msg.Series[0].ScheduleWeekdays, want)
+	if want := []int32{2, 6}; !slices.Equal(resp.Series[0].ScheduleWeekdays, want) {
+		t.Fatalf("series schedule_weekdays = %v, want %v", resp.Series[0].ScheduleWeekdays, want)
 	}
-	if resp.Msg.Series[0].AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
-		t.Fatalf("series age_rating = %s, want R15", resp.Msg.Series[0].AgeRating)
+	if resp.Series[0].AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
+		t.Fatalf("series age_rating = %s, want R15", resp.Series[0].AgeRating)
 	}
 	// A card says how much of the series a reader can open for nothing, so a
 	// storefront can shelve it without asking the detail page.
-	if resp.Msg.Series[0].FreeEpisodeCount != 2 {
-		t.Fatalf("series free_episode_count = %d, want 2", resp.Msg.Series[0].FreeEpisodeCount)
+	if resp.Series[0].FreeEpisodeCount != 2 {
+		t.Fatalf("series free_episode_count = %d, want 2", resp.Series[0].FreeEpisodeCount)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty when every row fits in one page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty when every row fits in one page", resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -172,22 +173,22 @@ func TestCatalogListPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now, ids[:2]))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
 
-	if got := len(resp.Msg.Series); got != 2 {
+	if got := len(resp.Series); got != 2 {
 		t.Fatalf("series count = %d, want the over-fetched row dropped", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token for the next page")
 	}
 
@@ -212,24 +213,24 @@ func TestCatalogListPublishedSeriesFollowsNextToken(t *testing.T) {
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now.Add(-2*time.Second), ids))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  2,
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
 
-	if got := len(resp.Msg.Series); got != 1 {
+	if got := len(resp.Series); got != 1 {
 		t.Fatalf("series count = %d, want 1", got)
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the page the client came from")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 
 	assertPublicExpectations(t, mock)
@@ -257,27 +258,27 @@ func TestCatalogListPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T) {
 			AddRow(olderID, "SERIES_OLD", "Older", nil, "ongoing", []byte("{}"), "all", now.Add(-2*time.Second), nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
 			AddRow(newerID, "SERIES_NEW", "Newer", nil, "ongoing", []byte("{}"), "all", now.Add(-time.Second), nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  2,
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
 
-	got := make([]string, 0, len(resp.Msg.Series))
-	for _, series := range resp.Msg.Series {
+	got := make([]string, 0, len(resp.Series))
+	for _, series := range resp.Series {
 		got = append(got, series.PublicId)
 	}
 	if !slices.Equal(got, []string{"SERIES_NEW", "SERIES_OLD"}) {
 		t.Fatalf("series = %v, want the backward page flipped back to newest first", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 
@@ -300,33 +301,33 @@ func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 				WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, boundaryID, false, sortArg, int32(21)).
 				WillReturnRows(seriesScanRows())
 
-			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-			resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			resp, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Order:  test.order,
 				Token:  token,
-			}))
+			})
 			if err != nil {
 				t.Fatalf("ListPublishedSeries: %v", err)
 			}
 
-			if len(resp.Msg.Series) != 0 {
-				t.Fatalf("series = %+v, want an empty page", resp.Msg.Series)
+			if len(resp.Series) != 0 {
+				t.Fatalf("series = %+v, want an empty page", resp.Series)
 			}
 			wantPrevious := test.direction == pagination.Forward
-			if (resp.Msg.PreviousToken != "") != wantPrevious {
-				t.Fatalf("previous_token = %q, want present: %t", resp.Msg.PreviousToken, wantPrevious)
+			if (resp.PreviousToken != "") != wantPrevious {
+				t.Fatalf("previous_token = %q, want present: %t", resp.PreviousToken, wantPrevious)
 			}
-			if (resp.Msg.NextToken != "") == wantPrevious {
-				t.Fatalf("next_token = %q, want present: %t", resp.Msg.NextToken, !wantPrevious)
+			if (resp.NextToken != "") == wantPrevious {
+				t.Fatalf("next_token = %q, want present: %t", resp.NextToken, !wantPrevious)
 			}
 
 			// The recovery token points back the way the client came and is
 			// marked inclusive, so the boundary row is in the page it returns.
-			recoveryToken := resp.Msg.PreviousToken
+			recoveryToken := resp.PreviousToken
 			recoveryDirection := pagination.Backward
 			if test.direction == pagination.Backward {
-				recoveryToken = resp.Msg.NextToken
+				recoveryToken = resp.NextToken
 				recoveryDirection = pagination.Forward
 			}
 			cursor, err := decodeSurfaceToken(recoveryToken, "web")
@@ -428,23 +429,23 @@ func TestCatalogListPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T
 				WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, boundaryID, true, sortArg, int32(21)).
 				WillReturnRows(seriesScanRows())
 
-			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-			resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			resp, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Order:  test.order,
 				Token:  token,
-			}))
+			})
 			if err != nil {
 				t.Fatalf("ListPublishedSeries: %v", err)
 			}
 
-			if len(resp.Msg.Series) != 0 {
-				t.Fatalf("series = %+v, want an empty page", resp.Msg.Series)
+			if len(resp.Series) != 0 {
+				t.Fatalf("series = %+v, want an empty page", resp.Series)
 			}
-			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+			if resp.PreviousToken != "" || resp.NextToken != "" {
 				t.Fatalf(
 					"previous_token = %q / next_token = %q, want both empty once recovery also came back empty",
-					resp.Msg.PreviousToken, resp.Msg.NextToken,
+					resp.PreviousToken, resp.NextToken,
 				)
 			}
 
@@ -491,11 +492,11 @@ func TestCatalogListPublishedSeriesSortsByRequestedOrder(t *testing.T) {
 				WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, nil, false, nil, int32(21)).
 				WillReturnRows(seriesScanRows())
 
-			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-			_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			_, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Order:  test.order,
-			}))
+			})
 			if err != nil {
 				t.Fatalf("ListPublishedSeries: %v", err)
 			}
@@ -517,12 +518,12 @@ func TestCatalogListPublishedSeriesTitleTokenCarriesTheTitleKey(t *testing.T) {
 		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, boundaryID, false, "Series 001", int32(21)).
 		WillReturnRows(seriesScanRows())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Order:  publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC,
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
@@ -537,12 +538,12 @@ func TestCatalogListPublishedSeriesRejectsTokenFromAnotherOrder(t *testing.T) {
 	token := webToken(pagination.Forward, "published_at_desc", time.Now().UTC().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Order:  publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC,
 		Token:  token,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument when the token was built for another order", err)
 	}
@@ -556,11 +557,11 @@ func TestCatalogListPublishedSeriesRejectsUnknownOrder(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Order:  publirav1.SeriesOrder(99),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
 	}
@@ -584,11 +585,11 @@ func TestCatalogListPublishedSeriesRejectsUnknownFourthKey(t *testing.T) {
 		"exclusive",
 	)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  token,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
 	}
@@ -605,11 +606,11 @@ func TestCatalogListPublishedSeriesRejectsBrokenToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  "not-a-token",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
 	}
@@ -627,11 +628,11 @@ func TestCatalogListPublishedSeriesLimitOutOfRangeUsesDefault(t *testing.T) {
 		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, nil, false, nil, int32(21)).
 		WillReturnRows(seriesScanRows())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  101,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
@@ -664,25 +665,25 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesBID, "SERIES_B", "Series B", "Synopsis B", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	respA, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	respA, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantAID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries for TENANT_A: %v", err)
 	}
-	respB, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	respB, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantBID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries for TENANT_B: %v", err)
 	}
 
-	if len(respA.Msg.Series) != 1 || respA.Msg.Series[0].PublicId != "SERIES_A" {
-		t.Fatalf("TENANT_A response = %+v, want SERIES_A only", respA.Msg.Series)
+	if len(respA.Series) != 1 || respA.Series[0].PublicId != "SERIES_A" {
+		t.Fatalf("TENANT_A response = %+v, want SERIES_A only", respA.Series)
 	}
-	if len(respB.Msg.Series) != 1 || respB.Msg.Series[0].PublicId != "SERIES_B" {
-		t.Fatalf("TENANT_B response = %+v, want SERIES_B only", respB.Msg.Series)
+	if len(respB.Series) != 1 || respB.Series[0].PublicId != "SERIES_B" {
+		t.Fatalf("TENANT_B response = %+v, want SERIES_B only", respB.Series)
 	}
 
 	assertPublicExpectations(t, mock)
@@ -762,57 +763,57 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "enabled", "recharge_hours", "access_hours", "excluded_latest_count"}).
 			AddRow(seriesID, true, int32(23), int32(72), int32(1)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIESPUB",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeriesDetail: %v", err)
 	}
 
-	if resp.Msg.Series == nil {
+	if resp.Series == nil {
 		t.Fatalf("series is nil")
 	}
-	if resp.Msg.Series.PublicId != "SERIESPUB" {
-		t.Fatalf("series public_id = %q, want SERIESPUB", resp.Msg.Series.PublicId)
+	if resp.Series.PublicId != "SERIESPUB" {
+		t.Fatalf("series public_id = %q, want SERIESPUB", resp.Series.PublicId)
 	}
-	if resp.Msg.Series.Label == nil || resp.Msg.Series.Label.Name != "Weekly Jump" {
-		t.Fatalf("series label = %+v, want Weekly Jump", resp.Msg.Series.Label)
+	if resp.Series.Label == nil || resp.Series.Label.Name != "Weekly Jump" {
+		t.Fatalf("series label = %+v, want Weekly Jump", resp.Series.Label)
 	}
-	if len(resp.Msg.Series.Creators) != 1 || resp.Msg.Series.Creators[0].Name != "Creator A" {
-		t.Fatalf("series creators = %+v, want one creator Creator A", resp.Msg.Series.Creators)
+	if len(resp.Series.Creators) != 1 || resp.Series.Creators[0].Name != "Creator A" {
+		t.Fatalf("series creators = %+v, want one creator Creator A", resp.Series.Creators)
 	}
-	assertCreatorRole(t, resp.Msg.Series.Creators[0])
-	if got := len(resp.Msg.Series.EyeCatchImageVariants); got != 1 {
+	assertCreatorRole(t, resp.Series.Creators[0])
+	if got := len(resp.Series.EyeCatchImageVariants); got != 1 {
 		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
 	}
-	if resp.Msg.Series.Creators[0].IconImageUrl == "" {
+	if resp.Series.Creators[0].IconImageUrl == "" {
 		t.Fatalf("creator icon_image_url is empty")
 	}
-	if len(resp.Msg.Episodes) != 1 || resp.Msg.Episodes[0].PublicId != "EP001" {
-		t.Fatalf("episodes = %+v, want one published episode EP001", resp.Msg.Episodes)
+	if len(resp.Episodes) != 1 || resp.Episodes[0].PublicId != "EP001" {
+		t.Fatalf("episodes = %+v, want one published episode EP001", resp.Episodes)
 	}
-	if got := resp.Msg.Episodes[0].PurchaseAvailability; got != publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP {
+	if got := resp.Episodes[0].PurchaseAvailability; got != publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP {
 		t.Fatalf("episode purchase_availability = %s, want APP", got)
 	}
-	if resp.Msg.Series.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_ONGOING {
-		t.Fatalf("series status = %s, want ONGOING", resp.Msg.Series.Status)
+	if resp.Series.Status != publirattypesv1.SeriesStatus_SERIES_STATUS_ONGOING {
+		t.Fatalf("series status = %s, want ONGOING", resp.Series.Status)
 	}
-	if want := []int32{1, 4}; !slices.Equal(resp.Msg.Series.ScheduleWeekdays, want) {
-		t.Fatalf("series schedule_weekdays = %v, want %v", resp.Msg.Series.ScheduleWeekdays, want)
+	if want := []int32{1, 4}; !slices.Equal(resp.Series.ScheduleWeekdays, want) {
+		t.Fatalf("series schedule_weekdays = %v, want %v", resp.Series.ScheduleWeekdays, want)
 	}
-	if resp.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
-		t.Fatalf("series age_rating = %s, want R15", resp.Msg.Series.AgeRating)
+	if resp.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R15 {
+		t.Fatalf("series age_rating = %s, want R15", resp.Series.AgeRating)
 	}
-	if resp.Msg.Series.FreeEpisodeCount != 1 {
-		t.Fatalf("series free_episode_count = %d, want 1", resp.Msg.Series.FreeEpisodeCount)
+	if resp.Series.FreeEpisodeCount != 1 {
+		t.Fatalf("series free_episode_count = %d, want 1", resp.Series.FreeEpisodeCount)
 	}
-	if resp.Msg.Series.RatingAverage != 4.2 || resp.Msg.Series.RatingCount != 128 {
+	if resp.Series.RatingAverage != 4.2 || resp.Series.RatingCount != 128 {
 		t.Fatalf("series rating = %v over %d readers, want 4.2 over 128",
-			resp.Msg.Series.RatingAverage, resp.Msg.Series.RatingCount)
+			resp.Series.RatingAverage, resp.Series.RatingCount)
 	}
-	waitFree := resp.Msg.WaitFree
+	waitFree := resp.WaitFree
 	if waitFree == nil {
 		t.Fatalf("wait_free is unset, want the series' rule")
 	}
@@ -847,21 +848,21 @@ func TestCatalogGetEpisodeDetailReportsTheSeriesAgeRating(t *testing.T) {
 	expectEpisodeCreditsLookup(mock)
 	expectEpisodePreviewImagesLookup(mock, episodeID)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE001",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	if resp.Msg.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18 {
-		t.Fatalf("series age_rating = %s, want R18", resp.Msg.Series.AgeRating)
+	if resp.Series.AgeRating != publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18 {
+		t.Fatalf("series age_rating = %s, want R18", resp.Series.AgeRating)
 	}
 	// The rating states who the series is for; it decides nothing about the
 	// body, which stays locked here because the episode is paid.
-	if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
-		t.Fatalf("access = %s, want LOCKED", resp.Msg.Access)
+	if resp.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+		t.Fatalf("access = %s, want LOCKED", resp.Access)
 	}
 
 	assertPublicExpectations(t, mock)
@@ -883,11 +884,11 @@ func TestCatalogGetEpisodeDetailFailsOnAStoredRatingItDoesNotKnow(t *testing.T) 
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "r12", nil, nil, nil, nil, nil, false, nil, int64(0), "all"))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE001",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetEpisodeDetail code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -906,11 +907,11 @@ func TestCatalogGetSeriesDetailReturnsPermissionDeniedForUnpublishedSeries(t *te
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "status", "schedule_weekdays", "age_rating", "comment_mode", "is_published", "published_at", "free_episode_count", "creators", "genres", "tags", "episodes"}).
 			AddRow(uuid.Must(uuid.NewV7()), "SERIES_DRAFT", "Draft Series", nil, nil, nil, nil, nil, "ongoing", []byte("{}"), "all", nil, false, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`[]`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIES_DRAFT",
-	}))
+	})
 
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodePermissionDenied)
@@ -929,11 +930,11 @@ func TestCatalogGetSeriesDetailReturnsNotFoundForMissingSeries(t *testing.T) {
 		WithArgs("web", "SERIES_MISSING", tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "status", "schedule_weekdays", "age_rating", "comment_mode", "is_published", "published_at", "free_episode_count", "creators", "genres", "tags", "episodes"}))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIES_MISSING",
-	}))
+	})
 
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodeNotFound)
@@ -952,11 +953,11 @@ func TestCatalogGetSeriesDetailDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs("web", "SERIESPUB", tenantID).
 		WillReturnError(errors.New(`pq: relation "series" does not exist`))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIESPUB",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -976,11 +977,11 @@ func TestCatalogGetSeriesDetailPreservesContextCanceled(t *testing.T) {
 		WithArgs("web", "SERIESPUB", tenantID).
 		WillReturnError(context.Canceled)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIESPUB",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeCanceled {
 		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
 	}
@@ -997,10 +998,10 @@ func TestCatalogListPublishedSeriesDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, nil, false, nil, int32(21)).
 		WillReturnError(errors.New(`pq: relation "series" does not exist`))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ListPublishedSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -1071,30 +1072,30 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 				expectEpisodePreviewImagesLookup(mock, normalEpisodeID)
 			}
 
-			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-			resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				PublicId: tc.publicID,
-			}))
+			})
 
 			if tc.wantCode == 0 {
 				if err != nil {
 					t.Fatalf("GetEpisodeDetail: %v", err)
 				}
-				if resp.Msg.Episode == nil {
+				if resp.Episode == nil {
 					t.Fatalf("episode is nil")
 				}
-				if resp.Msg.Episode.PublicId != tc.publicID {
-					t.Fatalf("episode public_id = %q, want %q", resp.Msg.Episode.PublicId, tc.publicID)
+				if resp.Episode.PublicId != tc.publicID {
+					t.Fatalf("episode public_id = %q, want %q", resp.Episode.PublicId, tc.publicID)
 				}
-				if resp.Msg.Series == nil || resp.Msg.Series.PublicId != "SERIES001" {
-					t.Fatalf("series public_id = %q, want SERIES001", resp.Msg.Series.GetPublicId())
+				if resp.Series == nil || resp.Series.PublicId != "SERIES001" {
+					t.Fatalf("series public_id = %q, want SERIES001", resp.Series.GetPublicId())
 				}
-				if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
-					t.Fatalf("access = %v, want %v", resp.Msg.Access, publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED)
+				if resp.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+					t.Fatalf("access = %v, want %v", resp.Access, publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED)
 				}
-				if len(resp.Msg.Images) != 0 {
-					t.Fatalf("images count = %d, want 0 for locked paid episode", len(resp.Msg.Images))
+				if len(resp.Images) != 0 {
+					t.Fatalf("images count = %d, want 0 for locked paid episode", len(resp.Images))
 				}
 			} else {
 				if connect.CodeOf(err) != tc.wantCode {
@@ -1274,49 +1275,40 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 				expectEpisodePreviewImagesLookup(mock, episodeID, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()))
 			}
 
-			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-			var req *connect.Request[publirav1.GetEpisodeDetailRequest]
+			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			ctx := context.Background()
 			switch {
 			case tc.authed:
-				req = newAuthedPublicRequest(&publirav1.GetEpisodeDetailRequest{
-					Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-					PublicId: "EPISODE001",
-				}, tenantID.String())
+				ctx = testutil.WithBearer(ctx, issueTestPublicToken(tenantID.String()))
 			case tc.invalidBearer:
-				req = connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
-					Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-					PublicId: "EPISODE001",
-				})
-				req.Header().Set("Authorization", "Bearer not-a-valid-jwt")
-			default:
-				req = connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
-					Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-					PublicId: "EPISODE001",
-				})
+				ctx = testutil.WithBearer(ctx, "not-a-valid-jwt")
 			}
 
-			resp, err := client.GetEpisodeDetail(context.Background(), req)
+			resp, err := client.GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{
+				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				PublicId: "EPISODE001",
+			})
 			if err != nil {
 				t.Fatalf("GetEpisodeDetail: %v", err)
 			}
-			if resp.Msg.Access != tc.wantAccess {
-				t.Fatalf("access = %v, want %v", resp.Msg.Access, tc.wantAccess)
+			if resp.Access != tc.wantAccess {
+				t.Fatalf("access = %v, want %v", resp.Access, tc.wantAccess)
 			}
-			if resp.Msg.EntitlementSource != tc.wantSource {
-				t.Fatalf("entitlement source = %v, want %v", resp.Msg.EntitlementSource, tc.wantSource)
+			if resp.EntitlementSource != tc.wantSource {
+				t.Fatalf("entitlement source = %v, want %v", resp.EntitlementSource, tc.wantSource)
 			}
-			if len(resp.Msg.Images) != tc.wantImageCount {
-				t.Fatalf("images count = %d, want %d", len(resp.Msg.Images), tc.wantImageCount)
+			if len(resp.Images) != tc.wantImageCount {
+				t.Fatalf("images count = %d, want %d", len(resp.Images), tc.wantImageCount)
 			}
-			for _, image := range resp.Msg.Images {
+			for _, image := range resp.Images {
 				assertEpisodeImageURL(t, image.ImageUrl, tenantID, episodeID, tc.wantAccess)
 			}
 			// A withheld body is answered with the preview of its opening
 			// pages in its place, and an open one with nothing beside it.
-			if len(resp.Msg.PreviewImages) != wantPreviewCount {
-				t.Fatalf("preview images count = %d, want %d", len(resp.Msg.PreviewImages), wantPreviewCount)
+			if len(resp.PreviewImages) != wantPreviewCount {
+				t.Fatalf("preview images count = %d, want %d", len(resp.PreviewImages), wantPreviewCount)
 			}
-			for _, preview := range resp.Msg.PreviewImages {
+			for _, preview := range resp.PreviewImages {
 				want := "/images/episodes/" + preview.Id + "/preview"
 				if preview.ImageUrl != want {
 					t.Fatalf("preview image_url = %q, want %q with no token", preview.ImageUrl, want)
@@ -1374,16 +1366,16 @@ func TestCatalogGetEpisodeDetailCarriesItsNeighbors(t *testing.T) {
 	expectEpisodeCreditsLookup(mock)
 	expectEpisodePreviewImagesLookup(mock, episodeID)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE002",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
 
-	previous := resp.Msg.PreviousEpisode
+	previous := resp.PreviousEpisode
 	if previous.GetPublicId() != "EPISODE001" || previous.GetTitle() != "Chapter One" || previous.GetOrderIndex() != 1 {
 		t.Fatalf("previous_episode = %+v, want Chapter One at order 1", previous)
 	}
@@ -1391,7 +1383,7 @@ func TestCatalogGetEpisodeDetailCarriesItsNeighbors(t *testing.T) {
 		t.Fatalf("previous_episode price = %d, is_free = %t, want a free neighbour", previous.GetPrice(), previous.GetIsFree())
 	}
 
-	next := resp.Msg.NextEpisode
+	next := resp.NextEpisode
 	if next.GetPublicId() != "EPISODE003" || next.GetTitle() != "Chapter Three" || next.GetOrderIndex() != 3 {
 		t.Fatalf("next_episode = %+v, want Chapter Three at order 3", next)
 	}
@@ -1427,15 +1419,15 @@ func TestCatalogGetEpisodeDetailMarksAPricedNeighborInAFreeWindowAsFree(t *testi
 	expectEpisodeCreditsLookup(mock)
 	expectEpisodePreviewImagesLookup(mock, episodeID)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE001",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	next := resp.Msg.NextEpisode
+	next := resp.NextEpisode
 	if !next.GetIsFree() {
 		t.Fatalf("next_episode is_free = %t, want a neighbour inside a free window to read as free", next.GetIsFree())
 	}
@@ -1444,7 +1436,7 @@ func TestCatalogGetEpisodeDetailMarksAPricedNeighborInAFreeWindowAsFree(t *testi
 	}
 	// The same episode is where the reader can go on for nothing, and says so
 	// with the same price beside it.
-	nextFree := resp.Msg.NextFreeEpisode
+	nextFree := resp.NextFreeEpisode
 	if nextFree.GetPublicId() != "EPISODE002" || !nextFree.GetIsFree() || nextFree.GetPrice() != 500 {
 		t.Fatalf("next_free_episode = %+v, want EPISODE002, free at a price of 500", nextFree)
 	}
@@ -1476,19 +1468,19 @@ func TestCatalogGetEpisodeDetailLeavesAMissingNeighborUnset(t *testing.T) {
 	expectEpisodeCreditsLookup(mock)
 	expectEpisodePreviewImagesLookup(mock, episodeID)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE001",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	if resp.Msg.PreviousEpisode != nil {
-		t.Fatalf("previous_episode = %+v, want none before the first episode", resp.Msg.PreviousEpisode)
+	if resp.PreviousEpisode != nil {
+		t.Fatalf("previous_episode = %+v, want none before the first episode", resp.PreviousEpisode)
 	}
-	if resp.Msg.NextEpisode.GetPublicId() != "EPISODE002" {
-		t.Fatalf("next_episode = %q, want EPISODE002", resp.Msg.NextEpisode.GetPublicId())
+	if resp.NextEpisode.GetPublicId() != "EPISODE002" {
+		t.Fatalf("next_episode = %q, want EPISODE002", resp.NextEpisode.GetPublicId())
 	}
 
 	assertPublicExpectations(t, mock)

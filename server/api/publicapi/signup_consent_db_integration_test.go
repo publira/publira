@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -33,13 +33,13 @@ func signUpAgreeing(env *publicDBEnv, tenant testutil.Tenant, email string, vers
 	for _, id := range versionIDs {
 		ids = append(ids, id.String())
 	}
-	_, err := env.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+	_, err := env.authClient().CreateUser(context.Background(), &publirav1.CreateUserRequest{
 		Tenant:               tenantContext(tenant),
 		Name:                 "Newcomer",
 		Email:                email,
 		Password:             "newcomer-password",
 		AgreedPageVersionIds: ids,
-	}))
+	})
 	return err
 }
 

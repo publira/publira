@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/platformsmtp"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/secretupdate"
 )
 
@@ -39,7 +40,7 @@ func (s *platformServer) emailSettingsError(ctx context.Context, err error) erro
 	var failure *platformsmtp.TestFailure
 	switch {
 	case errors.Is(err, platformsmtp.ErrConflict):
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	case errors.As(err, &failure):
 		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, errors.New("smtp connection test failed"), failure.Reason)
 	}
@@ -48,8 +49,8 @@ func (s *platformServer) emailSettingsError(ctx context.Context, err error) erro
 
 func (s *platformServer) GetPlatformEmailSettings(
 	ctx context.Context,
-	_req *connect.Request[publirasplatformv1.GetPlatformEmailSettingsRequest],
-) (*connect.Response[publirasplatformv1.GetPlatformEmailSettingsResponse], error) {
+	_req *publirasplatformv1.GetPlatformEmailSettingsRequest,
+) (*publirasplatformv1.GetPlatformEmailSettingsResponse, error) {
 	config, found, err := platformsmtp.Get(ctx, s.queriesFor(ctx))
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get platform smtp config", err)
@@ -58,31 +59,31 @@ func (s *platformServer) GetPlatformEmailSettings(
 	if found {
 		settings = platformEmailSettingsToProto(config)
 	}
-	return connect.NewResponse(&publirasplatformv1.GetPlatformEmailSettingsResponse{Settings: settings}), nil
+	return &publirasplatformv1.GetPlatformEmailSettingsResponse{Settings: settings}, nil
 }
 
 func (s *platformServer) UpdatePlatformEmailSettings(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.UpdatePlatformEmailSettingsRequest],
-) (*connect.Response[publirasplatformv1.UpdatePlatformEmailSettingsResponse], error) {
-	expectedRevision := req.Msg.GetExpectedRevision()
+	req *publirasplatformv1.UpdatePlatformEmailSettingsRequest,
+) (*publirasplatformv1.UpdatePlatformEmailSettingsResponse, error) {
+	expectedRevision := req.GetExpectedRevision()
 	params := platformsmtp.SaveParams{
 		Settings: emailsettings.SMTPSettings{
-			Host:        req.Msg.GetHost(),
-			Port:        req.Msg.GetPort(),
-			Username:    req.Msg.GetUsername(),
-			Encryption:  req.Msg.GetEncryption(),
-			FromAddress: req.Msg.GetFromAddress(),
-			ReplyTo:     req.Msg.GetReplyTo(),
+			Host:        req.GetHost(),
+			Port:        req.GetPort(),
+			Username:    req.GetUsername(),
+			Encryption:  req.GetEncryption(),
+			FromAddress: req.GetFromAddress(),
+			ReplyTo:     req.GetReplyTo(),
 		},
-		PasswordMode:     secretupdate.Mode(req.Msg.GetPasswordUpdateMode()),
-		Password:         req.Msg.GetPassword(),
+		PasswordMode:     secretupdate.Mode(req.GetPasswordUpdateMode()),
+		Password:         req.GetPassword(),
 		ExpectedRevision: &expectedRevision,
 	}
 	if err := params.Validate(); err != nil {
 		return nil, s.emailSettingsError(ctx, err)
 	}
-	actor, err := s.auditActor(ctx, req)
+	actor, err := s.auditActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -91,43 +92,43 @@ func (s *platformServer) UpdatePlatformEmailSettings(
 	if err != nil {
 		return nil, s.emailSettingsError(ctx, err)
 	}
-	return connect.NewResponse(&publirasplatformv1.UpdatePlatformEmailSettingsResponse{
+	return &publirasplatformv1.UpdatePlatformEmailSettingsResponse{
 		Settings: platformEmailSettingsToProto(saved),
-	}), nil
+	}, nil
 }
 
 func (s *platformServer) SendPlatformSmtpTestEmail(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.SendPlatformSmtpTestEmailRequest],
-) (*connect.Response[publirasplatformv1.SendPlatformSmtpTestEmailResponse], error) {
-	actor, err := s.requirePlatformActor(ctx, req.Header())
+	req *publirasplatformv1.SendPlatformSmtpTestEmailRequest,
+) (*publirasplatformv1.SendPlatformSmtpTestEmailResponse, error) {
+	actor, err := s.requirePlatformActor(ctx, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 	if s.tester == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("smtp tester is unavailable"))
+		return nil, connect.NewError(connect.CodeInternal, "smtp tester is unavailable")
 	}
 
 	tester := platformsmtp.Tester{Encryptor: s.encryptor, SMTP: s.tester, Recorder: s.recorder}
-	recipient, err := tester.Send(ctx, s.queriesFor(ctx), actor.audit(req.Header()), platformsmtp.TestParams{
+	recipient, err := tester.Send(ctx, s.queriesFor(ctx), actor.audit(rpcmiddleware.RequestHeader(ctx)), platformsmtp.TestParams{
 		Settings: emailsettings.SMTPSettings{
-			Host:        req.Msg.GetHost(),
-			Port:        req.Msg.GetPort(),
-			Username:    req.Msg.GetUsername(),
-			Encryption:  req.Msg.GetEncryption(),
-			FromAddress: req.Msg.GetFromAddress(),
-			ReplyTo:     req.Msg.GetReplyTo(),
+			Host:        req.GetHost(),
+			Port:        req.GetPort(),
+			Username:    req.GetUsername(),
+			Encryption:  req.GetEncryption(),
+			FromAddress: req.GetFromAddress(),
+			ReplyTo:     req.GetReplyTo(),
 		},
-		PasswordMode:   secretupdate.Mode(req.Msg.GetPasswordUpdateMode()),
-		Password:       req.Msg.GetPassword(),
-		RecipientType:  int32(req.Msg.GetRecipientType()),
-		RecipientEmail: req.Msg.GetRecipientEmail(),
+		PasswordMode:   secretupdate.Mode(req.GetPasswordUpdateMode()),
+		Password:       req.GetPassword(),
+		RecipientType:  int32(req.GetRecipientType()),
+		RecipientEmail: req.GetRecipientEmail(),
 		SelfEmail:      actor.Email,
 	})
 	if err != nil {
 		return nil, s.emailSettingsError(ctx, err)
 	}
-	return connect.NewResponse(&publirasplatformv1.SendPlatformSmtpTestEmailResponse{
+	return &publirasplatformv1.SendPlatformSmtpTestEmailResponse{
 		RecipientEmail: recipient,
-	}), nil
+	}, nil
 }

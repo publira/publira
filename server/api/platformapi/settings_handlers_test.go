@@ -4,16 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/tenanttz"
@@ -32,20 +32,20 @@ func TestGetPlatformSettingsReturnsStoredTimezone(t *testing.T) {
 	now := time.Now()
 	expectPlatformConfigLookup(mock, "America/Los_Angeles", "en", now)
 
-	resp, err := server.GetPlatformSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformSettingsRequest{}))
+	resp, err := server.GetPlatformSettings(context.Background(), &publirasplatformv1.GetPlatformSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformSettings: %v", err)
 	}
-	if resp.Msg.Settings.DefaultTimezone != "America/Los_Angeles" {
-		t.Fatalf("default_timezone = %q, want America/Los_Angeles", resp.Msg.Settings.DefaultTimezone)
+	if resp.Settings.DefaultTimezone != "America/Los_Angeles" {
+		t.Fatalf("default_timezone = %q, want America/Los_Angeles", resp.Settings.DefaultTimezone)
 	}
-	if resp.Msg.Settings.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.Settings.DefaultLocale)
+	if resp.Settings.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.Settings.DefaultLocale)
 	}
 	// The console saves one field at a time and sends this back, so it is the
 	// read's answer as much as the two values are.
-	if resp.Msg.Settings.Revision != 1 {
-		t.Fatalf("revision = %d, want 1", resp.Msg.Settings.Revision)
+	if resp.Settings.Revision != 1 {
+		t.Fatalf("revision = %d, want 1", resp.Settings.Revision)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -57,7 +57,7 @@ func TestGetPlatformSettingsFailsWhenRowIsMissing(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).WillReturnError(sql.ErrNoRows)
 
-	_, err := server.GetPlatformSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformSettingsRequest{}))
+	_, err := server.GetPlatformSettings(context.Background(), &publirasplatformv1.GetPlatformSettingsRequest{})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetPlatformSettings code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 	}
@@ -72,7 +72,7 @@ func TestGetPlatformSettingsFailsOnAnUnsupportedStoredLocale(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).
 		WillReturnRows(platformConfigRow("UTC", "fr", 1, now))
 
-	_, err := server.GetPlatformSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformSettingsRequest{}))
+	_, err := server.GetPlatformSettings(context.Background(), &publirasplatformv1.GetPlatformSettingsRequest{})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetPlatformSettings code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 	}
@@ -103,25 +103,25 @@ func TestUpdatePlatformSettingsPersistsTimezone(t *testing.T) {
 	now := time.Now()
 	expectPlatformSettingsWrite(mock, 3, "America/Los_Angeles", "ja", now)
 
-	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		// Surrounding whitespace is normalized away before the value is stored.
 		DefaultTimezone:  "  America/Los_Angeles  ",
 		DefaultLocale:    "ja",
 		ExpectedRevision: 3,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdatePlatformSettings: %v", err)
 	}
-	if resp.Msg.Settings.DefaultTimezone != "America/Los_Angeles" {
-		t.Fatalf("default_timezone = %q, want America/Los_Angeles", resp.Msg.Settings.DefaultTimezone)
+	if resp.Settings.DefaultTimezone != "America/Los_Angeles" {
+		t.Fatalf("default_timezone = %q, want America/Los_Angeles", resp.Settings.DefaultTimezone)
 	}
-	if resp.Msg.Settings.DefaultLocale != "ja" {
-		t.Fatalf("default_locale = %q, want ja", resp.Msg.Settings.DefaultLocale)
+	if resp.Settings.DefaultLocale != "ja" {
+		t.Fatalf("default_locale = %q, want ja", resp.Settings.DefaultLocale)
 	}
 	// The saved row is one version further along, and the response says so, so
 	// the screen can save again without reading first.
-	if resp.Msg.Settings.Revision != 4 {
-		t.Fatalf("revision = %d, want 4", resp.Msg.Settings.Revision)
+	if resp.Settings.Revision != 4 {
+		t.Fatalf("revision = %d, want 4", resp.Settings.Revision)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -131,19 +131,19 @@ func TestUpdatePlatformSettingsPersistsLocale(t *testing.T) {
 	now := time.Now()
 	expectPlatformSettingsWrite(mock, 1, "America/Los_Angeles", "en", now)
 
-	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "America/Los_Angeles",
 		DefaultLocale:    "  en  ",
 		ExpectedRevision: 1,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdatePlatformSettings: %v", err)
 	}
-	if resp.Msg.Settings.DefaultTimezone != "America/Los_Angeles" {
-		t.Fatalf("default_timezone = %q, want America/Los_Angeles", resp.Msg.Settings.DefaultTimezone)
+	if resp.Settings.DefaultTimezone != "America/Los_Angeles" {
+		t.Fatalf("default_timezone = %q, want America/Los_Angeles", resp.Settings.DefaultTimezone)
 	}
-	if resp.Msg.Settings.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.Settings.DefaultLocale)
+	if resp.Settings.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.Settings.DefaultLocale)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -155,11 +155,11 @@ func TestUpdatePlatformSettingsDatabaseErrorIsHidden(t *testing.T) {
 		WillReturnError(errors.New(`pq: relation "platform_config" does not exist`))
 	mock.ExpectRollback()
 
-	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "America/Los_Angeles",
 		DefaultLocale:    "ja",
 		ExpectedRevision: 1,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("UpdatePlatformSettings code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -185,11 +185,11 @@ func TestUpdatePlatformSettingsRejectsInvalidTimezone(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			server, mock := newOperatorHandlerTestServer(t)
 
-			_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+			_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 				DefaultTimezone:  tt.timezone,
 				DefaultLocale:    "ja",
 				ExpectedRevision: 1,
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdatePlatformSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
@@ -216,11 +216,11 @@ func TestUpdatePlatformSettingsRejectsInvalidLocale(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			server, mock := newOperatorHandlerTestServer(t)
 
-			_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+			_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 				DefaultTimezone:  "America/Los_Angeles",
 				DefaultLocale:    tt.locale,
 				ExpectedRevision: 1,
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdatePlatformSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
@@ -249,11 +249,11 @@ func TestUpdatePlatformSettingsRejectsMissingLocale(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			server, mock := newOperatorHandlerTestServer(t)
 
-			_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+			_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 				DefaultTimezone:  "America/Los_Angeles",
 				DefaultLocale:    tt.locale,
 				ExpectedRevision: 1,
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdatePlatformSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
@@ -276,11 +276,11 @@ func TestUpdatePlatformSettingsWritesTimezoneAndLocaleAtomically(t *testing.T) {
 		WillReturnError(errors.New(`pq: could not serialize access`))
 	mock.ExpectRollback()
 
-	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "America/Los_Angeles",
 		DefaultLocale:    "en",
 		ExpectedRevision: 1,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("UpdatePlatformSettings code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -300,11 +300,11 @@ func TestUpdatePlatformSettingsRejectsAStaleRevision(t *testing.T) {
 		WillReturnRows(platformConfigRow("Europe/Berlin", "en", 7, now))
 	mock.ExpectRollback()
 
-	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "America/Los_Angeles",
 		DefaultLocale:    "ja",
 		ExpectedRevision: 6,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UpdatePlatformSettings code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -326,16 +326,16 @@ func TestUpdatePlatformSettingsCreatesTheRowForRevisionZero(t *testing.T) {
 	expectOperatorAuditLogInsert(mock)
 	mock.ExpectCommit()
 
-	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "America/Los_Angeles",
 		DefaultLocale:    "en",
 		ExpectedRevision: 0,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdatePlatformSettings: %v", err)
 	}
-	if resp.Msg.Settings.Revision != 1 {
-		t.Fatalf("revision = %d, want 1", resp.Msg.Settings.Revision)
+	if resp.Settings.Revision != 1 {
+		t.Fatalf("revision = %d, want 1", resp.Settings.Revision)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -349,11 +349,11 @@ func TestUpdatePlatformSettingsRejectsAMissingRowForANamedRevision(t *testing.T)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).WillReturnError(sql.ErrNoRows)
 	mock.ExpectRollback()
 
-	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "America/Los_Angeles",
 		DefaultLocale:    "en",
 		ExpectedRevision: 4,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UpdatePlatformSettings code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -372,11 +372,11 @@ func TestUpdatePlatformSettingsReportsALostInsertRaceAsAConflict(t *testing.T) {
 		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "platform_config_pkey"})
 	mock.ExpectRollback()
 
-	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "America/Los_Angeles",
 		DefaultLocale:    "en",
 		ExpectedRevision: 0,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UpdatePlatformSettings code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -386,11 +386,11 @@ func TestUpdatePlatformSettingsReportsALostInsertRaceAsAConflict(t *testing.T) {
 func TestUpdatePlatformSettingsRejectsANegativeRevision(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "America/Los_Angeles",
 		DefaultLocale:    "en",
 		ExpectedRevision: -1,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdatePlatformSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
@@ -407,16 +407,16 @@ func TestUpdatePlatformSettingsLeavesAnUnchangedRowAlone(t *testing.T) {
 		WillReturnRows(platformConfigRow("Europe/Berlin", "ja", 5, time.Now()))
 	mock.ExpectRollback()
 
-	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  " Europe/Berlin ",
 		DefaultLocale:    "ja",
 		ExpectedRevision: 5,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdatePlatformSettings: %v", err)
 	}
-	if resp.Msg.Settings.Revision != 5 {
-		t.Fatalf("revision = %d, want the stored 5", resp.Msg.Settings.Revision)
+	if resp.Settings.Revision != 5 {
+		t.Fatalf("revision = %d, want the stored 5", resp.Settings.Revision)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }

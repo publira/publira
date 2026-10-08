@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/storeproduct"
 )
@@ -74,9 +75,9 @@ func mapPaymentSettingsUpdateError(err error) error {
 		errors.Is(err, paymentsettings.ErrSecretRequired),
 		errors.Is(err, paymentsettings.ErrFieldsRequired),
 		errors.Is(err, secretupdate.ErrInvalidMode):
-		return connect.NewError(connect.CodeInvalidArgument, err)
+		return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	case errors.Is(err, paymentsettings.ErrSecretManagerUnavailable):
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("payment secret encryption is not configured"))
+		return connect.NewError(connect.CodeFailedPrecondition, "payment secret encryption is not configured")
 	default:
 		return nil
 	}
@@ -84,9 +85,9 @@ func mapPaymentSettingsUpdateError(err error) error {
 
 func (s *adminServer) ListPaymentProviders(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListPaymentProvidersRequest],
-) (*connect.Response[publiraadminv1.ListPaymentProvidersResponse], error) {
-	if _, err := s.tenantByContext(ctx, req.Msg.Tenant); err != nil {
+	req *publiraadminv1.ListPaymentProvidersRequest,
+) (*publiraadminv1.ListPaymentProvidersResponse, error) {
+	if _, err := s.tenantByContext(ctx, req.Tenant); err != nil {
 		return nil, err
 	}
 	if _, err := s.requireTenantAdmin(ctx); err != nil {
@@ -98,16 +99,16 @@ func (s *adminServer) ListPaymentProviders(
 	for _, provider := range registered {
 		providers = append(providers, paymentProviderToProto(provider))
 	}
-	return connect.NewResponse(&publiraadminv1.ListPaymentProvidersResponse{
+	return &publiraadminv1.ListPaymentProvidersResponse{
 		Providers: providers,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) GetTenantPaymentSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantPaymentSettingsRequest],
-) (*connect.Response[publiraadminv1.GetTenantPaymentSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.GetTenantPaymentSettingsRequest,
+) (*publiraadminv1.GetTenantPaymentSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -119,16 +120,16 @@ func (s *adminServer) GetTenantPaymentSettings(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get tenant payment settings", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetTenantPaymentSettingsResponse{
+	return &publiraadminv1.GetTenantPaymentSettingsResponse{
 		Settings: tenantPaymentSettingsToProto(cfg),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) UpdateTenantPaymentSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantPaymentSettingsRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantPaymentSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantPaymentSettingsRequest,
+) (*publiraadminv1.UpdateTenantPaymentSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -137,8 +138,8 @@ func (s *adminServer) UpdateTenantPaymentSettings(
 		return nil, err
 	}
 
-	fields := make([]paymentsettings.FieldUpdate, 0, len(req.Msg.Fields))
-	for _, field := range req.Msg.Fields {
+	fields := make([]paymentsettings.FieldUpdate, 0, len(req.Fields))
+	for _, field := range req.Fields {
 		fields = append(fields, paymentsettings.FieldUpdate{
 			Name:  field.Name,
 			Mode:  secretupdate.Mode(field.Mode),
@@ -152,13 +153,13 @@ func (s *adminServer) UpdateTenantPaymentSettings(
 		txQueries := s.queriesFor(txCtx)
 		store := paymentsettings.New(txQueries, s.encryptor, s.paymentProviders, auditlog.New(txQueries, s.logger), s.logger)
 		saved, err := store.Upsert(txCtx, tenant.ID, paymentsettings.UpdateInput{
-			Provider: req.Msg.Provider,
-			Enabled:  req.Msg.Enabled,
+			Provider: req.Provider,
+			Enabled:  req.Enabled,
 			Fields:   fields,
 		}, paymentsettings.AuditMeta{
 			ActorUserID: sessionCtx.User.ID,
 			ActorRole:   sessionCtx.Role,
-			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(txCtx)),
 			TargetID:    tenant.PublicID,
 		})
 		if err != nil {
@@ -173,9 +174,9 @@ func (s *adminServer) UpdateTenantPaymentSettings(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.UpdateTenantPaymentSettingsResponse{
+	return &publiraadminv1.UpdateTenantPaymentSettingsResponse{
 		Settings: tenantPaymentSettingsToProto(cfg),
-	}), nil
+	}, nil
 }
 
 func tenantStorePaymentSettingsToProto(cfg paymentsettings.StoreConfig) (*publiraadminv1.TenantStorePaymentSettings, error) {
@@ -210,7 +211,7 @@ func mapStorePaymentSettingsUpdateError(err error) error {
 	case errors.Is(err, paymentsettings.ErrInvalidAppPurchaseRoute):
 		return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "app_purchase_route")
 	case errors.Is(err, paymentsettings.ErrStoreRouteRequiresReadyStore):
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	case errors.Is(err, paymentsettings.ErrInvalidIssuerID):
 		return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "app_store.issuer_id")
 	case errors.Is(err, paymentsettings.ErrInvalidKeyID):
@@ -221,7 +222,7 @@ func mapStorePaymentSettingsUpdateError(err error) error {
 		return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "google_play.service_account_key")
 	case errors.Is(err, paymentsettings.ErrAppStoreCredentialsRequired),
 		errors.Is(err, paymentsettings.ErrGooglePlayCredentialsRequired):
-		return connect.NewError(connect.CodeInvalidArgument, err)
+		return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	default:
 		return mapPaymentSettingsUpdateError(err)
 	}
@@ -229,9 +230,9 @@ func mapStorePaymentSettingsUpdateError(err error) error {
 
 func (s *adminServer) GetTenantStorePaymentSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantStorePaymentSettingsRequest],
-) (*connect.Response[publiraadminv1.GetTenantStorePaymentSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.GetTenantStorePaymentSettingsRequest,
+) (*publiraadminv1.GetTenantStorePaymentSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +251,7 @@ func (s *adminServer) GetTenantStorePaymentSettings(
 	if err != nil {
 		return nil, s.internalError(ctx, "tenant app purchase route is not a supported value", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetTenantStorePaymentSettingsResponse{Settings: settings}), nil
+	return &publiraadminv1.GetTenantStorePaymentSettingsResponse{Settings: settings}, nil
 }
 
 // UpdateTenantStorePaymentSettings writes both stores and the route in one
@@ -258,9 +259,9 @@ func (s *adminServer) GetTenantStorePaymentSettings(
 // same request does to the stores.
 func (s *adminServer) UpdateTenantStorePaymentSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantStorePaymentSettingsRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantStorePaymentSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantStorePaymentSettingsRequest,
+) (*publiraadminv1.UpdateTenantStorePaymentSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -269,12 +270,12 @@ func (s *adminServer) UpdateTenantStorePaymentSettings(
 		return nil, err
 	}
 
-	route, err := protomapper.AppPurchaseRouteToStored(req.Msg.GetAppPurchaseRoute())
+	route, err := protomapper.AppPurchaseRouteToStored(req.GetAppPurchaseRoute())
 	if err != nil {
 		return nil, mapStorePaymentSettingsUpdateError(err)
 	}
-	appStore := req.Msg.GetAppStore()
-	googlePlay := req.Msg.GetGooglePlay()
+	appStore := req.GetAppStore()
+	googlePlay := req.GetGooglePlay()
 	input := paymentsettings.StoreUpdateInput{
 		Route: route,
 		AppStore: paymentsettings.AppStoreUpdate{
@@ -317,7 +318,7 @@ func (s *adminServer) UpdateTenantStorePaymentSettings(
 	paymentsettings.RecordUpdate(ctx, s.recorderFor(ctx), tenant.ID, paymentsettings.AuditMeta{
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 		TargetID:    tenant.PublicID,
 	}, auditlog.OutcomeSuccess, "")
 
@@ -325,14 +326,14 @@ func (s *adminServer) UpdateTenantStorePaymentSettings(
 	if err != nil {
 		return nil, s.internalError(ctx, "tenant app purchase route is not a supported value", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.UpdateTenantStorePaymentSettingsResponse{Settings: settings}), nil
+	return &publiraadminv1.UpdateTenantStorePaymentSettingsResponse{Settings: settings}, nil
 }
 
 func (s *adminServer) ListTenantStoreProducts(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListTenantStoreProductsRequest],
-) (*connect.Response[publiraadminv1.ListTenantStoreProductsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ListTenantStoreProductsRequest,
+) (*publiraadminv1.ListTenantStoreProductsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -352,5 +353,5 @@ func (s *adminServer) ListTenantStoreProducts(
 			EpisodeCount: row.EpisodeCount,
 		})
 	}
-	return connect.NewResponse(&publiraadminv1.ListTenantStoreProductsResponse{Products: products}), nil
+	return &publiraadminv1.ListTenantStoreProductsResponse{Products: products}, nil
 }

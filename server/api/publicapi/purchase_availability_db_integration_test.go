@@ -7,7 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -90,11 +91,11 @@ func (e purchaseSurfaceEnv) startCheckout(t *testing.T, episodeID string, client
 	t.Helper()
 
 	e.checkout.input = paymentprovider.CheckoutRequest{}
-	_, err := publirav1connect.NewPurchaseServiceClient(e.ts.Client(), e.ts.URL).StartEpisodeCheckout(context.Background(), newBearerRequest(&publirav1.StartEpisodeCheckoutRequest{
+	_, err := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(e.ts.Client(), e.ts.URL))).StartEpisodeCheckout(testutil.WithBearer(context.Background(), e.token), &publirav1.StartEpisodeCheckoutRequest{
 		EpisodeId: episodeID,
 		Tenant:    tenantContext(e.tenant),
 		Client:    client,
-	}, e.token))
+	})
 	var code connect.Code
 	if err != nil {
 		code = connect.CodeOf(err)
@@ -179,42 +180,42 @@ func TestDBCatalogReadsCarryWhereAnEpisodeMayBeBought(t *testing.T) {
 	following := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PAYSURFEP003", Status: testutil.EpisodeStatusPublished, Price: 500})
 	webSold := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PAYSURFEP004", Status: testutil.EpisodeStatusPublished, Price: 500, PurchaseAvailability: "web"})
 
-	catalog := publirav1connect.NewCatalogServiceClient(env.ts.Client(), env.ts.URL)
+	catalog := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	ctx := context.Background()
 	want := map[string]publirattypesv1.SurfaceAvailability{
 		following.PublicID: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
 		webSold.PublicID:   publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_WEB,
 	}
 
-	detail, err := catalog.GetSeriesDetail(ctx, connect.NewRequest(&publirav1.GetSeriesDetailRequest{Tenant: tenantContext(env.tenant), PublicId: series.PublicID}))
+	detail, err := catalog.GetSeriesDetail(ctx, &publirav1.GetSeriesDetailRequest{Tenant: tenantContext(env.tenant), PublicId: series.PublicID})
 	if err != nil {
 		t.Fatalf("GetSeriesDetail: %v", err)
 	}
-	if len(detail.Msg.Episodes) != len(want) {
-		t.Fatalf("series detail lists %d episodes, want %d", len(detail.Msg.Episodes), len(want))
+	if len(detail.Episodes) != len(want) {
+		t.Fatalf("series detail lists %d episodes, want %d", len(detail.Episodes), len(want))
 	}
-	for _, episode := range detail.Msg.Episodes {
+	for _, episode := range detail.Episodes {
 		if episode.PurchaseAvailability != want[episode.PublicId] {
 			t.Fatalf("series detail episode %s purchase_availability = %s, want %s", episode.PublicId, episode.PurchaseAvailability, want[episode.PublicId])
 		}
 	}
 	for publicID, wantAvailability := range want {
-		got, err := catalog.GetEpisodeDetail(ctx, connect.NewRequest(&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(env.tenant), PublicId: publicID}))
+		got, err := catalog.GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(env.tenant), PublicId: publicID})
 		if err != nil {
 			t.Fatalf("GetEpisodeDetail %s: %v", publicID, err)
 		}
-		if got.Msg.Episode.PurchaseAvailability != wantAvailability {
-			t.Fatalf("episode detail %s purchase_availability = %s, want %s", publicID, got.Msg.Episode.PurchaseAvailability, wantAvailability)
+		if got.Episode.PurchaseAvailability != wantAvailability {
+			t.Fatalf("episode detail %s purchase_availability = %s, want %s", publicID, got.Episode.PurchaseAvailability, wantAvailability)
 		}
 	}
 
-	tenant, err := publirav1connect.NewTenantServiceClient(env.ts.Client(), env.ts.URL).GetTenant(ctx, connect.NewRequest(&publirav1.GetTenantRequest{Tenant: tenantContext(env.tenant)}))
+	tenant, err := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL))).GetTenant(ctx, &publirav1.GetTenantRequest{Tenant: tenantContext(env.tenant)})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if tenant.Msg.AppStoreUrl != "https://apps.apple.com/app/id123456789" ||
-		tenant.Msg.GooglePlayUrl != "https://play.google.com/store/apps/details?id=com.example.reader" {
-		t.Fatalf("store listings = %q, %q", tenant.Msg.AppStoreUrl, tenant.Msg.GooglePlayUrl)
+	if tenant.AppStoreUrl != "https://apps.apple.com/app/id123456789" ||
+		tenant.GooglePlayUrl != "https://play.google.com/store/apps/details?id=com.example.reader" {
+		t.Fatalf("store listings = %q, %q", tenant.AppStoreUrl, tenant.GooglePlayUrl)
 	}
 }
 
@@ -229,17 +230,17 @@ func TestDBEpisodeNeighborsCarryWhereTheyMayBeBought(t *testing.T) {
 	current := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PAYSURFEP006", Status: testutil.EpisodeStatusPublished, Price: 500})
 	next := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PAYSURFEP007", Status: testutil.EpisodeStatusPublished, Price: 500})
 
-	catalog := publirav1connect.NewCatalogServiceClient(env.ts.Client(), env.ts.URL)
+	catalog := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	neighbors := func() (previousAvailability, nextAvailability publirattypesv1.SurfaceAvailability) {
 		t.Helper()
-		got, err := catalog.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(env.tenant), PublicId: current.PublicID}))
+		got, err := catalog.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(env.tenant), PublicId: current.PublicID})
 		if err != nil {
 			t.Fatalf("GetEpisodeDetail: %v", err)
 		}
-		if got.Msg.PreviousEpisode.GetPublicId() != previous.PublicID || got.Msg.NextEpisode.GetPublicId() != next.PublicID {
-			t.Fatalf("neighbours = %q, %q", got.Msg.PreviousEpisode.GetPublicId(), got.Msg.NextEpisode.GetPublicId())
+		if got.PreviousEpisode.GetPublicId() != previous.PublicID || got.NextEpisode.GetPublicId() != next.PublicID {
+			t.Fatalf("neighbours = %q, %q", got.PreviousEpisode.GetPublicId(), got.NextEpisode.GetPublicId())
 		}
-		return got.Msg.PreviousEpisode.PurchaseAvailability, got.Msg.NextEpisode.PurchaseAvailability
+		return got.PreviousEpisode.PurchaseAvailability, got.NextEpisode.PurchaseAvailability
 	}
 
 	steps := []struct {

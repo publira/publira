@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestDBAdminNotificationsListUnreadAndMark(t *testing.T) {
@@ -24,51 +25,51 @@ func TestDBAdminNotificationsListUnreadAndMark(t *testing.T) {
 	insertAdminNotification(t, env, admin.Tenant.ID, otherAdmin.ID, "episode_published", "episode:E003", `{"episode_id":"E003"}`)
 
 	client := env.notificationClient()
-	list, err := client.ListNotifications(context.Background(), newAdminDBRequest(admin, &publiraadminv1.ListNotificationsRequest{
+	list, err := client.ListNotifications(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.ListNotificationsRequest{
 		Tenant: admin.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListNotifications: %v", err)
 	}
-	if len(list.Msg.Notifications) != 2 {
-		t.Fatalf("list count = %d, want 2", len(list.Msg.Notifications))
+	if len(list.Notifications) != 2 {
+		t.Fatalf("list count = %d, want 2", len(list.Notifications))
 	}
 
-	unread, err := client.CountUnreadNotifications(context.Background(), newAdminDBRequest(admin, &publiraadminv1.CountUnreadNotificationsRequest{
+	unread, err := client.CountUnreadNotifications(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.CountUnreadNotificationsRequest{
 		Tenant: admin.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CountUnreadNotifications: %v", err)
 	}
-	if unread.Msg.UnreadCount != 2 {
-		t.Fatalf("unread = %d, want 2", unread.Msg.UnreadCount)
+	if unread.UnreadCount != 2 {
+		t.Fatalf("unread = %d, want 2", unread.UnreadCount)
 	}
 
-	if _, err := client.MarkNotificationAsRead(context.Background(), newAdminDBRequest(admin, &publiraadminv1.MarkNotificationAsReadRequest{
+	if _, err := client.MarkNotificationAsRead(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.MarkNotificationAsReadRequest{
 		Tenant:         admin.tenantContext(),
 		NotificationId: mine.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("MarkNotificationAsRead: %v", err)
 	}
 
-	unread, err = client.CountUnreadNotifications(context.Background(), newAdminDBRequest(admin, &publiraadminv1.CountUnreadNotificationsRequest{
+	unread, err = client.CountUnreadNotifications(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.CountUnreadNotificationsRequest{
 		Tenant: admin.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CountUnreadNotifications after mark: %v", err)
 	}
-	if unread.Msg.UnreadCount != 1 {
-		t.Fatalf("unread after mark = %d, want 1", unread.Msg.UnreadCount)
+	if unread.UnreadCount != 1 {
+		t.Fatalf("unread after mark = %d, want 1", unread.UnreadCount)
 	}
 
-	all, err := client.MarkAllNotificationsAsRead(context.Background(), newAdminDBRequest(admin, &publiraadminv1.MarkAllNotificationsAsReadRequest{
+	all, err := client.MarkAllNotificationsAsRead(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.MarkAllNotificationsAsReadRequest{
 		Tenant: admin.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("MarkAllNotificationsAsRead: %v", err)
 	}
-	if all.Msg.MarkedCount != 1 {
-		t.Fatalf("marked_count = %d, want 1", all.Msg.MarkedCount)
+	if all.MarkedCount != 1 {
+		t.Fatalf("marked_count = %d, want 1", all.MarkedCount)
 	}
 }
 
@@ -85,28 +86,28 @@ func TestDBAdminNotificationsHideOtherTenantAndUserRows(t *testing.T) {
 	insertAdminNotification(t, env, first.Tenant.ID, member.ID, "episode_published", "episode:member", `{"episode_id":"member"}`)
 
 	client := env.notificationClient()
-	list, err := client.ListNotifications(context.Background(), newAdminDBRequest(first, &publiraadminv1.ListNotificationsRequest{
+	list, err := client.ListNotifications(testutil.WithBearer(context.Background(), first.token()), &publiraadminv1.ListNotificationsRequest{
 		Tenant: first.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListNotifications: %v", err)
 	}
-	if len(list.Msg.Notifications) != 1 || list.Msg.Notifications[0].Id != mine.String() {
-		t.Fatalf("list = %+v, want only %s", list.Msg.Notifications, mine)
+	if len(list.Notifications) != 1 || list.Notifications[0].Id != mine.String() {
+		t.Fatalf("list = %+v, want only %s", list.Notifications, mine)
 	}
 
-	_, err = client.MarkNotificationAsRead(context.Background(), newAdminDBRequest(first, &publiraadminv1.MarkNotificationAsReadRequest{
+	_, err = client.MarkNotificationAsRead(testutil.WithBearer(context.Background(), first.token()), &publiraadminv1.MarkNotificationAsReadRequest{
 		Tenant:         first.tenantContext(),
 		NotificationId: peerID.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("mark peer code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
 
-	_, err = client.MarkNotificationAsRead(context.Background(), newAdminDBRequest(first, &publiraadminv1.MarkNotificationAsReadRequest{
+	_, err = client.MarkNotificationAsRead(testutil.WithBearer(context.Background(), first.token()), &publiraadminv1.MarkNotificationAsReadRequest{
 		Tenant:         first.tenantContext(),
 		NotificationId: theirs.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("mark other tenant code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
@@ -121,23 +122,23 @@ func TestDBAdminNotificationsReachATenantAuditor(t *testing.T) {
 	notificationID := insertAdminNotification(t, env, admin.Tenant.ID, auditor.ID, "episode_published", "episode:auditor", `{"episode_id":"auditor"}`)
 	client := env.notificationClient()
 
-	listed, err := client.ListNotifications(context.Background(), newAdminDBRequest(admin.as(auditor), &publiraadminv1.ListNotificationsRequest{
+	listed, err := client.ListNotifications(testutil.WithBearer(context.Background(), admin.as(auditor).token()), &publiraadminv1.ListNotificationsRequest{
 		Tenant: admin.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListNotifications as an auditor: %v", err)
 	}
-	if got := len(listed.Msg.Notifications); got != 1 || listed.Msg.Notifications[0].Id != notificationID.String() {
-		t.Fatalf("notifications listed to an auditor = %v, want only %s", listed.Msg.Notifications, notificationID)
+	if got := len(listed.Notifications); got != 1 || listed.Notifications[0].Id != notificationID.String() {
+		t.Fatalf("notifications listed to an auditor = %v, want only %s", listed.Notifications, notificationID)
 	}
-	marked, err := client.MarkNotificationAsRead(context.Background(), newAdminDBRequest(admin.as(auditor), &publiraadminv1.MarkNotificationAsReadRequest{
+	marked, err := client.MarkNotificationAsRead(testutil.WithBearer(context.Background(), admin.as(auditor).token()), &publiraadminv1.MarkNotificationAsReadRequest{
 		Tenant:         admin.tenantContext(),
 		NotificationId: notificationID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("MarkNotificationAsRead as an auditor: %v", err)
 	}
-	if !marked.Msg.Marked {
+	if !marked.Marked {
 		t.Fatal("MarkNotificationAsRead as an auditor marked nothing")
 	}
 }

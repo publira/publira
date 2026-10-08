@@ -5,7 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+	"connectrpc.com/connect/v2/connectproto"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -25,7 +27,7 @@ func assertCreditedReaderRefusal(t *testing.T, err error) {
 	var connectErr *connect.Error
 	if errors.As(err, &connectErr) {
 		for _, detail := range connectErr.Details() {
-			value, valueErr := detail.Value()
+			value, valueErr := connectproto.UnmarshalErrorDetail(detail)
 			if valueErr != nil {
 				continue
 			}
@@ -66,7 +68,7 @@ func TestDBRateEpisodeRefusesTheCreditedCreator(t *testing.T) {
 
 	client := env.ratingClient()
 	for _, episode := range []testutil.Episode{free, paid} {
-		_, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), tokenFor(t, tenant, creatorAccount), 1))
+		_, err := client.RateEpisode(testutil.WithBearer(context.Background(), tokenFor(t, tenant, creatorAccount)), rateEpisodeRequest(tenant, episode.ID.String(), 1))
 		assertCreditedReaderRefusal(t, err)
 	}
 	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_ratings WHERE tenant_id = $1 AND user_id = $2", tenant.ID, creatorAccount.ID); got != 0 {
@@ -75,7 +77,7 @@ func TestDBRateEpisodeRefusesTheCreditedCreator(t *testing.T) {
 
 	rate := func(t *testing.T, user testutil.TenantUser, episode testutil.Episode) {
 		t.Helper()
-		if _, err := client.RateEpisode(context.Background(), rateEpisodeRequest(tenant, episode.ID.String(), tokenFor(t, tenant, user), 1)); err != nil {
+		if _, err := client.RateEpisode(testutil.WithBearer(context.Background(), tokenFor(t, tenant, user)), rateEpisodeRequest(tenant, episode.ID.String(), 1)); err != nil {
 			t.Fatalf("RateEpisode %s by %s: %v", episode.PublicID, user.PublicID, err)
 		}
 	}
@@ -118,12 +120,12 @@ func TestDBGetMyEpisodeRatingReportsTheCreditedCreator(t *testing.T) {
 		{user: reader, want: false},
 	} {
 		for _, episode := range []testutil.Episode{free, paid} {
-			res, err := client.GetMyEpisodeRating(context.Background(), myEpisodeRatingRequest(tenant, episode.ID.String(), tokenFor(t, tenant, tc.user)))
+			res, err := client.GetMyEpisodeRating(testutil.WithBearer(context.Background(), tokenFor(t, tenant, tc.user)), myEpisodeRatingRequest(tenant, episode.ID.String()))
 			if err != nil {
 				t.Fatalf("GetMyEpisodeRating %s by %s: %v", episode.PublicID, tc.user.PublicID, err)
 			}
-			if res.Msg.ReaderCredited != tc.want {
-				t.Fatalf("GetMyEpisodeRating %s by %s reader_credited = %v, want %v", episode.PublicID, tc.user.PublicID, res.Msg.ReaderCredited, tc.want)
+			if res.ReaderCredited != tc.want {
+				t.Fatalf("GetMyEpisodeRating %s by %s reader_credited = %v, want %v", episode.PublicID, tc.user.PublicID, res.ReaderCredited, tc.want)
 			}
 		}
 	}
@@ -159,13 +161,13 @@ func TestDBStartEpisodeCheckoutRefusesTheCreditedCreator(t *testing.T) {
 	env.pg.SeedCreatorAccount(t, env.tenant.ID, credited.ID, env.user.ID)
 	reader := env.pg.SeedEndUser(t, env.tenant.ID, "PAYCREDRDR01", "reader@example.com", "Reader")
 
-	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	for _, from := range []publirav1.StartEpisodeCheckoutRequest_Client{checkoutFromWeb, checkoutFromApp} {
-		_, err := client.StartEpisodeCheckout(context.Background(), newBearerRequest(&publirav1.StartEpisodeCheckoutRequest{
+		_, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), env.token), &publirav1.StartEpisodeCheckoutRequest{
 			EpisodeId: own.ID.String(),
 			Tenant:    tenantContext(env.tenant),
 			Client:    from,
-		}, env.token))
+		})
 		assertCreditedReaderRefusal(t, err)
 		if env.checkout.input.SuccessURL != "" {
 			t.Fatalf("a checkout from %v was started with the provider", from)
@@ -175,11 +177,11 @@ func TestDBStartEpisodeCheckoutRefusesTheCreditedCreator(t *testing.T) {
 	if code, started := env.startCheckout(t, other.ID.String(), checkoutFromWeb); code != checkoutSucceeded || !started {
 		t.Fatalf("checkout of an episode the creator is not credited on = %v (started %v), want it started", code, started)
 	}
-	if _, err := client.StartEpisodeCheckout(context.Background(), newBearerRequest(&publirav1.StartEpisodeCheckoutRequest{
+	if _, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), tokenFor(t, env.tenant, reader)), &publirav1.StartEpisodeCheckoutRequest{
 		EpisodeId: own.ID.String(),
 		Tenant:    tenantContext(env.tenant),
 		Client:    checkoutFromWeb,
-	}, tokenFor(t, env.tenant, reader))); err != nil {
+	}); err != nil {
 		t.Fatalf("another reader's checkout: %v", err)
 	}
 }
@@ -192,11 +194,11 @@ func TestDBStartStorePurchaseRefusesTheCreditedCreator(t *testing.T) {
 	creatorAccount := env.pg.SeedEndUser(t, env.tenant.ID, "STORECREATR1", "creator@example.com", "Creator Account")
 	env.pg.SeedCreatorAccount(t, env.tenant.ID, credited.ID, creatorAccount.ID)
 
-	_, err := env.client.StartStorePurchase(context.Background(), newBearerRequest(&publirav1.StartStorePurchaseRequest{
+	_, err := env.client.StartStorePurchase(testutil.WithBearer(context.Background(), tokenFor(t, env.tenant, creatorAccount)), &publirav1.StartStorePurchaseRequest{
 		Tenant:    tenantContext(env.tenant),
 		EpisodeId: env.episode.ID.String(),
 		Store:     publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
-	}, tokenFor(t, env.tenant, creatorAccount)))
+	})
 	assertCreditedReaderRefusal(t, err)
 	if got := env.count(t, "SELECT count(*) FROM store_purchase_intents WHERE tenant_id = $1", env.tenant.ID); got != 0 {
 		t.Fatalf("store_purchase_intents rows = %d, want none", got)

@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -49,14 +48,14 @@ func TestDBGetEpisodeDetailCarriesTheSeriesEyeCatch(t *testing.T) {
 
 	read := func(t *testing.T, publicID string) *publirav1.GetEpisodeDetailResponse {
 		t.Helper()
-		resp, err := env.catalogClient().GetEpisodeDetail(ctx, connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		resp, err := env.catalogClient().GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: publicID,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("GetEpisodeDetail: %v", err)
 		}
-		return resp.Msg
+		return resp
 	}
 
 	t.Run("series-with-an-eye-catch", func(t *testing.T) {

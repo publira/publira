@@ -2,17 +2,19 @@ package platformapi
 
 import (
 	"context"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestEnsurePlatformWriteRole(t *testing.T) {
@@ -89,10 +91,10 @@ func TestPlatformAuditorCannotWriteBeforeSideEffects(t *testing.T) {
 	now := time.Now()
 	expectIntegrationAuth(mock, uuid.Nil, uuid.Must(uuid.NewV7()), auth.RolePlatformAuditor, now)
 
-	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdatePlatformSettings(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.UpdatePlatformSettingsRequest{
+	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdatePlatformSettings(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: "UTC",
-	}))
+	})
 	if got := connect.CodeOf(err); got != connect.CodePermissionDenied {
 		t.Fatalf("UpdatePlatformSettings code = %v, want permission_denied (err=%v)", got, err)
 	}
@@ -106,15 +108,15 @@ func TestPlatformAuditorCanReadPlatformSettings(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).
 		WillReturnRows(platformConfigRow("UTC", "ja", 1, now))
 
-	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
-	resp, err := client.GetPlatformSettings(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetPlatformSettingsRequest{}))
+	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.GetPlatformSettings(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.GetPlatformSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformSettings: %v", err)
 	}
-	if got := resp.Msg.GetSettings().GetDefaultTimezone(); got != "UTC" {
+	if got := resp.GetSettings().GetDefaultTimezone(); got != "UTC" {
 		t.Fatalf("default_timezone = %q, want UTC", got)
 	}
-	if got := resp.Msg.GetSettings().GetDefaultLocale(); got != "ja" {
+	if got := resp.GetSettings().GetDefaultLocale(); got != "ja" {
 		t.Fatalf("default_locale = %q, want ja", got)
 	}
 	assertIntegrationExpectations(t, mock)

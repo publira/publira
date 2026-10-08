@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -128,23 +128,23 @@ func (f commentModerationFixture) list(t *testing.T, req *publiraadminv1.ListCom
 	t.Helper()
 
 	req.Tenant = f.admin.tenantContext()
-	res, err := f.env.commentClient().ListComments(context.Background(), newAdminDBRequest(f.admin, req))
+	res, err := f.env.commentClient().ListComments(testutil.WithBearer(context.Background(), f.admin.token()), req)
 	if err != nil {
 		t.Fatalf("ListComments %+v: %v", req, err)
 	}
-	return res.Msg
+	return res
 }
 
 func (f commentModerationFixture) countPending(t *testing.T) int32 {
 	t.Helper()
 
-	res, err := f.env.commentClient().CountPendingComments(context.Background(), newAdminDBRequest(f.admin, &publiraadminv1.CountPendingCommentsRequest{
+	res, err := f.env.commentClient().CountPendingComments(testutil.WithBearer(context.Background(), f.admin.token()), &publiraadminv1.CountPendingCommentsRequest{
 		Tenant: f.admin.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CountPendingComments: %v", err)
 	}
-	return res.Msg.PendingCount
+	return res.PendingCount
 }
 
 func adminCommentPublicIDs(comments []*publiraadminv1.AdminComment) []string {
@@ -226,16 +226,16 @@ func TestDBAdminCommentMovesThroughItsStatesAndRecordsEachOne(t *testing.T) {
 		t.Fatalf("pending comment published_at/purge_due_at = %q/%q, want both empty", queued.PublishedAt, queued.PurgeDueAt)
 	}
 
-	approved, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
+	approved, err := client.ApproveComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ApproveCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
 		Reason:    "Reads fine.",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ApproveComment: %v", err)
 	}
-	if approved.Msg.Comment.Status != "published" || approved.Msg.Comment.PublishedAt == "" {
-		t.Fatalf("approved comment = (%s, %q), want published with a published_at", approved.Msg.Comment.Status, approved.Msg.Comment.PublishedAt)
+	if approved.Comment.Status != "published" || approved.Comment.PublishedAt == "" {
+		t.Fatalf("approved comment = (%s, %q), want published with a published_at", approved.Comment.Status, approved.Comment.PublishedAt)
 	}
 	if got := env.auditRowCount(t, fixture.admin.Tenant.ID, "comment_approved", comment.PublicID, "Reads fine."); got != 1 {
 		t.Fatalf("comment_approved audit rows = %d, want 1", got)
@@ -243,64 +243,64 @@ func TestDBAdminCommentMovesThroughItsStatesAndRecordsEachOne(t *testing.T) {
 
 	// Approval is what first publishes a comment, so nothing else is waiting for
 	// it and a second approval is refused rather than repeated.
-	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
+	if _, err := client.ApproveComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ApproveCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ApproveComment on a published comment error = %v, want failed_precondition", err)
 	}
 
-	hidden, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+	hidden, err := client.HideComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.HideCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
 		Reason:    "Names a private address.",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("HideComment: %v", err)
 	}
-	if hidden.Msg.Comment.Status != "hidden" || hidden.Msg.Comment.HiddenReason != "staff" || hidden.Msg.Comment.HiddenAt == "" {
+	if hidden.Comment.Status != "hidden" || hidden.Comment.HiddenReason != "staff" || hidden.Comment.HiddenAt == "" {
 		t.Fatalf("hidden comment = (%s, %s, %q), want hidden by staff with a hidden_at",
-			hidden.Msg.Comment.Status, hidden.Msg.Comment.HiddenReason, hidden.Msg.Comment.HiddenAt)
+			hidden.Comment.Status, hidden.Comment.HiddenReason, hidden.Comment.HiddenAt)
 	}
-	if hidden.Msg.Comment.PublishedAt == "" {
-		t.Fatalf("hidden comment published_at = %q, want the removal to keep it", hidden.Msg.Comment.PublishedAt)
+	if hidden.Comment.PublishedAt == "" {
+		t.Fatalf("hidden comment published_at = %q, want the removal to keep it", hidden.Comment.PublishedAt)
 	}
 	if got := env.auditRowCount(t, fixture.admin.Tenant.ID, "comment_hidden", comment.PublicID, "Names a private address."); got != 1 {
 		t.Fatalf("comment_hidden audit rows = %d, want 1", got)
 	}
 
-	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+	if _, err := client.HideComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.HideCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("HideComment on a hidden comment error = %v, want failed_precondition", err)
 	}
 
-	restored, err := client.RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
+	restored, err := client.RestoreComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.RestoreCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
 		Reason:    "Reported in error.",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RestoreComment: %v", err)
 	}
 	// It had been published before the removal, so that is the state it returns
 	// to, with nothing left of the removal on the row.
-	if restored.Msg.Comment.Status != "published" {
-		t.Fatalf("restored comment status = %s, want published", restored.Msg.Comment.Status)
+	if restored.Comment.Status != "published" {
+		t.Fatalf("restored comment status = %s, want published", restored.Comment.Status)
 	}
-	if restored.Msg.Comment.HiddenAt != "" || restored.Msg.Comment.HiddenReason != "" {
+	if restored.Comment.HiddenAt != "" || restored.Comment.HiddenReason != "" {
 		t.Fatalf("restored comment removal stamps = (%q, %q), want both cleared",
-			restored.Msg.Comment.HiddenAt, restored.Msg.Comment.HiddenReason)
+			restored.Comment.HiddenAt, restored.Comment.HiddenReason)
 	}
 	if got := env.auditRowCount(t, fixture.admin.Tenant.ID, "comment_restored", comment.PublicID, "Reported in error."); got != 1 {
 		t.Fatalf("comment_restored audit rows = %d, want 1", got)
 	}
 
-	if _, err := client.RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
+	if _, err := client.RestoreComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.RestoreCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("RestoreComment on a published comment error = %v, want failed_precondition", err)
 	}
 }
@@ -310,15 +310,15 @@ func TestDBAdminCommentModerationRefusesAMissingOrMalformedCommentID(t *testing.
 	fixture := newCommentModerationFixture(t, env, "CID", "moderation-comment-id.example.com")
 	client := env.commentClient()
 
-	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+	if _, err := client.HideComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.HideCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: "not-a-uuid",
-	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("HideComment with a malformed comment_id error = %v, want invalid_argument", err)
 	}
-	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+	if _, err := client.HideComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.HideCommentRequest{
 		Tenant: fixture.admin.tenantContext(),
-	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("HideComment naming no comment error = %v, want invalid_argument", err)
 	}
 }
@@ -330,10 +330,10 @@ func TestDBAdminCommentApprovalAndHideNotifyTheAuthor(t *testing.T) {
 	comment := fixture.seedComment(t, "NTFPENDING01", "pending")
 	tenantID := fixture.admin.Tenant.ID
 
-	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
+	if _, err := client.ApproveComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ApproveCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("ApproveComment: %v", err)
 	}
 
@@ -364,20 +364,20 @@ func TestDBAdminCommentApprovalAndHideNotifyTheAuthor(t *testing.T) {
 	}
 
 	// A second approval is refused, so it must not write a second row either.
-	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
+	if _, err := client.ApproveComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ApproveCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ApproveComment on a published comment error = %v, want failed_precondition", err)
 	}
 	if got := env.commentAuthorNotificationCount(t, tenantID, fixture.reader, outbox.NotificationTypeCommentApproved); got != 1 {
 		t.Fatalf("comment_approved rows after a refused second approval = %d, want 1", got)
 	}
 
-	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+	if _, err := client.HideComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.HideCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("HideComment: %v", err)
 	}
 
@@ -405,25 +405,25 @@ func TestDBAdminRestoreCommentReturnsAPendingCommentToTheQueue(t *testing.T) {
 	client := env.commentClient()
 	comment := fixture.seedComment(t, "RPQPENDING01", "pending")
 
-	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+	if _, err := client.HideComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.HideCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("HideComment: %v", err)
 	}
 
-	restored, err := client.RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
+	restored, err := client.RestoreComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.RestoreCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RestoreComment: %v", err)
 	}
 	// A restore returns the comment to the state the removal interrupted. This
 	// one had never been public, so putting it back must not publish it.
-	if restored.Msg.Comment.Status != "pending" || restored.Msg.Comment.PublishedAt != "" {
+	if restored.Comment.Status != "pending" || restored.Comment.PublishedAt != "" {
 		t.Fatalf("restored comment = (%s, %q), want it back in the approval queue",
-			restored.Msg.Comment.Status, restored.Msg.Comment.PublishedAt)
+			restored.Comment.Status, restored.Comment.PublishedAt)
 	}
 }
 
@@ -448,22 +448,22 @@ func TestDBAdminWithdrawnCommentIsReadableButNotMovable(t *testing.T) {
 
 	// Only its author put it there, so no moderator takes it out again: a
 	// restore would republish text its author deleted.
-	if _, err := client.RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
+	if _, err := client.RestoreComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.RestoreCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("RestoreComment on a withdrawn comment error = %v, want failed_precondition", err)
 	}
-	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
+	if _, err := client.ApproveComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ApproveCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ApproveComment on a withdrawn comment error = %v, want failed_precondition", err)
 	}
-	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+	if _, err := client.HideComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.HideCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("HideComment on a withdrawn comment error = %v, want failed_precondition", err)
 	}
 
@@ -482,18 +482,18 @@ func TestDBAdminPurgeCommentDeletesTheRowAndKeepsTheReason(t *testing.T) {
 
 	// The audit row is the only record that survives the deletion, so a purge
 	// with nothing to say for itself is refused.
-	if _, err := client.PurgeComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.PurgeCommentRequest{
+	if _, err := client.PurgeComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.PurgeCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("PurgeComment with no reason error = %v, want invalid_argument", err)
 	}
 
-	if _, err := client.PurgeComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.PurgeCommentRequest{
+	if _, err := client.PurgeComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.PurgeCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
 		Reason:    "Court order 2026-0031.",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("PurgeComment: %v", err)
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM episode_comments WHERE public_id = $1", comment.PublicID); got != 0 {
@@ -503,11 +503,11 @@ func TestDBAdminPurgeCommentDeletesTheRowAndKeepsTheReason(t *testing.T) {
 		t.Fatalf("comment_purged audit rows = %d, want the reason kept after the row is gone", got)
 	}
 
-	if _, err := client.PurgeComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.PurgeCommentRequest{
+	if _, err := client.PurgeComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.PurgeCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
 		Reason:    "Court order 2026-0031.",
-	})); connect.CodeOf(err) != connect.CodeNotFound {
+	}); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("PurgeComment on a purged comment error = %v, want not_found", err)
 	}
 }
@@ -529,32 +529,32 @@ func TestDBAdminCommentModerationStopsAtTheTenantBoundary(t *testing.T) {
 	// moderator learns nothing about what exists elsewhere.
 	actions := map[string]func() error{
 		"ApproveComment": func() error {
-			_, err := client.ApproveComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.ApproveCommentRequest{
+			_, err := client.ApproveComment(testutil.WithBearer(context.Background(), mine.admin.token()), &publiraadminv1.ApproveCommentRequest{
 				Tenant:    mine.admin.tenantContext(),
 				CommentId: foreign.ID.String(),
-			}))
+			})
 			return err
 		},
 		"HideComment": func() error {
-			_, err := client.HideComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.HideCommentRequest{
+			_, err := client.HideComment(testutil.WithBearer(context.Background(), mine.admin.token()), &publiraadminv1.HideCommentRequest{
 				Tenant:    mine.admin.tenantContext(),
 				CommentId: foreign.ID.String(),
-			}))
+			})
 			return err
 		},
 		"RestoreComment": func() error {
-			_, err := client.RestoreComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.RestoreCommentRequest{
+			_, err := client.RestoreComment(testutil.WithBearer(context.Background(), mine.admin.token()), &publiraadminv1.RestoreCommentRequest{
 				Tenant:    mine.admin.tenantContext(),
 				CommentId: foreign.ID.String(),
-			}))
+			})
 			return err
 		},
 		"PurgeComment": func() error {
-			_, err := client.PurgeComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.PurgeCommentRequest{
+			_, err := client.PurgeComment(testutil.WithBearer(context.Background(), mine.admin.token()), &publiraadminv1.PurgeCommentRequest{
 				Tenant:    mine.admin.tenantContext(),
 				CommentId: foreign.ID.String(),
 				Reason:    "Not mine to purge.",
-			}))
+			})
 			return err
 		},
 	}
@@ -673,7 +673,7 @@ func TestDBAdminListCommentsFiltersAndPages(t *testing.T) {
 	} {
 		test.req.Tenant = fixture.admin.tenantContext()
 		test.req.Token = test.token
-		if _, err := env.commentClient().ListComments(context.Background(), newAdminDBRequest(fixture.admin, test.req)); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		if _, err := env.commentClient().ListComments(testutil.WithBearer(context.Background(), fixture.admin.token()), test.req); connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("ListComments %+v with another filter's token error = %v, want invalid_argument", test.req, err)
 		}
 	}
@@ -698,14 +698,14 @@ func TestDBAdminListCommentsSaysWhetherTheAuthorIsStaff(t *testing.T) {
 		}
 	}
 
-	hidden, err := env.commentClient().HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+	hidden, err := env.commentClient().HideComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.HideCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: staffComment.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("HideComment: %v", err)
 	}
-	if !hidden.Msg.Comment.AuthorIsStaff {
+	if !hidden.Comment.AuthorIsStaff {
 		t.Fatal("hidden staff comment author_is_staff = false, want true")
 	}
 }
@@ -724,10 +724,10 @@ func TestDBAdminCountPendingCommentsCountsOneTenantsQueue(t *testing.T) {
 	// Every other state is work already done, so none of them is in the badge.
 	mine.seedComment(t, "CNTPUBLISH01", "published")
 	toHide := mine.seedComment(t, "CNTHIDDEN001", "published")
-	if _, err := env.commentClient().HideComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.HideCommentRequest{
+	if _, err := env.commentClient().HideComment(testutil.WithBearer(context.Background(), mine.admin.token()), &publiraadminv1.HideCommentRequest{
 		Tenant:    mine.admin.tenantContext(),
 		CommentId: toHide.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("HideComment: %v", err)
 	}
 	theirs.seedComment(t, "CNOPENDING01", "pending")
@@ -741,10 +741,10 @@ func TestDBAdminCountPendingCommentsCountsOneTenantsQueue(t *testing.T) {
 
 	// Approving is what empties the queue, so the count is what a moderator
 	// watches shrink as they work through it.
-	if _, err := env.commentClient().ApproveComment(context.Background(), newAdminDBRequest(mine.admin, &publiraadminv1.ApproveCommentRequest{
+	if _, err := env.commentClient().ApproveComment(testutil.WithBearer(context.Background(), mine.admin.token()), &publiraadminv1.ApproveCommentRequest{
 		Tenant:    mine.admin.tenantContext(),
 		CommentId: toApprove.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("ApproveComment: %v", err)
 	}
 	if got := mine.countPending(t); got != 1 {
@@ -762,40 +762,40 @@ func TestDBAdminCommentModerationRequiresTheEditorRole(t *testing.T) {
 	comment := fixture.seedComment(t, "ROLPENDING01", "pending")
 	client := env.commentClient()
 
-	listed, err := client.ListComments(context.Background(), newAdminDBRequest(auditor, &publiraadminv1.ListCommentsRequest{
+	listed, err := client.ListComments(testutil.WithBearer(context.Background(), auditor.token()), &publiraadminv1.ListCommentsRequest{
 		Tenant: auditor.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListComments as an auditor: %v", err)
 	}
-	if got := len(listed.Msg.Comments); got != 1 {
+	if got := len(listed.Comments); got != 1 {
 		t.Fatalf("comments listed to an auditor = %d, want 1", got)
 	}
-	counted, err := client.CountPendingComments(context.Background(), newAdminDBRequest(auditor, &publiraadminv1.CountPendingCommentsRequest{
+	counted, err := client.CountPendingComments(testutil.WithBearer(context.Background(), auditor.token()), &publiraadminv1.CountPendingCommentsRequest{
 		Tenant: auditor.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CountPendingComments as an auditor: %v", err)
 	}
-	if counted.Msg.PendingCount != 1 {
-		t.Fatalf("pending comments counted for an auditor = %d, want 1", counted.Msg.PendingCount)
+	if counted.PendingCount != 1 {
+		t.Fatalf("pending comments counted for an auditor = %d, want 1", counted.PendingCount)
 	}
-	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(auditor, &publiraadminv1.ApproveCommentRequest{
+	if _, err := client.ApproveComment(testutil.WithBearer(context.Background(), auditor.token()), &publiraadminv1.ApproveCommentRequest{
 		Tenant:    auditor.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("ApproveComment as an auditor error = %v, want permission_denied", err)
 	}
 
-	approved, err := client.ApproveComment(context.Background(), newAdminDBRequest(editor, &publiraadminv1.ApproveCommentRequest{
+	approved, err := client.ApproveComment(testutil.WithBearer(context.Background(), editor.token()), &publiraadminv1.ApproveCommentRequest{
 		Tenant:    editor.tenantContext(),
 		CommentId: comment.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ApproveComment as an editor: %v", err)
 	}
-	if approved.Msg.Comment.Status != "published" {
-		t.Fatalf("status after an editor's approval = %q, want published", approved.Msg.Comment.Status)
+	if approved.Comment.Status != "published" {
+		t.Fatalf("status after an editor's approval = %q, want published", approved.Comment.Status)
 	}
 }
 
@@ -803,10 +803,10 @@ func TestDBAdminListCommentsRejectsAnUnknownStatus(t *testing.T) {
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "STA", "status.example.com")
 
-	_, err := env.commentClient().ListComments(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ListCommentsRequest{
+	_, err := env.commentClient().ListComments(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ListCommentsRequest{
 		Tenant: fixture.admin.tenantContext(),
 		Status: "removed",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListComments with an unknown status error = %v, want invalid_argument", err)
 	}
@@ -848,10 +848,10 @@ func TestDBAdminApprovingACommentFilesItsEngagementEventOnce(t *testing.T) {
 		t.Fatalf("comment events before approval = %d, want 0", got)
 	}
 
-	if _, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
+	if _, err := client.ApproveComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ApproveCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("ApproveComment: %v", err)
 	}
 	if got := fixture.commentEventCount(t, comment.ID); got != 1 {
@@ -860,16 +860,16 @@ func TestDBAdminApprovingACommentFilesItsEngagementEventOnce(t *testing.T) {
 
 	// A removal and the restore that undoes it leave the event where it is:
 	// the comment was public once, and it is public again for the same reason.
-	if _, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+	if _, err := client.HideComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.HideCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("HideComment: %v", err)
 	}
-	if _, err := client.RestoreComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.RestoreCommentRequest{
+	if _, err := client.RestoreComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.RestoreCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: comment.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RestoreComment: %v", err)
 	}
 	if got := fixture.commentEventCount(t, comment.ID); got != 1 {

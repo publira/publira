@@ -1,10 +1,9 @@
 package adminapi
 
 import (
-	"fmt"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 )
 
 // validateDistinctPublicIDs rejects a list that cannot name a set of rows: an
@@ -14,15 +13,15 @@ import (
 // shows.
 func validateDistinctPublicIDs(ids []string, field, noun string) error {
 	if len(ids) == 0 {
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s are required", field))
+		return connect.Errorf(connect.CodeInvalidArgument, "%s are required", field)
 	}
 	seen := make(map[string]struct{}, len(ids))
 	for _, id := range ids {
 		if strings.TrimSpace(id) == "" {
-			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s contains empty value", field))
+			return connect.Errorf(connect.CodeInvalidArgument, "%s contains empty value", field)
 		}
 		if _, ok := seen[id]; ok {
-			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s contains duplicate %s", field, noun))
+			return connect.Errorf(connect.CodeInvalidArgument, "%s contains duplicate %s", field, noun)
 		}
 		seen[id] = struct{}{}
 	}

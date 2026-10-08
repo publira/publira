@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -32,25 +32,25 @@ func TestDBCreateUserStopsQueueingNoticesAtTheLimit(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 
-	accepted, err := env.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+	accepted, err := env.authClient().CreateUser(context.Background(), &publirav1.CreateUserRequest{
 		Tenant:   tenantContext(tenant),
 		Name:     "Impersonating Signup",
 		Email:    member.Email,
 		Password: "another-password",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("the first CreateUser: %v", err)
 	}
-	if !accepted.Msg.Accepted {
+	if !accepted.Accepted {
 		t.Fatal("accepted = false, want the first sign-up taken")
 	}
 
-	_, err = env.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+	_, err = env.authClient().CreateUser(context.Background(), &publirav1.CreateUserRequest{
 		Tenant:   tenantContext(tenant),
 		Name:     "Impersonating Signup",
 		Email:    member.Email,
 		Password: "another-password",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("the second CreateUser code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
@@ -74,12 +74,12 @@ func TestDBCreateUserRefusesARegisteredAddressLikeAFreeOne(t *testing.T) {
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 
 	signUp := func(email string) error {
-		_, err := env.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+		_, err := env.authClient().CreateUser(context.Background(), &publirav1.CreateUserRequest{
 			Tenant:   tenantContext(tenant),
 			Name:     "Signup",
 			Email:    email,
 			Password: "another-password",
-		}))
+		})
 		return err
 	}
 
@@ -91,10 +91,10 @@ func TestDBCreateUserRefusesARegisteredAddressLikeAFreeOne(t *testing.T) {
 	if err := signUp(member.Email); err != nil {
 		t.Fatalf("the first sign-up for the registered address: %v", err)
 	}
-	if _, err := env.authClient().RequestPasswordReset(context.Background(), connect.NewRequest(&publirav1.RequestPasswordResetRequest{
+	if _, err := env.authClient().RequestPasswordReset(context.Background(), &publirav1.RequestPasswordResetRequest{
 		Tenant: tenantContext(tenant),
 		Email:  freeEmail,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RequestPasswordReset for the free address: %v", err)
 	}
 
@@ -138,17 +138,17 @@ func TestDBTheMailFormsShareOneAllowancePerAddress(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
 
-	if _, err := env.authClient().RequestEmailVerification(context.Background(), connect.NewRequest(&publirav1.RequestEmailVerificationRequest{
+	if _, err := env.authClient().RequestEmailVerification(context.Background(), &publirav1.RequestEmailVerificationRequest{
 		Tenant: tenantContext(tenant),
 		Email:  pending.Email,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RequestEmailVerification: %v", err)
 	}
 
-	_, err := env.authClient().RequestPasswordReset(context.Background(), connect.NewRequest(&publirav1.RequestPasswordResetRequest{
+	_, err := env.authClient().RequestPasswordReset(context.Background(), &publirav1.RequestPasswordResetRequest{
 		Tenant: tenantContext(tenant),
 		Email:  pending.Email,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("RequestPasswordReset code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
@@ -174,10 +174,10 @@ func TestDBTheSubAddressedVariantsOfOneInboxShareOneAllowance(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
 	requestReset := func(email string) error {
-		_, err := env.authClient().RequestPasswordReset(context.Background(), connect.NewRequest(&publirav1.RequestPasswordResetRequest{
+		_, err := env.authClient().RequestPasswordReset(context.Background(), &publirav1.RequestPasswordResetRequest{
 			Tenant: tenantContext(tenant),
 			Email:  email,
-		}))
+		})
 		return err
 	}
 
@@ -202,34 +202,31 @@ func TestDBRequestEmailChangeDoesNotSpendTheAllowanceOfAnAddressItRefuses(t *tes
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	other := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0002", "other@tenant-a.example.com", "Other Member")
 
-	login, err := env.authClient().Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+	login, err := env.authClient().Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(tenant),
 		Email:    member.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
 
-	_, err = env.authClient().RequestEmailChange(context.Background(), newBearerRequest(
-		&publirav1.RequestEmailChangeRequest{
-			Tenant:          tenantContext(tenant),
-			CurrentEmail:    member.Email,
-			NewEmail:        other.Email,
-			CurrentPassword: testutil.SeededPassword,
-		},
-		login.Msg.AccessToken.Token,
-	))
+	_, err = env.authClient().RequestEmailChange(testutil.WithBearer(context.Background(), login.AccessToken.Token), &publirav1.RequestEmailChangeRequest{
+		Tenant:          tenantContext(tenant),
+		CurrentEmail:    member.Email,
+		NewEmail:        other.Email,
+		CurrentPassword: testutil.SeededPassword,
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("RequestEmailChange to a registered address code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
 	}
 
 	// The account that address belongs to still holds its whole allowance, so
 	// its owner can ask for their own password reset.
-	if _, err := env.authClient().RequestPasswordReset(context.Background(), connect.NewRequest(&publirav1.RequestPasswordResetRequest{
+	if _, err := env.authClient().RequestPasswordReset(context.Background(), &publirav1.RequestPasswordResetRequest{
 		Tenant: tenantContext(tenant),
 		Email:  other.Email,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RequestPasswordReset for the address that was named: %v", err)
 	}
 	env.processReaderAuthRequests(t)
@@ -247,26 +244,23 @@ func TestDBRequestEmailChangeStopsAtTheLimit(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 
-	login, err := env.authClient().Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+	login, err := env.authClient().Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(tenant),
 		Email:    member.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
 
 	const newEmail = "moved@tenant-a.example.com"
 	requestChange := func() error {
-		_, err := env.authClient().RequestEmailChange(context.Background(), newBearerRequest(
-			&publirav1.RequestEmailChangeRequest{
-				Tenant:          tenantContext(tenant),
-				CurrentEmail:    member.Email,
-				NewEmail:        newEmail,
-				CurrentPassword: testutil.SeededPassword,
-			},
-			login.Msg.AccessToken.Token,
-		))
+		_, err := env.authClient().RequestEmailChange(testutil.WithBearer(context.Background(), login.AccessToken.Token), &publirav1.RequestEmailChangeRequest{
+			Tenant:          tenantContext(tenant),
+			CurrentEmail:    member.Email,
+			NewEmail:        newEmail,
+			CurrentPassword: testutil.SeededPassword,
+		})
 		return err
 	}
 

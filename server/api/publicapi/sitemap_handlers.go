@@ -3,10 +3,9 @@ package publicapi
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -113,9 +112,9 @@ func servedPageSlug(slug string) bool {
 // walk rather than from a read per series.
 func (s *apiServer) ListSitemapEntries(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListSitemapEntriesRequest],
-) (*connect.Response[publirav1.ListSitemapEntriesResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ListSitemapEntriesRequest,
+) (*publirav1.ListSitemapEntriesResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -125,20 +124,20 @@ func (s *apiServer) ListSitemapEntries(
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultSitemapPageSize, maxSitemapPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultSitemapPageSize, maxSitemapPageSize)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.CountUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeCountUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 		// A kind no entry has would compare against a position no row holds.
 		if keys.Count < int64(publirav1.SitemapEntryKind_SITEMAP_ENTRY_KIND_SERIES) || keys.Count > int64(publirav1.SitemapEntryKind_SITEMAP_ENTRY_KIND_PAGE) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -188,5 +187,5 @@ func (s *apiServer) ListSitemapEntries(
 		res.NextToken = pagination.EncodeCountUUIDRecovery(pagination.Forward, keys.Count, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }

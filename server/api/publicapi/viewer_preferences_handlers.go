@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -49,9 +48,9 @@ func (s *apiServer) scopeViewerPreferencesUser(ctx context.Context, userID uuid.
 // is not a layout it can show.
 func (s *apiServer) GetViewerPreferences(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetViewerPreferencesRequest],
-) (*connect.Response[publirav1.GetViewerPreferencesResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.GetViewerPreferencesRequest,
+) (*publirav1.GetViewerPreferencesResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -64,12 +63,12 @@ func (s *apiServer) GetViewerPreferences(
 		UserID:   user.ID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return noStorePrivateResponse(&publirav1.GetViewerPreferencesResponse{Preferences: defaultViewerPreferences()}), nil
+		return noStorePrivateResponse(ctx, &publirav1.GetViewerPreferencesResponse{Preferences: defaultViewerPreferences()}), nil
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get viewer preferences", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	return noStorePrivateResponse(&publirav1.GetViewerPreferencesResponse{Preferences: viewerPreferencesFromRow(row)}), nil
+	return noStorePrivateResponse(ctx, &publirav1.GetViewerPreferencesResponse{Preferences: viewerPreferencesFromRow(row)}), nil
 }
 
 // UpdateViewerPreferences stores the preferences the request carries and leaves
@@ -77,9 +76,9 @@ func (s *apiServer) GetViewerPreferences(
 // reader just pressed cannot reset the settings it knows nothing about.
 func (s *apiServer) UpdateViewerPreferences(
 	ctx context.Context,
-	req *connect.Request[publirav1.UpdateViewerPreferencesRequest],
-) (*connect.Response[publirav1.UpdateViewerPreferencesResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.UpdateViewerPreferencesRequest,
+) (*publirav1.UpdateViewerPreferencesResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -93,10 +92,10 @@ func (s *apiServer) UpdateViewerPreferences(
 	updated, err := s.queriesFor(ctx).UpsertUserViewerPreferences(ctx, dbmodels.UpsertUserViewerPreferencesParams{
 		TenantID:          tenant.ID,
 		UserID:            user.ID,
-		WideViewerEnabled: sql.NullBool{Bool: req.Msg.GetWideViewerEnabled(), Valid: req.Msg.WideViewerEnabled != nil},
+		WideViewerEnabled: sql.NullBool{Bool: req.GetWideViewerEnabled(), Valid: req.WideViewerEnabled != nil},
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update viewer preferences", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	return noStorePrivateResponse(&publirav1.UpdateViewerPreferencesResponse{Preferences: viewerPreferencesFromRow(updated)}), nil
+	return noStorePrivateResponse(ctx, &publirav1.UpdateViewerPreferencesResponse{Preferences: viewerPreferencesFromRow(updated)}), nil
 }

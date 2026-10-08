@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // createDBEpisode creates one episode at the end of the series and returns its
@@ -24,23 +25,23 @@ func createDBEpisode(
 ) string {
 	t.Helper()
 
-	series, err := client.GetSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{
+	series, err := client.GetSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetSeriesRequest{
 		Tenant:   tenant.tenantContext(),
 		PublicId: seriesPublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeries %q: %v", seriesPublicID, err)
 	}
-	resp, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+	resp, err := client.CreateEpisode(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeRequest{
 		Tenant:   tenant.tenantContext(),
-		SeriesId: series.Msg.Series.Id,
+		SeriesId: series.Series.Id,
 		Title:    title,
 		Price:    500,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisode %q: %v", title, err)
 	}
-	return resp.Msg.Episode.PublicId
+	return resp.Episode.PublicId
 }
 
 func rfc3339(at time.Time) string {
@@ -55,16 +56,16 @@ func TestDBCreateEpisodeFreeWindow(t *testing.T) {
 	episodePublicID := createDBEpisode(t, client, tenant, seriesPublicID, "Chapter One")
 
 	base := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
-	created, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	created, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, episodePublicID),
 		StartsAt:  rfc3339(base),
 		EndsAt:    rfc3339(base.Add(2 * time.Hour)),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow: %v", err)
 	}
-	window := created.Msg.FreeWindow
+	window := created.FreeWindow
 	if window.PublicId == "" {
 		t.Fatal("created window carries no public_id, so nothing can address it again")
 	}
@@ -77,23 +78,23 @@ func TestDBCreateEpisodeFreeWindow(t *testing.T) {
 
 	// The database decides overlap, so two campaigns cannot both claim an
 	// instant of the same episode.
-	_, err = client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	_, err = client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, episodePublicID),
 		StartsAt:  rfc3339(base.Add(time.Hour)),
 		EndsAt:    rfc3339(base.Add(3 * time.Hour)),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("overlapping window code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 
 	// One campaign may still follow another without a gap.
-	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	if _, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, episodePublicID),
 		StartsAt:  rfc3339(base.Add(2 * time.Hour)),
 		EndsAt:    rfc3339(base.Add(4 * time.Hour)),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow starting where the first ends: %v", err)
 	}
 }
@@ -118,12 +119,12 @@ func TestDBCreateEpisodeFreeWindowRejectsUnusablePeriods(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+			_, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 				Tenant:    tenant.tenantContext(),
 				EpisodeId: env.episodeID(t, episodePublicID),
 				StartsAt:  tc.startsAt,
 				EndsAt:    tc.endsAt,
-			}))
+			})
 			if connect.CodeOf(err) != tc.wantCode {
 				t.Fatalf("code = %v, want %v (err=%v)", connect.CodeOf(err), tc.wantCode, err)
 			}
@@ -143,12 +144,12 @@ func TestDBCreateEpisodeFreeWindowInAnotherTenantsEpisodeReturnsNotFound(t *test
 	episodePublicID := createDBEpisode(t, client, first, seriesPublicID, "Chapter One")
 
 	base := time.Now().UTC().Add(time.Hour)
-	_, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(second, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	_, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), second.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    second.tenantContext(),
 		EpisodeId: env.episodeID(t, episodePublicID),
 		StartsAt:  rfc3339(base),
 		EndsAt:    rfc3339(base.Add(time.Hour)),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
@@ -166,19 +167,19 @@ func TestDBCreateSeriesFreeWindowsCoversEveryEpisode(t *testing.T) {
 	}
 
 	base := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
-	created, err := client.CreateSeriesFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesFreeWindowsRequest{
+	created, err := client.CreateSeriesFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesFreeWindowsRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: env.seriesID(t, seriesPublicID),
 		StartsAt: rfc3339(base),
 		EndsAt:   rfc3339(base.Add(24 * time.Hour)),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateSeriesFreeWindows: %v", err)
 	}
-	if len(created.Msg.FreeWindows) != len(episodes) {
-		t.Fatalf("windows = %d, want one per episode (%d)", len(created.Msg.FreeWindows), len(episodes))
+	if len(created.FreeWindows) != len(episodes) {
+		t.Fatalf("windows = %d, want one per episode (%d)", len(created.FreeWindows), len(episodes))
 	}
-	for i, window := range created.Msg.FreeWindows {
+	for i, window := range created.FreeWindows {
 		if window.EpisodePublicId != episodes[i] {
 			t.Errorf("window %d covers episode %q, want %q in series order", i, window.EpisodePublicId, episodes[i])
 		}
@@ -189,12 +190,12 @@ func TestDBCreateSeriesFreeWindowsCoversEveryEpisode(t *testing.T) {
 
 	// Overlapping the same period again is refused, and no episode keeps a row
 	// from the attempt: the whole call is one transaction.
-	_, err = client.CreateSeriesFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesFreeWindowsRequest{
+	_, err = client.CreateSeriesFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesFreeWindowsRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: env.seriesID(t, seriesPublicID),
 		StartsAt: rfc3339(base.Add(48 * time.Hour)),
 		EndsAt:   rfc3339(base.Add(72 * time.Hour)),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateSeriesFreeWindows over a free period: %v", err)
 	}
@@ -211,33 +212,33 @@ func TestDBCreateSeriesFreeWindowsIsAllOrNothing(t *testing.T) {
 	second := createDBEpisode(t, client, tenant, seriesPublicID, "Chapter Two")
 
 	base := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
-	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	if _, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, second),
 		StartsAt:  rfc3339(base),
 		EndsAt:    rfc3339(base.Add(2 * time.Hour)),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow on the second episode: %v", err)
 	}
 
-	_, err := client.CreateSeriesFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesFreeWindowsRequest{
+	_, err := client.CreateSeriesFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesFreeWindowsRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: env.seriesID(t, seriesPublicID),
 		StartsAt: rfc3339(base),
 		EndsAt:   rfc3339(base.Add(2 * time.Hour)),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 
 	// The first episode is still free of windows, which it would not be had the
 	// failed call kept the row it wrote before the collision.
-	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	if _, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, first),
 		StartsAt:  rfc3339(base),
 		EndsAt:    rfc3339(base.Add(2 * time.Hour)),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow on the first episode after the failed campaign: %v", err)
 	}
 }
@@ -252,19 +253,19 @@ func TestDBCreateSeriesFreeWindowsCoversOnlyTheNamedEpisodes(t *testing.T) {
 	third := createDBEpisode(t, client, tenant, seriesPublicID, "Chapter Three")
 
 	base := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
-	created, err := client.CreateSeriesFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesFreeWindowsRequest{
+	created, err := client.CreateSeriesFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesFreeWindowsRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: env.seriesID(t, seriesPublicID),
 		StartsAt: rfc3339(base),
 		EndsAt:   rfc3339(base.Add(24 * time.Hour)),
 		// Named out of order: the response follows the series, not the request.
 		EpisodeIds: env.episodeIDs(t, []string{third, first}),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateSeriesFreeWindows: %v", err)
 	}
-	got := make([]string, 0, len(created.Msg.FreeWindows))
-	for _, window := range created.Msg.FreeWindows {
+	got := make([]string, 0, len(created.FreeWindows))
+	for _, window := range created.FreeWindows {
 		got = append(got, window.EpisodePublicId)
 	}
 	if want := []string{first, third}; !slices.Equal(got, want) {
@@ -272,12 +273,12 @@ func TestDBCreateSeriesFreeWindowsCoversOnlyTheNamedEpisodes(t *testing.T) {
 	}
 
 	// The episode left out of the campaign has no window over the period.
-	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	if _, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, second),
 		StartsAt:  rfc3339(base),
 		EndsAt:    rfc3339(base.Add(24 * time.Hour)),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow on the episode left out: %v", err)
 	}
 }
@@ -291,32 +292,32 @@ func TestDBCreateSeriesFreeWindowsOnNamedEpisodesIsAllOrNothing(t *testing.T) {
 	second := createDBEpisode(t, client, tenant, seriesPublicID, "Chapter Two")
 
 	base := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
-	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	if _, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, second),
 		StartsAt:  rfc3339(base),
 		EndsAt:    rfc3339(base.Add(2 * time.Hour)),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow on the second episode: %v", err)
 	}
 
-	_, err := client.CreateSeriesFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesFreeWindowsRequest{
+	_, err := client.CreateSeriesFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesFreeWindowsRequest{
 		Tenant:     tenant.tenantContext(),
 		SeriesId:   env.seriesID(t, seriesPublicID),
 		StartsAt:   rfc3339(base),
 		EndsAt:     rfc3339(base.Add(2 * time.Hour)),
 		EpisodeIds: env.episodeIDs(t, []string{first, second}),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 
-	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	if _, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, first),
 		StartsAt:  rfc3339(base),
 		EndsAt:    rfc3339(base.Add(2 * time.Hour)),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow on the first episode after the failed campaign: %v", err)
 	}
 }
@@ -341,13 +342,13 @@ func TestDBCreateSeriesFreeWindowsRefusesAnEpisodeOutsideTheSeries(t *testing.T)
 		"another tenant": otherTenantEpisode,
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := client.CreateSeriesFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesFreeWindowsRequest{
+			_, err := client.CreateSeriesFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesFreeWindowsRequest{
 				Tenant:     tenant.tenantContext(),
 				SeriesId:   env.seriesID(t, seriesPublicID),
 				StartsAt:   rfc3339(base),
 				EndsAt:     rfc3339(base.Add(time.Hour)),
 				EpisodeIds: env.episodeIDs(t, []string{own, outsider}),
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
@@ -355,12 +356,12 @@ func TestDBCreateSeriesFreeWindowsRefusesAnEpisodeOutsideTheSeries(t *testing.T)
 	}
 
 	// Neither refusal left the series' own episode a window.
-	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	if _, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, own),
 		StartsAt:  rfc3339(base),
 		EndsAt:    rfc3339(base.Add(time.Hour)),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow after the refused campaigns: %v", err)
 	}
 }
@@ -374,48 +375,48 @@ func TestDBDeleteEpisodeFreeWindow(t *testing.T) {
 	episodePublicID := createDBEpisode(t, client, tenant, seriesPublicID, "Chapter One")
 
 	base := time.Now().UTC().Add(time.Hour)
-	created, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	created, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, episodePublicID),
 		StartsAt:  rfc3339(base),
 		EndsAt:    rfc3339(base.Add(2 * time.Hour)),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow: %v", err)
 	}
-	windowID := created.Msg.FreeWindow.Id
+	windowID := created.FreeWindow.Id
 
 	// Another tenant cannot reach it, even holding its ID.
-	_, err = client.DeleteEpisodeFreeWindow(context.Background(), newAdminDBRequest(other, &publiraadminv1.DeleteEpisodeFreeWindowRequest{
+	_, err = client.DeleteEpisodeFreeWindow(testutil.WithBearer(context.Background(), other.token()), &publiraadminv1.DeleteEpisodeFreeWindowRequest{
 		Tenant:       other.tenantContext(),
 		FreeWindowId: windowID,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("cross-tenant delete code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
 
-	if _, err := client.DeleteEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteEpisodeFreeWindowRequest{
+	if _, err := client.DeleteEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.DeleteEpisodeFreeWindowRequest{
 		Tenant:       tenant.tenantContext(),
 		FreeWindowId: windowID,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("DeleteEpisodeFreeWindow: %v", err)
 	}
 
-	_, err = client.DeleteEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteEpisodeFreeWindowRequest{
+	_, err = client.DeleteEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.DeleteEpisodeFreeWindowRequest{
 		Tenant:       tenant.tenantContext(),
 		FreeWindowId: windowID,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("second delete code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
 
 	// The period is free again once the window is gone.
-	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	if _, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, episodePublicID),
 		StartsAt:  rfc3339(base),
 		EndsAt:    rfc3339(base.Add(2 * time.Hour)),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow after the delete: %v", err)
 	}
 }
@@ -450,83 +451,83 @@ func TestDBListEpisodeFreeWindowsFindsWhatAnEarlierCallScheduled(t *testing.T) {
 	elsewhere := createDBEpisode(t, client, tenant, otherSeriesPublicID, "Elsewhere")
 
 	base := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
-	single, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	single, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, first),
 		StartsAt:  rfc3339(base.Add(48 * time.Hour)),
 		EndsAt:    rfc3339(base.Add(72 * time.Hour)),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow: %v", err)
 	}
-	campaign, err := client.CreateSeriesFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesFreeWindowsRequest{
+	campaign, err := client.CreateSeriesFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesFreeWindowsRequest{
 		Tenant:   tenant.tenantContext(),
 		SeriesId: env.seriesID(t, seriesPublicID),
 		StartsAt: rfc3339(base),
 		EndsAt:   rfc3339(base.Add(24 * time.Hour)),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateSeriesFreeWindows: %v", err)
 	}
-	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	if _, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    tenant.tenantContext(),
 		EpisodeId: env.episodeID(t, elsewhere),
 		StartsAt:  rfc3339(base),
 		EndsAt:    rfc3339(base.Add(24 * time.Hour)),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow in another series: %v", err)
 	}
 
-	byEpisode, err := client.ListEpisodeFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodeFreeWindowsRequest{
+	byEpisode, err := client.ListEpisodeFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListEpisodeFreeWindowsRequest{
 		Tenant: tenant.tenantContext(),
 		Scope:  listFreeWindowsByEpisode(env.episodeID(t, first)),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListEpisodeFreeWindows by episode: %v", err)
 	}
 	// Latest start first, so the campaign further ahead leads.
-	wantEpisode := []string{single.Msg.FreeWindow.Id, campaign.Msg.FreeWindows[0].Id}
-	if got := freeWindowIDs(byEpisode.Msg.FreeWindows); !slices.Equal(got, wantEpisode) {
+	wantEpisode := []string{single.FreeWindow.Id, campaign.FreeWindows[0].Id}
+	if got := freeWindowIDs(byEpisode.FreeWindows); !slices.Equal(got, wantEpisode) {
 		t.Fatalf("episode windows = %v, want %v", got, wantEpisode)
 	}
-	if got := byEpisode.Msg.FreeWindows[0]; !proto.Equal(got, single.Msg.FreeWindow) {
-		t.Errorf("listed window = %v, want what CreateEpisodeFreeWindow answered: %v", got, single.Msg.FreeWindow)
+	if got := byEpisode.FreeWindows[0]; !proto.Equal(got, single.FreeWindow) {
+		t.Errorf("listed window = %v, want what CreateEpisodeFreeWindow answered: %v", got, single.FreeWindow)
 	}
-	if byEpisode.Msg.PreviousToken != "" || byEpisode.Msg.NextToken != "" {
-		t.Errorf("tokens = %q / %q, want both empty for a list that fits on one page", byEpisode.Msg.PreviousToken, byEpisode.Msg.NextToken)
+	if byEpisode.PreviousToken != "" || byEpisode.NextToken != "" {
+		t.Errorf("tokens = %q / %q, want both empty for a list that fits on one page", byEpisode.PreviousToken, byEpisode.NextToken)
 	}
 
-	bySeries, err := client.ListEpisodeFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodeFreeWindowsRequest{
+	bySeries, err := client.ListEpisodeFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListEpisodeFreeWindowsRequest{
 		Tenant: tenant.tenantContext(),
 		Scope:  listFreeWindowsBySeries(env.seriesID(t, seriesPublicID)),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListEpisodeFreeWindows by series: %v", err)
 	}
 	// The campaign's windows share a start, so the id breaks the tie, and the
 	// episode created later was given the later id.
-	wantSeries := []string{single.Msg.FreeWindow.Id, campaign.Msg.FreeWindows[1].Id, campaign.Msg.FreeWindows[0].Id}
-	if got := freeWindowIDs(bySeries.Msg.FreeWindows); !slices.Equal(got, wantSeries) {
+	wantSeries := []string{single.FreeWindow.Id, campaign.FreeWindows[1].Id, campaign.FreeWindows[0].Id}
+	if got := freeWindowIDs(bySeries.FreeWindows); !slices.Equal(got, wantSeries) {
 		t.Fatalf("series windows = %v, want %v (none from another series)", got, wantSeries)
 	}
-	if got := bySeries.Msg.FreeWindows[1].EpisodePublicId; got != second {
+	if got := bySeries.FreeWindows[1].EpisodePublicId; got != second {
 		t.Errorf("second listed window covers episode %q, want %q", got, second)
 	}
 
-	if _, err := client.DeleteEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteEpisodeFreeWindowRequest{
+	if _, err := client.DeleteEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.DeleteEpisodeFreeWindowRequest{
 		Tenant:       tenant.tenantContext(),
-		FreeWindowId: bySeries.Msg.FreeWindows[0].Id,
-	})); err != nil {
+		FreeWindowId: bySeries.FreeWindows[0].Id,
+	}); err != nil {
 		t.Fatalf("DeleteEpisodeFreeWindow by the listed id: %v", err)
 	}
-	after, err := client.ListEpisodeFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodeFreeWindowsRequest{
+	after, err := client.ListEpisodeFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListEpisodeFreeWindowsRequest{
 		Tenant: tenant.tenantContext(),
 		Scope:  listFreeWindowsByEpisode(env.episodeID(t, first)),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListEpisodeFreeWindows after the delete: %v", err)
 	}
-	if got, want := freeWindowIDs(after.Msg.FreeWindows), []string{campaign.Msg.FreeWindows[0].Id}; !slices.Equal(got, want) {
+	if got, want := freeWindowIDs(after.FreeWindows), []string{campaign.FreeWindows[0].Id}; !slices.Equal(got, want) {
 		t.Fatalf("episode windows after the delete = %v, want %v", got, want)
 	}
 }
@@ -545,14 +546,14 @@ func TestDBListEpisodeFreeWindowsKeepsWindowsThatAreOver(t *testing.T) {
 	over := env.PG.SeedEpisodeFreeWindow(t, tenant.Tenant.ID, uuid.MustParse(episodeID), now.Add(-48*time.Hour), now.Add(-24*time.Hour))
 	ahead := env.PG.SeedEpisodeFreeWindow(t, tenant.Tenant.ID, uuid.MustParse(episodeID), now.Add(24*time.Hour), now.Add(48*time.Hour))
 
-	resp, err := client.ListEpisodeFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodeFreeWindowsRequest{
+	resp, err := client.ListEpisodeFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListEpisodeFreeWindowsRequest{
 		Tenant: tenant.tenantContext(),
 		Scope:  listFreeWindowsByEpisode(episodeID),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListEpisodeFreeWindows: %v", err)
 	}
-	if got, want := freeWindowIDs(resp.Msg.FreeWindows), []string{ahead.String(), over.String()}; !slices.Equal(got, want) {
+	if got, want := freeWindowIDs(resp.FreeWindows), []string{ahead.String(), over.String()}; !slices.Equal(got, want) {
 		t.Fatalf("windows = %v, want %v", got, want)
 	}
 }
@@ -569,31 +570,31 @@ func TestDBListEpisodeFreeWindowsPages(t *testing.T) {
 	created := make([]string, 0, 3)
 	for i := range 3 {
 		start := base.Add(time.Duration(i) * 24 * time.Hour)
-		resp, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+		resp, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 			Tenant:    tenant.tenantContext(),
 			EpisodeId: episodeID,
 			StartsAt:  rfc3339(start),
 			EndsAt:    rfc3339(start.Add(time.Hour)),
-		}))
+		})
 		if err != nil {
 			t.Fatalf("CreateEpisodeFreeWindow %d: %v", i, err)
 		}
-		created = append(created, resp.Msg.FreeWindow.Id)
+		created = append(created, resp.FreeWindow.Id)
 	}
 	latest, middle, earliest := created[2], created[1], created[0]
 
 	list := func(t *testing.T, scope *publiraadminv1.ListEpisodeFreeWindowsRequest_EpisodeId, token string) *publiraadminv1.ListEpisodeFreeWindowsResponse {
 		t.Helper()
-		resp, err := client.ListEpisodeFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodeFreeWindowsRequest{
+		resp, err := client.ListEpisodeFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListEpisodeFreeWindowsRequest{
 			Tenant: tenant.tenantContext(),
 			Scope:  scope,
 			Limit:  2,
 			Token:  token,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("ListEpisodeFreeWindows token=%q: %v", token, err)
 		}
-		return resp.Msg
+		return resp
 	}
 
 	firstPage := list(t, listFreeWindowsByEpisode(episodeID), "")
@@ -619,12 +620,12 @@ func TestDBListEpisodeFreeWindowsPages(t *testing.T) {
 
 	// A token names the list it was issued for: walking a series with an
 	// episode's token would resume at a row that is not a boundary there.
-	_, err := client.ListEpisodeFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodeFreeWindowsRequest{
+	_, err := client.ListEpisodeFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListEpisodeFreeWindowsRequest{
 		Tenant: tenant.tenantContext(),
 		Scope:  listFreeWindowsBySeries(env.seriesID(t, seriesPublicID)),
 		Limit:  2,
 		Token:  firstPage.NextToken,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("token of another scope code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
@@ -641,12 +642,12 @@ func TestDBListEpisodeFreeWindowsStaysInsideTheTenant(t *testing.T) {
 	episodePublicID := createDBEpisode(t, client, owner, seriesPublicID, "Chapter One")
 
 	base := time.Now().UTC().Add(time.Hour)
-	if _, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(owner, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+	if _, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), owner.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 		Tenant:    owner.tenantContext(),
 		EpisodeId: env.episodeID(t, episodePublicID),
 		StartsAt:  rfc3339(base),
 		EndsAt:    rfc3339(base.Add(time.Hour)),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateEpisodeFreeWindow: %v", err)
 	}
 
@@ -657,12 +658,12 @@ func TestDBListEpisodeFreeWindowsStaysInsideTheTenant(t *testing.T) {
 	for name, req := range requests {
 		t.Run(name, func(t *testing.T) {
 			req.Tenant = other.tenantContext()
-			resp, err := client.ListEpisodeFreeWindows(context.Background(), newAdminDBRequest(other, req))
+			resp, err := client.ListEpisodeFreeWindows(testutil.WithBearer(context.Background(), other.token()), req)
 			if err != nil {
 				t.Fatalf("ListEpisodeFreeWindows from another tenant: %v", err)
 			}
-			if len(resp.Msg.FreeWindows) != 0 {
-				t.Fatalf("another tenant listed %d windows, want none", len(resp.Msg.FreeWindows))
+			if len(resp.FreeWindows) != 0 {
+				t.Fatalf("another tenant listed %d windows, want none", len(resp.FreeWindows))
 			}
 		})
 	}
@@ -681,7 +682,7 @@ func TestDBListEpisodeFreeWindowsRequiresAScope(t *testing.T) {
 	for name, req := range cases {
 		t.Run(name, func(t *testing.T) {
 			req.Tenant = tenant.tenantContext()
-			_, err := client.ListEpisodeFreeWindows(context.Background(), newAdminDBRequest(tenant, req))
+			_, err := client.ListEpisodeFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
@@ -707,32 +708,32 @@ func TestDBListEpisodeFreeWindowsPagesAcrossTheEpisodesOfASeries(t *testing.T) {
 	created := make([]string, 0, 5)
 	for i := range 5 {
 		start := base.Add(time.Duration(i) * 24 * time.Hour)
-		resp, err := client.CreateEpisodeFreeWindow(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeFreeWindowRequest{
+		resp, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
 			Tenant:    tenant.tenantContext(),
 			EpisodeId: episodeIDs[i%2],
 			StartsAt:  rfc3339(start),
 			EndsAt:    rfc3339(start.Add(time.Hour)),
-		}))
+		})
 		if err != nil {
 			t.Fatalf("CreateEpisodeFreeWindow %d: %v", i, err)
 		}
-		created = append(created, resp.Msg.FreeWindow.Id)
+		created = append(created, resp.FreeWindow.Id)
 	}
 	slices.Reverse(created)
 
 	seriesID := env.seriesID(t, seriesPublicID)
 	list := func(t *testing.T, token string) *publiraadminv1.ListEpisodeFreeWindowsResponse {
 		t.Helper()
-		resp, err := client.ListEpisodeFreeWindows(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodeFreeWindowsRequest{
+		resp, err := client.ListEpisodeFreeWindows(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListEpisodeFreeWindowsRequest{
 			Tenant: tenant.tenantContext(),
 			Scope:  listFreeWindowsBySeries(seriesID),
 			Limit:  2,
 			Token:  token,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("ListEpisodeFreeWindows token=%q: %v", token, err)
 		}
-		return resp.Msg
+		return resp
 	}
 
 	var walked []string

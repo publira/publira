@@ -5,8 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // The same address can be invited to several tenants, so an invitation entry
@@ -16,42 +20,42 @@ func TestDBListAuditLogsNamesTheTenantAndAddressOfAnInvitation(t *testing.T) {
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	first := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	second := pg.SeedTenant(t, "TENANTB", "tenant-b.example.com", "Tenant B")
-	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	audit := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	audit := publirasplatformv1connect.NewPlatformAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	ctx := context.Background()
 	const email = "invitee@example.com"
 
-	created, err := tenants.CreateTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
+	created, err := tenants.CreateTenantAdminInvitation(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantAdminInvitationRequest{
 		TenantId: first.ID.String(), Email: email,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation for tenant A: %v", err)
 	}
-	if _, err := tenants.ResendTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.ResendTenantAdminInvitationRequest{
-		TenantId: first.ID.String(), InvitationId: created.Msg.Invitation.Id,
-	})); err != nil {
+	if _, err := tenants.ResendTenantAdminInvitation(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.ResendTenantAdminInvitationRequest{
+		TenantId: first.ID.String(), InvitationId: created.Invitation.Id,
+	}); err != nil {
 		t.Fatalf("ResendTenantAdminInvitation: %v", err)
 	}
-	if _, err := tenants.CancelTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.CancelTenantAdminInvitationRequest{
-		TenantId: first.ID.String(), InvitationId: created.Msg.Invitation.Id,
-	})); err != nil {
+	if _, err := tenants.CancelTenantAdminInvitation(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.CancelTenantAdminInvitationRequest{
+		TenantId: first.ID.String(), InvitationId: created.Invitation.Id,
+	}); err != nil {
 		t.Fatalf("CancelTenantAdminInvitation: %v", err)
 	}
-	if _, err := tenants.CreateTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
+	if _, err := tenants.CreateTenantAdminInvitation(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantAdminInvitationRequest{
 		TenantId: second.ID.String(), Email: email,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateTenantAdminInvitation for tenant B: %v", err)
 	}
 
 	list := func(limit int32, token, tenantID string) *publirasplatformv1.ListAuditLogsResponse {
 		t.Helper()
-		res, err := audit.ListAuditLogs(ctx, newDBAuthedRequest(operator, publirasplatformv1.ListAuditLogsRequest{
+		res, err := audit.ListAuditLogs(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.ListAuditLogsRequest{
 			Limit: limit, Token: token, TenantId: tenantID,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("ListAuditLogs: %v", err)
 		}
-		return res.Msg
+		return res
 	}
 	summarize := func(logs []*publirasplatformv1.PlatformAuditLog) string {
 		t.Helper()
@@ -94,12 +98,12 @@ func TestDBCreateTenantAdminInvitationTakesAnAddressLongerThanAnAuditTarget(t *t
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	email := strings.Repeat("a", 64) + "@tenant-a.example.com"
 
-	if _, err := tenants.CreateTenantAdminInvitation(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
+	if _, err := tenants.CreateTenantAdminInvitation(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantAdminInvitationRequest{
 		TenantId: tenant.ID.String(), Email: email,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateTenantAdminInvitation: %v", err)
 	}
 }
@@ -115,30 +119,30 @@ func TestDBListAuditLogsNamesTheTenantOfARoleGrantedToAnExistingUser(t *testing.
 	const email = "reader@example.com"
 	pg.SeedEndUser(t, first.ID, "TAREADER", email, "Reader A")
 	pg.SeedEndUser(t, second.ID, "TBREADER", email, "Reader B")
-	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	audit := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	audit := publirasplatformv1connect.NewPlatformAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	ctx := context.Background()
 
 	for _, tenant := range []string{first.ID.String(), second.ID.String()} {
-		created, err := tenants.CreateTenantAdminInvitation(ctx, newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
+		created, err := tenants.CreateTenantAdminInvitation(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantAdminInvitationRequest{
 			TenantId: tenant, Email: email,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("CreateTenantAdminInvitation for %s: %v", tenant, err)
 		}
-		if !created.Msg.RoleGrantedImmediately {
-			t.Fatalf("CreateTenantAdminInvitation for %s = %+v, want the role granted", tenant, created.Msg)
+		if !created.RoleGrantedImmediately {
+			t.Fatalf("CreateTenantAdminInvitation for %s = %+v, want the role granted", tenant, created)
 		}
 	}
 
 	list := func(tenantID string) string {
 		t.Helper()
-		res, err := audit.ListAuditLogs(ctx, newDBAuthedRequest(operator, publirasplatformv1.ListAuditLogsRequest{TenantId: tenantID}))
+		res, err := audit.ListAuditLogs(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.ListAuditLogsRequest{TenantId: tenantID})
 		if err != nil {
 			t.Fatalf("ListAuditLogs: %v", err)
 		}
-		entries := make([]string, 0, len(res.Msg.AuditLogs))
-		for _, log := range res.Msg.AuditLogs {
+		entries := make([]string, 0, len(res.AuditLogs))
+		for _, log := range res.AuditLogs {
 			entries = append(entries, strings.Join([]string{log.GetAction(), log.GetTargetType(), log.GetTargetPublicId(), log.GetTargetName(), log.GetTenantPublicId(), log.GetTenantName()}, " "))
 		}
 		return strings.Join(entries, "\n")
@@ -162,15 +166,15 @@ func TestDBCreateTenantAdminInvitationGrantsTheRoleToAnAddressLongerThanAnAuditT
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := pg.SeedEndUser(t, tenant.ID, "TAREADER", strings.Repeat("a", 64)+"@tenant-a.example.com", "Reader")
-	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	created, err := tenants.CreateTenantAdminInvitation(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantAdminInvitationRequest{
+	created, err := tenants.CreateTenantAdminInvitation(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantAdminInvitationRequest{
 		TenantId: tenant.ID.String(), Email: reader.Email,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenantAdminInvitation: %v", err)
 	}
-	if !created.Msg.RoleGrantedImmediately {
-		t.Fatalf("CreateTenantAdminInvitation = %+v, want the role granted", created.Msg)
+	if !created.RoleGrantedImmediately {
+		t.Fatalf("CreateTenantAdminInvitation = %+v, want the role granted", created)
 	}
 }

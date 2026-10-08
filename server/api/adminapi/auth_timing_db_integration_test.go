@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
-
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -19,10 +17,10 @@ func TestDBAdminRequestPasswordResetTakesAsLongForARegisteredAddressAsForAnUnkno
 	client := env.authClient()
 
 	requestReset := func(email string) error {
-		_, err := client.RequestPasswordReset(context.Background(), connect.NewRequest(&publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
+		_, err := client.RequestPasswordReset(context.Background(), &publiraadminv1.AdminAuthServiceRequestPasswordResetRequest{
 			Tenant: tenant.tenantContext(),
 			Email:  email,
-		}))
+		})
 		return err
 	}
 	testutil.AssertIndistinguishableTimings(t,

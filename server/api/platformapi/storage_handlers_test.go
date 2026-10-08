@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
@@ -61,7 +61,7 @@ func TestUpdatePlatformStorageSettingsRefusesAConfigurationBeforeItIsWritten(t *
 		t.Run(tc.name, func(t *testing.T) {
 			server, mock := newOperatorHandlerTestServer(t)
 
-			_, err := server.UpdatePlatformStorageSettings(newStorageActorContext(), connect.NewRequest(tc.req))
+			_, err := server.UpdatePlatformStorageSettings(newStorageActorContext(), tc.req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdatePlatformStorageSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
@@ -75,9 +75,9 @@ func TestTestPlatformStorageConnectionRefusesAConfigurationBeforeItIsTested(t *t
 	server, mock := newOperatorHandlerTestServer(t)
 	server.storageTester = &recordingTester{checks: passingChecks()}
 
-	_, err := server.TestPlatformStorageConnection(newStorageActorContext(), connect.NewRequest(&publirasplatformv1.TestPlatformStorageConnectionRequest{
+	_, err := server.TestPlatformStorageConnection(newStorageActorContext(), &publirasplatformv1.TestPlatformStorageConnectionRequest{
 		Region: "ap-northeast-1",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("TestPlatformStorageConnection code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
@@ -93,10 +93,10 @@ func TestTestPlatformStorageConnectionRefusesAConfigurationBeforeItIsTested(t *t
 func TestTestPlatformStorageConnectionFailsWithoutATester(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	_, err := server.TestPlatformStorageConnection(newStorageActorContext(), connect.NewRequest(&publirasplatformv1.TestPlatformStorageConnectionRequest{
+	_, err := server.TestPlatformStorageConnection(newStorageActorContext(), &publirasplatformv1.TestPlatformStorageConnectionRequest{
 		Bucket: "publira-objects",
 		Region: "ap-northeast-1",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("TestPlatformStorageConnection code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 	}

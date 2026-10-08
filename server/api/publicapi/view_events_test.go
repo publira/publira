@@ -5,11 +5,18 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 )
 
-func cookieHeader(value string) http.Header {
-	header := http.Header{}
+func headerWith(key, value string) *connect.Header {
+	header := &connect.Header{}
+	header.Set(key, value)
+	return header
+}
+
+func cookieHeader(value string) *connect.Header {
+	header := &connect.Header{}
 	header.Set("Cookie", anonymousIDCookieName+"="+value)
 	return header
 }
@@ -49,10 +56,10 @@ func TestResolveViewActorReusesExistingCookie(t *testing.T) {
 func TestResolveViewActorMintsWhenCookieIsUnusable(t *testing.T) {
 	tests := []struct {
 		name   string
-		header http.Header
+		header *connect.Header
 	}{
 		{name: "no-header", header: nil},
-		{name: "no-cookie", header: http.Header{}},
+		{name: "no-cookie", header: &connect.Header{}},
 		{name: "empty-value", header: cookieHeader("")},
 		{name: "not-a-uuid", header: cookieHeader("not-a-uuid")},
 		// The value reaches content_events.anonymous_id, so the all-zero UUID is
@@ -142,17 +149,17 @@ func TestViewDebounceBucketIgnoresTheLocationOfTheTimestamp(t *testing.T) {
 func TestIsPrefetchRequest(t *testing.T) {
 	tests := []struct {
 		name   string
-		header http.Header
+		header *connect.Header
 		want   bool
 	}{
 		{name: "no-header", header: nil, want: false},
-		{name: "plain-request", header: http.Header{}, want: false},
-		{name: "sec-purpose", header: http.Header{"Sec-Purpose": []string{"prefetch"}}, want: true},
-		{name: "sec-purpose-prerender", header: http.Header{"Sec-Purpose": []string{"prefetch;prerender"}}, want: true},
-		{name: "purpose", header: http.Header{"Purpose": []string{"prefetch"}}, want: true},
-		{name: "x-purpose", header: http.Header{"X-Purpose": []string{"preview"}}, want: true},
-		{name: "x-moz", header: http.Header{"X-Moz": []string{"prefetch"}}, want: true},
-		{name: "next-router", header: http.Header{"Next-Router-Prefetch": []string{"1"}}, want: true},
+		{name: "plain-request", header: &connect.Header{}, want: false},
+		{name: "sec-purpose", header: headerWith("Sec-Purpose", "prefetch"), want: true},
+		{name: "sec-purpose-prerender", header: headerWith("Sec-Purpose", "prefetch;prerender"), want: true},
+		{name: "purpose", header: headerWith("Purpose", "prefetch"), want: true},
+		{name: "x-purpose", header: headerWith("X-Purpose", "preview"), want: true},
+		{name: "x-moz", header: headerWith("X-Moz", "prefetch"), want: true},
+		{name: "next-router", header: headerWith("Next-Router-Prefetch", "1"), want: true},
 	}
 
 	for _, tc := range tests {

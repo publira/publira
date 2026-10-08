@@ -9,12 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"net/mail"
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ageverification"
@@ -50,7 +49,7 @@ func (s *apiServer) mintAccessToken(
 	role string,
 ) (*publirattypesv1.AccessToken, error) {
 	if s.tokens == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
+		return nil, connect.NewError(connect.CodeInternal, "token manager is not configured")
 	}
 	token, expiresAt, err := s.tokens.Issue(
 		user.PublicID,
@@ -61,7 +60,7 @@ func (s *apiServer) mintAccessToken(
 		time.Now(),
 	)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	return &publirattypesv1.AccessToken{
 		Token:     token,
@@ -73,7 +72,7 @@ func (s *apiServer) issueAccessToken(
 	tenant dbmodels.Tenant,
 	user dbmodels.User,
 	role string,
-) (*connect.Response[publirav1.LoginResponse], error) {
+) (*publirav1.LoginResponse, error) {
 	accessToken, err := s.mintAccessToken(tenant, user, role)
 	if err != nil {
 		return nil, err
@@ -86,7 +85,7 @@ func (s *apiServer) issueAccessToken(
 		},
 		AccessToken: accessToken,
 	}
-	return connect.NewResponse(resp), nil
+	return resp, nil
 }
 
 func (s *apiServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, error) {
@@ -100,7 +99,7 @@ func (s *apiServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, e
 func (s *apiServer) authenticateAccessToken(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	headers http.Header,
+	headers *connect.Header,
 ) (rpcmiddleware.SessionContext, error) {
 	tenant, err := s.tenantByContext(ctx, tenantCtx)
 	if err != nil {
@@ -148,7 +147,7 @@ func (s *apiServer) authenticateAccessToken(
 func (s *apiServer) currentUserFromSession(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	headers http.Header,
+	headers *connect.Header,
 ) (dbmodels.Tenant, dbmodels.User, string, error) {
 	authCtx, err := s.authenticateAccessToken(ctx, tenantCtx, headers)
 	if err != nil {
@@ -168,7 +167,7 @@ func (s *apiServer) currentUserFromSession(
 func (s *apiServer) optionalReaderFromSession(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	headers http.Header,
+	headers *connect.Header,
 ) (dbmodels.Tenant, uuid.NullUUID, error) {
 	if _, hasBearer := auth.BearerTokenFromHeader(headers); !hasBearer {
 		tenant, err := s.tenantByContext(ctx, tenantCtx)
@@ -199,29 +198,29 @@ func (s *apiServer) optionalReaderFromSession(
 
 func (s *apiServer) Login(
 	ctx context.Context,
-	req *connect.Request[publirav1.LoginRequest],
-) (*connect.Response[publirav1.LoginResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.LoginRequest,
+) (*publirav1.LoginResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "login", "failure", "", "", "tenant_not_found")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "login", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true}, Email: req.Msg.Email})
+	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true}, Email: req.Email})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, "", "invalid_credentials")
-			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "login", "failure", tenant.PublicID, "", "invalid_credentials")
+			return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 		}
-		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, "", "user_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "login", "failure", tenant.PublicID, "", "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to get user for login", err, "tenant_id", tenant.ID.String())
 	}
-	if !auth.VerifyUserPassword(req.Msg.Password, user.PasswordHash) {
-		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
+	if !auth.VerifyUserPassword(req.Password, user.PasswordHash) {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
+		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 	}
 	if user.Status != "active" || !user.EmailVerifiedAt.Valid {
-		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "email_not_verified")
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email is not verified"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "login", "failure", tenant.PublicID, user.PublicID, "email_not_verified")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "email is not verified")
 	}
 	role, err := s.tenantRole(ctx, user.ID)
 	if err != nil {
@@ -229,10 +228,10 @@ func (s *apiServer) Login(
 	}
 	response, err := s.issueAccessToken(tenant, user, role)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "login", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
 		return nil, err
 	}
-	auth.AuditEvent(req.Header(), "login", "success", tenant.PublicID, user.PublicID, "token_issued")
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "login", "success", tenant.PublicID, user.PublicID, "token_issued")
 	return response, nil
 }
 
@@ -363,25 +362,25 @@ func insertPublicOutboxEvent(
 
 func (s *apiServer) CreateUser(
 	ctx context.Context,
-	req *connect.Request[publirav1.CreateUserRequest],
-) (*connect.Response[publirav1.CreateUserResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.CreateUserRequest,
+) (*publirav1.CreateUserResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", "", "", "tenant_not_found")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "signup", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
 
-	name := strings.TrimSpace(req.Msg.Name)
-	email := strings.TrimSpace(req.Msg.Email)
-	password := req.Msg.Password
+	name := strings.TrimSpace(req.Name)
+	email := strings.TrimSpace(req.Email)
+	password := req.Password
 	if name == "" || email == "" || strings.TrimSpace(password) == "" {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name, email, and password are required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "signup", "failure", tenant.PublicID, "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "name, email, and password are required")
 	}
 	address, err := mail.ParseAddress(email)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_email")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "signup", "failure", tenant.PublicID, "", "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid email address")
 	}
 	// mail.ParseAddress also accepts a display name around the address, as in
 	// John <john@example.com>. What is stored, mailed, and compared with the
@@ -389,7 +388,7 @@ func (s *apiServer) CreateUser(
 	// account per display name for one inbox.
 	email = address.Address
 	if reason, err := s.refuseEmail(ctx, tenant.ID, email, "email"); err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", reason)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "signup", "failure", tenant.PublicID, "", reason)
 		return nil, err
 	}
 
@@ -397,34 +396,34 @@ func (s *apiServer) CreateUser(
 	// one: whether a birth date is asked for is the tenant's rule, and a form
 	// that skipped it is not a sign-up to refuse.
 	var birthDate sql.NullTime
-	if raw := strings.TrimSpace(req.Msg.BirthDate); raw != "" {
+	if raw := strings.TrimSpace(req.BirthDate); raw != "" {
 		today, todayErr := s.tenantToday(ctx, tenant)
 		if todayErr != nil {
-			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "tenant_today_failed")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "signup", "failure", tenant.PublicID, "", "tenant_today_failed")
 			return nil, s.internalError(ctx, "failed to resolve the tenant calendar day", todayErr, "tenant_id", tenant.ID.String())
 		}
 		parsed, parseErr := ageverification.ParseBirthDate(raw, today)
 		if parseErr != nil {
-			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_birth_date")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "signup", "failure", tenant.PublicID, "", "invalid_birth_date")
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, parseErr, "birth_date")
 		}
 		birthDate = sql.NullTime{Time: parsed, Valid: true}
 	}
 
-	agreedVersionIDs, err := s.signupConsents(ctx, tenant, req.Msg.AgreedPageVersionIds)
+	agreedVersionIDs, err := s.signupConsents(ctx, tenant, req.AgreedPageVersionIds)
 	if err != nil {
 		reason := "consent_lookup_failed"
 		if connect.CodeOf(err) == connect.CodeInvalidArgument {
 			reason = "invalid_consent"
 		}
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", reason)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "signup", "failure", tenant.PublicID, "", reason)
 		return nil, err
 	}
 
 	// Charged before the request is recorded, so a caller out of allowance
 	// leaves nothing behind for the worker to mail.
-	if err := s.mail.Allow(ctx, req, tenant.ID.String(), email); err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "rate_limited")
+	if err := s.mail.Allow(ctx, tenant.ID.String(), email); err != nil {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "signup", "failure", tenant.PublicID, "", "rate_limited")
 		return nil, err
 	}
 
@@ -432,13 +431,13 @@ func (s *apiServer) CreateUser(
 	// address is not looked up until the worker takes the request.
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "password_hash_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "signup", "failure", tenant.PublicID, "", "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	userID, err := uuid.NewV7()
 	if err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_id_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "signup", "failure", tenant.PublicID, "", "user_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	signup := outbox.ReaderSignupRequestPayload{
 		TenantID:     tenant.ID.String(),
@@ -454,12 +453,12 @@ func (s *apiServer) CreateUser(
 		signup.AgreedPageVersionIDs = append(signup.AgreedPageVersionIDs, versionID.String())
 	}
 	if err := queueReaderAuthRequest(ctx, s.queriesFor(ctx), tenant.ID, outbox.EventTypeReaderSignupRequest, signup); err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "signup_request_enqueue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "signup", "failure", tenant.PublicID, "", "signup_request_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue reader signup request", err, "tenant_id", tenant.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "signup", "success", tenant.PublicID, "", "requested")
-	return connect.NewResponse(&publirav1.CreateUserResponse{Accepted: true}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "signup", "success", tenant.PublicID, "", "requested")
+	return &publirav1.CreateUserResponse{Accepted: true}, nil
 }
 
 // refuseEmail answers the invalid_argument that refuses address on field when
@@ -559,15 +558,15 @@ func (s *apiServer) signupConsents(ctx context.Context, tenant dbmodels.Tenant, 
 
 func (s *apiServer) VerifyUserEmail(
 	ctx context.Context,
-	req *connect.Request[publirav1.VerifyUserEmailRequest],
-) (*connect.Response[publirav1.VerifyUserEmailResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.VerifyUserEmailRequest,
+) (*publirav1.VerifyUserEmailResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	token := strings.TrimSpace(req.Msg.Token)
+	token := strings.TrimSpace(req.Token)
 	if token == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is required")
 	}
 	verificationToken, err := s.queriesFor(ctx).GetUserEmailVerificationTokenByHashForTenant(ctx, dbmodels.GetUserEmailVerificationTokenByHashForTenantParams{
 		TenantID:  tenant.ID,
@@ -575,20 +574,20 @@ func (s *apiServer) VerifyUserEmail(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("verification token not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "verification token not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get email verification token", err, "tenant_id", tenant.ID.String())
 	}
 	if verificationToken.UsedAt.Valid {
-		return connect.NewResponse(&publirav1.VerifyUserEmailResponse{Verified: true}), nil
+		return &publirav1.VerifyUserEmailResponse{Verified: true}, nil
 	}
 	if verificationToken.ExpiresAt.Before(time.Now()) {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("verification token expired"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "verification token expired")
 	}
 	user, err := s.queriesFor(ctx).GetUserByID(ctx, verificationToken.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "user not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get user for email verification", err, "tenant_id", tenant.ID.String(), "user_id", verificationToken.UserID.String())
 	}
@@ -604,7 +603,7 @@ func (s *apiServer) VerifyUserEmail(
 	if err := s.queriesFor(ctx).ActivateInactiveUserByID(ctx, user.ID); err != nil {
 		return nil, s.internalDBError(ctx, "failed to activate user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	return connect.NewResponse(&publirav1.VerifyUserEmailResponse{Verified: true}), nil
+	return &publirav1.VerifyUserEmailResponse{Verified: true}, nil
 }
 
 // RequestEmailVerification mails a fresh activation link to an address whose
@@ -621,80 +620,80 @@ func (s *apiServer) VerifyUserEmail(
 // receives anything.
 func (s *apiServer) RequestEmailVerification(
 	ctx context.Context,
-	req *connect.Request[publirav1.RequestEmailVerificationRequest],
-) (*connect.Response[publirav1.RequestEmailVerificationResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.RequestEmailVerificationRequest,
+) (*publirav1.RequestEmailVerificationResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", "", "", "tenant_not_found")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_verification_request", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
 
-	email := strings.TrimSpace(req.Msg.Email)
+	email := strings.TrimSpace(req.Email)
 	if email == "" {
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email is required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_verification_request", "failure", tenant.PublicID, "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "email is required")
 	}
 	if _, err := mail.ParseAddress(email); err != nil {
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "invalid_email")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_verification_request", "failure", tenant.PublicID, "", "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid email address")
 	}
-	if err := s.mail.Allow(ctx, req, tenant.ID.String(), email); err != nil {
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "rate_limited")
+	if err := s.mail.Allow(ctx, tenant.ID.String(), email); err != nil {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_verification_request", "failure", tenant.PublicID, "", "rate_limited")
 		return nil, err
 	}
 
 	if err := queueReaderAuthRequest(ctx, s.queriesFor(ctx), tenant.ID, outbox.EventTypeReaderEmailVerificationRequest,
 		outbox.ReaderEmailVerificationRequestPayload{TenantID: tenant.ID.String(), Email: email},
 	); err != nil {
-		auth.AuditEvent(req.Header(), "email_verification_request", "failure", tenant.PublicID, "", "request_enqueue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_verification_request", "failure", tenant.PublicID, "", "request_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue reader email verification request", err, "tenant_id", tenant.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "email_verification_request", "success", tenant.PublicID, "", "requested")
-	return connect.NewResponse(&publirav1.RequestEmailVerificationResponse{Requested: true}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_verification_request", "success", tenant.PublicID, "", "requested")
+	return &publirav1.RequestEmailVerificationResponse{Requested: true}, nil
 }
 
 func (s *apiServer) RequestEmailChange(
 	ctx context.Context,
-	req *connect.Request[publirav1.RequestEmailChangeRequest],
-) (*connect.Response[publirav1.RequestEmailChangeResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.RequestEmailChangeRequest,
+) (*publirav1.RequestEmailChangeResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", "", "", "invalid_session")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", "", "", "invalid_session")
 		return nil, err
 	}
 
-	newEmail := strings.TrimSpace(req.Msg.NewEmail)
-	currentEmail := strings.TrimSpace(req.Msg.CurrentEmail)
-	currentPassword := req.Msg.CurrentPassword
+	newEmail := strings.TrimSpace(req.NewEmail)
+	currentEmail := strings.TrimSpace(req.CurrentEmail)
+	currentPassword := req.CurrentPassword
 	withPassword := strings.TrimSpace(currentPassword) != ""
-	withIdentity := strings.TrimSpace(req.Msg.IdToken) != ""
+	withIdentity := strings.TrimSpace(req.IdToken) != ""
 	if currentEmail == "" || newEmail == "" || withPassword == withIdentity {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_email, new_email and either current_password or id_token are required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "current_email, new_email and either current_password or id_token are required")
 	}
 	if _, err := mail.ParseAddress(currentEmail); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_current_email")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid current email address"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_current_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid current email address")
 	}
 	newAddress, err := mail.ParseAddress(newEmail)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_email")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid email address")
 	}
 	// The address alone, without the display name mail.ParseAddress also
 	// accepts, for the reason CreateUser stores it that way.
 	newEmail = newAddress.Address
 	if !strings.EqualFold(currentEmail, user.Email) {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_mismatch")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current email does not match"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_mismatch")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "current email does not match")
 	}
 	if strings.EqualFold(newEmail, user.Email) {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "same_email")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("new email must be different from current email"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "same_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "new email must be different from current email")
 	}
 	if reason, err := s.refuseEmail(ctx, tenant.ID, newEmail, "new_email"); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, reason)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, reason)
 		return nil, err
 	}
 	var identityClaims signin.Claims
@@ -703,20 +702,20 @@ func (s *apiServer) RequestEmailChange(
 		// caller typed instead of on the account's password, so none of them is a
 		// guess and none of them should cost an allowance.
 		if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
-			auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
 			return nil, err
 		}
 		if !auth.VerifyUserPassword(currentPassword, user.PasswordHash) {
-			auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_password")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_password")
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
 		}
 		s.clearReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID)
 	} else {
 		// Verified before the mail guard is charged and spent inside the
 		// transaction below, since spending the nonce is a write.
-		identityClaims, err = s.verifyIdentityConfirmation(ctx, s.queriesFor(ctx), tenant.ID, user.ID, req.Msg.Provider, req.Msg.IdToken, req.Msg.Nonce)
+		identityClaims, err = s.verifyIdentityConfirmation(ctx, s.queriesFor(ctx), tenant.ID, user.ID, req.Provider, req.IdToken, req.Nonce)
 		if err != nil {
-			auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
 			return nil, err
 		}
 	}
@@ -730,12 +729,12 @@ func (s *apiServer) RequestEmailChange(
 		UserID:   user.ID,
 	})
 	if err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if held {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
+		return nil, connect.NewError(connect.CodeAlreadyExists, "email already exists")
 	}
 
 	// The session says who is asking, not that the address they named is
@@ -747,32 +746,32 @@ func (s *apiServer) RequestEmailChange(
 	// purpose and mails nothing when it does, so charging first would let any
 	// signed-in caller spend the allowance of every address they can name by
 	// naming ones that already have accounts.
-	if err := s.mail.Allow(ctx, req, tenant.ID.String(), newEmail); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+	if err := s.mail.Allow(ctx, tenant.ID.String(), newEmail); err != nil {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "rate_limited")
 		return nil, err
 	}
 
 	rawToken := make([]byte, 32)
 	if _, err := rand.Read(rawToken); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	currentEmailToken := hex.EncodeToString(rawToken)
 	rawToken = make([]byte, 32)
 	if _, err := rand.Read(rawToken); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	newEmailToken := hex.EncodeToString(rawToken)
 	tokenID, err := uuid.NewV7()
 	if err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
 		return nil, s.internalDBError(ctx, "failed to begin email change transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
@@ -787,10 +786,10 @@ func (s *apiServer) RequestEmailChange(
 		if errors.Is(err, sql.ErrNoRows) {
 			// The account was closed while this request waited, so the session
 			// it came with is over and there is no address left to move.
-			auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "account_gone")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "account_gone")
 			return nil, invalidSessionError()
 		}
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
 		return nil, s.internalDBError(ctx, "failed to lock the account for an email change request", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	// The password and the address above were checked against the row this
@@ -798,22 +797,22 @@ func (s *apiServer) RequestEmailChange(
 	// checks current. A password set while this request waited ends the session
 	// it came with, since every path that writes one bumps credentials_version.
 	if locked.CredentialsVersion != user.CredentialsVersion {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "stale_session")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "stale_session")
 		return nil, invalidSessionError()
 	}
 	if !strings.EqualFold(currentEmail, locked.Email) {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_mismatch")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current email does not match"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_mismatch")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "current email does not match")
 	}
 	if withIdentity {
-		if err := s.spendConfirmationNonce(ctx, txq, tenant.ID, req.Msg.Nonce, identityClaims); err != nil {
-			auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
+		if err := s.spendConfirmationNonce(ctx, txq, tenant.ID, req.Nonce, identityClaims); err != nil {
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
 			return nil, err
 		}
 	}
 
 	if err := txq.DeleteUserEmailChangeTokensByUserID(ctx, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
 		return nil, s.internalDBError(ctx, "failed to delete email change tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if _, err := txq.CreateUserEmailChangeToken(ctx, dbmodels.CreateUserEmailChangeTokenParams{
@@ -826,40 +825,40 @@ func (s *apiServer) RequestEmailChange(
 		NewEmailTokenHash:     auth.HashToken(newEmailToken),
 		ExpiresAt:             time.Now().Add(emailVerificationTokenTTL),
 	}); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
 		return nil, s.internalDBError(ctx, "failed to create email change token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := enqueueReaderEmailChangeConfirmationEmail(ctx, txq, tenant.ID, tokenID, "current_email", currentEmailToken); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_enqueue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue reader email change confirmation email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := enqueueReaderEmailChangeConfirmationEmail(ctx, txq, tenant.ID, tokenID, "new_email", newEmailToken); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "new_email_enqueue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "new_email_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue reader email change confirmation email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
 		return nil, s.internalDBError(ctx, "failed to commit email change transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "email_change_request", "success", tenant.PublicID, user.PublicID, "confirmation_emails_enqueued")
-	return connect.NewResponse(&publirav1.RequestEmailChangeResponse{Requested: true}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_request", "success", tenant.PublicID, user.PublicID, "confirmation_emails_enqueued")
+	return &publirav1.RequestEmailChangeResponse{Requested: true}, nil
 }
 
 func (s *apiServer) ConfirmEmailChange(
 	ctx context.Context,
-	req *connect.Request[publirav1.ConfirmEmailChangeRequest],
-) (*connect.Response[publirav1.ConfirmEmailChangeResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ConfirmEmailChangeRequest,
+) (*publirav1.ConfirmEmailChangeResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", "", "", "tenant_not_found")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
 
-	token := strings.TrimSpace(req.Msg.Token)
+	token := strings.TrimSpace(req.Token)
 	if token == "" {
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "invalid_token")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, "", "invalid_token")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is required")
 	}
 
 	changeToken, err := s.queriesFor(ctx).GetUserEmailChangeTokenByHashForTenant(ctx, dbmodels.GetUserEmailChangeTokenByHashForTenantParams{
@@ -868,38 +867,38 @@ func (s *apiServer) ConfirmEmailChange(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "token_not_found")
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("email change token not found"))
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, "", "token_not_found")
+			return nil, connect.NewError(connect.CodeNotFound, "email change token not found")
 		}
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "token_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, "", "token_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to get email change token", err, "tenant_id", tenant.ID.String())
 	}
 
 	if changeToken.CompletedAt.Valid {
-		return connect.NewResponse(&publirav1.ConfirmEmailChangeResponse{Confirmed: true, Changed: true}), nil
+		return &publirav1.ConfirmEmailChangeResponse{Confirmed: true, Changed: true}, nil
 	}
 	if changeToken.ExpiresAt.Before(time.Now()) {
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "token_expired")
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change token expired"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, "", "token_expired")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "email change token expired")
 	}
 
 	user, err := s.queriesFor(ctx).GetUserByID(ctx, changeToken.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "user_not_found")
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, "", "user_not_found")
+			return nil, connect.NewError(connect.CodeNotFound, "user not found")
 		}
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "user_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, "", "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to get user for email change confirm", err, "tenant_id", tenant.ID.String(), "user_id", changeToken.UserID.String())
 	}
 	if !strings.EqualFold(user.Email, changeToken.CurrentEmail) {
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "stale_request")
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change request is no longer valid"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "stale_request")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "email change request is no longer valid")
 	}
 
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
 		return nil, s.internalDBError(ctx, "failed to begin email change confirm transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
@@ -908,12 +907,12 @@ func (s *apiServer) ConfirmEmailChange(
 	matchedTarget := changeToken.MatchedTarget
 	if matchedTarget == "current_email" {
 		if err := txq.MarkUserEmailChangeCurrentEmailConfirmed(ctx, changeToken.ID); err != nil {
-			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "current_email_confirm_failed")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "current_email_confirm_failed")
 			return nil, s.internalDBError(ctx, "failed to confirm current email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 		}
 	} else {
 		if err := txq.MarkUserEmailChangeNewEmailConfirmed(ctx, changeToken.ID); err != nil {
-			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "new_email_confirm_failed")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "new_email_confirm_failed")
 			return nil, s.internalDBError(ctx, "failed to confirm new email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 		}
 	}
@@ -926,15 +925,15 @@ func (s *apiServer) ConfirmEmailChange(
 			pendingTarget = "new_email"
 		}
 		if err := tx.Commit(); err != nil {
-			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
 			return nil, s.internalDBError(ctx, "failed to commit email change confirm transaction", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 		}
-		auth.AuditEvent(req.Header(), "email_change_confirm", "success", tenant.PublicID, user.PublicID, "waiting_for_"+pendingTarget)
-		return connect.NewResponse(&publirav1.ConfirmEmailChangeResponse{
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "success", tenant.PublicID, user.PublicID, "waiting_for_"+pendingTarget)
+		return &publirav1.ConfirmEmailChangeResponse{
 			Confirmed:              true,
 			Changed:                false,
 			PendingConfirmationFor: pendingTarget,
-		}), nil
+		}, nil
 	}
 
 	// The request checked the inbox when it was made, and another account may
@@ -944,7 +943,7 @@ func (s *apiServer) ConfirmEmailChange(
 		TenantID: tenant.ID,
 		Email:    changeToken.NewEmail,
 	}); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_lock_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_lock_failed")
 		return nil, s.internalDBError(ctx, "failed to lock the inbox of an email change", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	held, err := txq.CanonicalEmailHeldByAnotherUserForTenant(ctx, dbmodels.CanonicalEmailHeldByAnotherUserForTenantParams{
@@ -953,65 +952,65 @@ func (s *apiServer) ConfirmEmailChange(
 		UserID:   user.ID,
 	})
 	if err != nil {
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "user_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if held {
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
+		return nil, connect.NewError(connect.CodeAlreadyExists, "email already exists")
 	}
 	if _, err := txq.UpdateUserEmailByID(ctx, dbmodels.UpdateUserEmailByIDParams{
 		ID:    user.ID,
 		Email: changeToken.NewEmail,
 	}); err != nil {
 		if dberr.IsUniqueViolation(err) {
-			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
+			return nil, connect.NewError(connect.CodeAlreadyExists, "email already exists")
 		}
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_update_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_update_failed")
 		return nil, s.internalDBError(ctx, "failed to update user email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := txq.MarkUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "request_complete_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "request_complete_failed")
 		return nil, s.internalDBError(ctx, "failed to complete email change token", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 	}
 	// The notice rides the same transaction as the address it announces, so the
 	// old address is never told about a change that did not commit — and never
 	// left untold about one that did.
 	if err := enqueueReaderEmailChangedNoticeEmail(ctx, txq, tenant.ID, changeToken.ID); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "old_email_notice_enqueue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "old_email_notice_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue reader email changed notice email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 	}
 	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
 		return nil, s.internalDBError(ctx, "failed to commit email change confirm transaction", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "email_change_confirm", "success", tenant.PublicID, user.PublicID, "email_changed")
-	return connect.NewResponse(&publirav1.ConfirmEmailChangeResponse{Confirmed: true, Changed: true}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "email_change_confirm", "success", tenant.PublicID, user.PublicID, "email_changed")
+	return &publirav1.ConfirmEmailChangeResponse{Confirmed: true, Changed: true}, nil
 }
 
 func (s *apiServer) RequestPasswordReset(
 	ctx context.Context,
-	req *connect.Request[publirav1.RequestPasswordResetRequest],
-) (*connect.Response[publirav1.RequestPasswordResetResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.RequestPasswordResetRequest,
+) (*publirav1.RequestPasswordResetResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", "", "", "tenant_not_found")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_request", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
 
-	email := strings.TrimSpace(req.Msg.Email)
+	email := strings.TrimSpace(req.Email)
 	if email == "" {
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email is required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_request", "failure", tenant.PublicID, "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "email is required")
 	}
 	if _, err := mail.ParseAddress(email); err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "invalid_email")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_request", "failure", tenant.PublicID, "", "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid email address")
 	}
-	if err := s.mail.Allow(ctx, req, tenant.ID.String(), email); err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "rate_limited")
+	if err := s.mail.Allow(ctx, tenant.ID.String(), email); err != nil {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_request", "failure", tenant.PublicID, "", "rate_limited")
 		return nil, err
 	}
 
@@ -1020,29 +1019,29 @@ func (s *apiServer) RequestPasswordReset(
 	if err := queueReaderAuthRequest(ctx, s.queriesFor(ctx), tenant.ID, outbox.EventTypeReaderPasswordResetRequest,
 		outbox.ReaderPasswordResetRequestPayload{TenantID: tenant.ID.String(), Email: email},
 	); err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "request_enqueue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_request", "failure", tenant.PublicID, "", "request_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue reader password reset request", err, "tenant_id", tenant.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "password_reset_request", "success", tenant.PublicID, "", "requested")
-	return connect.NewResponse(&publirav1.RequestPasswordResetResponse{Requested: true}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_request", "success", tenant.PublicID, "", "requested")
+	return &publirav1.RequestPasswordResetResponse{Requested: true}, nil
 }
 
 func (s *apiServer) ConfirmPasswordReset(
 	ctx context.Context,
-	req *connect.Request[publirav1.ConfirmPasswordResetRequest],
-) (*connect.Response[publirav1.ConfirmPasswordResetResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ConfirmPasswordResetRequest,
+) (*publirav1.ConfirmPasswordResetResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", "", "", "tenant_not_found")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_confirm", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
 
-	token := strings.TrimSpace(req.Msg.Token)
-	newPassword := req.Msg.NewPassword
+	token := strings.TrimSpace(req.Token)
+	newPassword := req.NewPassword
 	if token == "" || strings.TrimSpace(newPassword) == "" {
-		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token and new_password are required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_confirm", "failure", tenant.PublicID, "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token and new_password are required")
 	}
 
 	resetToken, err := s.queriesFor(ctx).GetUserPasswordResetTokenByHashForTenant(ctx, dbmodels.GetUserPasswordResetTokenByHashForTenantParams{
@@ -1051,55 +1050,55 @@ func (s *apiServer) ConfirmPasswordReset(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "token_not_found")
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("password reset token not found"))
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_confirm", "failure", tenant.PublicID, "", "token_not_found")
+			return nil, connect.NewError(connect.CodeNotFound, "password reset token not found")
 		}
-		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "token_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_confirm", "failure", tenant.PublicID, "", "token_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to get password reset token", err, "tenant_id", tenant.ID.String())
 	}
 
 	if resetToken.CompletedAt.Valid {
-		return connect.NewResponse(&publirav1.ConfirmPasswordResetResponse{Confirmed: true}), nil
+		return &publirav1.ConfirmPasswordResetResponse{Confirmed: true}, nil
 	}
 	if resetToken.ExpiresAt.Before(time.Now()) {
-		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "token_expired")
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("password reset token expired"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_confirm", "failure", tenant.PublicID, "", "token_expired")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "password reset token expired")
 	}
 
 	user, err := s.queriesFor(ctx).GetUserByID(ctx, resetToken.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "user_not_found")
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_confirm", "failure", tenant.PublicID, "", "user_not_found")
+			return nil, connect.NewError(connect.CodeNotFound, "user not found")
 		}
-		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "user_lookup_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_confirm", "failure", tenant.PublicID, "", "user_lookup_failed")
 		return nil, s.internalDBError(ctx, "failed to get user for password reset confirm", err, "tenant_id", tenant.ID.String(), "user_id", resetToken.UserID.String())
 	}
 
 	passwordHash, err := auth.HashPassword(newPassword)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_hash_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	if _, err := s.queriesFor(ctx).UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
 		ID:           user.ID,
 		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
 	}); err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
 		return nil, s.internalDBError(ctx, "failed to update password", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
 		return nil, s.internalDBError(ctx, "failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := s.queriesFor(ctx).MarkUserPasswordResetTokenCompleted(ctx, resetToken.ID); err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "token_complete_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "token_complete_failed")
 		return nil, s.internalDBError(ctx, "failed to complete password reset token", err, "tenant_id", tenant.ID.String(), "token_id", resetToken.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "password_reset_confirm", "success", tenant.PublicID, user.PublicID, "confirmed")
-	return connect.NewResponse(&publirav1.ConfirmPasswordResetResponse{Confirmed: true}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_reset_confirm", "success", tenant.PublicID, user.PublicID, "confirmed")
+	return &publirav1.ConfirmPasswordResetResponse{Confirmed: true}, nil
 }
 
 // ChangePassword sets a new password for the reader whose session carries the
@@ -1121,25 +1120,25 @@ func (s *apiServer) ConfirmPasswordReset(
 // would have seen had it arrived a moment later, because by then it is.
 func (s *apiServer) ChangePassword(
 	ctx context.Context,
-	req *connect.Request[publirav1.ChangePasswordRequest],
-) (*connect.Response[publirav1.ChangePasswordResponse], error) {
-	tenant, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.ChangePasswordRequest,
+) (*publirav1.ChangePasswordResponse, error) {
+	tenant, user, role, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
-		auth.AuditEvent(req.Header(), "password_change", "failure", "", "", "invalid_session")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", "", "", "invalid_session")
 		return nil, err
 	}
 
-	currentPassword := req.Msg.CurrentPassword
-	newPassword := req.Msg.NewPassword
+	currentPassword := req.CurrentPassword
+	newPassword := req.NewPassword
 	if strings.TrimSpace(currentPassword) == "" || strings.TrimSpace(newPassword) == "" {
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_password and new_password are required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "current_password and new_password are required")
 	}
 	if newPassword == currentPassword {
 		// Refused rather than accepted as a no-op: the change would end every
 		// other session the reader holds and leave them with the password an
 		// attacker already knows, which is the opposite of what the form is for.
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "same_password")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "same_password")
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("new password must be different from current password"), "new_password")
 	}
 
@@ -1147,13 +1146,13 @@ func (s *apiServer) ChangePassword(
 	// turned away without a bcrypt verification and without taking a row lock on
 	// the account they are guessing at.
 	if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "rate_limited")
 		return nil, err
 	}
 
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
 		return nil, s.internalDBError(ctx, "failed to begin password change transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
@@ -1164,14 +1163,14 @@ func (s *apiServer) ChangePassword(
 		if errors.Is(err, sql.ErrNoRows) {
 			// The account was closed while this request waited. There is nothing
 			// left to change, and the session it came with is over.
-			auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "account_gone")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "account_gone")
 			return nil, invalidSessionError()
 		}
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "user_lock_failed")
 		return nil, s.internalDBError(ctx, "failed to lock the account for a password change", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if !auth.VerifyUserPassword(currentPassword, locked.PasswordHash) {
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_password")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "invalid_password")
 		// Not Unauthenticated: the session is fine, the confirmation field is
 		// wrong. Clients treat Unauthenticated as "re-authenticate", which would
 		// log the reader out for a typo. The message names the field and nothing
@@ -1182,24 +1181,24 @@ func (s *apiServer) ChangePassword(
 
 	passwordHash, err := auth.HashPassword(newPassword)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "password_hash_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	if _, err := txq.UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
 		ID:           user.ID,
 		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
 	}); err != nil {
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
 		return nil, s.internalDBError(ctx, "failed to update password", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	bumped, err := txq.BumpUserCredentialsVersion(ctx, user.ID)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
 		return nil, s.internalDBError(ctx, "failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := enqueueReaderPasswordChangedNoticeEmail(ctx, txq, tenant.ID, user.ID, bumped.CredentialsVersion); err != nil {
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "password_changed_notice_enqueue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "password_changed_notice_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue reader password changed notice email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
@@ -1207,45 +1206,45 @@ func (s *apiServer) ChangePassword(
 	// a change that took effect and no session to see it through.
 	accessToken, err := s.mintAccessToken(tenant, bumped, role)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "password_change", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
 		return nil, s.internalDBError(ctx, "failed to commit password change transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
-	auth.AuditEvent(req.Header(), "password_change", "success", tenant.PublicID, user.PublicID, "password_changed")
-	return connect.NewResponse(&publirav1.ChangePasswordResponse{AccessToken: accessToken}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "password_change", "success", tenant.PublicID, user.PublicID, "password_changed")
+	return &publirav1.ChangePasswordResponse{AccessToken: accessToken}, nil
 }
 
 func (s *apiServer) Logout(
 	ctx context.Context,
-	req *connect.Request[publirav1.LogoutRequest],
-) (*connect.Response[publirav1.LogoutResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.LogoutRequest,
+) (*publirav1.LogoutResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "logout", "failure", "", "", "tenant_not_found")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "logout", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
 	// Stateless JWT: client clears cookie. Logout is for audit only.
-	if _, ok := auth.BearerTokenFromHeader(req.Header()); ok {
-		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "client_logout")
+	if _, ok := auth.BearerTokenFromHeader(rpcmiddleware.RequestHeader(ctx)); ok {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "logout", "success", tenant.PublicID, "", "client_logout")
 	} else {
-		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "no_token")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "logout", "success", tenant.PublicID, "", "no_token")
 	}
-	return connect.NewResponse(&publirav1.LogoutResponse{}), nil
+	return &publirav1.LogoutResponse{}, nil
 }
 
 func (s *apiServer) GetMe(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetMeRequest],
-) (*connect.Response[publirav1.GetMeResponse], error) {
-	_, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.GetMeRequest,
+) (*publirav1.GetMeResponse, error) {
+	_, user, role, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publirav1.GetMeResponse{User: ownAccount(user, role)}), nil
+	return &publirav1.GetMeResponse{User: ownAccount(user, role)}, nil
 }
 
 // ownAccount is the account the request authenticated as, in the shape the two
@@ -1267,30 +1266,30 @@ func ownAccount(user dbmodels.User, role string) *publirattypesv1.User {
 
 func (s *apiServer) UpdateMe(
 	ctx context.Context,
-	req *connect.Request[publirav1.UpdateMeRequest],
-) (*connect.Response[publirav1.UpdateMeResponse], error) {
-	tenant, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.UpdateMeRequest,
+) (*publirav1.UpdateMeResponse, error) {
+	tenant, user, role, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
-		auth.AuditEvent(req.Header(), "update_me", "failure", "", "", "invalid_session")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "update_me", "failure", "", "", "invalid_session")
 		return nil, err
 	}
-	name := strings.TrimSpace(req.Msg.Name)
+	name := strings.TrimSpace(req.Name)
 	if name == "" {
-		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "invalid_name")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "update_me", "failure", tenant.PublicID, user.PublicID, "invalid_name")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "name is required")
 	}
 	if len([]rune(name)) > 100 {
-		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "name_too_long")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name must be 100 characters or fewer"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "update_me", "failure", tenant.PublicID, user.PublicID, "name_too_long")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "name must be 100 characters or fewer")
 	}
 
 	// An empty field leaves the stored date alone, so the form that is only
 	// renaming the account sends nothing here and the one collecting a birth
 	// date for the first time sends it alongside the name it already had.
 	var birthDate sql.NullTime
-	if raw := strings.TrimSpace(req.Msg.BirthDate); raw != "" {
+	if raw := strings.TrimSpace(req.BirthDate); raw != "" {
 		if user.BirthDate.Valid {
-			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_already_set")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_already_set")
 			// Not InvalidArgument: the date is well formed and the session is
 			// fine. What refuses it is the state of the account, which is what
 			// the reader has to be told to take to support.
@@ -1298,12 +1297,12 @@ func (s *apiServer) UpdateMe(
 		}
 		today, todayErr := s.tenantToday(ctx, tenant)
 		if todayErr != nil {
-			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "tenant_today_failed")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "update_me", "failure", tenant.PublicID, user.PublicID, "tenant_today_failed")
 			return nil, s.internalError(ctx, "failed to resolve the tenant calendar day", todayErr, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
 		parsed, parseErr := ageverification.ParseBirthDate(raw, today)
 		if parseErr != nil {
-			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "invalid_birth_date")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "update_me", "failure", tenant.PublicID, user.PublicID, "invalid_birth_date")
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, parseErr, "birth_date")
 		}
 		birthDate = sql.NullTime{Time: parsed, Valid: true}
@@ -1314,7 +1313,7 @@ func (s *apiServer) UpdateMe(
 	// would leave the account carrying a date nobody can rewrite.
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "update_me", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
 		return nil, s.internalDBError(ctx, "failed to begin profile update transaction", err, "user_id", user.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
@@ -1325,7 +1324,7 @@ func (s *apiServer) UpdateMe(
 		Name: name,
 	})
 	if err != nil {
-		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "update_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "update_me", "failure", tenant.PublicID, user.PublicID, "update_failed")
 		return nil, s.internalDBError(ctx, "failed to update user name", err, "user_id", user.ID.String())
 	}
 	if birthDate.Valid {
@@ -1338,16 +1337,16 @@ func (s *apiServer) UpdateMe(
 				// The query matches no row when the account already has a date,
 				// which is the same refusal as above reached by a second
 				// request that raced this one past the read.
-				auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_already_set")
+				auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_already_set")
 				return nil, rpcerrors.NewFieldViolationError(connect.CodeFailedPrecondition, errors.New("birth date is already set"), "birth_date")
 			}
-			auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_update_failed")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "update_me", "failure", tenant.PublicID, user.PublicID, "birth_date_update_failed")
 			return nil, s.internalDBError(ctx, "failed to set user birth date", birthDateErr, "user_id", user.ID.String())
 		}
 		updated = stored
 	}
 	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "update_me", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "update_me", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
 		return nil, s.internalDBError(ctx, "failed to commit profile update", err, "user_id", user.ID.String())
 	}
 
@@ -1355,33 +1354,33 @@ func (s *apiServer) UpdateMe(
 	if birthDate.Valid {
 		outcome = "name_and_birth_date_updated"
 	}
-	auth.AuditEvent(req.Header(), "update_me", "success", tenant.PublicID, user.PublicID, outcome)
-	return connect.NewResponse(&publirav1.UpdateMeResponse{User: ownAccount(updated, role)}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "update_me", "success", tenant.PublicID, user.PublicID, outcome)
+	return &publirav1.UpdateMeResponse{User: ownAccount(updated, role)}, nil
 }
 
 func (s *apiServer) DeleteMe(
 	ctx context.Context,
-	req *connect.Request[publirav1.DeleteMeRequest],
-) (*connect.Response[publirav1.DeleteMeResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.DeleteMeRequest,
+) (*publirav1.DeleteMeResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
-		auth.AuditEvent(req.Header(), "delete_me", "failure", "", "", "invalid_session")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "failure", "", "", "invalid_session")
 		return nil, err
 	}
-	password := req.Msg.Password
+	password := req.Password
 	withPassword := strings.TrimSpace(password) != ""
-	withIdentity := strings.TrimSpace(req.Msg.IdToken) != ""
+	withIdentity := strings.TrimSpace(req.IdToken) != ""
 	if withPassword == withIdentity {
-		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either password or id_token is required"))
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "either password or id_token is required")
 	}
 	if withPassword {
 		if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
-			auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "rate_limited")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "failure", tenant.PublicID, user.PublicID, "rate_limited")
 			return nil, err
 		}
 		if !auth.VerifyUserPassword(password, user.PasswordHash) {
-			auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_password")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_password")
 			// Not Unauthenticated: the session is fine, the confirmation field is
 			// wrong. Clients treat Unauthenticated as "re-authenticate", which would
 			// log the reader out for a typo.
@@ -1392,15 +1391,15 @@ func (s *apiServer) DeleteMe(
 
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "failure", tenant.PublicID, user.PublicID, "transaction_begin_failed")
 		return nil, s.internalDBError(ctx, "failed to begin account deletion transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
 
 	if withIdentity {
-		if err := s.confirmWithIdentity(ctx, txq, tenant.ID, user.ID, req.Msg.Provider, req.Msg.IdToken, req.Msg.Nonce); err != nil {
-			auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
+		if err := s.confirmWithIdentity(ctx, txq, tenant.ID, user.ID, req.Provider, req.IdToken, req.Nonce); err != nil {
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
 			return nil, err
 		}
 	}
@@ -1409,36 +1408,36 @@ func (s *apiServer) DeleteMe(
 	// console, so it is refused as DeleteReader refuses it.
 	if err := tenantmembers.KeepAnAdminBeside(ctx, tx, tenant.ID, user.ID); err != nil {
 		if errors.Is(err, tenantmembers.ErrLastAdmin) {
-			auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "last_tenant_admin")
+			auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "failure", tenant.PublicID, user.PublicID, "last_tenant_admin")
 			return nil, rpcerrors.NewErrorInfoError(
 				connect.CodeFailedPrecondition,
 				errors.New("the tenant's last active tenant_admin cannot be deleted"),
 				rpcerrors.ReasonLastTenantAdmin,
 			)
 		}
-		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "last_admin_check_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "failure", tenant.PublicID, user.PublicID, "last_admin_check_failed")
 		return nil, s.internalDBError(ctx, "failed to check the tenant's remaining administrators", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if _, err := txq.BumpUserCredentialsVersion(ctx, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
 		return nil, s.internalDBError(ctx, "failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	// Queued before the delete takes the links, and the tokens they hold, with
 	// the account.
 	if err := outbox.QueueAppleSignInTokenRevocationsForUser(ctx, txq, tenant.ID, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "revocation_enqueue_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "failure", tenant.PublicID, user.PublicID, "revocation_enqueue_failed")
 		return nil, s.internalError(ctx, "failed to queue the apple token revocations", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := txq.DeleteUserByID(ctx, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "delete_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "failure", tenant.PublicID, user.PublicID, "delete_failed")
 		return nil, s.internalDBError(ctx, "failed to delete user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := tx.Commit(); err != nil {
-		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "failure", tenant.PublicID, user.PublicID, "transaction_commit_failed")
 		return nil, s.internalDBError(ctx, "failed to commit account deletion", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	auth.AuditEvent(req.Header(), "delete_me", "success", tenant.PublicID, user.PublicID, "user_deleted")
-	return connect.NewResponse(&publirav1.DeleteMeResponse{}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "delete_me", "success", tenant.PublicID, user.PublicID, "user_deleted")
+	return &publirav1.DeleteMeResponse{}, nil
 }
 
 // scopeReaderStateUser applies the member half of the policies that guard what
@@ -1459,9 +1458,9 @@ func (s *apiServer) scopeReaderStateUser(ctx context.Context, userID uuid.UUID) 
 
 func (s *apiServer) GetNotificationSettings(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetNotificationSettingsRequest],
-) (*connect.Response[publirav1.GetNotificationSettingsResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.GetNotificationSettingsRequest,
+) (*publirav1.GetNotificationSettingsResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -1474,18 +1473,18 @@ func (s *apiServer) GetNotificationSettings(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return connect.NewResponse(&publirav1.GetNotificationSettingsResponse{EmailNotificationsEnabled: true}), nil
+			return &publirav1.GetNotificationSettingsResponse{EmailNotificationsEnabled: true}, nil
 		}
 		return nil, s.internalDBError(ctx, "failed to get notification settings", err, "user_id", user.ID.String())
 	}
-	return connect.NewResponse(&publirav1.GetNotificationSettingsResponse{EmailNotificationsEnabled: settings.EmailNotificationsEnabled}), nil
+	return &publirav1.GetNotificationSettingsResponse{EmailNotificationsEnabled: settings.EmailNotificationsEnabled}, nil
 }
 
 func (s *apiServer) UpdateNotificationSettings(
 	ctx context.Context,
-	req *connect.Request[publirav1.UpdateNotificationSettingsRequest],
-) (*connect.Response[publirav1.UpdateNotificationSettingsResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.UpdateNotificationSettingsRequest,
+) (*publirav1.UpdateNotificationSettingsResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -1495,12 +1494,12 @@ func (s *apiServer) UpdateNotificationSettings(
 	updated, err := s.queriesFor(ctx).UpsertUserNotificationSettings(ctx, dbmodels.UpsertUserNotificationSettingsParams{
 		TenantID:                  tenant.ID,
 		UserID:                    user.ID,
-		EmailNotificationsEnabled: req.Msg.EmailNotificationsEnabled,
+		EmailNotificationsEnabled: req.EmailNotificationsEnabled,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update notification settings", err, "user_id", user.ID.String())
 	}
-	return connect.NewResponse(&publirav1.UpdateNotificationSettingsResponse{EmailNotificationsEnabled: updated.EmailNotificationsEnabled}), nil
+	return &publirav1.UpdateNotificationSettingsResponse{EmailNotificationsEnabled: updated.EmailNotificationsEnabled}, nil
 }
 
 type announcementPageRow struct {
@@ -1624,23 +1623,23 @@ func (s *apiServer) announcementPage(
 
 func (s *apiServer) ListAnnouncements(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListAnnouncementsRequest],
-) (*connect.Response[publirav1.ListAnnouncementsResponse], error) {
-	tenant, reader, err := s.optionalReaderFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.ListAnnouncementsRequest,
+) (*publirav1.ListAnnouncementsResponse, error) {
+	tenant, reader, err := s.optionalReaderFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultAnnouncementPageSize, maxAnnouncementPageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultAnnouncementPageSize, maxAnnouncementPageSize)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -1683,21 +1682,21 @@ func (s *apiServer) ListAnnouncements(
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *apiServer) GetAnnouncement(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetAnnouncementRequest],
-) (*connect.Response[publirav1.GetAnnouncementResponse], error) {
-	tenant, reader, err := s.optionalReaderFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.GetAnnouncementRequest,
+) (*publirav1.GetAnnouncementResponse, error) {
+	tenant, reader, err := s.optionalReaderFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.Msg.AnnouncementId))
+	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.AnnouncementId))
 	if parseErr != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("announcement_id is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "announcement_id is invalid")
 	}
 
 	if reader.Valid {
@@ -1713,7 +1712,7 @@ func (s *apiServer) GetAnnouncement(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("announcement not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "announcement not found")
 		}
 		return nil, s.internalDBError(ctx,
 			"failed to get announcement",
@@ -1723,7 +1722,7 @@ func (s *apiServer) GetAnnouncement(
 		)
 	}
 
-	return connect.NewResponse(&publirav1.GetAnnouncementResponse{
+	return &publirav1.GetAnnouncementResponse{
 		Announcement: toAnnouncementItem(announcementPageRow{
 			id:               row.ID,
 			announcementType: row.AnnouncementType,
@@ -1736,7 +1735,7 @@ func (s *apiServer) GetAnnouncement(
 			pinned:           row.Pinned,
 			pinnedUntil:      row.PinnedUntil,
 		}),
-	}), nil
+	}, nil
 }
 
 // GetPinnedAnnouncement answers the banner the site draws above every page.
@@ -1745,9 +1744,9 @@ func (s *apiServer) GetAnnouncement(
 // tenant, which is what lets a site cache it once instead of per reader.
 func (s *apiServer) GetPinnedAnnouncement(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetPinnedAnnouncementRequest],
-) (*connect.Response[publirav1.GetPinnedAnnouncementResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.GetPinnedAnnouncementRequest,
+) (*publirav1.GetPinnedAnnouncementResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -1755,12 +1754,12 @@ func (s *apiServer) GetPinnedAnnouncement(
 	row, err := s.queriesFor(ctx).GetPinnedAnnouncementForTenant(ctx, tenant.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return connect.NewResponse(&publirav1.GetPinnedAnnouncementResponse{}), nil
+			return &publirav1.GetPinnedAnnouncementResponse{}, nil
 		}
 		return nil, s.internalDBError(ctx, "failed to get pinned announcement", err, "tenant_id", tenant.ID.String())
 	}
 
-	return connect.NewResponse(&publirav1.GetPinnedAnnouncementResponse{
+	return &publirav1.GetPinnedAnnouncementResponse{
 		Announcement: toAnnouncementItem(announcementPageRow{
 			id:               row.ID,
 			announcementType: row.AnnouncementType,
@@ -1771,21 +1770,21 @@ func (s *apiServer) GetPinnedAnnouncement(
 			pinned:           row.Pinned,
 			pinnedUntil:      row.PinnedUntil,
 		}),
-	}), nil
+	}, nil
 }
 
 func (s *apiServer) MarkAnnouncementAsRead(
 	ctx context.Context,
-	req *connect.Request[publirav1.MarkAnnouncementAsReadRequest],
-) (*connect.Response[publirav1.MarkAnnouncementAsReadResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.MarkAnnouncementAsReadRequest,
+) (*publirav1.MarkAnnouncementAsReadResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.Msg.AnnouncementId))
+	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.AnnouncementId))
 	if parseErr != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("announcement_id is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "announcement_id is invalid")
 	}
 
 	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
@@ -1799,19 +1798,19 @@ func (s *apiServer) MarkAnnouncementAsRead(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("announcement not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "announcement not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to mark announcement as read", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String(), "announcement_id", announcementID.String())
 	}
 
-	return connect.NewResponse(&publirav1.MarkAnnouncementAsReadResponse{Marked: true}), nil
+	return &publirav1.MarkAnnouncementAsReadResponse{Marked: true}, nil
 }
 
 func (s *apiServer) MarkAllAnnouncementsAsRead(
 	ctx context.Context,
-	req *connect.Request[publirav1.MarkAllAnnouncementsAsReadRequest],
-) (*connect.Response[publirav1.MarkAllAnnouncementsAsReadResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.MarkAllAnnouncementsAsReadRequest,
+) (*publirav1.MarkAllAnnouncementsAsReadResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -1828,5 +1827,5 @@ func (s *apiServer) MarkAllAnnouncementsAsRead(
 		return nil, s.internalDBError(ctx, "failed to mark all announcements as read", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
-	return connect.NewResponse(&publirav1.MarkAllAnnouncementsAsReadResponse{MarkedCount: int32(marked)}), nil
+	return &publirav1.MarkAllAnnouncementsAsReadResponse{MarkedCount: int32(marked)}, nil
 }

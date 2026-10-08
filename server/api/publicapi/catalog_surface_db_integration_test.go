@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/contentranking"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -111,97 +111,97 @@ func TestDBCatalogShowsASeriesOnlyOnItsSurfaces(t *testing.T) {
 				}
 			}
 
-			list, err := client.ListPublishedSeries(ctx, connect.NewRequest(&publirav1.ListPublishedSeriesRequest{Tenant: tenant, Surface: tc.surface}))
+			list, err := client.ListPublishedSeries(ctx, &publirav1.ListPublishedSeriesRequest{Tenant: tenant, Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("ListPublishedSeries: %v", err)
 			}
-			assertSeries("ListPublishedSeries", list.Msg.Series)
+			assertSeries("ListPublishedSeries", list.Series)
 
-			search, err := client.SearchPublishedSeries(ctx, connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{Tenant: tenant, Query: "Harbor", Surface: tc.surface}))
+			search, err := client.SearchPublishedSeries(ctx, &publirav1.SearchPublishedSeriesRequest{Tenant: tenant, Query: "Harbor", Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("SearchPublishedSeries: %v", err)
 			}
-			assertSeries("SearchPublishedSeries", search.Msg.Series)
+			assertSeries("SearchPublishedSeries", search.Series)
 
-			recommended, err := client.ListRecommendedSeries(ctx, connect.NewRequest(&publirav1.ListRecommendedSeriesRequest{Tenant: tenant, Surface: tc.surface}))
+			recommended, err := client.ListRecommendedSeries(ctx, &publirav1.ListRecommendedSeriesRequest{Tenant: tenant, Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("ListRecommendedSeries: %v", err)
 			}
-			assertSeries("ListRecommendedSeries", recommended.Msg.Series)
+			assertSeries("ListRecommendedSeries", recommended.Series)
 
-			ranked, err := client.ListRankedSeries(ctx, connect.NewRequest(&publirav1.ListRankedSeriesRequest{Tenant: tenant, Surface: tc.surface}))
+			ranked, err := client.ListRankedSeries(ctx, &publirav1.ListRankedSeriesRequest{Tenant: tenant, Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("ListRankedSeries: %v", err)
 			}
-			rankedSeries := make([]*publirattypesv1.Series, 0, len(ranked.Msg.RankedSeries))
-			for _, item := range ranked.Msg.RankedSeries {
+			rankedSeries := make([]*publirattypesv1.Series, 0, len(ranked.RankedSeries))
+			for _, item := range ranked.RankedSeries {
 				rankedSeries = append(rankedSeries, item.GetSeries())
 			}
 			assertSeries("ListRankedSeries", rankedSeries)
 
-			related, err := client.ListRelatedSeries(ctx, connect.NewRequest(&publirav1.ListRelatedSeriesRequest{Tenant: tenant, SeriesId: catalog.both.ID.String(), Surface: tc.surface}))
+			related, err := client.ListRelatedSeries(ctx, &publirav1.ListRelatedSeriesRequest{Tenant: tenant, SeriesId: catalog.both.ID.String(), Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("ListRelatedSeries: %v", err)
 			}
-			if got := seriesPublicIDsOf(related.Msg.Series); !slices.Equal(got, []string{tc.shown.PublicID}) {
+			if got := seriesPublicIDsOf(related.Series); !slices.Equal(got, []string{tc.shown.PublicID}) {
 				t.Fatalf("ListRelatedSeries = %v, want [%s]", got, tc.shown.PublicID)
 			}
 
-			creator, err := client.GetPublishedCreatorDetail(ctx, connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{Tenant: tenant, PublicId: catalog.creator.PublicID, Surface: tc.surface}))
+			creator, err := client.GetPublishedCreatorDetail(ctx, &publirav1.GetPublishedCreatorDetailRequest{Tenant: tenant, PublicId: catalog.creator.PublicID, Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("GetPublishedCreatorDetail: %v", err)
 			}
-			assertSeries("GetPublishedCreatorDetail", creator.Msg.Series)
-			if got := creator.Msg.Creator.GetPublishedSeriesCount(); got != 2 {
+			assertSeries("GetPublishedCreatorDetail", creator.Series)
+			if got := creator.Creator.GetPublishedSeriesCount(); got != 2 {
 				t.Fatalf("creator published_series_count = %d, want 2", got)
 			}
 
-			creators, err := client.ListPublishedCreators(ctx, connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{Tenant: tenant, Surface: tc.surface}))
+			creators, err := client.ListPublishedCreators(ctx, &publirav1.ListPublishedCreatorsRequest{Tenant: tenant, Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("ListPublishedCreators: %v", err)
 			}
-			if len(creators.Msg.Creators) != 1 || creators.Msg.Creators[0].GetPublishedSeriesCount() != 2 {
-				t.Fatalf("ListPublishedCreators = %v, want the one creator with 2 series", creators.Msg.Creators)
+			if len(creators.Creators) != 1 || creators.Creators[0].GetPublishedSeriesCount() != 2 {
+				t.Fatalf("ListPublishedCreators = %v, want the one creator with 2 series", creators.Creators)
 			}
 
-			label, err := client.GetPublishedLabelDetail(ctx, connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{Tenant: tenant, PublicId: catalog.label.PublicID, Surface: tc.surface}))
+			label, err := client.GetPublishedLabelDetail(ctx, &publirav1.GetPublishedLabelDetailRequest{Tenant: tenant, PublicId: catalog.label.PublicID, Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("GetPublishedLabelDetail: %v", err)
 			}
-			assertSeries("GetPublishedLabelDetail", label.Msg.Series)
-			if got := label.Msg.Label.GetPublishedSeriesCount(); got != 2 {
+			assertSeries("GetPublishedLabelDetail", label.Series)
+			if got := label.Label.GetPublishedSeriesCount(); got != 2 {
 				t.Fatalf("label published_series_count = %d, want 2", got)
 			}
 
-			genres, err := client.ListPublishedGenres(ctx, connect.NewRequest(&publirav1.ListPublishedGenresRequest{Tenant: tenant, Surface: tc.surface}))
+			genres, err := client.ListPublishedGenres(ctx, &publirav1.ListPublishedGenresRequest{Tenant: tenant, Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("ListPublishedGenres: %v", err)
 			}
-			if len(genres.Msg.Genres) != 1 || genres.Msg.Genres[0].GetPublishedSeriesCount() != 2 {
-				t.Fatalf("ListPublishedGenres = %v, want the one genre with 2 series", genres.Msg.Genres)
+			if len(genres.Genres) != 1 || genres.Genres[0].GetPublishedSeriesCount() != 2 {
+				t.Fatalf("ListPublishedGenres = %v, want the one genre with 2 series", genres.Genres)
 			}
 
-			tags, err := client.ListPublishedTags(ctx, connect.NewRequest(&publirav1.ListPublishedTagsRequest{Tenant: tenant, Surface: tc.surface}))
+			tags, err := client.ListPublishedTags(ctx, &publirav1.ListPublishedTagsRequest{Tenant: tenant, Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("ListPublishedTags: %v", err)
 			}
-			if len(tags.Msg.Tags) != 1 || tags.Msg.Tags[0].GetPublishedSeriesCount() != 2 {
-				t.Fatalf("ListPublishedTags = %v, want the one tag with 2 series", tags.Msg.Tags)
+			if len(tags.Tags) != 1 || tags.Tags[0].GetPublishedSeriesCount() != 2 {
+				t.Fatalf("ListPublishedTags = %v, want the one tag with 2 series", tags.Tags)
 			}
 
-			if _, err := client.GetSeriesDetail(ctx, connect.NewRequest(&publirav1.GetSeriesDetailRequest{Tenant: tenant, PublicId: tc.shown.PublicID, Surface: tc.surface})); err != nil {
+			if _, err := client.GetSeriesDetail(ctx, &publirav1.GetSeriesDetailRequest{Tenant: tenant, PublicId: tc.shown.PublicID, Surface: tc.surface}); err != nil {
 				t.Fatalf("GetSeriesDetail of a shown series: %v", err)
 			}
 
 			// A direct read of the hidden series answers as a missing one does,
 			// so its URL says nothing about whether it exists.
-			_, err = client.GetSeriesDetail(ctx, connect.NewRequest(&publirav1.GetSeriesDetailRequest{Tenant: tenant, PublicId: tc.hidden.PublicID, Surface: tc.surface}))
+			_, err = client.GetSeriesDetail(ctx, &publirav1.GetSeriesDetailRequest{Tenant: tenant, PublicId: tc.hidden.PublicID, Surface: tc.surface})
 			assertConnectCode(t, err, connect.CodeNotFound)
-			_, err = client.GetSeriesEpisodeAccess(ctx, connect.NewRequest(&publirav1.GetSeriesEpisodeAccessRequest{Tenant: tenant, SeriesId: tc.hidden.ID.String(), Surface: tc.surface}))
+			_, err = client.GetSeriesEpisodeAccess(ctx, &publirav1.GetSeriesEpisodeAccessRequest{Tenant: tenant, SeriesId: tc.hidden.ID.String(), Surface: tc.surface})
 			assertConnectCode(t, err, connect.CodeNotFound)
-			_, err = client.ListRelatedSeries(ctx, connect.NewRequest(&publirav1.ListRelatedSeriesRequest{Tenant: tenant, SeriesId: tc.hidden.ID.String(), Surface: tc.surface}))
+			_, err = client.ListRelatedSeries(ctx, &publirav1.ListRelatedSeriesRequest{Tenant: tenant, SeriesId: tc.hidden.ID.String(), Surface: tc.surface})
 			assertConnectCode(t, err, connect.CodeNotFound)
-			_, err = client.GetEpisodeDetail(ctx, connect.NewRequest(&publirav1.GetEpisodeDetailRequest{Tenant: tenant, PublicId: tc.hidden.PublicID[:8] + "EP01", Surface: tc.surface}))
+			_, err = client.GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{Tenant: tenant, PublicId: tc.hidden.PublicID[:8] + "EP01", Surface: tc.surface})
 			assertConnectCode(t, err, connect.CodeNotFound)
 		})
 	}
@@ -234,66 +234,66 @@ func TestDBCatalogShowsAnEpisodeOnlyOnItsSurfaces(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			detail, err := client.GetSeriesDetail(ctx, connect.NewRequest(&publirav1.GetSeriesDetailRequest{Tenant: tenantContext(tenant), PublicId: series.PublicID, Surface: tc.surface}))
+			detail, err := client.GetSeriesDetail(ctx, &publirav1.GetSeriesDetailRequest{Tenant: tenantContext(tenant), PublicId: series.PublicID, Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("GetSeriesDetail: %v", err)
 			}
-			episodes := make([]string, 0, len(detail.Msg.Episodes))
-			for _, episode := range detail.Msg.Episodes {
+			episodes := make([]string, 0, len(detail.Episodes))
+			for _, episode := range detail.Episodes {
 				episodes = append(episodes, episode.GetPublicId())
 			}
 			if !slices.Equal(episodes, tc.wantEpisodes) {
 				t.Fatalf("series episodes = %v, want %v", episodes, tc.wantEpisodes)
 			}
-			if got := detail.Msg.Series.GetFreeEpisodeCount(); got != tc.wantFree {
+			if got := detail.Series.GetFreeEpisodeCount(); got != tc.wantFree {
 				t.Fatalf("free_episode_count = %d, want %d", got, tc.wantFree)
 			}
 
-			list, err := client.ListPublishedSeries(ctx, connect.NewRequest(&publirav1.ListPublishedSeriesRequest{Tenant: tenantContext(tenant), Surface: tc.surface}))
+			list, err := client.ListPublishedSeries(ctx, &publirav1.ListPublishedSeriesRequest{Tenant: tenantContext(tenant), Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("ListPublishedSeries: %v", err)
 			}
-			if len(list.Msg.Series) != 1 || list.Msg.Series[0].GetFreeEpisodeCount() != tc.wantFree {
-				t.Fatalf("listed series = %v, want one with %d free episodes", list.Msg.Series, tc.wantFree)
+			if len(list.Series) != 1 || list.Series[0].GetFreeEpisodeCount() != tc.wantFree {
+				t.Fatalf("listed series = %v, want one with %d free episodes", list.Series, tc.wantFree)
 			}
 
-			access, err := client.GetSeriesEpisodeAccess(ctx, connect.NewRequest(&publirav1.GetSeriesEpisodeAccessRequest{Tenant: tenantContext(tenant), SeriesId: series.ID.String(), Surface: tc.surface}))
+			access, err := client.GetSeriesEpisodeAccess(ctx, &publirav1.GetSeriesEpisodeAccessRequest{Tenant: tenantContext(tenant), SeriesId: series.ID.String(), Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("GetSeriesEpisodeAccess: %v", err)
 			}
-			accessEpisodes := make([]string, 0, len(access.Msg.Episodes))
-			for _, episode := range access.Msg.Episodes {
+			accessEpisodes := make([]string, 0, len(access.Episodes))
+			for _, episode := range access.Episodes {
 				accessEpisodes = append(accessEpisodes, episode.GetEpisodePublicId())
 			}
 			if !slices.Equal(accessEpisodes, tc.wantEpisodes) {
 				t.Fatalf("access episodes = %v, want %v", accessEpisodes, tc.wantEpisodes)
 			}
 
-			episode, err := client.GetEpisodeDetail(ctx, connect.NewRequest(&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: first.PublicID, Surface: tc.surface}))
+			episode, err := client.GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: first.PublicID, Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("GetEpisodeDetail: %v", err)
 			}
-			if got := episode.Msg.NextEpisode.GetPublicId(); got != tc.wantNext {
+			if got := episode.NextEpisode.GetPublicId(); got != tc.wantNext {
 				t.Fatalf("next episode = %q, want %q", got, tc.wantNext)
 			}
 		})
 	}
 
-	_, err := client.GetEpisodeDetail(ctx, connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	_, err := client.GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: appOnly.PublicID,
 		Surface:  publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB,
-	}))
+	})
 	assertConnectCode(t, err, connect.CodeNotFound)
-	previous, err := client.GetEpisodeDetail(ctx, connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	previous, err := client.GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: third.PublicID,
 		Surface:  publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail of the last episode: %v", err)
 	}
-	if got := previous.Msg.PreviousEpisode.GetPublicId(); got != first.PublicID {
+	if got := previous.PreviousEpisode.GetPublicId(); got != first.PublicID {
 		t.Fatalf("previous episode on the web = %q, want %q", got, first.PublicID)
 	}
 }
@@ -308,18 +308,18 @@ func TestDBCatalogKeepsAnEpisodeWithinItsSeriesSurfaces(t *testing.T) {
 	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEALL01", Status: testutil.EpisodeStatusPublished, Availability: "all"})
 
 	ctx := context.Background()
-	_, err := env.catalogClient().GetEpisodeDetail(ctx, connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	_, err := env.catalogClient().GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: episode.PublicID,
 		Surface:  publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB,
-	}))
+	})
 	assertConnectCode(t, err, connect.CodeNotFound)
 
-	if _, err := env.catalogClient().GetEpisodeDetail(ctx, connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	if _, err := env.catalogClient().GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: episode.PublicID,
 		Surface:  publirattypesv1.ClientSurface_CLIENT_SURFACE_APP,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("GetEpisodeDetail in the app: %v", err)
 	}
 }
@@ -366,13 +366,13 @@ func TestDBCatalogListsALabelOnlyWhereItsSeriesAre(t *testing.T) {
 			}
 			slices.Sort(want)
 
-			list, err := client.ListPublishedLabels(ctx, connect.NewRequest(&publirav1.ListPublishedLabelsRequest{Tenant: tenantContext(tenant), Surface: tc.surface}))
+			list, err := client.ListPublishedLabels(ctx, &publirav1.ListPublishedLabelsRequest{Tenant: tenantContext(tenant), Surface: tc.surface})
 			if err != nil {
 				t.Fatalf("ListPublishedLabels: %v", err)
 			}
-			got := make([]string, 0, len(list.Msg.Labels))
-			counts := make(map[string]int32, len(list.Msg.Labels))
-			for _, label := range list.Msg.Labels {
+			got := make([]string, 0, len(list.Labels))
+			counts := make(map[string]int32, len(list.Labels))
+			for _, label := range list.Labels {
 				got = append(got, label.GetPublicId())
 				counts[label.GetPublicId()] = label.GetPublishedSeriesCount()
 			}
@@ -386,15 +386,15 @@ func TestDBCatalogListsALabelOnlyWhereItsSeriesAre(t *testing.T) {
 			}
 
 			for _, publicID := range want {
-				detail, err := client.GetPublishedLabelDetail(ctx, connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{Tenant: tenantContext(tenant), PublicId: publicID, Surface: tc.surface}))
+				detail, err := client.GetPublishedLabelDetail(ctx, &publirav1.GetPublishedLabelDetailRequest{Tenant: tenantContext(tenant), PublicId: publicID, Surface: tc.surface})
 				if err != nil {
 					t.Fatalf("GetPublishedLabelDetail(%s): %v", publicID, err)
 				}
-				if got := detail.Msg.GetLabel().GetPublishedSeriesCount(); got != counts[publicID] {
+				if got := detail.GetLabel().GetPublishedSeriesCount(); got != counts[publicID] {
 					t.Fatalf("GetPublishedLabelDetail(%s) count = %d, ListPublishedLabels says %d", publicID, got, counts[publicID])
 				}
 			}
-			_, err = client.GetPublishedLabelDetail(ctx, connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{Tenant: tenantContext(tenant), PublicId: tc.hidden.PublicID, Surface: tc.surface}))
+			_, err = client.GetPublishedLabelDetail(ctx, &publirav1.GetPublishedLabelDetailRequest{Tenant: tenantContext(tenant), PublicId: tc.hidden.PublicID, Surface: tc.surface})
 			assertConnectCode(t, err, connect.CodeNotFound)
 		})
 	}
@@ -428,22 +428,22 @@ func TestDBCatalogListsOnlyLabelsWithAPublishedSeriesWhenAsked(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			list, err := client.ListPublishedLabels(ctx, connect.NewRequest(&publirav1.ListPublishedLabelsRequest{
+			list, err := client.ListPublishedLabels(ctx, &publirav1.ListPublishedLabelsRequest{
 				Tenant:             tenantContext(tenant),
 				Surface:            tc.surface,
 				HasPublishedSeries: true,
-			}))
+			})
 			if err != nil {
 				t.Fatalf("ListPublishedLabels: %v", err)
 			}
-			got := make([]string, 0, len(list.Msg.Labels))
-			for _, label := range list.Msg.Labels {
+			got := make([]string, 0, len(list.Labels))
+			for _, label := range list.Labels {
 				got = append(got, label.GetPublicId())
 			}
 			if want := []string{tc.want.PublicID}; !slices.Equal(got, want) {
 				t.Fatalf("ListPublishedLabels = %v, want %v", got, want)
 			}
-			if count := list.Msg.Labels[0].GetPublishedSeriesCount(); count != 1 {
+			if count := list.Labels[0].GetPublishedSeriesCount(); count != 1 {
 				t.Fatalf("published_series_count = %d, want 1", count)
 			}
 		})
@@ -454,10 +454,10 @@ func TestDBCatalogRejectsAnUnknownSurface(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
-	_, err := env.catalogClient().ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	_, err := env.catalogClient().ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant:  tenantContext(tenant),
 		Surface: publirattypesv1.ClientSurface(99),
-	}))
+	})
 	assertConnectCode(t, err, connect.CodeInvalidArgument)
 }
 
@@ -470,32 +470,32 @@ func TestDBCatalogRefusesATokenFromAnotherSurface(t *testing.T) {
 	ctx := context.Background()
 	client := env.catalogClient()
 
-	first, err := client.ListPublishedSeries(ctx, connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	first, err := client.ListPublishedSeries(ctx, &publirav1.ListPublishedSeriesRequest{
 		Tenant:  tenantContext(catalog.tenant),
 		Limit:   1,
 		Surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_APP,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries in the app: %v", err)
 	}
-	if first.Msg.NextToken == "" {
+	if first.NextToken == "" {
 		t.Fatal("first app page carries no next token")
 	}
 
-	if _, err := client.ListPublishedSeries(ctx, connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	if _, err := client.ListPublishedSeries(ctx, &publirav1.ListPublishedSeriesRequest{
 		Tenant:  tenantContext(catalog.tenant),
 		Limit:   1,
-		Token:   first.Msg.NextToken,
+		Token:   first.NextToken,
 		Surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_APP,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("ListPublishedSeries with the app token in the app: %v", err)
 	}
 
-	_, err = client.ListPublishedSeries(ctx, connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	_, err = client.ListPublishedSeries(ctx, &publirav1.ListPublishedSeriesRequest{
 		Tenant:  tenantContext(catalog.tenant),
 		Limit:   1,
-		Token:   first.Msg.NextToken,
+		Token:   first.NextToken,
 		Surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB,
-	}))
+	})
 	assertConnectCode(t, err, connect.CodeInvalidArgument)
 }

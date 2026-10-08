@@ -3,12 +3,11 @@ package publicapi
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"log/slog"
 	"math"
 	"strconv"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -170,33 +169,33 @@ func (s *apiServer) genreFeaturedSeries(
 // many of its series are published right now.
 func (s *apiServer) ListPublishedGenres(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListPublishedGenresRequest],
-) (*connect.Response[publirav1.ListPublishedGenresResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ListPublishedGenresRequest,
+) (*publirav1.ListPublishedGenresResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultGenrePageSize, maxGenrePageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultGenrePageSize, maxGenrePageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.CountUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeCountUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 		// The count a token carries is the display_order it was built from, and
 		// display_order is an int4. A client-supplied value outside that range
 		// would silently wrap on the way into the query and compare against a
 		// position no genre holds, so it is refused instead.
 		if keys.Count < math.MinInt32 || keys.Count > math.MaxInt32 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -260,7 +259,7 @@ func (s *apiServer) ListPublishedGenres(
 	}
 
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 // genreEyeCatchVariantsByImageIDs fetches the variants of the given genre
@@ -319,7 +318,7 @@ func encodeTagRecoveryToken(direction pagination.Direction, keys tagCursorKeys) 
 }
 
 func decodeTagCursorKeys(cursor pagination.Cursor) (tagCursorKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	invalid := connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	if len(cursor.Keys) != 2 && len(cursor.Keys) != 3 {
 		return tagCursorKeys{}, invalid
 	}
@@ -400,20 +399,20 @@ func (s *apiServer) publishedTagPage(
 // to keep working.
 func (s *apiServer) ListPublishedTags(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListPublishedTagsRequest],
-) (*connect.Response[publirav1.ListPublishedTagsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ListPublishedTagsRequest,
+) (*publirav1.ListPublishedTagsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultTagPageSize, maxTagPageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultTagPageSize, maxTagPageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys tagCursorKeys
 	if !cursor.IsZero() {
@@ -460,5 +459,5 @@ func (s *apiServer) ListPublishedTags(
 	}
 
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
-	return connect.NewResponse(res), nil
+	return res, nil
 }

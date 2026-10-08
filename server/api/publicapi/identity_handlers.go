@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ageverification"
@@ -18,6 +18,7 @@ import (
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/signin"
 )
 
@@ -80,14 +81,14 @@ func (s *apiServer) verifyIDToken(ctx context.Context, tenantID uuid.UUID, provi
 	}
 	audiences := signInAudiences(cfg, provider, enabledOnly)
 	if len(audiences) == 0 {
-		return signin.Claims{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("the tenant does not sign readers in with this provider"))
+		return signin.Claims{}, connect.NewError(connect.CodeFailedPrecondition, "the tenant does not sign readers in with this provider")
 	}
 	claims, err := s.idTokens.Verify(ctx, provider, rawToken, audiences, nonce)
 	if errors.Is(err, signin.ErrKeysUnavailable) {
-		return signin.Claims{}, connect.NewError(connect.CodeUnavailable, errors.New("the provider cannot be reached"))
+		return signin.Claims{}, connect.NewError(connect.CodeUnavailable, "the provider cannot be reached")
 	}
 	if err != nil {
-		return signin.Claims{}, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid ID token"))
+		return signin.Claims{}, connect.NewError(connect.CodeUnauthenticated, "invalid ID token")
 	}
 	return claims, nil
 }
@@ -109,33 +110,33 @@ func spendNonce(ctx context.Context, queries dbmodels.Querier, tenantID uuid.UUI
 	return nil
 }
 
-var errNonceReplayed = connect.NewError(connect.CodeUnauthenticated, errors.New("the nonce was used already"))
+var errNonceReplayed = connect.NewError(connect.CodeUnauthenticated, "the nonce was used already")
 
 func (s *apiServer) LoginWithIdToken(
 	ctx context.Context,
-	req *connect.Request[publirav1.LoginWithIdTokenRequest],
-) (*connect.Response[publirav1.LoginWithIdTokenResponse], error) {
+	req *publirav1.LoginWithIdTokenRequest,
+) (*publirav1.LoginWithIdTokenResponse, error) {
 	const action = "login_with_id_token"
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
-		auth.AuditEvent(req.Header(), action, "failure", "", "", "tenant_not_found")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), action, "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	fail := func(userPublicID, reason string, err error) (*connect.Response[publirav1.LoginWithIdTokenResponse], error) {
-		auth.AuditEvent(req.Header(), action, "failure", tenant.PublicID, userPublicID, reason)
+	fail := func(userPublicID, reason string, err error) (*publirav1.LoginWithIdTokenResponse, error) {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), action, "failure", tenant.PublicID, userPublicID, reason)
 		return nil, err
 	}
 
-	provider, err := identityProviderFromProto(req.Msg.Provider)
+	provider, err := identityProviderFromProto(req.Provider)
 	if err != nil {
 		return fail("", "invalid_provider", err)
 	}
-	rawToken := strings.TrimSpace(req.Msg.IdToken)
-	nonce := req.Msg.Nonce
+	rawToken := strings.TrimSpace(req.IdToken)
+	nonce := req.Nonce
 	if rawToken == "" || strings.TrimSpace(nonce) == "" {
-		return fail("", "invalid_input", connect.NewError(connect.CodeInvalidArgument, errors.New("id_token and nonce are required")))
+		return fail("", "invalid_input", connect.NewError(connect.CodeInvalidArgument, "id_token and nonce are required"))
 	}
-	code := strings.TrimSpace(req.Msg.AuthorizationCode)
+	code := strings.TrimSpace(req.AuthorizationCode)
 	if code != "" && provider != signin.ProviderApple {
 		return fail("", "invalid_input", rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("only an Apple sign-in carries an authorization code"), "authorization_code"))
 	}
@@ -161,7 +162,7 @@ func (s *apiServer) LoginWithIdToken(
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
 
-	signedIn, err := s.resolveSignIn(ctx, tx, txq, tenant, provider, claims, req.Msg)
+	signedIn, err := s.resolveSignIn(ctx, tx, txq, tenant, provider, claims, req)
 	if err != nil {
 		var refused signInRefusal
 		if errors.As(err, &refused) {
@@ -171,7 +172,7 @@ func (s *apiServer) LoginWithIdToken(
 	}
 	user := signedIn.user
 	if user.Status != "active" {
-		return fail(user.PublicID, "account_not_active", connect.NewError(connect.CodeFailedPrecondition, errors.New("the account is suspended")))
+		return fail(user.PublicID, "account_not_active", connect.NewError(connect.CodeFailedPrecondition, "the account is suspended"))
 	}
 
 	// Spent after every refusal above, so a reader asked for a consent they had
@@ -184,7 +185,7 @@ func (s *apiServer) LoginWithIdToken(
 	}
 	if code != "" && !signedIn.identity.RefreshTokenEncrypted.Valid {
 		if err := outbox.QueueAppleSignInCodeExchange(ctx, txq, s.encryptor, tenant.ID, signedIn.identity.ID,
-			signin.HashNonce(nonce), claims.Audience, code, strings.TrimSpace(req.Msg.RedirectUri)); err != nil {
+			signin.HashNonce(nonce), claims.Audience, code, strings.TrimSpace(req.RedirectUri)); err != nil {
 			return fail(user.PublicID, "code_exchange_enqueue_failed", s.internalError(ctx, "failed to queue the apple code exchange", err, "tenant_id", tenant.ID.String()))
 		}
 	}
@@ -202,12 +203,12 @@ func (s *apiServer) LoginWithIdToken(
 		return fail(user.PublicID, "transaction_commit_failed", s.internalDBError(ctx, "failed to commit id token sign-in", err, "tenant_id", tenant.ID.String()))
 	}
 
-	auth.AuditEvent(req.Header(), action, "success", tenant.PublicID, user.PublicID, signedIn.outcome)
-	return connect.NewResponse(&publirav1.LoginWithIdTokenResponse{
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), action, "success", tenant.PublicID, user.PublicID, signedIn.outcome)
+	return &publirav1.LoginWithIdTokenResponse{
 		User:           ownAccount(user, role),
 		AccessToken:    accessToken,
 		AccountCreated: signedIn.outcome == "account_created",
-	}), nil
+	}, nil
 }
 
 type signInResult struct {
@@ -228,7 +229,7 @@ type signInRefusal struct {
 func (r signInRefusal) Error() string { return r.err.Error() }
 
 func refuse(reason string, code connect.Code, message string) signInRefusal {
-	return signInRefusal{reason: reason, err: connect.NewError(code, errors.New(message))}
+	return signInRefusal{reason: reason, err: connect.NewError(code, message)}
 }
 
 // resolveSignIn finds the account a verified token signs in to: the one
@@ -436,9 +437,9 @@ func (s *apiServer) createAccountForIdentity(
 
 func (s *apiServer) ListMyIdentities(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListMyIdentitiesRequest],
-) (*connect.Response[publirav1.ListMyIdentitiesResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.ListMyIdentitiesRequest,
+) (*publirav1.ListMyIdentitiesResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -457,27 +458,27 @@ func (s *apiServer) ListMyIdentities(
 			LinkedAt: row.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	}
-	return connect.NewResponse(&publirav1.ListMyIdentitiesResponse{
+	return &publirav1.ListMyIdentitiesResponse{
 		Identities:  identities,
 		HasPassword: user.PasswordHash.Valid,
-	}), nil
+	}, nil
 }
 
 func (s *apiServer) UnlinkIdentity(
 	ctx context.Context,
-	req *connect.Request[publirav1.UnlinkIdentityRequest],
-) (*connect.Response[publirav1.UnlinkIdentityResponse], error) {
+	req *publirav1.UnlinkIdentityRequest,
+) (*publirav1.UnlinkIdentityResponse, error) {
 	const action = "identity_unlink"
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
-		auth.AuditEvent(req.Header(), action, "failure", "", "", "invalid_session")
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), action, "failure", "", "", "invalid_session")
 		return nil, err
 	}
-	fail := func(reason string, err error) (*connect.Response[publirav1.UnlinkIdentityResponse], error) {
-		auth.AuditEvent(req.Header(), action, "failure", tenant.PublicID, user.PublicID, reason)
+	fail := func(reason string, err error) (*publirav1.UnlinkIdentityResponse, error) {
+		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), action, "failure", tenant.PublicID, user.PublicID, reason)
 		return nil, err
 	}
-	provider, err := identityProviderFromProto(req.Msg.Provider)
+	provider, err := identityProviderFromProto(req.Provider)
 	if err != nil {
 		return fail("invalid_provider", err)
 	}
@@ -512,10 +513,10 @@ func (s *apiServer) UnlinkIdentity(
 		}
 	}
 	if target == nil {
-		return fail("not_linked", connect.NewError(connect.CodeNotFound, errors.New("no account of this provider is linked")))
+		return fail("not_linked", connect.NewError(connect.CodeNotFound, "no account of this provider is linked"))
 	}
 	if !locked.PasswordHash.Valid && len(identities) == 1 {
-		return fail("last_sign_in_method", connect.NewError(connect.CodeFailedPrecondition, errors.New("the account has no password, so it keeps its last linked provider")))
+		return fail("last_sign_in_method", connect.NewError(connect.CodeFailedPrecondition, "the account has no password, so it keeps its last linked provider"))
 	}
 	if err := outbox.QueueAppleSignInTokenRevocation(ctx, txq, *target); err != nil {
 		return fail("revocation_enqueue_failed", s.internalError(ctx, "failed to queue the apple token revocation", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))
@@ -530,8 +531,8 @@ func (s *apiServer) UnlinkIdentity(
 	if err := tx.Commit(); err != nil {
 		return fail("transaction_commit_failed", s.internalDBError(ctx, "failed to commit unlink", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))
 	}
-	auth.AuditEvent(req.Header(), action, "success", tenant.PublicID, user.PublicID, provider)
-	return connect.NewResponse(&publirav1.UnlinkIdentityResponse{}), nil
+	auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), action, "success", tenant.PublicID, user.PublicID, provider)
+	return &publirav1.UnlinkIdentityResponse{}, nil
 }
 
 // confirmWithIdentity checks the fresh sign-in an account without a password
@@ -564,7 +565,7 @@ func (s *apiServer) verifyIdentityConfirmation(
 		return signin.Claims{}, err
 	}
 	if strings.TrimSpace(rawToken) == "" || strings.TrimSpace(nonce) == "" {
-		return signin.Claims{}, connect.NewError(connect.CodeInvalidArgument, errors.New("id_token and nonce are required"))
+		return signin.Claims{}, connect.NewError(connect.CodeInvalidArgument, "id_token and nonce are required")
 	}
 	identity, err := queries.GetUserIdentityForUser(ctx, dbmodels.GetUserIdentityForUserParams{
 		TenantID: tenantID,

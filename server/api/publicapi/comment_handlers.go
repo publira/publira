@@ -10,7 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -23,6 +23,7 @@ import (
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -63,7 +64,7 @@ func (s *apiServer) resolvePublicEpisode(
 		return row, nil
 	}
 	if errors.Is(err, sql.ErrNoRows) {
-		return dbmodels.GetPublishedEpisodeForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		return dbmodels.GetPublishedEpisodeForTenantRow{}, connect.NewError(connect.CodeNotFound, "episode not found")
 	}
 	return dbmodels.GetPublishedEpisodeForTenantRow{}, s.internalDBError(ctx, "failed to get episode for comments", err, "tenant_id", tenantID.String(), "episode_id", episodeID.String())
 }
@@ -75,10 +76,10 @@ func (s *apiServer) resolvePublicEpisode(
 func validateCommentBody(body string) (string, error) {
 	trimmed := strings.TrimSpace(body)
 	if trimmed == "" {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("body is required"))
+		return "", connect.NewError(connect.CodeInvalidArgument, "body is required")
 	}
 	if utf8.RuneCountInString(trimmed) > maxCommentBodyRunes {
-		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("body must be at most %d characters", maxCommentBodyRunes))
+		return "", connect.Errorf(connect.CodeInvalidArgument, "body must be at most %d characters", maxCommentBodyRunes)
 	}
 	return trimmed, nil
 }
@@ -220,23 +221,23 @@ func (s *apiServer) publicCommentPage(
 // ListMyEpisodeComments, so nothing here depends on who is asking.
 func (s *apiServer) ListEpisodeComments(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListEpisodeCommentsRequest],
-) (*connect.Response[publirav1.ListEpisodeCommentsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ListEpisodeCommentsRequest,
+) (*publirav1.ListEpisodeCommentsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId)
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCommentPageSize, maxCommentPageSize)
+	limit := pagination.NormalizeLimit(req.Limit, defaultCommentPageSize, maxCommentPageSize)
 	listKey := publicCommentListKey(episode.PublicID)
-	cursor, keys, err := commentCursor(req.Msg.Token, listKey)
+	cursor, keys, err := commentCursor(req.Token, listKey)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +277,7 @@ func (s *apiServer) ListEpisodeComments(
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
 		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 // myCommentPageRow is one row of either direction of the caller's own list.
@@ -366,23 +367,23 @@ func myEpisodeComment(
 // as they left it.
 func (s *apiServer) ListMyEpisodeComments(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListMyEpisodeCommentsRequest],
-) (*connect.Response[publirav1.ListMyEpisodeCommentsResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.ListMyEpisodeCommentsRequest,
+) (*publirav1.ListMyEpisodeCommentsResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId)
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCommentPageSize, maxCommentPageSize)
+	limit := pagination.NormalizeLimit(req.Limit, defaultCommentPageSize, maxCommentPageSize)
 	listKey := myCommentListKey(episode.PublicID)
-	cursor, keys, err := commentCursor(req.Msg.Token, listKey)
+	cursor, keys, err := commentCursor(req.Token, listKey)
 	if err != nil {
 		return nil, err
 	}
@@ -414,7 +415,7 @@ func (s *apiServer) ListMyEpisodeComments(
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
 		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
-	return noStorePrivateResponse(res), nil
+	return noStorePrivateResponse(ctx, res), nil
 }
 
 // staffCommentSubject is the episode a staff alert is about. An alert stands
@@ -539,13 +540,13 @@ func (s *apiServer) postedCommentCreator(
 // at all, already tells them.
 func (s *apiServer) PostEpisodeComment(
 	ctx context.Context,
-	req *connect.Request[publirav1.PostEpisodeCommentRequest],
-) (*connect.Response[publirav1.PostEpisodeCommentResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.PostEpisodeCommentRequest,
+) (*publirav1.PostEpisodeCommentResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	body, err := validateCommentBody(req.Msg.Body)
+	body, err := validateCommentBody(req.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -554,11 +555,11 @@ func (s *apiServer) PostEpisodeComment(
 	if err := s.chargeReaderAction(ctx, actionPostComment, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
-	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.Msg.EpisodeId)
+	episode, err := s.resolvePublicEpisode(ctx, tenant.ID, surface, req.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -576,7 +577,7 @@ func (s *apiServer) PostEpisodeComment(
 	case commentmode.ApprovalRequired:
 		status = commentStatusPending
 	case commentmode.Disabled:
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("comments are disabled"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "comments are disabled")
 	default:
 		// Both columns carry a CHECK constraint listing the three modes, so any
 		// other value is a stored value this build cannot act on. Guessing a mode
@@ -590,7 +591,7 @@ func (s *apiServer) PostEpisodeComment(
 		return nil, err
 	}
 	if !canRead {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("episode body is not readable"))
+		return nil, connect.NewError(connect.CodePermissionDenied, "episode body is not readable")
 	}
 	// Read before anything is written, so a failure here leaves no comment
 	// behind that the reader would then be refused as a repeat of.
@@ -637,7 +638,7 @@ func (s *apiServer) PostEpisodeComment(
 		return nil, s.internalDBError(ctx, "failed to create episode comment", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
-	return noStorePrivateResponse(&publirav1.PostEpisodeCommentResponse{
+	return noStorePrivateResponse(ctx, &publirav1.PostEpisodeCommentResponse{
 		Comment: myEpisodeComment(comment.ID, comment.PublicID, comment.Body, comment.CreatedAt, comment.PublishedAt, creator),
 	}), nil
 }
@@ -649,13 +650,13 @@ func (s *apiServer) PostEpisodeComment(
 // open; the retention purge is what finally deletes it.
 func (s *apiServer) WithdrawEpisodeComment(
 	ctx context.Context,
-	req *connect.Request[publirav1.WithdrawEpisodeCommentRequest],
-) (*connect.Response[publirav1.WithdrawEpisodeCommentResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.WithdrawEpisodeCommentRequest,
+) (*publirav1.WithdrawEpisodeCommentResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	commentID, err := requestRecordID("comment_id", req.Msg.CommentId)
+	commentID, err := requestRecordID("comment_id", req.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -669,13 +670,13 @@ func (s *apiServer) WithdrawEpisodeComment(
 		// Another reader's comment, a comment of another tenant, one already
 		// withdrawn, and one that never existed share this answer: the caller has
 		// nothing here to take down, and no way to tell which case they hit.
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("comment not found"))
+		return nil, connect.NewError(connect.CodeNotFound, "comment not found")
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to withdraw episode comment", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
-	return noStorePrivateResponse(&publirav1.WithdrawEpisodeCommentResponse{}), nil
+	return noStorePrivateResponse(ctx, &publirav1.WithdrawEpisodeCommentResponse{}), nil
 }
 
 // The episode_comment_reports.reason values, matching the CHECK constraint on
@@ -705,9 +706,9 @@ func commentReportReason(reason publirav1.CommentReportReason) (string, error) {
 	case publirav1.CommentReportReason_COMMENT_REPORT_REASON_OTHER:
 		return commentReportReasonOther, nil
 	case publirav1.CommentReportReason_COMMENT_REPORT_REASON_UNSPECIFIED:
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("reason is required"))
+		return "", connect.NewError(connect.CodeInvalidArgument, "reason is required")
 	default:
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("reason is not a supported reason"))
+		return "", connect.NewError(connect.CodeInvalidArgument, "reason is not a supported reason")
 	}
 }
 
@@ -720,7 +721,7 @@ func validateCommentReportNote(note string) (sql.NullString, error) {
 		return sql.NullString{}, nil
 	}
 	if utf8.RuneCountInString(trimmed) > maxCommentReportNoteRunes {
-		return sql.NullString{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("note must be at most %d characters", maxCommentReportNoteRunes))
+		return sql.NullString{}, connect.Errorf(connect.CodeInvalidArgument, "note must be at most %d characters", maxCommentReportNoteRunes)
 	}
 	return sql.NullString{String: trimmed, Valid: true}, nil
 }
@@ -804,25 +805,25 @@ func commentListRevalidateTags(tenantID uuid.UUID, episodePublicID string) []str
 // may reveal.
 func (s *apiServer) ReportEpisodeComment(
 	ctx context.Context,
-	req *connect.Request[publirav1.ReportEpisodeCommentRequest],
-) (*connect.Response[publirav1.ReportEpisodeCommentResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.ReportEpisodeCommentRequest,
+) (*publirav1.ReportEpisodeCommentResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	commentID, err := requestRecordID("comment_id", req.Msg.CommentId)
+	commentID, err := requestRecordID("comment_id", req.CommentId)
 	if err != nil {
 		return nil, err
 	}
-	reason, err := commentReportReason(req.Msg.Reason)
+	reason, err := commentReportReason(req.Reason)
 	if err != nil {
 		return nil, err
 	}
-	note, err := validateCommentReportNote(req.Msg.Note)
+	note, err := validateCommentReportNote(req.Note)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -843,13 +844,13 @@ func (s *apiServer) ReportEpisodeComment(
 		// that the calling surface may not show, and one that never existed share
 		// this answer: the reporter can see none of
 		// them, so none of them may be confirmed to exist either.
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("comment not found"))
+		return nil, connect.NewError(connect.CodeNotFound, "comment not found")
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get comment to report", err, "tenant_id", tenant.ID.String(), "comment_id", commentID.String())
 	}
 	if comment.UserID == user.ID {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot report your own comment"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "cannot report your own comment")
 	}
 
 	reportID, err := uuid.NewV7()
@@ -877,7 +878,7 @@ func (s *apiServer) ReportEpisodeComment(
 		// count does not move, and they are told what the reader whose report was
 		// the first is told: what the platform has since done with that earlier
 		// report is not something a second submission may reveal.
-		return noStorePrivateResponse(&publirav1.ReportEpisodeCommentResponse{}), nil
+		return noStorePrivateResponse(ctx, &publirav1.ReportEpisodeCommentResponse{}), nil
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create comment report", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -916,5 +917,5 @@ func (s *apiServer) ReportEpisodeComment(
 	}
 	s.reval.Send(ctx, owed)
 
-	return noStorePrivateResponse(&publirav1.ReportEpisodeCommentResponse{}), nil
+	return noStorePrivateResponse(ctx, &publirav1.ReportEpisodeCommentResponse{}), nil
 }

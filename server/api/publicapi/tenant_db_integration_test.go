@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -47,29 +47,29 @@ func TestDBGetTenantReturnsItsOwnBranding(t *testing.T) {
 	seedTenantBranding(t, env, first, "© Tenant A", "Tenant A description", "Tenant A tagline", "#111111")
 	seedTenantBranding(t, env, second, "© Tenant B", "Tenant B description", "Tenant B tagline", "#222222")
 
-	resp, err := env.tenantAPIClient().GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	resp, err := env.tenantAPIClient().GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: tenantContext(first),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if resp.Msg.TenantPublicId != first.PublicID || resp.Msg.TenantDomain != first.Domain {
-		t.Fatalf("tenant = %s/%s, want %s/%s", resp.Msg.TenantPublicId, resp.Msg.TenantDomain, first.PublicID, first.Domain)
+	if resp.TenantPublicId != first.PublicID || resp.TenantDomain != first.Domain {
+		t.Fatalf("tenant = %s/%s, want %s/%s", resp.TenantPublicId, resp.TenantDomain, first.PublicID, first.Domain)
 	}
-	if resp.Msg.CopyrightText != "© Tenant A" {
-		t.Fatalf("copyright_text = %q, want the row of tenant A", resp.Msg.CopyrightText)
+	if resp.CopyrightText != "© Tenant A" {
+		t.Fatalf("copyright_text = %q, want the row of tenant A", resp.CopyrightText)
 	}
-	if resp.Msg.SiteDescription != "Tenant A description" || resp.Msg.SiteTagline != "Tenant A tagline" {
-		t.Fatalf("site text = %q / %q, want the rows of tenant A", resp.Msg.SiteDescription, resp.Msg.SiteTagline)
+	if resp.SiteDescription != "Tenant A description" || resp.SiteTagline != "Tenant A tagline" {
+		t.Fatalf("site text = %q / %q, want the rows of tenant A", resp.SiteDescription, resp.SiteTagline)
 	}
-	if resp.Msg.Theme == nil || resp.Msg.Theme.PrimaryColor != "#111111" {
-		t.Fatalf("theme = %+v, want the primary color of tenant A", resp.Msg.Theme)
+	if resp.Theme == nil || resp.Theme.PrimaryColor != "#111111" {
+		t.Fatalf("theme = %+v, want the primary color of tenant A", resp.Theme)
 	}
-	if resp.Msg.Timezone != tenanttz.Default {
-		t.Fatalf("timezone = %q, want the column default %q", resp.Msg.Timezone, tenanttz.Default)
+	if resp.Timezone != tenanttz.Default {
+		t.Fatalf("timezone = %q, want the column default %q", resp.Timezone, tenanttz.Default)
 	}
-	if resp.Msg.DefaultLocale != first.DefaultLocale {
-		t.Fatalf("default_locale = %q, want the stored value %q", resp.Msg.DefaultLocale, first.DefaultLocale)
+	if resp.DefaultLocale != first.DefaultLocale {
+		t.Fatalf("default_locale = %q, want the stored value %q", resp.DefaultLocale, first.DefaultLocale)
 	}
 }
 
@@ -77,9 +77,9 @@ func TestDBGetTenantRejectsAnUnknownTenant(t *testing.T) {
 	env := newPublicDBEnv(t)
 	env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
-	_, err := env.tenantAPIClient().GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+	_, err := env.tenantAPIClient().GetTenant(context.Background(), &publirav1.GetTenantRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: uuid.Must(uuid.NewV7()).String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetTenant for an unknown tenant code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
@@ -93,22 +93,22 @@ func TestDBGetTenantByDomainResolvesTheFirstMatchingHost(t *testing.T) {
 	first, second := env.seedTwoTenants(t)
 	client := env.domainClient()
 
-	resp, err := client.GetTenantByDomain(context.Background(), connect.NewRequest(&publirav1.GetTenantByDomainRequest{
+	resp, err := client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{
 		Domains: []string{"unknown.example.com", second.Domain, first.Domain},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantByDomain: %v", err)
 	}
-	if resp.Msg.TenantId != second.ID.String() {
-		t.Fatalf("tenant_id = %q, want tenant B (%s), the first candidate that matches", resp.Msg.TenantId, second.ID)
+	if resp.TenantId != second.ID.String() {
+		t.Fatalf("tenant_id = %q, want tenant B (%s), the first candidate that matches", resp.TenantId, second.ID)
 	}
-	if resp.Msg.DefaultLocale != second.DefaultLocale {
-		t.Fatalf("default_locale = %q, want the stored value %q of the matched tenant", resp.Msg.DefaultLocale, second.DefaultLocale)
+	if resp.DefaultLocale != second.DefaultLocale {
+		t.Fatalf("default_locale = %q, want the stored value %q of the matched tenant", resp.DefaultLocale, second.DefaultLocale)
 	}
 
-	_, err = client.GetTenantByDomain(context.Background(), connect.NewRequest(&publirav1.GetTenantByDomainRequest{
+	_, err = client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{
 		Domains: []string{"nobody.example.com"},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetTenantByDomain for an unknown host code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}

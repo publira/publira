@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -63,12 +63,12 @@ func tenantPurchaseSettingsFromConfig(config dbmodels.TenantConfig) (*publiraadm
 
 func (s *adminServer) GetTenantPurchaseSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantPurchaseSettingsRequest],
-) (*connect.Response[publiraadminv1.GetTenantPurchaseSettingsResponse], error) {
+	req *publiraadminv1.GetTenantPurchaseSettingsRequest,
+) (*publiraadminv1.GetTenantPurchaseSettingsResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -78,11 +78,11 @@ func (s *adminServer) GetTenantPurchaseSettings(
 		if errors.Is(err, sql.ErrNoRows) {
 			// A tenant with no config row sells on both surfaces and lists no
 			// app, which is what the columns' own defaults say too.
-			return connect.NewResponse(&publiraadminv1.GetTenantPurchaseSettingsResponse{
+			return &publiraadminv1.GetTenantPurchaseSettingsResponse{
 				Settings: &publiraadminv1.TenantPurchaseSettings{
 					PurchaseAvailability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_ALL,
 				},
-			}), nil
+			}, nil
 		}
 		return nil, s.internalDBError(ctx, "failed to get tenant purchase settings", err, "tenant_id", tenant.ID.String())
 	}
@@ -91,14 +91,14 @@ func (s *adminServer) GetTenantPurchaseSettings(
 	if err != nil {
 		return nil, s.internalError(ctx, "tenant purchase availability is not a supported value", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetTenantPurchaseSettingsResponse{Settings: settings}), nil
+	return &publiraadminv1.GetTenantPurchaseSettingsResponse{Settings: settings}, nil
 }
 
 func (s *adminServer) UpdateTenantPurchaseSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantPurchaseSettingsRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantPurchaseSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantPurchaseSettingsRequest,
+) (*publiraadminv1.UpdateTenantPurchaseSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (s *adminServer) UpdateTenantPurchaseSettings(
 		return nil, err
 	}
 
-	requested := req.Msg.GetSettings()
+	requested := req.GetSettings()
 	availability, err := protomapper.SeriesSurfaceAvailabilityToStored(requested.GetPurchaseAvailability())
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "settings.purchase_availability")
@@ -141,5 +141,5 @@ func (s *adminServer) UpdateTenantPurchaseSettings(
 	if err != nil {
 		return nil, s.internalError(ctx, "tenant purchase availability is not a supported value", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.UpdateTenantPurchaseSettingsResponse{Settings: settings}), nil
+	return &publiraadminv1.UpdateTenantPurchaseSettingsResponse{Settings: settings}, nil
 }

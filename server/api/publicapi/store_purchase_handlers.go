@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storeproduct"
 	"github.com/publira/publira/server/internal/storepurchase"
 )
@@ -58,9 +59,9 @@ func defaultStoreClients() storeClients {
 
 func (s *apiServer) StartStorePurchase(
 	ctx context.Context,
-	req *connect.Request[publirav1.StartStorePurchaseRequest],
-) (*connect.Response[publirav1.StartStorePurchaseResponse], error) {
-	episodeID, err := requestRecordID("episode_id", req.Msg.EpisodeId)
+	req *publirav1.StartStorePurchaseRequest,
+) (*publirav1.StartStorePurchaseResponse, error) {
+	episodeID, err := requestRecordID("episode_id", req.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -68,11 +69,11 @@ func (s *apiServer) StartStorePurchase(
 	if err != nil {
 		return nil, err
 	}
-	store := req.Msg.Store
+	store := req.Store
 	if store != publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE && store != publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("store is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "store is required")
 	}
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -88,19 +89,19 @@ func (s *apiServer) StartStorePurchase(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get purchasable episode", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
 	if episode.Price <= 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("free episodes are not sold"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "free episodes are not sold")
 	}
 	soldHere, err := protomapper.PurchasableOn(episode.PurchaseAvailability, surface)
 	if err != nil {
 		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	if !soldHere {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("episode is not sold in the app"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "episode is not sold in the app")
 	}
 	if err := s.refuseCreditedReader(ctx, tenant.ID, user.ID, episode.ID); err != nil {
 		return nil, err
@@ -114,7 +115,7 @@ func (s *apiServer) StartStorePurchase(
 		return nil, s.internalDBError(ctx, "failed to check purchase status", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	if hasPurchase {
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("episode is already purchased"))
+		return nil, connect.NewError(connect.CodeAlreadyExists, "episode is already purchased")
 	}
 
 	intent, err := queries.OpenStorePurchaseIntent(ctx, dbmodels.OpenStorePurchaseIntentParams{
@@ -131,7 +132,7 @@ func (s *apiServer) StartStorePurchase(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to open a store purchase intent", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	return noStorePrivateResponse(&publirav1.StartStorePurchaseResponse{
+	return noStorePrivateResponse(ctx, &publirav1.StartStorePurchaseResponse{
 		IntentId:  intent.ID.String(),
 		ProductId: intent.ProductID,
 	}), nil
@@ -149,7 +150,7 @@ func (s *apiServer) requireStoreSelling(ctx context.Context, tenantID uuid.UUID,
 		return s.internalDBError(ctx, "failed to get tenant store settings", err, "tenant_id", tenantID.String())
 	}
 	if config.Route != paymentsettings.RouteStore {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the app does not sell through the store"))
+		return connect.NewError(connect.CodeFailedPrecondition, "the app does not sell through the store")
 	}
 	name := storeAppStore
 	if store == publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY {
@@ -162,10 +163,10 @@ func (s *apiServer) requireStoreSelling(ctx context.Context, tenantID uuid.UUID,
 	case err == nil:
 		return nil
 	case errors.Is(err, paymentsettings.ErrStoreNotReady):
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the store is not ready"))
+		return connect.NewError(connect.CodeFailedPrecondition, "the store is not ready")
 	case paymentsettings.IsUnavailable(err):
 		s.logger.WarnContext(ctx, "store purchase refused because the store's key does not decrypt", "tenant_id", tenantID, "store", name, "error", err)
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the store is not ready"))
+		return connect.NewError(connect.CodeFailedPrecondition, "the store is not ready")
 	default:
 		return s.internalDBError(ctx, "failed to load store credentials", err, "tenant_id", tenantID.String(), "store", name)
 	}
@@ -183,13 +184,13 @@ type storeTransaction struct {
 
 func (s *apiServer) ConfirmStorePurchase(
 	ctx context.Context,
-	req *connect.Request[publirav1.ConfirmStorePurchaseRequest],
-) (*connect.Response[publirav1.ConfirmStorePurchaseResponse], error) {
-	signed := strings.TrimSpace(req.Msg.Transaction)
+	req *publirav1.ConfirmStorePurchaseRequest,
+) (*publirav1.ConfirmStorePurchaseResponse, error) {
+	signed := strings.TrimSpace(req.Transaction)
 	if signed == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("transaction is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "transaction is required")
 	}
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -198,47 +199,47 @@ func (s *apiServer) ConfirmStorePurchase(
 	}
 
 	var transaction storeTransaction
-	switch req.Msg.Store {
+	switch req.Store {
 	case publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE:
 		// The app's copy is verified before anything else, so a transaction
 		// already recorded is answered without asking Apple again.
 		claimed, err := s.stores.appStoreVerifier.VerifyTransaction(signed)
 		if err != nil {
 			s.logger.WarnContext(ctx, "store transaction does not verify", "tenant_id", tenant.ID, "store", storeAppStore, "error", err)
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("transaction does not verify"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "transaction does not verify")
 		}
 		if purchase, found, err := s.recordedStorePurchase(ctx, s.queriesFor(ctx), tenant.ID, user.ID, storeAppStore, claimed.TransactionID); err != nil || found {
-			return confirmedStorePurchase(purchase, err)
+			return confirmedStorePurchase(ctx, purchase, err)
 		}
 		transaction, err = s.verifyAppStoreTransaction(ctx, tenant.ID, claimed)
 		if err != nil {
 			return nil, err
 		}
 	case publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY:
-		productID := strings.TrimSpace(req.Msg.ProductId)
+		productID := strings.TrimSpace(req.ProductId)
 		if productID == "" {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("product_id is required for Google Play"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "product_id is required for Google Play")
 		}
 		if purchase, found, err := s.recordedStorePurchase(ctx, s.queriesFor(ctx), tenant.ID, user.ID, storeGooglePlay, signed); err != nil || found {
-			return confirmedStorePurchase(purchase, err)
+			return confirmedStorePurchase(ctx, purchase, err)
 		}
 		transaction, err = s.verifyGooglePlayPurchase(ctx, tenant.ID, productID, signed)
 		if err != nil {
 			return nil, err
 		}
 	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("store is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "store is required")
 	}
 
 	purchase, err := s.recordStorePurchase(ctx, tenant.ID, user.ID, transaction)
-	return confirmedStorePurchase(purchase, err)
+	return confirmedStorePurchase(ctx, purchase, err)
 }
 
-func confirmedStorePurchase(purchase *publirav1.MyPurchase, err error) (*connect.Response[publirav1.ConfirmStorePurchaseResponse], error) {
+func confirmedStorePurchase(ctx context.Context, purchase *publirav1.MyPurchase, err error) (*publirav1.ConfirmStorePurchaseResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	return noStorePrivateResponse(&publirav1.ConfirmStorePurchaseResponse{Purchase: purchase}), nil
+	return noStorePrivateResponse(ctx, &publirav1.ConfirmStorePurchaseResponse{Purchase: purchase}), nil
 }
 
 // recordedStorePurchase answers the purchase a transaction was already
@@ -262,7 +263,7 @@ func (s *apiServer) recordedStorePurchase(
 		return nil, false, s.internalDBError(ctx, "failed to look up a store purchase", err, "tenant_id", tenantID.String(), "store", store)
 	}
 	if !existing.UserID.Valid || existing.UserID.UUID != userID {
-		return nil, false, connect.NewError(connect.CodePermissionDenied, errors.New("transaction belongs to another reader"))
+		return nil, false, connect.NewError(connect.CodePermissionDenied, "transaction belongs to another reader")
 	}
 	purchase, err := s.myPurchase(ctx, queries, tenantID, userID, existing.ID)
 	return purchase, err == nil, err
@@ -299,7 +300,7 @@ func (s *apiServer) appStores(ctx context.Context) *paymentsettings.AppStores {
 func (s *apiServer) storeCredentialsError(ctx context.Context, tenantID uuid.UUID, store string, err error) error {
 	if errors.Is(err, paymentsettings.ErrStoreNotReady) || paymentsettings.IsUnavailable(err) {
 		s.logger.WarnContext(ctx, "store purchase refused because the store is not ready", "tenant_id", tenantID, "store", store, "error", err)
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the store is not ready"))
+		return connect.NewError(connect.CodeFailedPrecondition, "the store is not ready")
 	}
 	return s.internalDBError(ctx, "failed to load store credentials", err, "tenant_id", tenantID.String(), "store", store)
 }
@@ -308,7 +309,7 @@ func (s *apiServer) storeCredentialsError(ctx context.Context, tenantID uuid.UUI
 // key, which no retry by the reader can fix.
 func (s *apiServer) storeRefusedCredentialsError(ctx context.Context, tenantID uuid.UUID, store string, err error) error {
 	s.logger.ErrorContext(ctx, "the store refused the tenant's credentials", "tenant_id", tenantID, "store", store, "error", err)
-	return connect.NewError(connect.CodeFailedPrecondition, errors.New("the store is not ready"))
+	return connect.NewError(connect.CodeFailedPrecondition, "the store is not ready")
 }
 
 func (s *apiServer) storeUnavailableError(ctx context.Context, tenantID uuid.UUID, store string, err error) error {
@@ -316,7 +317,7 @@ func (s *apiServer) storeUnavailableError(ctx context.Context, tenantID uuid.UUI
 		return err
 	}
 	s.logger.WarnContext(ctx, "the store could not be reached to verify a transaction", "tenant_id", tenantID, "store", store, "error", err)
-	return connect.NewError(connect.CodeUnavailable, errors.New("the store could not be reached"))
+	return connect.NewError(connect.CodeUnavailable, "the store could not be reached")
 }
 
 // verifyAppStoreTransaction asks the App Store for the transaction the app
@@ -328,10 +329,10 @@ func (s *apiServer) verifyAppStoreTransaction(ctx context.Context, tenantID uuid
 		return storeTransaction{}, s.storeCredentialsError(ctx, tenantID, storeAppStore, err)
 	}
 	if claimed.BundleID != credentials.BundleIdentifier {
-		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, errors.New("transaction belongs to another app"))
+		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, "transaction belongs to another app")
 	}
 	if claimed.Environment != appstore.EnvironmentProduction && claimed.Environment != appstore.EnvironmentSandbox {
-		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, errors.New("transaction names no App Store environment"))
+		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, "transaction names no App Store environment")
 	}
 
 	signed, err := s.stores.appStore.GetTransactionInfo(ctx, appstore.Credentials{
@@ -342,7 +343,7 @@ func (s *apiServer) verifyAppStoreTransaction(ctx context.Context, tenantID uuid
 	}, claimed.Environment, claimed.TransactionID)
 	switch {
 	case errors.Is(err, appstore.ErrTransactionNotFound):
-		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, errors.New("the App Store knows no such transaction"))
+		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, "the App Store knows no such transaction")
 	case errors.Is(err, appstore.ErrUnauthorized), errors.Is(err, appstore.ErrInvalidCredentials):
 		return storeTransaction{}, s.storeRefusedCredentialsError(ctx, tenantID, storeAppStore, err)
 	case err != nil:
@@ -353,13 +354,13 @@ func (s *apiServer) verifyAppStoreTransaction(ctx context.Context, tenantID uuid
 		return storeTransaction{}, s.internalError(ctx, "the App Store answered a transaction that does not verify", err, "tenant_id", tenantID.String())
 	}
 	if current.TransactionID != claimed.TransactionID || current.BundleID != credentials.BundleIdentifier {
-		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, errors.New("transaction belongs to another app"))
+		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, "transaction belongs to another app")
 	}
 	if current.Type != appstore.TypeConsumable {
-		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, errors.New("transaction is not for a consumable product"))
+		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, "transaction is not for a consumable product")
 	}
 	if current.RevocationDate != 0 {
-		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, errors.New("transaction has been revoked"))
+		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, "transaction has been revoked")
 	}
 	return storeTransaction{
 		store:         storeAppStore,
@@ -381,7 +382,7 @@ func (s *apiServer) verifyGooglePlayPurchase(ctx context.Context, tenantID uuid.
 	purchase, err := s.stores.googlePlay.GetProductPurchase(ctx, []byte(credentials.ServiceAccountKey), credentials.PackageName, productID, token)
 	switch {
 	case errors.Is(err, googleplay.ErrPurchaseNotFound):
-		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, errors.New("no such purchase is known to Google Play"))
+		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, "no such purchase is known to Google Play")
 	case errors.Is(err, googleplay.ErrUnauthorized), errors.Is(err, googleplay.ErrInvalidCredentials):
 		return storeTransaction{}, s.storeRefusedCredentialsError(ctx, tenantID, storeGooglePlay, err)
 	case err != nil:
@@ -390,9 +391,9 @@ func (s *apiServer) verifyGooglePlayPurchase(ctx context.Context, tenantID uuid.
 	switch purchase.PurchaseState {
 	case googleplay.PurchaseStatePurchased:
 	case googleplay.PurchaseStatePending:
-		return storeTransaction{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("the purchase is still pending"))
+		return storeTransaction{}, connect.NewError(connect.CodeFailedPrecondition, "the purchase is still pending")
 	default:
-		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, errors.New("the purchase was canceled"))
+		return storeTransaction{}, connect.NewError(connect.CodeInvalidArgument, "the purchase was canceled")
 	}
 	return storeTransaction{
 		store:         storeGooglePlay,
@@ -408,7 +409,7 @@ func (s *apiServer) verifyGooglePlayPurchase(ctx context.Context, tenantID uuid.
 func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uuid.UUID, transaction storeTransaction) (*publirav1.MyPurchase, error) {
 	intentID, err := uuid.Parse(transaction.accountToken)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("transaction names no purchase intent"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "transaction names no purchase intent")
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -420,7 +421,7 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 
 	intent, err := txq.LockStorePurchaseIntent(ctx, dbmodels.LockStorePurchaseIntentParams{TenantID: tenantID, ID: intentID})
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("transaction names no purchase intent"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "transaction names no purchase intent")
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to lock a store purchase intent", err, "tenant_id", tenantID.String())
@@ -436,13 +437,13 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 		return purchase, err
 	}
 	if intent.UserID != userID {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("purchase intent belongs to another reader"))
+		return nil, connect.NewError(connect.CodePermissionDenied, "purchase intent belongs to another reader")
 	}
 	if intent.ConsumedAt.Valid {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("purchase intent has already been used"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "purchase intent has already been used")
 	}
 	if intent.ProductID != transaction.productID {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("transaction bought another product than the intent"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "transaction bought another product than the intent")
 	}
 
 	var expiresAt sql.NullTime

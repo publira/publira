@@ -5,17 +5,18 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -59,17 +60,17 @@ func TestCatalogListPublishedCreatorsSuccess(t *testing.T) {
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", "Draws things", iconID, now, int64(2048), int32(2)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedCreators: %v", err)
 	}
-	if len(resp.Msg.Creators) != 1 {
-		t.Fatalf("creators count = %d, want 1", len(resp.Msg.Creators))
+	if len(resp.Creators) != 1 {
+		t.Fatalf("creators count = %d, want 1", len(resp.Creators))
 	}
-	creator := resp.Msg.Creators[0]
+	creator := resp.Creators[0]
 	if creator.PublicId != "CREATOR00001" {
 		t.Fatalf("public_id = %q, want CREATOR00001", creator.PublicId)
 	}
@@ -85,11 +86,11 @@ func TestCatalogListPublishedCreatorsSuccess(t *testing.T) {
 	if creator.IconImageUrl != fmt.Sprintf("/images/creators/%s", iconID) {
 		t.Fatalf("icon_image_url = %q, want /images/creators/%s", creator.IconImageUrl, iconID)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty when every row fits in one page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty when every row fits in one page", resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -108,21 +109,21 @@ func TestCatalogListPublishedCreatorsFirstPageReportsNextToken(t *testing.T) {
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(creatorListRows(ids[:2], []string{"Akira", "Mika"}))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedCreators: %v", err)
 	}
-	if got := len(resp.Msg.Creators); got != 2 {
+	if got := len(resp.Creators); got != 2 {
 		t.Fatalf("creators count = %d, want the over-fetched row dropped", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token for the next page")
 	}
 	assertPublicExpectations(t, mock)
@@ -146,23 +147,23 @@ func TestCatalogListPublishedCreatorsDropsCreatorsWhoseSeriesWentUnpublished(t *
 			AddRow(keptID, "CREATORK0001", "Akira", nil, nil, nil, int64(0), int32(1)).
 			AddRow(droppedID, "CREATORD0001", "Dropped", nil, nil, nil, int64(0), int32(0)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedCreators: %v", err)
 	}
-	if got := len(resp.Msg.Creators); got != 1 || resp.Msg.Creators[0].PublicId != "CREATORK0001" {
-		t.Fatalf("creators = %+v, want only Akira after the unpublished row dropped", resp.Msg.Creators)
+	if got := len(resp.Creators); got != 1 || resp.Creators[0].PublicId != "CREATORK0001" {
+		t.Fatalf("creators = %+v, want only Akira after the unpublished row dropped", resp.Creators)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token built from the remaining row")
 	}
 	wantToken := webToken(pagination.Forward, "Akira", keptID.String())
-	if resp.Msg.NextToken != wantToken {
-		t.Fatalf("next_token = %q, want the remaining creator's cursor, not the dropped row", resp.Msg.NextToken)
+	if resp.NextToken != wantToken {
+		t.Fatalf("next_token = %q, want the remaining creator's cursor, not the dropped row", resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -184,23 +185,23 @@ func TestCatalogListPublishedCreatorsFollowsNextToken(t *testing.T) {
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(creatorListRows(ids, []string{"Yuki"}))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  2,
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedCreators: %v", err)
 	}
-	if got := len(resp.Msg.Creators); got != 1 {
+	if got := len(resp.Creators); got != 1 {
 		t.Fatalf("creators count = %d, want 1", got)
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the page the client came from")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -227,27 +228,27 @@ func TestCatalogListPublishedCreatorsFollowsPreviousTokenBackwards(t *testing.T)
 			AddRow(akiraID, "CREATORAKIRA", "Akira", nil, nil, nil, int64(0), int32(1)).
 			AddRow(mikaID, "CREATORMIKA0", "Mika", nil, nil, nil, int64(0), int32(1)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  2,
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedCreators: %v", err)
 	}
 
-	got := make([]string, 0, len(resp.Msg.Creators))
-	for _, creator := range resp.Msg.Creators {
+	got := make([]string, 0, len(resp.Creators))
+	for _, creator := range resp.Creators {
 		got = append(got, creator.Name)
 	}
 	if !slices.Equal(got, []string{"Akira", "Mika"}) {
 		t.Fatalf("creators = %v, want the backward page flipped back to name ascending", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertPublicExpectations(t, mock)
@@ -286,30 +287,30 @@ func TestCatalogListPublishedCreatorsEmptyPageKeepsAWayBack(t *testing.T) {
 				WithArgs(tenantID, "web", boundaryID, false, "Mika", int32(21)).
 				WillReturnRows(seriesIDRows())
 
-			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-			resp, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			resp, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Token:  token,
-			}))
+			})
 			if err != nil {
 				t.Fatalf("ListPublishedCreators: %v", err)
 			}
-			if len(resp.Msg.Creators) != 0 {
-				t.Fatalf("creators = %+v, want empty", resp.Msg.Creators)
+			if len(resp.Creators) != 0 {
+				t.Fatalf("creators = %+v, want empty", resp.Creators)
 			}
 			if test.wantPrev {
-				if resp.Msg.PreviousToken == "" {
+				if resp.PreviousToken == "" {
 					t.Fatal("previous_token is empty, want a recovery token back")
 				}
-				if resp.Msg.NextToken != "" {
-					t.Fatalf("next_token = %q, want empty on a forward empty page", resp.Msg.NextToken)
+				if resp.NextToken != "" {
+					t.Fatalf("next_token = %q, want empty on a forward empty page", resp.NextToken)
 				}
 			} else {
-				if resp.Msg.NextToken == "" {
+				if resp.NextToken == "" {
 					t.Fatal("next_token is empty, want a recovery token forward")
 				}
-				if resp.Msg.PreviousToken != "" {
-					t.Fatalf("previous_token = %q, want empty on a backward empty page", resp.Msg.PreviousToken)
+				if resp.PreviousToken != "" {
+					t.Fatalf("previous_token = %q, want empty on a backward empty page", resp.PreviousToken)
 				}
 			}
 			assertPublicExpectations(t, mock)
@@ -330,16 +331,16 @@ func TestCatalogListPublishedCreatorsEmptyRecoveryPageDropsBothTokens(t *testing
 		WithArgs(tenantID, "web", boundaryID, true, "Mika", int32(21)).
 		WillReturnRows(seriesIDRows())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedCreators: %v", err)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty after a failed recovery", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty after a failed recovery", resp.PreviousToken, resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -350,11 +351,11 @@ func TestCatalogListPublishedCreatorsRejectsBrokenToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  "not-a-token",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
 	}
@@ -371,11 +372,11 @@ func TestCatalogListPublishedCreatorsRejectsUnknownFourthKey(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	token := webToken(pagination.Forward, "Mika", uuid.Must(uuid.NewV7()).String(), "nope")
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  token,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
 	}
@@ -392,11 +393,11 @@ func TestCatalogListPublishedCreatorsLimitOutOfRangeUsesDefault(t *testing.T) {
 		WithArgs(tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListPublishedCreators(context.Background(), connect.NewRequest(&publirav1.ListPublishedCreatorsRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListPublishedCreators(context.Background(), &publirav1.ListPublishedCreatorsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  101,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedCreators: %v", err)
 	}
@@ -423,28 +424,28 @@ func TestCatalogGetPublishedCreatorDetailSuccess(t *testing.T) {
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "CREATOR00001",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedCreatorDetail: %v", err)
 	}
-	if resp.Msg.Creator == nil || resp.Msg.Creator.PublicId != "CREATOR00001" {
-		t.Fatalf("creator = %+v, want CREATOR00001", resp.Msg.Creator)
+	if resp.Creator == nil || resp.Creator.PublicId != "CREATOR00001" {
+		t.Fatalf("creator = %+v, want CREATOR00001", resp.Creator)
 	}
-	if resp.Msg.Creator.PublishedSeriesCount != 1 {
-		t.Fatalf("published_series_count = %d, want 1", resp.Msg.Creator.PublishedSeriesCount)
+	if resp.Creator.PublishedSeriesCount != 1 {
+		t.Fatalf("published_series_count = %d, want 1", resp.Creator.PublishedSeriesCount)
 	}
-	if len(resp.Msg.Series) != 1 || resp.Msg.Series[0].PublicId != "SERIESPUB" {
-		t.Fatalf("series = %+v, want SERIESPUB", resp.Msg.Series)
+	if len(resp.Series) != 1 || resp.Series[0].PublicId != "SERIESPUB" {
+		t.Fatalf("series = %+v, want SERIESPUB", resp.Series)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty when every series fits in one page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty when every series fits in one page", resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -470,27 +471,27 @@ func TestCatalogGetPublishedCreatorDetailFirstPageReportsNextToken(t *testing.T)
 			AddRow(ids[0], "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
 			AddRow(ids[1], "SERIESBETA0", "Beta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "CREATOR00001",
 		Limit:    2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedCreatorDetail: %v", err)
 	}
-	if got := len(resp.Msg.Series); got != 2 {
+	if got := len(resp.Series); got != 2 {
 		t.Fatalf("series count = %d, want the over-fetched row dropped", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token for the next page")
 	}
 	wantToken := webToken(pagination.Forward, "title_asc", "Beta", ids[1].String())
-	if resp.Msg.NextToken != wantToken {
-		t.Fatalf("next_token = %q, want the last returned title cursor", resp.Msg.NextToken)
+	if resp.NextToken != wantToken {
+		t.Fatalf("next_token = %q, want the last returned title cursor", resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -518,24 +519,24 @@ func TestCatalogGetPublishedCreatorDetailFollowsNextToken(t *testing.T) {
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESZETA0", "Zeta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "CREATOR00001",
 		Limit:    2,
 		Token:    token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedCreatorDetail: %v", err)
 	}
-	if got := len(resp.Msg.Series); got != 1 {
+	if got := len(resp.Series); got != 1 {
 		t.Fatalf("series count = %d, want 1", got)
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the page the client came from")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -567,28 +568,28 @@ func TestCatalogGetPublishedCreatorDetailFollowsPreviousTokenBackwards(t *testin
 			AddRow(alphaID, "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
 			AddRow(betaID, "SERIESBETA0", "Beta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "CREATOR00001",
 		Limit:    2,
 		Token:    token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedCreatorDetail: %v", err)
 	}
 
-	got := make([]string, 0, len(resp.Msg.Series))
-	for _, series := range resp.Msg.Series {
+	got := make([]string, 0, len(resp.Series))
+	for _, series := range resp.Series {
 		got = append(got, series.Title)
 	}
 	if !slices.Equal(got, []string{"Alpha", "Beta"}) {
 		t.Fatalf("series = %v, want the backward page flipped back to title ascending", got)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertPublicExpectations(t, mock)
@@ -632,31 +633,31 @@ func TestCatalogGetPublishedCreatorDetailEmptyPageKeepsAWayBack(t *testing.T) {
 				WithArgs(creatorID, tenantID, "web", boundaryID, false, "Beta", int32(21)).
 				WillReturnRows(seriesIDRows())
 
-			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-			resp, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			resp, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				PublicId: "CREATOR00001",
 				Token:    token,
-			}))
+			})
 			if err != nil {
 				t.Fatalf("GetPublishedCreatorDetail: %v", err)
 			}
-			if len(resp.Msg.Series) != 0 {
-				t.Fatalf("series = %+v, want empty", resp.Msg.Series)
+			if len(resp.Series) != 0 {
+				t.Fatalf("series = %+v, want empty", resp.Series)
 			}
 			if test.wantPrev {
-				if resp.Msg.PreviousToken == "" {
+				if resp.PreviousToken == "" {
 					t.Fatal("previous_token is empty, want a recovery token back")
 				}
-				if resp.Msg.NextToken != "" {
-					t.Fatalf("next_token = %q, want empty on a forward empty page", resp.Msg.NextToken)
+				if resp.NextToken != "" {
+					t.Fatalf("next_token = %q, want empty on a forward empty page", resp.NextToken)
 				}
 			} else {
-				if resp.Msg.NextToken == "" {
+				if resp.NextToken == "" {
 					t.Fatal("next_token is empty, want a recovery token forward")
 				}
-				if resp.Msg.PreviousToken != "" {
-					t.Fatalf("previous_token = %q, want empty on a backward empty page", resp.Msg.PreviousToken)
+				if resp.PreviousToken != "" {
+					t.Fatalf("previous_token = %q, want empty on a backward empty page", resp.PreviousToken)
 				}
 			}
 			assertPublicExpectations(t, mock)
@@ -682,17 +683,17 @@ func TestCatalogGetPublishedCreatorDetailEmptyRecoveryPageDropsBothTokens(t *tes
 		WithArgs(creatorID, tenantID, "web", boundaryID, true, "Beta", int32(21)).
 		WillReturnRows(seriesIDRows())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "CREATOR00001",
 		Token:    token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedCreatorDetail: %v", err)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty after a failed recovery", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty after a failed recovery", resp.PreviousToken, resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -708,12 +709,12 @@ func TestCatalogGetPublishedCreatorDetailRejectsBrokenToken(t *testing.T) {
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "CREATOR00001",
 		Token:    "not-a-token",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument", err)
 	}
@@ -735,12 +736,12 @@ func TestCatalogGetPublishedCreatorDetailRejectsTokenFromAnotherOrder(t *testing
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "CREATOR00001",
 		Token:    token,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error = %v, want invalid_argument when the token was built for another order", err)
 	}
@@ -762,12 +763,12 @@ func TestCatalogGetPublishedCreatorDetailLimitOutOfRangeUsesDefault(t *testing.T
 		WithArgs(creatorID, tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "CREATOR00001",
 		Limit:    101,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetPublishedCreatorDetail: %v", err)
 	}
@@ -784,11 +785,11 @@ func TestCatalogGetPublishedCreatorDetailNotFound(t *testing.T) {
 		WithArgs("web", tenantID, nil, "MISSING00001").
 		WillReturnError(sql.ErrNoRows)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "MISSING00001",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("error = %v, want not_found", err)
 	}
@@ -808,11 +809,11 @@ func TestCatalogGetPublishedCreatorDetailDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs("web", tenantID, nil, "CREATOR00001").
 		WillReturnError(errors.New(`pq: relation "creators" does not exist`))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetPublishedCreatorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedCreatorDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "CREATOR00001",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetPublishedCreatorDetail code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}

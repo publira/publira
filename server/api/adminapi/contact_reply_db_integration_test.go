@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -16,10 +17,11 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func (e *adminDBEnv) contactClient() publiraadminv1connect.AdminContactServiceClient {
-	return publiraadminv1connect.NewAdminContactServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminContactServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 // seedContactMessage stores one message a guest sent the tenant, the way the
@@ -38,28 +40,28 @@ func (e *adminDBEnv) seedContactMessage(t *testing.T, tenant adminDBTenant, publ
 }
 
 func (e *adminDBEnv) replyToContactMessage(tenant adminDBTenant, messageID, body string) (*publiraadminv1.ContactMessage, error) {
-	res, err := e.contactClient().ReplyToContactMessage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReplyToContactMessageRequest{
+	res, err := e.contactClient().ReplyToContactMessage(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ReplyToContactMessageRequest{
 		Tenant:           tenant.tenantContext(),
 		ContactMessageId: messageID,
 		Body:             body,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return res.Msg.Message, nil
+	return res.Message, nil
 }
 
 func (e *adminDBEnv) getContactMessage(t *testing.T, tenant adminDBTenant, publicID string) *publiraadminv1.ContactMessage {
 	t.Helper()
 
-	res, err := e.contactClient().GetContactMessage(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetContactMessageRequest{
+	res, err := e.contactClient().GetContactMessage(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetContactMessageRequest{
 		Tenant:   tenant.tenantContext(),
 		PublicId: publicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetContactMessage: %v", err)
 	}
-	return res.Msg.Message
+	return res.Message
 }
 
 // storedReplyEmailEvents are the mails queued for a message's answers, in the
@@ -195,13 +197,13 @@ func TestDBContactMessageAnsweredByOneMemberOfStaffShowsToAColleague(t *testing.
 	}
 
 	// The inbox does not carry what was said, only how much.
-	res, err := env.contactClient().ListContactMessages(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListContactMessagesRequest{
+	res, err := env.contactClient().ListContactMessages(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListContactMessagesRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListContactMessages: %v", err)
 	}
-	listed := res.Msg.Messages
+	listed := res.Messages
 	if len(listed) != 1 || listed[0].EntryCount != 2 || len(listed[0].Entries) != 0 {
 		t.Fatalf("listed = %+v, want entry_count 2 and no entries", listed)
 	}

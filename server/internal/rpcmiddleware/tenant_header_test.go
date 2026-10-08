@@ -1,10 +1,9 @@
 package rpcmiddleware_test
 
 import (
-	"net/http"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -24,7 +23,7 @@ func TestResolveTenantID_FromBody(t *testing.T) {
 }
 
 func TestResolveTenantID_FromHeader(t *testing.T) {
-	headers := http.Header{}
+	headers := &connect.Header{}
 	headers.Set(rpcmiddleware.TenantIDHeaderName, testTenantID)
 
 	got, err := rpcmiddleware.ResolveTenantID(nil, headers)
@@ -37,7 +36,7 @@ func TestResolveTenantID_FromHeader(t *testing.T) {
 }
 
 func TestResolveTenantID_MismatchReturnsInvalidArgument(t *testing.T) {
-	headers := http.Header{}
+	headers := &connect.Header{}
 	headers.Set(rpcmiddleware.TenantIDHeaderName, "00000000-0000-7000-8000-00000000000b")
 
 	_, err := rpcmiddleware.ResolveTenantID(&publirattypesv1.TenantContext{TenantId: testTenantID}, headers)

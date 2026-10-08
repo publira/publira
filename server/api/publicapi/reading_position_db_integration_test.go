@@ -7,33 +7,33 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func saveReadingPositionRequest(tenant testutil.Tenant, episodeID string, pageIndex int32, token string) *connect.Request[publirav1.SaveReadingPositionRequest] {
-	return newBearerRequest(&publirav1.SaveReadingPositionRequest{
+func saveReadingPositionRequest(tenant testutil.Tenant, episodeID string, pageIndex int32) *publirav1.SaveReadingPositionRequest {
+	return &publirav1.SaveReadingPositionRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episodeID,
 		PageIndex: pageIndex,
-	}, token)
+	}
 }
 
-func getReadingPositionRequest(tenant testutil.Tenant, episodeID, token string) *connect.Request[publirav1.GetMyReadingPositionRequest] {
-	return newBearerRequest(&publirav1.GetMyReadingPositionRequest{
+func getReadingPositionRequest(tenant testutil.Tenant, episodeID string) *publirav1.GetMyReadingPositionRequest {
+	return &publirav1.GetMyReadingPositionRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episodeID,
-	}, token)
+	}
 }
 
-func seriesProgressRequest(tenant testutil.Tenant, seriesID, token string) *connect.Request[publirav1.GetMySeriesProgressRequest] {
-	return newBearerRequest(&publirav1.GetMySeriesProgressRequest{
+func seriesProgressRequest(tenant testutil.Tenant, seriesID string) *publirav1.GetMySeriesProgressRequest {
+	return &publirav1.GetMySeriesProgressRequest{
 		Tenant:   tenantContext(tenant),
 		SeriesId: seriesID,
-	}, token)
+	}
 }
 
 // seedEpisodeWithPages seeds an episode and the page images the saved position
@@ -57,42 +57,42 @@ func TestDBSaveReadingPositionKeepsOneRowAndReturnsItToTheSameReader(t *testing.
 	client := env.episodeReadClient()
 	token := tokenFor(t, tenant, member)
 
-	saved, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.ID.String(), 11, token))
+	saved, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, episode.ID.String(), 11))
 	if err != nil {
 		t.Fatalf("SaveReadingPosition: %v", err)
 	}
-	if got, want := saved.Msg.Position.GetPageIndex(), int32(11); got != want {
+	if got, want := saved.Position.GetPageIndex(), int32(11); got != want {
 		t.Fatalf("saved page_index = %d, want %d", got, want)
 	}
-	if got, want := saved.Msg.Position.GetPageCount(), int32(40); got != want {
+	if got, want := saved.Position.GetPageCount(), int32(40); got != want {
 		t.Fatalf("saved page_count = %d, want the episode's own %d", got, want)
 	}
 
-	read, err := client.GetMyReadingPosition(context.Background(), getReadingPositionRequest(tenant, episode.ID.String(), token))
+	read, err := client.GetMyReadingPosition(testutil.WithBearer(context.Background(), token), getReadingPositionRequest(tenant, episode.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMyReadingPosition: %v", err)
 	}
-	if got, want := read.Msg.Position.GetPageIndex(), int32(11); got != want {
+	if got, want := read.Position.GetPageIndex(), int32(11); got != want {
 		t.Fatalf("read page_index = %d, want %d", got, want)
 	}
 
-	again, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.ID.String(), 11, token))
+	again, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, episode.ID.String(), 11))
 	if err != nil {
 		t.Fatalf("repeated SaveReadingPosition: %v", err)
 	}
-	if again.Msg.Position.GetUpdatedAt() != saved.Msg.Position.GetUpdatedAt() {
-		t.Fatalf("repeated save updated_at = %q, want the unchanged %q", again.Msg.Position.GetUpdatedAt(), saved.Msg.Position.GetUpdatedAt())
+	if again.Position.GetUpdatedAt() != saved.Position.GetUpdatedAt() {
+		t.Fatalf("repeated save updated_at = %q, want the unchanged %q", again.Position.GetUpdatedAt(), saved.Position.GetUpdatedAt())
 	}
 
-	back, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.ID.String(), 4, token))
+	back, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, episode.ID.String(), 4))
 	if err != nil {
 		t.Fatalf("SaveReadingPosition after going back: %v", err)
 	}
-	if got, want := back.Msg.Position.GetPageIndex(), int32(4); got != want {
+	if got, want := back.Position.GetPageIndex(), int32(4); got != want {
 		t.Fatalf("page_index after going back = %d, want %d", got, want)
 	}
-	if back.Msg.Position.GetUpdatedAt() == saved.Msg.Position.GetUpdatedAt() {
-		t.Fatalf("updated_at stayed %q after the reader moved", back.Msg.Position.GetUpdatedAt())
+	if back.Position.GetUpdatedAt() == saved.Position.GetUpdatedAt() {
+		t.Fatalf("updated_at stayed %q after the reader moved", back.Position.GetUpdatedAt())
 	}
 
 	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_reading_positions WHERE tenant_id = $1 AND user_id = $2 AND episode_id = $3", tenant.ID, member.ID, episode.ID); got != 1 {
@@ -110,16 +110,16 @@ func TestDBSaveReadingPositionRejectsAPageOutsideTheEpisode(t *testing.T) {
 	client := env.episodeReadClient()
 	token := tokenFor(t, tenant, member)
 
-	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.ID.String(), 2, token)); err != nil {
+	if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, episode.ID.String(), 2)); err != nil {
 		t.Fatalf("SaveReadingPosition on the last page: %v", err)
 	}
 	for _, pageIndex := range []int32{3, -1} {
-		_, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.ID.String(), pageIndex, token))
+		_, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, episode.ID.String(), pageIndex))
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("SaveReadingPosition page %d code = %v, want invalid_argument (err=%v)", pageIndex, connect.CodeOf(err), err)
 		}
 	}
-	_, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, pageless.ID.String(), 0, token))
+	_, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, pageless.ID.String(), 0))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("SaveReadingPosition on a pageless episode code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -152,12 +152,12 @@ func TestDBReadingPositionRequiresCurrentPublicationAndBodyAccess(t *testing.T) 
 	token := tokenFor(t, tenant, member)
 
 	for _, episode := range []testutil.Episode{free, rented} {
-		if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.ID.String(), 5, token)); err != nil {
+		if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, episode.ID.String(), 5)); err != nil {
 			t.Fatalf("SaveReadingPosition %s: %v", episode.PublicID, err)
 		}
 	}
 	for _, id := range []string{paid.ID.String(), draft.ID.String(), foreign.ID.String(), uuid.NewString()} {
-		_, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, id, 5, token))
+		_, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, id, 5))
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("SaveReadingPosition %s code = %v, want not_found (err=%v)", id, connect.CodeOf(err), err)
 		}
@@ -170,19 +170,19 @@ func TestDBReadingPositionRequiresCurrentPublicationAndBodyAccess(t *testing.T) 
 	); err != nil {
 		t.Fatalf("expire access ticket: %v", err)
 	}
-	expired, err := client.GetMyReadingPosition(context.Background(), getReadingPositionRequest(tenant, rented.ID.String(), token))
+	expired, err := client.GetMyReadingPosition(testutil.WithBearer(context.Background(), token), getReadingPositionRequest(tenant, rented.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMyReadingPosition after the rental expired: %v", err)
 	}
-	if expired.Msg.Position != nil {
-		t.Fatalf("expired rental position = %+v, want none", expired.Msg.Position)
+	if expired.Position != nil {
+		t.Fatalf("expired rental position = %+v, want none", expired.Position)
 	}
-	still, err := client.GetMyReadingPosition(context.Background(), getReadingPositionRequest(tenant, free.ID.String(), token))
+	still, err := client.GetMyReadingPosition(testutil.WithBearer(context.Background(), token), getReadingPositionRequest(tenant, free.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMyReadingPosition: %v", err)
 	}
-	if still.Msg.Position.GetPageIndex() != 5 {
-		t.Fatalf("free episode position = %+v, want page 5", still.Msg.Position)
+	if still.Position.GetPageIndex() != 5 {
+		t.Fatalf("free episode position = %+v, want page 5", still.Position)
 	}
 }
 
@@ -199,16 +199,16 @@ func TestDBReadingPositionsAreMemberScopedByRLS(t *testing.T) {
 	episode := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEPOSI", Title: "Free", Status: testutil.EpisodeStatusPublished}, 10)
 	client := env.episodeReadClient()
 
-	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.ID.String(), 7, tokenFor(t, tenant, first))); err != nil {
+	if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), tokenFor(t, tenant, first)), saveReadingPositionRequest(tenant, episode.ID.String(), 7)); err != nil {
 		t.Fatalf("SaveReadingPosition as the first member: %v", err)
 	}
 
-	otherRead, err := client.GetMyReadingPosition(context.Background(), getReadingPositionRequest(tenant, episode.ID.String(), tokenFor(t, tenant, second)))
+	otherRead, err := client.GetMyReadingPosition(testutil.WithBearer(context.Background(), tokenFor(t, tenant, second)), getReadingPositionRequest(tenant, episode.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMyReadingPosition as the second member: %v", err)
 	}
-	if otherRead.Msg.Position != nil {
-		t.Fatalf("second member position = %+v, want none", otherRead.Msg.Position)
+	if otherRead.Position != nil {
+		t.Fatalf("second member position = %+v, want none", otherRead.Position)
 	}
 
 	env.withTenantConn(t, tenant.ID, func(ctx context.Context, conn *sql.Conn) {
@@ -255,7 +255,7 @@ func TestDBReadingPositionsAreTenantScopedByRLS(t *testing.T) {
 	episode := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEPOSJ", Title: "Free", Status: testutil.EpisodeStatusPublished}, 10)
 	client := env.episodeReadClient()
 
-	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.ID.String(), 3, tokenFor(t, tenant, member))); err != nil {
+	if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), saveReadingPositionRequest(tenant, episode.ID.String(), 3)); err != nil {
 		t.Fatalf("SaveReadingPosition: %v", err)
 	}
 
@@ -288,12 +288,12 @@ func TestDBSeriesProgressReturnsTheLastOpenedEpisodeAndItsFinishedState(t *testi
 	client := env.episodeReadClient()
 	token := tokenFor(t, tenant, member)
 
-	empty, err := client.GetMySeriesProgress(context.Background(), seriesProgressRequest(tenant, series.ID.String(), token))
+	empty, err := client.GetMySeriesProgress(testutil.WithBearer(context.Background(), token), seriesProgressRequest(tenant, series.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress before reading: %v", err)
 	}
-	if empty.Msg.Progress != nil {
-		t.Fatalf("progress before reading = %+v, want none", empty.Msg.Progress)
+	if empty.Progress != nil {
+		t.Fatalf("progress before reading = %+v, want none", empty.Progress)
 	}
 
 	for _, save := range []struct {
@@ -304,33 +304,33 @@ func TestDBSeriesProgressReturnsTheLastOpenedEpisodeAndItsFinishedState(t *testi
 		{otherEpisode.ID.String(), 1},
 		{second.ID.String(), 6},
 	} {
-		if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, save.episodeID, save.pageIndex, token)); err != nil {
+		if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, save.episodeID, save.pageIndex)); err != nil {
 			t.Fatalf("SaveReadingPosition %s: %v", save.episodeID, err)
 		}
 	}
 
-	progress, err := client.GetMySeriesProgress(context.Background(), seriesProgressRequest(tenant, series.ID.String(), token))
+	progress, err := client.GetMySeriesProgress(testutil.WithBearer(context.Background(), token), seriesProgressRequest(tenant, series.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress: %v", err)
 	}
-	if got := progress.Msg.Progress.GetEpisode().GetPublicId(); got != second.PublicID {
+	if got := progress.Progress.GetEpisode().GetPublicId(); got != second.PublicID {
 		t.Fatalf("progress episode = %q, want the last opened %q", got, second.PublicID)
 	}
-	if got := progress.Msg.Progress.GetPosition().GetPageIndex(); got != 6 {
+	if got := progress.Progress.GetPosition().GetPageIndex(); got != 6 {
 		t.Fatalf("progress page_index = %d, want 6", got)
 	}
-	if progress.Msg.Progress.GetIsFinished() {
+	if progress.Progress.GetIsFinished() {
 		t.Fatal("is_finished = true before the episode was marked as read")
 	}
 
-	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, second.ID.String(), token)); err != nil {
+	if _, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, second.ID.String())); err != nil {
 		t.Fatalf("MarkEpisodeAsRead: %v", err)
 	}
-	finished, err := client.GetMySeriesProgress(context.Background(), seriesProgressRequest(tenant, series.ID.String(), token))
+	finished, err := client.GetMySeriesProgress(testutil.WithBearer(context.Background(), token), seriesProgressRequest(tenant, series.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress after finishing: %v", err)
 	}
-	if !finished.Msg.Progress.GetIsFinished() {
+	if !finished.Progress.GetIsFinished() {
 		t.Fatal("is_finished = false after the episode was marked as read")
 	}
 }
@@ -359,7 +359,7 @@ func TestDBSeriesProgressSkipsAnEpisodeTheReaderCanNoLongerOpen(t *testing.T) {
 		{free.ID.String(), 2},
 		{rented.ID.String(), 8},
 	} {
-		if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, save.episodeID, save.pageIndex, token)); err != nil {
+		if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, save.episodeID, save.pageIndex)); err != nil {
 			t.Fatalf("SaveReadingPosition %s: %v", save.episodeID, err)
 		}
 	}
@@ -369,21 +369,21 @@ func TestDBSeriesProgressSkipsAnEpisodeTheReaderCanNoLongerOpen(t *testing.T) {
 		t.Fatalf("expire access ticket: %v", err)
 	}
 
-	progress, err := client.GetMySeriesProgress(context.Background(), seriesProgressRequest(tenant, series.ID.String(), token))
+	progress, err := client.GetMySeriesProgress(testutil.WithBearer(context.Background(), token), seriesProgressRequest(tenant, series.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress: %v", err)
 	}
-	if got := progress.Msg.Progress.GetEpisode().GetPublicId(); got != free.PublicID {
+	if got := progress.Progress.GetEpisode().GetPublicId(); got != free.PublicID {
 		t.Fatalf("progress episode = %q, want the episode before the expired rental %q", got, free.PublicID)
 	}
 }
 
-func recentSeriesRequest(tenant testutil.Tenant, sessionToken string, limit int32, pageToken string) *connect.Request[publirav1.ListMyRecentSeriesRequest] {
-	return newBearerRequest(&publirav1.ListMyRecentSeriesRequest{
+func recentSeriesRequest(tenant testutil.Tenant, limit int32, pageToken string) *publirav1.ListMyRecentSeriesRequest {
+	return &publirav1.ListMyRecentSeriesRequest{
 		Tenant: tenantContext(tenant),
 		Limit:  limit,
 		Token:  pageToken,
-	}, sessionToken)
+	}
 }
 
 // recentSeriesPublicIDs is what the "continue reading" row would render: the
@@ -413,29 +413,30 @@ func TestDBListMyRecentSeriesOffersTheEpisodeAfterTheOneJustFinished(t *testing.
 	client := env.episodeReadClient()
 	token := tokenFor(t, tenant, member)
 
-	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, third.ID.String(), 9, token)); err != nil {
+	if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, third.ID.String(), 9)); err != nil {
 		t.Fatalf("SaveReadingPosition: %v", err)
 	}
-	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, third.ID.String(), token)); err != nil {
+	if _, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, third.ID.String())); err != nil {
 		t.Fatalf("MarkEpisodeAsRead: %v", err)
 	}
 
-	response, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 0, ""))
+	responseCtx, responseCall := testutil.NewClientContext(testutil.WithBearer(context.Background(), token))
+	response, err := client.ListMyRecentSeries(responseCtx, recentSeriesRequest(tenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries: %v", err)
 	}
-	if got, want := recentSeriesPublicIDs(response.Msg.Series), []string{series.PublicID + "/" + fourth.PublicID}; !slices.Equal(got, want) {
+	if got, want := recentSeriesPublicIDs(response.Series), []string{series.PublicID + "/" + fourth.PublicID}; !slices.Equal(got, want) {
 		t.Fatalf("series = %v, want %v", got, want)
 	}
 	// The next episode was never opened, so there is no page to resume at and
 	// the viewer starts the reader at the beginning.
-	if position := response.Msg.Series[0].GetPosition(); position != nil {
+	if position := response.Series[0].GetPosition(); position != nil {
 		t.Fatalf("position = %+v, want none for an episode never opened", position)
 	}
-	if response.Msg.Series[0].GetLastActivityAt() == "" {
+	if response.Series[0].GetLastActivityAt() == "" {
 		t.Fatal("last_activity_at is empty, want the time of the finished read")
 	}
-	if got := response.Header().Get("Cache-Control"); got != "private, no-store" {
+	if got := responseCall.ResponseHeader().Get("Cache-Control"); got != "private, no-store" {
 		t.Fatalf("Cache-Control = %q, want private, no-store", got)
 	}
 }
@@ -451,23 +452,23 @@ func TestDBListMyRecentSeriesDropsAFinishedSeriesUntilAnotherEpisodeIsPublished(
 
 	// A finished mark is activity on its own: the position is written by the
 	// viewer, and a reader who only reached the end still read the series.
-	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, last.ID.String(), token)); err != nil {
+	if _, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, last.ID.String())); err != nil {
 		t.Fatalf("MarkEpisodeAsRead: %v", err)
 	}
-	finished, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 0, ""))
+	finished, err := client.ListMyRecentSeries(testutil.WithBearer(context.Background(), token), recentSeriesRequest(tenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries after finishing the last episode: %v", err)
 	}
-	if len(finished.Msg.Series) != 0 {
-		t.Fatalf("series = %v, want none while nothing is left to read", recentSeriesPublicIDs(finished.Msg.Series))
+	if len(finished.Series) != 0 {
+		t.Fatalf("series = %v, want none while nothing is left to read", recentSeriesPublicIDs(finished.Series))
 	}
 
 	next := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERECF", Title: "Episode 2", Status: testutil.EpisodeStatusPublished}, 10)
-	reopened, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 0, ""))
+	reopened, err := client.ListMyRecentSeries(testutil.WithBearer(context.Background(), token), recentSeriesRequest(tenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries after another episode was published: %v", err)
 	}
-	if got, want := recentSeriesPublicIDs(reopened.Msg.Series), []string{series.PublicID + "/" + next.PublicID}; !slices.Equal(got, want) {
+	if got, want := recentSeriesPublicIDs(reopened.Series), []string{series.PublicID + "/" + next.PublicID}; !slices.Equal(got, want) {
 		t.Fatalf("series = %v, want %v", got, want)
 	}
 }
@@ -488,47 +489,47 @@ func TestDBListMyRecentSeriesPagesNewestActivityFirst(t *testing.T) {
 		series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: ids[0], Title: ids[0], Published: true})
 		episode := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: ids[1], Title: ids[1], Status: testutil.EpisodeStatusPublished}, 10)
 		// Saved oldest first, so the list order is the reverse of the seed order.
-		if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.ID.String(), int32(i), token)); err != nil {
+		if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, episode.ID.String(), int32(i))); err != nil {
 			t.Fatalf("SaveReadingPosition %s: %v", episode.PublicID, err)
 		}
 		reading = append(reading, opened{series: series, episode: episode})
 	}
 	first, second, third := reading[0], reading[1], reading[2]
 
-	page, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 2, ""))
+	page, err := client.ListMyRecentSeries(testutil.WithBearer(context.Background(), token), recentSeriesRequest(tenant, 2, ""))
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries: %v", err)
 	}
 	want := []string{third.series.PublicID + "/" + third.episode.PublicID, second.series.PublicID + "/" + second.episode.PublicID}
-	if got := recentSeriesPublicIDs(page.Msg.Series); !slices.Equal(got, want) {
+	if got := recentSeriesPublicIDs(page.Series); !slices.Equal(got, want) {
 		t.Fatalf("first page = %v, want %v", got, want)
 	}
-	if got := page.Msg.Series[0].GetPosition().GetPageIndex(); got != 2 {
-		t.Fatalf("position = %+v, want the page the reader stopped on", page.Msg.Series[0].GetPosition())
+	if got := page.Series[0].GetPosition().GetPageIndex(); got != 2 {
+		t.Fatalf("position = %+v, want the page the reader stopped on", page.Series[0].GetPosition())
 	}
-	if page.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", page.Msg.PreviousToken)
+	if page.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", page.PreviousToken)
 	}
-	if page.Msg.NextToken == "" {
+	if page.NextToken == "" {
 		t.Fatal("next_token is empty, want a token while a series remains")
 	}
 
-	rest, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 2, page.Msg.NextToken))
+	rest, err := client.ListMyRecentSeries(testutil.WithBearer(context.Background(), token), recentSeriesRequest(tenant, 2, page.NextToken))
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries next page: %v", err)
 	}
-	if got, want := recentSeriesPublicIDs(rest.Msg.Series), []string{first.series.PublicID + "/" + first.episode.PublicID}; !slices.Equal(got, want) {
+	if got, want := recentSeriesPublicIDs(rest.Series), []string{first.series.PublicID + "/" + first.episode.PublicID}; !slices.Equal(got, want) {
 		t.Fatalf("second page = %v, want %v", got, want)
 	}
-	if rest.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", rest.Msg.NextToken)
+	if rest.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", rest.NextToken)
 	}
 
-	back, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 2, rest.Msg.PreviousToken))
+	back, err := client.ListMyRecentSeries(testutil.WithBearer(context.Background(), token), recentSeriesRequest(tenant, 2, rest.PreviousToken))
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries previous page: %v", err)
 	}
-	if got := recentSeriesPublicIDs(back.Msg.Series); !slices.Equal(got, want) {
+	if got := recentSeriesPublicIDs(back.Series); !slices.Equal(got, want) {
 		t.Fatalf("page back = %v, want the first page again %v", got, want)
 	}
 }
@@ -556,20 +557,20 @@ func TestDBListMyRecentSeriesOrdersOnTheNewerOfAPositionAndARead(t *testing.T) {
 
 	// Oldest first, so the expected order is the reverse of the write order
 	// except for the position that the later read of the same episode outranks.
-	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, bothFirst.ID.String(), 3, token)); err != nil {
+	if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, bothFirst.ID.String(), 3)); err != nil {
 		t.Fatalf("SaveReadingPosition %s: %v", bothFirst.PublicID, err)
 	}
-	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, positionFirst.ID.String(), 4, token)); err != nil {
+	if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, positionFirst.ID.String(), 4)); err != nil {
 		t.Fatalf("SaveReadingPosition %s: %v", positionFirst.PublicID, err)
 	}
-	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, bothFirst.ID.String(), token)); err != nil {
+	if _, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, bothFirst.ID.String())); err != nil {
 		t.Fatalf("MarkEpisodeAsRead %s: %v", bothFirst.PublicID, err)
 	}
-	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, readFirst.ID.String(), token)); err != nil {
+	if _, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, readFirst.ID.String())); err != nil {
 		t.Fatalf("MarkEpisodeAsRead %s: %v", readFirst.PublicID, err)
 	}
 
-	response, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 0, ""))
+	response, err := client.ListMyRecentSeries(testutil.WithBearer(context.Background(), token), recentSeriesRequest(tenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries: %v", err)
 	}
@@ -578,7 +579,7 @@ func TestDBListMyRecentSeriesOrdersOnTheNewerOfAPositionAndARead(t *testing.T) {
 		bothMarks.PublicID + "/" + bothSecond.PublicID,
 		positionOnly.PublicID + "/" + positionFirst.PublicID,
 	}
-	if got := recentSeriesPublicIDs(response.Msg.Series); !slices.Equal(got, want) {
+	if got := recentSeriesPublicIDs(response.Series); !slices.Equal(got, want) {
 		t.Fatalf("series = %v, want %v", got, want)
 	}
 }
@@ -595,7 +596,7 @@ func TestDBListMyRecentSeriesSkipsASeriesThatIsNoLongerPublished(t *testing.T) {
 	token := tokenFor(t, tenant, member)
 
 	for _, id := range []string{stayingEpisode.ID.String(), withdrawnEpisode.ID.String()} {
-		if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, id, 4, token)); err != nil {
+		if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, id, 4)); err != nil {
 			t.Fatalf("SaveReadingPosition %s: %v", id, err)
 		}
 	}
@@ -605,11 +606,11 @@ func TestDBListMyRecentSeriesSkipsASeriesThatIsNoLongerPublished(t *testing.T) {
 		t.Fatalf("unpublish series: %v", err)
 	}
 
-	response, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 0, ""))
+	response, err := client.ListMyRecentSeries(testutil.WithBearer(context.Background(), token), recentSeriesRequest(tenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries: %v", err)
 	}
-	if got, want := recentSeriesPublicIDs(response.Msg.Series), []string{staying.PublicID + "/" + stayingEpisode.PublicID}; !slices.Equal(got, want) {
+	if got, want := recentSeriesPublicIDs(response.Series), []string{staying.PublicID + "/" + stayingEpisode.PublicID}; !slices.Equal(got, want) {
 		t.Fatalf("series = %v, want only the published one %v", got, want)
 	}
 }
@@ -630,7 +631,7 @@ func TestDBListMyRecentSeriesOffersAnEpisodeWithoutAPositionTheReaderCannotReach
 	client := env.episodeReadClient()
 	token := tokenFor(t, tenant, member)
 
-	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, rented.ID.String(), 8, token)); err != nil {
+	if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, rented.ID.String(), 8)); err != nil {
 		t.Fatalf("SaveReadingPosition: %v", err)
 	}
 	if _, err := env.PG.DB.ExecContext(context.Background(),
@@ -639,14 +640,14 @@ func TestDBListMyRecentSeriesOffersAnEpisodeWithoutAPositionTheReaderCannotReach
 		t.Fatalf("expire access ticket: %v", err)
 	}
 
-	response, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 0, ""))
+	response, err := client.ListMyRecentSeries(testutil.WithBearer(context.Background(), token), recentSeriesRequest(tenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries: %v", err)
 	}
-	if got, want := recentSeriesPublicIDs(response.Msg.Series), []string{series.PublicID + "/" + rented.PublicID}; !slices.Equal(got, want) {
+	if got, want := recentSeriesPublicIDs(response.Series), []string{series.PublicID + "/" + rented.PublicID}; !slices.Equal(got, want) {
 		t.Fatalf("series = %v, want the episode the reader is sent to rent again %v", got, want)
 	}
-	if position := response.Msg.Series[0].GetPosition(); position != nil {
+	if position := response.Series[0].GetPosition(); position != nil {
 		t.Fatalf("position = %+v, want none while the reader cannot open the body", position)
 	}
 }
@@ -660,15 +661,15 @@ func TestDBListMyRecentSeriesShowsNothingOfAnotherMembersReading(t *testing.T) {
 	episode := seedEpisodeWithPages(t, env, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODERECM", Title: "Episode 1", Status: testutil.EpisodeStatusPublished}, 10)
 	client := env.episodeReadClient()
 
-	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.ID.String(), 6, tokenFor(t, tenant, reader))); err != nil {
+	if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reader)), saveReadingPositionRequest(tenant, episode.ID.String(), 6)); err != nil {
 		t.Fatalf("SaveReadingPosition: %v", err)
 	}
 
-	response, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, tokenFor(t, tenant, other), 0, ""))
+	response, err := client.ListMyRecentSeries(testutil.WithBearer(context.Background(), tokenFor(t, tenant, other)), recentSeriesRequest(tenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries as another member: %v", err)
 	}
-	if len(response.Msg.Series) != 0 {
-		t.Fatalf("series = %v, want none of the other member's reading", recentSeriesPublicIDs(response.Msg.Series))
+	if len(response.Series) != 0 {
+		t.Fatalf("series = %v, want none of the other member's reading", recentSeriesPublicIDs(response.Series))
 	}
 }

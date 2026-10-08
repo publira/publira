@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -53,11 +53,11 @@ func seedSearchableCatalog(t *testing.T, env *publicDBEnv) classifiedCatalog {
 func searchPublishedSeriesIDs(t *testing.T, env *publicDBEnv, req *publirav1.SearchPublishedSeriesRequest) []string {
 	t.Helper()
 
-	resp, err := env.catalogClient().SearchPublishedSeries(context.Background(), connect.NewRequest(req))
+	resp, err := env.catalogClient().SearchPublishedSeries(context.Background(), req)
 	if err != nil {
 		t.Fatalf("SearchPublishedSeries: %v", err)
 	}
-	return seriesPublicIDs(resp.Msg.Series)
+	return seriesPublicIDs(resp.Series)
 }
 
 func TestDBSearchPublishedSeriesKeepsOnlyTheHitsEveryFilterKeeps(t *testing.T) {
@@ -231,29 +231,29 @@ func TestDBSearchPublishedSeriesPagesTheNarrowedHitsAndBindsItsToken(t *testing.
 		}
 	}
 
-	firstPage, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(narrowed("")))
+	firstPage, err := client.SearchPublishedSeries(context.Background(), narrowed(""))
 	if err != nil {
 		t.Fatalf("page 1: %v", err)
 	}
-	assertSeriesIDs(t, "page 1", seriesPublicIDs(firstPage.Msg.Series), []string{"SERIESSECON1"})
-	if firstPage.Msg.NextToken == "" {
+	assertSeriesIDs(t, "page 1", seriesPublicIDs(firstPage.Series), []string{"SERIESSECON1"})
+	if firstPage.NextToken == "" {
 		t.Fatal("page 1 next_token is empty, want a token for the remaining hit")
 	}
 
-	secondPage, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(narrowed(firstPage.Msg.NextToken)))
+	secondPage, err := client.SearchPublishedSeries(context.Background(), narrowed(firstPage.NextToken))
 	if err != nil {
 		t.Fatalf("page 2: %v", err)
 	}
-	assertSeriesIDs(t, "page 2", seriesPublicIDs(secondPage.Msg.Series), []string{"SERIESFIRST1"})
-	if secondPage.Msg.NextToken != "" {
-		t.Fatalf("page 2 next_token = %q, want empty at the end of the hits", secondPage.Msg.NextToken)
+	assertSeriesIDs(t, "page 2", seriesPublicIDs(secondPage.Series), []string{"SERIESFIRST1"})
+	if secondPage.NextToken != "" {
+		t.Fatalf("page 2 next_token = %q, want empty at the end of the hits", secondPage.NextToken)
 	}
 
-	backAgain, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(narrowed(secondPage.Msg.PreviousToken)))
+	backAgain, err := client.SearchPublishedSeries(context.Background(), narrowed(secondPage.PreviousToken))
 	if err != nil {
 		t.Fatalf("page 1 revisited: %v", err)
 	}
-	assertSeriesIDs(t, "page 1 revisited", seriesPublicIDs(backAgain.Msg.Series), []string{"SERIESSECON1"})
+	assertSeriesIDs(t, "page 1 revisited", seriesPublicIDs(backAgain.Series), []string{"SERIESSECON1"})
 
 	// Every one of these names a different list of hits, so the boundary the
 	// token carries sits somewhere else in each of them.
@@ -274,18 +274,18 @@ func TestDBSearchPublishedSeriesPagesTheNarrowedHitsAndBindsItsToken(t *testing.
 		},
 		"a weekday on top": func(req *publirav1.SearchPublishedSeriesRequest) { req.Weekday = &monday },
 	} {
-		req := narrowed(firstPage.Msg.NextToken)
+		req := narrowed(firstPage.NextToken)
 		change(req)
-		_, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(req))
+		_, err := client.SearchPublishedSeries(context.Background(), req)
 		if connect.CodeOf(err) != connect.CodeInvalidArgument || err.Error() != "invalid_argument: token was issued for another order or filter" {
 			t.Fatalf("token with %s: error = %v, want the order-or-filter mismatch", name, err)
 		}
 	}
 
 	// A token is still bound to its query first.
-	req := narrowed(firstPage.Msg.NextToken)
+	req := narrowed(firstPage.NextToken)
 	req.Query = "story"
-	if _, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(req)); err == nil || err.Error() != "invalid_argument: token was issued for another query" {
+	if _, err := client.SearchPublishedSeries(context.Background(), req); err == nil || err.Error() != "invalid_argument: token was issued for another query" {
 		t.Fatalf("token with another query: error = %v, want the query mismatch", err)
 	}
 }
@@ -312,7 +312,7 @@ func TestDBSearchPublishedSeriesRefusesAFilterNamingNothing(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			test.req.Tenant = tenantContext(catalog.tenant)
 			test.req.Query = "series"
-			_, err := env.catalogClient().SearchPublishedSeries(context.Background(), connect.NewRequest(test.req))
+			_, err := env.catalogClient().SearchPublishedSeries(context.Background(), test.req)
 			if connect.CodeOf(err) != test.want {
 				t.Fatalf("code = %v, want %v (err=%v)", connect.CodeOf(err), test.want, err)
 			}

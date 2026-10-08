@@ -7,7 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectproto"
 	"github.com/google/uuid"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
@@ -35,12 +36,12 @@ func (e *publicDBEnv) refuseEmails(t *testing.T, tenantID uuid.UUID, rejectDispo
 }
 
 func (e *publicDBEnv) signUp(tenant testutil.Tenant, email string) error {
-	_, err := e.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+	_, err := e.authClient().CreateUser(context.Background(), &publirav1.CreateUserRequest{
 		Tenant:   tenantContext(tenant),
 		Name:     "Newcomer",
 		Email:    email,
 		Password: "newcomer-password",
-	}))
+	})
 	return err
 }
 
@@ -54,7 +55,7 @@ func assertEmailRefused(t *testing.T, err error, wantField, wantReason string) {
 		t.Fatalf("error type = %T, want *connect.Error", err)
 	}
 	for _, detail := range connectErr.Details() {
-		value, valueErr := detail.Value()
+		value, valueErr := connectproto.UnmarshalErrorDetail(detail)
 		if valueErr != nil {
 			continue
 		}
@@ -179,15 +180,12 @@ func TestDBRequestEmailChangeRefusesAnAddressTheTenantRefuses(t *testing.T) {
 	env.refuseEmails(t, tenant.ID, false, "blocked.example", "john@example.com")
 
 	requestChange := func(newEmail string) error {
-		_, err := env.authClient().RequestEmailChange(context.Background(), newBearerRequest(
-			&publirav1.RequestEmailChangeRequest{
-				Tenant:          tenantContext(tenant),
-				CurrentEmail:    member.Email,
-				NewEmail:        newEmail,
-				CurrentPassword: testutil.SeededPassword,
-			},
-			token,
-		))
+		_, err := env.authClient().RequestEmailChange(testutil.WithBearer(context.Background(), token), &publirav1.RequestEmailChangeRequest{
+			Tenant:          tenantContext(tenant),
+			CurrentEmail:    member.Email,
+			NewEmail:        newEmail,
+			CurrentPassword: testutil.SeededPassword,
+		})
 		return err
 	}
 

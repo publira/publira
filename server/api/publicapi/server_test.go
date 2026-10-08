@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/publira/publira/server/internal/logging"

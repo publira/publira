@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectproto"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	"github.com/publira/publira/server/internal/creatorroles"
@@ -15,6 +16,7 @@ import (
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func creatorRolePublicIDs(roles []*publirattypesv1.CreatorRole) []string {
@@ -54,7 +56,7 @@ func creatorRoleInUseCreditCount(t *testing.T, err error) int {
 		t.Fatalf("error is not a connect error: %v", err)
 	}
 	for _, detail := range connectErr.Details() {
-		value, valueErr := detail.Value()
+		value, valueErr := connectproto.UnmarshalErrorDetail(detail)
 		if valueErr != nil {
 			continue
 		}
@@ -87,14 +89,14 @@ func createCreatorRole(
 ) *publirattypesv1.CreatorRole {
 	t.Helper()
 
-	created, err := client.CreateCreatorRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRoleRequest{
+	created, err := client.CreateCreatorRole(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateCreatorRoleRequest{
 		Tenant: tenant.tenantContext(),
 		Name:   name,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateCreatorRole(%q): %v", name, err)
 	}
-	return created.Msg.CreatorRole
+	return created.CreatorRole
 }
 
 func listCreatorRoles(
@@ -104,14 +106,14 @@ func listCreatorRoles(
 ) []*publirattypesv1.CreatorRole {
 	t.Helper()
 
-	listed, err := client.ListCreatorRoles(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListCreatorRolesRequest{
+	listed, err := client.ListCreatorRoles(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListCreatorRolesRequest{
 		Tenant: tenant.tenantContext(),
 		Limit:  100,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListCreatorRoles: %v", err)
 	}
-	return listed.Msg.CreatorRoles
+	return listed.CreatorRoles
 }
 
 // A tenant reaches its console with a vocabulary already in it, because a
@@ -145,10 +147,10 @@ func TestDBCreateCreatorRoleRefusesANameAnotherRoleAlreadyHolds(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.creatorRoleClient()
 
-	_, err := client.CreateCreatorRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRoleRequest{
+	_, err := client.CreateCreatorRole(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateCreatorRoleRequest{
 		Tenant: tenant.tenantContext(),
 		Name:   "  original author ",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateCreatorRole code = %v, want %v", connect.CodeOf(err), connect.CodeAlreadyExists)
 	}
@@ -160,16 +162,16 @@ func TestDBUpdateCreatorRoleRenamesWithoutMovingItsPublicID(t *testing.T) {
 	client := env.creatorRoleClient()
 
 	role := env.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[0].Name)
-	updated, err := client.UpdateCreatorRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateCreatorRoleRequest{
+	updated, err := client.UpdateCreatorRole(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateCreatorRoleRequest{
 		Tenant:        tenant.tenantContext(),
 		CreatorRoleId: role.ID.String(),
 		Name:          "Story",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateCreatorRole: %v", err)
 	}
-	if updated.Msg.CreatorRole.PublicId != role.PublicID {
-		t.Fatalf("creator_role.public_id = %q, want it unchanged at %q", updated.Msg.CreatorRole.PublicId, role.PublicID)
+	if updated.CreatorRole.PublicId != role.PublicID {
+		t.Fatalf("creator_role.public_id = %q, want it unchanged at %q", updated.CreatorRole.PublicId, role.PublicID)
 	}
 	if got := creatorRoleNames(listCreatorRoles(t, client, tenant))[0]; got != "Story" {
 		t.Fatalf("leading role name = %q, want the renamed one", got)
@@ -184,15 +186,15 @@ func TestDBReorderCreatorRolesWritesTheRequestedOrder(t *testing.T) {
 	current := creatorRoleIDs(listCreatorRoles(t, client, tenant))
 	wanted := []string{current[3], current[0], current[1], current[2]}
 
-	reordered, err := client.ReorderCreatorRoles(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderCreatorRolesRequest{
+	reordered, err := client.ReorderCreatorRoles(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ReorderCreatorRolesRequest{
 		Tenant:                 tenant.tenantContext(),
 		CreatorRoleIds:         wanted,
 		ExpectedCreatorRoleIds: current,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ReorderCreatorRoles: %v", err)
 	}
-	if got := creatorRoleIDs(reordered.Msg.CreatorRoles); !slices.Equal(got, wanted) {
+	if got := creatorRoleIDs(reordered.CreatorRoles); !slices.Equal(got, wanted) {
 		t.Fatalf("ReorderCreatorRoles = %v, want %v", got, wanted)
 	}
 	if got := creatorRoleIDs(listCreatorRoles(t, client, tenant)); !slices.Equal(got, wanted) {
@@ -210,11 +212,11 @@ func TestDBReorderCreatorRolesRefusesAnOrderBuiltOnAStaleList(t *testing.T) {
 	// longer covers everything the tenant has.
 	createCreatorRole(t, client, tenant, "Letterer")
 
-	_, err := client.ReorderCreatorRoles(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderCreatorRolesRequest{
+	_, err := client.ReorderCreatorRoles(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ReorderCreatorRolesRequest{
 		Tenant:                 tenant.tenantContext(),
 		CreatorRoleIds:         []string{current[1], current[0], current[2], current[3]},
 		ExpectedCreatorRoleIds: current,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ReorderCreatorRoles code = %v, want %v", connect.CodeOf(err), connect.CodeFailedPrecondition)
 	}
@@ -226,10 +228,10 @@ func TestDBDeleteCreatorRoleRemovesAnUnusedOne(t *testing.T) {
 	client := env.creatorRoleClient()
 
 	role := createCreatorRole(t, client, tenant, "Letterer")
-	if _, err := client.DeleteCreatorRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteCreatorRoleRequest{
+	if _, err := client.DeleteCreatorRole(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.DeleteCreatorRoleRequest{
 		Tenant:        tenant.tenantContext(),
 		CreatorRoleId: role.Id,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("DeleteCreatorRole: %v", err)
 	}
 	if got := creatorRoleNames(listCreatorRoles(t, client, tenant)); !slices.Equal(got, defaultCreatorRoleNames()) {
@@ -242,26 +244,26 @@ func TestDBDeleteCreatorRoleRefusesOneACreditNames(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	roles := env.creatorRoleClient()
 
-	creator, err := env.creatorClient().CreateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRequest{
+	creator, err := env.creatorClient().CreateCreator(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateCreatorRequest{
 		Tenant: tenant.tenantContext(),
 		Name:   "Aoi Sakura",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateCreator: %v", err)
 	}
-	credits := env.creatorCredits(t, tenant, creator.Msg.Creator.Id)
-	if _, err := env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+	credits := env.creatorCredits(t, tenant, creator.Creator.Id)
+	if _, err := env.seriesClient().CreateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesRequest{
 		Tenant:         tenant.tenantContext(),
 		Title:          "Credited Series",
 		CreatorCredits: credits,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateSeries: %v", err)
 	}
 
-	_, err = roles.DeleteCreatorRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteCreatorRoleRequest{
+	_, err = roles.DeleteCreatorRole(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.DeleteCreatorRoleRequest{
 		Tenant:        tenant.tenantContext(),
 		CreatorRoleId: env.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[0].Name).ID.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeleteCreatorRole code = %v, want %v", connect.CodeOf(err), connect.CodeFailedPrecondition)
 	}
@@ -278,28 +280,28 @@ func TestDBDeleteCreatorRoleReportsHowManyCreditsNameIt(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	roles := env.creatorRoleClient()
 
-	creator, err := env.creatorClient().CreateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRequest{
+	creator, err := env.creatorClient().CreateCreator(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateCreatorRequest{
 		Tenant: tenant.tenantContext(),
 		Name:   "Aoi Sakura",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateCreator: %v", err)
 	}
-	credits := env.creatorCredits(t, tenant, creator.Msg.Creator.Id)
+	credits := env.creatorCredits(t, tenant, creator.Creator.Id)
 	for _, title := range []string{"First Credited Series", "Second Credited Series", "Third Credited Series"} {
-		if _, err := env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+		if _, err := env.seriesClient().CreateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesRequest{
 			Tenant:         tenant.tenantContext(),
 			Title:          title,
 			CreatorCredits: credits,
-		})); err != nil {
+		}); err != nil {
 			t.Fatalf("CreateSeries %q: %v", title, err)
 		}
 	}
 
-	_, err = roles.DeleteCreatorRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteCreatorRoleRequest{
+	_, err = roles.DeleteCreatorRole(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.DeleteCreatorRoleRequest{
 		Tenant:        tenant.tenantContext(),
 		CreatorRoleId: env.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[0].Name).ID.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeleteCreatorRole code = %v, want %v", connect.CodeOf(err), connect.CodeFailedPrecondition)
 	}
@@ -322,11 +324,11 @@ func TestDBCreatorRolesOfAnotherTenantAreOutOfReach(t *testing.T) {
 	if got := creatorRolePublicIDs(listCreatorRoles(t, client, first)); slices.Contains(got, theirs.PublicID) {
 		t.Fatalf("creator roles of tenant A = %v, want none of tenant B's", got)
 	}
-	_, err := client.UpdateCreatorRole(context.Background(), newAdminDBRequest(first, &publiraadminv1.UpdateCreatorRoleRequest{
+	_, err := client.UpdateCreatorRole(testutil.WithBearer(context.Background(), first.token()), &publiraadminv1.UpdateCreatorRoleRequest{
 		Tenant:        first.tenantContext(),
 		CreatorRoleId: theirs.ID.String(),
 		Name:          "Renamed",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("UpdateCreatorRole code = %v, want %v", connect.CodeOf(err), connect.CodeNotFound)
 	}
@@ -338,17 +340,17 @@ func TestDBCreatorRoleChangesAreAudited(t *testing.T) {
 	client := env.creatorRoleClient()
 
 	role := createCreatorRole(t, client, tenant, "Letterer")
-	if _, err := client.UpdateCreatorRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateCreatorRoleRequest{
+	if _, err := client.UpdateCreatorRole(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateCreatorRoleRequest{
 		Tenant:        tenant.tenantContext(),
 		CreatorRoleId: role.Id,
 		Name:          "Lettering",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("UpdateCreatorRole: %v", err)
 	}
-	if _, err := client.DeleteCreatorRole(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.DeleteCreatorRoleRequest{
+	if _, err := client.DeleteCreatorRole(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.DeleteCreatorRoleRequest{
 		Tenant:        tenant.tenantContext(),
 		CreatorRoleId: role.Id,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("DeleteCreatorRole: %v", err)
 	}
 

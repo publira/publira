@@ -2,12 +2,11 @@ package rpcmiddleware
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -37,7 +36,7 @@ type SessionContext struct {
 type SessionAuthenticator func(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	headers http.Header,
+	headers *connect.Header,
 ) (SessionContext, error)
 
 type tenantScopedRequest interface {
@@ -57,6 +56,16 @@ func WithTenantContext(ctx context.Context, tenantCtx TenantContext) context.Con
 	return withTenantContext(ctx, tenantCtx)
 }
 
+// RequestHeader returns the request headers of the RPC ctx is serving, or
+// none when ctx belongs to no RPC.
+func RequestHeader(ctx context.Context) *connect.Header {
+	info, ok := connect.CallInfoForServerContext(ctx)
+	if !ok {
+		return nil
+	}
+	return info.RequestHeader()
+}
+
 // SessionContextFromContext retrieves the SessionContext injected by the auth middleware.
 func SessionContextFromContext(ctx context.Context) (SessionContext, bool) {
 	sessionCtx, ok := ctx.Value(sessionContextKey{}).(SessionContext)
@@ -72,12 +81,13 @@ func TenantContextFromContext(ctx context.Context) (TenantContext, bool) {
 // BuildAdminSessionContext returns a UnaryContextBuilder that extracts the tenant,
 // authenticates the access token, and injects the resulting SessionContext into ctx.
 func BuildAdminSessionContext(authenticate SessionAuthenticator) UnaryContextBuilder {
-	return func(ctx context.Context, req connect.AnyRequest) (context.Context, error) {
-		tenantReq, ok := req.Any().(tenantScopedRequest)
+	return func(ctx context.Context, _ connect.Spec, req proto.Message) (context.Context, error) {
+		tenantReq, ok := req.(tenantScopedRequest)
 		if !ok {
-			return nil, connect.NewError(connect.CodeInternal, errors.New("tenant context accessor is not implemented"))
+			return nil, connect.NewError(connect.CodeInternal, "tenant context accessor is not implemented")
 		}
-		tenantID, err := ResolveTenantID(tenantReq.GetTenant(), req.Header())
+		headers := RequestHeader(ctx)
+		tenantID, err := ResolveTenantID(tenantReq.GetTenant(), headers)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +99,7 @@ func BuildAdminSessionContext(authenticate SessionAuthenticator) UnaryContextBui
 			resolvedTenantRequest.TenantId = tenantID.String()
 		}
 
-		sessionCtx, err := authenticate(ctx, resolvedTenantRequest, req.Header())
+		sessionCtx, err := authenticate(ctx, resolvedTenantRequest, headers)
 		if err != nil {
 			return nil, err
 		}

@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -95,18 +94,6 @@ func issueDBIntegrationToken(operator testutil.PlatformOperator) string {
 		panic(err)
 	}
 	return token
-}
-
-func newDBAuthedRequest[T any](operator testutil.PlatformOperator, msg T) *connect.Request[T] {
-	req := connect.NewRequest(&msg)
-	req.Header().Set("Authorization", "Bearer "+issueDBIntegrationToken(operator))
-	return req
-}
-
-func newDBBearerRequest[T any](token string, msg T) *connect.Request[T] {
-	req := connect.NewRequest(&msg)
-	req.Header().Set("Authorization", "Bearer "+token)
-	return req
 }
 
 // platformOutboxToken pulls the link secret out of the queued mail event, which

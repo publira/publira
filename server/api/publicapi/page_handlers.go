@@ -6,7 +6,7 @@ import (
 	"errors"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
@@ -65,21 +65,21 @@ func readerPageLocale(raw string, tenant dbmodels.Tenant) (string, error) {
 	}
 	code, err := locale.Normalize(raw)
 	if err != nil {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("locale must be a supported locale"))
+		return "", connect.NewError(connect.CodeInvalidArgument, "locale must be a supported locale")
 	}
 	return code, nil
 }
 
 func (s *apiServer) ListPublishedPages(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListPublishedPagesRequest],
-) (*connect.Response[publirav1.ListPublishedPagesResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ListPublishedPagesRequest,
+) (*publirav1.ListPublishedPagesResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	readerLocale, err := readerPageLocale(req.Msg.Locale, tenant)
+	readerLocale, err := readerPageLocale(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -97,14 +97,14 @@ func (s *apiServer) ListPublishedPages(
 		pages = append(pages, pageFromPublishedModel(row.Page, row.PageTranslation))
 	}
 
-	return connect.NewResponse(&publirav1.ListPublishedPagesResponse{Pages: pages}), nil
+	return &publirav1.ListPublishedPagesResponse{Pages: pages}, nil
 }
 
 func (s *apiServer) ListPublishedPageSlugs(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListPublishedPageSlugsRequest],
-) (*connect.Response[publirav1.ListPublishedPageSlugsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publirav1.ListPublishedPageSlugsRequest,
+) (*publirav1.ListPublishedPageSlugsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (s *apiServer) ListPublishedPageSlugs(
 		}
 	}
 
-	return connect.NewResponse(&publirav1.ListPublishedPageSlugsResponse{Slugs: slugs}), nil
+	return &publirav1.ListPublishedPageSlugsResponse{Slugs: slugs}, nil
 }
 
 // normalizePublishedPageSlugLookup matches admin storage form so clients may
@@ -145,19 +145,19 @@ func normalizePublishedPageSlugLookup(slug string) string {
 
 func (s *apiServer) GetPublishedPage(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetPublishedPageRequest],
-) (*connect.Response[publirav1.GetPublishedPageResponse], error) {
-	slug := normalizePublishedPageSlugLookup(req.Msg.Slug)
+	req *publirav1.GetPublishedPageRequest,
+) (*publirav1.GetPublishedPageResponse, error) {
+	slug := normalizePublishedPageSlugLookup(req.Slug)
 	if slug == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "slug is required")
 	}
 
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	readerLocale, err := readerPageLocale(req.Msg.Locale, tenant)
+	readerLocale, err := readerPageLocale(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -169,12 +169,12 @@ func (s *apiServer) GetPublishedPage(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "page not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get published page", err, "tenant_id", tenant.ID.String(), "slug", slug)
 	}
 
-	return connect.NewResponse(&publirav1.GetPublishedPageResponse{
+	return &publirav1.GetPublishedPageResponse{
 		Page: pageFromPublishedModel(dbmodels.Page{
 			ID:              row.ID,
 			TenantID:        row.TenantID,
@@ -190,5 +190,5 @@ func (s *apiServer) GetPublishedPage(
 		}),
 		Version:          pageVersionFromPublishedRow(row),
 		PublishedLocales: row.PublishedLocales,
-	}), nil
+	}, nil
 }

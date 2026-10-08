@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // insufficientPrivilege is the SQLSTATE PostgreSQL raises when a row would break
@@ -288,23 +289,23 @@ func TestDBRLSAppliesToHandlerConnections(t *testing.T) {
 	seedSeriesOwnedBy(t, env, second.Tenant.ID, "SERIESB0001", "Tenant B Series")
 	client := env.seriesClient()
 
-	theirs, err := client.ListSeries(context.Background(), newAdminDBRequest(second, &publiraadminv1.ListSeriesRequest{
+	theirs, err := client.ListSeries(testutil.WithBearer(context.Background(), second.token()), &publiraadminv1.ListSeriesRequest{
 		Tenant: second.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListSeries for tenant B: %v", err)
 	}
-	if len(theirs.Msg.Series) != 1 {
-		t.Fatalf("tenant B series count = %d, want 1", len(theirs.Msg.Series))
+	if len(theirs.Series) != 1 {
+		t.Fatalf("tenant B series count = %d, want 1", len(theirs.Series))
 	}
 
-	mine, err := client.ListSeries(context.Background(), newAdminDBRequest(first, &publiraadminv1.ListSeriesRequest{
+	mine, err := client.ListSeries(testutil.WithBearer(context.Background(), first.token()), &publiraadminv1.ListSeriesRequest{
 		Tenant: first.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListSeries for tenant A: %v", err)
 	}
-	if len(mine.Msg.Series) != 0 {
-		t.Fatalf("tenant A series count = %d, want 0", len(mine.Msg.Series))
+	if len(mine.Series) != 0 {
+		t.Fatalf("tenant A series count = %d, want 0", len(mine.Series))
 	}
 }

@@ -5,11 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -410,7 +409,7 @@ func (s *adminServer) loadCommentForModeration(
 		ID:       commentID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return moderationCommentRow{}, connect.NewError(connect.CodeNotFound, errors.New("comment not found"))
+		return moderationCommentRow{}, connect.NewError(connect.CodeNotFound, "comment not found")
 	}
 	if err != nil {
 		return moderationCommentRow{}, s.internalDBError(ctx, "failed to get comment for moderation", err, "tenant_id", tenantID.String(), "comment_id", commentID.String())
@@ -457,7 +456,7 @@ func commentIDArg(raw string) (uuid.UUID, error) {
 // The reason travels with it because a tenant may have to hand the author a
 // statement of reasons for the removal, and this row is where it reads one back.
 func commentAuditEntry(
-	headers http.Header,
+	headers *connect.Header,
 	sessionCtx rpcmiddleware.SessionContext,
 	action, commentPublicID, reason string,
 ) auditlog.TenantEntry {
@@ -491,7 +490,7 @@ func (s *adminServer) recordCommentListRevalidation(ctx context.Context, q *dbmo
 // readable in the comment row afterwards.
 func (s *adminServer) recordCommentAction(
 	ctx context.Context,
-	headers http.Header,
+	headers *connect.Header,
 	sessionCtx rpcmiddleware.SessionContext,
 	action, commentPublicID, reason string,
 ) {
@@ -505,9 +504,9 @@ func (s *adminServer) recordCommentAction(
 // list with different arguments.
 func (s *adminServer) ListComments(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListCommentsRequest],
-) (*connect.Response[publiraadminv1.ListCommentsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ListCommentsRequest,
+) (*publiraadminv1.ListCommentsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -515,18 +514,18 @@ func (s *adminServer) ListComments(
 		return nil, err
 	}
 
-	status, err := normalizeCommentStatusFilter(req.Msg.Status)
+	status, err := normalizeCommentStatusFilter(req.Status)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCommentListLimit, maxCommentListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultCommentListLimit, maxCommentListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
-	seriesPublicID := strings.TrimSpace(req.Msg.SeriesPublicId)
-	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
-	authorPublicID := strings.TrimSpace(req.Msg.AuthorPublicId)
+	seriesPublicID := strings.TrimSpace(req.SeriesPublicId)
+	episodePublicID := strings.TrimSpace(req.EpisodePublicId)
+	authorPublicID := strings.TrimSpace(req.AuthorPublicId)
 	listKey := pagination.NewListKey("created_at_desc").
 		Value("status", status.String).
 		Value("series_public_id", seriesPublicID).
@@ -552,7 +551,7 @@ func (s *adminServer) ListComments(
 		})
 		if seriesErr != nil {
 			if errors.Is(seriesErr, sql.ErrNoRows) {
-				return connect.NewResponse(&publiraadminv1.ListCommentsResponse{Comments: []*publiraadminv1.AdminComment{}}), nil
+				return &publiraadminv1.ListCommentsResponse{Comments: []*publiraadminv1.AdminComment{}}, nil
 			}
 			return nil, s.internalDBError(ctx, "failed to resolve series for list comments", seriesErr, "tenant_id", tenant.ID.String())
 		}
@@ -566,7 +565,7 @@ func (s *adminServer) ListComments(
 		})
 		if episodeErr != nil {
 			if errors.Is(episodeErr, sql.ErrNoRows) {
-				return connect.NewResponse(&publiraadminv1.ListCommentsResponse{Comments: []*publiraadminv1.AdminComment{}}), nil
+				return &publiraadminv1.ListCommentsResponse{Comments: []*publiraadminv1.AdminComment{}}, nil
 			}
 			return nil, s.internalDBError(ctx, "failed to resolve episode for list comments", episodeErr, "tenant_id", tenant.ID.String())
 		}
@@ -580,7 +579,7 @@ func (s *adminServer) ListComments(
 		})
 		if authorErr != nil {
 			if errors.Is(authorErr, sql.ErrNoRows) {
-				return connect.NewResponse(&publiraadminv1.ListCommentsResponse{Comments: []*publiraadminv1.AdminComment{}}), nil
+				return &publiraadminv1.ListCommentsResponse{Comments: []*publiraadminv1.AdminComment{}}, nil
 			}
 			return nil, s.internalDBError(ctx, "failed to resolve author for list comments", authorErr, "tenant_id", tenant.ID.String())
 		}
@@ -624,7 +623,7 @@ func (s *adminServer) ListComments(
 		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 // CountPendingComments answers how many comments are waiting for approval.
@@ -635,9 +634,9 @@ func (s *adminServer) ListComments(
 // put the list query in front of every navigation.
 func (s *adminServer) CountPendingComments(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CountPendingCommentsRequest],
-) (*connect.Response[publiraadminv1.CountPendingCommentsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.CountPendingCommentsRequest,
+) (*publiraadminv1.CountPendingCommentsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -650,7 +649,7 @@ func (s *adminServer) CountPendingComments(
 		return nil, s.internalDBError(ctx, "failed to count pending comments", err, "tenant_id", tenant.ID.String())
 	}
 
-	return connect.NewResponse(&publiraadminv1.CountPendingCommentsResponse{PendingCount: pending}), nil
+	return &publiraadminv1.CountPendingCommentsResponse{PendingCount: pending}, nil
 }
 
 // ApproveComment publishes one comment that was waiting for staff approval.
@@ -662,13 +661,13 @@ func (s *adminServer) CountPendingComments(
 // comment its author's reading history has no record of.
 func (s *adminServer) ApproveComment(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ApproveCommentRequest],
-) (*connect.Response[publiraadminv1.ApproveCommentResponse], error) {
+	req *publiraadminv1.ApproveCommentRequest,
+) (*publiraadminv1.ApproveCommentResponse, error) {
 	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
+	tenant, commentID, err := s.commentActionContext(ctx, req.Tenant, req.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -720,9 +719,9 @@ func (s *adminServer) ApproveComment(
 	if err != nil {
 		return nil, err
 	}
-	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_approved", current.PublicID, strings.TrimSpace(req.Msg.Reason))
+	s.recordCommentAction(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "comment_approved", current.PublicID, strings.TrimSpace(req.Reason))
 
-	return connect.NewResponse(&publiraadminv1.ApproveCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}), nil
+	return &publiraadminv1.ApproveCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}, nil
 }
 
 // HideComment removes one comment from every reader-facing response but its
@@ -730,13 +729,13 @@ func (s *adminServer) ApproveComment(
 // bell notification rather than by the comment itself changing shape.
 func (s *adminServer) HideComment(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.HideCommentRequest],
-) (*connect.Response[publiraadminv1.HideCommentResponse], error) {
+	req *publiraadminv1.HideCommentRequest,
+) (*publiraadminv1.HideCommentResponse, error) {
 	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
+	tenant, commentID, err := s.commentActionContext(ctx, req.Tenant, req.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -786,9 +785,9 @@ func (s *adminServer) HideComment(
 	if err != nil {
 		return nil, err
 	}
-	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_hidden", current.PublicID, strings.TrimSpace(req.Msg.Reason))
+	s.recordCommentAction(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "comment_hidden", current.PublicID, strings.TrimSpace(req.Reason))
 
-	return connect.NewResponse(&publiraadminv1.HideCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}), nil
+	return &publiraadminv1.HideCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}, nil
 }
 
 // RestoreComment puts a removed comment back into the state its removal
@@ -798,13 +797,13 @@ func (s *adminServer) HideComment(
 // author, and staff putting it back would republish text its author deleted.
 func (s *adminServer) RestoreComment(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.RestoreCommentRequest],
-) (*connect.Response[publiraadminv1.RestoreCommentResponse], error) {
+	req *publiraadminv1.RestoreCommentRequest,
+) (*publiraadminv1.RestoreCommentResponse, error) {
 	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
+	tenant, commentID, err := s.commentActionContext(ctx, req.Tenant, req.CommentId)
 	if err != nil {
 		return nil, err
 	}
@@ -870,9 +869,9 @@ func (s *adminServer) RestoreComment(
 	if err != nil {
 		return nil, err
 	}
-	s.recordCommentAction(ctx, req.Header(), sessionCtx, "comment_restored", current.PublicID, strings.TrimSpace(req.Msg.Reason))
+	s.recordCommentAction(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, "comment_restored", current.PublicID, strings.TrimSpace(req.Reason))
 
-	return connect.NewResponse(&publiraadminv1.RestoreCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}), nil
+	return &publiraadminv1.RestoreCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}, nil
 }
 
 // PurgeComment deletes one comment for good, whatever state it is in.
@@ -882,17 +881,17 @@ func (s *adminServer) RestoreComment(
 // row and the deletion are committed together.
 func (s *adminServer) PurgeComment(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.PurgeCommentRequest],
-) (*connect.Response[publiraadminv1.PurgeCommentResponse], error) {
+	req *publiraadminv1.PurgeCommentRequest,
+) (*publiraadminv1.PurgeCommentResponse, error) {
 	sessionCtx, err := s.requireTenantEditor(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tenant, commentID, err := s.commentActionContext(ctx, req.Msg.Tenant, req.Msg.CommentId)
+	tenant, commentID, err := s.commentActionContext(ctx, req.Tenant, req.CommentId)
 	if err != nil {
 		return nil, err
 	}
-	reason := strings.TrimSpace(req.Msg.Reason)
+	reason := strings.TrimSpace(req.Reason)
 	if reason == "" {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("reason is required"), "reason")
 	}
@@ -923,7 +922,7 @@ func (s *adminServer) PurgeComment(
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to purge comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
-	entry := commentAuditEntry(req.Header(), sessionCtx, "comment_purged", current.PublicID, reason)
+	entry := commentAuditEntry(rpcmiddleware.RequestHeader(ctx), sessionCtx, "comment_purged", current.PublicID, reason)
 	if err := auditlog.WriteTenant(ctx, qtx, s.logger, entry); err != nil {
 		return nil, s.internalDBError(ctx, "failed to record the comment purge", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
@@ -936,7 +935,7 @@ func (s *adminServer) PurgeComment(
 	}
 	s.reval.Send(ctx, owed)
 
-	return connect.NewResponse(&publiraadminv1.PurgeCommentResponse{}), nil
+	return &publiraadminv1.PurgeCommentResponse{}, nil
 }
 
 // ListCommentReports returns the tenant's comment reports, newest first.
@@ -947,9 +946,9 @@ func (s *adminServer) PurgeComment(
 // saying how many of those are still waiting.
 func (s *adminServer) ListCommentReports(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListCommentReportsRequest],
-) (*connect.Response[publiraadminv1.ListCommentReportsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ListCommentReportsRequest,
+) (*publiraadminv1.ListCommentReportsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -957,14 +956,14 @@ func (s *adminServer) ListCommentReports(
 		return nil, err
 	}
 
-	status, err := normalizeCommentReportStatusFilter(req.Msg.Status)
+	status, err := normalizeCommentReportStatusFilter(req.Status)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCommentListLimit, maxCommentListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultCommentListLimit, maxCommentListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	listKey := pagination.NewListKey("created_at_desc").Value("status", status.String)
 	var keys pagination.TimeUUIDKeys
@@ -1011,7 +1010,7 @@ func (s *adminServer) ListCommentReports(
 		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 // ResolveCommentReport marks one open report resolved or rejected.
@@ -1024,9 +1023,9 @@ func (s *adminServer) ListCommentReports(
 // automatic removal threshold.
 func (s *adminServer) ResolveCommentReport(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ResolveCommentReportRequest],
-) (*connect.Response[publiraadminv1.ResolveCommentReportResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.ResolveCommentReportRequest,
+) (*publiraadminv1.ResolveCommentReportResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -1034,11 +1033,11 @@ func (s *adminServer) ResolveCommentReport(
 	if err != nil {
 		return nil, err
 	}
-	reportID, err := commentReportIDArg(req.Msg.ReportId)
+	reportID, err := commentReportIDArg(req.ReportId)
 	if err != nil {
 		return nil, err
 	}
-	resolution, err := commentReportResolutionArg(req.Msg.Resolution)
+	resolution, err := commentReportResolutionArg(req.Resolution)
 	if err != nil {
 		return nil, err
 	}
@@ -1054,7 +1053,7 @@ func (s *adminServer) ResolveCommentReport(
 		return nil, err
 	}
 	if current.ReportStatus != commentReportStatusOpen {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("a %s report cannot be decided again", current.ReportStatus))
+		return nil, connect.Errorf(connect.CodeFailedPrecondition, "a %s report cannot be decided again", current.ReportStatus)
 	}
 
 	// The decision and the counter it moves are one write, for the reason the
@@ -1077,7 +1076,7 @@ func (s *adminServer) ResolveCommentReport(
 		// The UPDATE names 'open' as the state it moves from, so no row means
 		// another moderator decided this report between the read and the write.
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the report was already decided"))
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "the report was already decided")
 		}
 		return nil, s.internalDBError(ctx, "failed to resolve comment report", err, "tenant_id", tenant.ID.String(), "report_id", reportID.String())
 	}
@@ -1099,9 +1098,9 @@ func (s *adminServer) ResolveCommentReport(
 	// to be able to account for afterwards is what was decided about a piece of
 	// content, and every other entry about that comment is filed under the same
 	// target. The action says which way this decision went.
-	s.recordCommentAction(ctx, req.Header(), sessionCtx, commentReportAuditAction(resolution), updated.PublicID, strings.TrimSpace(req.Msg.Reason))
+	s.recordCommentAction(ctx, rpcmiddleware.RequestHeader(ctx), sessionCtx, commentReportAuditAction(resolution), updated.PublicID, strings.TrimSpace(req.Reason))
 
-	return connect.NewResponse(&publiraadminv1.ResolveCommentReportResponse{Report: adminCommentReport(updated, periods)}), nil
+	return &publiraadminv1.ResolveCommentReportResponse{Report: adminCommentReport(updated, periods)}, nil
 }
 
 // commentReportAuditAction names the decision in the audit log.
@@ -1125,7 +1124,7 @@ func (s *adminServer) loadCommentReport(
 		ID:       reportID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return commentReportRow{}, connect.NewError(connect.CodeNotFound, errors.New("comment report not found"))
+		return commentReportRow{}, connect.NewError(connect.CodeNotFound, "comment report not found")
 	}
 	if err != nil {
 		return commentReportRow{}, s.internalDBError(ctx, "failed to get comment report", err, "tenant_id", tenantID.String(), "report_id", reportID.String())
@@ -1155,7 +1154,7 @@ func (s *adminServer) commentActionContext(
 // allow. It names the state so a console that is showing a stale queue can say
 // what happened instead of retrying.
 func commentStateError(action, status string) error {
-	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("a %s comment cannot be %s", status, action))
+	return connect.Errorf(connect.CodeFailedPrecondition, "a %s comment cannot be %s", status, action)
 }
 
 // commentTransitionError reads the conditional UPDATE that wrote no row. Each
@@ -1168,7 +1167,7 @@ func (s *adminServer) commentTransitionError(
 	err error,
 ) error {
 	if errors.Is(err, sql.ErrNoRows) {
-		return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("the comment was already moved and cannot be %s", action))
+		return connect.Errorf(connect.CodeFailedPrecondition, "the comment was already moved and cannot be %s", action)
 	}
 	return s.internalDBError(ctx, "failed to "+verb+" comment", err, "tenant_id", tenantID.String(), "comment_id", commentID.String())
 }

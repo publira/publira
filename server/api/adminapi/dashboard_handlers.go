@@ -3,20 +3,18 @@ package adminapi
 import (
 	"context"
 
-	"connectrpc.com/connect"
-
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 )
 
 func (s *adminServer) GetDashboard(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetDashboardRequest],
-) (*connect.Response[publiraadminv1.GetDashboardResponse], error) {
+	req *publiraadminv1.GetDashboardRequest,
+) (*publiraadminv1.GetDashboardResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +57,12 @@ func (s *adminServer) GetDashboard(
 		queue = append(queue, item)
 	}
 
-	return connect.NewResponse(&publiraadminv1.GetDashboardResponse{
+	return &publiraadminv1.GetDashboardResponse{
 		Stats: &publiraadminv1.DashboardStats{
 			PublishedSeriesCount:  publishedSeriesCount,
 			DraftEpisodeCount:     draftEpisodeCount,
 			ScheduledEpisodeCount: scheduledEpisodeCount,
 		},
 		Queue: queue,
-	}), nil
+	}, nil
 }

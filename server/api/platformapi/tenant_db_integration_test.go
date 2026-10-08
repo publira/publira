@@ -6,40 +6,42 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/platformtenants"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/tenanttz"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestDBListTenantsReturnsEmptyList(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
 
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.ListTenants(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListTenantsRequest{}))
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.ListTenants(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListTenantsRequest{})
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
 	}
-	if len(resp.Msg.Tenants) != 0 {
-		t.Fatalf("tenant count = %d, want 0", len(resp.Msg.Tenants))
+	if len(resp.Tenants) != 0 {
+		t.Fatalf("tenant count = %d, want 0", len(resp.Tenants))
 	}
 }
 
 func TestDBCreateTenantPersistsAndLists(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	createResp, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	createResp, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 		DefaultLocale: "ja",
 		Name:          "Integration Tenant",
 		Domain:        "integration.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenant: %v", err)
 	}
-	tenant := createResp.Msg.Tenant
+	tenant := createResp.Tenant
 	if tenant == nil {
 		t.Fatal("CreateTenant returned nil tenant")
 	}
@@ -60,68 +62,68 @@ func TestDBCreateTenantPersistsAndLists(t *testing.T) {
 		t.Fatalf("tenant.timezone = %q, want %s", tenant.Timezone, tenanttz.Default)
 	}
 
-	listResp, err := client.ListTenants(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListTenantsRequest{}))
+	listResp, err := client.ListTenants(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListTenantsRequest{})
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
 	}
-	if len(listResp.Msg.Tenants) != 1 {
-		t.Fatalf("tenant count = %d, want 1", len(listResp.Msg.Tenants))
+	if len(listResp.Tenants) != 1 {
+		t.Fatalf("tenant count = %d, want 1", len(listResp.Tenants))
 	}
-	if listResp.Msg.Tenants[0].PublicId != tenant.PublicId {
-		t.Fatalf("listed public_id = %q, want %q", listResp.Msg.Tenants[0].PublicId, tenant.PublicId)
+	if listResp.Tenants[0].PublicId != tenant.PublicId {
+		t.Fatalf("listed public_id = %q, want %q", listResp.Tenants[0].PublicId, tenant.PublicId)
 	}
 
-	getResp, err := client.GetTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.GetTenantRequest{
+	getResp, err := client.GetTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetTenantRequest{
 		PublicId: tenant.PublicId,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if getResp.Msg.Tenant.Domain != "integration.example.com" {
-		t.Fatalf("GetTenant domain = %q", getResp.Msg.Tenant.Domain)
+	if getResp.Tenant.Domain != "integration.example.com" {
+		t.Fatalf("GetTenant domain = %q", getResp.Tenant.Domain)
 	}
 }
 
 func TestDBListTenantsPaginatesWithTokens(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	createdPublicIDs := make([]string, 0, 3)
 	for index, name := range []string{"First", "Second", "Third"} {
-		resp, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+		resp, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 			DefaultLocale: "ja",
 			Name:          name + " Paginated Tenant",
 			Domain:        strings.ToLower(name) + "-paginated.example.com",
-		}))
+		})
 		if err != nil {
 			t.Fatalf("CreateTenant %d: %v", index, err)
 		}
-		createdPublicIDs = append(createdPublicIDs, resp.Msg.Tenant.PublicId)
+		createdPublicIDs = append(createdPublicIDs, resp.Tenant.PublicId)
 	}
 
-	first, err := client.ListTenants(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListTenantsRequest{Limit: 2}))
+	first, err := client.ListTenants(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListTenantsRequest{Limit: 2})
 	if err != nil {
 		t.Fatalf("ListTenants first page: %v", err)
 	}
-	if len(first.Msg.Tenants) != 2 || first.Msg.PreviousToken != "" || first.Msg.NextToken == "" {
-		t.Fatalf("first page = %d tenants, tokens (%q, %q); want 2, empty previous, non-empty next", len(first.Msg.Tenants), first.Msg.PreviousToken, first.Msg.NextToken)
+	if len(first.Tenants) != 2 || first.PreviousToken != "" || first.NextToken == "" {
+		t.Fatalf("first page = %d tenants, tokens (%q, %q); want 2, empty previous, non-empty next", len(first.Tenants), first.PreviousToken, first.NextToken)
 	}
 
-	second, err := client.ListTenants(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListTenantsRequest{
+	second, err := client.ListTenants(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListTenantsRequest{
 		Limit: 2,
-		Token: first.Msg.NextToken,
-	}))
+		Token: first.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("ListTenants second page: %v", err)
 	}
-	if len(second.Msg.Tenants) != 1 || second.Msg.PreviousToken == "" || second.Msg.NextToken != "" {
-		t.Fatalf("second page = %d tenants, tokens (%q, %q); want 1, non-empty previous, empty next", len(second.Msg.Tenants), second.Msg.PreviousToken, second.Msg.NextToken)
+	if len(second.Tenants) != 1 || second.PreviousToken == "" || second.NextToken != "" {
+		t.Fatalf("second page = %d tenants, tokens (%q, %q); want 1, non-empty previous, empty next", len(second.Tenants), second.PreviousToken, second.NextToken)
 	}
 
 	listedPublicIDs := []string{
-		first.Msg.Tenants[0].PublicId,
-		first.Msg.Tenants[1].PublicId,
-		second.Msg.Tenants[0].PublicId,
+		first.Tenants[0].PublicId,
+		first.Tenants[1].PublicId,
+		second.Tenants[0].PublicId,
 	}
 	slices.Sort(createdPublicIDs)
 	slices.Sort(listedPublicIDs)
@@ -129,39 +131,39 @@ func TestDBListTenantsPaginatesWithTokens(t *testing.T) {
 		t.Fatalf("listed public IDs = %v, want %v", listedPublicIDs, createdPublicIDs)
 	}
 
-	back, err := client.ListTenants(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListTenantsRequest{
+	back, err := client.ListTenants(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ListTenantsRequest{
 		Limit: 2,
-		Token: second.Msg.PreviousToken,
-	}))
+		Token: second.PreviousToken,
+	})
 	if err != nil {
 		t.Fatalf("ListTenants previous page: %v", err)
 	}
-	if len(back.Msg.Tenants) != 2 {
-		t.Fatalf("previous page tenant count = %d, want 2", len(back.Msg.Tenants))
+	if len(back.Tenants) != 2 {
+		t.Fatalf("previous page tenant count = %d, want 2", len(back.Tenants))
 	}
-	if back.Msg.Tenants[0].PublicId != first.Msg.Tenants[0].PublicId || back.Msg.Tenants[1].PublicId != first.Msg.Tenants[1].PublicId {
-		t.Fatalf("previous page public IDs = [%s %s], want [%s %s]", back.Msg.Tenants[0].PublicId, back.Msg.Tenants[1].PublicId, first.Msg.Tenants[0].PublicId, first.Msg.Tenants[1].PublicId)
+	if back.Tenants[0].PublicId != first.Tenants[0].PublicId || back.Tenants[1].PublicId != first.Tenants[1].PublicId {
+		t.Fatalf("previous page public IDs = [%s %s], want [%s %s]", back.Tenants[0].PublicId, back.Tenants[1].PublicId, first.Tenants[0].PublicId, first.Tenants[1].PublicId)
 	}
 }
 
 func TestDBCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	_, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 		DefaultLocale: "ja",
 		Name:          "First Tenant",
 		Domain:        "dup-domain.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("first CreateTenant: %v", err)
 	}
 
-	_, err = client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	_, err = client.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 		DefaultLocale: "ja",
 		Name:          "Second Tenant",
 		Domain:        "dup-domain.example.com",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
 	}
@@ -172,24 +174,24 @@ func TestDBCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 
 func TestDBCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	_, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 		DefaultLocale: "ja",
 		Name:          "First Tenant",
 		Domain:        "first.example.com",
 		AdminDomain:   "admin.shared.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("first CreateTenant: %v", err)
 	}
 
-	_, err = client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	_, err = client.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 		DefaultLocale: "ja",
 		Name:          "Second Tenant",
 		Domain:        "second.example.com",
 		AdminDomain:   "admin.shared.example.com",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
 	}
@@ -200,48 +202,48 @@ func TestDBCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 
 func TestDBSuspendAndResumeTenant(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	createResp, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	createResp, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 		DefaultLocale: "ja",
 		Name:          "Lifecycle Tenant",
 		Domain:        "lifecycle.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateTenant: %v", err)
 	}
-	tenantID := createResp.Msg.Tenant.Id
+	tenantID := createResp.Tenant.Id
 
-	suspendResp, err := client.SuspendTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.SuspendTenantRequest{
+	suspendResp, err := client.SuspendTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.SuspendTenantRequest{
 		TenantId: tenantID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SuspendTenant: %v", err)
 	}
-	if suspendResp.Msg.Tenant.Status != platformtenants.StatusSuspended {
-		t.Fatalf("status after suspend = %q, want %s", suspendResp.Msg.Tenant.Status, platformtenants.StatusSuspended)
+	if suspendResp.Tenant.Status != platformtenants.StatusSuspended {
+		t.Fatalf("status after suspend = %q, want %s", suspendResp.Tenant.Status, platformtenants.StatusSuspended)
 	}
 
-	resumeResp, err := client.ResumeTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ResumeTenantRequest{
+	resumeResp, err := client.ResumeTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ResumeTenantRequest{
 		TenantId: tenantID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ResumeTenant: %v", err)
 	}
-	if resumeResp.Msg.Tenant.Status != platformtenants.StatusActive {
-		t.Fatalf("status after resume = %q, want %s", resumeResp.Msg.Tenant.Status, platformtenants.StatusActive)
+	if resumeResp.Tenant.Status != platformtenants.StatusActive {
+		t.Fatalf("status after resume = %q, want %s", resumeResp.Tenant.Status, platformtenants.StatusActive)
 	}
 }
 
 func TestDBCreateTenantRejectsEmptyDomain(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+	_, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantRequest{
 		DefaultLocale: "ja",
 		Name:          "No Domain",
 		Domain:        "",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
 	}

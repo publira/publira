@@ -12,7 +12,7 @@ func AccessTokenFromRequest(r *http.Request) (string, bool) {
 	if r == nil {
 		return "", false
 	}
-	return auth.BearerTokenFromHeader(r.Header)
+	return auth.BearerToken(r.Header.Get("Authorization"))
 }
 
 // HostCandidatesFromRequest returns the hosts the request names, port included,

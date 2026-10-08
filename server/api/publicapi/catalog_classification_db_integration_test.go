@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -81,11 +81,11 @@ func seedClassifiedCatalog(t *testing.T, env *publicDBEnv) classifiedCatalog {
 func listPublishedSeriesIDs(t *testing.T, env *publicDBEnv, req *publirav1.ListPublishedSeriesRequest) []string {
 	t.Helper()
 
-	resp, err := env.catalogClient().ListPublishedSeries(context.Background(), connect.NewRequest(req))
+	resp, err := env.catalogClient().ListPublishedSeries(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
-	return seriesPublicIDs(resp.Msg.Series)
+	return seriesPublicIDs(resp.Series)
 }
 
 func assertSeriesIDs(t *testing.T, what string, got, want []string) {
@@ -196,21 +196,21 @@ func TestDBListPublishedSeriesCarriesTheGenresAndTagsOfEachSeries(t *testing.T) 
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 
-	resp, err := env.catalogClient().ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	resp, err := env.catalogClient().ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant:        tenantContext(catalog.tenant),
 		GenrePublicId: catalog.fantasy.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
 	}
 	var first *publirattypesv1.Series
-	for _, series := range resp.Msg.Series {
+	for _, series := range resp.Series {
 		if series.PublicId == "SERIESFIRST1" {
 			first = series
 		}
 	}
 	if first == nil {
-		t.Fatalf("series = %v, want SERIESFIRST1 among them", seriesPublicIDs(resp.Msg.Series))
+		t.Fatalf("series = %v, want SERIESFIRST1 among them", seriesPublicIDs(resp.Series))
 	}
 	if len(first.Genres) != 1 || first.Genres[0].Slug != "fantasy" || first.Genres[0].PublicId != catalog.fantasy.PublicID {
 		t.Fatalf("genres = %v, want the fantasy genre alone", first.Genres)
@@ -221,18 +221,18 @@ func TestDBListPublishedSeriesCarriesTheGenresAndTagsOfEachSeries(t *testing.T) 
 	}
 
 	// The detail page states the same classification the card did.
-	detail, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	detail, err := env.catalogClient().GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   tenantContext(catalog.tenant),
 		PublicId: "SERIESFIRST1",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeriesDetail: %v", err)
 	}
-	if len(detail.Msg.Series.Genres) != 1 || detail.Msg.Series.Genres[0].Slug != "fantasy" {
-		t.Fatalf("detail genres = %v, want the fantasy genre alone", detail.Msg.Series.Genres)
+	if len(detail.Series.Genres) != 1 || detail.Series.Genres[0].Slug != "fantasy" {
+		t.Fatalf("detail genres = %v, want the fantasy genre alone", detail.Series.Genres)
 	}
-	if len(detail.Msg.Series.Tags) != 2 {
-		t.Fatalf("detail tags = %v, want both tags", detail.Msg.Series.Tags)
+	if len(detail.Series.Tags) != 2 {
+		t.Fatalf("detail tags = %v, want both tags", detail.Series.Tags)
 	}
 }
 
@@ -244,16 +244,16 @@ func TestDBListPublishedSeriesRefusesAFilterNamingNothing(t *testing.T) {
 
 	client := env.catalogClient()
 	// A genre of another tenant is the same answer as one that never existed.
-	if _, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	if _, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant:        tenantContext(first),
 		GenrePublicId: foreign.PublicID,
-	})); connect.CodeOf(err) != connect.CodeNotFound {
+	}); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("another tenant's genre code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
-	if _, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	if _, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant:  tenantContext(first),
 		TagSlug: "foreign",
-	})); connect.CodeOf(err) != connect.CodeNotFound {
+	}); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("another tenant's tag code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
 }
@@ -266,50 +266,50 @@ func TestDBListPublishedSeriesPagesTheGenreFilteredListAndBindsItsToken(t *testi
 	catalog := seedClassifiedCatalog(t, env)
 
 	client := env.catalogClient()
-	firstPage, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	firstPage, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant:        tenantContext(catalog.tenant),
 		GenrePublicId: catalog.fantasy.PublicID,
 		Limit:         1,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("genre page 1: %v", err)
 	}
-	if got := seriesPublicIDs(firstPage.Msg.Series); len(got) != 1 || got[0] != "SERIESSECON1" {
+	if got := seriesPublicIDs(firstPage.Series); len(got) != 1 || got[0] != "SERIESSECON1" {
 		t.Fatalf("genre page 1 = %v, want the newer fantasy series", got)
 	}
-	if firstPage.Msg.NextToken == "" {
+	if firstPage.NextToken == "" {
 		t.Fatal("genre page 1 next_token is empty, want a token for the remaining series")
 	}
 
-	secondPage, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	secondPage, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant:        tenantContext(catalog.tenant),
 		GenrePublicId: catalog.fantasy.PublicID,
 		Limit:         1,
-		Token:         firstPage.Msg.NextToken,
-	}))
+		Token:         firstPage.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("genre page 2: %v", err)
 	}
-	if got := seriesPublicIDs(secondPage.Msg.Series); len(got) != 1 || got[0] != "SERIESFIRST1" {
+	if got := seriesPublicIDs(secondPage.Series); len(got) != 1 || got[0] != "SERIESFIRST1" {
 		t.Fatalf("genre page 2 = %v, want the older fantasy series", got)
 	}
-	if secondPage.Msg.NextToken != "" {
-		t.Fatalf("genre page 2 next_token = %q, want empty at the end of the list", secondPage.Msg.NextToken)
+	if secondPage.NextToken != "" {
+		t.Fatalf("genre page 2 next_token = %q, want empty at the end of the list", secondPage.NextToken)
 	}
-	if secondPage.Msg.PreviousToken == "" {
+	if secondPage.PreviousToken == "" {
 		t.Fatal("genre page 2 previous_token is empty, want a token back to the first page")
 	}
 
-	backAgain, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	backAgain, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant:        tenantContext(catalog.tenant),
 		GenrePublicId: catalog.fantasy.PublicID,
 		Limit:         1,
-		Token:         secondPage.Msg.PreviousToken,
-	}))
+		Token:         secondPage.PreviousToken,
+	})
 	if err != nil {
 		t.Fatalf("genre page 1 revisited: %v", err)
 	}
-	if got := seriesPublicIDs(backAgain.Msg.Series); len(got) != 1 || got[0] != "SERIESSECON1" {
+	if got := seriesPublicIDs(backAgain.Series); len(got) != 1 || got[0] != "SERIESSECON1" {
 		t.Fatalf("genre page 1 revisited = %v, want the newer fantasy series again", got)
 	}
 
@@ -320,37 +320,37 @@ func TestDBListPublishedSeriesPagesTheGenreFilteredListAndBindsItsToken(t *testi
 		"no filter": {
 			Tenant: tenantContext(catalog.tenant),
 			Limit:  1,
-			Token:  firstPage.Msg.NextToken,
+			Token:  firstPage.NextToken,
 		},
 		"another genre": {
 			Tenant:        tenantContext(catalog.tenant),
 			GenrePublicId: catalog.mystery.PublicID,
 			Limit:         1,
-			Token:         firstPage.Msg.NextToken,
+			Token:         firstPage.NextToken,
 		},
 		"the same genre and a tag": {
 			Tenant:        tenantContext(catalog.tenant),
 			GenrePublicId: catalog.fantasy.PublicID,
 			TagSlug:       catalog.swords.Slug,
 			Limit:         1,
-			Token:         firstPage.Msg.NextToken,
+			Token:         firstPage.NextToken,
 		},
 		"the same genre and a status": {
 			Tenant:        tenantContext(catalog.tenant),
 			GenrePublicId: catalog.fantasy.PublicID,
 			Status:        publirattypesv1.SeriesStatus_SERIES_STATUS_ONGOING,
 			Limit:         1,
-			Token:         firstPage.Msg.NextToken,
+			Token:         firstPage.NextToken,
 		},
 		"the same genre and a weekday": {
 			Tenant:        tenantContext(catalog.tenant),
 			GenrePublicId: catalog.fantasy.PublicID,
 			Weekday:       &monday,
 			Limit:         1,
-			Token:         firstPage.Msg.NextToken,
+			Token:         firstPage.NextToken,
 		},
 	} {
-		if _, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(other)); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		if _, err := client.ListPublishedSeries(context.Background(), other); connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("genre token in %s: code = %v, want invalid_argument (err=%v)", name, connect.CodeOf(err), err)
 		}
 	}
@@ -386,50 +386,50 @@ func TestDBListPublishedSeriesOrdersByTheNewestPublishedEpisode(t *testing.T) {
 	})
 
 	client := env.catalogClient()
-	firstPage, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	firstPage, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
 		Order:  publirav1.SeriesOrder_SERIES_ORDER_LATEST_EPISODE_AT_DESC,
 		Limit:  2,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("latest-update page 1: %v", err)
 	}
-	assertSeriesIDs(t, "latest-update page 1", seriesPublicIDs(firstPage.Msg.Series), []string{"SERIESOLDEST", "SERIESMIDDLE"})
-	if firstPage.Msg.NextToken == "" {
+	assertSeriesIDs(t, "latest-update page 1", seriesPublicIDs(firstPage.Series), []string{"SERIESOLDEST", "SERIESMIDDLE"})
+	if firstPage.NextToken == "" {
 		t.Fatal("latest-update page 1 next_token is empty, want a token for the remaining series")
 	}
 
-	secondPage, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	secondPage, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
 		Order:  publirav1.SeriesOrder_SERIES_ORDER_LATEST_EPISODE_AT_DESC,
 		Limit:  2,
-		Token:  firstPage.Msg.NextToken,
-	}))
+		Token:  firstPage.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("latest-update page 2: %v", err)
 	}
-	assertSeriesIDs(t, "latest-update page 2", seriesPublicIDs(secondPage.Msg.Series), []string{"SERIESEMPTY1"})
-	if secondPage.Msg.PreviousToken == "" {
+	assertSeriesIDs(t, "latest-update page 2", seriesPublicIDs(secondPage.Series), []string{"SERIESEMPTY1"})
+	if secondPage.PreviousToken == "" {
 		t.Fatal("latest-update page 2 previous_token is empty, want a token back to the first page")
 	}
 
-	backAgain, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	backAgain, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
 		Order:  publirav1.SeriesOrder_SERIES_ORDER_LATEST_EPISODE_AT_DESC,
 		Limit:  2,
-		Token:  secondPage.Msg.PreviousToken,
-	}))
+		Token:  secondPage.PreviousToken,
+	})
 	if err != nil {
 		t.Fatalf("latest-update page 1 revisited: %v", err)
 	}
-	assertSeriesIDs(t, "latest-update page 1 revisited", seriesPublicIDs(backAgain.Msg.Series), []string{"SERIESOLDEST", "SERIESMIDDLE"})
+	assertSeriesIDs(t, "latest-update page 1 revisited", seriesPublicIDs(backAgain.Series), []string{"SERIESOLDEST", "SERIESMIDDLE"})
 
 	// The same token in another order points at a page that order does not have.
-	if _, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+	if _, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
 		Limit:  2,
-		Token:  firstPage.Msg.NextToken,
-	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		Token:  firstPage.NextToken,
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("latest-update token in the default order code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 }
@@ -441,25 +441,25 @@ func TestDBListPublishedGenresCountsThePublishedSeriesOfEachGenre(t *testing.T) 
 	// working after its last series is taken down.
 	env.PG.SeedGenre(t, catalog.tenant.ID, testutil.GenreSeed{PublicID: "GENREEMPTY01", Name: "Empty", DisplayOrder: 3})
 
-	resp, err := env.catalogClient().ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
+	resp, err := env.catalogClient().ListPublishedGenres(context.Background(), &publirav1.ListPublishedGenresRequest{
 		Tenant: tenantContext(catalog.tenant),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedGenres: %v", err)
 	}
-	if len(resp.Msg.Genres) != 3 {
-		t.Fatalf("genres = %v, want three", resp.Msg.Genres)
+	if len(resp.Genres) != 3 {
+		t.Fatalf("genres = %v, want three", resp.Genres)
 	}
 	// The tenant's own order, not the alphabet and not the order they were
 	// assigned in.
-	if resp.Msg.Genres[0].Name != "Fantasy" || resp.Msg.Genres[1].Name != "Mystery" || resp.Msg.Genres[2].Name != "Empty" {
-		t.Fatalf("genres = %v, want Fantasy, Mystery, Empty", resp.Msg.Genres)
+	if resp.Genres[0].Name != "Fantasy" || resp.Genres[1].Name != "Mystery" || resp.Genres[2].Name != "Empty" {
+		t.Fatalf("genres = %v, want Fantasy, Mystery, Empty", resp.Genres)
 	}
-	if resp.Msg.Genres[0].PublishedSeriesCount != 2 {
-		t.Fatalf("Fantasy published_series_count = %d, want 2", resp.Msg.Genres[0].PublishedSeriesCount)
+	if resp.Genres[0].PublishedSeriesCount != 2 {
+		t.Fatalf("Fantasy published_series_count = %d, want 2", resp.Genres[0].PublishedSeriesCount)
 	}
-	if resp.Msg.Genres[2].PublishedSeriesCount != 0 {
-		t.Fatalf("Empty published_series_count = %d, want 0", resp.Msg.Genres[2].PublishedSeriesCount)
+	if resp.Genres[2].PublishedSeriesCount != 0 {
+		t.Fatalf("Empty published_series_count = %d, want 0", resp.Genres[2].PublishedSeriesCount)
 	}
 }
 
@@ -484,17 +484,17 @@ func TestDBListPublishedGenresCarriesTheGenresEyeCatch(t *testing.T) {
 		t.Fatalf("point the genre at its eye-catch: %v", err)
 	}
 
-	resp, err := env.catalogClient().ListPublishedGenres(ctx, connect.NewRequest(&publirav1.ListPublishedGenresRequest{
+	resp, err := env.catalogClient().ListPublishedGenres(ctx, &publirav1.ListPublishedGenresRequest{
 		Tenant: tenantContext(catalog.tenant),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedGenres: %v", err)
 	}
-	fantasy := resp.Msg.Genres[0].EyeCatchImageVariants
+	fantasy := resp.Genres[0].EyeCatchImageVariants
 	if len(fantasy) != 1 || fantasy[0].Url != "/images/genres/"+imageID.String()+"/square/600?v="+variantID.String() {
 		t.Fatalf("Fantasy eye_catch_image_variants = %v, want the seeded square variant", fantasy)
 	}
-	if mystery := resp.Msg.Genres[1].EyeCatchImageVariants; len(mystery) != 0 {
+	if mystery := resp.Genres[1].EyeCatchImageVariants; len(mystery) != 0 {
 		t.Fatalf("Mystery eye_catch_image_variants = %v, want none", mystery)
 	}
 }
@@ -504,45 +504,45 @@ func TestDBListPublishedGenresPagesForwardAndBack(t *testing.T) {
 	catalog := seedClassifiedCatalog(t, env)
 
 	client := env.catalogClient()
-	firstPage, err := client.ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
+	firstPage, err := client.ListPublishedGenres(context.Background(), &publirav1.ListPublishedGenresRequest{
 		Tenant: tenantContext(catalog.tenant),
 		Limit:  1,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("genre list page 1: %v", err)
 	}
-	if len(firstPage.Msg.Genres) != 1 || firstPage.Msg.Genres[0].Name != "Fantasy" {
-		t.Fatalf("genre list page 1 = %v, want Fantasy alone", firstPage.Msg.Genres)
+	if len(firstPage.Genres) != 1 || firstPage.Genres[0].Name != "Fantasy" {
+		t.Fatalf("genre list page 1 = %v, want Fantasy alone", firstPage.Genres)
 	}
-	if firstPage.Msg.NextToken == "" {
+	if firstPage.NextToken == "" {
 		t.Fatal("genre list page 1 next_token is empty, want a token for the remaining genres")
 	}
 
-	secondPage, err := client.ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
+	secondPage, err := client.ListPublishedGenres(context.Background(), &publirav1.ListPublishedGenresRequest{
 		Tenant: tenantContext(catalog.tenant),
 		Limit:  1,
-		Token:  firstPage.Msg.NextToken,
-	}))
+		Token:  firstPage.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("genre list page 2: %v", err)
 	}
-	if len(secondPage.Msg.Genres) != 1 || secondPage.Msg.Genres[0].Name != "Mystery" {
-		t.Fatalf("genre list page 2 = %v, want Mystery alone", secondPage.Msg.Genres)
+	if len(secondPage.Genres) != 1 || secondPage.Genres[0].Name != "Mystery" {
+		t.Fatalf("genre list page 2 = %v, want Mystery alone", secondPage.Genres)
 	}
-	if secondPage.Msg.PreviousToken == "" {
+	if secondPage.PreviousToken == "" {
 		t.Fatal("genre list page 2 previous_token is empty, want a token back to the first page")
 	}
 
-	backAgain, err := client.ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
+	backAgain, err := client.ListPublishedGenres(context.Background(), &publirav1.ListPublishedGenresRequest{
 		Tenant: tenantContext(catalog.tenant),
 		Limit:  1,
-		Token:  secondPage.Msg.PreviousToken,
-	}))
+		Token:  secondPage.PreviousToken,
+	})
 	if err != nil {
 		t.Fatalf("genre list page 1 revisited: %v", err)
 	}
-	if len(backAgain.Msg.Genres) != 1 || backAgain.Msg.Genres[0].Name != "Fantasy" {
-		t.Fatalf("genre list page 1 revisited = %v, want Fantasy again", backAgain.Msg.Genres)
+	if len(backAgain.Genres) != 1 || backAgain.Genres[0].Name != "Fantasy" {
+		t.Fatalf("genre list page 1 revisited = %v, want Fantasy again", backAgain.Genres)
 	}
 }
 
@@ -553,20 +553,20 @@ func TestDBListPublishedTagsRanksTheTagsByHowManySeriesCarryThem(t *testing.T) {
 	// not in the list at all.
 	env.PG.SeedTag(t, catalog.tenant.ID, testutil.TagSeed{Name: "Unused"})
 
-	resp, err := env.catalogClient().ListPublishedTags(context.Background(), connect.NewRequest(&publirav1.ListPublishedTagsRequest{
+	resp, err := env.catalogClient().ListPublishedTags(context.Background(), &publirav1.ListPublishedTagsRequest{
 		Tenant: tenantContext(catalog.tenant),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedTags: %v", err)
 	}
-	if len(resp.Msg.Tags) != 2 {
-		t.Fatalf("tags = %v, want the two carried tags", resp.Msg.Tags)
+	if len(resp.Tags) != 2 {
+		t.Fatalf("tags = %v, want the two carried tags", resp.Tags)
 	}
-	if resp.Msg.Tags[0].Name != "Swordplay" || resp.Msg.Tags[0].PublishedSeriesCount != 2 {
-		t.Fatalf("first tag = %v, want Swordplay on two series", resp.Msg.Tags[0])
+	if resp.Tags[0].Name != "Swordplay" || resp.Tags[0].PublishedSeriesCount != 2 {
+		t.Fatalf("first tag = %v, want Swordplay on two series", resp.Tags[0])
 	}
-	if resp.Msg.Tags[1].Name != "Rivals" || resp.Msg.Tags[1].PublishedSeriesCount != 1 {
-		t.Fatalf("second tag = %v, want Rivals on one series", resp.Msg.Tags[1])
+	if resp.Tags[1].Name != "Rivals" || resp.Tags[1].PublishedSeriesCount != 1 {
+		t.Fatalf("second tag = %v, want Rivals on one series", resp.Tags[1])
 	}
 }
 
@@ -575,45 +575,45 @@ func TestDBListPublishedTagsPagesForwardAndBack(t *testing.T) {
 	catalog := seedClassifiedCatalog(t, env)
 
 	client := env.catalogClient()
-	firstPage, err := client.ListPublishedTags(context.Background(), connect.NewRequest(&publirav1.ListPublishedTagsRequest{
+	firstPage, err := client.ListPublishedTags(context.Background(), &publirav1.ListPublishedTagsRequest{
 		Tenant: tenantContext(catalog.tenant),
 		Limit:  1,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("tag list page 1: %v", err)
 	}
-	if len(firstPage.Msg.Tags) != 1 || firstPage.Msg.Tags[0].Name != "Swordplay" {
-		t.Fatalf("tag list page 1 = %v, want Swordplay alone", firstPage.Msg.Tags)
+	if len(firstPage.Tags) != 1 || firstPage.Tags[0].Name != "Swordplay" {
+		t.Fatalf("tag list page 1 = %v, want Swordplay alone", firstPage.Tags)
 	}
-	if firstPage.Msg.NextToken == "" {
+	if firstPage.NextToken == "" {
 		t.Fatal("tag list page 1 next_token is empty, want a token for the remaining tags")
 	}
 
-	secondPage, err := client.ListPublishedTags(context.Background(), connect.NewRequest(&publirav1.ListPublishedTagsRequest{
+	secondPage, err := client.ListPublishedTags(context.Background(), &publirav1.ListPublishedTagsRequest{
 		Tenant: tenantContext(catalog.tenant),
 		Limit:  1,
-		Token:  firstPage.Msg.NextToken,
-	}))
+		Token:  firstPage.NextToken,
+	})
 	if err != nil {
 		t.Fatalf("tag list page 2: %v", err)
 	}
-	if len(secondPage.Msg.Tags) != 1 || secondPage.Msg.Tags[0].Name != "Rivals" {
-		t.Fatalf("tag list page 2 = %v, want Rivals alone", secondPage.Msg.Tags)
+	if len(secondPage.Tags) != 1 || secondPage.Tags[0].Name != "Rivals" {
+		t.Fatalf("tag list page 2 = %v, want Rivals alone", secondPage.Tags)
 	}
-	if secondPage.Msg.PreviousToken == "" {
+	if secondPage.PreviousToken == "" {
 		t.Fatal("tag list page 2 previous_token is empty, want a token back to the first page")
 	}
 
-	backAgain, err := client.ListPublishedTags(context.Background(), connect.NewRequest(&publirav1.ListPublishedTagsRequest{
+	backAgain, err := client.ListPublishedTags(context.Background(), &publirav1.ListPublishedTagsRequest{
 		Tenant: tenantContext(catalog.tenant),
 		Limit:  1,
-		Token:  secondPage.Msg.PreviousToken,
-	}))
+		Token:  secondPage.PreviousToken,
+	})
 	if err != nil {
 		t.Fatalf("tag list page 1 revisited: %v", err)
 	}
-	if len(backAgain.Msg.Tags) != 1 || backAgain.Msg.Tags[0].Name != "Swordplay" {
-		t.Fatalf("tag list page 1 revisited = %v, want Swordplay again", backAgain.Msg.Tags)
+	if len(backAgain.Tags) != 1 || backAgain.Tags[0].Name != "Swordplay" {
+		t.Fatalf("tag list page 1 revisited = %v, want Swordplay again", backAgain.Tags)
 	}
 }
 
@@ -628,23 +628,23 @@ func TestDBPublishedGenresAndTagsExcludeAnotherTenants(t *testing.T) {
 	env.PG.SeedSeriesTag(t, second.ID, series.ID, tag.ID)
 
 	client := env.catalogClient()
-	genres, err := client.ListPublishedGenres(context.Background(), connect.NewRequest(&publirav1.ListPublishedGenresRequest{
+	genres, err := client.ListPublishedGenres(context.Background(), &publirav1.ListPublishedGenresRequest{
 		Tenant: tenantContext(first),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedGenres for tenant A: %v", err)
 	}
-	if len(genres.Msg.Genres) != 0 {
-		t.Fatalf("tenant A genres = %v, want none", genres.Msg.Genres)
+	if len(genres.Genres) != 0 {
+		t.Fatalf("tenant A genres = %v, want none", genres.Genres)
 	}
 
-	tags, err := client.ListPublishedTags(context.Background(), connect.NewRequest(&publirav1.ListPublishedTagsRequest{
+	tags, err := client.ListPublishedTags(context.Background(), &publirav1.ListPublishedTagsRequest{
 		Tenant: tenantContext(first),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListPublishedTags for tenant A: %v", err)
 	}
-	if len(tags.Msg.Tags) != 0 {
-		t.Fatalf("tenant A tags = %v, want none", tags.Msg.Tags)
+	if len(tags.Tags) != 0 {
+		t.Fatalf("tenant A tags = %v, want none", tags.Tags)
 	}
 }

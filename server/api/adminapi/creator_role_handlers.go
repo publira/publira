@@ -5,13 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/http"
 	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -62,7 +61,7 @@ func creatorRoleRevalidateTags(tenantID string) []string {
 // recordCreatorRoleChange files the audit entry for one role write. A role
 // orders and names the credits on every series, so all of the writes are
 // recorded, not only the destructive one.
-func (s *adminServer) recordCreatorRoleChange(ctx context.Context, tenantID uuid.UUID, header http.Header, action, targetID string) {
+func (s *adminServer) recordCreatorRoleChange(ctx context.Context, tenantID uuid.UUID, header *connect.Header, action, targetID string) {
 	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
 	if !ok {
 		return
@@ -154,25 +153,25 @@ func (s *adminServer) creatorRolePage(
 
 func (s *adminServer) ListCreatorRoles(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListCreatorRolesRequest],
-) (*connect.Response[publiraadminv1.ListCreatorRolesResponse], error) {
+	req *publiraadminv1.ListCreatorRolesRequest,
+) (*publiraadminv1.ListCreatorRolesResponse, error) {
 	if _, err := s.requireTenantAuditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCreatorRolePageSize, maxCreatorRolePageSize)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultCreatorRolePageSize, maxCreatorRolePageSize)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.CountUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeCountUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -214,27 +213,27 @@ func (s *adminServer) ListCreatorRoles(
 		res.NextToken = pagination.EncodeCountUUIDRecovery(pagination.Forward, keys.Count, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *adminServer) CreateCreatorRole(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreateCreatorRoleRequest],
-) (*connect.Response[publiraadminv1.CreateCreatorRoleResponse], error) {
+	req *publiraadminv1.CreateCreatorRoleRequest,
+) (*publiraadminv1.CreateCreatorRoleResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	name, err := normalizeCreatorRoleName(req.Msg.Name)
+	name, err := normalizeCreatorRoleName(req.Name)
 	if err != nil {
 		return nil, err
 	}
 	creatorRoleID, err := uuid.NewV7()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -272,11 +271,11 @@ func (s *adminServer) CreateCreatorRole(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordCreatorRoleChange(ctx, tenant.ID, req.Header(), "creator_role_created", created.PublicID)
+	s.recordCreatorRoleChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "creator_role_created", created.PublicID)
 
-	return connect.NewResponse(&publiraadminv1.CreateCreatorRoleResponse{
+	return &publiraadminv1.CreateCreatorRoleResponse{
 		CreatorRole: &publirattypesv1.CreatorRole{Id: created.ID.String(), PublicId: created.PublicID, Name: created.Name},
-	}), nil
+	}, nil
 }
 
 // existingCreatorRoleNameError reports a name another role of the tenant
@@ -293,20 +292,20 @@ func existingCreatorRoleNameError() error {
 
 func (s *adminServer) UpdateCreatorRole(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateCreatorRoleRequest],
-) (*connect.Response[publiraadminv1.UpdateCreatorRoleResponse], error) {
+	req *publiraadminv1.UpdateCreatorRoleRequest,
+) (*publiraadminv1.UpdateCreatorRoleResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	name, err := normalizeCreatorRoleName(req.Msg.Name)
+	name, err := normalizeCreatorRoleName(req.Name)
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseRecordID(req.Msg.CreatorRoleId, "creator_role_id")
+	id, err := parseRecordID(req.CreatorRoleId, "creator_role_id")
 	if err != nil {
 		return nil, err
 	}
@@ -329,27 +328,27 @@ func (s *adminServer) UpdateCreatorRole(
 		return nil, err
 	}
 
-	s.recordCreatorRoleChange(ctx, tenant.ID, req.Header(), "creator_role_updated", current.PublicID)
+	s.recordCreatorRoleChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "creator_role_updated", current.PublicID)
 
-	return connect.NewResponse(&publiraadminv1.UpdateCreatorRoleResponse{
+	return &publiraadminv1.UpdateCreatorRoleResponse{
 		CreatorRole: &publirattypesv1.CreatorRole{Id: current.ID.String(), PublicId: current.PublicID, Name: name},
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) ReorderCreatorRoles(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ReorderCreatorRolesRequest],
-) (*connect.Response[publiraadminv1.ReorderCreatorRolesResponse], error) {
+	req *publiraadminv1.ReorderCreatorRolesRequest,
+) (*publiraadminv1.ReorderCreatorRolesResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 	order, expected, err := reorderIDs(
-		reorderList{req.Msg.CreatorRoleIds, "creator_role_ids"},
-		reorderList{req.Msg.ExpectedCreatorRoleIds, "expected_creator_role_ids"},
+		reorderList{req.CreatorRoleIds, "creator_role_ids"},
+		reorderList{req.ExpectedCreatorRoleIds, "expected_creator_role_ids"},
 		"creator role",
 	)
 	if err != nil {
@@ -378,7 +377,7 @@ func (s *adminServer) ReorderCreatorRoles(
 		currentOrder = append(currentOrder, key)
 	}
 	if !slices.Equal(currentOrder, expected) {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("creator role order has changed"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "creator role order has changed")
 	}
 
 	creatorRoles := make([]*publirattypesv1.CreatorRole, 0, len(order))
@@ -401,23 +400,23 @@ func (s *adminServer) ReorderCreatorRoles(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordCreatorRoleChange(ctx, tenant.ID, req.Header(), "creator_roles_reordered", tenant.PublicID)
+	s.recordCreatorRoleChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "creator_roles_reordered", tenant.PublicID)
 
-	return connect.NewResponse(&publiraadminv1.ReorderCreatorRolesResponse{CreatorRoles: creatorRoles}), nil
+	return &publiraadminv1.ReorderCreatorRolesResponse{CreatorRoles: creatorRoles}, nil
 }
 
 func (s *adminServer) DeleteCreatorRole(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.DeleteCreatorRoleRequest],
-) (*connect.Response[publiraadminv1.DeleteCreatorRoleResponse], error) {
+	req *publiraadminv1.DeleteCreatorRoleRequest,
+) (*publiraadminv1.DeleteCreatorRoleResponse, error) {
 	if _, err := s.requireTenantEditor(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseRecordID(req.Msg.CreatorRoleId, "creator_role_id")
+	id, err := parseRecordID(req.CreatorRoleId, "creator_role_id")
 	if err != nil {
 		return nil, err
 	}
@@ -462,9 +461,9 @@ func (s *adminServer) DeleteCreatorRole(
 		return nil, err
 	}
 
-	s.recordCreatorRoleChange(ctx, tenant.ID, req.Header(), "creator_role_deleted", current.PublicID)
+	s.recordCreatorRoleChange(ctx, tenant.ID, rpcmiddleware.RequestHeader(ctx), "creator_role_deleted", current.PublicID)
 
-	return connect.NewResponse(&publiraadminv1.DeleteCreatorRoleResponse{}), nil
+	return &publiraadminv1.DeleteCreatorRoleResponse{}, nil
 }
 
 // creatorRoleInUseError refuses to delete a role a credit still names.
@@ -486,7 +485,7 @@ func (s *adminServer) creatorRoleByID(ctx context.Context, tenantID, id uuid.UUI
 	row, err := s.queriesFor(ctx).GetCreatorRoleByIDForTenant(ctx, dbmodels.GetCreatorRoleByIDForTenantParams{TenantID: tenantID, ID: id})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.GetCreatorRoleByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, errors.New("creator role not found"))
+			return dbmodels.GetCreatorRoleByIDForTenantRow{}, connect.NewError(connect.CodeNotFound, "creator role not found")
 		}
 		return dbmodels.GetCreatorRoleByIDForTenantRow{}, s.internalDBError(ctx, "failed to get creator role", err, "tenant_id", tenantID.String(), "creator_role_id", id.String())
 	}

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -42,34 +42,28 @@ func TestDBUpdateMeStoresABirthDateGetMeAnswersWith(t *testing.T) {
 	client := env.authClient()
 	token := tokenFor(t, tenant, reader)
 
-	before, err := client.GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)}, token,
-	))
+	before, err := client.GetMe(testutil.WithBearer(context.Background(), token), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)})
 	if err != nil {
 		t.Fatalf("GetMe before: %v", err)
 	}
-	if before.Msg.User.BirthDate != "" {
-		t.Fatalf("birth_date before = %q, want empty", before.Msg.User.BirthDate)
+	if before.User.BirthDate != "" {
+		t.Fatalf("birth_date before = %q, want empty", before.User.BirthDate)
 	}
 
-	updated, err := client.UpdateMe(context.Background(), newBearerRequest(
-		&publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Member", BirthDate: "2000-04-02"}, token,
-	))
+	updated, err := client.UpdateMe(testutil.WithBearer(context.Background(), token), &publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Member", BirthDate: "2000-04-02"})
 	if err != nil {
 		t.Fatalf("UpdateMe: %v", err)
 	}
-	if updated.Msg.User.BirthDate != "2000-04-02" {
-		t.Fatalf("birth_date from UpdateMe = %q, want 2000-04-02", updated.Msg.User.BirthDate)
+	if updated.User.BirthDate != "2000-04-02" {
+		t.Fatalf("birth_date from UpdateMe = %q, want 2000-04-02", updated.User.BirthDate)
 	}
 
-	after, err := client.GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)}, token,
-	))
+	after, err := client.GetMe(testutil.WithBearer(context.Background(), token), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)})
 	if err != nil {
 		t.Fatalf("GetMe after: %v", err)
 	}
-	if after.Msg.User.BirthDate != "2000-04-02" {
-		t.Fatalf("birth_date from GetMe = %q, want 2000-04-02", after.Msg.User.BirthDate)
+	if after.User.BirthDate != "2000-04-02" {
+		t.Fatalf("birth_date from GetMe = %q, want 2000-04-02", after.User.BirthDate)
 	}
 }
 
@@ -82,15 +76,11 @@ func TestDBUpdateMeRefusesASecondBirthDate(t *testing.T) {
 	client := env.authClient()
 	token := tokenFor(t, tenant, reader)
 
-	if _, err := client.UpdateMe(context.Background(), newBearerRequest(
-		&publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Member", BirthDate: "2000-04-02"}, token,
-	)); err != nil {
+	if _, err := client.UpdateMe(testutil.WithBearer(context.Background(), token), &publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Member", BirthDate: "2000-04-02"}); err != nil {
 		t.Fatalf("UpdateMe: %v", err)
 	}
 
-	_, err := client.UpdateMe(context.Background(), newBearerRequest(
-		&publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Renamed", BirthDate: "1990-01-01"}, token,
-	))
+	_, err := client.UpdateMe(testutil.WithBearer(context.Background(), token), &publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Renamed", BirthDate: "1990-01-01"})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -117,23 +107,19 @@ func TestDBUpdateMeLeavesAStoredBirthDateAloneWhenTheFieldIsEmpty(t *testing.T) 
 	client := env.authClient()
 	token := tokenFor(t, tenant, reader)
 
-	if _, err := client.UpdateMe(context.Background(), newBearerRequest(
-		&publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Member", BirthDate: "2000-04-02"}, token,
-	)); err != nil {
+	if _, err := client.UpdateMe(testutil.WithBearer(context.Background(), token), &publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Member", BirthDate: "2000-04-02"}); err != nil {
 		t.Fatalf("UpdateMe with the birth date: %v", err)
 	}
 
-	renamed, err := client.UpdateMe(context.Background(), newBearerRequest(
-		&publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Renamed"}, token,
-	))
+	renamed, err := client.UpdateMe(testutil.WithBearer(context.Background(), token), &publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Renamed"})
 	if err != nil {
 		t.Fatalf("UpdateMe with the name alone: %v", err)
 	}
-	if renamed.Msg.User.Name != "Renamed" {
-		t.Fatalf("name = %q, want Renamed", renamed.Msg.User.Name)
+	if renamed.User.Name != "Renamed" {
+		t.Fatalf("name = %q, want Renamed", renamed.User.Name)
 	}
-	if renamed.Msg.User.BirthDate != "2000-04-02" {
-		t.Fatalf("birth_date = %q, want 2000-04-02", renamed.Msg.User.BirthDate)
+	if renamed.User.BirthDate != "2000-04-02" {
+		t.Fatalf("birth_date = %q, want 2000-04-02", renamed.User.BirthDate)
 	}
 }
 
@@ -145,9 +131,7 @@ func TestDBUpdateMeRejectsADateItWillNotStore(t *testing.T) {
 	token := tokenFor(t, tenant, reader)
 
 	for _, raw := range []string{"2000-4-2", "02/04/2000", "3000-01-01", "not a date"} {
-		_, err := client.UpdateMe(context.Background(), newBearerRequest(
-			&publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Member", BirthDate: raw}, token,
-		))
+		_, err := client.UpdateMe(testutil.WithBearer(context.Background(), token), &publirav1.UpdateMeRequest{Tenant: tenantContext(tenant), Name: "Member", BirthDate: raw})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("UpdateMe(%q) code = %v, want invalid_argument (err=%v)", raw, connect.CodeOf(err), err)
 		}
@@ -163,13 +147,13 @@ func TestDBCreateUserStoresTheBirthDateGivenAtSignup(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
-	if _, err := env.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+	if _, err := env.authClient().CreateUser(context.Background(), &publirav1.CreateUserRequest{
 		Tenant:    tenantContext(tenant),
 		Name:      "Newcomer",
 		Email:     "newcomer@tenant-a.example.com",
 		Password:  testutil.SeededPassword,
 		BirthDate: "2000-04-02",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
 	env.processReaderAuthRequests(t)
@@ -188,12 +172,12 @@ func TestDBCreateUserAcceptsASignupWithNoBirthDate(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
-	if _, err := env.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+	if _, err := env.authClient().CreateUser(context.Background(), &publirav1.CreateUserRequest{
 		Tenant:   tenantContext(tenant),
 		Name:     "Newcomer",
 		Email:    "newcomer@tenant-a.example.com",
 		Password: testutil.SeededPassword,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
 	env.processReaderAuthRequests(t)
@@ -210,13 +194,13 @@ func TestDBCreateUserRejectsADateItWillNotStore(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
-	_, err := env.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+	_, err := env.authClient().CreateUser(context.Background(), &publirav1.CreateUserRequest{
 		Tenant:    tenantContext(tenant),
 		Name:      "Newcomer",
 		Email:     "newcomer@tenant-a.example.com",
 		Password:  testutil.SeededPassword,
 		BirthDate: "3000-01-01",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}

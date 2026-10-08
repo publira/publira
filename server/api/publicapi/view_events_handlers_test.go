@@ -5,19 +5,21 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"net/http"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // capturedArg matches any bound parameter and remembers it, so a test can
@@ -66,7 +68,7 @@ func newContentViewFixture(t *testing.T) *contentViewFixture {
 
 	testServer, mock := newTestPublicServer(t)
 	fixture := &contentViewFixture{
-		client:    publirav1connect.NewContentViewServiceClient(testServer.Client(), testServer.URL),
+		client:    publirav1connect.NewContentViewServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))),
 		mock:      mock,
 		tenantID:  uuid.Must(uuid.NewV7()),
 		seriesID:  uuid.Must(uuid.NewV7()),
@@ -102,33 +104,35 @@ func seriesViewTarget(id string) *publirav1.ContentViewTarget {
 	}
 }
 
-func (f *contentViewFixture) request(t *testing.T, cookie string) *connect.Response[publirav1.RecordContentViewResponse] {
+// request records a view carrying the anonymous cookie, when there is one, and
+// answers the response headers.
+func (f *contentViewFixture) request(t *testing.T, cookie string) *connect.Header {
 	t.Helper()
 
-	resp, err := f.client.RecordContentView(context.Background(), newContentViewRequest(f.tenantID, cookie))
-	if err != nil {
+	ctx := context.Background()
+	if cookie != "" {
+		ctx = testutil.WithRequestHeader(ctx, "Cookie", anonymousIDCookieName+"="+cookie)
+	}
+	ctx, call := testutil.NewClientContext(ctx)
+	if _, err := f.client.RecordContentView(ctx, newContentViewRequest(f.tenantID)); err != nil {
 		t.Fatalf("RecordContentView: %v", err)
 	}
-	return resp
+	return call.ResponseHeader()
 }
 
 // viewedEpisodeID is the episode every view below is recorded for.
 var viewedEpisodeID = uuid.MustParse("01920000-0000-7000-8000-00000000e001")
 
-func newContentViewRequest(tenantID uuid.UUID, cookie string) *connect.Request[publirav1.RecordContentViewRequest] {
-	req := connect.NewRequest(&publirav1.RecordContentViewRequest{
+func newContentViewRequest(tenantID uuid.UUID) *publirav1.RecordContentViewRequest {
+	return &publirav1.RecordContentViewRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Target: episodeViewTarget(viewedEpisodeID.String()),
-	})
-	if cookie != "" {
-		req.Header().Set("Cookie", anonymousIDCookieName+"="+cookie)
 	}
-	return req
 }
 
 // mintedAnonymousID reads the identifier the response handed back, and fails
 // when the response set no cookie at all.
-func mintedAnonymousID(t *testing.T, header http.Header) uuid.UUID {
+func mintedAnonymousID(t *testing.T, header *connect.Header) uuid.UUID {
 	t.Helper()
 
 	setCookie := header.Values("Set-Cookie")
@@ -157,11 +161,11 @@ func TestRecordContentViewMintsAnonymousActorOnFirstView(t *testing.T) {
 		).
 		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
 
-	resp := fixture.request(t, "")
+	header := fixture.request(t, "")
 
 	// The minted identifier has to be the one that was just recorded, or the
 	// reader's next request would open a second actor for the same person.
-	if got, want := anonymousID.uuid(t), mintedAnonymousID(t, resp.Header()); got != want {
+	if got, want := anonymousID.uuid(t), mintedAnonymousID(t, header); got != want {
 		t.Fatalf("recorded anonymous_id = %v, want the minted %v", got, want)
 	}
 	assertPublicExpectations(t, fixture.mock)
@@ -177,11 +181,11 @@ func TestRecordContentViewReusesTheAnonymousCookieItWasGiven(t *testing.T) {
 		).
 		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
 
-	resp := fixture.request(t, existing.String())
+	header := fixture.request(t, existing.String())
 
 	// Re-issuing the cookie on every view would be harmless but pointless
 	// traffic; more importantly it must not replace a working identifier.
-	if got := resp.Header().Values("Set-Cookie"); len(got) != 0 {
+	if got := header.Values("Set-Cookie"); len(got) != 0 {
 		t.Fatalf("Set-Cookie = %v, want none when the request already carried one", got)
 	}
 	assertPublicExpectations(t, fixture.mock)
@@ -222,11 +226,11 @@ func TestRecordContentViewRecordsASeriesViewForASeriesTarget(t *testing.T) {
 		).
 		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
 
-	client := publirav1connect.NewContentViewServiceClient(testServer.Client(), testServer.URL)
-	if _, err := client.RecordContentView(context.Background(), connect.NewRequest(&publirav1.RecordContentViewRequest{
+	client := publirav1connect.NewContentViewServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	if _, err := client.RecordContentView(context.Background(), &publirav1.RecordContentViewRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Target: seriesViewTarget(seriesID.String()),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RecordContentView: %v", err)
 	}
 	assertPublicExpectations(t, mock)
@@ -244,9 +248,8 @@ func TestRecordContentViewMintsNoActorForARejectedBearer(t *testing.T) {
 	expectTenantLookup(fixture.mock, fixture.tenantID, "TENANT", time.Now())
 	recorded := forbidEpisodeViewEventInsert(fixture.mock)
 
-	req := newContentViewRequest(fixture.tenantID, "")
-	req.Header().Set("Authorization", "Bearer not-a-token")
-	resp, err := fixture.client.RecordContentView(context.Background(), req)
+	respCtx, respCall := testutil.NewClientContext(testutil.WithRequestHeader(context.Background(), "Authorization", "Bearer not-a-token"))
+	_, err := fixture.client.RecordContentView(respCtx, newContentViewRequest(fixture.tenantID))
 	if err != nil {
 		t.Fatalf("RecordContentView: %v", err)
 	}
@@ -254,7 +257,7 @@ func TestRecordContentViewMintsNoActorForARejectedBearer(t *testing.T) {
 	if recorded.value != nil {
 		t.Fatalf("recorded event id = %v, want a rejected bearer to record nothing", recorded.value)
 	}
-	if got := resp.Header().Values("Set-Cookie"); len(got) != 0 {
+	if got := respCall.ResponseHeader().Values("Set-Cookie"); len(got) != 0 {
 		t.Fatalf("Set-Cookie = %v, want no identifier minted for a rejected bearer", got)
 	}
 	// The registered insert stays deliberately unfulfilled, so the shared
@@ -274,9 +277,8 @@ func TestRecordContentViewFallsBackToTheCookieForARejectedBearer(t *testing.T) {
 		).
 		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
 
-	req := newContentViewRequest(fixture.tenantID, existing.String())
-	req.Header().Set("Authorization", "Bearer not-a-token")
-	if _, err := fixture.client.RecordContentView(context.Background(), req); err != nil {
+	ctx := testutil.WithRequestHeader(context.Background(), "Cookie", anonymousIDCookieName+"="+existing.String())
+	if _, err := fixture.client.RecordContentView(testutil.WithRequestHeader(ctx, "Authorization", "Bearer not-a-token"), newContentViewRequest(fixture.tenantID)); err != nil {
 		t.Fatalf("RecordContentView: %v", err)
 	}
 	assertPublicExpectations(t, fixture.mock)
@@ -294,9 +296,8 @@ func TestRecordContentViewSkipsTheViewEventForAPrefetch(t *testing.T) {
 		).
 		WillReturnRows(sqlmock.NewRows(contentEventColumns()))
 
-	req := newContentViewRequest(fixture.tenantID, "")
-	req.Header().Set("Sec-Purpose", "prefetch;prerender")
-	resp, err := fixture.client.RecordContentView(context.Background(), req)
+	respCtx, respCall := testutil.NewClientContext(testutil.WithRequestHeader(context.Background(), "Sec-Purpose", "prefetch;prerender"))
+	_, err := fixture.client.RecordContentView(respCtx, newContentViewRequest(fixture.tenantID))
 	if err != nil {
 		t.Fatalf("RecordContentView: %v", err)
 	}
@@ -306,7 +307,7 @@ func TestRecordContentViewSkipsTheViewEventForAPrefetch(t *testing.T) {
 	}
 	// The identifier is still handed over: the navigation that follows the
 	// prefetch is the one that counts, and it should already be attributable.
-	mintedAnonymousID(t, resp.Header())
+	mintedAnonymousID(t, respCall.ResponseHeader())
 	// The registered insert stays deliberately unfulfilled, so the shared
 	// expectation assertion does not apply here.
 }
@@ -361,11 +362,11 @@ func TestRecordContentViewRejectsUnknownTarget(t *testing.T) {
 			case publirav1.ContentViewTargetType_CONTENT_VIEW_TARGET_TYPE_UNSPECIFIED:
 			}
 
-			client := publirav1connect.NewContentViewServiceClient(testServer.Client(), testServer.URL)
-			_, err := client.RecordContentView(context.Background(), connect.NewRequest(&publirav1.RecordContentViewRequest{
+			client := publirav1connect.NewContentViewServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			_, err := client.RecordContentView(context.Background(), &publirav1.RecordContentViewRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Target: testCase.target,
-			}))
+			})
 			if connect.CodeOf(err) != testCase.want {
 				t.Fatalf("RecordContentView code = %v, want %v (err=%v)", connect.CodeOf(err), testCase.want, err)
 			}
@@ -441,11 +442,12 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 		}))
 	recorded := forbidEpisodeViewEventInsert(mock)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	respCtx, respCall := testutil.NewClientContext(context.Background())
+	resp, err := client.GetEpisodeDetail(respCtx, &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE001",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
@@ -455,16 +457,16 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 	}
 	// No actor is minted either: a fill that was handed one would hand it on to
 	// whichever reader the cached response is later served to.
-	if got := resp.Header().Values("Set-Cookie"); len(got) != 0 {
+	if got := respCall.ResponseHeader().Values("Set-Cookie"); len(got) != 0 {
 		t.Fatalf("Set-Cookie = %v, want a cached read to mint no actor", got)
 	}
 	// The registered insert stays deliberately unfulfilled, so the shared
 	// expectation assertion does not apply; the body proves the reads ran.
-	if got := resp.Msg.Episode.GetTitle(); got != "Episode Title" {
+	if got := resp.Episode.GetTitle(); got != "Episode Title" {
 		t.Fatalf("episode title = %q, want the row the read returned", got)
 	}
-	if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
-		t.Fatalf("access = %v, want the free body to be served", resp.Msg.Access)
+	if resp.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
+		t.Fatalf("access = %v, want the free body to be served", resp.Access)
 	}
 }
 
@@ -495,11 +497,12 @@ func TestGetSeriesDetailRecordsNoViewEvent(t *testing.T) {
 	expectNoSeriesWaitFreeRule(mock, tenantID, seriesID)
 	recorded := forbidSeriesViewEventInsert(mock)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	respCtx, respCall := testutil.NewClientContext(context.Background())
+	resp, err := client.GetSeriesDetail(respCtx, &publirav1.GetSeriesDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIES001",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeriesDetail: %v", err)
 	}
@@ -507,10 +510,10 @@ func TestGetSeriesDetailRecordsNoViewEvent(t *testing.T) {
 	if recorded.value != nil {
 		t.Fatalf("recorded event id = %v, want a detail read to record nothing", recorded.value)
 	}
-	if got := resp.Header().Values("Set-Cookie"); len(got) != 0 {
+	if got := respCall.ResponseHeader().Values("Set-Cookie"); len(got) != 0 {
 		t.Fatalf("Set-Cookie = %v, want a cached read to mint no actor", got)
 	}
-	if got := resp.Msg.Series.GetTitle(); got != "Series Title" {
+	if got := resp.Series.GetTitle(); got != "Series Title" {
 		t.Fatalf("series title = %q, want the row the read returned", got)
 	}
 }

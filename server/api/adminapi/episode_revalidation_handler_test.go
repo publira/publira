@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // wantEpisodeRevalidateTags is what a write to what an episode holds drops: the
@@ -66,15 +67,14 @@ func TestReorderEpisodesRevalidatesTheSeriesDetail(t *testing.T) {
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 
-	req := connect.NewRequest(&publiraadminv1.ReorderEpisodesRequest{
+	req := &publiraadminv1.ReorderEpisodesRequest{
 		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:           testSeriesID.String(),
 		EpisodeIds:         []string{ids[1].String(), ids[0].String()},
 		ExpectedEpisodeIds: []string{ids[0].String(), ids[1].String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.ReorderEpisodes(context.Background(), req); err != nil {
+	if _, err := client.ReorderEpisodes(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("ReorderEpisodes: %v", err)
 	}
 	revalidations.waitForTags(t, wantEpisodeRevalidateTags(tenantID))
@@ -107,16 +107,15 @@ func TestUploadEpisodeImagesRevalidatesTheSeriesDetail(t *testing.T) {
 	expectAdminAuditLogInsert(mock)
 	expectRevalidationRecord(mock, tenantID)
 
-	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+	req := &publiraadminv1.UploadEpisodeImagesRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: testEpisodeID.String(),
 		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "001.png", ContentType: "image/png", Data: oneByOnePNG, DisplayOrder: 0},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.UploadEpisodeImages(context.Background(), req); err != nil {
+	if _, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UploadEpisodeImages: %v", err)
 	}
 	revalidations.waitForTags(t, wantEpisodeRevalidateTags(tenantID))
@@ -150,17 +149,16 @@ func TestUploadEpisodeImagesRevalidatesThePagesStoredBeforeAFailure(t *testing.T
 	expectAdminAuditLogInsert(mock)
 	expectRevalidationRecord(mock, tenantID)
 
-	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+	req := &publiraadminv1.UploadEpisodeImagesRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: testEpisodeID.String(),
 		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "001.png", ContentType: "image/png", Data: oneByOnePNG, DisplayOrder: 0},
 			{Filename: "002.png", ContentType: "image/png", Data: []byte("not an image"), DisplayOrder: 1},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.UploadEpisodeImages(context.Background(), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UploadEpisodeImages code = %v, want invalid_argument for the second page (err=%v)", connect.CodeOf(err), err)
 	}
 	revalidations.waitForTags(t, wantEpisodeRevalidateTags(tenantID))
@@ -201,14 +199,13 @@ func TestReorderEpisodeImagesRevalidatesTheSeriesDetail(t *testing.T) {
 			AddRow(image2ID, tenantID, episodeID, int32(1), now, "image/jpeg", int64(2048), int32(1600), int32(900)).
 			AddRow(image1ID, tenantID, episodeID, int32(2), now, "image/jpeg", int64(2048), int32(1600), int32(900)))
 
-	req := connect.NewRequest(&publiraadminv1.ReorderEpisodeImagesRequest{
+	req := &publiraadminv1.ReorderEpisodeImagesRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: testEpisodeID.String(),
 		ImageIds:  []string{image2ID.String(), image1ID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.ReorderEpisodeImages(context.Background(), req); err != nil {
+	if _, err := client.ReorderEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("ReorderEpisodeImages: %v", err)
 	}
 	revalidations.waitForTags(t, wantEpisodeRevalidateTags(tenantID))
@@ -238,14 +235,13 @@ func TestUpdateEpisodePublishScheduleRevalidatesTheSeriesDetailAndLists(t *testi
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
-	req := connect.NewRequest(&publiraadminv1.UpdateEpisodePublishScheduleRequest{
+	req := &publiraadminv1.UpdateEpisodePublishScheduleRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId:   testEpisodeID.String(),
 		ScheduledAt: scheduledAt.Format(time.RFC3339),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.UpdateEpisodePublishSchedule(context.Background(), req); err != nil {
+	if _, err := client.UpdateEpisodePublishSchedule(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UpdateEpisodePublishSchedule: %v", err)
 	}
 	revalidations.waitForTags(t, wantEpisodePublicationRevalidateTags(tenantID))
@@ -272,14 +268,13 @@ func TestUpdateEpisodeAvailabilityRevalidatesTheSeriesDetailAndLists(t *testing.
 	expectPublishedEpisodeLookup(mock, tenantID, "app")
 	expectAdminAuditLogInsert(mock)
 
-	req := connect.NewRequest(&publiraadminv1.UpdateEpisodeAvailabilityRequest{
+	req := &publiraadminv1.UpdateEpisodeAvailabilityRequest{
 		Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId:    testEpisodeID.String(),
 		Availability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.UpdateEpisodeAvailability(context.Background(), req); err != nil {
+	if _, err := client.UpdateEpisodeAvailability(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UpdateEpisodeAvailability: %v", err)
 	}
 	revalidations.waitForTags(t, wantEpisodePublicationRevalidateTags(tenantID))

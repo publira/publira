@@ -6,35 +6,37 @@ import (
 	"slices"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectproto"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/emailrejection"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func getDBEmailRejectionSettings(t *testing.T, env *adminDBEnv, tenant adminDBTenant) *publiraadminv1.GetTenantEmailRejectionSettingsResponse {
 	t.Helper()
-	resp, err := env.tenantSettingsClient().GetTenantEmailRejectionSettings(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantEmailRejectionSettingsRequest{
+	resp, err := env.tenantSettingsClient().GetTenantEmailRejectionSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetTenantEmailRejectionSettingsRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantEmailRejectionSettings: %v", err)
 	}
-	return resp.Msg
+	return resp
 }
 
 func updateDBEmailRejectionSettings(env *adminDBEnv, tenant adminDBTenant, settings *publiraadminv1.TenantEmailRejectionSettings) (*publiraadminv1.UpdateTenantEmailRejectionSettingsResponse, error) {
-	resp, err := env.tenantSettingsClient().UpdateTenantEmailRejectionSettings(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateTenantEmailRejectionSettingsRequest{
+	resp, err := env.tenantSettingsClient().UpdateTenantEmailRejectionSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateTenantEmailRejectionSettingsRequest{
 		Tenant:   tenant.tenantContext(),
 		Settings: settings,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg, nil
+	return resp, nil
 }
 
 func TestDBEmailRejectionSettingsAreStoredNormalizedAndAudited(t *testing.T) {
@@ -115,7 +117,7 @@ func TestDBEmailRejectionSettingsRefuseAnEntryThatIsNeitherAnAddressNorADomain(t
 func violatedField(t *testing.T, err *connect.Error) string {
 	t.Helper()
 	for _, detail := range err.Details() {
-		value, valueErr := detail.Value()
+		value, valueErr := connectproto.UnmarshalErrorDetail(detail)
 		if valueErr != nil {
 			continue
 		}
@@ -155,9 +157,9 @@ func TestDBEmailRejectionSettingsRequireTenantAdmin(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)
 
-	if _, err := env.tenantSettingsClient().GetTenantEmailRejectionSettings(context.Background(), newAdminDBRequest(tenant.as(editor), &publiraadminv1.GetTenantEmailRejectionSettingsRequest{
+	if _, err := env.tenantSettingsClient().GetTenantEmailRejectionSettings(testutil.WithBearer(context.Background(), tenant.as(editor).token()), &publiraadminv1.GetTenantEmailRejectionSettingsRequest{
 		Tenant: tenant.tenantContext(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("get: code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
 	}
 	if _, err := updateDBEmailRejectionSettings(env, tenant.as(editor), &publiraadminv1.TenantEmailRejectionSettings{

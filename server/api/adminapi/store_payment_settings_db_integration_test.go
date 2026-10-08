@@ -13,7 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/paymentsettings"
@@ -34,27 +35,27 @@ const (
 )
 
 func (e *adminDBEnv) paymentClient() publiraadminv1connect.AdminPaymentSettingsServiceClient {
-	return publiraadminv1connect.NewAdminPaymentSettingsServiceClient(e.Server.Client(), e.Server.URL)
+	return publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
 func updateDBStorePaymentSettings(env *adminDBEnv, tenant adminDBTenant, req *publiraadminv1.UpdateTenantStorePaymentSettingsRequest) (*publiraadminv1.TenantStorePaymentSettings, error) {
 	req.Tenant = tenant.tenantContext()
-	resp, err := env.paymentClient().UpdateTenantStorePaymentSettings(context.Background(), newAdminDBRequest(tenant, req))
+	resp, err := env.paymentClient().UpdateTenantStorePaymentSettings(testutil.WithBearer(context.Background(), tenant.token()), req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg.Settings, nil
+	return resp.Settings, nil
 }
 
 func getDBStorePaymentSettings(t *testing.T, env *adminDBEnv, tenant adminDBTenant) *publiraadminv1.TenantStorePaymentSettings {
 	t.Helper()
-	resp, err := env.paymentClient().GetTenantStorePaymentSettings(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantStorePaymentSettingsRequest{
+	resp, err := env.paymentClient().GetTenantStorePaymentSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetTenantStorePaymentSettingsRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantStorePaymentSettings: %v", err)
 	}
-	return resp.Msg.Settings
+	return resp.Settings
 }
 
 // An administrator stores both stores' keys, reads them back as hints, and
@@ -153,9 +154,9 @@ func TestDBStorePaymentSettingsRequireTenantAdmin(t *testing.T) {
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)
 
-	if _, err := env.paymentClient().GetTenantStorePaymentSettings(context.Background(), newAdminDBRequest(tenant.as(editor), &publiraadminv1.GetTenantStorePaymentSettingsRequest{
+	if _, err := env.paymentClient().GetTenantStorePaymentSettings(testutil.WithBearer(context.Background(), tenant.as(editor).token()), &publiraadminv1.GetTenantStorePaymentSettingsRequest{
 		Tenant: tenant.tenantContext(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("get: code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
 	}
 	if _, err := updateDBStorePaymentSettings(env, tenant.as(editor), &publiraadminv1.UpdateTenantStorePaymentSettingsRequest{
@@ -163,22 +164,22 @@ func TestDBStorePaymentSettingsRequireTenantAdmin(t *testing.T) {
 	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("update: code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
 	}
-	if _, err := env.paymentClient().ListTenantStoreProducts(context.Background(), newAdminDBRequest(tenant.as(editor), &publiraadminv1.ListTenantStoreProductsRequest{
+	if _, err := env.paymentClient().ListTenantStoreProducts(testutil.WithBearer(context.Background(), tenant.as(editor).token()), &publiraadminv1.ListTenantStoreProductsRequest{
 		Tenant: tenant.tenantContext(),
-	})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("list products: code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
 	}
 }
 
 func listDBStoreProducts(t *testing.T, env *adminDBEnv, tenant adminDBTenant) []*publiraadminv1.TenantStoreProduct {
 	t.Helper()
-	resp, err := env.paymentClient().ListTenantStoreProducts(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListTenantStoreProductsRequest{
+	resp, err := env.paymentClient().ListTenantStoreProducts(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListTenantStoreProductsRequest{
 		Tenant: tenant.tenantContext(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListTenantStoreProducts: %v", err)
 	}
-	return resp.Msg.Products
+	return resp.Products
 }
 
 // One product per distinct price of a paid episode the app may show and sell,

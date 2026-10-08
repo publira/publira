@@ -3,20 +3,22 @@ package adminapi
 import (
 	"context"
 	"database/sql"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func tenantUserColumns() *sqlmock.Rows {
@@ -42,14 +44,13 @@ func newTenantUserClient(
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
-	return publiraadminv1connect.NewAdminUserServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+	return publiraadminv1connect.NewAdminUserServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))), mock, sessionToken
 }
 
-func newTenantUserRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListTenantUsersRequest] {
-	req := connect.NewRequest(&publiraadminv1.ListTenantUsersRequest{
+func newTenantUserRequest(tenantID uuid.UUID) *publiraadminv1.ListTenantUsersRequest {
+	req := &publiraadminv1.ListTenantUsersRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 	return req
 }
 
@@ -78,19 +79,19 @@ func TestListTenantUsersAppliesRequestedLimit(t *testing.T) {
 			ids[2], "USER003", "Third", now.Add(-2*time.Minute),
 		))
 
-	req := newTenantUserRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	resp, err := client.ListTenantUsers(context.Background(), req)
+	req := newTenantUserRequest(tenantID)
+	req.Limit = 2
+	resp, err := client.ListTenantUsers(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListTenantUsers: %v", err)
 	}
-	if len(resp.Msg.Users) != 2 {
-		t.Fatalf("users count = %d, want the over-fetched row dropped", len(resp.Msg.Users))
+	if len(resp.Users) != 2 {
+		t.Fatalf("users count = %d, want the over-fetched row dropped", len(resp.Users))
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -130,9 +131,9 @@ func TestListTenantUsersFallsBackToDefaultLimit(t *testing.T) {
 				).
 				WillReturnRows(tenantUserColumns())
 
-			req := newTenantUserRequest(tenantID, sessionToken)
-			req.Msg.Limit = testCase.requested
-			resp, err := client.ListTenantUsers(context.Background(), req)
+			req := newTenantUserRequest(tenantID)
+			req.Limit = testCase.requested
+			resp, err := client.ListTenantUsers(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err != nil {
 				t.Fatalf("ListTenantUsers: %v", err)
 			}
@@ -140,11 +141,11 @@ func TestListTenantUsersFallsBackToDefaultLimit(t *testing.T) {
 			// An empty first page carries no boundary to recover to, so neither
 			// token may be issued: a recovery token built from the zero cursor
 			// would point at the epoch.
-			if resp.Msg.PreviousToken != "" {
-				t.Fatalf("previous_token = %q, want empty on an empty first page", resp.Msg.PreviousToken)
+			if resp.PreviousToken != "" {
+				t.Fatalf("previous_token = %q, want empty on an empty first page", resp.PreviousToken)
 			}
-			if resp.Msg.NextToken != "" {
-				t.Fatalf("next_token = %q, want empty on an empty first page", resp.Msg.NextToken)
+			if resp.NextToken != "" {
+				t.Fatalf("next_token = %q, want empty on an empty first page", resp.NextToken)
 			}
 
 			assertExpectations(t, mock)
@@ -172,14 +173,14 @@ func TestListTenantUsersFiltersByQueryInSQL(t *testing.T) {
 		).
 		WillReturnRows(addTenantUserRow(tenantUserColumns(), userID, "USER001", "Editor Taro", now))
 
-	req := newTenantUserRequest(tenantID, sessionToken)
-	req.Msg.Query = "  Editor  "
-	resp, err := client.ListTenantUsers(context.Background(), req)
+	req := newTenantUserRequest(tenantID)
+	req.Query = "  Editor  "
+	resp, err := client.ListTenantUsers(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListTenantUsers: %v", err)
 	}
-	if len(resp.Msg.Users) != 1 || resp.Msg.Users[0].PublicId != "USER001" {
-		t.Fatalf("users = %+v, want the matching row", resp.Msg.Users)
+	if len(resp.Users) != 1 || resp.Users[0].PublicId != "USER001" {
+		t.Fatalf("users = %+v, want the matching row", resp.Users)
 	}
 
 	assertExpectations(t, mock)
@@ -211,24 +212,24 @@ func TestListTenantUsersFollowsPreviousTokenBackwards(t *testing.T) {
 			newerID, "USER001", "Newer", newerAt,
 		))
 
-	req := newTenantUserRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
-	resp, err := client.ListTenantUsers(context.Background(), req)
+	req := newTenantUserRequest(tenantID)
+	req.Limit = 2
+	req.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListTenantUsers(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListTenantUsers: %v", err)
 	}
-	names := make([]string, 0, len(resp.Msg.Users))
-	for _, user := range resp.Msg.Users {
+	names := make([]string, 0, len(resp.Users))
+	for _, user := range resp.Users {
 		names = append(names, user.Name)
 	}
 	if !slices.Equal(names, []string{"Newer", "Older"}) {
 		t.Fatalf("names = %v, want backward page restored to descending order", names)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	next, err := pagination.Decode(resp.Msg.NextToken)
+	next, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -259,19 +260,19 @@ func TestListTenantUsersEmptyPageKeepsAWayBack(t *testing.T) {
 		).
 		WillReturnRows(tenantUserColumns())
 
-	req := newTenantUserRequest(tenantID, sessionToken)
-	req.Msg.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
-	resp, err := client.ListTenantUsers(context.Background(), req)
+	req := newTenantUserRequest(tenantID)
+	req.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListTenantUsers(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListTenantUsers: %v", err)
 	}
-	if len(resp.Msg.Users) != 0 {
-		t.Fatalf("users count = %d, want 0", len(resp.Msg.Users))
+	if len(resp.Users) != 0 {
+		t.Fatalf("users count = %d, want 0", len(resp.Users))
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on an emptied page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on an emptied page", resp.NextToken)
 	}
-	previous, err := pagination.Decode(resp.Msg.PreviousToken)
+	previous, err := pagination.Decode(resp.PreviousToken)
 	if err != nil {
 		t.Fatalf("decode previous_token: %v", err)
 	}
@@ -289,9 +290,9 @@ func TestListTenantUsersRejectsBrokenToken(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock, sessionToken := newTenantUserClient(t, tenantID, actorID, now)
 
-	req := newTenantUserRequest(tenantID, sessionToken)
-	req.Msg.Token = "not-a-token"
-	if _, err := client.ListTenantUsers(context.Background(), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	req := newTenantUserRequest(tenantID)
+	req.Token = "not-a-token"
+	if _, err := client.ListTenantUsers(testutil.WithBearer(context.Background(), sessionToken), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListTenantUsers code = %v, want invalid_argument", connect.CodeOf(err))
 	}
 
@@ -318,10 +319,10 @@ func TestListTenantUsersRejectsAnotherQueryToken(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			client, mock, sessionToken := newTenantUserClient(t, tenantID, uuid.Must(uuid.NewV7()), boundaryAt)
 
-			req := newTenantUserRequest(tenantID, sessionToken)
-			req.Msg.Query = tt.query
-			req.Msg.Token = tt.token
-			_, err := client.ListTenantUsers(context.Background(), req)
+			req := newTenantUserRequest(tenantID)
+			req.Query = tt.query
+			req.Token = tt.token
+			_, err := client.ListTenantUsers(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
 				t.Fatalf("ListTenantUsers error = %v, want invalid_argument for another filter", err)
 			}

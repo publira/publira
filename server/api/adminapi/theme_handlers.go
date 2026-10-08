@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -40,7 +40,7 @@ const minimumThemeTextContrastRatio = 4.5
 func validateHexColorCode(value string, fieldName string) (string, error) {
 	trimmed := strings.TrimSpace(value)
 	if !hexColorCodePattern.MatchString(trimmed) {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New(fieldName+" must be a hex color code in #RRGGBB format"))
+		return "", connect.NewError(connect.CodeInvalidArgument, fieldName+" must be a hex color code in #RRGGBB format")
 	}
 	return strings.ToLower(trimmed), nil
 }
@@ -242,9 +242,9 @@ func normalizeTenantTheme(theme *publirattypesv1.TenantTheme) (dbmodels.UpsertTe
 
 func (s *adminServer) GetTenantTheme(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantThemeRequest],
-) (*connect.Response[publiraadminv1.GetTenantThemeResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.GetTenantThemeRequest,
+) (*publiraadminv1.GetTenantThemeResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +257,7 @@ func (s *adminServer) GetTenantTheme(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.GetTenantThemeResponse{Theme: theme}), nil
+	return &publiraadminv1.GetTenantThemeResponse{Theme: theme}, nil
 }
 
 // tenantTheme reads the theme with the variants of both branding images. Every
@@ -313,20 +313,20 @@ func themeBrandingRevalidateTags(tenantID string) []string {
 
 func (s *adminServer) UpsertTenantTheme(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpsertTenantThemeRequest],
-) (*connect.Response[publiraadminv1.UpsertTenantThemeResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpsertTenantThemeRequest,
+) (*publiraadminv1.UpsertTenantThemeResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := s.requireTenantAdmin(ctx); err != nil {
 		return nil, err
 	}
-	if req.Msg.Theme == nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("theme is required"))
+	if req.Theme == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "theme is required")
 	}
 
-	params, err := normalizeTenantTheme(req.Msg.Theme)
+	params, err := normalizeTenantTheme(req.Theme)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +346,7 @@ func (s *adminServer) UpsertTenantTheme(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.UpsertTenantThemeResponse{Theme: theme}), nil
+	return &publiraadminv1.UpsertTenantThemeResponse{Theme: theme}, nil
 }
 
 // tenantBrandingImage is the part of a branding image write that differs
@@ -400,12 +400,12 @@ var tenantLogoImage = tenantBrandingImage{
 // previous one from its cache.
 func (s *adminServer) storeTenantBrandingImage(ctx context.Context, tenant dbmodels.Tenant, image tenantBrandingImage, variant imageproc.Variant) (uuid.UUID, error) {
 	if s.storage == nil {
-		return uuid.Nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+		return uuid.Nil, connect.NewError(connect.CodeInternal, "storage provider is not configured")
 	}
 
 	tenantImageID, err := uuid.NewV7()
 	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInternal, err)
+		return uuid.Nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	createdImage, err := s.queriesFor(ctx).CreateTenantImage(ctx, dbmodels.CreateTenantImageParams{
 		ID:       tenantImageID,
@@ -427,7 +427,7 @@ func (s *adminServer) storeTenantBrandingImage(ctx context.Context, tenant dbmod
 
 	variantID, err := uuid.NewV7()
 	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInternal, err)
+		return uuid.Nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 	if _, err := s.queriesFor(ctx).CreateTenantImageVariant(ctx, dbmodels.CreateTenantImageVariantParams{
 		ID:              variantID,
@@ -521,9 +521,9 @@ func (s *adminServer) applyTenantBrandingImage(ctx context.Context, tenant dbmod
 
 func (s *adminServer) UploadTenantIcon(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UploadTenantIconRequest],
-) (*connect.Response[publiraadminv1.UploadTenantIconResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UploadTenantIconRequest,
+) (*publiraadminv1.UploadTenantIconResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -531,7 +531,7 @@ func (s *adminServer) UploadTenantIcon(
 		return nil, err
 	}
 
-	variant, err := imageproc.BuildIcon(req.Msg.IconData, req.Msg.IconContentType)
+	variant, err := imageproc.BuildIcon(req.IconData, req.IconContentType)
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "icon_data")
 	}
@@ -541,14 +541,14 @@ func (s *adminServer) UploadTenantIcon(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.UploadTenantIconResponse{Theme: theme}), nil
+	return &publiraadminv1.UploadTenantIconResponse{Theme: theme}, nil
 }
 
 func (s *adminServer) DeleteTenantIcon(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.DeleteTenantIconRequest],
-) (*connect.Response[publiraadminv1.DeleteTenantIconResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.DeleteTenantIconRequest,
+) (*publiraadminv1.DeleteTenantIconResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -561,14 +561,14 @@ func (s *adminServer) DeleteTenantIcon(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.DeleteTenantIconResponse{Theme: theme}), nil
+	return &publiraadminv1.DeleteTenantIconResponse{Theme: theme}, nil
 }
 
 func (s *adminServer) UploadTenantLogo(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UploadTenantLogoRequest],
-) (*connect.Response[publiraadminv1.UploadTenantLogoResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UploadTenantLogoRequest,
+) (*publiraadminv1.UploadTenantLogoResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -576,7 +576,7 @@ func (s *adminServer) UploadTenantLogo(
 		return nil, err
 	}
 
-	variant, err := imageproc.BuildLogo(req.Msg.LogoData, req.Msg.LogoContentType)
+	variant, err := imageproc.BuildLogo(req.LogoData, req.LogoContentType)
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "logo_data")
 	}
@@ -586,14 +586,14 @@ func (s *adminServer) UploadTenantLogo(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.UploadTenantLogoResponse{Theme: theme}), nil
+	return &publiraadminv1.UploadTenantLogoResponse{Theme: theme}, nil
 }
 
 func (s *adminServer) DeleteTenantLogo(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.DeleteTenantLogoRequest],
-) (*connect.Response[publiraadminv1.DeleteTenantLogoResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.DeleteTenantLogoRequest,
+) (*publiraadminv1.DeleteTenantLogoResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -606,5 +606,5 @@ func (s *adminServer) DeleteTenantLogo(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.DeleteTenantLogoResponse{Theme: theme}), nil
+	return &publiraadminv1.DeleteTenantLogoResponse{Theme: theme}, nil
 }

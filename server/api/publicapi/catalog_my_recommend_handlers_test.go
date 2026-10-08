@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
@@ -18,6 +19,7 @@ import (
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/recommendfeatures"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 type myRecommendedFixture struct {
@@ -26,6 +28,9 @@ type myRecommendedFixture struct {
 	tenantID uuid.UUID
 	userID   uuid.UUID
 	now      time.Time
+	// call is the CallInfo of the fixture's latest RPC, which carries the
+	// response headers.
+	call *connect.CallInfo
 }
 
 func newMyRecommendedFixture(t *testing.T) *myRecommendedFixture {
@@ -33,7 +38,7 @@ func newMyRecommendedFixture(t *testing.T) *myRecommendedFixture {
 
 	testServer, mock := newTestPublicServer(t)
 	fixture := &myRecommendedFixture{
-		client:   publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL),
+		client:   publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))),
 		mock:     mock,
 		tenantID: uuid.Must(uuid.NewV7()),
 		userID:   uuid.Must(uuid.NewV7()),
@@ -44,12 +49,14 @@ func newMyRecommendedFixture(t *testing.T) *myRecommendedFixture {
 	return fixture
 }
 
-func (f *myRecommendedFixture) list(limit int32, token string) (*connect.Response[publirav1.ListMyRecommendedSeriesResponse], error) {
-	return f.client.ListMyRecommendedSeries(context.Background(), newAuthedPublicRequest(&publirav1.ListMyRecommendedSeriesRequest{
+func (f *myRecommendedFixture) list(limit int32, token string) (*publirav1.ListMyRecommendedSeriesResponse, error) {
+	ctx, call := testutil.NewClientContext(testutil.WithBearer(context.Background(), issueTestPublicToken(f.tenantID.String())))
+	f.call = call
+	return f.client.ListMyRecommendedSeries(ctx, &publirav1.ListMyRecommendedSeriesRequest{
 		Limit:  limit,
 		Tenant: &publirattypesv1.TenantContext{TenantId: f.tenantID.String()},
 		Token:  token,
-	}, f.tenantID.String()))
+	})
 }
 
 // expectFeatures stands in for the check that decides which order the reader
@@ -115,19 +122,19 @@ func TestListMyRecommendedSeriesOrdersByTheReadersFeatures(t *testing.T) {
 		t.Fatalf("ListMyRecommendedSeries: %v", err)
 	}
 
-	assertSeriesPublicIDs(t, resp.Msg.Series, "FIRST", "SECOND")
-	if resp.Msg.Source != publirav1.RecommendationSource_RECOMMENDATION_SOURCE_READER_FEATURES {
-		t.Fatalf("source = %v, want READER_FEATURES", resp.Msg.Source)
+	assertSeriesPublicIDs(t, resp.Series, "FIRST", "SECOND")
+	if resp.Source != publirav1.RecommendationSource_RECOMMENDATION_SOURCE_READER_FEATURES {
+		t.Fatalf("source = %v, want READER_FEATURES", resp.Source)
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
 	// The token carries the keys the scan reported for the last row that
 	// stayed on the page, under the order it was built in.
-	if want := readerOrderToken(pagination.Forward, second, fixture.now); resp.Msg.NextToken != want {
-		t.Fatalf("next_token = %q, want %q", resp.Msg.NextToken, want)
+	if want := readerOrderToken(pagination.Forward, second, fixture.now); resp.NextToken != want {
+		t.Fatalf("next_token = %q, want %q", resp.NextToken, want)
 	}
-	if got := resp.Header().Get("Cache-Control"); got != "private, no-store" {
+	if got := fixture.call.ResponseHeader().Get("Cache-Control"); got != "private, no-store" {
 		t.Fatalf("Cache-Control = %q, want private, no-store", got)
 	}
 	assertPublicExpectations(t, fixture.mock)
@@ -159,12 +166,12 @@ func TestListMyRecommendedSeriesReadsTheBackwardDirectionReversed(t *testing.T) 
 	if err != nil {
 		t.Fatalf("ListMyRecommendedSeries: %v", err)
 	}
-	assertSeriesPublicIDs(t, resp.Msg.Series, "BEFORE")
-	if resp.Msg.NextToken == "" {
+	assertSeriesPublicIDs(t, resp.Series, "BEFORE")
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want the way back to the page the client came from")
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan ran out", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan ran out", resp.PreviousToken)
 	}
 	assertPublicExpectations(t, fixture.mock)
 }
@@ -191,8 +198,8 @@ func TestListMyRecommendedSeriesRecoversOnceFromAnEmptyPage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListMyRecommendedSeries: %v", err)
 	}
-	if len(resp.Msg.Series) != 0 {
-		t.Fatalf("series = %d, want none", len(resp.Msg.Series))
+	if len(resp.Series) != 0 {
+		t.Fatalf("series = %d, want none", len(resp.Series))
 	}
 	recovery := pagination.Encode(
 		pagination.Backward,
@@ -202,11 +209,11 @@ func TestListMyRecommendedSeriesRecoversOnceFromAnEmptyPage(t *testing.T) {
 		seriesInclusiveKey,
 	)
 	bindRecommendedOrderTokens(readerRecommendedOrderKey, &recovery)
-	if want := onWeb(recovery); resp.Msg.PreviousToken != want {
-		t.Fatalf("previous_token = %q, want the recovery token back to the boundary row", resp.Msg.PreviousToken)
+	if want := onWeb(recovery); resp.PreviousToken != want {
+		t.Fatalf("previous_token = %q, want the recovery token back to the boundary row", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty", resp.NextToken)
 	}
 	assertPublicExpectations(t, fixture.mock)
 }
@@ -234,19 +241,19 @@ func TestListMyRecommendedSeriesFallsBackToTheTenantOrderWithoutFeatures(t *test
 	if err != nil {
 		t.Fatalf("ListMyRecommendedSeries: %v", err)
 	}
-	assertSeriesPublicIDs(t, resp.Msg.Series, "RANKED")
-	if resp.Msg.Source != publirav1.RecommendationSource_RECOMMENDATION_SOURCE_RANKING {
-		t.Fatalf("source = %v, want RANKING", resp.Msg.Source)
+	assertSeriesPublicIDs(t, resp.Series, "RANKED")
+	if resp.Source != publirav1.RecommendationSource_RECOMMENDATION_SOURCE_RANKING {
+		t.Fatalf("source = %v, want RANKING", resp.Source)
 	}
 	next := encodeRecommendedCursor(pagination.Forward, 1, dbmodels.ListActiveSeriesByIDsRow{
 		ID:          ranked,
 		PublishedAt: sql.NullTime{Time: fixture.now, Valid: true},
 	})
 	bindRecommendedOrderTokens(tenantRecommendedOrderKey, &next)
-	if want := onWeb(next); resp.Msg.NextToken != want {
-		t.Fatalf("next_token = %q, want the tenant-order token %q", resp.Msg.NextToken, want)
+	if want := onWeb(next); resp.NextToken != want {
+		t.Fatalf("next_token = %q, want the tenant-order token %q", resp.NextToken, want)
 	}
-	if got := resp.Header().Get("Cache-Control"); got != "private, no-store" {
+	if got := fixture.call.ResponseHeader().Get("Cache-Control"); got != "private, no-store" {
 		t.Fatalf("Cache-Control = %q, want private, no-store", got)
 	}
 	assertPublicExpectations(t, fixture.mock)
@@ -310,11 +317,11 @@ func TestListMyRecommendedSeriesRequiresASession(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now().UTC())
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 
-	_, err := client.ListMyRecommendedSeries(context.Background(), connect.NewRequest(&publirav1.ListMyRecommendedSeriesRequest{
+	_, err := client.ListMyRecommendedSeries(context.Background(), &publirav1.ListMyRecommendedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("ListMyRecommendedSeries without a bearer error = %v, want unauthenticated", err)
 	}

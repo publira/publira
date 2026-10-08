@@ -88,26 +88,26 @@ func TestDBAdminCommentCarriesTheCreditedCreator(t *testing.T) {
 	// The author's comment is moderated like any other, and the comment the
 	// action answers with still says whose it is.
 	client := env.commentClient()
-	approved, err := client.ApproveComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.ApproveCommentRequest{
+	approved, err := client.ApproveComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.ApproveCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: byCreator.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ApproveComment: %v", err)
 	}
-	if approved.Msg.Comment.Status != commentStatusPublished {
-		t.Fatalf("approved status = %s, want published", approved.Msg.Comment.Status)
+	if approved.Comment.Status != commentStatusPublished {
+		t.Fatalf("approved status = %s, want published", approved.Comment.Status)
 	}
-	assertAdminCommentCreator(t, "approved", approved.Msg.Comment, fixture.creator)
+	assertAdminCommentCreator(t, "approved", approved.Comment, fixture.creator)
 
-	hidden, err := client.HideComment(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.HideCommentRequest{
+	hidden, err := client.HideComment(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.HideCommentRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CommentId: elsewhere.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("HideComment: %v", err)
 	}
-	assertAdminCommentCreator(t, "hidden on an uncredited episode", hidden.Msg.Comment, testutil.Creator{})
+	assertAdminCommentCreator(t, "hidden on an uncredited episode", hidden.Comment, testutil.Creator{})
 }
 
 // A moderator working the report queue is told the reported comment is the
@@ -151,11 +151,11 @@ func TestDBAdminCommentCreatorMarkFollowsTheLink(t *testing.T) {
 	listed := fixture.list(t, &publiraadminv1.ListCommentsRequest{}).Comments
 	assertAdminCommentCreator(t, "while linked", adminCommentByPublicID(t, listed, byCreator.PublicID), fixture.creator)
 
-	if _, err := env.creatorClient().UnlinkCreatorAccount(context.Background(), newAdminDBRequest(fixture.admin, &publiraadminv1.UnlinkCreatorAccountRequest{
+	if _, err := env.creatorClient().UnlinkCreatorAccount(testutil.WithBearer(context.Background(), fixture.admin.token()), &publiraadminv1.UnlinkCreatorAccountRequest{
 		Tenant:    fixture.admin.tenantContext(),
 		CreatorId: fixture.creator.ID.String(),
 		ReaderId:  fixture.creatorAccount.ID.String(),
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("UnlinkCreatorAccount: %v", err)
 	}
 

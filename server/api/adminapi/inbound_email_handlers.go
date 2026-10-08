@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/inboundemail"
 	"github.com/publira/publira/server/internal/inboundprovider"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/secretupdate"
 )
 
@@ -62,9 +63,9 @@ func mapInboundEmailSettingsUpdateError(err error) error {
 		errors.Is(err, inboundemail.ErrSecretRequired),
 		errors.Is(err, inboundemail.ErrFieldsRequired),
 		errors.Is(err, secretupdate.ErrInvalidMode):
-		return connect.NewError(connect.CodeInvalidArgument, err)
+		return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	case errors.Is(err, inboundemail.ErrSecretManagerUnavailable):
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("inbound email secret encryption is not configured"))
+		return connect.NewError(connect.CodeFailedPrecondition, "inbound email secret encryption is not configured")
 	default:
 		return nil
 	}
@@ -72,9 +73,9 @@ func mapInboundEmailSettingsUpdateError(err error) error {
 
 func (s *adminServer) ListInboundEmailProviders(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListInboundEmailProvidersRequest],
-) (*connect.Response[publiraadminv1.ListInboundEmailProvidersResponse], error) {
-	if _, err := s.tenantByContext(ctx, req.Msg.Tenant); err != nil {
+	req *publiraadminv1.ListInboundEmailProvidersRequest,
+) (*publiraadminv1.ListInboundEmailProvidersResponse, error) {
+	if _, err := s.tenantByContext(ctx, req.Tenant); err != nil {
 		return nil, err
 	}
 	if _, err := s.requireTenantAdmin(ctx); err != nil {
@@ -86,16 +87,16 @@ func (s *adminServer) ListInboundEmailProviders(
 	for _, provider := range registered {
 		providers = append(providers, inboundEmailProviderToProto(provider))
 	}
-	return connect.NewResponse(&publiraadminv1.ListInboundEmailProvidersResponse{
+	return &publiraadminv1.ListInboundEmailProvidersResponse{
 		Providers: providers,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) GetTenantInboundEmailSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantInboundEmailSettingsRequest],
-) (*connect.Response[publiraadminv1.GetTenantInboundEmailSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.GetTenantInboundEmailSettingsRequest,
+) (*publiraadminv1.GetTenantInboundEmailSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -107,16 +108,16 @@ func (s *adminServer) GetTenantInboundEmailSettings(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get tenant inbound email settings", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetTenantInboundEmailSettingsResponse{
+	return &publiraadminv1.GetTenantInboundEmailSettingsResponse{
 		Settings: tenantInboundEmailSettingsToProto(cfg),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) UpdateTenantInboundEmailSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantInboundEmailSettingsRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantInboundEmailSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantInboundEmailSettingsRequest,
+) (*publiraadminv1.UpdateTenantInboundEmailSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -125,8 +126,8 @@ func (s *adminServer) UpdateTenantInboundEmailSettings(
 		return nil, err
 	}
 
-	fields := make([]inboundemail.FieldUpdate, 0, len(req.Msg.Fields))
-	for _, field := range req.Msg.Fields {
+	fields := make([]inboundemail.FieldUpdate, 0, len(req.Fields))
+	for _, field := range req.Fields {
 		fields = append(fields, inboundemail.FieldUpdate{
 			Name:  field.Name,
 			Mode:  secretupdate.Mode(field.Mode),
@@ -140,14 +141,14 @@ func (s *adminServer) UpdateTenantInboundEmailSettings(
 		txQueries := s.queriesFor(txCtx)
 		store := inboundemail.New(txQueries, s.encryptor, s.inboundProviders, auditlog.New(txQueries, s.logger), s.logger)
 		saved, err := store.Upsert(txCtx, tenant.ID, inboundemail.UpdateInput{
-			Provider: req.Msg.Provider,
-			Enabled:  req.Msg.Enabled,
-			Domain:   req.Msg.Domain,
+			Provider: req.Provider,
+			Enabled:  req.Enabled,
+			Domain:   req.Domain,
 			Fields:   fields,
 		}, inboundemail.AuditMeta{
 			ActorUserID: sessionCtx.User.ID,
 			ActorRole:   sessionCtx.Role,
-			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(txCtx)),
 			TargetID:    tenant.PublicID,
 		})
 		if err != nil {
@@ -163,7 +164,7 @@ func (s *adminServer) UpdateTenantInboundEmailSettings(
 		return nil, err
 	}
 
-	return connect.NewResponse(&publiraadminv1.UpdateTenantInboundEmailSettingsResponse{
+	return &publiraadminv1.UpdateTenantInboundEmailSettingsResponse{
 		Settings: tenantInboundEmailSettingsToProto(cfg),
-	}), nil
+	}, nil
 }

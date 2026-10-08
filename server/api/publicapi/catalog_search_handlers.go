@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/catalogsearch"
@@ -24,10 +24,10 @@ const maxSearchQueryRunes = 100
 func normalizeSearchQuery(raw string) (string, error) {
 	query := strings.TrimSpace(raw)
 	if query == "" {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("query is required"))
+		return "", connect.NewError(connect.CodeInvalidArgument, "query is required")
 	}
 	if utf8.RuneCountInString(query) > maxSearchQueryRunes {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("query is too long"))
+		return "", connect.NewError(connect.CodeInvalidArgument, "query is too long")
 	}
 	return query, nil
 }
@@ -63,7 +63,7 @@ func (s *apiServer) searchRequest(
 	}
 	cursor, err := decodeSurfaceToken(token, surface)
 	if err != nil {
-		return searchRequest{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return searchRequest{}, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	return searchRequest{
 		tenant: tenant,
@@ -82,11 +82,11 @@ func (s *apiServer) searchRequest(
 func (s *apiServer) searchError(ctx context.Context, msg string, err error, tenantID uuid.UUID) error {
 	switch {
 	case errors.Is(err, catalogsearch.ErrTokenForAnotherQuery):
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another query"))
+		return connect.NewError(connect.CodeInvalidArgument, "token was issued for another query")
 	case errors.Is(err, catalogsearch.ErrTokenForAnotherNarrowing):
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another order or filter"))
+		return connect.NewError(connect.CodeInvalidArgument, "token was issued for another order or filter")
 	case errors.Is(err, catalogsearch.ErrInvalidToken):
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	default:
 		return s.internalDBError(ctx, msg, err, "tenant_id", tenantID.String())
 	}
@@ -94,27 +94,27 @@ func (s *apiServer) searchError(ctx context.Context, msg string, err error, tena
 
 func (s *apiServer) SearchPublishedSeries(
 	ctx context.Context,
-	req *connect.Request[publirav1.SearchPublishedSeriesRequest],
-) (*connect.Response[publirav1.SearchPublishedSeriesResponse], error) {
-	search, err := s.searchRequest(ctx, req.Msg.Tenant, req.Msg.Surface, req.Msg.Query, req.Msg.Limit, req.Msg.Token, defaultSeriesPageSize, maxSeriesPageSize)
+	req *publirav1.SearchPublishedSeriesRequest,
+) (*publirav1.SearchPublishedSeriesResponse, error) {
+	search, err := s.searchRequest(ctx, req.Tenant, req.Surface, req.Query, req.Limit, req.Token, defaultSeriesPageSize, maxSeriesPageSize)
 	if err != nil {
 		return nil, err
 	}
 	seriesReq := catalogsearch.SeriesRequest{Request: search.backend}
 	// Unspecified leaves the order to the backend, which is what a search
 	// answered before it could be sorted; a list's newest-first default is not.
-	if req.Msg.Order != publirav1.SeriesOrder_SERIES_ORDER_UNSPECIFIED {
-		seriesReq.Order, err = resolveSeriesOrder(req.Msg.Order)
+	if req.Order != publirav1.SeriesOrder_SERIES_ORDER_UNSPECIFIED {
+		seriesReq.Order, err = resolveSeriesOrder(req.Order)
 		if err != nil {
 			return nil, err
 		}
 	}
 	seriesReq.Filter, err = s.resolveSeriesFilters(ctx, search.tenant.ID, seriesFilterRequest{
-		hasFreeEpisodes: req.Msg.HasFreeEpisodes,
-		genrePublicID:   req.Msg.GenrePublicId,
-		tagSlug:         req.Msg.TagSlug,
-		status:          req.Msg.Status,
-		weekday:         req.Msg.Weekday,
+		hasFreeEpisodes: req.HasFreeEpisodes,
+		genrePublicID:   req.GenrePublicId,
+		tagSlug:         req.TagSlug,
+		status:          req.Status,
+		weekday:         req.Weekday,
 	})
 	if err != nil {
 		return nil, err
@@ -134,14 +134,14 @@ func (s *apiServer) SearchPublishedSeries(
 
 	res := &publirav1.SearchPublishedSeriesResponse{Series: items, PreviousToken: page.PreviousToken, NextToken: page.NextToken}
 	bindSurfaceTokens(search.backend.Surface, &res.PreviousToken, &res.NextToken)
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func (s *apiServer) SearchPublishedCreators(
 	ctx context.Context,
-	req *connect.Request[publirav1.SearchPublishedCreatorsRequest],
-) (*connect.Response[publirav1.SearchPublishedCreatorsResponse], error) {
-	search, err := s.searchRequest(ctx, req.Msg.Tenant, req.Msg.Surface, req.Msg.Query, req.Msg.Limit, req.Msg.Token, defaultCreatorPageSize, maxCreatorPageSize)
+	req *publirav1.SearchPublishedCreatorsRequest,
+) (*publirav1.SearchPublishedCreatorsResponse, error) {
+	search, err := s.searchRequest(ctx, req.Tenant, req.Surface, req.Query, req.Limit, req.Token, defaultCreatorPageSize, maxCreatorPageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func (s *apiServer) SearchPublishedCreators(
 
 	res := &publirav1.SearchPublishedCreatorsResponse{Creators: items, PreviousToken: page.PreviousToken, NextToken: page.NextToken}
 	bindSurfaceTokens(search.backend.Surface, &res.PreviousToken, &res.NextToken)
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 // publishedLabelDisplaysInOrder reads the labels a search found, in the order
@@ -211,9 +211,9 @@ func (s *apiServer) publishedLabelDisplaysInOrder(
 
 func (s *apiServer) SearchPublishedLabels(
 	ctx context.Context,
-	req *connect.Request[publirav1.SearchPublishedLabelsRequest],
-) (*connect.Response[publirav1.SearchPublishedLabelsResponse], error) {
-	search, err := s.searchRequest(ctx, req.Msg.Tenant, req.Msg.Surface, req.Msg.Query, req.Msg.Limit, req.Msg.Token, defaultLabelPageSize, maxLabelPageSize)
+	req *publirav1.SearchPublishedLabelsRequest,
+) (*publirav1.SearchPublishedLabelsResponse, error) {
+	search, err := s.searchRequest(ctx, req.Tenant, req.Surface, req.Query, req.Limit, req.Token, defaultLabelPageSize, maxLabelPageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -232,5 +232,5 @@ func (s *apiServer) SearchPublishedLabels(
 
 	res := &publirav1.SearchPublishedLabelsResponse{Labels: items, PreviousToken: page.PreviousToken, NextToken: page.NextToken}
 	bindSurfaceTokens(search.backend.Surface, &res.PreviousToken, &res.NextToken)
-	return connect.NewResponse(res), nil
+	return res, nil
 }

@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectproto"
 	"github.com/google/uuid"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
@@ -30,30 +31,27 @@ func TestDBLoginIssuesTokenAcceptedByGetMe(t *testing.T) {
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	client := env.authClient()
 
-	login, err := client.Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+	login, err := client.Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(tenant),
 		Email:    user.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
-	if login.Msg.User.PublicId != user.PublicID {
-		t.Fatalf("login public_id = %q, want %q", login.Msg.User.PublicId, user.PublicID)
+	if login.User.PublicId != user.PublicID {
+		t.Fatalf("login public_id = %q, want %q", login.User.PublicId, user.PublicID)
 	}
-	if login.Msg.AccessToken.GetToken() == "" {
+	if login.AccessToken.GetToken() == "" {
 		t.Fatal("login access_token is empty")
 	}
 
-	me, err := client.GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
-		login.Msg.AccessToken.Token,
-	))
+	me, err := client.GetMe(testutil.WithBearer(context.Background(), login.AccessToken.Token), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)})
 	if err != nil {
 		t.Fatalf("GetMe with the login token: %v", err)
 	}
-	if me.Msg.User.PublicId != user.PublicID {
-		t.Fatalf("GetMe public_id = %q, want %q", me.Msg.User.PublicId, user.PublicID)
+	if me.User.PublicId != user.PublicID {
+		t.Fatalf("GetMe public_id = %q, want %q", me.User.PublicId, user.PublicID)
 	}
 }
 
@@ -73,11 +71,11 @@ func TestDBLoginRejectsWrongPasswordAndUnknownEmail(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := client.Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+			_, err := client.Login(context.Background(), &publirav1.LoginRequest{
 				Tenant:   tenantContext(tenant),
 				Email:    tc.email,
 				Password: tc.password,
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeUnauthenticated {
 				t.Fatalf("Login code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 			}
@@ -92,11 +90,11 @@ func TestDBLoginRejectsUnverifiedAccount(t *testing.T) {
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0002", "pending@tenant-a.example.com", "Pending Member")
 
-	_, err := env.authClient().Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+	_, err := env.authClient().Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(tenant),
 		Email:    pending.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("Login code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -109,11 +107,11 @@ func TestDBLoginRejectsMemberOfAnotherTenant(t *testing.T) {
 	first, second := env.seedTwoTenants(t)
 	theirMember := env.PG.SeedEndUser(t, second.ID, "ENDUSERB0001", "member@tenant-b.example.com", "Tenant B Member")
 
-	_, err := env.authClient().Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+	_, err := env.authClient().Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(first),
 		Email:    theirMember.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login across tenants code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -127,40 +125,34 @@ func TestDBAccessTokenStopsWorkingAfterCredentialsVersionBump(t *testing.T) {
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	client := env.authClient()
 
-	login, err := client.Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+	login, err := client.Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(tenant),
 		Email:    user.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
-	issuedToken := login.Msg.AccessToken.Token
+	issuedToken := login.AccessToken.Token
 
 	env.bumpCredentialsVersion(t, user.ID)
 
-	_, err = client.GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
-		issuedToken,
-	))
+	_, err = client.GetMe(testutil.WithBearer(context.Background(), issuedToken), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMe with the pre-bump token code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
 
 	// The password itself is untouched, so a fresh login must still work and hand
 	// back a token minted against the new version.
-	relogin, err := client.Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+	relogin, err := client.Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(tenant),
 		Email:    user.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login after the bump: %v", err)
 	}
-	if _, err := client.GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
-		relogin.Msg.AccessToken.Token,
-	)); err != nil {
+	if _, err := client.GetMe(testutil.WithBearer(context.Background(), relogin.AccessToken.Token), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)}); err != nil {
 		t.Fatalf("GetMe with the reissued token: %v", err)
 	}
 }
@@ -172,19 +164,13 @@ func TestDBAccessTokenStopsWorkingWhenAccountIsSuspended(t *testing.T) {
 	token := tokenFor(t, tenant, user)
 	client := env.authClient()
 
-	if _, err := client.GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
-		token,
-	)); err != nil {
+	if _, err := client.GetMe(testutil.WithBearer(context.Background(), token), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)}); err != nil {
 		t.Fatalf("GetMe before suspension: %v", err)
 	}
 
 	env.suspendUser(t, user.ID)
 
-	_, err := client.GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
-		token,
-	))
+	_, err := client.GetMe(testutil.WithBearer(context.Background(), token), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMe while suspended code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -201,20 +187,14 @@ func TestDBDeleteMeRejectsWrongPasswordAsInvalidArgument(t *testing.T) {
 	token := tokenFor(t, tenant, user)
 	client := env.authClient()
 
-	_, err := client.DeleteMe(context.Background(), newBearerRequest(
-		&publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: "not-the-password"},
-		token,
-	))
+	_, err := client.DeleteMe(testutil.WithBearer(context.Background(), token), &publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: "not-the-password"})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("DeleteMe with a wrong password code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 	assertPublicBadRequestField(t, err, "password")
 
 	// The session is untouched, so the reader can correct the field and retry.
-	if _, err := client.GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
-		token,
-	)); err != nil {
+	if _, err := client.GetMe(testutil.WithBearer(context.Background(), token), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)}); err != nil {
 		t.Fatalf("GetMe after a rejected DeleteMe: %v", err)
 	}
 }
@@ -236,10 +216,7 @@ func TestDBDeleteMeKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
 	})
 	env.PG.SeedPurchase(t, tenant.ID, buyer.ID, episode.ID, 300)
 
-	if _, err := env.authClient().DeleteMe(context.Background(), newBearerRequest(
-		&publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: testutil.SeededPassword},
-		tokenFor(t, tenant, buyer),
-	)); err != nil {
+	if _, err := env.authClient().DeleteMe(testutil.WithBearer(context.Background(), tokenFor(t, tenant, buyer)), &publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: testutil.SeededPassword}); err != nil {
 		t.Fatalf("DeleteMe for a reader who bought an episode: %v", err)
 	}
 
@@ -258,15 +235,12 @@ func TestDBDeleteMeKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
 
 	// The row is in no library now, so the tenant's remaining reader must not
 	// find it in theirs.
-	library, err := env.purchaseClient().ListMyPurchases(context.Background(), newBearerRequest(
-		&publirav1.ListMyPurchasesRequest{Tenant: tenantContext(tenant)},
-		tokenFor(t, tenant, staying),
-	))
+	library, err := env.purchaseClient().ListMyPurchases(testutil.WithBearer(context.Background(), tokenFor(t, tenant, staying)), &publirav1.ListMyPurchasesRequest{Tenant: tenantContext(tenant)})
 	if err != nil {
 		t.Fatalf("ListMyPurchases: %v", err)
 	}
-	if len(library.Msg.Purchases) != 0 {
-		t.Fatalf("purchases in another reader's library = %d, want 0", len(library.Msg.Purchases))
+	if len(library.Purchases) != 0 {
+		t.Fatalf("purchases in another reader's library = %d, want 0", len(library.Purchases))
 	}
 }
 
@@ -293,10 +267,7 @@ func TestDBDeleteMeDeletesAStaffAccountTheRecordNames(t *testing.T) {
 		t.Fatalf("file an audit entry under the staff account: %v", err)
 	}
 
-	if _, err := env.authClient().DeleteMe(ctx, newBearerRequest(
-		&publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: testutil.SeededPassword},
-		tokenFor(t, tenant, staff),
-	)); err != nil {
+	if _, err := env.authClient().DeleteMe(testutil.WithBearer(ctx, tokenFor(t, tenant, staff)), &publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: testutil.SeededPassword}); err != nil {
 		t.Fatalf("DeleteMe for a staff account the record names: %v", err)
 	}
 
@@ -325,16 +296,13 @@ func TestDBDeleteMeRefusesTheLastTenantAdmin(t *testing.T) {
 	admin := env.PG.SeedTenantAdmin(t, tenant.ID, "STAFFA000001", "admin@tenant-a.example.com", "Admin")
 	env.PG.SeedTenantUser(t, tenant.ID, "STAFFA000002", "editor@tenant-a.example.com", "Editor", auth.RoleTenantEditor)
 
-	_, err := env.authClient().DeleteMe(context.Background(), newBearerRequest(
-		&publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: testutil.SeededPassword},
-		tokenFor(t, tenant, admin),
-	))
+	_, err := env.authClient().DeleteMe(testutil.WithBearer(context.Background(), tokenFor(t, tenant, admin)), &publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: testutil.SeededPassword})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeleteMe for the last tenant_admin code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 	var connectErr *connect.Error
 	if !errors.As(err, &connectErr) || !slices.ContainsFunc(connectErr.Details(), func(detail *connect.ErrorDetail) bool {
-		value, valueErr := detail.Value()
+		value, valueErr := connectproto.UnmarshalErrorDetail(detail)
 		info, ok := value.(*errdetails.ErrorInfo)
 		return valueErr == nil && ok && info.GetReason() == rpcerrors.ReasonLastTenantAdmin
 	}) {
@@ -349,14 +317,14 @@ func TestDBDeleteMeRefusesTheLastTenantAdmin(t *testing.T) {
 
 func assertPublicBadRequestField(t *testing.T, err error, wantField string) {
 	t.Helper()
-	rpcError, ok := err.(*connect.Error)
+	rpcError, ok := errors.AsType[*connect.Error](err)
 	if !ok {
 		t.Fatalf("error type = %T, want *connect.Error", err)
 	}
 	if len(rpcError.Details()) != 1 {
 		t.Fatalf("detail count = %d, want 1", len(rpcError.Details()))
 	}
-	detail, detailErr := rpcError.Details()[0].Value()
+	detail, detailErr := connectproto.UnmarshalErrorDetail(rpcError.Details()[0])
 	if detailErr != nil {
 		t.Fatalf("detail = %v", detailErr)
 	}
@@ -374,10 +342,7 @@ func TestDBGetMeRejectsTokenMintedForAnotherTenant(t *testing.T) {
 	theirMember := env.PG.SeedEndUser(t, second.ID, "ENDUSERB0001", "member@tenant-b.example.com", "Tenant B Member")
 	theirToken := tokenFor(t, second, theirMember)
 
-	_, err := env.authClient().GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(first)},
-		theirToken,
-	))
+	_, err := env.authClient().GetMe(testutil.WithBearer(context.Background(), theirToken), &publirav1.GetMeRequest{Tenant: tenantContext(first)})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMe with another tenant's token code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -426,28 +391,28 @@ func TestDBCreateUserAnswersARegisteredAddressLikeAFreeOne(t *testing.T) {
 	before := readStoredAccount(t, env, member.Email)
 	client := env.authClient()
 
-	free, err := client.CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+	free, err := client.CreateUser(context.Background(), &publirav1.CreateUserRequest{
 		Tenant:   tenantContext(tenant),
 		Name:     "Newcomer",
 		Email:    "newcomer@tenant-a.example.com",
 		Password: "newcomer-password",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateUser with a free address: %v", err)
 	}
 
-	taken, err := client.CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+	taken, err := client.CreateUser(context.Background(), &publirav1.CreateUserRequest{
 		Tenant:   tenantContext(tenant),
 		Name:     "Impersonating Signup",
 		Email:    member.Email,
 		Password: "another-password",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateUser with a registered address: %v", err)
 	}
-	if !taken.Msg.Accepted || taken.Msg.Accepted != free.Msg.Accepted {
+	if !taken.Accepted || taken.Accepted != free.Accepted {
 		t.Fatalf("accepted = %v for the registered address and %v for the free one, want both true",
-			taken.Msg.Accepted, free.Msg.Accepted)
+			taken.Accepted, free.Accepted)
 	}
 	env.processReaderAuthRequests(t)
 
@@ -475,12 +440,12 @@ func TestDBCreateUserMailsTheOwnerOfARegisteredAddress(t *testing.T) {
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 
 	for attempt := range 2 {
-		if _, err := env.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+		if _, err := env.authClient().CreateUser(context.Background(), &publirav1.CreateUserRequest{
 			Tenant:   tenantContext(tenant),
 			Name:     "Impersonating Signup",
 			Email:    member.Email,
 			Password: "another-password",
-		})); err != nil {
+		}); err != nil {
 			t.Fatalf("CreateUser attempt %d: %v", attempt+1, err)
 		}
 	}
@@ -542,14 +507,14 @@ func TestDBRequestEmailVerificationReplacesAnExpiredLink(t *testing.T) {
 	expired := env.seedEmailVerificationToken(t, tenant.ID, pending.ID, "expired-token", time.Now().Add(-time.Hour))
 	before := readStoredAccount(t, env, pending.Email)
 
-	resp, err := env.authClient().RequestEmailVerification(context.Background(), connect.NewRequest(&publirav1.RequestEmailVerificationRequest{
+	resp, err := env.authClient().RequestEmailVerification(context.Background(), &publirav1.RequestEmailVerificationRequest{
 		Tenant: tenantContext(tenant),
 		Email:  pending.Email,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RequestEmailVerification: %v", err)
 	}
-	if !resp.Msg.Requested {
+	if !resp.Requested {
 		t.Fatal("requested = false, want true")
 	}
 	env.processReaderAuthRequests(t)
@@ -587,14 +552,14 @@ func TestDBRequestEmailVerificationAnswersEveryAddressAlike(t *testing.T) {
 	client := env.authClient()
 
 	for _, email := range []string{pending.Email, member.Email, "stranger@tenant-a.example.com"} {
-		resp, err := client.RequestEmailVerification(context.Background(), connect.NewRequest(&publirav1.RequestEmailVerificationRequest{
+		resp, err := client.RequestEmailVerification(context.Background(), &publirav1.RequestEmailVerificationRequest{
 			Tenant: tenantContext(tenant),
 			Email:  email,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("RequestEmailVerification for %s: %v", email, err)
 		}
-		if !resp.Msg.Requested {
+		if !resp.Requested {
 			t.Fatalf("requested = false for %s, want true", email)
 		}
 	}
@@ -621,10 +586,10 @@ func TestDBRequestEmailVerificationIssuesALinkThatActivatesTheAccount(t *testing
 	env.seedEmailVerificationToken(t, tenant.ID, pending.ID, "expired-token", time.Now().Add(-time.Hour))
 	client := env.authClient()
 
-	if _, err := client.RequestEmailVerification(context.Background(), connect.NewRequest(&publirav1.RequestEmailVerificationRequest{
+	if _, err := client.RequestEmailVerification(context.Background(), &publirav1.RequestEmailVerificationRequest{
 		Tenant: tenantContext(tenant),
 		Email:  pending.Email,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RequestEmailVerification: %v", err)
 	}
 	env.processReaderAuthRequests(t)
@@ -639,14 +604,14 @@ func TestDBRequestEmailVerificationIssuesALinkThatActivatesTheAccount(t *testing
 		t.Fatalf("read the queued verification link: %v", err)
 	}
 
-	verified, err := client.VerifyUserEmail(context.Background(), connect.NewRequest(&publirav1.VerifyUserEmailRequest{
+	verified, err := client.VerifyUserEmail(context.Background(), &publirav1.VerifyUserEmailRequest{
 		Tenant: tenantContext(tenant),
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("VerifyUserEmail with the resent link: %v", err)
 	}
-	if !verified.Msg.Verified {
+	if !verified.Verified {
 		t.Fatal("verified = false, want true")
 	}
 	if account := readStoredAccount(t, env, pending.Email); !account.verified {
@@ -654,10 +619,10 @@ func TestDBRequestEmailVerificationIssuesALinkThatActivatesTheAccount(t *testing
 	}
 
 	// The expired link the resend replaced cannot be spent afterwards.
-	if _, err := client.VerifyUserEmail(context.Background(), connect.NewRequest(&publirav1.VerifyUserEmailRequest{
+	if _, err := client.VerifyUserEmail(context.Background(), &publirav1.VerifyUserEmailRequest{
 		Tenant: tenantContext(tenant),
 		Token:  "expired-token",
-	})); connect.CodeOf(err) != connect.CodeNotFound {
+	}); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("VerifyUserEmail with the replaced link = %v, want not_found", err)
 	}
 }
@@ -674,15 +639,12 @@ func TestDBRequestEmailChangeKeepsOneRequestUnderConcurrentRequests(t *testing.T
 
 	for range testutil.ConcurrentBursts {
 		testutil.RunConcurrently(t, testutil.ConcurrentRequests, func() error {
-			_, err := client.RequestEmailChange(context.Background(), newBearerRequest(
-				&publirav1.RequestEmailChangeRequest{
-					Tenant:          tenantContext(tenant),
-					CurrentEmail:    member.Email,
-					NewEmail:        "moved@tenant-a.example.com",
-					CurrentPassword: testutil.SeededPassword,
-				},
-				token,
-			))
+			_, err := client.RequestEmailChange(testutil.WithBearer(context.Background(), token), &publirav1.RequestEmailChangeRequest{
+				Tenant:          tenantContext(tenant),
+				CurrentEmail:    member.Email,
+				NewEmail:        "moved@tenant-a.example.com",
+				CurrentPassword: testutil.SeededPassword,
+			})
 			return err
 		})
 		// Every burst is checked on its own: the next burst would replace the
@@ -730,15 +692,12 @@ func TestDBRequestEmailChangeEndsWhenThePasswordChangesWhileItWaits(t *testing.T
 
 	errs := make(chan error, 1)
 	go func() {
-		_, err := env.authClient().RequestEmailChange(context.Background(), newBearerRequest(
-			&publirav1.RequestEmailChangeRequest{
-				Tenant:          tenantContext(tenant),
-				CurrentEmail:    member.Email,
-				NewEmail:        "moved@tenant-a.example.com",
-				CurrentPassword: testutil.SeededPassword,
-			},
-			token,
-		))
+		_, err := env.authClient().RequestEmailChange(testutil.WithBearer(context.Background(), token), &publirav1.RequestEmailChangeRequest{
+			Tenant:          tenantContext(tenant),
+			CurrentEmail:    member.Email,
+			NewEmail:        "moved@tenant-a.example.com",
+			CurrentPassword: testutil.SeededPassword,
+		})
 		errs <- err
 	}()
 	testutil.WaitForBlockedBackend(t, env.PG.DB)
@@ -782,14 +741,11 @@ func TestDBChangePasswordRejectsAWrongCurrentPassword(t *testing.T) {
 	token := tokenFor(t, tenant, user)
 	client := env.authClient()
 
-	_, err := client.ChangePassword(context.Background(), newBearerRequest(
-		&publirav1.ChangePasswordRequest{
-			Tenant:          tenantContext(tenant),
-			CurrentPassword: "not-the-password",
-			NewPassword:     "a-brand-new-password",
-		},
-		token,
-	))
+	_, err := client.ChangePassword(testutil.WithBearer(context.Background(), token), &publirav1.ChangePasswordRequest{
+		Tenant:          tenantContext(tenant),
+		CurrentPassword: "not-the-password",
+		NewPassword:     "a-brand-new-password",
+	})
 	// Invalid_argument, not unauthenticated: a typo in the confirmation field
 	// must not read as "your session ended" and log the reader out.
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -811,10 +767,7 @@ func TestDBChangePasswordRejectsAWrongCurrentPassword(t *testing.T) {
 	}
 
 	// The session is untouched, so the reader can correct the field and retry.
-	if _, err := client.GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
-		token,
-	)); err != nil {
+	if _, err := client.GetMe(testutil.WithBearer(context.Background(), token), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)}); err != nil {
 		t.Fatalf("GetMe after a rejected ChangePassword: %v", err)
 	}
 }
@@ -828,14 +781,11 @@ func TestDBChangePasswordRejectsTheCurrentPasswordAsTheNewOne(t *testing.T) {
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	before := readStoredAccount(t, env, user.Email)
 
-	_, err := env.authClient().ChangePassword(context.Background(), newBearerRequest(
-		&publirav1.ChangePasswordRequest{
-			Tenant:          tenantContext(tenant),
-			CurrentPassword: testutil.SeededPassword,
-			NewPassword:     testutil.SeededPassword,
-		},
-		tokenFor(t, tenant, user),
-	))
+	_, err := env.authClient().ChangePassword(testutil.WithBearer(context.Background(), tokenFor(t, tenant, user)), &publirav1.ChangePasswordRequest{
+		Tenant:          tenantContext(tenant),
+		CurrentPassword: testutil.SeededPassword,
+		NewPassword:     testutil.SeededPassword,
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ChangePassword with an unchanged password code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
@@ -858,50 +808,41 @@ func TestDBChangePasswordKeepsTheCallerSignedInAndEndsTheOtherSessions(t *testin
 	client := env.authClient()
 
 	const newPassword = "a-brand-new-password"
-	changed, err := client.ChangePassword(context.Background(), newBearerRequest(
-		&publirav1.ChangePasswordRequest{
-			Tenant:          tenantContext(tenant),
-			CurrentPassword: testutil.SeededPassword,
-			NewPassword:     newPassword,
-		},
-		callingToken,
-	))
+	changed, err := client.ChangePassword(testutil.WithBearer(context.Background(), callingToken), &publirav1.ChangePasswordRequest{
+		Tenant:          tenantContext(tenant),
+		CurrentPassword: testutil.SeededPassword,
+		NewPassword:     newPassword,
+	})
 	if err != nil {
 		t.Fatalf("ChangePassword: %v", err)
 	}
-	if changed.Msg.AccessToken.GetToken() == "" {
+	if changed.AccessToken.GetToken() == "" {
 		t.Fatal("ChangePassword returned no replacement access token")
 	}
 
-	if _, err := client.GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
-		changed.Msg.AccessToken.Token,
-	)); err != nil {
+	if _, err := client.GetMe(testutil.WithBearer(context.Background(), changed.AccessToken.Token), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)}); err != nil {
 		t.Fatalf("GetMe with the replacement token: %v", err)
 	}
 	for name, stale := range map[string]string{"calling": callingToken, "other_device": otherDeviceToken} {
-		_, err := client.GetMe(context.Background(), newBearerRequest(
-			&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
-			stale,
-		))
+		_, err := client.GetMe(testutil.WithBearer(context.Background(), stale), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)})
 		if connect.CodeOf(err) != connect.CodeUnauthenticated {
 			t.Fatalf("GetMe with the %s token minted before the change code = %v, want unauthenticated (err=%v)", name, connect.CodeOf(err), err)
 		}
 	}
 
 	// The new password is what signs in now, and the old one no longer does.
-	if _, err := client.Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+	if _, err := client.Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(tenant),
 		Email:    user.Email,
 		Password: newPassword,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("Login with the new password: %v", err)
 	}
-	if _, err := client.Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+	if _, err := client.Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(tenant),
 		Email:    user.Email,
 		Password: testutil.SeededPassword,
-	})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+	}); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login with the old password code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
 }
@@ -944,17 +885,14 @@ func TestDBChangePasswordLetsOnlyOneOfTwoConcurrentChangesThrough(t *testing.T) 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			resp, err := client.ChangePassword(context.Background(), newBearerRequest(
-				&publirav1.ChangePasswordRequest{
-					Tenant:          tenantContext(tenant),
-					CurrentPassword: testutil.SeededPassword,
-					NewPassword:     candidate,
-				},
-				token,
-			))
+			resp, err := client.ChangePassword(testutil.WithBearer(context.Background(), token), &publirav1.ChangePasswordRequest{
+				Tenant:          tenantContext(tenant),
+				CurrentPassword: testutil.SeededPassword,
+				NewPassword:     candidate,
+			})
 			token := ""
 			if err == nil {
-				token = resp.Msg.AccessToken.GetToken()
+				token = resp.AccessToken.GetToken()
 			}
 			results <- struct {
 				password string
@@ -995,17 +933,14 @@ func TestDBChangePasswordLetsOnlyOneOfTwoConcurrentChangesThrough(t *testing.T) 
 
 	// The stored password is the accepted one, and the token that change handed
 	// back is still the caller's session.
-	if _, err := client.Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+	if _, err := client.Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(tenant),
 		Email:    user.Email,
 		Password: acceptedPassword,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("Login with the accepted password %q: %v", acceptedPassword, err)
 	}
-	if _, err := client.GetMe(context.Background(), newBearerRequest(
-		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
-		acceptedToken,
-	)); err != nil {
+	if _, err := client.GetMe(testutil.WithBearer(context.Background(), acceptedToken), &publirav1.GetMeRequest{Tenant: tenantContext(tenant)}); err != nil {
 		t.Fatalf("GetMe with the replacement token of the accepted change: %v", err)
 	}
 
@@ -1031,18 +966,15 @@ func TestDBChangePasswordQueuesOneNoticePerChange(t *testing.T) {
 
 	current := testutil.SeededPassword
 	for attempt, next := range []string{"first-new-password", "second-new-password"} {
-		changed, err := client.ChangePassword(context.Background(), newBearerRequest(
-			&publirav1.ChangePasswordRequest{
-				Tenant:          tenantContext(tenant),
-				CurrentPassword: current,
-				NewPassword:     next,
-			},
-			tokenFor(t, tenant, user),
-		))
+		changed, err := client.ChangePassword(testutil.WithBearer(context.Background(), tokenFor(t, tenant, user)), &publirav1.ChangePasswordRequest{
+			Tenant:          tenantContext(tenant),
+			CurrentPassword: current,
+			NewPassword:     next,
+		})
 		if err != nil {
 			t.Fatalf("ChangePassword %d: %v", attempt+1, err)
 		}
-		if changed.Msg.AccessToken.GetToken() == "" {
+		if changed.AccessToken.GetToken() == "" {
 			t.Fatalf("ChangePassword %d returned no replacement access token", attempt+1)
 		}
 		current = next

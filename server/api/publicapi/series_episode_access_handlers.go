@@ -6,29 +6,30 @@ import (
 	"errors"
 	"log/slog"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 // GetSeriesEpisodeAccess answers, for every published episode of one series,
 // the access state GetEpisodeDetail answers for that episode alone.
 func (s *apiServer) GetSeriesEpisodeAccess(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetSeriesEpisodeAccessRequest],
-) (*connect.Response[publirav1.GetSeriesEpisodeAccessResponse], error) {
-	seriesID, err := requestRecordID("series_id", req.Msg.SeriesId)
+	req *publirav1.GetSeriesEpisodeAccessRequest,
+) (*publirav1.GetSeriesEpisodeAccessResponse, error) {
+	seriesID, err := requestRecordID("series_id", req.SeriesId)
 	if err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +40,7 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "series not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get series for episode access", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
@@ -52,8 +53,8 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 	// guest's answer would offer a signed-in reader what they already hold.
 	var reader dbmodels.User
 	userID := uuid.NullUUID{}
-	if _, hasBearer := auth.BearerTokenFromHeader(req.Header()); hasBearer {
-		session, authErr := s.authenticateAccessToken(ctx, req.Msg.Tenant, req.Header())
+	if _, hasBearer := auth.BearerTokenFromHeader(rpcmiddleware.RequestHeader(ctx)); hasBearer {
+		session, authErr := s.authenticateAccessToken(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 		if authErr != nil {
 			if connect.CodeOf(authErr) != connect.CodeUnauthenticated {
 				return nil, authErr
@@ -93,7 +94,7 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 			Access:          episodeAccessFor(clearsAgeGate, row.FreeToEveryone, row.HasGrant),
 		})
 	}
-	return noStorePrivateResponse(res), nil
+	return noStorePrivateResponse(ctx, res), nil
 }
 
 // episodeAccessFor is the order GetEpisodeDetail decides a body's access in:

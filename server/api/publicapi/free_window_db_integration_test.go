@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -61,15 +60,15 @@ func TestDBGetEpisodeDetailOpensAPaidEpisodeInsideItsFreeWindow(t *testing.T) {
 		return &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID}
 	}
 
-	before, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(request()))
+	before, err := client.GetEpisodeDetail(context.Background(), request())
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail before the window: %v", err)
 	}
-	if before.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
-		t.Fatalf("access without a window = %v, want locked", before.Msg.Access)
+	if before.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+		t.Fatalf("access without a window = %v, want locked", before.Access)
 	}
-	if before.Msg.FreeUntil != "" {
-		t.Fatalf("free_until without a window = %q, want empty", before.Msg.FreeUntil)
+	if before.FreeUntil != "" {
+		t.Fatalf("free_until without a window = %q, want empty", before.FreeUntil)
 	}
 
 	// "Free until the end of today", as the tenant's own calendar states it.
@@ -77,18 +76,18 @@ func TestDBGetEpisodeDetailOpensAPaidEpisodeInsideItsFreeWindow(t *testing.T) {
 	endsAt := tenantMidnight(t, tenant, now, 1)
 	env.PG.SeedEpisodeFreeWindow(t, tenant.ID, episode.ID, tenantMidnight(t, tenant, now, 0), endsAt)
 
-	inside, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(request()))
+	inside, err := client.GetEpisodeDetail(context.Background(), request())
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail inside the window: %v", err)
 	}
-	if inside.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
-		t.Fatalf("access inside the window = %v, want free", inside.Msg.Access)
+	if inside.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
+		t.Fatalf("access inside the window = %v, want free", inside.Access)
 	}
-	if len(inside.Msg.Images) != 1 {
-		t.Fatalf("images inside the window = %d, want the page the window opens", len(inside.Msg.Images))
+	if len(inside.Images) != 1 {
+		t.Fatalf("images inside the window = %d, want the page the window opens", len(inside.Images))
 	}
-	if want := endsAt.UTC().Format(time.RFC3339); inside.Msg.FreeUntil != want {
-		t.Fatalf("free_until = %q, want the window end %q", inside.Msg.FreeUntil, want)
+	if want := endsAt.UTC().Format(time.RFC3339); inside.FreeUntil != want {
+		t.Fatalf("free_until = %q, want the window end %q", inside.FreeUntil, want)
 	}
 }
 
@@ -121,21 +120,21 @@ func TestDBGetEpisodeDetailLocksAPaidEpisodeOutsideItsFreeWindow(t *testing.T) {
 
 	client := env.catalogClient()
 	for _, publicID := range []string{over.PublicID, upcoming.PublicID} {
-		resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+		resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 			Tenant:   tenantContext(tenant),
 			PublicId: publicID,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("GetEpisodeDetail %s: %v", publicID, err)
 		}
-		if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
-			t.Errorf("%s access = %v, want locked", publicID, resp.Msg.Access)
+		if resp.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+			t.Errorf("%s access = %v, want locked", publicID, resp.Access)
 		}
-		if len(resp.Msg.Images) != 0 {
-			t.Errorf("%s images = %d, want none", publicID, len(resp.Msg.Images))
+		if len(resp.Images) != 0 {
+			t.Errorf("%s images = %d, want none", publicID, len(resp.Images))
 		}
-		if resp.Msg.FreeUntil != "" {
-			t.Errorf("%s free_until = %q, want empty", publicID, resp.Msg.FreeUntil)
+		if resp.FreeUntil != "" {
+			t.Errorf("%s free_until = %q, want empty", publicID, resp.FreeUntil)
 		}
 	}
 }
@@ -154,18 +153,18 @@ func TestDBGetEpisodeDetailLeavesFreeUntilEmptyForAFreeEpisode(t *testing.T) {
 	})
 	env.PG.SeedEpisodeImage(t, tenant.ID, episode.ID, 1)
 
-	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: episode.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
-		t.Fatalf("access = %v, want free", resp.Msg.Access)
+	if resp.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
+		t.Fatalf("access = %v, want free", resp.Access)
 	}
-	if resp.Msg.FreeUntil != "" {
-		t.Fatalf("free_until = %q, want empty", resp.Msg.FreeUntil)
+	if resp.FreeUntil != "" {
+		t.Fatalf("free_until = %q, want empty", resp.FreeUntil)
 	}
 }
 
@@ -174,15 +173,15 @@ func TestDBGetEpisodeDetailLeavesFreeUntilEmptyForAFreeEpisode(t *testing.T) {
 func seriesDetailFreeUntil(t *testing.T, env *publicDBEnv, tenant testutil.Tenant, seriesPublicID string) map[string]string {
 	t.Helper()
 
-	resp, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+	resp, err := env.catalogClient().GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: seriesPublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeriesDetail: %v", err)
 	}
-	freeUntil := make(map[string]string, len(resp.Msg.Episodes))
-	for _, episode := range resp.Msg.Episodes {
+	freeUntil := make(map[string]string, len(resp.Episodes))
+	for _, episode := range resp.Episodes {
 		freeUntil[episode.PublicId] = episode.FreeUntil
 	}
 	return freeUntil
@@ -238,31 +237,31 @@ func TestDBGetSeriesDetailCarriesTheEndOfEachEpisodesOpenFreeWindow(t *testing.T
 
 	// The row and the episode it links to answer the same instant, so a row
 	// counting down does not disagree with the page it opens.
-	detail, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	detail, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: open.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	if detail.Msg.Episode.FreeUntil != got[open.PublicID] || detail.Msg.FreeUntil != got[open.PublicID] {
+	if detail.Episode.FreeUntil != got[open.PublicID] || detail.FreeUntil != got[open.PublicID] {
 		t.Fatalf("episode detail free_until = (episode %q, response %q), want the row's %q",
-			detail.Msg.Episode.FreeUntil, detail.Msg.FreeUntil, got[open.PublicID])
+			detail.Episode.FreeUntil, detail.FreeUntil, got[open.PublicID])
 	}
 
-	freeDetail, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	freeDetail, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: freeInWindow.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail %s: %v", freeInWindow.PublicID, err)
 	}
-	if freeDetail.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
-		t.Fatalf("%s access = %v, want free", freeInWindow.PublicID, freeDetail.Msg.Access)
+	if freeDetail.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE {
+		t.Fatalf("%s access = %v, want free", freeInWindow.PublicID, freeDetail.Access)
 	}
-	if freeDetail.Msg.Episode.FreeUntil != "" || freeDetail.Msg.FreeUntil != "" {
+	if freeDetail.Episode.FreeUntil != "" || freeDetail.FreeUntil != "" {
 		t.Fatalf("%s free_until = (episode %q, response %q), want both empty",
-			freeInWindow.PublicID, freeDetail.Msg.Episode.FreeUntil, freeDetail.Msg.FreeUntil)
+			freeInWindow.PublicID, freeDetail.Episode.FreeUntil, freeDetail.FreeUntil)
 	}
 }
 
@@ -356,14 +355,14 @@ func TestDBListedFreeEpisodesFollowAWindowAcrossBothBoundaries(t *testing.T) {
 	}
 	listedAsFree := func() bool {
 		t.Helper()
-		resp, err := env.catalogClient().ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		resp, err := env.catalogClient().ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
 			Tenant:          tenantContext(tenant),
 			HasFreeEpisodes: true,
-		}))
+		})
 		if err != nil {
 			t.Fatalf("ListPublishedSeries with the filter: %v", err)
 		}
-		return slices.Contains(seriesPublicIDs(resp.Msg.Series), series.PublicID)
+		return slices.Contains(seriesPublicIDs(resp.Series), series.PublicID)
 	}
 	step := func(name string, wantCount int32, wantDrop bool) {
 		t.Helper()
@@ -420,29 +419,29 @@ func TestDBReadingProgressCarriesTheEndOfAnOpenFreeWindow(t *testing.T) {
 
 	client := env.episodeReadClient()
 	token := tokenFor(t, tenant, member)
-	if _, err := client.SaveReadingPosition(context.Background(), saveReadingPositionRequest(tenant, episode.ID.String(), 3, token)); err != nil {
+	if _, err := client.SaveReadingPosition(testutil.WithBearer(context.Background(), token), saveReadingPositionRequest(tenant, episode.ID.String(), 3)); err != nil {
 		t.Fatalf("SaveReadingPosition: %v", err)
 	}
 
-	progress, err := client.GetMySeriesProgress(context.Background(), seriesProgressRequest(tenant, series.ID.String(), token))
+	progress, err := client.GetMySeriesProgress(testutil.WithBearer(context.Background(), token), seriesProgressRequest(tenant, series.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress: %v", err)
 	}
-	if progress.Msg.Progress == nil {
+	if progress.Progress == nil {
 		t.Fatal("progress = none, want the episode the reader is in")
 	}
-	if got := progress.Msg.Progress.Episode.FreeUntil; got != want {
+	if got := progress.Progress.Episode.FreeUntil; got != want {
 		t.Errorf("GetMySeriesProgress free_until = %q, want %q", got, want)
 	}
 
-	recent, err := client.ListMyRecentSeries(context.Background(), recentSeriesRequest(tenant, token, 10, ""))
+	recent, err := client.ListMyRecentSeries(testutil.WithBearer(context.Background(), token), recentSeriesRequest(tenant, 10, ""))
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries: %v", err)
 	}
-	if len(recent.Msg.Series) != 1 {
-		t.Fatalf("recent series = %v, want the one being read", recentSeriesPublicIDs(recent.Msg.Series))
+	if len(recent.Series) != 1 {
+		t.Fatalf("recent series = %v, want the one being read", recentSeriesPublicIDs(recent.Series))
 	}
-	if got := recent.Msg.Series[0].Episode.FreeUntil; got != want {
+	if got := recent.Series[0].Episode.FreeUntil; got != want {
 		t.Errorf("ListMyRecentSeries free_until = %q, want %q", got, want)
 	}
 }

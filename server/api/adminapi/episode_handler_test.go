@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -19,16 +18,19 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/storage"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestCreateEpisodeSuccess(t *testing.T) {
@@ -58,8 +60,8 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateEpisodeRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateEpisodeRequest{
 		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:           testSeriesID.String(),
 		Title:              "Episode 1",
@@ -67,27 +69,26 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 		Price:              100,
 		ReadingPeriodHours: 24,
 		ScheduledAt:        scheduledAtJST.Format(time.RFC3339),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.CreateEpisode(context.Background(), req)
+	resp, err := client.CreateEpisode(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
-	if resp.Msg.Episode == nil {
+	if resp.Episode == nil {
 		t.Fatalf("episode is nil")
 	}
 	// The created episode states nothing of its own and carries what it
 	// inherits, so a form shows the purchase action without reading it again.
-	if resp.Msg.PurchaseAvailability != publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED ||
-		resp.Msg.Episode.PurchaseAvailability != publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP {
-		t.Fatalf("purchase availability override, resolved = %s, %s, want UNSPECIFIED, APP", resp.Msg.PurchaseAvailability, resp.Msg.Episode.PurchaseAvailability)
+	if resp.PurchaseAvailability != publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_UNSPECIFIED ||
+		resp.Episode.PurchaseAvailability != publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP {
+		t.Fatalf("purchase availability override, resolved = %s, %s, want UNSPECIFIED, APP", resp.PurchaseAvailability, resp.Episode.PurchaseAvailability)
 	}
-	if resp.Msg.Episode.Status != "scheduled" {
-		t.Fatalf("episode status = %q, want scheduled", resp.Msg.Episode.Status)
+	if resp.Episode.Status != "scheduled" {
+		t.Fatalf("episode status = %q, want scheduled", resp.Episode.Status)
 	}
-	if resp.Msg.Episode.ScheduledAt != scheduledAtUTC.Format(time.RFC3339) {
-		t.Fatalf("episode scheduled_at = %q, want %q", resp.Msg.Episode.ScheduledAt, scheduledAtUTC.Format(time.RFC3339))
+	if resp.Episode.ScheduledAt != scheduledAtUTC.Format(time.RFC3339) {
+		t.Fatalf("episode scheduled_at = %q, want %q", resp.Episode.ScheduledAt, scheduledAtUTC.Format(time.RFC3339))
 	}
 	assertExpectations(t, mock)
 }
@@ -144,28 +145,27 @@ func TestCreateEpisodePublishesAtOnceWhenScheduledAtHasPassed(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateEpisodeRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateEpisodeRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:    testSeriesID.String(),
 		Title:       "Episode 1",
 		OrderIndex:  1,
 		ScheduledAt: scheduledAt.Format(time.RFC3339),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.CreateEpisode(context.Background(), req)
+	resp, err := client.CreateEpisode(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
-	if resp.Msg.Episode.Status != "published" {
-		t.Fatalf("episode status = %q, want published", resp.Msg.Episode.Status)
+	if resp.Episode.Status != "published" {
+		t.Fatalf("episode status = %q, want published", resp.Episode.Status)
 	}
-	if resp.Msg.Episode.PublishedAt == "" {
+	if resp.Episode.PublishedAt == "" {
 		t.Fatal("episode published_at is empty")
 	}
-	if resp.Msg.Episode.ScheduledAt != scheduledAt.Format(time.RFC3339) {
-		t.Fatalf("episode scheduled_at = %q, want %q", resp.Msg.Episode.ScheduledAt, scheduledAt.Format(time.RFC3339))
+	if resp.Episode.ScheduledAt != scheduledAt.Format(time.RFC3339) {
+		t.Fatalf("episode scheduled_at = %q, want %q", resp.Episode.ScheduledAt, scheduledAt.Format(time.RFC3339))
 	}
 	// Publishing the episode changes the series lists as well as its series'
 	// page: their order by latest update, and their free-episode counts.
@@ -203,20 +203,19 @@ func TestCreateEpisodeAppendsWhenOrderIndexUnset(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateEpisodeRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateEpisodeRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId: testSeriesID.String(),
 		Title:    "Episode 31",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.CreateEpisode(context.Background(), req)
+	resp, err := client.CreateEpisode(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("CreateEpisode: %v", err)
 	}
-	if resp.Msg.Episode.OrderIndex != 31 {
-		t.Fatalf("order_index = %d, want max_order_index + 1", resp.Msg.Episode.OrderIndex)
+	if resp.Episode.OrderIndex != 31 {
+		t.Fatalf("order_index = %d, want max_order_index + 1", resp.Episode.OrderIndex)
 	}
 	assertExpectations(t, mock)
 }
@@ -241,16 +240,15 @@ func TestCreateEpisodeRollsBackWhenListingInsertFails(t *testing.T) {
 		WillReturnError(errors.New("listing insert failed"))
 	mock.ExpectRollback()
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateEpisodeRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.CreateEpisodeRequest{
 		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:   testSeriesID.String(),
 		Title:      "Episode 1",
 		OrderIndex: 1,
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.CreateEpisode(context.Background(), req)
+	_, err := client.CreateEpisode(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("CreateEpisode code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInternal, err)
 	}
@@ -353,11 +351,10 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 				tc.setup(mock, tenantID, now)
 			}
 
-			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-			req := connect.NewRequest(tc.request)
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			req := tc.request
 
-			_, err := client.CreateEpisode(context.Background(), req)
+			_, err := client.CreateEpisode(testutil.WithBearer(context.Background(), sessionToken), req)
 			if connect.CodeOf(err) != tc.wantCode {
 				t.Fatalf("CreateEpisode code = %v, want %v", connect.CodeOf(err), tc.wantCode)
 			}
@@ -394,20 +391,19 @@ func TestReorderEpisodesSuccess(t *testing.T) {
 	))
 	mock.ExpectCommit()
 
-	req := connect.NewRequest(&publiraadminv1.ReorderEpisodesRequest{
+	req := &publiraadminv1.ReorderEpisodesRequest{
 		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:           testSeriesID.String(),
 		EpisodeIds:         []string{episodeTestID(3).String(), episodeTestID(2).String(), episodeTestID(1).String()},
 		ExpectedEpisodeIds: []string{episodeTestID(1).String(), episodeTestID(2).String(), episodeTestID(3).String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.ReorderEpisodes(context.Background(), req)
+	resp, err := client.ReorderEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ReorderEpisodes: %v", err)
 	}
-	if !slices.Equal(episodePublicIDs(resp.Msg.Episodes), []string{"EP003", "EP002", "EP001"}) {
-		t.Fatalf("episodes = %v, want reversed order", episodePublicIDs(resp.Msg.Episodes))
+	if !slices.Equal(episodePublicIDs(resp.Episodes), []string{"EP003", "EP002", "EP001"}) {
+		t.Fatalf("episodes = %v, want reversed order", episodePublicIDs(resp.Episodes))
 	}
 	assertExpectations(t, mock)
 }
@@ -432,15 +428,14 @@ func TestReorderEpisodesRejectsStaleExpectedOrder(t *testing.T) {
 	))
 	mock.ExpectRollback()
 
-	req := connect.NewRequest(&publiraadminv1.ReorderEpisodesRequest{
+	req := &publiraadminv1.ReorderEpisodesRequest{
 		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:           testSeriesID.String(),
 		EpisodeIds:         []string{episodeTestID(3).String(), episodeTestID(2).String(), episodeTestID(1).String()},
 		ExpectedEpisodeIds: []string{episodeTestID(1).String(), episodeTestID(2).String(), episodeTestID(3).String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.ReorderEpisodes(context.Background(), req)
+	_, err := client.ReorderEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ReorderEpisodes code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeFailedPrecondition, err)
 	}
@@ -465,15 +460,14 @@ func TestReorderEpisodesRollsBackWhenUpdateFails(t *testing.T) {
 		WillReturnError(errors.New("order update failed"))
 	mock.ExpectRollback()
 
-	req := connect.NewRequest(&publiraadminv1.ReorderEpisodesRequest{
+	req := &publiraadminv1.ReorderEpisodesRequest{
 		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:           testSeriesID.String(),
 		EpisodeIds:         []string{episodeTestID(2).String(), episodeTestID(1).String()},
 		ExpectedEpisodeIds: []string{episodeTestID(1).String(), episodeTestID(2).String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.ReorderEpisodes(context.Background(), req)
+	_, err := client.ReorderEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ReorderEpisodes code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInternal, err)
 	}
@@ -548,9 +542,8 @@ func TestReorderEpisodesValidationAndBoundary(t *testing.T) {
 				tc.setup(mock, tenantID)
 			}
 
-			req := connect.NewRequest(tc.request)
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
-			_, err := client.ReorderEpisodes(context.Background(), req)
+			req := tc.request
+			_, err := client.ReorderEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 			if connect.CodeOf(err) != tc.wantCode {
 				t.Fatalf("ReorderEpisodes code = %v, want %v (err=%v)", connect.CodeOf(err), tc.wantCode, err)
 			}
@@ -601,32 +594,31 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 			AddRow(uuid.Must(uuid.NewV7()), image2ID, "w1", "s3", "obj-2", "image/jpeg", int64(163), int32(1), int32(1), now, tenantID))
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadEpisodeImagesRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: testEpisodeID.String(),
 		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "001.png", ContentType: "image/png", Data: oneByOnePNG, DisplayOrder: 0},
 			{Filename: "002.jpg", ContentType: "image/jpeg", Data: oneByOneJPEG, DisplayOrder: 1},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UploadEpisodeImages(context.Background(), req)
+	resp, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UploadEpisodeImages: %v", err)
 	}
-	if len(resp.Msg.Images) != 2 {
-		t.Fatalf("images count = %d, want 2", len(resp.Msg.Images))
+	if len(resp.Images) != 2 {
+		t.Fatalf("images count = %d, want 2", len(resp.Images))
 	}
-	if resp.Msg.Images[0].Width != 1 || resp.Msg.Images[0].Height != 1 {
-		t.Fatalf("first image size = %dx%d, want 1x1", resp.Msg.Images[0].Width, resp.Msg.Images[0].Height)
+	if resp.Images[0].Width != 1 || resp.Images[0].Height != 1 {
+		t.Fatalf("first image size = %dx%d, want 1x1", resp.Images[0].Width, resp.Images[0].Height)
 	}
-	if resp.Msg.Images[1].Width != 1 || resp.Msg.Images[1].Height != 1 {
-		t.Fatalf("second image size = %dx%d, want 1x1", resp.Msg.Images[1].Width, resp.Msg.Images[1].Height)
+	if resp.Images[1].Width != 1 || resp.Images[1].Height != 1 {
+		t.Fatalf("second image size = %dx%d, want 1x1", resp.Images[1].Width, resp.Images[1].Height)
 	}
-	assertAdminMediaToken(t, resp.Msg.Images[0].ImageUrl, tenantID, episodeID, 1)
-	assertAdminMediaToken(t, resp.Msg.Images[1].ImageUrl, tenantID, episodeID, 1)
+	assertAdminMediaToken(t, resp.Images[0].ImageUrl, tenantID, episodeID, 1)
+	assertAdminMediaToken(t, resp.Images[1].ImageUrl, tenantID, episodeID, 1)
 	assertExpectations(t, mock)
 }
 
@@ -651,21 +643,20 @@ func TestListEpisodeImagesAttachesAdminMediaToken(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at", "content_type", "file_size_bytes", "width", "height"}).
 			AddRow(imageID, tenantID, episodeID, int32(1), now, "image/jpeg", int64(2048), int32(1600), int32(900)))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.ListEpisodeImagesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.ListEpisodeImagesRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: testEpisodeID.String(),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.ListEpisodeImages(context.Background(), req)
+	resp, err := client.ListEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListEpisodeImages: %v", err)
 	}
-	if len(resp.Msg.Images) != 1 {
-		t.Fatalf("images count = %d, want 1", len(resp.Msg.Images))
+	if len(resp.Images) != 1 {
+		t.Fatalf("images count = %d, want 1", len(resp.Images))
 	}
-	assertAdminMediaToken(t, resp.Msg.Images[0].ImageUrl, tenantID, episodeID, 1)
+	assertAdminMediaToken(t, resp.Images[0].ImageUrl, tenantID, episodeID, 1)
 	assertExpectations(t, mock)
 }
 
@@ -706,26 +697,25 @@ func TestReorderEpisodeImagesAttachesAdminMediaToken(t *testing.T) {
 			AddRow(image2ID, tenantID, episodeID, int32(1), now, "image/jpeg", int64(2048), int32(1600), int32(900)).
 			AddRow(image1ID, tenantID, episodeID, int32(2), now, "image/jpeg", int64(2048), int32(1600), int32(900)))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.ReorderEpisodeImagesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.ReorderEpisodeImagesRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: testEpisodeID.String(),
 		ImageIds:  []string{image2ID.String(), image1ID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.ReorderEpisodeImages(context.Background(), req)
+	resp, err := client.ReorderEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ReorderEpisodeImages: %v", err)
 	}
-	if len(resp.Msg.Images) != 2 {
-		t.Fatalf("images count = %d, want 2", len(resp.Msg.Images))
+	if len(resp.Images) != 2 {
+		t.Fatalf("images count = %d, want 2", len(resp.Images))
 	}
-	if resp.Msg.Images[0].Id != image2ID.String() || resp.Msg.Images[1].Id != image1ID.String() {
-		t.Fatalf("image ids = [%s %s], want [%s %s]", resp.Msg.Images[0].Id, resp.Msg.Images[1].Id, image2ID, image1ID)
+	if resp.Images[0].Id != image2ID.String() || resp.Images[1].Id != image1ID.String() {
+		t.Fatalf("image ids = [%s %s], want [%s %s]", resp.Images[0].Id, resp.Images[1].Id, image2ID, image1ID)
 	}
-	assertAdminMediaToken(t, resp.Msg.Images[0].ImageUrl, tenantID, episodeID, 1)
-	assertAdminMediaToken(t, resp.Msg.Images[1].ImageUrl, tenantID, episodeID, 1)
+	assertAdminMediaToken(t, resp.Images[0].ImageUrl, tenantID, episodeID, 1)
+	assertAdminMediaToken(t, resp.Images[1].ImageUrl, tenantID, episodeID, 1)
 	assertExpectations(t, mock)
 }
 
@@ -794,11 +784,10 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 				tc.setup(mock, tenantID, now)
 			}
 
-			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-			req := connect.NewRequest(tc.request)
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			req := tc.request
 
-			_, err := client.UploadEpisodeImages(context.Background(), req)
+			_, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req)
 			if connect.CodeOf(err) != tc.wantCode {
 				t.Fatalf("UploadEpisodeImages code = %v, want %v", connect.CodeOf(err), tc.wantCode)
 			}
@@ -848,25 +837,24 @@ func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
 	}
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadEpisodeImagesRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: testEpisodeID.String(),
 		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "landscape.jpg", ContentType: "image/jpeg", Data: generateJPEG(t, 1600, 900), DisplayOrder: 0},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UploadEpisodeImages(context.Background(), req)
+	resp, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UploadEpisodeImages: %v", err)
 	}
-	if len(resp.Msg.Images) != 1 {
-		t.Fatalf("images count = %d, want 1", len(resp.Msg.Images))
+	if len(resp.Images) != 1 {
+		t.Fatalf("images count = %d, want 1", len(resp.Images))
 	}
-	if resp.Msg.Images[0].Width != 1600 || resp.Msg.Images[0].Height != 900 {
-		t.Fatalf("image size = %dx%d, want 1600x900", resp.Msg.Images[0].Width, resp.Msg.Images[0].Height)
+	if resp.Images[0].Width != 1600 || resp.Images[0].Height != 900 {
+		t.Fatalf("image size = %dx%d, want 1600x900", resp.Images[0].Width, resp.Images[0].Height)
 	}
 
 	assertExpectations(t, mock)
@@ -910,8 +898,8 @@ func TestUploadEpisodeImagesArchiveSuccess(t *testing.T) {
 			AddRow(uuid.Must(uuid.NewV7()), image2ID, "w1", "s3", "obj-2", "image/jpeg", int64(163), int32(1), int32(1), now, tenantID))
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadEpisodeImagesRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:  testSeriesID.String(),
 		EpisodeId: testEpisodeID.String(),
@@ -921,15 +909,14 @@ func TestUploadEpisodeImagesArchiveSuccess(t *testing.T) {
 		),
 		ArchiveFilename:    "episode-images.zip",
 		ArchiveContentType: "application/zip",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.UploadEpisodeImages(context.Background(), req)
+	resp, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("UploadEpisodeImages: %v", err)
 	}
-	if len(resp.Msg.Images) != 2 {
-		t.Fatalf("images count = %d, want 2", len(resp.Msg.Images))
+	if len(resp.Images) != 2 {
+		t.Fatalf("images count = %d, want 2", len(resp.Images))
 	}
 	assertExpectations(t, mock)
 }
@@ -999,11 +986,10 @@ func TestUploadEpisodeImagesArchiveValidationAndBoundary(t *testing.T) {
 				tc.setup(mock, tenantID, now)
 			}
 
-			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-			req := connect.NewRequest(tc.request)
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			req := tc.request
 
-			_, err := client.UploadEpisodeImages(context.Background(), req)
+			_, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req)
 			if connect.CodeOf(err) != tc.wantCode {
 				t.Fatalf("UploadEpisodeImages code = %v, want %v", connect.CodeOf(err), tc.wantCode)
 			}
@@ -1115,24 +1101,23 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 				tc.setup(mock, tenantID, now)
 			}
 
-			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-			req := connect.NewRequest(&publiraadminv1.UpdateEpisodePublishScheduleRequest{
+			client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			req := &publiraadminv1.UpdateEpisodePublishScheduleRequest{
 				Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				EpisodeId:   testEpisodeID.String(),
 				ScheduledAt: tc.scheduled,
-			})
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			}
 
-			resp, err := client.UpdateEpisodePublishSchedule(context.Background(), req)
+			resp, err := client.UpdateEpisodePublishSchedule(testutil.WithBearer(context.Background(), sessionToken), req)
 			if tc.wantSuccess {
 				if err != nil {
 					t.Fatalf("UpdateEpisodePublishSchedule: %v", err)
 				}
-				if resp.Msg.Episode == nil {
+				if resp.Episode == nil {
 					t.Fatalf("episode is nil")
 				}
-				if resp.Msg.Episode.ScheduledAt != "2030-01-01T01:00:00Z" {
-					t.Fatalf("scheduled_at = %q, want 2030-01-01T01:00:00Z", resp.Msg.Episode.ScheduledAt)
+				if resp.Episode.ScheduledAt != "2030-01-01T01:00:00Z" {
+					t.Fatalf("scheduled_at = %q, want 2030-01-01T01:00:00Z", resp.Episode.ScheduledAt)
 				}
 			} else if connect.CodeOf(err) != tc.wantCode {
 				t.Fatalf("UpdateEpisodePublishSchedule code = %v, want %v", connect.CodeOf(err), tc.wantCode)
@@ -1194,15 +1179,14 @@ func newEpisodeClient(
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	return publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+	return publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL))), mock, sessionToken
 }
 
-func newListEpisodesRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListEpisodesRequest] {
-	req := connect.NewRequest(&publiraadminv1.ListEpisodesRequest{
+func newListEpisodesRequest(tenantID uuid.UUID) *publiraadminv1.ListEpisodesRequest {
+	req := &publiraadminv1.ListEpisodesRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId: testSeriesID.String(),
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 	return req
 }
 
@@ -1243,19 +1227,19 @@ func TestListEpisodesFirstPageReportsNextToken(t *testing.T) {
 			ids[2], "EP003", 3,
 		))
 
-	req := newListEpisodesRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	resp, err := client.ListEpisodes(context.Background(), req)
+	req := newListEpisodesRequest(tenantID)
+	req.Limit = 2
+	resp, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListEpisodes: %v", err)
 	}
-	if !slices.Equal(episodePublicIDs(resp.Msg.Episodes), []string{"EP001", "EP002"}) {
-		t.Fatalf("public_ids = %v, want the over-fetched row dropped", episodePublicIDs(resp.Msg.Episodes))
+	if !slices.Equal(episodePublicIDs(resp.Episodes), []string{"EP001", "EP002"}) {
+		t.Fatalf("public_ids = %v, want the over-fetched row dropped", episodePublicIDs(resp.Episodes))
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	cursor, err := pagination.Decode(resp.NextToken)
 	if err != nil {
 		t.Fatalf("decode next_token: %v", err)
 	}
@@ -1278,15 +1262,15 @@ func TestListEpisodesDefaultsToOnePageWithoutTokens(t *testing.T) {
 		WithArgs(tenantID, testSeriesID, uuid.NullUUID{}, false, sql.NullInt32{}, int32(21)).
 		WillReturnRows(addEpisodeRow(episodeColumns(), uuid.Must(uuid.NewV7()), "EP001", 1))
 
-	resp, err := client.ListEpisodes(context.Background(), newListEpisodesRequest(tenantID, sessionToken))
+	resp, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), newListEpisodesRequest(tenantID))
 	if err != nil {
 		t.Fatalf("ListEpisodes: %v", err)
 	}
-	if len(resp.Msg.Episodes) != 1 {
-		t.Fatalf("episodes = %d rows, want 1", len(resp.Msg.Episodes))
+	if len(resp.Episodes) != 1 {
+		t.Fatalf("episodes = %d rows, want 1", len(resp.Episodes))
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty", resp.PreviousToken, resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -1303,21 +1287,21 @@ func TestListEpisodesFollowsNextToken(t *testing.T) {
 		WithArgs(tenantID, testSeriesID, boundaryID, false, int32(2), int32(3)).
 		WillReturnRows(addEpisodeRow(episodeColumns(), uuid.Must(uuid.NewV7()), "EP003", 3))
 
-	req := newListEpisodesRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = encodeEpisodeTestToken(pagination.Forward, 2, boundaryID)
-	resp, err := client.ListEpisodes(context.Background(), req)
+	req := newListEpisodesRequest(tenantID)
+	req.Limit = 2
+	req.Token = encodeEpisodeTestToken(pagination.Forward, 2, boundaryID)
+	resp, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListEpisodes: %v", err)
 	}
-	if !slices.Equal(episodePublicIDs(resp.Msg.Episodes), []string{"EP003"}) {
-		t.Fatalf("public_ids = %v, want the page after the boundary row", episodePublicIDs(resp.Msg.Episodes))
+	if !slices.Equal(episodePublicIDs(resp.Episodes), []string{"EP003"}) {
+		t.Fatalf("public_ids = %v, want the page after the boundary row", episodePublicIDs(resp.Episodes))
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the page the client came from")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.NextToken)
 	}
 	assertExpectations(t, mock)
 }
@@ -1336,20 +1320,20 @@ func TestListEpisodesFollowsPreviousTokenBackwards(t *testing.T) {
 			uuid.Must(uuid.NewV7()), "EP001", 1,
 		))
 
-	req := newListEpisodesRequest(tenantID, sessionToken)
-	req.Msg.Limit = 2
-	req.Msg.Token = encodeEpisodeTestToken(pagination.Backward, 3, boundaryID)
-	resp, err := client.ListEpisodes(context.Background(), req)
+	req := newListEpisodesRequest(tenantID)
+	req.Limit = 2
+	req.Token = encodeEpisodeTestToken(pagination.Backward, 3, boundaryID)
+	resp, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListEpisodes: %v", err)
 	}
-	if !slices.Equal(episodePublicIDs(resp.Msg.Episodes), []string{"EP001", "EP002"}) {
-		t.Fatalf("public_ids = %v, want backward page restored to ascending order", episodePublicIDs(resp.Msg.Episodes))
+	if !slices.Equal(episodePublicIDs(resp.Episodes), []string{"EP001", "EP002"}) {
+		t.Fatalf("public_ids = %v, want backward page restored to ascending order", episodePublicIDs(resp.Episodes))
 	}
-	if resp.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	if resp.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
+	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token back to the page the client came from")
 	}
 	assertExpectations(t, mock)
@@ -1391,16 +1375,16 @@ func TestListEpisodesEmptyPageKeepsAWayBack(t *testing.T) {
 				WithArgs(tenantID, testSeriesID, boundaryID, false, int32(2), int32(21)).
 				WillReturnRows(episodeColumns())
 
-			req := newListEpisodesRequest(tenantID, sessionToken)
-			req.Msg.Token = encodeEpisodeTestToken(test.direction, 2, boundaryID)
-			resp, err := client.ListEpisodes(context.Background(), req)
+			req := newListEpisodesRequest(tenantID)
+			req.Token = encodeEpisodeTestToken(test.direction, 2, boundaryID)
+			resp, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err != nil {
 				t.Fatalf("ListEpisodes: %v", err)
 			}
-			recoveryToken := resp.Msg.PreviousToken
+			recoveryToken := resp.PreviousToken
 			recoveryDirection := pagination.Backward
 			if test.direction == pagination.Backward {
-				recoveryToken = resp.Msg.NextToken
+				recoveryToken = resp.NextToken
 				recoveryDirection = pagination.Forward
 			}
 			wantRecoveryToken := encodeEpisodeTestRecoveryToken(recoveryDirection, 2, boundaryID)
@@ -1420,14 +1404,14 @@ func TestListEpisodesEmptyPageKeepsAWayBack(t *testing.T) {
 				WithArgs(tenantID, testSeriesID, boundaryID, true, int32(2), int32(21)).
 				WillReturnRows(recoveryRows)
 
-			recoveryReq := newListEpisodesRequest(tenantID, sessionToken)
-			recoveryReq.Msg.Token = recoveryToken
-			recovered, err := client.ListEpisodes(context.Background(), recoveryReq)
+			recoveryReq := newListEpisodesRequest(tenantID)
+			recoveryReq.Token = recoveryToken
+			recovered, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), recoveryReq)
 			if err != nil {
 				t.Fatalf("ListEpisodes recovery: %v", err)
 			}
-			if !slices.Equal(episodePublicIDs(recovered.Msg.Episodes), test.wantRecoveredEpisodes) {
-				t.Fatalf("recovered public_ids = %v, want %v", episodePublicIDs(recovered.Msg.Episodes), test.wantRecoveredEpisodes)
+			if !slices.Equal(episodePublicIDs(recovered.Episodes), test.wantRecoveredEpisodes) {
+				t.Fatalf("recovered public_ids = %v, want %v", episodePublicIDs(recovered.Episodes), test.wantRecoveredEpisodes)
 			}
 			assertExpectations(t, mock)
 		})
@@ -1467,19 +1451,19 @@ func TestListEpisodesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 				WithArgs(tenantID, testSeriesID, boundaryID, true, int32(2), int32(21)).
 				WillReturnRows(episodeColumns())
 
-			req := newListEpisodesRequest(tenantID, sessionToken)
-			req.Msg.Token = encodeEpisodeTestRecoveryToken(test.direction, 2, boundaryID)
-			resp, err := client.ListEpisodes(context.Background(), req)
+			req := newListEpisodesRequest(tenantID)
+			req.Token = encodeEpisodeTestRecoveryToken(test.direction, 2, boundaryID)
+			resp, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err != nil {
 				t.Fatalf("ListEpisodes: %v", err)
 			}
-			if len(resp.Msg.Episodes) != 0 {
-				t.Fatalf("episodes = %d rows, want an empty page", len(resp.Msg.Episodes))
+			if len(resp.Episodes) != 0 {
+				t.Fatalf("episodes = %d rows, want an empty page", len(resp.Episodes))
 			}
-			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+			if resp.PreviousToken != "" || resp.NextToken != "" {
 				t.Fatalf(
 					"previous_token = %q / next_token = %q, want both empty once recovery also came back empty",
-					resp.Msg.PreviousToken, resp.Msg.NextToken,
+					resp.PreviousToken, resp.NextToken,
 				)
 			}
 			assertExpectations(t, mock)
@@ -1510,9 +1494,9 @@ func TestListEpisodesInvalidToken(t *testing.T) {
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
-			req := newListEpisodesRequest(tenantID, sessionToken)
-			req.Msg.Token = test.token
-			_, err := client.ListEpisodes(context.Background(), req)
+			req := newListEpisodesRequest(tenantID)
+			req.Token = test.token
+			_, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("ListEpisodes code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 			}
@@ -1540,9 +1524,9 @@ func TestListEpisodesRejectsAnotherSeriesToken(t *testing.T) {
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
-			req := newListEpisodesRequest(tenantID, sessionToken)
-			req.Msg.Token = token
-			_, err := client.ListEpisodes(context.Background(), req)
+			req := newListEpisodesRequest(tenantID)
+			req.Token = token
+			_, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 			if err == nil || err.Error() != "invalid_argument: token was issued for another filter" {
 				t.Fatalf("ListEpisodes with another series' token error = %v, want invalid_argument", err)
 			}
@@ -1561,7 +1545,7 @@ func TestListEpisodesDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs(tenantID, testSeriesID, uuid.NullUUID{}, false, sql.NullInt32{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "episodes" does not exist`))
 
-	_, err := client.ListEpisodes(context.Background(), newListEpisodesRequest(tenantID, sessionToken))
+	_, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), newListEpisodesRequest(tenantID))
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ListEpisodes code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -1661,39 +1645,38 @@ func TestAdminGetEpisode(t *testing.T) {
 				WithArgs(tenantID, tc.seriesPublicID, tc.publicID).
 				WillReturnRows(tc.rows)
 
-			req := connect.NewRequest(&publiraadminv1.GetEpisodeRequest{
+			req := &publiraadminv1.GetEpisodeRequest{
 				Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				SeriesPublicId: tc.seriesPublicID,
 				PublicId:       tc.publicID,
-			})
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			}
 
-			resp, err := client.GetEpisode(context.Background(), req)
+			resp, err := client.GetEpisode(testutil.WithBearer(context.Background(), sessionToken), req)
 			if tc.wantCode == 0 {
 				if err != nil {
 					t.Fatalf("GetEpisode: %v", err)
 				}
-				if resp.Msg.Episode == nil {
+				if resp.Episode == nil {
 					t.Fatal("episode is nil")
 				}
-				if resp.Msg.Episode.PublicId != tc.wantPublicID {
-					t.Fatalf("public_id = %q, want %q", resp.Msg.Episode.PublicId, tc.wantPublicID)
+				if resp.Episode.PublicId != tc.wantPublicID {
+					t.Fatalf("public_id = %q, want %q", resp.Episode.PublicId, tc.wantPublicID)
 				}
-				if resp.Msg.Episode.Status != tc.wantStatus {
-					t.Fatalf("status = %q, want %q", resp.Msg.Episode.Status, tc.wantStatus)
+				if resp.Episode.Status != tc.wantStatus {
+					t.Fatalf("status = %q, want %q", resp.Episode.Status, tc.wantStatus)
 				}
-				if resp.Msg.Episode.ScheduledAt != tc.wantScheduledAt {
-					t.Fatalf("scheduled_at = %q, want %q", resp.Msg.Episode.ScheduledAt, tc.wantScheduledAt)
+				if resp.Episode.ScheduledAt != tc.wantScheduledAt {
+					t.Fatalf("scheduled_at = %q, want %q", resp.Episode.ScheduledAt, tc.wantScheduledAt)
 				}
-				if resp.Msg.Episode.ReadingDirection != tc.wantReadingDirection || resp.Msg.Episode.SpreadStartIndex != tc.wantSpreadStartIndex {
-					t.Fatalf("layout = %v from %d, want %v from %d", resp.Msg.Episode.ReadingDirection, resp.Msg.Episode.SpreadStartIndex, tc.wantReadingDirection, tc.wantSpreadStartIndex)
+				if resp.Episode.ReadingDirection != tc.wantReadingDirection || resp.Episode.SpreadStartIndex != tc.wantSpreadStartIndex {
+					t.Fatalf("layout = %v from %d, want %v from %d", resp.Episode.ReadingDirection, resp.Episode.SpreadStartIndex, tc.wantReadingDirection, tc.wantSpreadStartIndex)
 				}
-				if resp.Msg.ReadingDirection != tc.wantReadingDirectionOverride {
-					t.Fatalf("reading_direction override = %v, want %v", resp.Msg.ReadingDirection, tc.wantReadingDirectionOverride)
+				if resp.ReadingDirection != tc.wantReadingDirectionOverride {
+					t.Fatalf("reading_direction override = %v, want %v", resp.ReadingDirection, tc.wantReadingDirectionOverride)
 				}
-				if (resp.Msg.SpreadStartIndex == nil) != (tc.wantSpreadStartIndexOverride == nil) ||
-					(resp.Msg.SpreadStartIndex != nil && *resp.Msg.SpreadStartIndex != *tc.wantSpreadStartIndexOverride) {
-					t.Fatalf("spread_start_index override = %v, want %v", resp.Msg.SpreadStartIndex, tc.wantSpreadStartIndexOverride)
+				if (resp.SpreadStartIndex == nil) != (tc.wantSpreadStartIndexOverride == nil) ||
+					(resp.SpreadStartIndex != nil && *resp.SpreadStartIndex != *tc.wantSpreadStartIndexOverride) {
+					t.Fatalf("spread_start_index override = %v, want %v", resp.SpreadStartIndex, tc.wantSpreadStartIndexOverride)
 				}
 			} else if connect.CodeOf(err) != tc.wantCode {
 				t.Fatalf("GetEpisode code = %v, want %v", connect.CodeOf(err), tc.wantCode)
@@ -1720,14 +1703,13 @@ func TestAdminGetEpisodeValidation(t *testing.T) {
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
-			req := connect.NewRequest(&publiraadminv1.GetEpisodeRequest{
+			req := &publiraadminv1.GetEpisodeRequest{
 				Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				SeriesPublicId: tc.seriesPublicID,
 				PublicId:       tc.publicID,
-			})
-			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			}
 
-			_, err := client.GetEpisode(context.Background(), req)
+			_, err := client.GetEpisode(testutil.WithBearer(context.Background(), sessionToken), req)
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("GetEpisode code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 			}
@@ -1746,14 +1728,13 @@ func TestAdminGetEpisodeDatabaseErrorIsHidden(t *testing.T) {
 		WithArgs(tenantID, "SERIES001", "EPISODE001").
 		WillReturnError(errors.New(`pq: relation "episodes" does not exist`))
 
-	req := connect.NewRequest(&publiraadminv1.GetEpisodeRequest{
+	req := &publiraadminv1.GetEpisodeRequest{
 		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesPublicId: "SERIES001",
 		PublicId:       "EPISODE001",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.GetEpisode(context.Background(), req)
+	_, err := client.GetEpisode(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetEpisode code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
@@ -1773,14 +1754,13 @@ func TestAdminGetEpisodePreservesContextCanceled(t *testing.T) {
 		WithArgs(tenantID, "SERIES001", "EPISODE001").
 		WillReturnError(context.Canceled)
 
-	req := connect.NewRequest(&publiraadminv1.GetEpisodeRequest{
+	req := &publiraadminv1.GetEpisodeRequest{
 		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesPublicId: "SERIES001",
 		PublicId:       "EPISODE001",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.GetEpisode(context.Background(), req)
+	_, err := client.GetEpisode(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeCanceled {
 		t.Fatalf("GetEpisode code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
 	}
@@ -1819,17 +1799,16 @@ func TestUploadEpisodeImagesWithoutPlatformStorage(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, int32(1), now))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadEpisodeImagesRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: testEpisodeID.String(),
 		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "page.jpg", ContentType: "image/jpeg", Data: generateJPEG(t, 480, 270), DisplayOrder: 0},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.UploadEpisodeImages(context.Background(), req)
+	_, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UploadEpisodeImages error = %v, want %v", err, connect.CodeFailedPrecondition)
 	}
@@ -1889,17 +1868,16 @@ func TestUploadEpisodeImagesWritesEveryVariantToOnePinnedStore(t *testing.T) {
 	}
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UploadEpisodeImagesRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId: testEpisodeID.String(),
 		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "landscape.jpg", ContentType: "image/jpeg", Data: generateJPEG(t, 1600, 900), DisplayOrder: 0},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	if _, err := client.UploadEpisodeImages(context.Background(), req); err != nil {
+	if _, err := client.UploadEpisodeImages(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UploadEpisodeImages: %v", err)
 	}
 	if pins := provider.pins.Load(); pins != 1 {

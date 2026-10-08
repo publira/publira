@@ -9,13 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestNormalizeCatalogNameTrimsAndSlugs(t *testing.T) {
@@ -108,13 +110,12 @@ func TestListGenresRejectsACursorOutsideTheColumnRange(t *testing.T) {
 		expectTenantLookup(mock, tenantID, "TENANT", now)
 		expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-		client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
-		req := connect.NewRequest(&publiraadminv1.ListGenresRequest{
+		client := publiraadminv1connect.NewAdminGenreServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+		req := &publiraadminv1.ListGenresRequest{
 			Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			Token:  pagination.EncodeCountUUID(pagination.Forward, count, uuid.Must(uuid.NewV7())),
-		})
-		req.Header().Set("Authorization", "Bearer "+sessionToken)
-		_, err := client.ListGenres(context.Background(), req)
+		}
+		_, err := client.ListGenres(testutil.WithBearer(context.Background(), sessionToken), req)
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("cursor count %d code = %v, want invalid_argument (err=%v)", count, connect.CodeOf(err), err)
 		}
@@ -134,18 +135,17 @@ func TestUpdateGenreRejectsClearAndImageTogether(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminGenreServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.UpdateGenreRequest{
+	client := publiraadminv1connect.NewAdminGenreServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.UpdateGenreRequest{
 		Tenant:                   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		GenreId:                  "0190f0b5-7c1a-7000-8000-000000000001",
 		Name:                     "Fantasy",
 		ClearEyeCatchImage:       true,
 		EyeCatchImageData:        oneByOnePNG,
 		EyeCatchImageContentType: "image/png",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.UpdateGenre(context.Background(), req)
+	_, err := client.UpdateGenre(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateGenre code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}

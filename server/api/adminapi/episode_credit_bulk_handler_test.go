@@ -3,18 +3,20 @@ package adminapi
 import (
 	"context"
 	"fmt"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // A series split into weekly quarter-chapters reaches hundreds of episodes, so
@@ -71,8 +73,8 @@ func TestBulkEditEpisodeCreditsWritesTheWholeRangeInOneStatement(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.BulkEditEpisodeCreditsRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.BulkEditEpisodeCreditsRequest{
 		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:   testSeriesID.String(),
 		EpisodeIds: episodeIDs,
@@ -82,18 +84,17 @@ func TestBulkEditEpisodeCreditsWritesTheWholeRangeInOneStatement(t *testing.T) {
 				To:   &publiraadminv1.EpisodeCreatorCredit{CreatorId: successorID.String(), RoleId: roleID.String()},
 			},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	resp, err := client.BulkEditEpisodeCredits(context.Background(), req)
+	resp, err := client.BulkEditEpisodeCredits(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("BulkEditEpisodeCredits: %v", err)
 	}
-	if len(resp.Msg.ChangedEpisodePublicIds) != episodeCount {
-		t.Fatalf("changed = %d episodes, want all %d", len(resp.Msg.ChangedEpisodePublicIds), episodeCount)
+	if len(resp.ChangedEpisodePublicIds) != episodeCount {
+		t.Fatalf("changed = %d episodes, want all %d", len(resp.ChangedEpisodePublicIds), episodeCount)
 	}
-	if len(resp.Msg.UnchangedEpisodes) != 0 {
-		t.Fatalf("unchanged = %v, want none", resp.Msg.UnchangedEpisodes)
+	if len(resp.UnchangedEpisodes) != 0 {
+		t.Fatalf("unchanged = %v, want none", resp.UnchangedEpisodes)
 	}
 	assertExpectations(t, mock)
 }
@@ -112,15 +113,14 @@ func TestBulkEditEpisodeCreditsRefusesARequestWithNoOperation(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.BulkEditEpisodeCreditsRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.BulkEditEpisodeCreditsRequest{
 		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:   testSeriesID.String(),
 		EpisodeIds: []string{episodeTestID(1).String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.BulkEditEpisodeCredits(context.Background(), req)
+	_, err := client.BulkEditEpisodeCredits(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("BulkEditEpisodeCredits: err = %v, want invalid_argument", err)
 	}
@@ -158,8 +158,8 @@ func TestBulkEditEpisodeCreditsRefusesAShareThatWouldExceedAnEpisodeTotal(t *tes
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id"}).AddRow(episodeID))
 	mock.ExpectRollback()
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.BulkEditEpisodeCreditsRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.BulkEditEpisodeCreditsRequest{
 		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:   testSeriesID.String(),
 		EpisodeIds: []string{episodeTestID(1).String()},
@@ -168,10 +168,9 @@ func TestBulkEditEpisodeCreditsRefusesAShareThatWouldExceedAnEpisodeTotal(t *tes
 				Credit: &publiraadminv1.EpisodeCreatorCredit{CreatorId: creatorID.String(), RoleId: roleID.String(), ShareBps: 6000},
 			},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.BulkEditEpisodeCredits(context.Background(), req)
+	_, err := client.BulkEditEpisodeCredits(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("BulkEditEpisodeCredits code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
@@ -192,8 +191,8 @@ func TestBulkEditEpisodeCreditsRefusesARepeatedEpisode(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.BulkEditEpisodeCreditsRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.BulkEditEpisodeCreditsRequest{
 		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:   testSeriesID.String(),
 		EpisodeIds: []string{episodeTestID(1).String(), episodeTestID(1).String()},
@@ -202,10 +201,9 @@ func TestBulkEditEpisodeCreditsRefusesARepeatedEpisode(t *testing.T) {
 				Credit: &publiraadminv1.EpisodeCreatorCredit{CreatorId: uuid.Must(uuid.NewV7()).String(), RoleId: uuid.Must(uuid.NewV7()).String()},
 			},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.BulkEditEpisodeCredits(context.Background(), req)
+	_, err := client.BulkEditEpisodeCredits(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("BulkEditEpisodeCredits: err = %v, want invalid_argument", err)
 	}
@@ -233,8 +231,8 @@ func TestBulkEditEpisodeCreditsRefusesARangePastTheMaximum(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.BulkEditEpisodeCreditsRequest{
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	req := &publiraadminv1.BulkEditEpisodeCreditsRequest{
 		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesId:   testSeriesID.String(),
 		EpisodeIds: episodeIDs,
@@ -243,10 +241,9 @@ func TestBulkEditEpisodeCreditsRefusesARangePastTheMaximum(t *testing.T) {
 				Credit: &publiraadminv1.EpisodeCreatorCredit{CreatorId: uuid.Must(uuid.NewV7()).String(), RoleId: uuid.Must(uuid.NewV7()).String()},
 			},
 		},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	_, err := client.BulkEditEpisodeCredits(context.Background(), req)
+	_, err := client.BulkEditEpisodeCredits(testutil.WithBearer(context.Background(), sessionToken), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("BulkEditEpisodeCredits: err = %v, want invalid_argument", err)
 	}

@@ -8,26 +8,26 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func episodeReadRequest(tenant testutil.Tenant, episodeID, token string) *connect.Request[publirav1.MarkEpisodeAsReadRequest] {
-	return newBearerRequest(&publirav1.MarkEpisodeAsReadRequest{
+func episodeReadRequest(tenant testutil.Tenant, episodeID string) *publirav1.MarkEpisodeAsReadRequest {
+	return &publirav1.MarkEpisodeAsReadRequest{
 		Tenant:    tenantContext(tenant),
 		EpisodeId: episodeID,
-	}, token)
+	}
 }
 
-func episodeReadListRequest(tenant testutil.Tenant, token string, limit int32, pageToken string) *connect.Request[publirav1.ListMyEpisodeReadsRequest] {
-	return newBearerRequest(&publirav1.ListMyEpisodeReadsRequest{
+func episodeReadListRequest(tenant testutil.Tenant, limit int32, pageToken string) *publirav1.ListMyEpisodeReadsRequest {
+	return &publirav1.ListMyEpisodeReadsRequest{
 		Tenant: tenantContext(tenant),
 		Limit:  limit,
 		Token:  pageToken,
-	}, token)
+	}
 }
 
 func historyEpisodePublicIDs(reads []*publirav1.MyEpisodeRead) []string {
@@ -47,13 +47,13 @@ func TestDBEpisodeReadServiceKeepsFirstReadDuringRepeatedAndConcurrentCalls(t *t
 	client := env.episodeReadClient()
 	token := tokenFor(t, tenant, member)
 
-	first, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.ID.String(), token))
+	first, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, episode.ID.String()))
 	if err != nil {
 		t.Fatalf("first MarkEpisodeAsRead: %v", err)
 	}
-	firstReadAt, err := time.Parse(time.RFC3339Nano, first.Msg.ReadAt)
+	firstReadAt, err := time.Parse(time.RFC3339Nano, first.ReadAt)
 	if err != nil {
-		t.Fatalf("parse first read_at %q: %v", first.Msg.ReadAt, err)
+		t.Fatalf("parse first read_at %q: %v", first.ReadAt, err)
 	}
 
 	var wg sync.WaitGroup
@@ -62,13 +62,13 @@ func TestDBEpisodeReadServiceKeepsFirstReadDuringRepeatedAndConcurrentCalls(t *t
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			response, callErr := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.ID.String(), token))
+			response, callErr := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, episode.ID.String()))
 			if callErr != nil {
 				errs <- callErr
 				return
 			}
-			if response.Msg.ReadAt != first.Msg.ReadAt {
-				errs <- &readAtChangedError{got: response.Msg.ReadAt, want: first.Msg.ReadAt}
+			if response.ReadAt != first.ReadAt {
+				errs <- &readAtChangedError{got: response.ReadAt, want: first.ReadAt}
 			}
 		}()
 	}
@@ -129,16 +129,16 @@ func TestDBEpisodeReadServiceRequiresCurrentPublicationAndBodyAccess(t *testing.
 	client := env.episodeReadClient()
 	token := tokenFor(t, tenant, member)
 	for _, episode := range []testutil.Episode{free, purchased, ticketed} {
-		response, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.ID.String(), token))
+		response, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, episode.ID.String()))
 		if err != nil {
 			t.Fatalf("MarkEpisodeAsRead %s: %v", episode.PublicID, err)
 		}
-		if response.Msg.ReadAt == "" {
+		if response.ReadAt == "" {
 			t.Fatalf("MarkEpisodeAsRead %s returned empty read_at", episode.PublicID)
 		}
 	}
 	for _, id := range []string{paid.ID.String(), draft.ID.String(), expiredTicket.ID.String(), foreign.ID.String(), uuid.NewString()} {
-		_, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, id, token))
+		_, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, id))
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("MarkEpisodeAsRead %s code = %v, want not_found (err=%v)", id, connect.CodeOf(err), err)
 		}
@@ -203,7 +203,7 @@ func TestDBEpisodeReadProjectsOneCompleteEventPerRead(t *testing.T) {
 	token := tokenFor(t, tenant, member)
 
 	for range 3 {
-		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.ID.String(), token)); err != nil {
+		if _, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, episode.ID.String())); err != nil {
 			t.Fatalf("MarkEpisodeAsRead: %v", err)
 		}
 	}
@@ -257,49 +257,49 @@ func TestDBListMyEpisodeReadsPagesTheMostRecentlyFinishedFirst(t *testing.T) {
 	var finished []string
 	for _, publicID := range []string{"EPISODEREADJ", "EPISODEREADK", "EPISODEREADL"} {
 		episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: publicID, Title: publicID, Status: testutil.EpisodeStatusPublished})
-		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.ID.String(), token)); err != nil {
+		if _, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, episode.ID.String())); err != nil {
 			t.Fatalf("MarkEpisodeAsRead %s: %v", episode.PublicID, err)
 		}
 		finished = append(finished, episode.PublicID)
 	}
 	first, second, third := finished[0], finished[1], finished[2]
 
-	page, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(tenant, token, 2, ""))
+	page, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), token), episodeReadListRequest(tenant, 2, ""))
 	if err != nil {
 		t.Fatalf("ListMyEpisodeReads: %v", err)
 	}
-	if got, want := historyEpisodePublicIDs(page.Msg.Reads), []string{third, second}; !slices.Equal(got, want) {
+	if got, want := historyEpisodePublicIDs(page.Reads), []string{third, second}; !slices.Equal(got, want) {
 		t.Fatalf("first page = %v, want %v", got, want)
 	}
-	if got := page.Msg.Reads[0].GetSeries().GetPublicId(); got != series.PublicID {
+	if got := page.Reads[0].GetSeries().GetPublicId(); got != series.PublicID {
 		t.Fatalf("series public id = %q, want the episode's own series %q", got, series.PublicID)
 	}
-	if page.Msg.Reads[0].GetReadAt() == "" {
+	if page.Reads[0].GetReadAt() == "" {
 		t.Fatal("read_at is empty, want the instant the reader finished the episode")
 	}
-	if page.Msg.PreviousToken != "" {
-		t.Fatalf("previous_token = %q, want empty on the first page", page.Msg.PreviousToken)
+	if page.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", page.PreviousToken)
 	}
-	if page.Msg.NextToken == "" {
+	if page.NextToken == "" {
 		t.Fatal("next_token is empty, want a token while an episode remains")
 	}
 
-	rest, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(tenant, token, 2, page.Msg.NextToken))
+	rest, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), token), episodeReadListRequest(tenant, 2, page.NextToken))
 	if err != nil {
 		t.Fatalf("ListMyEpisodeReads next page: %v", err)
 	}
-	if got, want := historyEpisodePublicIDs(rest.Msg.Reads), []string{first}; !slices.Equal(got, want) {
+	if got, want := historyEpisodePublicIDs(rest.Reads), []string{first}; !slices.Equal(got, want) {
 		t.Fatalf("second page = %v, want %v", got, want)
 	}
-	if rest.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty on the last page", rest.Msg.NextToken)
+	if rest.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", rest.NextToken)
 	}
 
-	back, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(tenant, token, 2, rest.Msg.PreviousToken))
+	back, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), token), episodeReadListRequest(tenant, 2, rest.PreviousToken))
 	if err != nil {
 		t.Fatalf("ListMyEpisodeReads previous page: %v", err)
 	}
-	if got, want := historyEpisodePublicIDs(back.Msg.Reads), []string{third, second}; !slices.Equal(got, want) {
+	if got, want := historyEpisodePublicIDs(back.Reads), []string{third, second}; !slices.Equal(got, want) {
 		t.Fatalf("page back = %v, want the first page again %v", got, want)
 	}
 }
@@ -326,7 +326,7 @@ func TestDBListMyEpisodeReadsDropsWithdrawnSeriesAndKeepsExpiredRentals(t *testi
 	token := tokenFor(t, tenant, member)
 
 	for _, id := range []string{rented.ID.String(), withdrawnEpisode.ID.String()} {
-		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, id, token)); err != nil {
+		if _, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, id)); err != nil {
 			t.Fatalf("MarkEpisodeAsRead %s: %v", id, err)
 		}
 	}
@@ -341,11 +341,11 @@ func TestDBListMyEpisodeReadsDropsWithdrawnSeriesAndKeepsExpiredRentals(t *testi
 		t.Fatalf("unpublish series: %v", err)
 	}
 
-	response, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(tenant, token, 0, ""))
+	response, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), token), episodeReadListRequest(tenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyEpisodeReads: %v", err)
 	}
-	if got, want := historyEpisodePublicIDs(response.Msg.Reads), []string{rented.PublicID}; !slices.Equal(got, want) {
+	if got, want := historyEpisodePublicIDs(response.Reads), []string{rented.PublicID}; !slices.Equal(got, want) {
 		t.Fatalf("history = %v, want only the still published episode %v", got, want)
 	}
 }
@@ -362,34 +362,34 @@ func TestDBListMyEpisodeReadsIsScopedToOneReaderAndTenant(t *testing.T) {
 	foreignEpisode := env.PG.SeedEpisode(t, otherTenant.ID, foreignSeries.ID, testutil.EpisodeSeed{PublicID: "EPISODEREADP", Title: "Foreign", Status: testutil.EpisodeStatusPublished})
 	client := env.episodeReadClient()
 
-	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, episode.ID.String(), tokenFor(t, tenant, reader))); err != nil {
+	if _, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reader)), episodeReadRequest(tenant, episode.ID.String())); err != nil {
 		t.Fatalf("MarkEpisodeAsRead: %v", err)
 	}
-	if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(otherTenant, foreignEpisode.ID.String(), tokenFor(t, otherTenant, foreignMember))); err != nil {
+	if _, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), tokenFor(t, otherTenant, foreignMember)), episodeReadRequest(otherTenant, foreignEpisode.ID.String())); err != nil {
 		t.Fatalf("MarkEpisodeAsRead in the other tenant: %v", err)
 	}
 
-	own, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(tenant, tokenFor(t, tenant, reader), 0, ""))
+	own, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reader)), episodeReadListRequest(tenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyEpisodeReads as the reader: %v", err)
 	}
-	if got, want := historyEpisodePublicIDs(own.Msg.Reads), []string{episode.PublicID}; !slices.Equal(got, want) {
+	if got, want := historyEpisodePublicIDs(own.Reads), []string{episode.PublicID}; !slices.Equal(got, want) {
 		t.Fatalf("the reader's history = %v, want %v", got, want)
 	}
 
-	fromNeighbour, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(tenant, tokenFor(t, tenant, neighbour), 0, ""))
+	fromNeighbour, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), tokenFor(t, tenant, neighbour)), episodeReadListRequest(tenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyEpisodeReads as another member: %v", err)
 	}
-	if len(fromNeighbour.Msg.Reads) != 0 {
-		t.Fatalf("another member's view = %v, want none of the reader's history", historyEpisodePublicIDs(fromNeighbour.Msg.Reads))
+	if len(fromNeighbour.Reads) != 0 {
+		t.Fatalf("another member's view = %v, want none of the reader's history", historyEpisodePublicIDs(fromNeighbour.Reads))
 	}
 
-	fromOtherTenant, err := client.ListMyEpisodeReads(context.Background(), episodeReadListRequest(otherTenant, tokenFor(t, otherTenant, foreignMember), 0, ""))
+	fromOtherTenant, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), tokenFor(t, otherTenant, foreignMember)), episodeReadListRequest(otherTenant, 0, ""))
 	if err != nil {
 		t.Fatalf("ListMyEpisodeReads as a member of the other tenant: %v", err)
 	}
-	if got, want := historyEpisodePublicIDs(fromOtherTenant.Msg.Reads), []string{foreignEpisode.PublicID}; !slices.Equal(got, want) {
+	if got, want := historyEpisodePublicIDs(fromOtherTenant.Reads), []string{foreignEpisode.PublicID}; !slices.Equal(got, want) {
 		t.Fatalf("the other tenant's member sees %v, want only their own tenant's %v", got, want)
 	}
 }
@@ -411,19 +411,19 @@ func TestDBSeriesProgressReportsTheFinishedEpisodesOfThatSeries(t *testing.T) {
 	token := tokenFor(t, tenant, member)
 
 	for _, id := range []string{second.ID.String(), first.ID.String(), elsewhere.ID.String()} {
-		if _, err := client.MarkEpisodeAsRead(context.Background(), episodeReadRequest(tenant, id, token)); err != nil {
+		if _, err := client.MarkEpisodeAsRead(testutil.WithBearer(context.Background(), token), episodeReadRequest(tenant, id)); err != nil {
 			t.Fatalf("MarkEpisodeAsRead %s: %v", id, err)
 		}
 	}
 
-	response, err := client.GetMySeriesProgress(context.Background(), seriesProgressRequest(tenant, series.ID.String(), token))
+	response, err := client.GetMySeriesProgress(testutil.WithBearer(context.Background(), token), seriesProgressRequest(tenant, series.ID.String()))
 	if err != nil {
 		t.Fatalf("GetMySeriesProgress: %v", err)
 	}
-	if got, want := response.Msg.FinishedEpisodePublicIds, []string{first.PublicID, second.PublicID}; !slices.Equal(got, want) {
+	if got, want := response.FinishedEpisodePublicIds, []string{first.PublicID, second.PublicID}; !slices.Equal(got, want) {
 		t.Fatalf("finished_episode_public_ids = %v, want this series' finished episodes in list order %v", got, want)
 	}
-	if response.Msg.Progress != nil {
-		t.Fatalf("progress = %+v, want none while the reader has saved no position", response.Msg.Progress)
+	if response.Progress != nil {
+		t.Fatalf("progress = %+v, want none while the reader has saved no position", response.Progress)
 	}
 }

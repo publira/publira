@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -24,11 +24,11 @@ func (e *publicDBEnv) listRelatedSeries(
 ) *publirav1.ListRelatedSeriesResponse {
 	t.Helper()
 
-	resp, err := e.catalogClient().ListRelatedSeries(context.Background(), connect.NewRequest(req))
+	resp, err := e.catalogClient().ListRelatedSeries(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListRelatedSeries: %v", err)
 	}
-	return resp.Msg
+	return resp
 }
 
 func TestDBListRelatedSeriesRanksSharedCreatorsAboveLabelsAndGenres(t *testing.T) {
@@ -348,10 +348,10 @@ func TestDBListRelatedSeriesHidesSeriesTheTenantCannotSee(t *testing.T) {
 		{name: "a series that does not exist", tenant: first, seriesID: uuid.NewString()},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			_, err := env.catalogClient().ListRelatedSeries(context.Background(), connect.NewRequest(&publirav1.ListRelatedSeriesRequest{
+			_, err := env.catalogClient().ListRelatedSeries(context.Background(), &publirav1.ListRelatedSeriesRequest{
 				SeriesId: testCase.seriesID,
 				Tenant:   tenantContext(testCase.tenant),
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeNotFound {
 				t.Fatalf("error = %v, want not_found", err)
 			}

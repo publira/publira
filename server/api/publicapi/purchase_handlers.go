@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -22,6 +22,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantorigin"
 )
 
@@ -46,22 +47,22 @@ func checkoutSurface(client publirav1.StartEpisodeCheckoutRequest_Client) (strin
 
 func (s *apiServer) StartEpisodeCheckout(
 	ctx context.Context,
-	req *connect.Request[publirav1.StartEpisodeCheckoutRequest],
-) (*connect.Response[publirav1.StartEpisodeCheckoutResponse], error) {
-	episodeID, err := requestRecordID("episode_id", req.Msg.EpisodeId)
+	req *publirav1.StartEpisodeCheckoutRequest,
+) (*publirav1.StartEpisodeCheckoutResponse, error) {
+	episodeID, err := requestRecordID("episode_id", req.EpisodeId)
 	if err != nil {
 		return nil, err
 	}
-	surface, err := checkoutSurface(req.Msg.Client)
+	surface, err := checkoutSurface(req.Client)
 	if err != nil {
 		return nil, err
 	}
 
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	if req.Msg.Client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
+	if req.Client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
 		if err := s.refuseCheckoutForStoreRoute(ctx, tenant.ID); err != nil {
 			return nil, err
 		}
@@ -69,7 +70,7 @@ func (s *apiServer) StartEpisodeCheckout(
 	origin, err := tenantorigin.Site(tenant)
 	if errors.Is(err, tenantorigin.ErrDomainNotConfigured) {
 		s.logger.WarnContext(ctx, "checkout refused because tenant domain is not configured", "tenant_id", tenant.ID)
-		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	}
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the tenant site origin", err, "tenant_id", tenant.ID.String())
@@ -86,19 +87,19 @@ func (s *apiServer) StartEpisodeCheckout(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get purchasable episode", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
 	if episode.Price <= 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("free episodes do not require checkout"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "free episodes do not require checkout")
 	}
 	soldHere, err := protomapper.PurchasableOn(episode.PurchaseAvailability, surface)
 	if err != nil {
 		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	if !soldHere {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("episode is not sold on this surface"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "episode is not sold on this surface")
 	}
 	if err := s.refuseCreditedReader(ctx, tenant.ID, user.ID, episode.ID); err != nil {
 		return nil, err
@@ -113,12 +114,12 @@ func (s *apiServer) StartEpisodeCheckout(
 		return nil, s.internalDBError(ctx, "failed to check purchase status", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	if hasPurchase {
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("episode is already purchased"))
+		return nil, connect.NewError(connect.CodeAlreadyExists, "episode is already purchased")
 	}
 
 	successURL := purchaseReturnURL(origin, episode.SeriesPublicID, episode.PublicID, "success")
 	cancelURL := purchaseReturnURL(origin, episode.SeriesPublicID, episode.PublicID, "cancelled")
-	if req.Msg.Client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
+	if req.Client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
 		locale, err := locale.Resolve(tenant.DefaultLocale)
 		if err != nil {
 			return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
@@ -141,9 +142,9 @@ func (s *apiServer) StartEpisodeCheckout(
 	})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to start a checkout with the payment provider", "error", err, "tenant_id", tenant.ID, "provider", provider.Declaration().ID, "episode_id", episode.ID.String())
-		return nil, connect.NewError(connect.CodeUnavailable, errors.New("failed to start checkout"))
+		return nil, connect.NewError(connect.CodeUnavailable, "failed to start checkout")
 	}
-	return connect.NewResponse(&publirav1.StartEpisodeCheckoutResponse{CheckoutUrl: checkoutURL}), nil
+	return &publirav1.StartEpisodeCheckoutResponse{CheckoutUrl: checkoutURL}, nil
 }
 
 // refuseCheckoutForStoreRoute answers failed_precondition for a tenant whose
@@ -155,7 +156,7 @@ func (s *apiServer) refuseCheckoutForStoreRoute(ctx context.Context, tenantID uu
 		return err
 	}
 	if route == paymentsettings.RouteStore {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the app sells through the store"))
+		return connect.NewError(connect.CodeFailedPrecondition, "the app sells through the store")
 	}
 	return nil
 }
@@ -299,28 +300,28 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurcha
 
 func (s *apiServer) ListMyPurchases(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListMyPurchasesRequest],
-) (*connect.Response[publirav1.ListMyPurchasesResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	req *publirav1.ListMyPurchasesRequest,
+) (*publirav1.ListMyPurchasesResponse, error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	surface, err := callingSurface(req.Msg.Surface)
+	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultPurchasePageSize, maxPurchasePageSize)
-	cursor, err := decodeSurfaceToken(req.Msg.Token, surface)
+	limit := pagination.NormalizeLimit(req.Limit, defaultPurchasePageSize, maxPurchasePageSize)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 		}
 	}
 
@@ -353,7 +354,7 @@ func (s *apiServer) ListMyPurchases(
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 func purchaseReturnURL(base *url.URL, seriesPublicID, episodePublicID, checkout string) string {
@@ -377,13 +378,13 @@ func mobilePurchaseReturnURL(base *url.URL, locale, episodePublicID, status stri
 
 func (s *apiServer) ProcessPaymentWebhook(
 	ctx context.Context,
-	req *connect.Request[publirav1.ProcessPaymentWebhookRequest],
-) (*connect.Response[publirav1.ProcessPaymentWebhookResponse], error) {
-	providerID := strings.TrimSpace(req.Msg.Provider)
+	req *publirav1.ProcessPaymentWebhookRequest,
+) (*publirav1.ProcessPaymentWebhookResponse, error) {
+	providerID := strings.TrimSpace(req.Provider)
 	if _, ok := s.paymentProviders.Lookup(providerID); !ok {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("payment provider not found"))
+		return nil, connect.NewError(connect.CodeNotFound, "payment provider not found")
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -399,21 +400,21 @@ func (s *apiServer) ProcessPaymentWebhook(
 		)
 		return nil, paymentsNotConfiguredError()
 	}
-	if len(req.Msg.Payload) == 0 || len(req.Msg.Payload) > maxPaymentWebhookPayload {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid payment webhook payload"))
+	if len(req.Payload) == 0 || len(req.Payload) > maxPaymentWebhookPayload {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid payment webhook payload")
 	}
-	headers := make(http.Header, len(req.Msg.Headers))
-	for name, value := range req.Msg.Headers {
+	headers := make(http.Header, len(req.Headers))
+	for name, value := range req.Headers {
 		headers.Set(name, value)
 	}
-	event, err := provider.ParseNotification(ctx, req.Msg.Payload, headers, credentials)
+	event, err := provider.ParseNotification(ctx, req.Payload, headers, credentials)
 	switch {
 	case errors.Is(err, paymentprovider.ErrInvalidSignature):
 		s.logger.WarnContext(ctx, "invalid payment webhook signature", "tenant_id", tenant.ID, "provider", providerID)
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid payment webhook signature"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid payment webhook signature")
 	case errors.Is(err, paymentprovider.ErrMalformedNotification):
 		s.logger.WarnContext(ctx, "malformed payment webhook", "tenant_id", tenant.ID, "provider", providerID, "error", err)
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid payment webhook"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid payment webhook")
 	case err != nil:
 		return nil, s.internalError(ctx, "payment webhook could not be processed", err, "tenant_id", tenant.ID.String(), "provider", providerID)
 	}
@@ -425,13 +426,13 @@ func (s *apiServer) ProcessPaymentWebhook(
 		}
 	case paymentprovider.PurchaseCompleted:
 		if event.Purchase.TenantID != tenant.ID {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("checkout tenant does not match webhook path"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
 		}
 		if err := s.createPurchase(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
 			return nil, s.internalDBError(ctx, "failed to create purchase from a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 		}
 	}
-	return connect.NewResponse(&publirav1.ProcessPaymentWebhookResponse{}), nil
+	return &publirav1.ProcessPaymentWebhookResponse{}, nil
 }
 
 func (s *apiServer) recordRefund(
@@ -602,7 +603,7 @@ func (s *apiServer) applyHeldRefund(
 }
 
 func paymentsNotConfiguredError() error {
-	return connect.NewError(connect.CodeFailedPrecondition, errors.New("payments are not configured"))
+	return connect.NewError(connect.CodeFailedPrecondition, "payments are not configured")
 }
 
 func (s *apiServer) paymentStore(ctx context.Context) *paymentsettings.Store {

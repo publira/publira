@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/outbox"
@@ -300,16 +299,15 @@ func (e *publicDBEnv) listCommentReports(
 ) []string {
 	t.Helper()
 
-	req := connect.NewRequest(&publiraadminv1.ListCommentReportsRequest{
+	req := &publiraadminv1.ListCommentReportsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+console.token)
-	res, err := console.client.ListCommentReports(context.Background(), req)
+	}
+	res, err := console.client.ListCommentReports(testutil.WithBearer(context.Background(), console.token), req)
 	if err != nil {
 		t.Fatalf("ListCommentReports: %v", err)
 	}
-	reportIDs := make([]string, 0, len(res.Msg.Reports))
-	for _, report := range res.Msg.Reports {
+	reportIDs := make([]string, 0, len(res.Reports))
+	for _, report := range res.Reports {
 		if report.Comment.GetPublicId() == commentPublicID {
 			reportIDs = append(reportIDs, report.ReportId)
 		}
@@ -325,13 +323,12 @@ func (e *publicDBEnv) resolveCommentReport(
 ) {
 	t.Helper()
 
-	req := connect.NewRequest(&publiraadminv1.ResolveCommentReportRequest{
+	req := &publiraadminv1.ResolveCommentReportRequest{
 		Tenant:     &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		ReportId:   reportID,
 		Resolution: resolution,
-	})
-	req.Header().Set("Authorization", "Bearer "+console.token)
-	if _, err := console.client.ResolveCommentReport(context.Background(), req); err != nil {
+	}
+	if _, err := console.client.ResolveCommentReport(testutil.WithBearer(context.Background(), console.token), req); err != nil {
 		t.Fatalf("ResolveCommentReport %s as %s: %v", reportID, resolution, err)
 	}
 }
@@ -344,13 +341,12 @@ func (e *publicDBEnv) restoreComment(
 ) {
 	t.Helper()
 
-	req := connect.NewRequest(&publiraadminv1.RestoreCommentRequest{
+	req := &publiraadminv1.RestoreCommentRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		CommentId: e.commentID(t, tenant, publicID),
 		Reason:    "Restored for this test.",
-	})
-	req.Header().Set("Authorization", "Bearer "+console.token)
-	if _, err := console.client.RestoreComment(context.Background(), req); err != nil {
+	}
+	if _, err := console.client.RestoreComment(testutil.WithBearer(context.Background(), console.token), req); err != nil {
 		t.Fatalf("RestoreComment %s: %v", publicID, err)
 	}
 }

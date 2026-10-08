@@ -3,17 +3,18 @@ package publicapi
 import (
 	"context"
 	"database/sql"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"strconv"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -163,33 +164,33 @@ func TestCatalogListRankedSeriesReportsSnapshotPositionsAndMovement(t *testing.T
 				slipped, "SLIPPED", "Slipped", now),
 			climbed, "CLIMBED", "Climbed", now))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Limit:  3,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListRankedSeries: %v", err)
 	}
 
-	assertRankedPositions(t, resp.Msg.RankedSeries, "CLIMBED@1", "SLIPPED@2", "ENTERED@3")
-	if got := resp.Msg.RankedSeries[0].GetPreviousRank(); got != 2 {
+	assertRankedPositions(t, resp.RankedSeries, "CLIMBED@1", "SLIPPED@2", "ENTERED@3")
+	if got := resp.RankedSeries[0].GetPreviousRank(); got != 2 {
 		t.Fatalf("previous_rank of the climber = %d, want 2", got)
 	}
-	if got := resp.Msg.RankedSeries[1].GetPreviousRank(); got != 1 {
+	if got := resp.RankedSeries[1].GetPreviousRank(); got != 1 {
 		t.Fatalf("previous_rank of the slipper = %d, want 1", got)
 	}
 	// A new entry has no movement to draw. Absent, not zero: position 0 would
 	// render as a climb from the top of the chart.
-	if resp.Msg.RankedSeries[2].PreviousRank != nil {
-		t.Fatalf("previous_rank of the new entry = %d, want absent", resp.Msg.RankedSeries[2].GetPreviousRank())
+	if resp.RankedSeries[2].PreviousRank != nil {
+		t.Fatalf("previous_rank of the new entry = %d, want absent", resp.RankedSeries[2].GetPreviousRank())
 	}
-	if resp.Msg.ComputedAt != now.Format(time.RFC3339) {
-		t.Fatalf("computed_at = %q, want %q", resp.Msg.ComputedAt, now.Format(time.RFC3339))
+	if resp.ComputedAt != now.Format(time.RFC3339) {
+		t.Fatalf("computed_at = %q, want %q", resp.ComputedAt, now.Format(time.RFC3339))
 	}
 	want := now.AddDate(0, 0, -1).Format(time.DateOnly)
-	if resp.Msg.PeriodStart != want || resp.Msg.PeriodEnd != want {
-		t.Fatalf("period = %q..%q, want %q on both sides", resp.Msg.PeriodStart, resp.Msg.PeriodEnd, want)
+	if resp.PeriodStart != want || resp.PeriodEnd != want {
+		t.Fatalf("period = %q..%q, want %q on both sides", resp.PeriodStart, resp.PeriodEnd, want)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -222,16 +223,16 @@ func TestCatalogListRankedSeriesKeepsSnapshotPositionsOverAGap(t *testing.T) {
 			recommendedSeriesRow(seriesDetailColumns(), third, "THIRD", "Third", now),
 			first, "FIRST", "First", now))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Limit:  3,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListRankedSeries: %v", err)
 	}
 
-	assertRankedPositions(t, resp.Msg.RankedSeries, "FIRST@1", "THIRD@3")
+	assertRankedPositions(t, resp.RankedSeries, "FIRST@1", "THIRD@3")
 	assertPublicExpectations(t, mock)
 }
 
@@ -252,17 +253,17 @@ func TestCatalogListRankedSeriesReadsTheWeeklySnapshotForTheWeeklyPeriod(t *test
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), seriesID, "WEEKLY", "Weekly", now))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Limit:  2,
 		Period: publirav1.RankingPeriod_RANKING_PERIOD_WEEKLY,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListRankedSeries: %v", err)
 	}
 
-	assertRankedPositions(t, resp.Msg.RankedSeries, "WEEKLY@1")
+	assertRankedPositions(t, resp.RankedSeries, "WEEKLY@1")
 	assertPublicExpectations(t, mock)
 }
 
@@ -279,23 +280,23 @@ func TestCatalogListRankedSeriesReturnsAnEmptyListWithoutASnapshot(t *testing.T)
 		WithArgs(tenantID, nil, "web", "all", "daily", "series", nil, int32(2)).
 		WillReturnRows(sqlmock.NewRows(contentRankingSnapshotColumns()))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListRankedSeries: %v", err)
 	}
 
-	if len(resp.Msg.RankedSeries) != 0 {
-		t.Fatalf("ranked_series = %+v, want an empty list", resp.Msg.RankedSeries)
+	if len(resp.RankedSeries) != 0 {
+		t.Fatalf("ranked_series = %+v, want an empty list", resp.RankedSeries)
 	}
-	if resp.Msg.ComputedAt != "" || resp.Msg.PeriodStart != "" || resp.Msg.PeriodEnd != "" {
+	if resp.ComputedAt != "" || resp.PeriodStart != "" || resp.PeriodEnd != "" {
 		t.Fatalf("computed_at = %q, period = %q..%q, want all empty without a snapshot",
-			resp.Msg.ComputedAt, resp.Msg.PeriodStart, resp.Msg.PeriodEnd)
+			resp.ComputedAt, resp.PeriodStart, resp.PeriodEnd)
 	}
-	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
-		t.Fatalf("tokens = %q / %q, want both empty without a snapshot", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	if resp.PreviousToken != "" || resp.NextToken != "" {
+		t.Fatalf("tokens = %q / %q, want both empty without a snapshot", resp.PreviousToken, resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -320,19 +321,19 @@ func TestCatalogListRankedSeriesServesTheRankingWhenTheEarlierSnapshotIsMalforme
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), seriesID, "RANKED", "Ranked", now))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Limit:  2,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListRankedSeries: %v", err)
 	}
 
-	assertRankedPositions(t, resp.Msg.RankedSeries, "RANKED@1")
-	if resp.Msg.RankedSeries[0].PreviousRank != nil {
+	assertRankedPositions(t, resp.RankedSeries, "RANKED@1")
+	if resp.RankedSeries[0].PreviousRank != nil {
 		t.Fatalf("previous_rank = %d, want absent when the earlier snapshot is unreadable",
-			resp.Msg.RankedSeries[0].GetPreviousRank())
+			resp.RankedSeries[0].GetPreviousRank())
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -353,24 +354,24 @@ func TestCatalogListRankedSeriesRecoversFromAnEmptyPage(t *testing.T) {
 		WithArgs(tenantID, "all", "web", nil, boundary, false, int32(1), int32(3), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows())
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Limit:  2,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListRankedSeries: %v", err)
 	}
 
-	if len(resp.Msg.RankedSeries) != 0 {
-		t.Fatalf("ranked_series = %+v, want an empty page", resp.Msg.RankedSeries)
+	if len(resp.RankedSeries) != 0 {
+		t.Fatalf("ranked_series = %+v, want an empty page", resp.RankedSeries)
 	}
-	if resp.Msg.PreviousToken == "" {
+	if resp.PreviousToken == "" {
 		t.Fatalf("previous_token is empty, want a recovery token back to the boundary")
 	}
-	if resp.Msg.NextToken != "" {
-		t.Fatalf("next_token = %q, want empty when nothing follows the boundary", resp.Msg.NextToken)
+	if resp.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty when nothing follows the boundary", resp.NextToken)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -382,15 +383,15 @@ func TestCatalogListRankedSeriesRejectsATokenFromAnotherPeriod(t *testing.T) {
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	// The same position names a different series in the daily ranking, so a
 	// weekly token cannot be reinterpreted against it.
-	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	_, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Period: publirav1.RankingPeriod_RANKING_PERIOD_DAILY,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token: webToken(
 			pagination.Forward, "weekly", "all", uuid.Must(uuid.NewV7()).String(), "1", uuid.Must(uuid.NewV7()).String()),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
@@ -404,15 +405,15 @@ func TestCatalogListRankedSeriesRejectsATokenFromAnotherAgeRating(t *testing.T) 
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	// Each rating is a leaderboard of its own, so an r18 position cannot be
 	// continued in the all-ages chart. The token is refused before the tenant's
 	// age rule is read.
-	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	_, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token: webToken(
 			pagination.Forward, "daily", "r18", uuid.Must(uuid.NewV7()).String(), "1", uuid.Must(uuid.NewV7()).String()),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
@@ -426,13 +427,13 @@ func TestCatalogListRankedSeriesRejectsAnUnknownAgeRating(t *testing.T) {
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	// A rating from a newer client names a leaderboard this build does not
 	// write, and answering with the all-ages one instead would mislabel it.
-	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	_, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		AgeRating: publirattypesv1.SeriesAgeRating(99),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
@@ -446,13 +447,13 @@ func TestCatalogListRankedSeriesRejectsABrokenToken(t *testing.T) {
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		// Five keys are the right count, but the rank is not a number.
 		Token: webToken(
 			pagination.Forward, "daily", "all", uuid.Must(uuid.NewV7()).String(), "first", uuid.Must(uuid.NewV7()).String()),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
@@ -474,12 +475,12 @@ func TestCatalogListRankedSeriesRejectsATokenWhoseRankingIsGone(t *testing.T) {
 		WithArgs(tenantID, snapshotID, nil, "web", "all", "daily", "series").
 		WillReturnError(sql.ErrNoRows)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token: webToken(
 			pagination.Forward, "daily", "all", snapshotID.String(), "1", uuid.Must(uuid.NewV7()).String()),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
@@ -510,24 +511,24 @@ func TestCatalogListRankedSeriesKeepsALaterPageInThePinnedSnapshot(t *testing.T)
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), tail, "TAIL", "Tail", now))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Limit:  2,
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:  token,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListRankedSeries: %v", err)
 	}
 
-	assertRankedPositions(t, resp.Msg.RankedSeries, "TAIL@2")
+	assertRankedPositions(t, resp.RankedSeries, "TAIL@2")
 	// The movement marker compares against the period before the pinned one,
 	// so it says the same thing page 1 said.
-	if got := resp.Msg.RankedSeries[0].GetPreviousRank(); got != 1 {
+	if got := resp.RankedSeries[0].GetPreviousRank(); got != 1 {
 		t.Fatalf("previous_rank = %d, want 1", got)
 	}
-	if resp.Msg.ComputedAt != now.Format(time.RFC3339) {
-		t.Fatalf("computed_at = %q, want the pinned snapshot's %q", resp.Msg.ComputedAt, now.Format(time.RFC3339))
+	if resp.ComputedAt != now.Format(time.RFC3339) {
+		t.Fatalf("computed_at = %q, want the pinned snapshot's %q", resp.ComputedAt, now.Format(time.RFC3339))
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -540,10 +541,10 @@ func TestCatalogListRankedSeriesRejectsAnotherTenantsRequest(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("error code = %v, want NotFound", connect.CodeOf(err))
 	}
@@ -582,25 +583,25 @@ func TestCatalogListRankedSeriesReadsTheLeaderboardOfTheNamedGenre(t *testing.T)
 			recommendedSeriesRow(seriesDetailColumns(), slipped, "SLIPPED", "Slipped", now),
 			climbed, "CLIMBED", "Climbed", now))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		GenrePublicId: "GENRE0000001",
 		Limit:         1,
 		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListRankedSeries: %v", err)
 	}
 
-	assertRankedPositions(t, resp.Msg.RankedSeries, "CLIMBED@1")
-	if got := resp.Msg.RankedSeries[0].GetPreviousRank(); got != 2 {
+	assertRankedPositions(t, resp.RankedSeries, "CLIMBED@1")
+	if got := resp.RankedSeries[0].GetPreviousRank(); got != 2 {
 		t.Fatalf("previous_rank = %d, want 2", got)
 	}
 	// The token names the genre beside the period, so it continues this genre's
 	// chart and no other.
 	want := webToken(pagination.Forward, "daily+genre:GENRE0000001", "all", snapshotID.String(), "1", climbed.String())
-	if resp.Msg.NextToken != want {
-		t.Fatalf("next_token = %q, want %q", resp.Msg.NextToken, want)
+	if resp.NextToken != want {
+		t.Fatalf("next_token = %q, want %q", resp.NextToken, want)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -630,19 +631,19 @@ func TestCatalogListRankedSeriesKeepsALaterGenrePageInThePinnedSnapshot(t *testi
 		WithArgs("web", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), tail, "TAIL", "Tail", now))
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		GenrePublicId: "GENRE0000001",
 		Limit:         2,
 		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Token:         webToken(pagination.Forward, "daily+genre:GENRE0000001", "all", pinned.String(), "1", boundary.String()),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ListRankedSeries: %v", err)
 	}
 
-	assertRankedPositions(t, resp.Msg.RankedSeries, "TAIL@2")
-	if got := resp.Msg.RankedSeries[0].GetPreviousRank(); got != 1 {
+	assertRankedPositions(t, resp.RankedSeries, "TAIL@2")
+	if got := resp.RankedSeries[0].GetPreviousRank(); got != 1 {
 		t.Fatalf("previous_rank = %d, want 1", got)
 	}
 	assertPublicExpectations(t, mock)
@@ -659,11 +660,11 @@ func TestCatalogListRankedSeriesRejectsAGenreTheTenantDoesNotCurate(t *testing.T
 	// genre's series list already answers, never an empty chart.
 	expectGenreLookup(mock, tenantID, "GENRE0000404", false)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		GenrePublicId: "GENRE0000404",
 		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("error code = %v, want NotFound", connect.CodeOf(err))
 	}
@@ -678,14 +679,14 @@ func TestCatalogListRankedSeriesRejectsAGenreUnderARatedRanking(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	// The batch ranks a genre's all-ages series alone, so an R18 chart of a
 	// genre is refused before anything is read rather than answered empty.
-	_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+	_, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 		AgeRating:     publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18,
 		GenrePublicId: "GENRE0000001",
 		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("error code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
@@ -716,12 +717,12 @@ func TestCatalogListRankedSeriesRejectsATokenFromAnotherGenre(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			expectTenantLookup(mock, tenantID, "TENANT", time.Now().UTC())
 
-			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
-			_, err := client.ListRankedSeries(context.Background(), connect.NewRequest(&publirav1.ListRankedSeriesRequest{
+			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			_, err := client.ListRankedSeries(context.Background(), &publirav1.ListRankedSeriesRequest{
 				GenrePublicId: tt.genre,
 				Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Token:         webToken(pagination.Forward, tt.tokenKey, "all", snapshotID, "1", seriesID),
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("error code = %v, want InvalidArgument", connect.CodeOf(err))
 			}

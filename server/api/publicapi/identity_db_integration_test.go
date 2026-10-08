@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -126,11 +126,11 @@ func (e *identityDBEnv) signIn(provider publirav1.IdentityProvider, idToken, non
 	for _, apply := range edit {
 		apply(req)
 	}
-	resp, err := e.authClient().LoginWithIdToken(context.Background(), connect.NewRequest(req))
+	resp, err := e.authClient().LoginWithIdToken(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg, nil
+	return resp, nil
 }
 
 func (e *identityDBEnv) mustSignIn(t *testing.T, provider publirav1.IdentityProvider, idToken, nonce string, edit ...func(*publirav1.LoginWithIdTokenRequest)) *publirav1.LoginWithIdTokenResponse {
@@ -179,12 +179,12 @@ func TestDBLoginWithIdTokenCreatesAnAccountAndFindsItAgain(t *testing.T) {
 	if !created.EmailVerifiedAt.Valid || created.PasswordHash.Valid || created.Status != "active" {
 		t.Fatalf("created account = %+v, want an active, verified account without a password", created)
 	}
-	me, err := env.authClient().GetMe(context.Background(), newBearerRequest(&publirav1.GetMeRequest{Tenant: tenantContext(env.tenant)}, first.AccessToken.Token))
+	me, err := env.authClient().GetMe(testutil.WithBearer(context.Background(), first.AccessToken.Token), &publirav1.GetMeRequest{Tenant: tenantContext(env.tenant)})
 	if err != nil {
 		t.Fatalf("GetMe with the sign-in token: %v", err)
 	}
-	if me.Msg.User.PublicId != first.User.PublicId {
-		t.Fatalf("GetMe public_id = %q, want %q", me.Msg.User.PublicId, first.User.PublicId)
+	if me.User.PublicId != first.User.PublicId {
+		t.Fatalf("GetMe public_id = %q, want %q", me.User.PublicId, first.User.PublicId)
 	}
 
 	// The provider may carry another address by now; the link is what finds
@@ -275,19 +275,19 @@ func TestDBLoginWithIdTokenLinksTheAccountHoldingTheVouchedAddress(t *testing.T)
 		t.Fatalf("sign-in = %+v, want the existing account %s", resp, member.PublicID)
 	}
 	// The owner's password keeps working beside the link.
-	if _, err := env.authClient().Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+	if _, err := env.authClient().Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(env.tenant),
 		Email:    member.Email,
 		Password: testutil.SeededPassword,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("Login with the password after linking: %v", err)
 	}
-	listed, err := env.authClient().ListMyIdentities(context.Background(), newBearerRequest(&publirav1.ListMyIdentitiesRequest{Tenant: tenantContext(env.tenant)}, resp.AccessToken.Token))
+	listed, err := env.authClient().ListMyIdentities(testutil.WithBearer(context.Background(), resp.AccessToken.Token), &publirav1.ListMyIdentitiesRequest{Tenant: tenantContext(env.tenant)})
 	if err != nil {
 		t.Fatalf("ListMyIdentities: %v", err)
 	}
-	if !listed.Msg.HasPassword || len(listed.Msg.Identities) != 1 {
-		t.Fatalf("ListMyIdentities = %+v, want the google link beside the password", listed.Msg)
+	if !listed.HasPassword || len(listed.Identities) != 1 {
+		t.Fatalf("ListMyIdentities = %+v, want the google link beside the password", listed)
 	}
 }
 
@@ -357,11 +357,11 @@ func TestDBLoginWithIdTokenTakesOverAnAccountNobodyConfirmed(t *testing.T) {
 	if taken.PasswordHash.Valid || !taken.EmailVerifiedAt.Valid || taken.Status != "active" {
 		t.Fatalf("account = %+v, want it active, verified, and without the squatter's password", taken)
 	}
-	_, err := env.authClient().Login(context.Background(), connect.NewRequest(&publirav1.LoginRequest{
+	_, err := env.authClient().Login(context.Background(), &publirav1.LoginRequest{
 		Tenant:   tenantContext(env.tenant),
 		Email:    "victim@example.com",
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login with the squatter's password code = %v, want unauthenticated", connect.CodeOf(err))
 	}
@@ -425,10 +425,10 @@ func TestDBUnlinkIdentityKeepsTheLastWayIn(t *testing.T) {
 	token := signedIn.AccessToken.Token
 	client := env.authClient()
 
-	_, err := client.UnlinkIdentity(context.Background(), newBearerRequest(&publirav1.UnlinkIdentityRequest{
+	_, err := client.UnlinkIdentity(testutil.WithBearer(context.Background(), token), &publirav1.UnlinkIdentityRequest{
 		Tenant:   tenantContext(env.tenant),
 		Provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
-	}, token))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("unlinking the only way in code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -436,26 +436,26 @@ func TestDBUnlinkIdentityKeepsTheLastWayIn(t *testing.T) {
 	// With Apple linked as well, Google may go.
 	env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE,
 		env.appleToken(t, "apple-subject", "reader@example.com", "nonce-2"), "nonce-2")
-	listed, err := client.ListMyIdentities(context.Background(), newBearerRequest(&publirav1.ListMyIdentitiesRequest{Tenant: tenantContext(env.tenant)}, token))
+	listed, err := client.ListMyIdentities(testutil.WithBearer(context.Background(), token), &publirav1.ListMyIdentitiesRequest{Tenant: tenantContext(env.tenant)})
 	if err != nil {
 		t.Fatalf("ListMyIdentities: %v", err)
 	}
-	if len(listed.Msg.Identities) != 2 || listed.Msg.Identities[0].Provider != publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE || listed.Msg.Identities[1].Email != "reader@example.com" {
-		t.Fatalf("identities = %+v, want apple and google", listed.Msg.Identities)
+	if len(listed.Identities) != 2 || listed.Identities[0].Provider != publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE || listed.Identities[1].Email != "reader@example.com" {
+		t.Fatalf("identities = %+v, want apple and google", listed.Identities)
 	}
-	if listed.Msg.HasPassword {
+	if listed.HasPassword {
 		t.Fatal("has_password = true for an account a sign-in created, want false")
 	}
-	if _, err := client.UnlinkIdentity(context.Background(), newBearerRequest(&publirav1.UnlinkIdentityRequest{
+	if _, err := client.UnlinkIdentity(testutil.WithBearer(context.Background(), token), &publirav1.UnlinkIdentityRequest{
 		Tenant:   tenantContext(env.tenant),
 		Provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
-	}, token)); err != nil {
+	}); err != nil {
 		t.Fatalf("UnlinkIdentity with another way in: %v", err)
 	}
-	_, err = client.UnlinkIdentity(context.Background(), newBearerRequest(&publirav1.UnlinkIdentityRequest{
+	_, err = client.UnlinkIdentity(testutil.WithBearer(context.Background(), token), &publirav1.UnlinkIdentityRequest{
 		Tenant:   tenantContext(env.tenant),
 		Provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
-	}, token))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("unlinking a provider not linked code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -498,21 +498,21 @@ func TestDBAppleSignInKeepsTheRefreshTokenAndRevokesItWithTheAccount(t *testing.
 
 	// The account has no password, so a fresh Apple sign-in confirms the
 	// deletion.
-	_, err = env.authClient().DeleteMe(context.Background(), newBearerRequest(&publirav1.DeleteMeRequest{
+	_, err = env.authClient().DeleteMe(testutil.WithBearer(context.Background(), signedIn.AccessToken.Token), &publirav1.DeleteMeRequest{
 		Tenant:   tenantContext(env.tenant),
 		Provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE,
 		IdToken:  env.appleToken(t, "another-subject", "relay@privaterelay.appleid.com", "nonce-2"),
 		Nonce:    "nonce-2",
-	}, signedIn.AccessToken.Token))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("DeleteMe confirmed by another Apple account code = %v, want invalid_argument", connect.CodeOf(err))
 	}
-	if _, err := env.authClient().DeleteMe(context.Background(), newBearerRequest(&publirav1.DeleteMeRequest{
+	if _, err := env.authClient().DeleteMe(testutil.WithBearer(context.Background(), signedIn.AccessToken.Token), &publirav1.DeleteMeRequest{
 		Tenant:   tenantContext(env.tenant),
 		Provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE,
 		IdToken:  env.appleToken(t, "apple-subject", "relay@privaterelay.appleid.com", "nonce-3"),
 		Nonce:    "nonce-3",
-	}, signedIn.AccessToken.Token)); err != nil {
+	}); err != nil {
 		t.Fatalf("DeleteMe: %v", err)
 	}
 	env.processAppleEvents(t)
@@ -534,14 +534,14 @@ func TestDBRequestEmailChangeIsConfirmedByAFreshSignIn(t *testing.T) {
 		env.googleToken(t, "google-subject", "reader@example.com", "nonce-1"), "nonce-1")
 	reader := env.userByEmail(t, "reader@example.com")
 	requestChange := func(provider publirav1.IdentityProvider, idToken, nonce string) error {
-		_, err := env.authClient().RequestEmailChange(context.Background(), newBearerRequest(&publirav1.RequestEmailChangeRequest{
+		_, err := env.authClient().RequestEmailChange(testutil.WithBearer(context.Background(), signedIn.AccessToken.Token), &publirav1.RequestEmailChangeRequest{
 			Tenant:       tenantContext(env.tenant),
 			CurrentEmail: "reader@example.com",
 			NewEmail:     "moved@example.com",
 			Provider:     provider,
 			IdToken:      idToken,
 			Nonce:        nonce,
-		}, signedIn.AccessToken.Token))
+		})
 		return err
 	}
 	liveRequests := func() int {
@@ -627,25 +627,25 @@ func TestDBIdentityConfirmationRefusesAnUnverifiableIDTokenWithoutEndingTheSessi
 		t.Run(tc.name, func(t *testing.T) {
 			idToken := tc.token(t, "nonce-2")
 
-			_, err := env.authClient().DeleteMe(context.Background(), newBearerRequest(&publirav1.DeleteMeRequest{
+			_, err := env.authClient().DeleteMe(testutil.WithBearer(context.Background(), session), &publirav1.DeleteMeRequest{
 				Tenant:   tenantContext(env.tenant),
 				Provider: google,
 				IdToken:  idToken,
 				Nonce:    "nonce-2",
-			}, session))
+			})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("DeleteMe code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
 			assertPublicBadRequestField(t, err, "id_token")
 
-			_, err = env.authClient().RequestEmailChange(context.Background(), newBearerRequest(&publirav1.RequestEmailChangeRequest{
+			_, err = env.authClient().RequestEmailChange(testutil.WithBearer(context.Background(), session), &publirav1.RequestEmailChangeRequest{
 				Tenant:       tenantContext(env.tenant),
 				CurrentEmail: "reader@example.com",
 				NewEmail:     "moved@example.com",
 				Provider:     google,
 				IdToken:      idToken,
 				Nonce:        "nonce-2",
-			}, session))
+			})
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("RequestEmailChange code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 			}
@@ -658,7 +658,7 @@ func TestDBIdentityConfirmationRefusesAnUnverifiableIDTokenWithoutEndingTheSessi
 		})
 	}
 
-	if _, err := env.authClient().GetMe(context.Background(), newBearerRequest(&publirav1.GetMeRequest{Tenant: tenantContext(env.tenant)}, session)); err != nil {
+	if _, err := env.authClient().GetMe(testutil.WithBearer(context.Background(), session), &publirav1.GetMeRequest{Tenant: tenantContext(env.tenant)}); err != nil {
 		t.Fatalf("GetMe after the refused confirmations: %v", err)
 	}
 }
@@ -669,20 +669,20 @@ func TestDBGetTenantAnswersTheProvidersReadersCanSignInWith(t *testing.T) {
 	env := newIdentityDBEnv(t)
 	tenantClient := env.tenantAPIClient()
 
-	resp, err := tenantClient.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{Tenant: tenantContext(env.tenant)}))
+	resp, err := tenantClient.GetTenant(context.Background(), &publirav1.GetTenantRequest{Tenant: tenantContext(env.tenant)})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if resp.Msg.AppleSignIn != nil || resp.Msg.GoogleSignIn != nil {
-		t.Fatalf("providers of a tenant that saved none = %v / %v, want none", resp.Msg.AppleSignIn, resp.Msg.GoogleSignIn)
+	if resp.AppleSignIn != nil || resp.GoogleSignIn != nil {
+		t.Fatalf("providers of a tenant that saved none = %v / %v, want none", resp.AppleSignIn, resp.GoogleSignIn)
 	}
 
 	env.enableProviders(t)
-	resp, err = tenantClient.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{Tenant: tenantContext(env.tenant)}))
+	resp, err = tenantClient.GetTenant(context.Background(), &publirav1.GetTenantRequest{Tenant: tenantContext(env.tenant)})
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
-	if resp.Msg.AppleSignIn.GetServicesId() != identityServicesID || resp.Msg.GoogleSignIn.GetWebClientId() != identityWebClientID {
-		t.Fatalf("providers = %v / %v", resp.Msg.AppleSignIn, resp.Msg.GoogleSignIn)
+	if resp.AppleSignIn.GetServicesId() != identityServicesID || resp.GoogleSignIn.GetWebClientId() != identityWebClientID {
+		t.Fatalf("providers = %v / %v", resp.AppleSignIn, resp.GoogleSignIn)
 	}
 }

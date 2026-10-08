@@ -2,12 +2,14 @@
 package rpcerrors
 
 import (
+	"context"
 	"errors"
 	"math"
 	"strconv"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectproto"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/protobuf/proto"
 
@@ -145,28 +147,32 @@ func NewErrorInfoErrorWithMetadata(code connect.Code, err error, reason string, 
 // without echoing the token back.
 func NewPageTokenError(err error) *connect.Error {
 	if errors.Is(err, pagination.ErrListMismatch) {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another filter"))
+		return connect.NewError(connect.CodeInvalidArgument, "token was issued for another filter")
 	}
-	return connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	return connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 }
 
 // NewRateLimitedError is the one answer every exhausted allowance gives. It
 // says how long the wait is and nothing about which rule ran out or what the
 // caller asked for, so a caller cannot map the limits themselves from it, and
 // two requests refused for different reasons are indistinguishable.
-func NewRateLimitedError(retryAfter time.Duration) *connect.Error {
-	err := connect.NewError(connect.CodeResourceExhausted, errors.New("too many requests, try again later"))
+//
+// The wait goes out as the Retry-After response header of the call ctx is
+// serving, which is where a connect-go v2 error's headers live.
+func NewRateLimitedError(ctx context.Context, retryAfter time.Duration) *connect.Error {
 	if seconds := int(math.Ceil(retryAfter.Seconds())); seconds > 0 {
-		err.Meta().Set("Retry-After", strconv.Itoa(seconds))
+		if info, ok := connect.CallInfoForServerContext(ctx); ok {
+			info.ResponseHeader().Set("Retry-After", strconv.Itoa(seconds))
+		}
 	}
-	return err
+	return connect.NewError(connect.CodeResourceExhausted, "too many requests, try again later")
 }
 
 func withDetail(code connect.Code, err error, message proto.Message) *connect.Error {
-	rpcError := connect.NewError(code, err)
-	detail, detailErr := connect.NewErrorDetail(message)
+	rpcError := connect.NewError(code, err.Error()).WithCause(err)
+	detail, detailErr := connectproto.NewErrorDetail(message)
 	if detailErr == nil {
-		rpcError.AddDetail(detail)
+		rpcError = rpcError.WithDetail(detail)
 	}
 	return rpcError
 }

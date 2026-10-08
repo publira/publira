@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -25,16 +25,16 @@ func TestDBCreateUserForATaggedVariantAnswersLikeTheRegisteredAddress(t *testing
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "john@tenant-a.example.com", "John")
 
 	for _, email := range []string{member.Email, "john+2@tenant-a.example.com"} {
-		resp, err := env.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+		resp, err := env.authClient().CreateUser(context.Background(), &publirav1.CreateUserRequest{
 			Tenant:   tenantContext(tenant),
 			Name:     "Second John",
 			Email:    email,
 			Password: "another-password",
-		}))
+		})
 		if err != nil {
 			t.Fatalf("CreateUser %s: %v", email, err)
 		}
-		if !resp.Msg.Accepted {
+		if !resp.Accepted {
 			t.Fatalf("CreateUser %s accepted = false, want the answer every sign-up gets", email)
 		}
 	}
@@ -62,12 +62,12 @@ func TestDBCreateUserStoresTheAddressWithoutItsDisplayName(t *testing.T) {
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "john@tenant-a.example.com", "John")
 
 	for _, email := range []string{"John <john+2@tenant-a.example.com>", "Jane <jane@tenant-a.example.com>"} {
-		if _, err := env.authClient().CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+		if _, err := env.authClient().CreateUser(context.Background(), &publirav1.CreateUserRequest{
 			Tenant:   tenantContext(tenant),
 			Name:     "Newcomer",
 			Email:    email,
 			Password: "another-password",
-		})); err != nil {
+		}); err != nil {
 			t.Fatalf("CreateUser %s: %v", email, err)
 		}
 	}
@@ -97,15 +97,12 @@ func TestDBRequestEmailChangeRefusesATaggedVariantOfAnotherAccountsAddress(t *te
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0002", "other@tenant-a.example.com", "Other Member")
 
-	_, err := env.authClient().RequestEmailChange(context.Background(), newBearerRequest(
-		&publirav1.RequestEmailChangeRequest{
-			Tenant:          tenantContext(tenant),
-			CurrentEmail:    member.Email,
-			NewEmail:        "Other <other+news@tenant-a.example.com>",
-			CurrentPassword: testutil.SeededPassword,
-		},
-		tokenFor(t, tenant, member),
-	))
+	_, err := env.authClient().RequestEmailChange(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.RequestEmailChangeRequest{
+		Tenant:          tenantContext(tenant),
+		CurrentEmail:    member.Email,
+		NewEmail:        "Other <other+news@tenant-a.example.com>",
+		CurrentPassword: testutil.SeededPassword,
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("RequestEmailChange code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
 	}
@@ -118,15 +115,12 @@ func TestDBRequestEmailChangeMovesBetweenTagsOfTheReadersOwnInbox(t *testing.T) 
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 
-	if _, err := env.authClient().RequestEmailChange(context.Background(), newBearerRequest(
-		&publirav1.RequestEmailChangeRequest{
-			Tenant:          tenantContext(tenant),
-			CurrentEmail:    member.Email,
-			NewEmail:        "member+news@tenant-a.example.com",
-			CurrentPassword: testutil.SeededPassword,
-		},
-		tokenFor(t, tenant, member),
-	)); err != nil {
+	if _, err := env.authClient().RequestEmailChange(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.RequestEmailChangeRequest{
+		Tenant:          tenantContext(tenant),
+		CurrentEmail:    member.Email,
+		NewEmail:        "member+news@tenant-a.example.com",
+		CurrentPassword: testutil.SeededPassword,
+	}); err != nil {
 		t.Fatalf("RequestEmailChange to a tag of the reader's own inbox: %v", err)
 	}
 	confirmEveryEmailChangeLink(t, env, tenant)
@@ -146,15 +140,12 @@ func TestDBConfirmEmailChangeRefusesAnInboxAnotherAccountTookMeanwhile(t *testin
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 
-	if _, err := env.authClient().RequestEmailChange(context.Background(), newBearerRequest(
-		&publirav1.RequestEmailChangeRequest{
-			Tenant:          tenantContext(tenant),
-			CurrentEmail:    member.Email,
-			NewEmail:        "moved+news@tenant-a.example.com",
-			CurrentPassword: testutil.SeededPassword,
-		},
-		tokenFor(t, tenant, member),
-	)); err != nil {
+	if _, err := env.authClient().RequestEmailChange(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.RequestEmailChangeRequest{
+		Tenant:          tenantContext(tenant),
+		CurrentEmail:    member.Email,
+		NewEmail:        "moved+news@tenant-a.example.com",
+		CurrentPassword: testutil.SeededPassword,
+	}); err != nil {
 		t.Fatalf("RequestEmailChange: %v", err)
 	}
 	env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0002", "moved@tenant-a.example.com", "Moved Meanwhile")
@@ -163,16 +154,16 @@ func TestDBConfirmEmailChangeRefusesAnInboxAnotherAccountTookMeanwhile(t *testin
 	if len(tokens) != 2 {
 		t.Fatalf("email change links = %d, want 2", len(tokens))
 	}
-	if _, err := env.authClient().ConfirmEmailChange(context.Background(), connect.NewRequest(&publirav1.ConfirmEmailChangeRequest{
+	if _, err := env.authClient().ConfirmEmailChange(context.Background(), &publirav1.ConfirmEmailChangeRequest{
 		Tenant: tenantContext(tenant),
 		Token:  tokens[0],
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("ConfirmEmailChange with the first link: %v", err)
 	}
-	_, err := env.authClient().ConfirmEmailChange(context.Background(), connect.NewRequest(&publirav1.ConfirmEmailChangeRequest{
+	_, err := env.authClient().ConfirmEmailChange(context.Background(), &publirav1.ConfirmEmailChangeRequest{
 		Tenant: tenantContext(tenant),
 		Token:  tokens[1],
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("ConfirmEmailChange with the second link code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
 	}
@@ -213,10 +204,10 @@ func confirmEveryEmailChangeLink(t *testing.T, env *publicDBEnv, tenant testutil
 	t.Helper()
 
 	for _, token := range emailChangeLinks(t, env) {
-		if _, err := env.authClient().ConfirmEmailChange(context.Background(), connect.NewRequest(&publirav1.ConfirmEmailChangeRequest{
+		if _, err := env.authClient().ConfirmEmailChange(context.Background(), &publirav1.ConfirmEmailChangeRequest{
 			Tenant: tenantContext(tenant),
 			Token:  token,
-		})); err != nil {
+		}); err != nil {
 			t.Fatalf("ConfirmEmailChange: %v", err)
 		}
 	}

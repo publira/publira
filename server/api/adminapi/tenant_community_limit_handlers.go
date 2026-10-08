@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 
@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 var errTenantCommunityLimitConflict = errors.New("community limit settings have changed since they were read")
@@ -157,8 +158,8 @@ func effectiveCommunityLimits(d *publiraplatformv1.CommunityLimitDefaults, v *pu
 	}
 	return e
 }
-func (s *adminServer) GetTenantCommunityLimitSettings(ctx context.Context, req *connect.Request[publiraadminv1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[publiraadminv1.GetTenantCommunityLimitSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+func (s *adminServer) GetTenantCommunityLimitSettings(ctx context.Context, req *publiraadminv1.GetTenantCommunityLimitSettingsRequest) (*publiraadminv1.GetTenantCommunityLimitSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -171,17 +172,17 @@ func (s *adminServer) GetTenantCommunityLimitSettings(ctx context.Context, req *
 	}
 	row, err := s.queriesFor(ctx).GetTenantCommunityLimitOverrides(ctx, tenant.ID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return connect.NewResponse(&publiraadminv1.GetTenantCommunityLimitSettingsResponse{Overrides: &publiraadminv1.TenantCommunityLimitOverrides{}, PlatformDefaults: communityDefaults(policy.Community), Effective: communityDefaults(policy.Community)}), nil
+		return &publiraadminv1.GetTenantCommunityLimitSettingsResponse{Overrides: &publiraadminv1.TenantCommunityLimitOverrides{}, PlatformDefaults: communityDefaults(policy.Community), Effective: communityDefaults(policy.Community)}, nil
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read tenant community limits", err)
 	}
 	overrides := communityOverridesFromRow(row)
 	defaults := communityDefaults(policy.Community)
-	return connect.NewResponse(&publiraadminv1.GetTenantCommunityLimitSettingsResponse{Overrides: overrides, PlatformDefaults: defaults, Effective: effectiveCommunityLimits(defaults, overrides), Revision: row.Revision}), nil
+	return &publiraadminv1.GetTenantCommunityLimitSettingsResponse{Overrides: overrides, PlatformDefaults: defaults, Effective: effectiveCommunityLimits(defaults, overrides), Revision: row.Revision}, nil
 }
-func (s *adminServer) UpdateTenantCommunityLimitSettings(ctx context.Context, req *connect.Request[publiraadminv1.UpdateTenantCommunityLimitSettingsRequest]) (*connect.Response[publiraadminv1.UpdateTenantCommunityLimitSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+func (s *adminServer) UpdateTenantCommunityLimitSettings(ctx context.Context, req *publiraadminv1.UpdateTenantCommunityLimitSettingsRequest) (*publiraadminv1.UpdateTenantCommunityLimitSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -189,18 +190,18 @@ func (s *adminServer) UpdateTenantCommunityLimitSettings(ctx context.Context, re
 	if err != nil {
 		return nil, err
 	}
-	if req.Msg.Overrides == nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("overrides is required"))
+	if req.Overrides == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "overrides is required")
 	}
-	if req.Msg.ExpectedRevision < 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("expected_revision must not be negative"))
+	if req.ExpectedRevision < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "expected_revision must not be negative")
 	}
 	policy, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read platform policy", err)
 	}
-	if err := validateCommunityOverrides(req.Msg.Overrides, communityDefaults(policy.Community)); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	if err := validateCommunityOverrides(req.Overrides, communityDefaults(policy.Community)); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -210,25 +211,25 @@ func (s *adminServer) UpdateTenantCommunityLimitSettings(ctx context.Context, re
 	txq := dbmodels.New(tx)
 	current, err := txq.LockTenantCommunityLimitOverrides(ctx, tenant.ID)
 	var updated dbmodels.TenantCommunityLimitOverride
-	p := communityOverridesParams(tenant.ID, req.Msg.Overrides)
+	p := communityOverridesParams(tenant.ID, req.Overrides)
 	if errors.Is(err, sql.ErrNoRows) {
-		if req.Msg.ExpectedRevision != 0 {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errTenantCommunityLimitConflict)
+		if req.ExpectedRevision != 0 {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errTenantCommunityLimitConflict.Error()).WithCause(errTenantCommunityLimitConflict)
 		}
 		updated, err = txq.InsertTenantCommunityLimitOverrides(ctx, communityOverridesInsertParams(p))
 	} else if err == nil {
-		if current.Revision != req.Msg.ExpectedRevision {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errTenantCommunityLimitConflict)
+		if current.Revision != req.ExpectedRevision {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errTenantCommunityLimitConflict.Error()).WithCause(errTenantCommunityLimitConflict)
 		}
 		updated, err = txq.UpdateTenantCommunityLimitOverrides(ctx, p)
 	}
 	if dberr.IsUniqueViolation(err) {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errTenantCommunityLimitConflict)
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errTenantCommunityLimitConflict.Error()).WithCause(errTenantCommunityLimitConflict)
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to save tenant community limits", err)
 	}
-	if err = auditlog.WriteTenant(ctx, txq, s.logger, auditlog.TenantEntry{TenantID: tenant.ID, ActorUserID: session.User.ID, ActorRole: session.Role, Action: "tenant_community_limits_updated", TargetType: "tenant_community_limits", TargetID: tenant.PublicID, Outcome: auditlog.OutcomeSuccess, ClientIP: auditlog.ClientIPFromHeader(req.Header())}); err != nil {
+	if err = auditlog.WriteTenant(ctx, txq, s.logger, auditlog.TenantEntry{TenantID: tenant.ID, ActorUserID: session.User.ID, ActorRole: session.Role, Action: "tenant_community_limits_updated", TargetType: "tenant_community_limits", TargetID: tenant.PublicID, Outcome: auditlog.OutcomeSuccess, ClientIP: auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx))}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to audit tenant community limits", err)
 	}
 	if err = tx.Commit(); err != nil {
@@ -240,5 +241,5 @@ func (s *adminServer) UpdateTenantCommunityLimitSettings(ctx context.Context, re
 	}
 	defaults := communityDefaults(policy.Community)
 	overrides := communityOverridesFromRow(updated)
-	return connect.NewResponse(&publiraadminv1.UpdateTenantCommunityLimitSettingsResponse{Overrides: overrides, PlatformDefaults: defaults, Effective: effectiveCommunityLimits(defaults, overrides), Revision: updated.Revision}), nil
+	return &publiraadminv1.UpdateTenantCommunityLimitSettingsResponse{Overrides: overrides, PlatformDefaults: defaults, Effective: effectiveCommunityLimits(defaults, overrides), Revision: updated.Revision}, nil
 }

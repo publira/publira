@@ -7,7 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/catalogsearch/opensearchbackend"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -56,7 +57,7 @@ func newSearchClient(t *testing.T, probe *recordingProbe) (
 	t.Cleanup(ts.Close)
 
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	return publirasplatformv1connect.NewPlatformSearchSettingsServiceClient(ts.Client(), ts.URL), pg, operator
+	return publirasplatformv1connect.NewPlatformSearchSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))), pg, operator
 }
 
 func searchUpdateRequest(revision int64) *publirasplatformv1.UpdatePlatformSearchSettingsRequest {
@@ -75,11 +76,11 @@ func updateSearchSettings(
 	operator testutil.PlatformOperator,
 	req *publirasplatformv1.UpdatePlatformSearchSettingsRequest,
 ) (*publirasplatformv1.PlatformSearchSettings, error) {
-	resp, err := client.UpdatePlatformSearchSettings(context.Background(), authedStorageRequest(operator, req))
+	resp, err := client.UpdatePlatformSearchSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg.GetSettings(), nil
+	return resp.GetSettings(), nil
 }
 
 // An installation that has saved nothing searches on SQL, which the read says
@@ -87,11 +88,11 @@ func updateSearchSettings(
 func TestDBGetPlatformSearchSettingsAnswersTheSQLEngine(t *testing.T) {
 	client, _, operator := newSearchClient(t, &recordingProbe{probe: completeOpenSearch()})
 
-	resp, err := client.GetPlatformSearchSettings(context.Background(), authedStorageRequest(operator, &publirasplatformv1.GetPlatformSearchSettingsRequest{}))
+	resp, err := client.GetPlatformSearchSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformSearchSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformSearchSettings: %v", err)
 	}
-	settings := resp.Msg.GetSettings()
+	settings := resp.GetSettings()
 	if settings.GetRevision() != 0 || settings.GetEngine() != publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_SQL {
 		t.Fatalf("settings = %+v, want sql at revision zero", settings)
 	}
@@ -137,11 +138,11 @@ func TestDBUpdatePlatformSearchSettingsSavesAndReportsTheBuildDue(t *testing.T) 
 	}); err != nil {
 		t.Fatalf("record a failed build: %v", err)
 	}
-	resp, err := client.GetPlatformSearchSettings(context.Background(), authedStorageRequest(operator, &publirasplatformv1.GetPlatformSearchSettingsRequest{}))
+	resp, err := client.GetPlatformSearchSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformSearchSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformSearchSettings: %v", err)
 	}
-	got := resp.Msg.GetSettings()
+	got := resp.GetSettings()
 	if got.GetBuildState() != publirasplatformv1.PlatformSearchBuildState_PLATFORM_SEARCH_BUILD_STATE_FAILED ||
 		!strings.Contains(got.GetBuildFailure().GetError(), "kuromoji_tokenizer") || got.GetBuildFailure().GetFailedAt() == "" {
 		t.Fatalf("settings = %+v, want the failed build reported", got)
@@ -186,32 +187,32 @@ func TestDBTestPlatformSearchConnectionUsesTheStoredPassword(t *testing.T) {
 		t.Fatalf("UpdatePlatformSearchSettings: %v", err)
 	}
 
-	resp, err := client.TestPlatformSearchConnection(context.Background(), authedStorageRequest(operator, &publirasplatformv1.TestPlatformSearchConnectionRequest{
+	resp, err := client.TestPlatformSearchConnection(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.TestPlatformSearchConnectionRequest{
 		Engine:             publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_OPENSEARCH,
 		Url:                "https://search.example.com",
 		Username:           "publira",
 		PasswordUpdateMode: publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("TestPlatformSearchConnection: %v", err)
 	}
-	if !resp.Msg.GetSucceeded() || resp.Msg.GetProduct() != opensearchbackend.ProductOpenSearch || !resp.Msg.GetAnalysisKuromojiInstalled() || !resp.Msg.GetAnalysisIcuInstalled() {
-		t.Fatalf("response = %+v, want OpenSearch with both plugins", resp.Msg)
+	if !resp.GetSucceeded() || resp.GetProduct() != opensearchbackend.ProductOpenSearch || !resp.GetAnalysisKuromojiInstalled() || !resp.GetAnalysisIcuInstalled() {
+		t.Fatalf("response = %+v, want OpenSearch with both plugins", resp)
 	}
 	if len(probe.asked) != 1 || probe.asked[0].Password != "the-search-password" || probe.asked[0].Username != "publira" {
 		t.Fatalf("asked = %v, want the stored credential", probe.asked)
 	}
 
 	probe.probe.Plugins = []string{opensearchbackend.PluginAnalysisKuromoji}
-	resp, err = client.TestPlatformSearchConnection(context.Background(), authedStorageRequest(operator, &publirasplatformv1.TestPlatformSearchConnectionRequest{
+	resp, err = client.TestPlatformSearchConnection(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.TestPlatformSearchConnectionRequest{
 		Engine: publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_OPENSEARCH,
 		Url:    "http://search.example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("TestPlatformSearchConnection: %v", err)
 	}
-	if resp.Msg.GetSucceeded() || resp.Msg.GetReason() != platformsearch.ReasonMissingPlugin || resp.Msg.GetAnalysisIcuInstalled() {
-		t.Fatalf("response = %+v, want the missing plugin reported", resp.Msg)
+	if resp.GetSucceeded() || resp.GetReason() != platformsearch.ReasonMissingPlugin || resp.GetAnalysisIcuInstalled() {
+		t.Fatalf("response = %+v, want the missing plugin reported", resp)
 	}
 	if got := countAuditActions(t, pg, "platform_search_connection_tested"); got != 2 {
 		t.Fatalf("audit entries = %d, want one per test", got)
@@ -254,11 +255,11 @@ func TestDBUpdatePlatformSearchSettingsSavesAndRefusesAnAnalysis(t *testing.T) {
 
 	get := func() *publirasplatformv1.PlatformSearchSettings {
 		t.Helper()
-		resp, err := client.GetPlatformSearchSettings(context.Background(), authedStorageRequest(operator, &publirasplatformv1.GetPlatformSearchSettingsRequest{}))
+		resp, err := client.GetPlatformSearchSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformSearchSettingsRequest{})
 		if err != nil {
 			t.Fatalf("GetPlatformSearchSettings: %v", err)
 		}
-		return resp.Msg.GetSettings()
+		return resp.GetSettings()
 	}
 	if settings := get(); settings.GetAnalysis() != "" || settings.GetDefaultAnalysis() {
 		t.Fatalf("settings on sql = %+v, want no analysis", settings)

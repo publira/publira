@@ -3,15 +3,16 @@ package publicapi
 import (
 	"context"
 	"errors"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 )
@@ -25,18 +26,18 @@ func TestGetTenantByDomainReturnsDefaultLocale(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", nil, now, "active", nil, "UTC", "en"))
 
-	client := publirav1connect.NewDomainServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.GetTenantByDomain(context.Background(), connect.NewRequest(&publirav1.GetTenantByDomainRequest{
+	client := publirav1connect.NewDomainServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{
 		Domains: []string{"tenant.example.com"},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantByDomain: %v", err)
 	}
-	if resp.Msg.TenantId != tenantID.String() {
-		t.Fatalf("tenant_id = %q, want %s", resp.Msg.TenantId, tenantID)
+	if resp.TenantId != tenantID.String() {
+		t.Fatalf("tenant_id = %q, want %s", resp.TenantId, tenantID)
 	}
-	if resp.Msg.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
+	if resp.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.DefaultLocale)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -64,10 +65,10 @@ func TestGetTenantByDomainFailsOnAnUnusableStoredLocale(t *testing.T) {
 				WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
 					AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", nil, now, "active", nil, "UTC", tt.stored))
 
-			client := publirav1connect.NewDomainServiceClient(testServer.Client(), testServer.URL)
-			_, err := client.GetTenantByDomain(context.Background(), connect.NewRequest(&publirav1.GetTenantByDomainRequest{
+			client := publirav1connect.NewDomainServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			_, err := client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{
 				Domains: []string{"tenant.example.com"},
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeInternal {
 				t.Fatalf("GetTenantByDomain code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 			}
@@ -82,10 +83,10 @@ func TestGetTenantByDomainDatabaseErrorIsHidden(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByDomains)).
 		WillReturnError(errors.New(`pq: relation "tenants" does not exist`))
 
-	client := publirav1connect.NewDomainServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.GetTenantByDomain(context.Background(), connect.NewRequest(&publirav1.GetTenantByDomainRequest{
+	client := publirav1connect.NewDomainServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{
 		Domains: []string{"tenant.example.com"},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetTenantByDomain code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}

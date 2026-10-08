@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/contentranking"
@@ -65,11 +64,11 @@ func (e *publicDBEnv) listRecommendedSeries(
 ) *publirav1.ListRecommendedSeriesResponse {
 	t.Helper()
 
-	resp, err := e.catalogClient().ListRecommendedSeries(context.Background(), connect.NewRequest(req))
+	resp, err := e.catalogClient().ListRecommendedSeries(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListRecommendedSeries: %v", err)
 	}
-	return resp.Msg
+	return resp
 }
 
 func TestDBListRecommendedSeriesOrdersBySignalsAndKeepsTenantsApart(t *testing.T) {

@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
@@ -69,7 +72,7 @@ type adminServer struct {
 }
 
 func invalidSessionError() error {
-	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid token"))
+	return connect.NewError(connect.CodeUnauthenticated, "invalid token")
 }
 
 // storageUploadError keeps context cancellation and deadline errors uncoded so
@@ -83,7 +86,7 @@ func storageUploadError(err error) error {
 	if errors.Is(err, storage.ErrNotConfigured) {
 		return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, storage.ErrNotConfigured, rpcerrors.ReasonStorageNotConfigured)
 	}
-	return connect.NewError(connect.CodeInternal, err)
+	return connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 }
 
 // internalDBError keeps context cancellation and deadline errors as-is so
@@ -105,7 +108,7 @@ func (s *adminServer) internalError(ctx context.Context, msg string, err error, 
 	args = append(args, keyvals...)
 	args = append(args, "error", err)
 	s.logger.ErrorContext(ctx, msg, args...)
-	return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+	return connect.NewError(connect.CodeInternal, "internal server error")
 }
 
 func tenantIDFromContext(ctx *publirattypesv1.TenantContext) (uuid.UUID, error) {
@@ -123,7 +126,7 @@ func (s *adminServer) tenantByContext(ctx context.Context, tenantCtx *publiratty
 	tenant, err := s.queriesFor(ctx).GetTenantByID(ctx, tenantID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
+			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, "tenant not found")
 		}
 		return dbmodels.Tenant{}, s.internalDBError(ctx, "failed to get tenant", err, "tenant_id", tenantID.String())
 	}
@@ -218,7 +221,7 @@ func (s *adminServer) recorderFor(ctx context.Context) auditlog.Recorder {
 func (s *adminServer) authenticateSession(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	headers http.Header,
+	headers *connect.Header,
 ) (rpcmiddleware.SessionContext, error) {
 	tenant, err := s.tenantByContext(ctx, tenantCtx)
 	if err != nil {
@@ -364,265 +367,89 @@ func handlerFromServer(server *adminServer) http.Handler {
 }
 
 func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
-	traced := tracing.ConnectHandlerOption(ServiceName)
+	traced := tracing.ConnectServerInterceptors(ServiceName)
 
-	adminPath, adminHandler := publiraadminv1connect.NewAdminSeriesServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(adminPath, adminHandler)
-	creatorPath, creatorHandler := publiraadminv1connect.NewAdminCreatorServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(creatorPath, creatorHandler)
-	labelPath, labelHandler := publiraadminv1connect.NewAdminLabelServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(labelPath, labelHandler)
-	genrePath, genreHandler := publiraadminv1connect.NewAdminGenreServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(genrePath, genreHandler)
-	creatorRolePath, creatorRoleHandler := publiraadminv1connect.NewAdminCreatorRoleServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(creatorRolePath, creatorRoleHandler)
-	auditPath, auditHandler := publiraadminv1connect.NewAdminAuditLogServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(auditPath, auditHandler)
-	userPath, userHandler := publiraadminv1connect.NewAdminUserServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(userPath, userHandler)
-	tenantThemePath, tenantThemeHandler := publiraadminv1connect.NewTenantThemeServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(tenantThemePath, tenantThemeHandler)
-	tenantSettingsPath, tenantSettingsHandler := publiraadminv1connect.NewTenantSettingsServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(tenantSettingsPath, tenantSettingsHandler)
-	emailPath, emailHandler := publiraadminv1connect.NewAdminEmailSettingsServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(emailPath, emailHandler)
-	paymentPath, paymentHandler := publiraadminv1connect.NewAdminPaymentSettingsServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(paymentPath, paymentHandler)
-	inboundEmailPath, inboundEmailHandler := publiraadminv1connect.NewAdminInboundEmailSettingsServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(inboundEmailPath, inboundEmailHandler)
-	fcmPath, fcmHandler := publiraadminv1connect.NewAdminFcmSettingsServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(fcmPath, fcmHandler)
-	adminAuthPath, adminAuthHandler := publiraadminv1connect.NewAdminAuthServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-		),
-	)
-	mux.Handle(adminAuthPath, adminAuthHandler)
-	dashboardPath, dashboardHandler := publiraadminv1connect.NewAdminDashboardServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(dashboardPath, dashboardHandler)
-	engagementPath, engagementHandler := publiraadminv1connect.NewAdminEngagementServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(engagementPath, engagementHandler)
-	pagesPath, pagesHandler := publiraadminv1connect.NewAdminPagesServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(pagesPath, pagesHandler)
-	announcementPath, announcementHandler := publiraadminv1connect.NewAdminAnnouncementServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(announcementPath, announcementHandler)
-	notificationPath, notificationHandler := publiraadminv1connect.NewAdminNotificationServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(notificationPath, notificationHandler)
-	accessTicketPath, accessTicketHandler := publiraadminv1connect.NewAdminAccessTicketServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(accessTicketPath, accessTicketHandler)
-	commentPath, commentHandler := publiraadminv1connect.NewAdminCommentServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(commentPath, commentHandler)
-	contactPath, contactHandler := publiraadminv1connect.NewAdminContactServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(contactPath, contactHandler)
-	royaltyPath, royaltyHandler := publiraadminv1connect.NewAdminRoyaltyServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(royaltyPath, royaltyHandler)
-	tenantMemberPath, tenantMemberHandler := publiraadminv1connect.NewAdminTenantMemberServiceHandler(
-		server,
-		traced,
-		connect.WithInterceptors(
-			server.tenantScopedQuerierInterceptor(),
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
-		),
-	)
-	mux.Handle(tenantMemberPath, tenantMemberHandler)
+	// Episode archives and images arrive inside the request message and run
+	// well past connect-go's default 4 MiB read limit, so the console reads a
+	// message of any size, as it did before that limit existed.
+	unbounded := connecthttp.WithReadMaxBytes(0)
+
+	services := connect.NewServer(slices.Concat(traced, []connect.ServerInterceptor{
+		server.tenantScopedQuerierInterceptor(),
+		rpcmiddleware.NewUnaryContextBuilderInterceptor(server.sessionContextBuilder()),
+	})...)
+	publiraadminv1connect.RegisterAdminSeriesServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminCreatorServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminLabelServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminGenreServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminCreatorRoleServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminAuditLogServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminUserServiceHandler(services, server)
+	publiraadminv1connect.RegisterTenantThemeServiceHandler(services, server)
+	publiraadminv1connect.RegisterTenantSettingsServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminEmailSettingsServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminPaymentSettingsServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminInboundEmailSettingsServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminFcmSettingsServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminDashboardServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminEngagementServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminPagesServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminAnnouncementServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminNotificationServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminAccessTicketServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminCommentServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminContactServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminRoyaltyServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminTenantMemberServiceHandler(services, server)
+	connecthttp.Mount(mux, services, unbounded)
+
+	// AdminAuthService signs a session in, so it runs before there is one to
+	// build a context from.
+	auth := connect.NewServer(slices.Concat(traced, []connect.ServerInterceptor{
+		server.tenantScopedQuerierInterceptor(),
+	})...)
+	publiraadminv1connect.RegisterAdminAuthServiceHandler(auth, server)
+	connecthttp.Mount(mux, auth, unbounded)
 }
 
-func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {
-	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			if s.db == nil {
-				return next(ctx, req)
-			}
-			if isSQLMockDB(s.db) {
-				return next(ctx, req)
-			}
-
-			tenantReq, ok := req.Any().(tenantScopedRequest)
-			if !ok {
-				return next(ctx, req)
-			}
-
-			tenantID, err := rpcmiddleware.ResolveTenantID(tenantReq.GetTenant(), req.Header())
-			if err != nil {
-				return nil, err
-			}
-
-			tenant, err := s.queriesFor(ctx).GetTenantByID(ctx, tenantID)
-			if err != nil {
-				if errors.Is(err, sql.ErrNoRows) {
-					return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
-				}
-				return nil, s.internalDBError(ctx, "failed to get tenant for request scope", err, "tenant_id", tenantID.String())
-			}
-
-			conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, s.logger)
-			if err != nil {
-				return nil, s.internalDBError(ctx, "failed to acquire tenant-scoped connection", err, "tenant_id", tenant.ID.String())
-			}
-			defer release()
-
-			tracing.SetTenant(ctx, tenant.PublicID)
-			ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
-			ctx = rpcmiddleware.WithTenantConn(ctx, conn)
-			ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
-			return next(ctx, req)
+func (s *adminServer) tenantScopedQuerierInterceptor() connect.ServerInterceptor {
+	return rpcmiddleware.NewUnaryRequestInterceptor(func(ctx context.Context, _ connect.Spec, req proto.Message, next func(context.Context) error) error {
+		if s.db == nil {
+			return next(ctx)
 		}
+		if isSQLMockDB(s.db) {
+			return next(ctx)
+		}
+
+		tenantReq, ok := req.(tenantScopedRequest)
+		if !ok {
+			return next(ctx)
+		}
+
+		tenantID, err := rpcmiddleware.ResolveTenantID(tenantReq.GetTenant(), rpcmiddleware.RequestHeader(ctx))
+		if err != nil {
+			return err
+		}
+
+		tenant, err := s.queriesFor(ctx).GetTenantByID(ctx, tenantID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return connect.NewError(connect.CodeNotFound, "tenant not found")
+			}
+			return s.internalDBError(ctx, "failed to get tenant for request scope", err, "tenant_id", tenantID.String())
+		}
+
+		conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, s.logger)
+		if err != nil {
+			return s.internalDBError(ctx, "failed to acquire tenant-scoped connection", err, "tenant_id", tenant.ID.String())
+		}
+		defer release()
+
+		tracing.SetTenant(ctx, tenant.PublicID)
+		ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
+		ctx = rpcmiddleware.WithTenantConn(ctx, conn)
+		ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
+		return next(ctx)
 	})
 }
 

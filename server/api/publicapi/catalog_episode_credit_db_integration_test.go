@@ -5,8 +5,6 @@ import (
 	"slices"
 	"testing"
 
-	"connectrpc.com/connect"
-
 	"github.com/publira/publira/server/internal/creatorroles"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -56,10 +54,10 @@ func TestDBGetEpisodeDetailCreditsEachEpisodeWithItsOwnTeam(t *testing.T) {
 	env.PG.SeedEpisodeCreator(t, tenant.ID, early.ID, firstArtist.ID, creatorroles.Defaults[1].Name)
 	env.PG.SeedEpisodeCreator(t, tenant.ID, late.ID, secondArtist.ID, creatorroles.Defaults[1].Name)
 
-	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: early.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
@@ -68,14 +66,14 @@ func TestDBGetEpisodeDetailCreditsEachEpisodeWithItsOwnTeam(t *testing.T) {
 		"Aoi Sakura / " + creatorroles.Defaults[0].Name,
 		"Ren Takahashi / " + creatorroles.Defaults[1].Name,
 	}
-	if got := creditedNames(resp.Msg.Episode.GetCreators()); !slices.Equal(got, want) {
+	if got := creditedNames(resp.Episode.GetCreators()); !slices.Equal(got, want) {
 		t.Fatalf("episode credits = %v, want %v", got, want)
 	}
 	wantNext := []string{
 		"Aoi Sakura / " + creatorroles.Defaults[0].Name,
 		"Hana Kubo / " + creatorroles.Defaults[1].Name,
 	}
-	if got := creditedNames(resp.Msg.NextEpisode.GetCreators()); !slices.Equal(got, wantNext) {
+	if got := creditedNames(resp.NextEpisode.GetCreators()); !slices.Equal(got, wantNext) {
 		t.Fatalf("next episode credits = %v, want %v", got, wantNext)
 	}
 }
@@ -100,14 +98,14 @@ func TestDBGetEpisodeDetailDoesNotFallBackToTheSeriesCredits(t *testing.T) {
 		Status:     testutil.EpisodeStatusPublished,
 	})
 
-	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   tenantContext(tenant),
 		PublicId: episode.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	if got := creditedNames(resp.Msg.Episode.GetCreators()); len(got) != 0 {
+	if got := creditedNames(resp.Episode.GetCreators()); len(got) != 0 {
 		t.Fatalf("episode credits = %v, want none", got)
 	}
 }

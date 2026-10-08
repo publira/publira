@@ -3,11 +3,10 @@ package adminapi
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"strings"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -102,22 +101,22 @@ func (s *adminServer) tenantUserPage(
 
 func (s *adminServer) ListTenantUsers(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListTenantUsersRequest],
-) (*connect.Response[publiraadminv1.ListTenantUsersResponse], error) {
+	req *publiraadminv1.ListTenantUsersRequest,
+) (*publiraadminv1.ListTenantUsersResponse, error) {
 	if _, err := s.requireTenantAdmin(ctx); err != nil {
 		return nil, err
 	}
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultTenantUserListLimit, maxTenantUserListLimit)
-	cursor, err := pagination.Decode(req.Msg.Token)
+	limit := pagination.NormalizeLimit(req.Limit, defaultTenantUserListLimit, maxTenantUserListLimit)
+	cursor, err := pagination.Decode(req.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
-	keyword := strings.TrimSpace(req.Msg.Query)
+	keyword := strings.TrimSpace(req.Query)
 	listKey := pagination.NewListKey("created_at_desc").Value("query", keyword)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
@@ -164,5 +163,5 @@ func (s *adminServer) ListTenantUsers(
 		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
-	return connect.NewResponse(res), nil
+	return res, nil
 }

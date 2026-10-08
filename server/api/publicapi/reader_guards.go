@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/platformpolicy"
@@ -226,8 +226,8 @@ func (s *apiServer) chargeReaderAction(ctx context.Context, action readerAction,
 // It is charged alongside the reader's rather than instead of it: a sender who
 // is signed in spends both, so neither a borrowed account nor a fresh one taken
 // out for the purpose widens what one client can send.
-func (s *apiServer) chargeClientAction(ctx context.Context, action readerAction, tenantID uuid.UUID, req connect.AnyRequest) error {
-	client := requestmeta.ClientSource(req.Header(), req.Peer().Addr)
+func (s *apiServer) chargeClientAction(ctx context.Context, action readerAction, tenantID uuid.UUID) error {
+	client := requestmeta.ClientSourceFromContext(ctx)
 	return s.chargeTenantAction(ctx, action, tenantID, clientActionSubject(action, client))
 }
 
@@ -247,7 +247,7 @@ func (s *apiServer) chargeTenantAction(ctx context.Context, action readerAction,
 	if decision.Allowed {
 		return nil
 	}
-	return rpcerrors.NewRateLimitedError(decision.RetryAfter)
+	return rpcerrors.NewRateLimitedError(ctx, decision.RetryAfter)
 }
 
 // clearReaderAction gives the reader back everything action has cost them.
@@ -297,7 +297,7 @@ func (s *apiServer) claimCommentBody(ctx context.Context, tenantID uuid.UUID, ke
 		return s.internalError(ctx, "failed to claim the comment body", err)
 	}
 	if !fresh {
-		return connect.NewError(connect.CodeAlreadyExists, errors.New("the same comment was posted a moment ago"))
+		return connect.NewError(connect.CodeAlreadyExists, "the same comment was posted a moment ago")
 	}
 	return nil
 }

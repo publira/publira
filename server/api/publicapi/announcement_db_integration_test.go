@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestDBGetAnnouncementReturnsTheTenantsRowByID(t *testing.T) {
@@ -22,21 +23,21 @@ func TestDBGetAnnouncementReturnsTheTenantsRowByID(t *testing.T) {
 	client := env.authClient()
 	token := tokenFor(t, tenant, member)
 
-	broadcast, err := client.GetAnnouncement(context.Background(), newBearerRequest(&publirav1.GetAnnouncementRequest{
+	broadcast, err := client.GetAnnouncement(testutil.WithBearer(context.Background(), token), &publirav1.GetAnnouncementRequest{
 		Tenant:         tenantContext(tenant),
 		AnnouncementId: broadcastID.String(),
-	}, token))
+	})
 	if err != nil {
 		t.Fatalf("GetAnnouncement broadcast: %v", err)
 	}
-	if broadcast.Msg.Announcement.Id != broadcastID.String() {
-		t.Fatalf("broadcast id = %q, want %q", broadcast.Msg.Announcement.Id, broadcastID)
+	if broadcast.Announcement.Id != broadcastID.String() {
+		t.Fatalf("broadcast id = %q, want %q", broadcast.Announcement.Id, broadcastID)
 	}
-	if broadcast.Msg.Announcement.LinkUrl != "/series/S001" {
-		t.Fatalf("broadcast link_url = %q, want /series/S001", broadcast.Msg.Announcement.LinkUrl)
+	if broadcast.Announcement.LinkUrl != "/series/S001" {
+		t.Fatalf("broadcast link_url = %q, want /series/S001", broadcast.Announcement.LinkUrl)
 	}
-	if broadcast.Msg.Announcement.Title != "Broadcast" {
-		t.Fatalf("broadcast title = %q, want Broadcast", broadcast.Msg.Announcement.Title)
+	if broadcast.Announcement.Title != "Broadcast" {
+		t.Fatalf("broadcast title = %q, want Broadcast", broadcast.Announcement.Title)
 	}
 }
 
@@ -52,10 +53,10 @@ func TestDBGetAnnouncementHidesRowsOutsideTheTenant(t *testing.T) {
 	token := tokenFor(t, first, member)
 
 	for _, announcementID := range []uuid.UUID{foreign, missing} {
-		_, err := client.GetAnnouncement(context.Background(), newBearerRequest(&publirav1.GetAnnouncementRequest{
+		_, err := client.GetAnnouncement(testutil.WithBearer(context.Background(), token), &publirav1.GetAnnouncementRequest{
 			Tenant:         tenantContext(first),
 			AnnouncementId: announcementID.String(),
-		}, token))
+		})
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("GetAnnouncement %s code = %v, want not_found (err=%v)", announcementID, connect.CodeOf(err), err)
 		}

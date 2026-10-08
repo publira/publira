@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/creatorroles"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -26,15 +26,15 @@ func TestDBSeriesKeepsACreditThatStatesNoRole(t *testing.T) {
 	env.PG.SeedSeriesCreatorWithoutRole(t, tenant.Tenant.ID, series.ID, unroled.ID)
 	env.PG.SeedSeriesCreator(t, tenant.Tenant.ID, series.ID, roled.ID, creatorroles.Defaults[0].Name)
 
-	got, err := env.seriesClient().GetSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{
+	got, err := env.seriesClient().GetSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetSeriesRequest{
 		Tenant:   tenant.tenantContext(),
 		PublicId: series.PublicID,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetSeries: %v", err)
 	}
 
-	credits := got.Msg.Series.Creators
+	credits := got.Series.Creators
 	if len(credits) != 2 {
 		t.Fatalf("credits = %d, want both the roled and the role-less one", len(credits))
 	}
@@ -69,42 +69,42 @@ func TestDBSeriesCreditsOnePersonInTwoRoles(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
-	creator, err := env.creatorClient().CreateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRequest{
+	creator, err := env.creatorClient().CreateCreator(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateCreatorRequest{
 		Tenant: tenant.tenantContext(),
 		Name:   "Aoi Sakura",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateCreator: %v", err)
 	}
 	originalAuthor := env.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[0].Name)
 	artist := env.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[1].Name)
 
-	created, err := env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+	created, err := env.seriesClient().CreateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesRequest{
 		Tenant: tenant.tenantContext(),
 		Title:  "Written And Drawn",
 		// Listed against the priority order, so what puts the leading role
 		// first is the role rather than the order of the save.
 		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{
-			{CreatorId: creator.Msg.Creator.Id, RoleId: artist.ID.String()},
-			{CreatorId: creator.Msg.Creator.Id, RoleId: originalAuthor.ID.String()},
+			{CreatorId: creator.Creator.Id, RoleId: artist.ID.String()},
+			{CreatorId: creator.Creator.Id, RoleId: originalAuthor.ID.String()},
 		},
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateSeries: %v", err)
 	}
 	want := []string{originalAuthor.Name, artist.Name}
-	if got := creatorCreditRoleNames(created.Msg.Series.Creators); !slices.Equal(got, want) {
+	if got := creatorCreditRoleNames(created.Series.Creators); !slices.Equal(got, want) {
 		t.Fatalf("credit roles = %v, want %v", got, want)
 	}
 
-	reloaded, err := env.seriesClient().GetSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{
+	reloaded, err := env.seriesClient().GetSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetSeriesRequest{
 		Tenant:   tenant.tenantContext(),
-		PublicId: created.Msg.Series.PublicId,
-	}))
+		PublicId: created.Series.PublicId,
+	})
 	if err != nil {
 		t.Fatalf("GetSeries: %v", err)
 	}
-	if got := creatorCreditRoleNames(reloaded.Msg.Series.Creators); !slices.Equal(got, want) {
+	if got := creatorCreditRoleNames(reloaded.Series.Creators); !slices.Equal(got, want) {
 		t.Fatalf("reloaded credit roles = %v, want %v", got, want)
 	}
 }
@@ -113,23 +113,23 @@ func TestDBCreateSeriesRefusesTheSameCreatorTwiceInOneRole(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
-	creator, err := env.creatorClient().CreateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRequest{
+	creator, err := env.creatorClient().CreateCreator(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateCreatorRequest{
 		Tenant: tenant.tenantContext(),
 		Name:   "Aoi Sakura",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateCreator: %v", err)
 	}
 	role := env.PG.CreatorRoleByName(t, tenant.Tenant.ID, creatorroles.Defaults[0].Name)
 
-	_, err = env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+	_, err = env.seriesClient().CreateSeries(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateSeriesRequest{
 		Tenant: tenant.tenantContext(),
 		Title:  "Doubly Credited",
 		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{
-			{CreatorId: creator.Msg.Creator.Id, RoleId: role.ID.String()},
-			{CreatorId: creator.Msg.Creator.Id, RoleId: role.ID.String()},
+			{CreatorId: creator.Creator.Id, RoleId: role.ID.String()},
+			{CreatorId: creator.Creator.Id, RoleId: role.ID.String()},
 		},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInvalidArgument, err)
 	}
@@ -144,22 +144,22 @@ func TestDBCreateSeriesRefusesACreatorRoleOfAnotherTenant(t *testing.T) {
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 
-	creator, err := env.creatorClient().CreateCreator(context.Background(), newAdminDBRequest(first, &publiraadminv1.CreateCreatorRequest{
+	creator, err := env.creatorClient().CreateCreator(testutil.WithBearer(context.Background(), first.token()), &publiraadminv1.CreateCreatorRequest{
 		Tenant: first.tenantContext(),
 		Name:   "Aoi Sakura",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateCreator: %v", err)
 	}
 	theirRole := env.PG.CreatorRoleByName(t, second.Tenant.ID, creatorroles.Defaults[0].Name)
 
-	_, err = env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(first, &publiraadminv1.CreateSeriesRequest{
+	_, err = env.seriesClient().CreateSeries(testutil.WithBearer(context.Background(), first.token()), &publiraadminv1.CreateSeriesRequest{
 		Tenant: first.tenantContext(),
 		Title:  "Series Borrowing A Role",
 		CreatorCredits: []*publiraadminv1.SeriesCreatorCredit{
-			{CreatorId: creator.Msg.Creator.Id, RoleId: theirRole.ID.String()},
+			{CreatorId: creator.Creator.Id, RoleId: theirRole.ID.String()},
 		},
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSeries code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInvalidArgument, err)
 	}

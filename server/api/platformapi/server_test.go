@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 )
 
 func TestPlatformHandlerExposesOnlyPlatformRoutes(t *testing.T) {

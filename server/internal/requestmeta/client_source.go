@@ -1,8 +1,10 @@
 package requestmeta
 
 import (
+	"context"
 	"net"
-	"net/http"
+
+	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auditlog"
 )
@@ -14,7 +16,7 @@ import (
 // left for a request that reached a server without passing one. The peer's port
 // is dropped, because it is a fresh number on every connection and an allowance
 // keyed on it would be one nobody ever spends twice.
-func ClientSource(headers http.Header, peerAddr string) string {
+func ClientSource(headers *connect.Header, peerAddr string) string {
 	if ip := auditlog.ClientIPFromHeader(headers); ip != "" {
 		return ip
 	}
@@ -22,4 +24,14 @@ func ClientSource(headers http.Header, peerAddr string) string {
 		return host
 	}
 	return peerAddr
+}
+
+// ClientSourceFromContext is ClientSource for the RPC ctx is serving, read from
+// its request headers and its peer.
+func ClientSourceFromContext(ctx context.Context) string {
+	info, ok := connect.CallInfoForServerContext(ctx)
+	if !ok {
+		return ""
+	}
+	return ClientSource(info.RequestHeader(), info.PeerAddr)
 }

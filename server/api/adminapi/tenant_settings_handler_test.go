@@ -3,28 +3,24 @@ package adminapi
 import (
 	"context"
 	"database/sql"
-	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"regexp"
 	"slices"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
-
-func newTenantSettingsRequest[T any](msg *T, sessionToken string) *connect.Request[T] {
-	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	return req
-}
 
 func TestGetTenantTimezoneReturnsConfiguredValue(t *testing.T) {
 	ts, mock := newTestAdminServer(t)
@@ -35,15 +31,15 @@ func TestGetTenantTimezoneReturnsConfiguredValue(t *testing.T) {
 	expectTenantLookupWithTimezone(mock, tenantID, "TENANT001", now, "America/Los_Angeles")
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	resp, err := client.GetTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantTimezoneRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.GetTenantTimezone(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.GetTenantTimezoneRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantTimezone: %v", err)
 	}
-	if resp.Msg.Timezone != "America/Los_Angeles" {
-		t.Fatalf("timezone = %q, want America/Los_Angeles", resp.Msg.Timezone)
+	if resp.Timezone != "America/Los_Angeles" {
+		t.Fatalf("timezone = %q, want America/Los_Angeles", resp.Timezone)
 	}
 	assertExpectations(t, mock)
 }
@@ -57,15 +53,15 @@ func TestGetTenantTimezoneFallsBackToDefault(t *testing.T) {
 	expectTenantLookupWithTimezone(mock, tenantID, "TENANT001", now, "")
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	resp, err := client.GetTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantTimezoneRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.GetTenantTimezone(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.GetTenantTimezoneRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantTimezone: %v", err)
 	}
-	if resp.Msg.Timezone != "UTC" {
-		t.Fatalf("timezone = %q, want UTC", resp.Msg.Timezone)
+	if resp.Timezone != "UTC" {
+		t.Fatalf("timezone = %q, want UTC", resp.Timezone)
 	}
 	assertExpectations(t, mock)
 }
@@ -86,16 +82,16 @@ func TestUpdateTenantTimezonePersistsIANAName(t *testing.T) {
 			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "Europe/Berlin", "ja"))
 	mock.ExpectCommit()
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	resp, err := client.UpdateTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantTimezoneRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.UpdateTenantTimezone(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantTimezoneRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Timezone: "  Europe/Berlin  ",
-	}, sessionToken))
+	})
 	if err != nil {
 		t.Fatalf("UpdateTenantTimezone: %v", err)
 	}
-	if resp.Msg.Timezone != "Europe/Berlin" {
-		t.Fatalf("timezone = %q, want Europe/Berlin", resp.Msg.Timezone)
+	if resp.Timezone != "Europe/Berlin" {
+		t.Fatalf("timezone = %q, want Europe/Berlin", resp.Timezone)
 	}
 	assertExpectations(t, mock)
 }
@@ -121,11 +117,11 @@ func TestUpdateTenantTimezoneRecordsItsInvalidationBeforeCommitting(t *testing.T
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	if _, err := client.UpdateTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantTimezoneRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	if _, err := client.UpdateTenantTimezone(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantTimezoneRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Timezone: "Europe/Berlin",
-	}, sessionToken)); err != nil {
+	}); err != nil {
 		t.Fatalf("UpdateTenantTimezone: %v", err)
 	}
 	want := tenantTimezoneRevalidateTags(tenantID.String())
@@ -155,11 +151,11 @@ func TestUpdateTenantTimezoneRollsBackWhenItsInvalidationCannotBeRecorded(t *tes
 		WillReturnError(sql.ErrConnDone)
 	mock.ExpectRollback()
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantTimezoneRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantTimezone(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantTimezoneRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Timezone: "Europe/Berlin",
-	}, sessionToken))
+	})
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("UpdateTenantTimezone code = %v, want internal", connect.CodeOf(err))
 	}
@@ -188,11 +184,11 @@ func TestUpdateTenantTimezoneRejectsInvalidValues(t *testing.T) {
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-			_, err := client.UpdateTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantTimezoneRequest{
+			client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			_, err := client.UpdateTenantTimezone(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantTimezoneRequest{
 				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				Timezone: tt.timezone,
-			}, sessionToken))
+			})
 			if err == nil {
 				t.Fatal("UpdateTenantTimezone: expected error")
 			}
@@ -214,11 +210,11 @@ func TestUpdateTenantTimezoneRequiresTenantAdmin(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantTimezone(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantTimezoneRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantTimezone(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantTimezoneRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Timezone: "Europe/Berlin",
-	}, sessionToken))
+	})
 	if err == nil {
 		t.Fatal("UpdateTenantTimezone: expected error")
 	}
@@ -234,11 +230,11 @@ func TestUpdateTenantTimezoneRequiresSession(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantTimezone(context.Background(), connect.NewRequest(&publiraadminv1.UpdateTenantTimezoneRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantTimezone(context.Background(), &publiraadminv1.UpdateTenantTimezoneRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Timezone: "Europe/Berlin",
-	}))
+	})
 	if err == nil {
 		t.Fatal("UpdateTenantTimezone: expected error")
 	}
@@ -257,15 +253,15 @@ func TestGetTenantDefaultLocaleReturnsConfiguredValue(t *testing.T) {
 	expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, "en")
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	resp, err := client.GetTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantDefaultLocaleRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.GetTenantDefaultLocale(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.GetTenantDefaultLocaleRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantDefaultLocale: %v", err)
 	}
-	if resp.Msg.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
+	if resp.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.DefaultLocale)
 	}
 	assertExpectations(t, mock)
 }
@@ -293,10 +289,10 @@ func TestGetTenantDefaultLocaleFailsOnAnUnusableStoredValue(t *testing.T) {
 			expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, tt.stored)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
-			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-			_, err := client.GetTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantDefaultLocaleRequest{
+			client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			_, err := client.GetTenantDefaultLocale(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.GetTenantDefaultLocaleRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-			}, sessionToken))
+			})
 			if connect.CodeOf(err) != connect.CodeInternal {
 				t.Fatalf("GetTenantDefaultLocale code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 			}
@@ -321,16 +317,16 @@ func TestUpdateTenantDefaultLocalePersistsSupportedCode(t *testing.T) {
 			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "UTC", "en"))
 	mock.ExpectCommit()
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	resp, err := client.UpdateTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantDefaultLocaleRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.UpdateTenantDefaultLocale(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantDefaultLocaleRequest{
 		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		DefaultLocale: "  en  ",
-	}, sessionToken))
+	})
 	if err != nil {
 		t.Fatalf("UpdateTenantDefaultLocale: %v", err)
 	}
-	if resp.Msg.DefaultLocale != "en" {
-		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
+	if resp.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.DefaultLocale)
 	}
 	assertExpectations(t, mock)
 }
@@ -357,11 +353,11 @@ func TestUpdateTenantDefaultLocaleRejectsInvalidValues(t *testing.T) {
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-			_, err := client.UpdateTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantDefaultLocaleRequest{
+			client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			_, err := client.UpdateTenantDefaultLocale(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantDefaultLocaleRequest{
 				Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				DefaultLocale: tt.locale,
-			}, sessionToken))
+			})
 			if err == nil {
 				t.Fatal("UpdateTenantDefaultLocale: expected error")
 			}
@@ -383,11 +379,11 @@ func TestUpdateTenantDefaultLocaleRequiresTenantAdmin(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantDefaultLocaleRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantDefaultLocale(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantDefaultLocaleRequest{
 		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		DefaultLocale: "en",
-	}, sessionToken))
+	})
 	if err == nil {
 		t.Fatal("UpdateTenantDefaultLocale: expected error")
 	}
@@ -403,11 +399,11 @@ func TestUpdateTenantDefaultLocaleRequiresSession(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantDefaultLocale(context.Background(), connect.NewRequest(&publiraadminv1.UpdateTenantDefaultLocaleRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantDefaultLocale(context.Background(), &publiraadminv1.UpdateTenantDefaultLocaleRequest{
 		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		DefaultLocale: "en",
-	}))
+	})
 	if err == nil {
 		t.Fatal("UpdateTenantDefaultLocale: expected error")
 	}
@@ -467,18 +463,18 @@ func TestGetTenantCommentSettingsReturnsTheStoredValues(t *testing.T) {
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 			expectTenantConfigWithCommentSettings(mock, tenantID, now, tt.mode, tt.threshold)
 
-			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-			resp, err := client.GetTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantCommentSettingsRequest{
+			client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			resp, err := client.GetTenantCommentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.GetTenantCommentSettingsRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-			}, sessionToken))
+			})
 			if err != nil {
 				t.Fatalf("GetTenantCommentSettings: %v", err)
 			}
-			if resp.Msg.CommentMode != tt.want {
-				t.Fatalf("comment_mode = %v, want %v", resp.Msg.CommentMode, tt.want)
+			if resp.CommentMode != tt.want {
+				t.Fatalf("comment_mode = %v, want %v", resp.CommentMode, tt.want)
 			}
-			if resp.Msg.AutoHideReportThreshold != tt.wantThreshold {
-				t.Fatalf("auto_hide_report_threshold = %d, want %d", resp.Msg.AutoHideReportThreshold, tt.wantThreshold)
+			if resp.AutoHideReportThreshold != tt.wantThreshold {
+				t.Fatalf("auto_hide_report_threshold = %d, want %d", resp.AutoHideReportThreshold, tt.wantThreshold)
 			}
 			assertExpectations(t, mock)
 		})
@@ -499,18 +495,18 @@ func TestGetTenantCommentSettingsReportsTheColumnDefaultsWithoutAConfigRow(t *te
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	resp, err := client.GetTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantCommentSettingsRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.GetTenantCommentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.GetTenantCommentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantCommentSettings: %v", err)
 	}
-	if resp.Msg.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
-		t.Fatalf("comment_mode = %v, want COMMENT_MODE_DISABLED", resp.Msg.CommentMode)
+	if resp.CommentMode != publirattypesv1.CommentMode_COMMENT_MODE_DISABLED {
+		t.Fatalf("comment_mode = %v, want COMMENT_MODE_DISABLED", resp.CommentMode)
 	}
-	if resp.Msg.AutoHideReportThreshold != defaultCommentAutoHideReportThreshold {
-		t.Fatalf("auto_hide_report_threshold = %d, want %d", resp.Msg.AutoHideReportThreshold, defaultCommentAutoHideReportThreshold)
+	if resp.AutoHideReportThreshold != defaultCommentAutoHideReportThreshold {
+		t.Fatalf("auto_hide_report_threshold = %d, want %d", resp.AutoHideReportThreshold, defaultCommentAutoHideReportThreshold)
 	}
 	assertExpectations(t, mock)
 }
@@ -527,10 +523,10 @@ func TestGetTenantCommentSettingsFailsOnAnUnsupportedStoredMode(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 	expectTenantConfigWithCommentSettings(mock, tenantID, now, "members_only", 3)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.GetTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantCommentSettingsRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.GetTenantCommentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.GetTenantCommentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err == nil {
 		t.Fatal("GetTenantCommentSettings: expected error")
 	}
@@ -575,20 +571,20 @@ func TestUpdateTenantCommentSettingsPersistsTheChosenValues(t *testing.T) {
 				WillReturnRows(tenantConfigRow(tenantID, now, tt.want, int32(tt.threshold)))
 			mock.ExpectCommit()
 
-			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-			resp, err := client.UpdateTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentSettingsRequest{
+			client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			resp, err := client.UpdateTenantCommentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantCommentSettingsRequest{
 				AutoHideReportThreshold: tt.threshold,
 				CommentMode:             tt.mode,
 				Tenant:                  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-			}, sessionToken))
+			})
 			if err != nil {
 				t.Fatalf("UpdateTenantCommentSettings: %v", err)
 			}
-			if resp.Msg.CommentMode != tt.mode {
-				t.Fatalf("comment_mode = %v, want %v", resp.Msg.CommentMode, tt.mode)
+			if resp.CommentMode != tt.mode {
+				t.Fatalf("comment_mode = %v, want %v", resp.CommentMode, tt.mode)
 			}
-			if resp.Msg.AutoHideReportThreshold != tt.threshold {
-				t.Fatalf("auto_hide_report_threshold = %d, want %d", resp.Msg.AutoHideReportThreshold, tt.threshold)
+			if resp.AutoHideReportThreshold != tt.threshold {
+				t.Fatalf("auto_hide_report_threshold = %d, want %d", resp.AutoHideReportThreshold, tt.threshold)
 			}
 			assertExpectations(t, mock)
 		})
@@ -607,12 +603,12 @@ func TestUpdateTenantCommentSettingsRejectsAThresholdAboveTheCeiling(t *testing.
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentSettingsRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantCommentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantCommentSettingsRequest{
 		AutoHideReportThreshold: maxCommentAutoHideReportThreshold + 1,
 		CommentMode:             publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE,
 		Tenant:                  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err == nil {
 		t.Fatal("UpdateTenantCommentSettings: expected error")
 	}
@@ -635,10 +631,10 @@ func TestUpdateTenantCommentSettingsRejectsUnspecified(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentSettingsRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantCommentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantCommentSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err == nil {
 		t.Fatal("UpdateTenantCommentSettings: expected error")
 	}
@@ -658,11 +654,11 @@ func TestUpdateTenantCommentSettingsRequiresTenantAdmin(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantCommentSettings(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantCommentSettingsRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantCommentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantCommentSettingsRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		CommentMode: publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE,
-	}, sessionToken))
+	})
 	if err == nil {
 		t.Fatal("UpdateTenantCommentSettings: expected error")
 	}
@@ -678,11 +674,11 @@ func TestUpdateTenantCommentSettingsRequiresSession(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantCommentSettings(context.Background(), connect.NewRequest(&publiraadminv1.UpdateTenantCommentSettingsRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantCommentSettings(context.Background(), &publiraadminv1.UpdateTenantCommentSettingsRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		CommentMode: publirattypesv1.CommentMode_COMMENT_MODE_IMMEDIATE,
-	}))
+	})
 	if err == nil {
 		t.Fatal("UpdateTenantCommentSettings: expected error")
 	}
@@ -716,15 +712,15 @@ func TestGetTenantAgeVerificationReturnsTheStoredRule(t *testing.T) {
 				WithArgs(tenantID).
 				WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, tt.stored))
 
-			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-			resp, err := client.GetTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantAgeVerificationRequest{
+			client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			resp, err := client.GetTenantAgeVerification(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.GetTenantAgeVerificationRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-			}, sessionToken))
+			})
 			if err != nil {
 				t.Fatalf("GetTenantAgeVerification: %v", err)
 			}
-			if resp.Msg.AgeVerification != tt.want {
-				t.Fatalf("age_verification = %v, want %v", resp.Msg.AgeVerification, tt.want)
+			if resp.AgeVerification != tt.want {
+				t.Fatalf("age_verification = %v, want %v", resp.AgeVerification, tt.want)
 			}
 			assertExpectations(t, mock)
 		})
@@ -745,15 +741,15 @@ func TestGetTenantAgeVerificationReportsNoneWithoutAConfigRow(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	resp, err := client.GetTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantAgeVerificationRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.GetTenantAgeVerification(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.GetTenantAgeVerificationRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err != nil {
 		t.Fatalf("GetTenantAgeVerification: %v", err)
 	}
-	if resp.Msg.AgeVerification != publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE {
-		t.Fatalf("age_verification = %v, want AGE_VERIFICATION_NONE", resp.Msg.AgeVerification)
+	if resp.AgeVerification != publirattypesv1.AgeVerification_AGE_VERIFICATION_NONE {
+		t.Fatalf("age_verification = %v, want AGE_VERIFICATION_NONE", resp.AgeVerification)
 	}
 	assertExpectations(t, mock)
 }
@@ -773,10 +769,10 @@ func TestGetTenantAgeVerificationFailsOnAnUnsupportedStoredRule(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, "everything"))
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.GetTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantAgeVerificationRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.GetTenantAgeVerification(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.GetTenantAgeVerificationRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err == nil {
 		t.Fatal("GetTenantAgeVerification: expected error")
 	}
@@ -812,16 +808,16 @@ func TestUpdateTenantAgeVerificationPersistsTheChosenRule(t *testing.T) {
 				WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, tt.want))
 			mock.ExpectCommit()
 
-			client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-			resp, err := client.UpdateTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantAgeVerificationRequest{
+			client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			resp, err := client.UpdateTenantAgeVerification(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantAgeVerificationRequest{
 				AgeVerification: tt.rule,
 				Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-			}, sessionToken))
+			})
 			if err != nil {
 				t.Fatalf("UpdateTenantAgeVerification: %v", err)
 			}
-			if resp.Msg.AgeVerification != tt.rule {
-				t.Fatalf("age_verification = %v, want %v", resp.Msg.AgeVerification, tt.rule)
+			if resp.AgeVerification != tt.rule {
+				t.Fatalf("age_verification = %v, want %v", resp.AgeVerification, tt.rule)
 			}
 			assertExpectations(t, mock)
 		})
@@ -839,10 +835,10 @@ func TestUpdateTenantAgeVerificationRejectsUnspecified(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantAgeVerificationRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantAgeVerification(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantAgeVerificationRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err == nil {
 		t.Fatal("UpdateTenantAgeVerification: expected error")
 	}
@@ -863,11 +859,11 @@ func TestUpdateTenantAgeVerificationRequiresTenantAdmin(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, auth.RoleTenantEditor)
 
-	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
-	_, err := client.UpdateTenantAgeVerification(context.Background(), newTenantSettingsRequest(&publiraadminv1.UpdateTenantAgeVerificationRequest{
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantAgeVerification(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantAgeVerificationRequest{
 		AgeVerification: publirattypesv1.AgeVerification_AGE_VERIFICATION_R18,
 		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	}, sessionToken))
+	})
 	if err == nil {
 		t.Fatal("UpdateTenantAgeVerification: expected error")
 	}

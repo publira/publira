@@ -7,7 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/outbox"
@@ -18,29 +19,29 @@ import (
 
 func TestDBLoginIssuesTokenAcceptedByAuthenticatedRPC(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
-	tenantClient := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	tenantClient := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	loginResp, err := authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	loginResp, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    operator.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
-	if loginResp.Msg.User.PublicId != operator.PublicID {
-		t.Fatalf("login public_id = %q, want %q", loginResp.Msg.User.PublicId, operator.PublicID)
+	if loginResp.User.PublicId != operator.PublicID {
+		t.Fatalf("login public_id = %q, want %q", loginResp.User.PublicId, operator.PublicID)
 	}
-	if loginResp.Msg.User.Role != auth.RolePlatformOperator {
-		t.Fatalf("login role = %q, want %s", loginResp.Msg.User.Role, auth.RolePlatformOperator)
+	if loginResp.User.Role != auth.RolePlatformOperator {
+		t.Fatalf("login role = %q, want %s", loginResp.User.Role, auth.RolePlatformOperator)
 	}
-	if loginResp.Msg.AccessToken.GetToken() == "" {
+	if loginResp.AccessToken.GetToken() == "" {
 		t.Fatal("login access_token is empty")
 	}
 
 	if _, err := tenantClient.ListTenants(
-		context.Background(),
-		newDBBearerRequest(loginResp.Msg.AccessToken.Token, publirasplatformv1.ListTenantsRequest{}),
+		testutil.WithBearer(context.Background(), loginResp.AccessToken.Token),
+		&publirasplatformv1.ListTenantsRequest{},
 	); err != nil {
 		t.Fatalf("ListTenants with the login token: %v", err)
 	}
@@ -48,7 +49,7 @@ func TestDBLoginIssuesTokenAcceptedByAuthenticatedRPC(t *testing.T) {
 
 func TestDBLoginRejectsWrongPasswordAndUnknownEmail(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	cases := []struct {
 		name     string
@@ -60,10 +61,10 @@ func TestDBLoginRejectsWrongPasswordAndUnknownEmail(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+			_, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 				Email:    tc.email,
 				Password: tc.password,
-			}))
+			})
 			if connect.CodeOf(err) != connect.CodeUnauthenticated {
 				t.Fatalf("Login code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 			}
@@ -77,26 +78,26 @@ func TestDBLoginRejectsWrongPasswordAndUnknownEmail(t *testing.T) {
 func TestDBSuspendOperatorRevokesLoginAndIssuedToken(t *testing.T) {
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	target := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
-	operatorClient := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	operatorClient := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	loginResp, err := authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	loginResp, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    target.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login before suspension: %v", err)
 	}
-	issuedToken := loginResp.Msg.AccessToken.Token
+	issuedToken := loginResp.AccessToken.Token
 
-	suspendResp, err := operatorClient.SuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.SuspendOperatorRequest{
+	suspendResp, err := operatorClient.SuspendOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.SuspendOperatorRequest{
 		OperatorId: target.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SuspendOperator: %v", err)
 	}
-	if suspendResp.Msg.Operator.Status != userStatusSuspended {
-		t.Fatalf("status after suspend = %q, want %s", suspendResp.Msg.Operator.Status, userStatusSuspended)
+	if suspendResp.Operator.Status != userStatusSuspended {
+		t.Fatalf("status after suspend = %q, want %s", suspendResp.Operator.Status, userStatusSuspended)
 	}
 
 	suspended := platformUserByPublicID(t, pg, target.PublicID)
@@ -104,15 +105,15 @@ func TestDBSuspendOperatorRevokesLoginAndIssuedToken(t *testing.T) {
 		t.Fatalf("credentials_version = %d, want a bump from %d", suspended.CredentialsVersion, target.CredentialsVersion)
 	}
 
-	_, err = authClient.GetMe(context.Background(), newDBBearerRequest(issuedToken, publirasplatformv1.PlatformAuthServiceGetMeRequest{}))
+	_, err = authClient.GetMe(testutil.WithBearer(context.Background(), issuedToken), &publirasplatformv1.PlatformAuthServiceGetMeRequest{})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMe with the pre-suspension token code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
 
-	_, err = authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	_, err = authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    target.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login while suspended code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -123,23 +124,23 @@ func TestDBSuspendOperatorRevokesLoginAndIssuedToken(t *testing.T) {
 func TestDBPasswordResetChangesPasswordAndRevokesTokens(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	loginResp, err := authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	loginResp, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    operator.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("Login before reset: %v", err)
 	}
-	issuedToken := loginResp.Msg.AccessToken.Token
+	issuedToken := loginResp.AccessToken.Token
 
 	// Two requests in a row: only the newest token may survive, because the older
 	// rows are deleted before the new one is inserted.
 	for attempt := range 2 {
-		if _, err := authClient.RequestPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
+		if _, err := authClient.RequestPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
 			Email: operator.Email,
-		})); err != nil {
+		}); err != nil {
 			t.Fatalf("RequestPasswordReset attempt %d: %v", attempt, err)
 		}
 	}
@@ -153,76 +154,76 @@ func TestDBPasswordResetChangesPasswordAndRevokesTokens(t *testing.T) {
 	}
 	staleToken, freshToken := platformPasswordResetTokensInOrder(t, pg)
 
-	verify, err := authClient.VerifyPasswordResetToken(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenRequest{
+	verify, err := authClient.VerifyPasswordResetToken(context.Background(), &publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenRequest{
 		Token: staleToken,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("VerifyPasswordResetToken stale: %v", err)
 	}
-	if verify.Msg.Valid {
+	if verify.Valid {
 		t.Fatal("stale reset token is still valid, want it deleted by the second request")
 	}
 
-	verify, err = authClient.VerifyPasswordResetToken(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenRequest{
+	verify, err = authClient.VerifyPasswordResetToken(context.Background(), &publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenRequest{
 		Token: freshToken,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("VerifyPasswordResetToken fresh: %v", err)
 	}
-	if !verify.Msg.Valid {
+	if !verify.Valid {
 		t.Fatal("newest reset token is invalid, want it usable")
 	}
 
-	if _, err := authClient.ConfirmPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
+	if _, err := authClient.ConfirmPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
 		Token:       freshToken,
 		NewPassword: "brand-new-password",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("ConfirmPasswordReset: %v", err)
 	}
 
-	_, err = authClient.GetMe(context.Background(), newDBBearerRequest(issuedToken, publirasplatformv1.PlatformAuthServiceGetMeRequest{}))
+	_, err = authClient.GetMe(testutil.WithBearer(context.Background(), issuedToken), &publirasplatformv1.PlatformAuthServiceGetMeRequest{})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMe with the pre-reset token code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
 
-	_, err = authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	_, err = authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    operator.Email,
 		Password: testutil.SeededPassword,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login with the old password code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
 
-	if _, err := authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	if _, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    operator.Email,
 		Password: "brand-new-password",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("Login with the new password: %v", err)
 	}
 
 	// The completed token stays in the table, and the handler answers a replay
 	// idempotently: confirmed, with the replayed password never applied.
-	replay, err := authClient.ConfirmPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
+	replay, err := authClient.ConfirmPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
 		Token:       freshToken,
 		NewPassword: "yet-another-password",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ConfirmPasswordReset replay: %v", err)
 	}
-	if !replay.Msg.Confirmed {
+	if !replay.Confirmed {
 		t.Fatal("replayed ConfirmPasswordReset confirmed = false, want the completed token reported as confirmed")
 	}
-	_, err = authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	_, err = authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    operator.Email,
 		Password: "yet-another-password",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("Login with the replayed password code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
-	if _, err := authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	if _, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    operator.Email,
 		Password: "brand-new-password",
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("Login after the replay: %v", err)
 	}
 }
@@ -230,11 +231,11 @@ func TestDBPasswordResetChangesPasswordAndRevokesTokens(t *testing.T) {
 func TestDBConfirmPasswordResetRejectsExpiredToken(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	if _, err := authClient.RequestPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
+	if _, err := authClient.RequestPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
 		Email: operator.Email,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RequestPasswordReset: %v", err)
 	}
 	processPasswordResetRequests(t, pg)
@@ -242,18 +243,18 @@ func TestDBConfirmPasswordResetRejectsExpiredToken(t *testing.T) {
 
 	expirePlatformPasswordResetTokens(t, pg)
 
-	_, err := authClient.ConfirmPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
+	_, err := authClient.ConfirmPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
 		Token:       token,
 		NewPassword: "brand-new-password",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ConfirmPasswordReset code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 
-	if _, err := authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+	if _, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    operator.Email,
 		Password: testutil.SeededPassword,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("Login with the original password: %v", err)
 	}
 }
@@ -263,13 +264,13 @@ func TestDBConfirmPasswordResetRejectsExpiredToken(t *testing.T) {
 func TestDBConfirmEmailChangeRejectsAddressTakenAfterRequest(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	if _, err := authClient.RequestEmailChange(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.PlatformAuthServiceRequestEmailChangeRequest{
+	if _, err := authClient.RequestEmailChange(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.PlatformAuthServiceRequestEmailChangeRequest{
 		CurrentEmail:    operator.Email,
 		NewEmail:        "moved@example.com",
 		CurrentPassword: testutil.SeededPassword,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RequestEmailChange: %v", err)
 	}
 
@@ -279,22 +280,22 @@ func TestDBConfirmEmailChangeRejectsAddressTakenAfterRequest(t *testing.T) {
 	// Someone else claims the address between the request and the confirmation.
 	seedPlatformUserWithoutRole(t, pg, "PLATOTHER001", "moved@example.com", "Faster Claimant")
 
-	pending, err := authClient.ConfirmEmailChange(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceConfirmEmailChangeRequest{
+	pending, err := authClient.ConfirmEmailChange(context.Background(), &publirasplatformv1.PlatformAuthServiceConfirmEmailChangeRequest{
 		Token: currentToken,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("ConfirmEmailChange (current email): %v", err)
 	}
-	if pending.Msg.Changed {
+	if pending.Changed {
 		t.Fatal("changed = true after only one side confirmed, want false")
 	}
-	if pending.Msg.PendingConfirmationFor != "new_email" {
-		t.Fatalf("pending_confirmation_for = %q, want new_email", pending.Msg.PendingConfirmationFor)
+	if pending.PendingConfirmationFor != "new_email" {
+		t.Fatalf("pending_confirmation_for = %q, want new_email", pending.PendingConfirmationFor)
 	}
 
-	_, err = authClient.ConfirmEmailChange(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceConfirmEmailChangeRequest{
+	_, err = authClient.ConfirmEmailChange(context.Background(), &publirasplatformv1.PlatformAuthServiceConfirmEmailChangeRequest{
 		Token: newToken,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("ConfirmEmailChange code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
 	}
@@ -308,13 +309,13 @@ func TestDBRequestEmailChangeRejectsExistingAddress(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	pg.SeedPlatformSuperAdmin(t, "PLATADMIN001", "superadmin@example.com", "Platform Super Admin")
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := authClient.RequestEmailChange(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.PlatformAuthServiceRequestEmailChangeRequest{
+	_, err := authClient.RequestEmailChange(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.PlatformAuthServiceRequestEmailChangeRequest{
 		CurrentEmail:    operator.Email,
 		NewEmail:        "superadmin@example.com",
 		CurrentPassword: testutil.SeededPassword,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("RequestEmailChange code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
 	}
@@ -329,11 +330,11 @@ func TestDBRequestEmailChangeRejectsExistingAddress(t *testing.T) {
 func TestDBRequestPasswordResetQueuesTenantlessOutboxEvent(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	if _, err := authClient.RequestPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
+	if _, err := authClient.RequestPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
 		Email: operator.Email,
-	})); err != nil {
+	}); err != nil {
 		t.Fatalf("RequestPasswordReset without SMTP settings: %v", err)
 	}
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM outbox_events WHERE event_type = $1 AND tenant_id IS NULL",
@@ -386,15 +387,15 @@ func TestDBRequestPasswordResetQueuesTenantlessOutboxEvent(t *testing.T) {
 func TestDBRequestPasswordResetHidesUnknownAddress(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
-	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	resp, err := authClient.RequestPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
+	resp, err := authClient.RequestPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
 		Email: "nobody@example.com",
-	}))
+	})
 	if err != nil {
 		t.Fatalf("RequestPasswordReset: %v", err)
 	}
-	if !resp.Msg.Requested {
+	if !resp.Requested {
 		t.Fatal("requested = false for an unknown address, want true")
 	}
 	processPasswordResetRequests(t, pg)

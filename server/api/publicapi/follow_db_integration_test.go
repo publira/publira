@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -43,28 +43,29 @@ func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
 	env.PG.SeedSeriesCreator(t, tenant.ID, series.ID, creator.ID, "")
 	client := env.followClient()
 
-	request := func(target *publirav1.FollowTarget) *connect.Request[publirav1.GetMyFollowStatusRequest] {
-		return newBearerRequest(&publirav1.GetMyFollowStatusRequest{Tenant: tenantContext(tenant), Target: target}, tokenFor(t, tenant, member))
+	request := func(target *publirav1.FollowTarget) *publirav1.GetMyFollowStatusRequest {
+		return &publirav1.GetMyFollowStatusRequest{Tenant: tenantContext(tenant), Target: target}
 	}
-	before, err := client.GetMyFollowStatus(context.Background(), request(episodeFollowTarget(episode.ID.String())))
+	before, err := client.GetMyFollowStatus(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), request(episodeFollowTarget(episode.ID.String())))
 	if err != nil {
 		t.Fatalf("GetMyFollowStatus before follow: %v", err)
 	}
-	if before.Msg.IsFollowing {
+	if before.IsFollowing {
 		t.Fatal("is_following = true before follow")
 	}
 
-	follow := func(target *publirav1.FollowTarget) *connect.Response[publirav1.FollowResponse] {
-		response, callErr := client.Follow(context.Background(), newBearerRequest(&publirav1.FollowRequest{Tenant: tenantContext(tenant), Target: target}, tokenFor(t, tenant, member)))
+	follow := func(target *publirav1.FollowTarget) *publirav1.FollowResponse {
+		responseCtx, responseCall := testutil.NewClientContext(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)))
+		response, callErr := client.Follow(responseCtx, &publirav1.FollowRequest{Tenant: tenantContext(tenant), Target: target})
 		if callErr != nil {
 			t.Fatalf("Follow: %v", callErr)
 		}
-		if response.Header().Get("Cache-Control") != "private, no-store" {
-			t.Fatalf("Cache-Control = %q, want private, no-store", response.Header().Get("Cache-Control"))
+		if responseCall.ResponseHeader().Get("Cache-Control") != "private, no-store" {
+			t.Fatalf("Cache-Control = %q, want private, no-store", responseCall.ResponseHeader().Get("Cache-Control"))
 		}
 		return response
 	}
-	if !follow(episodeFollowTarget(episode.ID.String())).Msg.IsFollowing {
+	if !follow(episodeFollowTarget(episode.ID.String())).IsFollowing {
 		t.Fatal("episode Follow is_following = false")
 	}
 	// A duplicate is successful but still produces one durable relation.
@@ -73,17 +74,17 @@ func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
 		t.Fatalf("episode follow rows = %d, want 1", got)
 	}
 	otherMember := env.PG.SeedTenantUser(t, tenant.ID, "OTHERFOLA", "other-follow-a@example.com", "Other Member", "tenant_member")
-	otherStatus, err := client.GetMyFollowStatus(context.Background(), newBearerRequest(&publirav1.GetMyFollowStatusRequest{Tenant: tenantContext(tenant), Target: episodeFollowTarget(episode.ID.String())}, tokenFor(t, tenant, otherMember)))
+	otherStatus, err := client.GetMyFollowStatus(testutil.WithBearer(context.Background(), tokenFor(t, tenant, otherMember)), &publirav1.GetMyFollowStatusRequest{Tenant: tenantContext(tenant), Target: episodeFollowTarget(episode.ID.String())})
 	if err != nil {
 		t.Fatalf("other member GetMyFollowStatus: %v", err)
 	}
-	if otherStatus.Msg.IsFollowing {
+	if otherStatus.IsFollowing {
 		t.Fatal("other member can see the first member's follow")
 	}
-	if !follow(creatorFollowTarget(creator.ID.String())).Msg.IsFollowing {
+	if !follow(creatorFollowTarget(creator.ID.String())).IsFollowing {
 		t.Fatal("creator Follow is_following = false")
 	}
-	if !follow(seriesFollowTarget(series.ID.String())).Msg.IsFollowing {
+	if !follow(seriesFollowTarget(series.ID.String())).IsFollowing {
 		t.Fatal("series Follow is_following = false")
 	}
 	follow(seriesFollowTarget(series.ID.String()))
@@ -91,20 +92,20 @@ func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
 		t.Fatalf("series follow rows = %d, want 1", got)
 	}
 
-	after, err := client.GetMyFollowStatus(context.Background(), request(episodeFollowTarget(episode.ID.String())))
+	after, err := client.GetMyFollowStatus(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), request(episodeFollowTarget(episode.ID.String())))
 	if err != nil {
 		t.Fatalf("GetMyFollowStatus after follow: %v", err)
 	}
-	if !after.Msg.IsFollowing {
+	if !after.IsFollowing {
 		t.Fatal("is_following = false after follow")
 	}
 
 	unfollow := func() {
-		response, callErr := client.Unfollow(context.Background(), newBearerRequest(&publirav1.UnfollowRequest{Tenant: tenantContext(tenant), Target: episodeFollowTarget(episode.ID.String())}, tokenFor(t, tenant, member)))
+		response, callErr := client.Unfollow(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.UnfollowRequest{Tenant: tenantContext(tenant), Target: episodeFollowTarget(episode.ID.String())})
 		if callErr != nil {
 			t.Fatalf("Unfollow: %v", callErr)
 		}
-		if response.Msg.IsFollowing {
+		if response.IsFollowing {
 			t.Fatal("Unfollow is_following = true")
 		}
 	}
@@ -140,34 +141,34 @@ func TestDBFollowServiceListsOnlyPublicTargetsWithCursor(t *testing.T) {
 	}
 
 	client := env.followClient()
-	first, err := client.ListMyFollows(context.Background(), newBearerRequest(&publirav1.ListMyFollowsRequest{Tenant: tenantContext(tenant), Limit: 1}, tokenFor(t, tenant, member)))
+	first, err := client.ListMyFollows(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.ListMyFollowsRequest{Tenant: tenantContext(tenant), Limit: 1})
 	if err != nil {
 		t.Fatalf("ListMyFollows page 1: %v", err)
 	}
-	if len(first.Msg.Follows) != 1 || first.Msg.Follows[0].TargetType != publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_CREATOR || first.Msg.Follows[0].TargetPublicId != creator.PublicID {
-		t.Fatalf("page 1 = %#v, want creator follow only", first.Msg.Follows)
+	if len(first.Follows) != 1 || first.Follows[0].TargetType != publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_CREATOR || first.Follows[0].TargetPublicId != creator.PublicID {
+		t.Fatalf("page 1 = %#v, want creator follow only", first.Follows)
 	}
-	if first.Msg.NextToken == "" || first.Msg.PreviousToken != "" {
-		t.Fatalf("page 1 tokens = (%q, %q), want empty previous and non-empty next", first.Msg.PreviousToken, first.Msg.NextToken)
+	if first.NextToken == "" || first.PreviousToken != "" {
+		t.Fatalf("page 1 tokens = (%q, %q), want empty previous and non-empty next", first.PreviousToken, first.NextToken)
 	}
 
-	second, err := client.ListMyFollows(context.Background(), newBearerRequest(&publirav1.ListMyFollowsRequest{Tenant: tenantContext(tenant), Limit: 1, Token: first.Msg.NextToken}, tokenFor(t, tenant, member)))
+	second, err := client.ListMyFollows(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.ListMyFollowsRequest{Tenant: tenantContext(tenant), Limit: 1, Token: first.NextToken})
 	if err != nil {
 		t.Fatalf("ListMyFollows page 2: %v", err)
 	}
-	if len(second.Msg.Follows) != 1 || second.Msg.Follows[0].TargetType != publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_EPISODE || second.Msg.Follows[0].TargetPublicId != episode.PublicID {
-		t.Fatalf("page 2 = %#v, want episode follow only", second.Msg.Follows)
+	if len(second.Follows) != 1 || second.Follows[0].TargetType != publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_EPISODE || second.Follows[0].TargetPublicId != episode.PublicID {
+		t.Fatalf("page 2 = %#v, want episode follow only", second.Follows)
 	}
-	if second.Msg.PreviousToken == "" || second.Msg.NextToken != "" {
-		t.Fatalf("page 2 tokens = (%q, %q), want non-empty previous and empty next", second.Msg.PreviousToken, second.Msg.NextToken)
+	if second.PreviousToken == "" || second.NextToken != "" {
+		t.Fatalf("page 2 tokens = (%q, %q), want non-empty previous and empty next", second.PreviousToken, second.NextToken)
 	}
 
-	back, err := client.ListMyFollows(context.Background(), newBearerRequest(&publirav1.ListMyFollowsRequest{Tenant: tenantContext(tenant), Limit: 1, Token: second.Msg.PreviousToken}, tokenFor(t, tenant, member)))
+	back, err := client.ListMyFollows(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.ListMyFollowsRequest{Tenant: tenantContext(tenant), Limit: 1, Token: second.PreviousToken})
 	if err != nil {
 		t.Fatalf("ListMyFollows previous page: %v", err)
 	}
-	if len(back.Msg.Follows) != 1 || back.Msg.Follows[0].TargetPublicId != creator.PublicID {
-		t.Fatalf("previous page = %#v, want creator follow", back.Msg.Follows)
+	if len(back.Follows) != 1 || back.Follows[0].TargetPublicId != creator.PublicID {
+		t.Fatalf("previous page = %#v, want creator follow", back.Follows)
 	}
 }
 
@@ -182,13 +183,13 @@ func TestDBFollowServiceDoesNotRevealUnavailableTargets(t *testing.T) {
 	client := env.followClient()
 
 	for _, target := range []*publirav1.FollowTarget{episodeFollowTarget(draftEpisode.ID.String()), episodeFollowTarget(foreignEpisode.ID.String()), episodeFollowTarget(uuid.NewString()), seriesFollowTarget(draftSeries.ID.String()), seriesFollowTarget(foreignSeries.ID.String()), seriesFollowTarget(uuid.NewString())} {
-		_, err := client.Follow(context.Background(), newBearerRequest(&publirav1.FollowRequest{Tenant: tenantContext(tenant), Target: target}, tokenFor(t, tenant, member)))
+		_, err := client.Follow(testutil.WithBearer(context.Background(), tokenFor(t, tenant, member)), &publirav1.FollowRequest{Tenant: tenantContext(tenant), Target: target})
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("Follow %q code = %v, want not_found (err=%v)", target.Id, connect.CodeOf(err), err)
 		}
 	}
 
-	_, err := client.ListMyFollows(context.Background(), connect.NewRequest(&publirav1.ListMyFollowsRequest{Tenant: tenantContext(tenant)}))
+	_, err := client.ListMyFollows(context.Background(), &publirav1.ListMyFollowsRequest{Tenant: tenantContext(tenant)})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("anonymous ListMyFollows code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}

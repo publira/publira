@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ageverification"
@@ -177,32 +176,33 @@ func TestDBGetEpisodeDetailAppliesTheTenantAgeRule(t *testing.T) {
 			})
 			env.PG.SeedEpisodeImage(t, tenant.ID, episode.ID, 1)
 
-			request := connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+			request := &publirav1.GetEpisodeDetailRequest{
 				Tenant:   tenantContext(tenant),
 				PublicId: episode.PublicID,
-			})
+			}
+			ctx := context.Background()
 			if tt.signedIn {
 				reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 				if tt.hasBirthDate {
 					setBirthDate(t, env, reader.ID, birthDateForAge(t, tenant, tt.age, tt.oneDayShort))
 				}
-				request = newBearerRequest(request.Msg, tokenFor(t, tenant, reader))
+				ctx = testutil.WithBearer(ctx, tokenFor(t, tenant, reader))
 			}
 
-			resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), request)
+			resp, err := env.catalogClient().GetEpisodeDetail(ctx, request)
 			if err != nil {
 				t.Fatalf("GetEpisodeDetail: %v", err)
 			}
-			if resp.Msg.Access != tt.want {
-				t.Fatalf("access = %v, want %v", resp.Msg.Access, tt.want)
+			if resp.Access != tt.want {
+				t.Fatalf("access = %v, want %v", resp.Access, tt.want)
 			}
 			// A withheld body carries no images, exactly as a locked one does.
 			wantImages := 1
 			if tt.want == publirav1.EpisodeAccess_EPISODE_ACCESS_AGE_RESTRICTED {
 				wantImages = 0
 			}
-			if len(resp.Msg.Images) != wantImages {
-				t.Fatalf("images = %d, want %d", len(resp.Msg.Images), wantImages)
+			if len(resp.Images) != wantImages {
+				t.Fatalf("images = %d, want %d", len(resp.Images), wantImages)
 			}
 		})
 	}
@@ -233,17 +233,14 @@ func TestDBGetEpisodeDetailNamesTheReaderInAGatedBodysMediaToken(t *testing.T) {
 
 	read := func(t *testing.T) string {
 		t.Helper()
-		resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), newBearerRequest(
-			&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID},
-			tokenFor(t, tenant, reader),
-		))
+		resp, err := env.catalogClient().GetEpisodeDetail(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reader)), &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID})
 		if err != nil {
 			t.Fatalf("GetEpisodeDetail: %v", err)
 		}
-		if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE || len(resp.Msg.Images) != 1 {
-			t.Fatalf("access = %v with %d images, want free with 1", resp.Msg.Access, len(resp.Msg.Images))
+		if resp.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_FREE || len(resp.Images) != 1 {
+			t.Fatalf("access = %v with %d images, want free with 1", resp.Access, len(resp.Images))
 		}
-		return mediaTokenSubject(t, resp.Msg.Images[0].ImageUrl)
+		return mediaTokenSubject(t, resp.Images[0].ImageUrl)
 	}
 
 	if subject := read(t); subject != reader.PublicID {
@@ -299,35 +296,29 @@ func TestDBGetEpisodeDetailAgeRuleOutranksAPurchase(t *testing.T) {
 	reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 	env.PG.SeedPurchase(t, tenant.ID, reader.ID, episode.ID, 500)
 
-	resp, err := env.catalogClient().GetEpisodeDetail(context.Background(), newBearerRequest(
-		&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID},
-		tokenFor(t, tenant, reader),
-	))
+	resp, err := env.catalogClient().GetEpisodeDetail(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reader)), &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail: %v", err)
 	}
-	if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_AGE_RESTRICTED {
-		t.Fatalf("access = %v, want age restricted", resp.Msg.Access)
+	if resp.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_AGE_RESTRICTED {
+		t.Fatalf("access = %v, want age restricted", resp.Access)
 	}
-	if len(resp.Msg.Images) != 0 {
-		t.Fatalf("images = %d, want none", len(resp.Msg.Images))
+	if len(resp.Images) != 0 {
+		t.Fatalf("images = %d, want none", len(resp.Images))
 	}
 
 	// The same reader, once they have proven the age, gets the body the
 	// purchase entitles them to.
 	setBirthDate(t, env, reader.ID, birthDateForAge(t, tenant, 18, false))
-	entitled, err := env.catalogClient().GetEpisodeDetail(context.Background(), newBearerRequest(
-		&publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID},
-		tokenFor(t, tenant, reader),
-	))
+	entitled, err := env.catalogClient().GetEpisodeDetail(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reader)), &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID})
 	if err != nil {
 		t.Fatalf("GetEpisodeDetail after the birth date: %v", err)
 	}
-	if entitled.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
-		t.Fatalf("access = %v, want entitled", entitled.Msg.Access)
+	if entitled.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
+		t.Fatalf("access = %v, want entitled", entitled.Access)
 	}
-	if len(entitled.Msg.Images) != 1 {
-		t.Fatalf("images = %d, want 1", len(entitled.Msg.Images))
+	if len(entitled.Images) != 1 {
+		t.Fatalf("images = %d, want 1", len(entitled.Images))
 	}
 }
 
@@ -360,14 +351,14 @@ func TestDBGetSeriesDetailReportsTheRequiredMinimumAge(t *testing.T) {
 				AgeRating: tt.rating,
 			})
 
-			resp, err := env.catalogClient().GetSeriesDetail(context.Background(), connect.NewRequest(
+			resp, err := env.catalogClient().GetSeriesDetail(context.Background(),
 				&publirav1.GetSeriesDetailRequest{Tenant: tenantContext(tenant), PublicId: series.PublicID},
-			))
+			)
 			if err != nil {
 				t.Fatalf("GetSeriesDetail: %v", err)
 			}
-			if resp.Msg.RequiredMinimumAge != tt.want {
-				t.Fatalf("required_minimum_age = %d, want %d", resp.Msg.RequiredMinimumAge, tt.want)
+			if resp.RequiredMinimumAge != tt.want {
+				t.Fatalf("required_minimum_age = %d, want %d", resp.RequiredMinimumAge, tt.want)
 			}
 		})
 	}

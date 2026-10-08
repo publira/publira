@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 
@@ -16,6 +17,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func royaltyConfigColumns() []string {
@@ -40,13 +42,7 @@ func newRoyaltyConfigClient(t *testing.T) (publiraadminv1connect.AdminRoyaltySer
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 	tenantID := uuid.Must(uuid.NewV7())
-	return publiraadminv1connect.NewAdminRoyaltyServiceClient(server.Client(), server.URL), mock, issueTestAdminToken(tenantID.String(), testUserPublicID, "editor"), tenantID
-}
-
-func royaltyConfigRequest(tenantID uuid.UUID, token string, message *publiraadminv1.GetRoyaltyConfigRequest) *connect.Request[publiraadminv1.GetRoyaltyConfigRequest] {
-	request := connect.NewRequest(message)
-	request.Header().Set("Authorization", "Bearer "+token)
-	return request
+	return publiraadminv1connect.NewAdminRoyaltyServiceClient(connect.NewClient(connecthttp.NewTransport(server.Client(), server.URL))), mock, issueTestAdminToken(tenantID.String(), testUserPublicID, "editor"), tenantID
 }
 
 func expectRoyaltyConfigAdmin(mock sqlmock.Sqlmock, tenantID uuid.UUID, token string, now time.Time) uuid.UUID {
@@ -62,12 +58,12 @@ func TestGetRoyaltyConfigDefaultsToManualWhenMissing(t *testing.T) {
 	expectRoyaltyConfigAdmin(mock, tenantID, token, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantRoyaltyConfigByTenantID)).WithArgs(tenantID).WillReturnError(sql.ErrNoRows)
 
-	response, err := client.GetRoyaltyConfig(context.Background(), royaltyConfigRequest(tenantID, token, &publiraadminv1.GetRoyaltyConfigRequest{Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()}}))
+	response, err := client.GetRoyaltyConfig(testutil.WithBearer(context.Background(), token), &publiraadminv1.GetRoyaltyConfigRequest{Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()}})
 	if err != nil {
 		t.Fatalf("GetRoyaltyConfig: %v", err)
 	}
-	if response.Msg.Config.CloseMode != publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_MANUAL || response.Msg.Config.AutoCloseDay != nil {
-		t.Fatalf("config = %+v, want manual without a day", response.Msg.Config)
+	if response.Config.CloseMode != publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_MANUAL || response.Config.AutoCloseDay != nil {
+		t.Fatalf("config = %+v, want manual without a day", response.Config)
 	}
 	assertExpectations(t, mock)
 }
@@ -76,12 +72,11 @@ func TestUpdateRoyaltyConfigRejectsAutomaticWithoutDay(t *testing.T) {
 	client, mock, token, tenantID := newRoyaltyConfigClient(t)
 	now := time.Now()
 	expectRoyaltyConfigAdmin(mock, tenantID, token, now)
-	request := connect.NewRequest(&publiraadminv1.UpdateRoyaltyConfigRequest{
+	request := &publiraadminv1.UpdateRoyaltyConfigRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		CloseMode: publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_AUTOMATIC,
-	})
-	request.Header().Set("Authorization", "Bearer "+token)
-	_, err := client.UpdateRoyaltyConfig(context.Background(), request)
+	}
+	_, err := client.UpdateRoyaltyConfig(testutil.WithBearer(context.Background(), token), request)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateRoyaltyConfig code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -93,13 +88,12 @@ func TestUpdateRoyaltyConfigRejectsManualWithDay(t *testing.T) {
 	now := time.Now()
 	expectRoyaltyConfigAdmin(mock, tenantID, token, now)
 	day := int32(5)
-	request := connect.NewRequest(&publiraadminv1.UpdateRoyaltyConfigRequest{
+	request := &publiraadminv1.UpdateRoyaltyConfigRequest{
 		Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		CloseMode:    publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_MANUAL,
 		AutoCloseDay: &day,
-	})
-	request.Header().Set("Authorization", "Bearer "+token)
-	_, err := client.UpdateRoyaltyConfig(context.Background(), request)
+	}
+	_, err := client.UpdateRoyaltyConfig(testutil.WithBearer(context.Background(), token), request)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateRoyaltyConfig code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -111,11 +105,10 @@ func TestUpdateRoyaltyConfigRejectsOutOfRangeDay(t *testing.T) {
 	now := time.Now()
 	expectRoyaltyConfigAdmin(mock, tenantID, token, now)
 	day := int32(31)
-	request := connect.NewRequest(&publiraadminv1.UpdateRoyaltyConfigRequest{
+	request := &publiraadminv1.UpdateRoyaltyConfigRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()}, CloseMode: publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_AUTOMATIC, AutoCloseDay: &day,
-	})
-	request.Header().Set("Authorization", "Bearer "+token)
-	_, err := client.UpdateRoyaltyConfig(context.Background(), request)
+	}
+	_, err := client.UpdateRoyaltyConfig(testutil.WithBearer(context.Background(), token), request)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateRoyaltyConfig code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -131,16 +124,15 @@ func TestUpdateRoyaltyConfigReturnsAutomaticSince(t *testing.T) {
 		sqlmock.NewRows(royaltyConfigColumns()), tenantID, royaltyCloseModeAuto, sql.NullInt32{Int32: day, Valid: true}, sql.NullTime{Time: now, Valid: true}, now,
 	))
 	expectAdminAuditLogInsert(mock)
-	request := connect.NewRequest(&publiraadminv1.UpdateRoyaltyConfigRequest{
+	request := &publiraadminv1.UpdateRoyaltyConfigRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()}, CloseMode: publiraadminv1.RoyaltyCloseMode_ROYALTY_CLOSE_MODE_AUTOMATIC, AutoCloseDay: &day,
-	})
-	request.Header().Set("Authorization", "Bearer "+token)
-	response, err := client.UpdateRoyaltyConfig(context.Background(), request)
+	}
+	response, err := client.UpdateRoyaltyConfig(testutil.WithBearer(context.Background(), token), request)
 	if err != nil {
 		t.Fatalf("UpdateRoyaltyConfig: %v", err)
 	}
-	if response.Msg.Config.AutomaticSince != now.Format(time.RFC3339) || response.Msg.Config.GetAutoCloseDay() != day {
-		t.Fatalf("config = %+v, want automatic since %s and day %d", response.Msg.Config, now.Format(time.RFC3339), day)
+	if response.Config.AutomaticSince != now.Format(time.RFC3339) || response.Config.GetAutoCloseDay() != day {
+		t.Fatalf("config = %+v, want automatic since %s and day %d", response.Config, now.Format(time.RFC3339), day)
 	}
 	assertExpectations(t, mock)
 }

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"strings"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/secretupdate"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
@@ -102,9 +103,9 @@ func mergeTenantSettingsWithExisting(settings emailsettings.SMTPSettings, config
 
 func (s *adminServer) GetTenantEmailSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantEmailSettingsRequest],
-) (*connect.Response[publiraadminv1.GetTenantEmailSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.GetTenantEmailSettingsRequest,
+) (*publiraadminv1.GetTenantEmailSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -114,22 +115,22 @@ func (s *adminServer) GetTenantEmailSettings(
 	config, err := s.queriesFor(ctx).GetTenantSMTPConfigByTenantID(ctx, tenant.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return connect.NewResponse(&publiraadminv1.GetTenantEmailSettingsResponse{
+			return &publiraadminv1.GetTenantEmailSettingsResponse{
 				Settings: &publiraadminv1.TenantEmailSettings{},
-			}), nil
+			}, nil
 		}
 		return nil, s.internalDBError(ctx, "failed to get tenant email settings", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetTenantEmailSettingsResponse{
+	return &publiraadminv1.GetTenantEmailSettingsResponse{
 		Settings: tenantEmailSettingsToProto(config),
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) UpdateTenantEmailSettings(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.UpdateTenantEmailSettingsRequest],
-) (*connect.Response[publiraadminv1.UpdateTenantEmailSettingsResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.UpdateTenantEmailSettingsRequest,
+) (*publiraadminv1.UpdateTenantEmailSettingsResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -146,27 +147,27 @@ func (s *adminServer) UpdateTenantEmailSettings(
 	if found && existing.PasswordEncrypted.Valid {
 		existingPassword = existing.PasswordEncrypted.String
 	}
-	encryptedPassword, hasPassword, err := emailsettings.EncryptUpdatedPassword(existingPassword, secretupdate.Mode(req.Msg.PasswordUpdateMode), req.Msg.Password, s.encryptor)
+	encryptedPassword, hasPassword, err := emailsettings.EncryptUpdatedPassword(existingPassword, secretupdate.Mode(req.PasswordUpdateMode), req.Password, s.encryptor)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
-	settings := tenantEmailSettingsFromUpdateRequest(req.Msg)
-	if req.Msg.SmtpOverrideEnabled {
+	settings := tenantEmailSettingsFromUpdateRequest(req)
+	if req.SmtpOverrideEnabled {
 		if !hasPassword {
-			return nil, connect.NewError(connect.CodeInvalidArgument, emailsettings.ErrPasswordRequired)
+			return nil, connect.NewError(connect.CodeInvalidArgument, emailsettings.ErrPasswordRequired.Error()).WithCause(emailsettings.ErrPasswordRequired)
 		}
 		if err := emailsettings.Validate(settings, false); err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 		}
 		if err := emailsettings.RequireUsername(settings); err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 		}
 	} else {
 		settings = mergeTenantSettingsWithExisting(settings, existing, found)
 		if emailsettings.HasAnyValue(settings, hasPassword) {
 			if err := emailsettings.ValidateOptional(settings, hasPassword); err != nil {
-				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+				return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 			}
 		}
 	}
@@ -174,7 +175,7 @@ func (s *adminServer) UpdateTenantEmailSettings(
 	normalized := emailsettings.Normalize(settings)
 	updated, err := s.queriesFor(ctx).UpsertTenantSMTPConfig(ctx, dbmodels.UpsertTenantSMTPConfigParams{
 		TenantID:            tenant.ID,
-		SmtpOverrideEnabled: req.Msg.SmtpOverrideEnabled,
+		SmtpOverrideEnabled: req.SmtpOverrideEnabled,
 		Host:                nullableString(normalized.Host),
 		Port:                nullableInt32(normalized.Port),
 		Username:            nullableString(normalized.Username),
@@ -196,12 +197,12 @@ func (s *adminServer) UpdateTenantEmailSettings(
 		TargetType:  "smtp_config",
 		TargetID:    tenant.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publiraadminv1.UpdateTenantEmailSettingsResponse{
+	return &publiraadminv1.UpdateTenantEmailSettingsResponse{
 		Settings: tenantEmailSettingsToProto(updated),
-	}), nil
+	}, nil
 }
 
 // GetTenantEmailSender answers the from address resolveSMTPSettings in
@@ -211,9 +212,9 @@ func (s *adminServer) UpdateTenantEmailSettings(
 // platform_smtp_config the admin database role is granted.
 func (s *adminServer) GetTenantEmailSender(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.GetTenantEmailSenderRequest],
-) (*connect.Response[publiraadminv1.GetTenantEmailSenderResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.GetTenantEmailSenderRequest,
+) (*publiraadminv1.GetTenantEmailSenderResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -226,25 +227,25 @@ func (s *adminServer) GetTenantEmailSender(
 		return nil, err
 	}
 	if found && config.SmtpOverrideEnabled {
-		return connect.NewResponse(&publiraadminv1.GetTenantEmailSenderResponse{
+		return &publiraadminv1.GetTenantEmailSenderResponse{
 			FromAddress: config.FromAddress.String,
-		}), nil
+		}, nil
 	}
 
 	fromAddress, err := s.queriesFor(ctx).GetPlatformSMTPFromAddress(ctx)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to get platform smtp from address", err, "tenant_id", tenant.ID.String())
 	}
-	return connect.NewResponse(&publiraadminv1.GetTenantEmailSenderResponse{
+	return &publiraadminv1.GetTenantEmailSenderResponse{
 		FromAddress: fromAddress,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) SendTenantSmtpTestEmail(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.SendTenantSmtpTestEmailRequest],
-) (*connect.Response[publiraadminv1.SendTenantSmtpTestEmailResponse], error) {
-	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	req *publiraadminv1.SendTenantSmtpTestEmailRequest,
+) (*publiraadminv1.SendTenantSmtpTestEmailResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -253,15 +254,15 @@ func (s *adminServer) SendTenantSmtpTestEmail(
 		return nil, err
 	}
 	if s.tester == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("smtp tester is unavailable"))
+		return nil, connect.NewError(connect.CodeInternal, "smtp tester is unavailable")
 	}
 
-	recipientEmail, err := emailsettings.ResolveRecipient(int32(req.Msg.RecipientType), req.Msg.RecipientEmail, sessionCtx.User.Email)
+	recipientEmail, err := emailsettings.ResolveRecipient(int32(req.RecipientType), req.RecipientEmail, sessionCtx.User.Email)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 
-	settings, err := s.resolveTenantSMTPSettingsForTest(ctx, tenant, req.Msg)
+	settings, err := s.resolveTenantSMTPSettingsForTest(ctx, tenant, req)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +278,7 @@ func (s *adminServer) SendTenantSmtpTestEmail(
 			TargetID:    tenant.PublicID,
 			Outcome:     auditlog.OutcomeFailure,
 			Reason:      reason,
-			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+			ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 		})
 		return nil, rpcerrors.NewErrorInfoError(
 			connect.CodeFailedPrecondition,
@@ -294,12 +295,12 @@ func (s *adminServer) SendTenantSmtpTestEmail(
 		TargetType:  "smtp_config",
 		TargetID:    tenant.PublicID,
 		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
+		ClientIP:    auditlog.ClientIPFromHeader(rpcmiddleware.RequestHeader(ctx)),
 	})
 
-	return connect.NewResponse(&publiraadminv1.SendTenantSmtpTestEmailResponse{
+	return &publiraadminv1.SendTenantSmtpTestEmailResponse{
 		RecipientEmail: recipientEmail,
-	}), nil
+	}, nil
 }
 
 func (s *adminServer) loadTenantSMTPConfigByID(ctx context.Context, tenantID uuid.UUID) (dbmodels.TenantSmtpConfig, bool, error) {
@@ -325,7 +326,7 @@ func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tena
 	if !req.SmtpOverrideEnabled {
 		return emailsettings.SMTPSettings{}, connect.NewError(
 			connect.CodeFailedPrecondition,
-			errors.New("the smtp connection test needs this tenant's own smtp settings"),
+			"the smtp connection test needs this tenant's own smtp settings",
 		)
 	}
 
@@ -339,14 +340,14 @@ func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tena
 	}
 	password, err := emailsettings.ResolvePasswordForTest(existingPassword, secretupdate.Mode(req.PasswordUpdateMode), req.Password, s.encryptor)
 	if err != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 	settings := emailsettings.WithTenantFromName(tenantEmailSettingsFromTestRequest(req, password), tenant.Name)
 	if err := emailsettings.RequireUsername(settings); err != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 	if err := emailsettings.Validate(settings, true); err != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err)
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 	return settings, nil
 }

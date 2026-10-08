@@ -5,27 +5,29 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestDBCreateOperatorPersistsAndLists(t *testing.T) {
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
-	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	createResp, err := client.CreateOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.CreateOperatorRequest{
+	createResp, err := client.CreateOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.CreateOperatorRequest{
 		Name:  "New Operator",
 		Email: "New.Operator@Example.com",
 		Role:  auth.RolePlatformOperator,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateOperator: %v", err)
 	}
-	created := createResp.Msg.Operator
+	created := createResp.Operator
 	if created.PublicId == "" {
 		t.Fatal("created operator public_id is empty")
 	}
@@ -44,16 +46,16 @@ func TestDBCreateOperatorPersistsAndLists(t *testing.T) {
 		t.Fatalf("created status = %q, want %s", created.Status, userStatusActive)
 	}
 
-	listResp, err := client.ListOperators(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.ListOperatorsRequest{}))
+	listResp, err := client.ListOperators(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.ListOperatorsRequest{})
 	if err != nil {
 		t.Fatalf("ListOperators: %v", err)
 	}
 	// Counted before the map collapses duplicates, so a repeated row is caught.
-	if len(listResp.Msg.Operators) != 2 {
-		t.Fatalf("listed operators = %d, want the seeded super admin and the new operator", len(listResp.Msg.Operators))
+	if len(listResp.Operators) != 2 {
+		t.Fatalf("listed operators = %d, want the seeded super admin and the new operator", len(listResp.Operators))
 	}
-	roles := make(map[string]string, len(listResp.Msg.Operators))
-	for _, operator := range listResp.Msg.Operators {
+	roles := make(map[string]string, len(listResp.Operators))
+	for _, operator := range listResp.Operators {
 		roles[operator.PublicId] = operator.Role
 	}
 	if len(roles) != 2 {
@@ -66,17 +68,17 @@ func TestDBCreateOperatorPersistsAndLists(t *testing.T) {
 		t.Fatalf("new operator role = %q, want %s", roles[created.PublicId], auth.RolePlatformOperator)
 	}
 
-	getResp, err := client.GetOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.GetOperatorRequest{
+	getResp, err := client.GetOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.GetOperatorRequest{
 		PublicId: created.PublicId,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("GetOperator: %v", err)
 	}
-	if getResp.Msg.Operator.PublicId != created.PublicId {
-		t.Fatalf("GetOperator public_id = %q, want %q", getResp.Msg.Operator.PublicId, created.PublicId)
+	if getResp.Operator.PublicId != created.PublicId {
+		t.Fatalf("GetOperator public_id = %q, want %q", getResp.Operator.PublicId, created.PublicId)
 	}
-	if getResp.Msg.Operator.Email != created.Email {
-		t.Fatalf("GetOperator email = %q, want %q", getResp.Msg.Operator.Email, created.Email)
+	if getResp.Operator.Email != created.Email {
+		t.Fatalf("GetOperator email = %q, want %q", getResp.Operator.Email, created.Email)
 	}
 
 	// One role row per operator: the creation must not leave extras behind.
@@ -87,16 +89,16 @@ func TestDBCreateOperatorPersistsAndLists(t *testing.T) {
 
 func TestDBCreateOperatorRejectsExistingOperatorEmail(t *testing.T) {
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
-	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	// Addresses are normalized before the lookup, so a differently cased address
 	// has to collide with the stored one rather than create a second account.
 	for _, email := range []string{superAdmin.Email, strings.ToUpper(superAdmin.Email)} {
-		_, err := client.CreateOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.CreateOperatorRequest{
+		_, err := client.CreateOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.CreateOperatorRequest{
 			Name:  "Duplicate",
 			Email: email,
 			Role:  auth.RolePlatformOperator,
-		}))
+		})
 		if connect.CodeOf(err) != connect.CodeAlreadyExists {
 			t.Fatalf("CreateOperator %q code = %v, want already_exists (err=%v)", email, connect.CodeOf(err), err)
 		}
@@ -117,25 +119,25 @@ func TestDBCreateOperatorRejectsExistingOperatorEmail(t *testing.T) {
 func TestDBCreateOperatorPromotesRolelessPlatformUser(t *testing.T) {
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	existing := seedPlatformUserWithoutRole(t, pg, "PLATNOROLE01", "roleless@example.com", "Roleless User")
-	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	createResp, err := client.CreateOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.CreateOperatorRequest{
+	createResp, err := client.CreateOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.CreateOperatorRequest{
 		Name:  "Promoted Operator",
 		Email: existing.Email,
 		Role:  auth.RolePlatformAuditor,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("CreateOperator: %v", err)
 	}
-	if createResp.Msg.Operator.PublicId != existing.PublicID {
-		t.Fatalf("public_id = %q, want the existing user %q", createResp.Msg.Operator.PublicId, existing.PublicID)
+	if createResp.Operator.PublicId != existing.PublicID {
+		t.Fatalf("public_id = %q, want the existing user %q", createResp.Operator.PublicId, existing.PublicID)
 	}
-	if createResp.Msg.Operator.Role != auth.RolePlatformAuditor {
-		t.Fatalf("role = %q, want %s", createResp.Msg.Operator.Role, auth.RolePlatformAuditor)
+	if createResp.Operator.Role != auth.RolePlatformAuditor {
+		t.Fatalf("role = %q, want %s", createResp.Operator.Role, auth.RolePlatformAuditor)
 	}
 	// The name comes from the existing row; only the role is added.
-	if createResp.Msg.Operator.Name != existing.Name {
-		t.Fatalf("name = %q, want the existing %q", createResp.Msg.Operator.Name, existing.Name)
+	if createResp.Operator.Name != existing.Name {
+		t.Fatalf("name = %q, want the existing %q", createResp.Operator.Name, existing.Name)
 	}
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_users"); got != 2 {
 		t.Fatalf("platform_users rows = %d, want the seeded super admin plus the promoted user", got)
@@ -144,13 +146,13 @@ func TestDBCreateOperatorPromotesRolelessPlatformUser(t *testing.T) {
 
 func TestDBCreateOperatorRequiresSuperAdmin(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
-	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := client.CreateOperator(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateOperatorRequest{
+	_, err := client.CreateOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateOperatorRequest{
 		Name:  "New Operator",
 		Email: "new-operator@example.com",
 		Role:  auth.RolePlatformOperator,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("CreateOperator code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
 	}
@@ -159,17 +161,17 @@ func TestDBCreateOperatorRequiresSuperAdmin(t *testing.T) {
 func TestDBUpdateOperatorRoleReplacesTheExistingRole(t *testing.T) {
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	target := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	updateResp, err := client.UpdateOperatorRole(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.UpdateOperatorRoleRequest{
+	updateResp, err := client.UpdateOperatorRole(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.UpdateOperatorRoleRequest{
 		OperatorId: target.ID.String(),
 		Role:       auth.RolePlatformAuditor,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UpdateOperatorRole: %v", err)
 	}
-	if updateResp.Msg.Operator.Role != auth.RolePlatformAuditor {
-		t.Fatalf("role = %q, want %s", updateResp.Msg.Operator.Role, auth.RolePlatformAuditor)
+	if updateResp.Operator.Role != auth.RolePlatformAuditor {
+		t.Fatalf("role = %q, want %s", updateResp.Operator.Role, auth.RolePlatformAuditor)
 	}
 
 	// Roles are replaced, not accumulated; the old row has to be gone.
@@ -186,12 +188,12 @@ func TestDBUpdateOperatorRoleReplacesTheExistingRole(t *testing.T) {
 
 func TestDBUpdateOperatorRoleRejectsSelfDemotion(t *testing.T) {
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
-	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := client.UpdateOperatorRole(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.UpdateOperatorRoleRequest{
+	_, err := client.UpdateOperatorRole(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.UpdateOperatorRoleRequest{
 		OperatorId: superAdmin.ID.String(),
 		Role:       auth.RolePlatformOperator,
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("UpdateOperatorRole code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -209,55 +211,55 @@ func TestDBUpdateOperatorRoleRejectsSelfDemotion(t *testing.T) {
 func TestDBOperatorStatusTransitions(t *testing.T) {
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	target := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
-	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	suspendResp, err := client.SuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.SuspendOperatorRequest{
+	suspendResp, err := client.SuspendOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.SuspendOperatorRequest{
 		OperatorId: target.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("SuspendOperator: %v", err)
 	}
-	if suspendResp.Msg.Operator.Status != userStatusSuspended {
-		t.Fatalf("status = %q, want %s", suspendResp.Msg.Operator.Status, userStatusSuspended)
+	if suspendResp.Operator.Status != userStatusSuspended {
+		t.Fatalf("status = %q, want %s", suspendResp.Operator.Status, userStatusSuspended)
 	}
 
-	_, err = client.SuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.SuspendOperatorRequest{
+	_, err = client.SuspendOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.SuspendOperatorRequest{
 		OperatorId: target.ID.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("second SuspendOperator code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 
-	unsuspendResp, err := client.UnsuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.UnsuspendOperatorRequest{
+	unsuspendResp, err := client.UnsuspendOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.UnsuspendOperatorRequest{
 		OperatorId: target.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("UnsuspendOperator: %v", err)
 	}
-	if unsuspendResp.Msg.Operator.Status != userStatusActive {
-		t.Fatalf("status = %q, want %s", unsuspendResp.Msg.Operator.Status, userStatusActive)
+	if unsuspendResp.Operator.Status != userStatusActive {
+		t.Fatalf("status = %q, want %s", unsuspendResp.Operator.Status, userStatusActive)
 	}
 
-	_, err = client.UnsuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.UnsuspendOperatorRequest{
+	_, err = client.UnsuspendOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.UnsuspendOperatorRequest{
 		OperatorId: target.ID.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("second UnsuspendOperator code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 
-	deactivateResp, err := client.DeactivateOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.DeactivateOperatorRequest{
+	deactivateResp, err := client.DeactivateOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.DeactivateOperatorRequest{
 		OperatorId: target.ID.String(),
-	}))
+	})
 	if err != nil {
 		t.Fatalf("DeactivateOperator: %v", err)
 	}
-	if deactivateResp.Msg.Operator.Status != userStatusInactive {
-		t.Fatalf("status = %q, want %s", deactivateResp.Msg.Operator.Status, userStatusInactive)
+	if deactivateResp.Operator.Status != userStatusInactive {
+		t.Fatalf("status = %q, want %s", deactivateResp.Operator.Status, userStatusInactive)
 	}
 
-	_, err = client.DeactivateOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.DeactivateOperatorRequest{
+	_, err = client.DeactivateOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.DeactivateOperatorRequest{
 		OperatorId: target.ID.String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("second DeactivateOperator code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -272,16 +274,16 @@ func TestDBOperatorStatusTransitions(t *testing.T) {
 
 func TestDBOperatorStatusChangesRejectSelf(t *testing.T) {
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
-	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	if _, err := client.SuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.SuspendOperatorRequest{
+	if _, err := client.SuspendOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.SuspendOperatorRequest{
 		OperatorId: superAdmin.ID.String(),
-	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("SuspendOperator on self code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
-	if _, err := client.DeactivateOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.DeactivateOperatorRequest{
+	if _, err := client.DeactivateOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.DeactivateOperatorRequest{
 		OperatorId: superAdmin.ID.String(),
-	})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeactivateOperator on self code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 
@@ -296,18 +298,18 @@ func TestDBOperatorStatusChangesRejectSelf(t *testing.T) {
 
 func TestDBOperatorNotFoundReturnsNotFound(t *testing.T) {
 	ts, _, superAdmin := newDBIntegrationSuperAdminServer(t)
-	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := client.GetOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.GetOperatorRequest{
+	_, err := client.GetOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.GetOperatorRequest{
 		PublicId: "MISSINGUSER1",
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetOperator code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
 
-	_, err = client.SuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.SuspendOperatorRequest{
+	_, err = client.SuspendOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.SuspendOperatorRequest{
 		OperatorId: uuid.Must(uuid.NewV7()).String(),
-	}))
+	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("SuspendOperator code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}

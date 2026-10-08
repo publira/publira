@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
@@ -35,7 +36,7 @@ func newEmailSettingsClient(t *testing.T) (
 	t.Cleanup(ts.Close)
 
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
-	return publirasplatformv1connect.NewPlatformEmailSettingsServiceClient(ts.Client(), ts.URL), pg, operator, encryptor
+	return publirasplatformv1connect.NewPlatformEmailSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))), pg, operator, encryptor
 }
 
 // storedSMTPRow is every column an operator's save writes, read on the
@@ -81,11 +82,11 @@ func updateEmailSettings(
 	operator testutil.PlatformOperator,
 	req *publirasplatformv1.UpdatePlatformEmailSettingsRequest,
 ) (*publirasplatformv1.PlatformEmailSettings, error) {
-	resp, err := client.UpdatePlatformEmailSettings(ctx, authedStorageRequest(operator, req))
+	resp, err := client.UpdatePlatformEmailSettings(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg.GetSettings(), nil
+	return resp.GetSettings(), nil
 }
 
 // seedEmailSettings saves a first configuration and answers the revision a
@@ -104,12 +105,12 @@ func seedEmailSettings(
 	if err != nil {
 		t.Fatalf("UpdatePlatformEmailSettings (seed): %v", err)
 	}
-	resp, err := client.GetPlatformEmailSettings(context.Background(), authedStorageRequest(operator, &publirasplatformv1.GetPlatformEmailSettingsRequest{}))
+	resp, err := client.GetPlatformEmailSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformEmailSettingsRequest{})
 	if err != nil {
 		t.Fatalf("GetPlatformEmailSettings: %v", err)
 	}
-	if resp.Msg.GetSettings().GetRevision() != saved.GetRevision() {
-		t.Fatalf("read revision = %d, want the saved %d", resp.Msg.GetSettings().GetRevision(), saved.GetRevision())
+	if resp.GetSettings().GetRevision() != saved.GetRevision() {
+		t.Fatalf("read revision = %d, want the saved %d", resp.GetSettings().GetRevision(), saved.GetRevision())
 	}
 	return saved.GetRevision()
 }

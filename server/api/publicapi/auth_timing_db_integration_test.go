@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"connectrpc.com/connect"
-
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -21,12 +19,12 @@ func TestDBCreateUserTakesAsLongForARegisteredAddressAsForAFreeOne(t *testing.T)
 	client := env.authClient()
 
 	signUp := func(email string) error {
-		_, err := client.CreateUser(context.Background(), connect.NewRequest(&publirav1.CreateUserRequest{
+		_, err := client.CreateUser(context.Background(), &publirav1.CreateUserRequest{
 			Tenant:   tenantContext(tenant),
 			Name:     "Signup",
 			Email:    email,
 			Password: "signup-password",
-		}))
+		})
 		return err
 	}
 	testutil.AssertIndistinguishableTimings(t,
@@ -44,10 +42,10 @@ func TestDBRequestPasswordResetTakesAsLongForARegisteredAddressAsForAFreeOne(t *
 	client := env.authClient()
 
 	requestReset := func(email string) error {
-		_, err := client.RequestPasswordReset(context.Background(), connect.NewRequest(&publirav1.RequestPasswordResetRequest{
+		_, err := client.RequestPasswordReset(context.Background(), &publirav1.RequestPasswordResetRequest{
 			Tenant: tenantContext(tenant),
 			Email:  email,
-		}))
+		})
 		return err
 	}
 	testutil.AssertIndistinguishableTimings(t,
@@ -66,10 +64,10 @@ func TestDBRequestEmailVerificationTakesAsLongForARegisteredAddressAsForAFreeOne
 	client := env.authClient()
 
 	requestLink := func(email string) error {
-		_, err := client.RequestEmailVerification(context.Background(), connect.NewRequest(&publirav1.RequestEmailVerificationRequest{
+		_, err := client.RequestEmailVerification(context.Background(), &publirav1.RequestEmailVerificationRequest{
 			Tenant: tenantContext(tenant),
 			Email:  email,
-		}))
+		})
 		return err
 	}
 	testutil.AssertIndistinguishableTimings(t,

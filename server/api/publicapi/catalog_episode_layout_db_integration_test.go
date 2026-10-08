@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"connectrpc.com/connect"
-
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -49,14 +47,14 @@ func TestDBGetEpisodeDetailResolvesTheReadingLayout(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			resp, err := env.catalogClient().GetEpisodeDetail(ctx, connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+			resp, err := env.catalogClient().GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{
 				Tenant:   tenantContext(tenant),
 				PublicId: tc.publicID,
-			}))
+			})
 			if err != nil {
 				t.Fatalf("GetEpisodeDetail: %v", err)
 			}
-			episode := resp.Msg.Episode
+			episode := resp.Episode
 			if episode.ReadingDirection != tc.wantDirection || episode.SpreadStartIndex != tc.wantIndex {
 				t.Fatalf("layout = %s from %d, want %s from %d", episode.ReadingDirection, episode.SpreadStartIndex, tc.wantDirection, tc.wantIndex)
 			}
