@@ -4,8 +4,9 @@
  *     node scripts/check-docs.ts
  *
  * `docs/README.md` states that contract: the `<n>-<slug>` names the URLs are
- * derived from, an `index.md` in every directory, the frontmatter keys, and the
- * relative links the website rewrites to page URLs. Every one of those is
+ * derived from, an `index.md` in every directory, the frontmatter keys, the
+ * relative links the website rewrites to page URLs, and the images beside the
+ * pages that show them. Every one of those is
  * something the website only finds out about while it builds a release, in
  * another repository, long after the pull request that broke it was merged —
  * and a tag cannot be fixed afterwards. So the rules are checked here, where the
@@ -30,6 +31,9 @@ const ROOT = "docs/en";
 
 /** A positive integer without a leading zero, then lowercase ASCII words. */
 const ENTRY_NAME = /^(?<number>[1-9]\d*)-(?<slug>[a-z\d]+(?:-[a-z\d]+)*)$/u;
+
+/** What follows the page's slug in an image's name: lowercase ASCII words. */
+const SUBJECT = /^[a-z\d]+(?:-[a-z\d]+)*$/u;
 
 const PAGE_EXTENSION = ".md";
 
@@ -252,6 +256,19 @@ export const checkPage = (
     if (node.type === "link" || node.type === "image") {
       links.push({ image: node.type === "image", line, url: node.url });
     }
+    // The alt text is the reference's own, so a definition two images share
+    // can still leave one of them without any.
+    if (
+      (node.type === "image" || node.type === "imageReference") &&
+      !node.alt?.trim()
+    ) {
+      findings.push({
+        file,
+        line,
+        message:
+          "The image has no alt text. Say what it shows in the brackets, for a reader who cannot see it.",
+      });
+    }
     // CommonMark lets the first of two definitions with one label win.
     if (node.type === "definition" && !definitions.has(node.identifier)) {
       definitions.set(node.identifier, node);
@@ -294,26 +311,36 @@ const exists = async (file: string): Promise<boolean> => {
   }
 };
 
+/** Where a link leads, relative to the repository, or why it leads nowhere. */
+type Resolved = { finding: Finding } | { target: string } | null;
+
 /**
- * The finding for a link that the website cannot rewrite or that leads nowhere,
- * or `null` for one it can follow. Absolute URLs and same-page fragments are
- * left alone: neither is resolved against the tree.
+ * The file a link resolves to, the finding for a link that the website cannot
+ * rewrite or that leads nowhere, or `null` for one it follows without the
+ * tree. Absolute URLs and same-page fragments are such links. An image never
+ * is: one the tree does not hold is one the website cannot serve.
  */
 const checkLink = async (
   repository: string,
   file: string,
   link: Link
-): Promise<Finding | null> => {
+): Promise<Resolved> => {
   const { line, url } = link;
+  const report = (message: string): Resolved => ({
+    finding: { file, line, message },
+  });
   if (
     url === "" ||
     url.startsWith("#") ||
     SCHEME.test(url) ||
     url.startsWith("//")
   ) {
-    return null;
+    return link.image
+      ? report(
+          `\`${url}\` is not a file in ${ROOT}/. An image sits beside the page that shows it and is referenced by a relative path.`
+        )
+      : null;
   }
-  const report = (message: string): Finding => ({ file, line, message });
   if (url.startsWith("/")) {
     return report(
       `\`${url}\` is rooted at the repository. Link to a page by a path relative to this file, and to source code by an absolute https://github.com/publira/publira/ URL.`
@@ -352,23 +379,60 @@ const checkLink = async (
     return report(`\`${url}\` does not exist.`);
   }
 
-  return null;
+  return {
+    target: path.relative(repository, resolved).split(path.sep).join("/"),
+  };
+};
+
+/**
+ * The findings for the images whose names tie them to no page beside them.
+ *
+ * `<page slug>-<subject>`, and `index-<subject>` for an `index.md`: the number
+ * is left out so reordering the pages renames no image, and the slug keeps the
+ * images of sibling pages apart in one directory.
+ */
+const checkImageNames = (
+  images: readonly string[],
+  pageSlugs: readonly string[]
+): Finding[] => {
+  const named = (image: string): boolean => {
+    const stem = path.posix.basename(image, path.posix.extname(image));
+
+    return pageSlugs.some(
+      (slug) =>
+        stem.startsWith(`${slug}-`) && SUBJECT.test(stem.slice(slug.length + 1))
+    );
+  };
+  const slugs =
+    pageSlugs
+      .toSorted((a, b) => a.localeCompare(b, "en"))
+      .map((slug) => `\`${slug}\``)
+      .join(", ") || "there is none";
+
+  return images
+    .filter((image) => !named(image))
+    .map((image) => ({
+      file: image,
+      message: `An image is named \`<page slug>-<subject>\` after a page beside it (${slugs}), with a subject of lowercase ASCII words joined by \`-\`.`,
+    }));
 };
 
 /**
  * The findings about the names in one directory and every directory below it,
- * and the pages they hold.
+ * and the pages and images they hold.
  */
 const checkDirectory = async (
   repository: string,
   directory: string,
   root = false
-): Promise<{ findings: Finding[]; pages: string[] }> => {
+): Promise<{ findings: Finding[]; images: string[]; pages: string[] }> => {
   const entries = await readdir(path.join(repository, directory), {
     withFileTypes: true,
   });
   const findings: Finding[] = [];
   const pages: string[] = [];
+  const images: string[] = [];
+  const pageSlugs: string[] = [];
   const directories: string[] = [];
   const numbers = new Map<string, string>();
   const slugs = new Map<string, string>();
@@ -389,9 +453,11 @@ const checkDirectory = async (
     const extension = path.extname(entry.name);
     if (entry.isFile() && entry.name === INDEX) {
       pages.push(entryPath);
+      pageSlugs.push("index");
       continue;
     }
     if (entry.isFile() && IMAGE_EXTENSIONS.has(extension.toLowerCase())) {
+      images.push(entryPath);
       continue;
     }
 
@@ -427,8 +493,15 @@ const checkDirectory = async (
     }
     slugs.set(slug, entryPath);
 
-    (entry.isDirectory() ? directories : pages).push(entryPath);
+    if (entry.isDirectory()) {
+      directories.push(entryPath);
+    } else {
+      pages.push(entryPath);
+      pageSlugs.push(slug);
+    }
   }
+
+  findings.push(...checkImageNames(images, pageSlugs));
 
   const nested = await Promise.all(
     directories.map((child) => checkDirectory(repository, child))
@@ -436,22 +509,62 @@ const checkDirectory = async (
 
   return {
     findings: [...findings, ...nested.flatMap((child) => child.findings)],
+    images: [...images, ...nested.flatMap((child) => child.images)],
     pages: [...pages, ...nested.flatMap((child) => child.pages)],
   };
 };
 
+/** The findings in one page, and the images beside it that it shows. */
 const checkFile = async (
   repository: string,
   file: string
-): Promise<Finding[]> => {
+): Promise<{ findings: Finding[]; images: string[] }> => {
   const source = await readFile(path.join(repository, file), "utf-8");
   const { findings, links } = checkPage(file, source);
-  const broken = await Promise.all(
-    links.map((link) => checkLink(repository, file, link))
+  const resolved = await Promise.all(
+    links.map(async (link) => ({
+      image: link.image,
+      resolved: await checkLink(repository, file, link),
+    }))
   );
 
-  return [...findings, ...broken.filter((finding) => finding !== null)];
+  return {
+    findings: [
+      ...findings,
+      ...resolved.flatMap(({ resolved: result }) =>
+        result && "finding" in result ? [result.finding] : []
+      ),
+    ],
+    images: resolved.flatMap(({ image, resolved: result }) =>
+      image &&
+      result &&
+      "target" in result &&
+      path.posix.dirname(result.target) === path.posix.dirname(file)
+        ? [result.target]
+        : []
+    ),
+  };
 };
+
+/**
+ * The findings for images no page beside them shows.
+ *
+ * Playwright never deletes a screenshot its spec stops taking, and nothing
+ * else notices an image a page stops showing, so this is what catches what
+ * either leaves behind. A page in another directory does not count: an image
+ * sits beside the page that shows it.
+ */
+const checkUnreferenced = (
+  images: readonly string[],
+  shown: ReadonlySet<string>
+): Finding[] =>
+  images
+    .filter((image) => !shown.has(image))
+    .map((image) => ({
+      file: image,
+      message:
+        "No page beside the image shows it. Reference it from the page it was made for, or delete it.",
+    }));
 
 /**
  * Every finding under `root`, relative to `repository`, as are the files the
@@ -461,12 +574,21 @@ export const scan = async (
   repository = process.cwd(),
   root = ROOT
 ): Promise<Finding[]> => {
-  const { findings, pages } = await checkDirectory(repository, root, true);
+  const { findings, images, pages } = await checkDirectory(
+    repository,
+    root,
+    true
+  );
   const inPages = await Promise.all(
     pages.map((page) => checkFile(repository, page))
   );
+  const shown = new Set(inPages.flatMap((page) => page.images));
 
-  return [...findings, ...inPages.flat()].toSorted(
+  return [
+    ...findings,
+    ...inPages.flatMap((page) => page.findings),
+    ...checkUnreferenced(images, shown),
+  ].toSorted(
     (a, b) =>
       a.file.localeCompare(b.file, "en") || (a.line ?? 0) - (b.line ?? 0)
   );
