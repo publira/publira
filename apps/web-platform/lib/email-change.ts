@@ -1,6 +1,7 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
@@ -112,16 +113,26 @@ export const platformEmailChangeConfirmationCacheTag =
   "platform:email-change-confirmation";
 
 /**
- * Confirms the change the link's token stands for. The RPC spends the token,
- * so it runs once, for the request that opened the link. In a
- * `"use cache: private"` scope the prerender Cache Components spawns from that
- * request finds the answer already filled in instead of calling the API again,
- * and with `stale` under 30 seconds it leaves the answer out rather than
- * keeping it for a prefetch.
+ * What the cached confirmation hands `confirmPlatformEmailChange`: the answer,
+ * and whether its failure is one no screen copy describes. A `"use cache"`
+ * scope must not throw — the fill would fail the whole request — so the scope
+ * classifies the failure and the caller, outside it, throws the unexpected one.
  */
-export const confirmPlatformEmailChange = async (
+interface CachedEmailChangeConfirmation {
+  result: EmailChangeConfirmResult | null;
+  unexpected: boolean;
+}
+
+/**
+ * The RPC spends the token, so it runs once, for the request that opened the
+ * link. In a `"use cache: private"` scope the prerender Cache Components spawns
+ * from that request finds the answer already filled in instead of calling the
+ * API again, and with `stale` under 30 seconds it leaves the answer out rather
+ * than keeping it for a prefetch.
+ */
+const confirmPlatformEmailChangeOnce = async (
   token: string
-): Promise<EmailChangeConfirmResult | null> => {
+): Promise<CachedEmailChangeConfirmation> => {
   "use cache: private";
   cacheLife({ stale: 0 });
   cacheTag(platformEmailChangeConfirmationCacheTag);
@@ -132,15 +143,32 @@ export const confirmPlatformEmailChange = async (
       await buildClientAddressHeaders()
     );
     return {
-      changed: response.changed,
-      confirmed: response.confirmed,
-      pendingConfirmationFor: response.pendingConfirmationFor,
+      result: {
+        changed: response.changed,
+        confirmed: response.confirmed,
+        pendingConfirmationFor: response.pendingConfirmationFor,
+      },
+      unexpected: false,
     };
-  } catch {
-    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
-    // request. Every failure, an unexpected one included, is the screen's
-    // failed outcome, and the entry is dropped so the link can be retried.
+  } catch (error) {
     dropFailedCacheEntry();
-    return null;
+    return {
+      result: null,
+      unexpected: rpcErrorDisposition(error) === "unexpected",
+    };
   }
+};
+
+/**
+ * Confirms the change the link's token stands for, or `null` when the API
+ * refused it. A failure no screen copy describes reaches the error boundary.
+ */
+export const confirmPlatformEmailChange = async (
+  token: string
+): Promise<EmailChangeConfirmResult | null> => {
+  const { result, unexpected } = await confirmPlatformEmailChangeOnce(token);
+  if (unexpected) {
+    throw new Error("The email change confirmation failed unexpectedly.");
+  }
+  return result;
 };
