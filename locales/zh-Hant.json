@@ -4842,9 +4842,7 @@
       "suspend": "暫停",
       "tenant_status": {
         "active": "運作中",
-        "inactive": "未啟用",
-        "suspended": "已暫停",
-        "trial": "試用中"
+        "suspended": "已暫停"
       },
       "try_later": "請稍後再試。如果問題持續發生，請提供錯誤ID聯絡管理員。",
       "unset": "未設定"
@@ -4932,7 +4930,7 @@
       "detail_metadata": "營運人員",
       "detail_title": "營運人員：{$name}",
       "email_taken": "該電子郵件地址已被註冊。",
-      "empty": "尚未新增任何營運人員。",
+      "empty": "尚未新增任何營運人員。請透過「新增營運人員」進行新增。",
       "get_failed": "無法載入該營運人員。請稍後再試。",
       "heading": "營運人員",
       "info_description": "帳戶資訊與目前狀態。",
@@ -5087,7 +5085,7 @@
     },
     "tenants": {
       "add_member": "新增成員",
-      "add_member_description": "輸入電子郵件地址與角色，邀請新成員。",
+      "add_member_description": "為已在此租戶擁有帳號的使用者指派角色。不會寄送邀請郵件，沒有帳號的地址無法新增；請改用「邀請租戶管理員」寄出邀請。",
       "add_member_email": "要新增的電子郵件地址",
       "add_member_pending": "正在新增…",
       "add_member_submit": "新增成員",
@@ -5120,8 +5118,7 @@
       "columns_created": "建立時間",
       "columns_status": "狀態",
       "columns_tenant": "租戶",
-      "create_description": "名稱與網域為必填。也可以選擇將既有使用者設為初始管理員。",
-      "create_draft": "儲存草稿",
+      "create_description": "名稱與網域為必填。初始管理員電子郵件地址中填寫的每個地址都會收到管理員邀請。",
       "create_failed": "無法建立該租戶。請稍後再試。",
       "create_heading": "建立租戶",
       "create_title": "建立租戶",

@@ -424,6 +424,9 @@ const TenantMemberDeleteButton = ({
 /**
  * Resending and canceling are separate forms, each answering on this row: the
  * invitation stays listed either way, with the status the change left it in.
+ * An expired invitation can still be resent — `ResendTenantAdminInvitation`
+ * gives it a new link and a new expiry — while only a pending one has a link
+ * left to cancel.
  */
 const TenantInvitationActions = ({
   invitation,
@@ -432,7 +435,9 @@ const TenantInvitationActions = ({
   invitation: PlatformTenantAdminInvitation;
   tenantId: string;
 }) => {
-  const canOperate = invitation.status === "pending";
+  const canResend =
+    invitation.status === "pending" || invitation.status === "expired";
+  const canCancel = invitation.status === "pending";
   const cancelFormId = `tenant-invitation-cancel-${invitation.id}`;
 
   return (
@@ -443,7 +448,7 @@ const TenantInvitationActions = ({
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="invitation_id" type="hidden" value={invitation.id} />
-        <ActionFormSubmit disabled={!canOperate} size="sm" variant="outline">
+        <ActionFormSubmit disabled={!canResend} size="sm" variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="platform.tenants.resend_invite" />
           </Suspense>
@@ -456,7 +461,7 @@ const TenantInvitationActions = ({
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="invitation_id" type="hidden" value={invitation.id} />
-        <ActionFormFieldset disabled={!canOperate}>
+        <ActionFormFieldset disabled={!canCancel}>
           <ConfirmDialog>
             <ConfirmDialogTrigger
               render={<Button size="sm" type="button" variant="destructive" />}

@@ -51,12 +51,10 @@ An invitation sent from the Platform Console or `publiractl` can only make a Ten
 
 ### Following an invitation up
 
-**Admin invitations**, on the same **Members** screen, lists each invitation as **Pending**, **Accepted**, **Canceled**, or **Expired**. On a pending one:
+**Admin invitations**, on the same **Members** screen, lists each invitation as **Pending**, **Accepted**, **Canceled**, or **Expired**.
 
-- **Resend** mails it again with a new link, valid for another 24 hours. The previous link stops working.
-- **Cancel** withdraws it, and its link stops working.
-
-The Platform Console offers neither on an expired invitation ([#3752](https://github.com/publira/publira/issues/3752)). Invite the same address again instead: that sends a new link to the same invitation.
+- **Resend**, on a pending or an expired invitation, mails it again with a new link, valid for another 24 hours. The previous link stops working.
+- **Cancel**, on a pending invitation, withdraws it, and its link stops working.
 
 From the command line, `publiractl tenant invite list --tenant comics.example.com` prints each invitation with its ID, and `tenant invite resend --id <ID>` and `tenant invite cancel --id <ID>` act on one, an expired one included.
 

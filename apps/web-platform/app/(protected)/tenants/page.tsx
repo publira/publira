@@ -64,7 +64,8 @@ const TenantStatusCell = async ({
   status: string;
 }) => await getTenantStatusLabel(status, locale);
 
-const statusFilterValues = ["active", "trial", "suspended"] as const;
+/** The statuses the `tenants.status` check constraint allows. */
+const statusFilterValues = ["active", "suspended"] as const;
 const allowedStatusValues = new Set<string>(statusFilterValues);
 const pageSize = 20;
 
