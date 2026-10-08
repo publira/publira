@@ -25,10 +25,16 @@ var (
 	appleTeamIDPattern          = regexp.MustCompile(`^[A-Z0-9]{10}$`)
 )
 
-// tenantMobileAppAssociationRevalidateTags names the storefront read behind its
-// assetlinks.json and apple-app-site-association.
+// tenantMobileAppAssociationRevalidateTags names the storefront reads that
+// carry the association: the one behind its assetlinks.json and
+// apple-app-site-association, and the tenant read, whose store purchase flags
+// count a store as ready only while an app is named for it to sell in.
 func tenantMobileAppAssociationRevalidateTags(tenantID string) []string {
-	return []string{fmt.Sprintf("tenant:%s:mobile-app-association", strings.TrimSpace(tenantID))}
+	normalizedTenantID := strings.TrimSpace(tenantID)
+	return []string{
+		fmt.Sprintf("tenant:%s:mobile-app-association", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:site", normalizedTenantID),
+	}
 }
 
 // maxAndroidCertFingerprints bounds how many signing certificates one request
