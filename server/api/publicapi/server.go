@@ -176,19 +176,27 @@ type API struct {
 
 // New builds the public API over db, which must be the pool connected as
 // publira_public: the row-level security every handler here relies on is that
-// role's. The flood controls, the sign-in limit among them, read their limits
-// from the platform policy through that same pool, and so does the
-// disposable-domain list a tenant may refuse sign-ups against. reval sends the
-// cache tags its writes leave stale; a nil one turns revalidation off. search
-// answers the catalog searches; a nil one is the SQL backend over queries. idTokens says where the ID tokens a reader
-// signs in with are checked against.
-func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig) (*API, error) {
+// role's. The flood controls read their limits from the platform policy
+// through that same pool, and so does the disposable-domain list a tenant may
+// refuse sign-ups against. reval sends the cache tags its writes leave stale; a
+// nil one turns revalidation off. search answers the catalog searches; a nil
+// one is the SQL backend over queries. idTokens says where the ID tokens a
+// reader signs in with are checked against.
+//
+// login is the sign-in limit, which the process hands every namespace it
+// serves: the storefront and the tenant console sign in the same accounts, and
+// a source signing in to all three holds one allowance, so the counts have to
+// be one even when they are kept in this process. A nil one counts on its own.
+func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig, login *loginguard.Guard) (*API, error) {
 	logger := slog.Default()
 	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
 	guards := newReaderGuards(policy, logger)
 	mail := mailguard.NewShared(policy, logger)
 	server := newAPIServer(db, queries, encryptor, tokens, reval, logger, guards, mail, search)
-	server.login = loginguard.NewShared(policy, logger)
+	if login == nil {
+		login = loginguard.NewShared(policy, logger)
+	}
+	server.login = login
 	server.idTokens = signin.NewVerifier(idTokens)
 	return &API{server: server}, nil
 }

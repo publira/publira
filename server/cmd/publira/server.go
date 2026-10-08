@@ -24,7 +24,9 @@ import (
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/imageserver"
 	"github.com/publira/publira/server/internal/logging"
+	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/metrics"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/redisurl"
@@ -157,7 +159,14 @@ func runServer() int {
 		SQL: sqlbackend.New(dbmodels.New(pools.public)),
 	}
 
-	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, revalidateClient, searcher, idTokens)
+	// One sign-in limit for the three namespaces. The storefront and the tenant
+	// console sign in the same accounts, and one source may try all three, so
+	// counters kept in this process when no Redis is named have to be one set
+	// rather than one per namespace. The policy is read as publira_public, the
+	// least of the logins that may read it.
+	login := loginguard.NewShared(platformpolicy.NewResolver(dbmodels.New(pools.public), platformpolicy.CacheTTL, logger), logger)
+
+	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, revalidateClient, searcher, idTokens, login)
 	if err != nil {
 		logger.Error("failed to initialize public api handler", "error", err)
 		return 1
@@ -168,14 +177,14 @@ func runServer() int {
 	webServiceToken := newWebServiceToken(logger)
 
 	adminRecorder := auditlog.NewAsync(dbmodels.New(pools.admin), pools.admin, logger)
-	adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, revalidateClient, adminRecorder, webServiceToken)
+	adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, revalidateClient, adminRecorder, webServiceToken, login)
 	if err != nil {
 		logger.Error("failed to initialize admin api handler", "error", err)
 		return 1
 	}
 
 	platformRecorder := auditlog.NewAsync(dbmodels.New(pools.platform), nil, logger)
-	platformAPI := platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder, webServiceToken)
+	platformAPI := platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder, webServiceToken, login)
 
 	imageHandler, err := imageserver.NewHandler(
 		dbmodels.New(pools.public),

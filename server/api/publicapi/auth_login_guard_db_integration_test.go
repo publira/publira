@@ -2,12 +2,21 @@ package publicapi
 
 import (
 	"context"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
+	"github.com/publira/publira/server/api/adminapi"
+	"github.com/publira/publira/server/internal/auditlog"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/platformpolicy"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
@@ -146,5 +155,46 @@ func TestDBLoginRefusesPastTheSourceAllowance(t *testing.T) {
 	}
 	if err := tryLogin(t, env, tenant, "third@tenant-a.example.com", "a-common-password"); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("a third address from the same origin code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
+// The storefront and the tenant console sign in the same accounts, so the
+// process hands both one guard, and guesses made on one of them count against
+// the other. Kept in this process, as they are when no Redis is named, two
+// guards would be two allowances to rotate between.
+func TestDBLoginSharesTheAccountAllowanceWithTheTenantConsole(t *testing.T) {
+	login := loginGuardWith(
+		platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2},
+		platformpolicy.HourDay{PerHour: 1000, PerDay: 1000},
+	)
+	env := newPublicDBEnvWithLoginGuard(t, login)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "TAUSER01", "admin@tenant-a.example.com", "Admin")
+
+	adminDB := env.PG.OpenAdminDB(t)
+	recorder := auditlog.NewAsync(dbmodels.New(adminDB), adminDB, slog.Default())
+	t.Cleanup(recorder.Close)
+	adminAPI, err := adminapi.NewWithAsyncRecorder(adminDB, dbmodels.New(adminDB), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager(), nil, recorder, nil, login)
+	if err != nil {
+		t.Fatalf("new admin handler: %v", err)
+	}
+	adminMux := http.NewServeMux()
+	adminAPI.Register(adminMux)
+	adminServer := httptest.NewServer(adminMux)
+	t.Cleanup(adminServer.Close)
+	console := publiraadminv1connect.NewAdminAuthServiceClient(connect.NewClient(connecthttp.NewTransport(adminServer.Client(), adminServer.URL)))
+
+	for guess := 1; guess <= 2; guess++ {
+		if err := tryLogin(t, env, tenant, staff.Email, "not-the-password"); connect.CodeOf(err) != connect.CodeUnauthenticated {
+			t.Fatalf("guess %d on the storefront code = %v, want unauthenticated (err=%v)", guess, connect.CodeOf(err), err)
+		}
+	}
+	_, err = console.Login(context.Background(), &publiraadminv1.AdminAuthServiceLoginRequest{
+		Tenant:   tenantContext(tenant),
+		Email:    staff.Email,
+		Password: testutil.SeededPassword,
+	})
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("the tenant console after the storefront's guesses code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
 }

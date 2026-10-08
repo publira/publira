@@ -122,16 +122,24 @@ func New(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettin
 // NewWithAsyncRecorder is New with an AsyncRecorder, and with the service
 // token the web apps read platform-level data with; a nil one admits no web
 // app.
-func NewWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder, serviceToken *auth.ServiceToken) *API {
+//
+// login is the sign-in limit the process hands every namespace it serves, as
+// publicapi.New describes; a nil one counts on its own.
+func NewWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, recorder *auditlog.AsyncRecorder, serviceToken *auth.ServiceToken, login *loginguard.Guard) *API {
 	api := newAPI(db, queries, logger, encryptor, tester, tokens, recorder, nil, nil)
 	api.server.serviceToken = serviceToken
-	api.server.shareLoginGuard()
+	if login == nil {
+		api.server.shareLoginGuard()
+	} else {
+		api.server.login = login
+	}
 	return api
 }
 
-// shareLoginGuard puts the sign-in limit on the counters the deployment shares,
-// against the platform policy as db reads it. newAPI leaves it on counters of
-// its own, so no test that signs in reaches the Redis the environment may name.
+// shareLoginGuard puts the sign-in limit on counters of this namespace's own
+// over the ones the deployment shares, against the platform policy as db reads
+// it. newAPI leaves it on in-process counters, so no test that signs in reaches
+// the Redis the environment may name.
 func (s *platformServer) shareLoginGuard() {
 	s.login = loginguard.NewShared(platformpolicy.NewResolver(dbmodels.New(s.db), platformpolicy.CacheTTL, s.logger), s.logger)
 }
