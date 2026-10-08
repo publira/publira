@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 import { ANNOUNCEMENT_BANNER_MEMBER } from "./scenarios/announcement-banner";
 import { ANNOUNCEMENT_DELIVERY_MEMBER } from "./scenarios/announcement-delivery";
@@ -74,9 +75,25 @@ export const signInAsAnnouncementDeliveryMember = async (
   );
 };
 
-/** Open the public site's header account menu. */
+/**
+ * Open the public site's header account menu and leave it open.
+ *
+ * A press that lands before the header is hydrated reaches no listener and
+ * opens nothing, which a page that has just navigated — a form's redirect
+ * back with its message, say — makes likely. The trigger is pressed again
+ * only while it still reports itself closed, so a retry never closes a menu
+ * that did open.
+ */
 export const openHostUserMenu = async (page: Page): Promise<void> => {
-  await page.getByRole("button", { name: "Account menu" }).click();
+  const trigger = page.getByRole("button", { name: "Account menu" });
+  await expect(async () => {
+    if ((await trigger.getAttribute("aria-expanded")) !== "true") {
+      await trigger.click();
+    }
+    await expect(trigger).toHaveAttribute("aria-expanded", "true", {
+      timeout: 1000,
+    });
+  }).toPass({ timeout: 15_000 });
 };
 
 export const signOutHost = async (page: Page): Promise<void> => {
