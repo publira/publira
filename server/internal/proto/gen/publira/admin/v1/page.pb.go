@@ -140,7 +140,10 @@ type UpdatePageRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PageId string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
-	Title  string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	// optional so a footer-only update does not write back a title the client
+	// read before someone else renamed the translation. Unset leaves the stored
+	// title; a set one must not be blank.
+	Title *string `protobuf:"bytes,3,opt,name=title,proto3,oneof" json:"title,omitempty"`
 	// optional so title-only updates do not clear an existing true value
 	// (proto3 non-optional bool maps omitted fields to false).
 	DisplayInFooter *bool  `protobuf:"varint,4,opt,name=display_in_footer,json=displayInFooter,proto3,oneof" json:"display_in_footer,omitempty"`
@@ -194,8 +197,8 @@ func (x *UpdatePageRequest) GetPageId() string {
 }
 
 func (x *UpdatePageRequest) GetTitle() string {
-	if x != nil {
-		return x.Title
+	if x != nil && x.Title != nil {
+		return *x.Title
 	}
 	return ""
 }
@@ -1348,13 +1351,14 @@ const file_publira_admin_v1_page_proto_rawDesc = "" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12*\n" +
 	"\x11display_in_footer\x18\x04 \x01(\bR\x0fdisplayInFooter\"@\n" +
 	"\x12CreatePageResponse\x12*\n" +
-	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"\xda\x01\n" +
+	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"\xe9\x01\n" +
 	"\x11UpdatePageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
-	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x14\n" +
-	"\x05title\x18\x03 \x01(\tR\x05title\x12/\n" +
-	"\x11display_in_footer\x18\x04 \x01(\bH\x00R\x0fdisplayInFooter\x88\x01\x01\x12\x16\n" +
-	"\x06locale\x18\x05 \x01(\tR\x06localeB\x14\n" +
+	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x19\n" +
+	"\x05title\x18\x03 \x01(\tH\x00R\x05title\x88\x01\x01\x12/\n" +
+	"\x11display_in_footer\x18\x04 \x01(\bH\x01R\x0fdisplayInFooter\x88\x01\x01\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06localeB\b\n" +
+	"\x06_titleB\x14\n" +
 	"\x12_display_in_footer\"@\n" +
 	"\x12UpdatePageResponse\x12*\n" +
 	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"w\n" +
