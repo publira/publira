@@ -136,8 +136,10 @@ export const confirmPlatformEmailChange = async (
       confirmed: response.confirmed,
       pendingConfirmationFor: response.pendingConfirmationFor,
     };
-  } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+  } catch {
+    // A `"use cache"` scope cannot rethrow: the fill would fail the whole
+    // request. Every failure, an unexpected one included, is the screen's
+    // failed outcome, and the entry is dropped so the link can be retried.
     dropFailedCacheEntry();
     return null;
   }
