@@ -40,7 +40,7 @@ type Column struct {
 	Table string
 	Name  string
 	// Type is the column's type as format_type spells it: text, or jsonb for a
-	// document whose string values are sealed one by one.
+	// document whose sealed string values are sealed one by one.
 	Type    string
 	Key     string
 	KeyType string
@@ -52,6 +52,19 @@ func (c Column) String() string {
 
 func (c Column) isDocument() bool {
 	return c.Type == "jsonb"
+}
+
+// sealedSuffix ends the name of a column, or of a member of a document, that
+// holds sealed values.
+const sealedSuffix = "_encrypted"
+
+// sealsEveryString reports whether every string in a document of the column
+// is sealed, as it is in a column named for holding sealed values. The other
+// documents, outbox payloads, also carry strings a reader or a tenant wrote,
+// which may start like an envelope without being one, so only a member named
+// for holding a sealed value is opened there.
+func (c Column) sealsEveryString() bool {
+	return strings.HasSuffix(c.Name, sealedSuffix)
 }
 
 // Counts is what a run did with the values one key sealed.
@@ -104,8 +117,8 @@ type Options struct {
 
 // sealedColumnsQuery finds every column a sealed value is stored in: by
 // convention one whose name ends in _encrypted, and the payload of an outbox
-// event, which carries a sealed value to the worker when the row it came from
-// is gone by the time the event is sent. The convention, rather than a list,
+// event, which carries a sealed value to the worker, in a member named the same
+// way, when the row it came from is gone by the time the event is sent. The convention, rather than a list,
 // is what keeps a column added later covered the day it lands.
 const sealedColumnsQuery = `
 SELECT c.relname, a.attname, format_type(a.atttypid, a.atttypmod),
@@ -267,7 +280,8 @@ func resealBatch(
 
 // resealValue is value with every envelope in it sealed with the primary key,
 // and whether that changed anything. A text column holds one envelope; a jsonb
-// column holds one per string value that is one.
+// column holds one per sealed string value, as [Column.sealsEveryString] tells
+// them apart.
 func resealValue(sealer Sealer, logger *slog.Logger, report *Report, c Column, rowKey, value string) (string, bool, error) {
 	open := func(path, envelope string) (string, error) {
 		return resealEnvelope(sealer, logger, report, c, rowKey, path, envelope)
@@ -289,7 +303,7 @@ func resealValue(sealer Sealer, logger *slog.Logger, report *Report, c Column, r
 	if err := decoder.Decode(&doc); err != nil {
 		return "", false, fmt.Errorf("decode the document of row %s: %w", rowKey, err)
 	}
-	doc, changed, err := resealDocument(doc, "$", open)
+	doc, changed, err := resealDocument(doc, "$", c.sealsEveryString(), open)
 	if err != nil {
 		return "", false, err
 	}
@@ -305,12 +319,14 @@ func resealValue(sealer Sealer, logger *slog.Logger, report *Report, c Column, r
 	return strings.TrimSuffix(out.String(), "\n"), true, nil
 }
 
-// resealDocument walks a decoded JSON document and passes every string that is
-// an envelope, with its JSON path, to open.
-func resealDocument(node any, path string, open func(path, envelope string) (string, error)) (any, bool, error) {
+// resealDocument walks a decoded JSON document and passes every sealed string
+// that is an envelope, with its JSON path, to open. A string is sealed when
+// sealed is true, which it is for the whole document of a column named for
+// holding sealed values and for whatever a member named that way holds.
+func resealDocument(node any, path string, sealed bool, open func(path, envelope string) (string, error)) (any, bool, error) {
 	switch v := node.(type) {
 	case string:
-		if !secretcrypto.IsEncryptedEnvelope(v) {
+		if !sealed || !secretcrypto.IsEncryptedEnvelope(v) {
 			return v, false, nil
 		}
 		resealed, err := open(path, v)
@@ -318,7 +334,7 @@ func resealDocument(node any, path string, open func(path, envelope string) (str
 	case map[string]any:
 		changed := false
 		for k, child := range v {
-			next, c, err := resealDocument(child, path+"."+k, open)
+			next, c, err := resealDocument(child, path+"."+k, sealed || strings.HasSuffix(k, sealedSuffix), open)
 			if err != nil {
 				return nil, false, err
 			}
@@ -329,7 +345,7 @@ func resealDocument(node any, path string, open func(path, envelope string) (str
 	case []any:
 		changed := false
 		for i, child := range v {
-			next, c, err := resealDocument(child, fmt.Sprintf("%s[%d]", path, i), open)
+			next, c, err := resealDocument(child, fmt.Sprintf("%s[%d]", path, i), sealed, open)
 			if err != nil {
 				return nil, false, err
 			}

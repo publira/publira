@@ -36,7 +36,7 @@ Applies `db/migrations/` to a database, creates the PostgreSQL login roles every
 publiractl db roles --admin-password-file /run/secrets/publira-admin-db-password
 ```
 
-`db reseal` finds the sealed values by convention — every column named `*_encrypted`, text or jsonb, and `outbox_events.payload` — and in a jsonb document seals each string that is an envelope. The plaintext does not change, so nobody is signed out, and it runs while the install serves. A value no configured key opens is left as it is and logged with its column, row, and key ID, and the command exits `1` once every other value has moved.
+`db reseal` finds the sealed values by convention: every column named `*_encrypted`, text or jsonb, where each string that is an envelope is a sealed value, and `outbox_events.payload`, where only the members named `*_encrypted` hold one, since the rest of a payload is text a reader or a tenant wrote. The plaintext does not change, so nobody is signed out, and it runs while the install serves. A value no configured key opens is left as it is and logged with its column, row, and key ID, and the command exits `1` once every other value has moved.
 
 ```bash
 publiractl db reseal --dry-run

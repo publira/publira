@@ -119,9 +119,14 @@ func seedEveryColumn(t *testing.T, pg *testutil.PostgresEnv, sealer *secretcrypt
 				"refresh_token_encrypted": seal(t, sealer, "revoked-token-"+status),
 			}))
 	}
-	// An event that carries no secret is left as it is.
+	// An event that carries no secret is left as it is, even where what a
+	// tenant wrote in it looks like an envelope or is a copy of one.
 	exec(t, db, `INSERT INTO outbox_events (id, event_type, idempotency_key, payload)
-		VALUES ($1, 'platform_mail', 'plain', '{"subject": "<b>Hello</b>"}')`, uuid.New())
+		VALUES ($1, 'announcement_notification', 'plain', $2)`, uuid.New(), sealedJSON(t, map[string]any{
+		"subject": "<b>Hello</b>",
+		"title":   "enc:v1:not-a-real-envelope",
+		"body":    seal(t, sealer, "copied into an announcement"),
+	}))
 }
 
 // sealedValues is every envelope a column holds, keyed by the row and the path
@@ -151,7 +156,7 @@ func sealedValues(t *testing.T, db *sql.DB, c secretreseal.Column) map[string]st
 		if err := json.Unmarshal([]byte(value), &doc); err != nil {
 			t.Fatalf("decode %s of %s: %v", c, key, err)
 		}
-		collectEnvelopes(doc, key, values)
+		collectEnvelopes(doc, key, strings.HasSuffix(c.Name, "_encrypted"), values)
 	}
 	if err := rows.Err(); err != nil {
 		t.Fatalf("read %s: %v", c, err)
@@ -159,19 +164,22 @@ func sealedValues(t *testing.T, db *sql.DB, c secretreseal.Column) map[string]st
 	return values
 }
 
-func collectEnvelopes(node any, path string, into map[string]string) {
+// collectEnvelopes collects the envelopes of a document that are sealed
+// values: every one in a column named *_encrypted, and elsewhere only those
+// under a member named that way.
+func collectEnvelopes(node any, path string, sealed bool, into map[string]string) {
 	switch v := node.(type) {
 	case string:
-		if secretcrypto.IsEncryptedEnvelope(v) {
+		if sealed && secretcrypto.IsEncryptedEnvelope(v) {
 			into[path] = v
 		}
 	case map[string]any:
 		for k, child := range v {
-			collectEnvelopes(child, path+"."+k, into)
+			collectEnvelopes(child, path+"."+k, sealed || strings.HasSuffix(k, "_encrypted"), into)
 		}
 	case []any:
 		for i, child := range v {
-			collectEnvelopes(child, fmt.Sprintf("%s[%d]", path, i), into)
+			collectEnvelopes(child, fmt.Sprintf("%s[%d]", path, i), sealed, into)
 		}
 	}
 }
