@@ -204,8 +204,8 @@ services:
     restart: unless-stopped
 
   # Run by hand, never kept running: `docker compose run --rm publiractl <command>`.
-  # `db migrate` and `db roles` connect as the superuser; every other command
-  # as the role it names. The role passwords are mounted as files for
+  # The `db` commands connect as the superuser; every other command as the
+  # role it names. The role passwords are mounted as files for
   # `db roles`, and the object store's secret key for `setup`, since
   # publiractl never takes a secret from its environment.
   publiractl:

@@ -216,3 +216,31 @@ func TestManagerEncryptedWithPrimary(t *testing.T) {
 		t.Fatal("a nil manager reports an envelope as sealed with its primary key")
 	}
 }
+
+func TestEnvelopeKeyID(t *testing.T) {
+	mgr, err := NewManager(map[string][]byte{"k1": fixedKey(1)}, "k1")
+	if err != nil {
+		t.Fatalf("NewManager: %v", err)
+	}
+	sealed, err := mgr.EncryptString("secret")
+	if err != nil {
+		t.Fatalf("EncryptString: %v", err)
+	}
+	for _, tc := range []struct {
+		name   string
+		value  string
+		wantID string
+		wantOK bool
+	}{
+		{name: "sealed", value: sealed, wantID: "k1", wantOK: true},
+		{name: "unknown key", value: "enc:v1:k9:nonce:ciphertext", wantID: "k9", wantOK: true},
+		{name: "no key id", value: "enc:v1::nonce:ciphertext"},
+		{name: "truncated", value: "enc:v1:k1:nonce"},
+		{name: "plaintext", value: "secret"},
+	} {
+		id, ok := EnvelopeKeyID(tc.value)
+		if id != tc.wantID || ok != tc.wantOK {
+			t.Fatalf("%s: EnvelopeKeyID = %q, %v; want %q, %v", tc.name, id, ok, tc.wantID, tc.wantOK)
+		}
+	}
+}
