@@ -4,12 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/retention"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -65,13 +68,13 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 		withdrawnAt: statDate.Add(17 * time.Hour)})
 	insertEvent(t, pg.DB, eventSeed{tenantID: otherTenant.ID, eventType: "episode_view", userID: otherViewer.ID, seriesID: otherSeries.ID, episodeID: otherEpisode.ID, debounceBucket: 1, occurredAt: statDate.Add(time.Hour)})
 
-	aggregator := New(pg.OpenPlatformDB(t))
+	aggregator := newAggregator(pg.OpenContentStatsDB(t))
 	result, err := aggregator.Run(context.Background(), Options{StatDate: statDate})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if result != (Result{TenantCount: 2, RowCount: 5}) {
-		t.Fatalf("result = %+v, want %+v", result, Result{TenantCount: 2, RowCount: 5})
+	if want := (Result{TenantCount: 2, RowCount: 5}); !reflect.DeepEqual(result, want) {
+		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 
 	stats := loadStats(t, pg.DB, statDate)
@@ -92,8 +95,8 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second Run: %v", err)
 	}
-	if result != (Result{TenantCount: 2, RowCount: 5}) {
-		t.Fatalf("second result = %+v, want %+v", result, Result{TenantCount: 2, RowCount: 5})
+	if want := (Result{TenantCount: 2, RowCount: 5}); !reflect.DeepEqual(result, want) {
+		t.Fatalf("second result = %+v, want %+v", result, want)
 	}
 	if got := len(loadStats(t, pg.DB, statDate)); got != 5 {
 		t.Fatalf("daily stats rows after rebuild = %d, want 5", got)
@@ -108,7 +111,7 @@ func TestRunMintsUUIDv7Keys(t *testing.T) {
 	tenant := pg.SeedTenant(t, "STATSUUID001", "uuid-stats.example.com", "UUID Stats Tenant")
 	seedViewedEpisode(t, pg, tenant.ID, "UUID", statDate)
 
-	if _, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), Options{StatDate: statDate}); err != nil {
+	if _, err := newAggregator(pg.OpenContentStatsDB(t)).Run(context.Background(), Options{StatDate: statDate}); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -150,7 +153,7 @@ func TestRunCountsTheDayInEachTenantsTimeZone(t *testing.T) {
 	insertEvent(t, pg.DB, eventSeed{tenantID: losAngeles.ID, eventType: "episode_view", userID: losAngelesViewer.ID,
 		seriesID: losAngelesSeries.ID, episodeID: losAngelesEpisode.ID, debounceBucket: 1, occurredAt: occurredAt})
 
-	aggregator := New(pg.OpenPlatformDB(t))
+	aggregator := newAggregator(pg.OpenContentStatsDB(t))
 	viewed := stat{viewCount: 1, uniqueViewerCount: 1, memberViewCount: 1}
 
 	// The 29th: the Seoul tenant's day holds the view, and the Los Angeles
@@ -199,11 +202,11 @@ func TestRunAggregatesTheRemainingTenantsAfterOneFails(t *testing.T) {
 
 	rejectDailyStatsForTenants(t, pg.DB, broken.ID)
 
-	result, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), Options{StatDate: statDate})
+	result, err := newAggregator(pg.OpenContentStatsDB(t)).Run(context.Background(), Options{StatDate: statDate})
 	if err == nil || !strings.Contains(err.Error(), broken.ID.String()) {
 		t.Fatalf("Run error = %v, want a failure naming tenant %s", err, broken.ID)
 	}
-	if want := (Result{TenantCount: 1, RowCount: 2}); result != want {
+	if want := (Result{TenantCount: 1, RowCount: 2}); !reflect.DeepEqual(result, want) {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 
@@ -230,7 +233,7 @@ func TestRunReportsEveryFailedTenant(t *testing.T) {
 
 	rejectDailyStatsForTenants(t, pg.DB, firstBroken.ID, secondBroken.ID)
 
-	result, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), Options{StatDate: statDate})
+	result, err := newAggregator(pg.OpenContentStatsDB(t)).Run(context.Background(), Options{StatDate: statDate})
 	if err == nil {
 		t.Fatal("Run error = nil, want failures for both broken tenants")
 	}
@@ -242,7 +245,7 @@ func TestRunReportsEveryFailedTenant(t *testing.T) {
 			t.Errorf("Run error = %v, want it to name tenant %s", err, tenantID)
 		}
 	}
-	if want := (Result{TenantCount: 1, RowCount: 2}); result != want {
+	if want := (Result{TenantCount: 1, RowCount: 2}); !reflect.DeepEqual(result, want) {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 	if got := len(loadStats(t, pg.DB, statDate)); got != 2 {
@@ -269,19 +272,87 @@ func TestRunStopsAtACancelledContext(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	result, err := New(pg.OpenPlatformDB(t)).Run(ctx, Options{StatDate: statDate})
+	result, err := newAggregator(pg.OpenContentStatsDB(t)).Run(ctx, Options{StatDate: statDate})
 	if err == nil || !strings.Contains(err.Error(), blocked.ID.String()) {
 		t.Fatalf("Run error = %v, want a failure naming tenant %s", err, blocked.ID)
 	}
 	if strings.Contains(err.Error(), untried.ID.String()) {
 		t.Fatalf("Run error = %v, want the tenants after the cancellation left untried", err)
 	}
-	if want := (Result{}); result != want {
+	if want := (Result{}); !reflect.DeepEqual(result, want) {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 	if got := len(loadStats(t, pg.DB, statDate)); got != 0 {
 		t.Fatalf("daily stats rows = %d, want none", got)
 	}
+}
+
+// The purge has taken the events of a day past a tenant's content event
+// retention, so the rows already stored for it are the only copy of its views
+// left. A run naming that day leaves them alone and reports the tenant as
+// skipped, although the purchase that survives in its own table would have let
+// a rebuild write rows, and still rebuilds the day for a tenant that keeps its
+// events longer. A tenant whose period was lengthened after a purge took the
+// day is skipped too: the period covers the day again, but its events are gone.
+func TestRunLeavesADayPastATenantsRetentionAlone(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	year, month, day := testNow.Date()
+	statDate := time.Date(year, month, day, 0, 0, 0, 0, time.UTC).AddDate(0, 0, -retention.MinContentEventDays-5)
+	purged := pg.SeedTenant(t, "STATSPURGED1", "purged-stats.example.com", "Purged Stats Tenant")
+	kept := pg.SeedTenant(t, "STATSKEPT001", "kept-stats.example.com", "Kept Stats Tenant")
+	lengthened := pg.SeedTenant(t, "STATSLONGER1", "lengthened-stats.example.com", "Lengthened Stats Tenant")
+	if _, err := pg.DB.Exec(
+		"INSERT INTO tenant_retention_settings (tenant_id, content_event_days) VALUES ($1, $2)", purged.ID, retention.MinContentEventDays,
+	); err != nil {
+		t.Fatalf("set tenant retention: %v", err)
+	}
+	if _, err := pg.DB.Exec(
+		"INSERT INTO content_event_purges (tenant_id, purged_before) VALUES ($1, $2)", lengthened.ID, testNow.AddDate(0, 0, -retention.MinContentEventDays),
+	); err != nil {
+		t.Fatalf("record an earlier purge: %v", err)
+	}
+	purgedSeries := pg.SeedSeries(t, purged.ID, testutil.SeriesSeed{PublicID: "STATSPRGSER1"})
+	purgedEpisode := pg.SeedEpisode(t, purged.ID, purgedSeries.ID, testutil.EpisodeSeed{PublicID: "STATSPRGEP01"})
+	buyer := pg.SeedEndUser(t, purged.ID, "STATSPRGBUY1", "buyer@purged-stats.example.com", "Purged Buyer")
+	insertStaleStat(t, pg.DB, purged.ID, statDate, "episode", purgedEpisode.ID)
+	insertPurchase(t, pg.DB, purged.ID, buyer.ID, purgedEpisode.ID, statDate.Add(time.Hour))
+	seedViewedEpisode(t, pg, kept.ID, "KEPT", statDate)
+	lengthenedSeries := pg.SeedSeries(t, lengthened.ID, testutil.SeriesSeed{PublicID: "STATSLNGSER1"})
+	lengthenedEpisode := pg.SeedEpisode(t, lengthened.ID, lengthenedSeries.ID, testutil.EpisodeSeed{PublicID: "STATSLNGEP01"})
+	insertStaleStat(t, pg.DB, lengthened.ID, statDate, "episode", lengthenedEpisode.ID)
+
+	result, err := newAggregator(pg.OpenContentStatsDB(t)).Run(context.Background(), Options{StatDate: statDate})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	want := Result{TenantCount: 1, RowCount: 2, Skipped: []Skipped{
+		{TenantID: purged.ID, StatDate: statDate},
+		{TenantID: lengthened.ID, StatDate: statDate},
+	}}
+	slices.SortFunc(want.Skipped, func(a, b Skipped) int { return strings.Compare(a.TenantID.String(), b.TenantID.String()) })
+	if !reflect.DeepEqual(result, want) {
+		t.Fatalf("result = %+v, want %+v", result, want)
+	}
+
+	stats := loadStats(t, pg.DB, statDate)
+	assertStat(t, stats, purged.ID, "episode", purgedEpisode.ID, stat{viewCount: staleViewCount})
+	assertNoStat(t, stats, purged.ID, "series", purgedSeries.ID)
+	assertStat(t, stats, lengthened.ID, "episode", lengthenedEpisode.ID, stat{viewCount: staleViewCount})
+	if got := countTenantStats(stats, kept.ID); got != 2 {
+		t.Fatalf("stats rows of the tenant that keeps its events = %d, want 2", got)
+	}
+}
+
+func countTenantStats(stats map[statKey]stat, tenantID uuid.UUID) int {
+	n := 0
+	for key := range stats {
+		if key.tenantID == tenantID {
+			n++
+		}
+	}
+	return n
 }
 
 // A day is rebuilt from its sources every time it is recomputed, so a buyer who
@@ -300,7 +371,7 @@ func TestRunCountsAPurchaseWhoseBuyerWasDeleted(t *testing.T) {
 	insertPurchase(t, pg.DB, tenant.ID, leaving.ID, episode.ID, statDate.Add(10*time.Hour))
 	insertPurchase(t, pg.DB, tenant.ID, staying.ID, episode.ID, statDate.Add(11*time.Hour))
 
-	aggregator := New(pg.OpenPlatformDB(t))
+	aggregator := newAggregator(pg.OpenContentStatsDB(t))
 	if _, err := aggregator.Run(context.Background(), Options{StatDate: statDate}); err != nil {
 		t.Fatalf("Run before the delete: %v", err)
 	}
@@ -348,7 +419,7 @@ func TestRunLeavesAStoreTestPurchaseUncounted(t *testing.T) {
 		t.Fatalf("insert test purchase: %v", err)
 	}
 
-	if _, err := New(pg.OpenPlatformDB(t)).Run(context.Background(), Options{StatDate: statDate}); err != nil {
+	if _, err := newAggregator(pg.OpenContentStatsDB(t)).Run(context.Background(), Options{StatDate: statDate}); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	key := statKey{tenantID: tenant.ID, entityType: "episode", entityID: episode.ID}
@@ -362,7 +433,7 @@ func TestRunRejectsTenantScopedRole(t *testing.T) {
 	pg.Reset(t)
 	pg.SeedTenant(t, "STATSRLS001", "rls-stats.example.com", "RLS Stats")
 
-	_, err := New(pg.OpenAdminDB(t)).Run(context.Background(), Options{StatDate: time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC)})
+	_, err := newAggregator(pg.OpenAdminDB(t)).Run(context.Background(), Options{StatDate: time.Date(2026, time.August, 28, 0, 0, 0, 0, time.UTC)})
 	if err == nil || !strings.Contains(err.Error(), "BYPASSRLS") {
 		t.Fatalf("Run error = %v, want BYPASSRLS requirement", err)
 	}
@@ -442,6 +513,17 @@ func assertPlanUsesIndex(t *testing.T, db *sql.DB, query string, tenantID uuid.U
 	if !strings.Contains(plan.String(), index) {
 		t.Fatalf("plan does not use %s:\n%s", index, plan.String())
 	}
+}
+
+// testNow is the instant the tests run the aggregator at: a week after the
+// fixed dates they rebuild, so those dates stay inside every content event
+// retention period however long after them the suite runs.
+var testNow = time.Date(2026, time.September, 5, 12, 0, 0, 0, time.UTC)
+
+func newAggregator(db *sql.DB) *Aggregator {
+	aggregator := New(db)
+	aggregator.now = func() time.Time { return testNow }
+	return aggregator
 }
 
 // staleViewCount marks a stats row a test seeded before the run, so an
@@ -746,7 +828,7 @@ func TestRunCountsOnlyTheCommentsStillPublishedWhenItRebuildsTheDay(t *testing.T
 	insertComment(t, pg.DB, commentSeed{tenantID: tenant.ID, userID: reader.ID, episodeID: episode.ID,
 		publicID: "CMTSTATCMT01", status: "published", publishedAt: statDate.Add(9 * time.Hour)})
 
-	aggregator := New(pg.OpenPlatformDB(t))
+	aggregator := newAggregator(pg.OpenContentStatsDB(t))
 	if _, err := aggregator.Run(context.Background(), Options{StatDate: statDate}); err != nil {
 		t.Fatalf("Run for the day of the comment: %v", err)
 	}

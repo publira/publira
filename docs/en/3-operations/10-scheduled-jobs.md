@@ -98,7 +98,7 @@ A worker that was stopped, or that ran without a working database, does nothing 
 | The outbox | Sends every entry that was waiting. An entry a stopped worker was in the middle of is picked up again after 15 minutes |
 | Scheduled publication | Publishes every episode whose time passed, and notifies its followers |
 | Free reading periods, the tenant day rollover, pinned announcements, scheduled series | Mark stale every page whose boundary passed in the meantime, and take down every banner whose time ran out |
-| The statistics and ranking chain | Rebuilds every day each tenant missed, in order, except the days whose analytics events have already passed their retention period: those are logged as missing and skipped, and cannot be rebuilt |
+| The statistics and ranking chain | Rebuilds every day each tenant missed, in order, except the days whose analytics events have already passed their retention period, or were purged under a shorter period saved before: those are logged as missing and skipped, and cannot be rebuilt |
 | Royalty close | Closes every month that became owed |
 | Search index build | Builds a pending index |
 | The purges | Run only when none has finished in its current hour or day, counted on the clock rather than from when the worker started; the first run then deletes everything that expired in the meantime |
@@ -186,7 +186,7 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
 
 A run rebuilds that day for every tenant. The rankings and the recommendations are rebuilt here for every tenant's yesterday, since the storefront only shows the newest leaderboard and the weekly one ending yesterday covers the last seven days; give them a date, with `PUBLIRA_CONTENT_RANKING_DATE` and `PUBLIRA_RECOMMEND_FEATURES_DATE`, only to rebuild an older leaderboard.
 
-Do not rebuild a day whose analytics events have passed their content event retention period. The worker skips such a day, but a run by hand rebuilds it from what is left, and replaces the day's views, completed reads, and ratings with nothing ([#3785](https://github.com/publira/publira/issues/3785)).
+A tenant whose content event retention period no longer covers the day is left out of the run, the same way the worker skips such a day: its analytics events for the day are already gone, so its statistics are kept as they are rather than rebuilt from what is left. So is a tenant whose period was lengthened after the purge had taken the day: a longer period does not bring deleted events back. The run logs each such tenant as skipped and still rebuilds the day for every other tenant.
 
 A run by hand does not move the worker's record of how far each tenant has got, so the worker neither skips nor repeats a day because of it.
 
