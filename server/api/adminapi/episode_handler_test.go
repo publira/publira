@@ -119,26 +119,7 @@ func TestCreateEpisodePublishesAtOnceWhenScheduledAtHasPassed(t *testing.T) {
 			AddRow(episodeID, int32(0), nil, "published", scheduledAt, now, tenantID))
 	expectBakeSeriesCreatorsOntoEpisode(mock, tenantID, seriesID, episodeID)
 	expectResolvedEpisodePurchaseAvailability(mock, tenantID, episodeID, "all")
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
-		WithArgs(
-			sqlmock.AnyArg(),
-			uuid.NullUUID{UUID: tenantID, Valid: true},
-			outbox.EventTypeEpisodePublishedNotification,
-			sqlmock.AnyArg(),
-			outbox.EpisodePublishedIdempotencyKey(episodeID),
-			sqlmock.AnyArg(),
-		).
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "tenant_id", "event_type", "payload", "idempotency_key",
-			"status", "attempts", "available_at", "last_error", "created_at", "updated_at", "progress_cursor",
-		}).AddRow(
-			uuid.Must(uuid.NewV7()),
-			uuid.NullUUID{UUID: tenantID, Valid: true},
-			outbox.EventTypeEpisodePublishedNotification,
-			json.RawMessage("{}"),
-			outbox.EpisodePublishedIdempotencyKey(episodeID),
-			"pending", int32(0), now, nil, now, now, nil,
-		))
+	expectEpisodePublishedNotification(mock, tenantID, episodeID, now)
 	expectCatalogIndexSync(mock, tenantID, "series", seriesID)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
@@ -171,6 +152,31 @@ func TestCreateEpisodePublishesAtOnceWhenScheduledAtHasPassed(t *testing.T) {
 	// page: their order by latest update, and their free-episode counts.
 	revalidations.waitForTags(t, wantEpisodePublicationRevalidateTags(tenantID))
 	assertExpectations(t, mock)
+}
+
+// expectEpisodePublishedNotification expects the outbox event that tells the
+// followers of an episode the console published at once.
+func expectEpisodePublishedNotification(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, now time.Time) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
+		WithArgs(
+			sqlmock.AnyArg(),
+			uuid.NullUUID{UUID: tenantID, Valid: true},
+			outbox.EventTypeEpisodePublishedNotification,
+			sqlmock.AnyArg(),
+			outbox.EpisodePublishedIdempotencyKey(episodeID),
+			sqlmock.AnyArg(),
+		).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "tenant_id", "event_type", "payload", "idempotency_key",
+			"status", "attempts", "available_at", "last_error", "created_at", "updated_at", "progress_cursor",
+		}).AddRow(
+			uuid.Must(uuid.NewV7()),
+			uuid.NullUUID{UUID: tenantID, Valid: true},
+			outbox.EventTypeEpisodePublishedNotification,
+			json.RawMessage("{}"),
+			outbox.EpisodePublishedIdempotencyKey(episodeID),
+			"pending", int32(0), now, nil, now, now, nil,
+		))
 }
 
 // An unset order_index appends after the current last episode, so the client
@@ -1051,16 +1057,6 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 			wantCode:  connect.CodeInvalidArgument,
 		},
 		{
-			name:      "past",
-			scheduled: "2000-01-01T00:00:00Z",
-			wantCode:  connect.CodeInvalidArgument,
-		},
-		{
-			name:      "boundary-now",
-			scheduled: time.Now().UTC().Format(time.RFC3339),
-			wantCode:  connect.CodeInvalidArgument,
-		},
-		{
 			name:      "future-timezone",
 			scheduled: "2030-01-01T10:00:00+09:00",
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
@@ -1125,6 +1121,111 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 			assertExpectations(t, mock)
 		})
 	}
+}
+
+// A time that has already passed publishes a draft or scheduled episode in the
+// write that saves it, which owes the storefront's cache drop, the sync of its
+// series' search document, and the followers' notice the scheduled publication
+// job would otherwise write.
+func TestUpdateEpisodePublishSchedulePublishesAtOnceWhenTheTimeHasPassed(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	scheduledAt := now.Add(-time.Hour).Truncate(time.Second)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.PublishEpisodeNowByIDForTenant)).
+		WithArgs(scheduledAt, tenantID, testEpisodeID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
+		WithArgs(tenantID, testEpisodeID).
+		WillReturnRows(sqlmock.NewRows(getEpisodeByIDColumns).
+			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "published", scheduledAt, now, nil, nil, nil, nil, nil, nil, "all", testSeriesID))
+	expectEpisodePublishedNotification(mock, tenantID, testEpisodeID, now)
+	expectCatalogIndexSync(mock, tenantID, "series", testSeriesID)
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+
+	resp, err := client.UpdateEpisodePublishSchedule(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateEpisodePublishScheduleRequest{
+		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId:   testEpisodeID.String(),
+		ScheduledAt: scheduledAt.Format(time.RFC3339),
+	})
+	if err != nil {
+		t.Fatalf("UpdateEpisodePublishSchedule: %v", err)
+	}
+	if resp.Episode.Status != "published" || resp.Episode.PublishedAt == "" {
+		t.Fatalf("status, published_at = %q, %q, want published and a time", resp.Episode.Status, resp.Episode.PublishedAt)
+	}
+	revalidations.waitForTags(t, wantEpisodePublicationRevalidateTags(tenantID))
+	assertExpectations(t, mock)
+}
+
+// A time that has passed leaves an episode that is already published as it
+// is, so its followers are not told about it again and nothing is owed.
+func TestUpdateEpisodePublishScheduleLeavesAPublishedEpisodeWhenTheTimeHasPassed(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	publishedAt := now.Add(-48 * time.Hour)
+	scheduledAt := now.Add(-time.Hour).Truncate(time.Second)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.PublishEpisodeNowByIDForTenant)).
+		WithArgs(scheduledAt, tenantID, testEpisodeID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
+		WithArgs(tenantID, testEpisodeID).
+		WillReturnRows(sqlmock.NewRows(getEpisodeByIDColumns).
+			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "published", publishedAt, publishedAt, nil, nil, nil, nil, nil, nil, "all", testSeriesID))
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+
+	resp, err := client.UpdateEpisodePublishSchedule(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateEpisodePublishScheduleRequest{
+		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId:   testEpisodeID.String(),
+		ScheduledAt: scheduledAt.Format(time.RFC3339),
+	})
+	if err != nil {
+		t.Fatalf("UpdateEpisodePublishSchedule: %v", err)
+	}
+	if want := publishedAt.Format(time.RFC3339); resp.Episode.Status != "published" || resp.Episode.PublishedAt != want {
+		t.Fatalf("status, published_at = %q, %q, want published at %s", resp.Episode.Status, resp.Episode.PublishedAt, want)
+	}
+	assertExpectations(t, mock)
+}
+
+// An id that names no episode is not found whether the time has passed or
+// not.
+func TestUpdateEpisodePublishScheduleWithAPastTimeReportsAMissingEpisode(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	scheduledAt := now.Add(-time.Hour).Truncate(time.Second)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.PublishEpisodeNowByIDForTenant)).
+		WithArgs(scheduledAt, tenantID, testEpisodeID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
+		WithArgs(tenantID, testEpisodeID).
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectRollback()
+
+	_, err := client.UpdateEpisodePublishSchedule(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateEpisodePublishScheduleRequest{
+		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId:   testEpisodeID.String(),
+		ScheduledAt: scheduledAt.Format(time.RFC3339),
+	})
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("UpdateEpisodePublishSchedule code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
+	}
+	assertExpectations(t, mock)
 }
 
 func episodeColumns() *sqlmock.Rows {

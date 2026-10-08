@@ -309,6 +309,12 @@ type AdminSeriesServiceClient interface {
 	ListEpisodeImages(context.Context, *v1.ListEpisodeImagesRequest) (*v1.ListEpisodeImagesResponse, error)
 	// Minimum role: tenant_editor.
 	ReorderEpisodeImages(context.Context, *v1.ReorderEpisodeImagesRequest) (*v1.ReorderEpisodeImagesResponse, error)
+	// An empty scheduled_at takes the episode back to a draft, and a time still
+	// ahead schedules it, taking it off the site until then if it is published.
+	// A time that has passed publishes a draft or scheduled episode at once and
+	// tells its followers, as CreateEpisode does, and leaves an episode already
+	// published as it is.
+	//
 	// Minimum role: tenant_editor.
 	UpdateEpisodePublishSchedule(context.Context, *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error)
 	// Minimum role: tenant_editor.
@@ -376,6 +382,12 @@ type AdminSeriesServiceHandler interface {
 	ListEpisodeImages(context.Context, *v1.ListEpisodeImagesRequest) (*v1.ListEpisodeImagesResponse, error)
 	// Minimum role: tenant_editor.
 	ReorderEpisodeImages(context.Context, *v1.ReorderEpisodeImagesRequest) (*v1.ReorderEpisodeImagesResponse, error)
+	// An empty scheduled_at takes the episode back to a draft, and a time still
+	// ahead schedules it, taking it off the site until then if it is published.
+	// A time that has passed publishes a draft or scheduled episode at once and
+	// tells its followers, as CreateEpisode does, and leaves an episode already
+	// published as it is.
+	//
 	// Minimum role: tenant_editor.
 	UpdateEpisodePublishSchedule(context.Context, *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error)
 	// Minimum role: tenant_editor.

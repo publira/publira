@@ -2376,6 +2376,12 @@ export const AdminSeriesService: GenService<{
     output: typeof ReorderEpisodeImagesResponseSchema;
   },
   /**
+   * An empty scheduled_at takes the episode back to a draft, and a time still
+   * ahead schedules it, taking it off the site until then if it is published.
+   * A time that has passed publishes a draft or scheduled episode at once and
+   * tells its followers, as CreateEpisode does, and leaves an episode already
+   * published as it is.
+   *
    * Minimum role: tenant_editor.
    *
    * @generated from rpc publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule

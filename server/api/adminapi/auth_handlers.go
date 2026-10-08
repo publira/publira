@@ -93,7 +93,7 @@ func enqueueAdminEmailChangedNoticeEmail(
 
 func insertAdminOutboxEvent(
 	ctx context.Context,
-	queries *dbmodels.Queries,
+	queries Querier,
 	tenantID uuid.UUID,
 	eventType string,
 	payload []byte,

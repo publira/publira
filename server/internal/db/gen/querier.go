@@ -2370,6 +2370,12 @@ type Querier interface {
 	// provider one, found by the purchase's own ID since a store purchase has no
 	// checkout.
 	ProjectPurchaseContentEventByID(ctx context.Context, arg ProjectPurchaseContentEventByIDParams) (ContentEvent, error)
+	// The console's publication of an episode given a time that has already
+	// passed: what MarkEpisodePublished does once the time is reached, done in the
+	// write that saves it. An episode already published is left as it is, its
+	// published_at included, so it counts no row, as an id naming no episode does;
+	// the count is what tells the caller its followers have news.
+	PublishEpisodeNowByIDForTenant(ctx context.Context, arg PublishEpisodeNowByIDForTenantParams) (int64, error)
 	PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error)
 	// The end of the retention window for a comment its author deleted. The inner
 	// select bounds one chunk, so a tenant with a long backlog is drained over

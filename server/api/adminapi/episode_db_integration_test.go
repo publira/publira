@@ -370,34 +370,80 @@ func TestDBListEpisodesOfAnotherTenantsSeriesIsEmpty(t *testing.T) {
 	}
 }
 
-func TestDBUpdateEpisodePublishScheduleRejectsPastTime(t *testing.T) {
-	env := newAdminDBEnv(t)
-	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
-	client := env.seriesClient()
-	seriesPublicID := createDBSeries(t, client, tenant, "Schedule Host Series")
+// A time that has already passed publishes a draft or a scheduled episode in
+// the write that saves it, as the console's tenant role, and leaves the
+// followers' notice to the worker. Saving another past time over the
+// published episode leaves it as it is, its notice included.
+func TestDBUpdateEpisodePublishScheduleWithAPastTimePublishesTheEpisode(t *testing.T) {
+	for _, tc := range []struct {
+		status      string
+		scheduledAt string
+	}{
+		{status: "draft"},
+		{status: "scheduled", scheduledAt: "2999-01-01T00:00:00Z"},
+	} {
+		t.Run(tc.status, func(t *testing.T) {
+			env := newAdminDBEnv(t)
+			tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+			client := env.seriesClient()
+			seriesPublicID := createDBSeries(t, client, tenant, "Publish Now Host Series")
 
-	created, err := client.CreateEpisode(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeRequest{
-		Tenant:   tenant.tenantContext(),
-		SeriesId: env.seriesID(t, seriesPublicID),
-		Title:    "Scheduled Episode",
-	})
-	if err != nil {
-		t.Fatalf("CreateEpisode: %v", err)
-	}
+			created, err := client.CreateEpisode(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateEpisodeRequest{
+				Tenant:      tenant.tenantContext(),
+				SeriesId:    env.seriesID(t, seriesPublicID),
+				Title:       "Publish Now Episode",
+				ScheduledAt: tc.scheduledAt,
+			})
+			if err != nil {
+				t.Fatalf("CreateEpisode: %v", err)
+			}
+			if created.Episode.Status != tc.status {
+				t.Fatalf("created status = %q, want %q", created.Episode.Status, tc.status)
+			}
 
-	_, err = client.UpdateEpisodePublishSchedule(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateEpisodePublishScheduleRequest{
-		Tenant:      tenant.tenantContext(),
-		EpisodeId:   created.Episode.Id,
-		ScheduledAt: "2000-01-01T00:00:00Z",
-	})
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("UpdateEpisodePublishSchedule code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
-	}
+			updated, err := client.UpdateEpisodePublishSchedule(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateEpisodePublishScheduleRequest{
+				Tenant:      tenant.tenantContext(),
+				EpisodeId:   created.Episode.Id,
+				ScheduledAt: "2000-01-01T00:00:00Z",
+			})
+			if err != nil {
+				t.Fatalf("UpdateEpisodePublishSchedule: %v", err)
+			}
+			if updated.Episode.Status != "published" || updated.Episode.PublishedAt == "" {
+				t.Fatalf("status, published_at = %q, %q, want published and a time", updated.Episode.Status, updated.Episode.PublishedAt)
+			}
+			if count := env.countRows(t,
+				"SELECT count(*) FROM episode_listings WHERE episode_id = $1 AND status = 'published' AND published_at IS NOT NULL AND scheduled_at = '2000-01-01T00:00:00Z'",
+				created.Episode.Id,
+			); count != 1 {
+				t.Fatalf("published listings = %d, want 1", count)
+			}
+			// The scheduled publication job has nothing left to publish, so it
+			// will not announce the episode a second time.
+			if count := env.countRows(t,
+				"SELECT count(*) FROM episode_listings WHERE status = 'scheduled' AND scheduled_at <= NOW()",
+			); count != 0 {
+				t.Fatalf("listings due for the scheduled publication job = %d, want 0", count)
+			}
 
-	if count := env.countRows(t,
-		"SELECT count(*) FROM episode_listings WHERE status = $1", "scheduled",
-	); count != 0 {
-		t.Fatalf("scheduled listings = %d, want 0", count)
+			again, err := client.UpdateEpisodePublishSchedule(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateEpisodePublishScheduleRequest{
+				Tenant:      tenant.tenantContext(),
+				EpisodeId:   created.Episode.Id,
+				ScheduledAt: "2001-01-01T00:00:00Z",
+			})
+			if err != nil {
+				t.Fatalf("UpdateEpisodePublishSchedule over the published episode: %v", err)
+			}
+			if again.Episode.Status != "published" || again.Episode.PublishedAt != updated.Episode.PublishedAt {
+				t.Fatalf("status, published_at = %q, %q, want published at %s", again.Episode.Status, again.Episode.PublishedAt, updated.Episode.PublishedAt)
+			}
+			if count := env.countRows(t,
+				"SELECT count(*) FROM outbox_events WHERE event_type = $1 AND idempotency_key = $2",
+				outbox.EventTypeEpisodePublishedNotification, outbox.EpisodePublishedIdempotencyKey(uuid.MustParse(created.Episode.Id)),
+			); count != 1 {
+				t.Fatalf("episode published notification events = %d, want 1", count)
+			}
+		})
 	}
 }
 

@@ -746,6 +746,12 @@ service AdminSeriesService {
   rpc ListEpisodeImages(ListEpisodeImagesRequest) returns (ListEpisodeImagesResponse) {}
   // Minimum role: tenant_editor.
   rpc ReorderEpisodeImages(ReorderEpisodeImagesRequest) returns (ReorderEpisodeImagesResponse) {}
+  // An empty scheduled_at takes the episode back to a draft, and a time still
+  // ahead schedules it, taking it off the site until then if it is published.
+  // A time that has passed publishes a draft or scheduled episode at once and
+  // tells its followers, as CreateEpisode does, and leaves an episode already
+  // published as it is.
+  //
   // Minimum role: tenant_editor.
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
   // Minimum role: tenant_editor.
