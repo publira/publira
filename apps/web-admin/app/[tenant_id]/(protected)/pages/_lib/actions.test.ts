@@ -285,6 +285,9 @@ describe("savePageAction", () => {
 
     expect(mockUpdatePage).toHaveBeenCalledTimes(1);
     expect(mockRedirect).not.toHaveBeenCalled();
+    // What re-renders the screen with the written title and footer setting as
+    // its new baseline, so a retry sends only the body.
+    expect(mockUpdateTag).toHaveBeenCalledWith(`page-${TENANT_ID}-${PAGE_ID}`);
     expect(state?.message).toBe(
       "The title and Show in footer were saved, but the content could not be saved as a new draft version. Could not save the page. Please try again later."
     );

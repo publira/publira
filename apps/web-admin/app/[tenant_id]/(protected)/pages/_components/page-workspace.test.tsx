@@ -59,27 +59,34 @@ const version: PageVersionListItem = {
   versionNumber: 1,
 };
 
+const workspace = (
+  saveAction: () => Promise<PageFormState>,
+  initialPage: PageListItem
+) => (
+  <AdminLocaleTestProvider locale="en">
+    <PageWorkspace
+      initialPage={initialPage}
+      initialVersions={[version]}
+      locale="en"
+      publishAction={noopFormAction}
+      rollbackAction={noopFormAction}
+      saveAction={saveAction}
+      tenantId="TENANT001"
+      timeZone="UTC"
+      unpublishAction={noopFormAction}
+    />
+  </AdminLocaleTestProvider>
+);
+
 const renderWorkspace = async (
   saveAction: () => Promise<PageFormState> = noopSaveAction,
   initialPage: PageListItem = page
 ) => {
+  let rendered: ReturnType<typeof renderBase> | undefined;
   await act(() => {
-    renderBase(
-      <AdminLocaleTestProvider locale="en">
-        <PageWorkspace
-          initialPage={initialPage}
-          initialVersions={[version]}
-          locale="en"
-          publishAction={noopFormAction}
-          rollbackAction={noopFormAction}
-          saveAction={saveAction}
-          tenantId="TENANT001"
-          timeZone="UTC"
-          unpublishAction={noopFormAction}
-        />
-      </AdminLocaleTestProvider>
-    );
+    rendered = renderBase(workspace(saveAction, initialPage));
   });
+  return rendered as ReturnType<typeof renderBase>;
 };
 
 const editForm = (): HTMLFormElement => {
@@ -152,6 +159,25 @@ describe("PageWorkspace", () => {
       );
     }
   );
+
+  // A save re-renders the screen with what the server stored, and the box has
+  // to start from that rather than from the value it first mounted with.
+  it("follows a stored Show in footer that changed under it", async () => {
+    const { rerender } = await renderWorkspace(noopSaveAction, page);
+
+    await act(() => {
+      rerender(workspace(noopSaveAction, { ...page, displayInFooter: true }));
+    });
+
+    expect(
+      screen
+        .getByRole("checkbox", { name: "Show in footer" })
+        .getAttribute("aria-checked")
+    ).toBe("true");
+    expect(new FormData(editForm()).get("initial_display_in_footer")).toBe(
+      "true"
+    );
+  });
 
   it("keeps the editor submittable while the preview tab is showing", async () => {
     await renderWorkspace();

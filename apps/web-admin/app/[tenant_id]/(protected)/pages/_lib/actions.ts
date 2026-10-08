@@ -230,6 +230,9 @@ export const savePageAction = async (
       );
     }
 
+    // Also re-renders the screen with this Action's answer, so when the body
+    // fails below, the hidden initial_* baseline already holds what was just
+    // written and a retry does not send it again.
     updateTag(pagesCacheTag(parsed.data.tenantId));
     updateTag(pageCacheTag(parsed.data.tenantId, parsed.data.pageId));
   }

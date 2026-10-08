@@ -260,8 +260,10 @@ export const PageWorkspace = ({
             {/* The page's, not the translation's: every language tab shows and saves the same value. */}
             <Field>
               <div className="flex items-center gap-2">
+                {/* Keyed by the stored value, so a save that re-renders the screen with a new one starts the box from it: Base UI's uncontrolled default is read once. */}
                 <Checkbox
                   defaultChecked={initialPage.displayInFooter}
+                  key={String(initialPage.displayInFooter)}
                   name="display_in_footer"
                   uncheckedValue="false"
                   value="true"
