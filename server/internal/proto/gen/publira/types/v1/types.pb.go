@@ -550,6 +550,12 @@ func (AgeVerification) EnumDescriptor() ([]byte, []int) {
 
 // TenantContext identifies a tenant for internal RPC wiring.
 // tenant_id is the primary key (UUID), not the public-facing short code.
+//
+// Every publira.v1 and publira.admin.v1 RPC that names a tenant this way
+// refuses a suspended one before it does anything else, with
+// failed_precondition and the ErrorInfo reason TENANT_SUSPENDED. That covers
+// signing in and every request made with a session: a session is not ended by
+// suspension, and is honoured again once the tenant is resumed.
 type TenantContext struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`

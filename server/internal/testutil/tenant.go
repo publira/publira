@@ -100,6 +100,18 @@ func (e *PostgresEnv) SeedTenant(t *testing.T, publicID, domain, name string) Te
 	}
 }
 
+// SetTenantStatus moves the tenant to status, the way SuspendTenant and
+// ResumeTenant do, without the audit entry they file.
+func (e *PostgresEnv) SetTenantStatus(t *testing.T, tenantID uuid.UUID, status string) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := dbmodels.New(e.DB).UpdateTenantStatus(ctx, dbmodels.UpdateTenantStatusParams{ID: tenantID, Status: status}); err != nil {
+		t.Fatalf("UpdateTenantStatus %s %s: %v", tenantID, status, err)
+	}
+}
+
 // SeedTenantAdmin inserts an active user holding the tenant_admin role, the
 // account the admin console signs in as.
 func (e *PostgresEnv) SeedTenantAdmin(t *testing.T, tenantID uuid.UUID, publicID, email, name string) TenantUser {

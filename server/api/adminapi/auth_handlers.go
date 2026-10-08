@@ -24,6 +24,7 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tenantstatus"
 )
 
 const emailChangeTokenTTL = 24 * time.Hour
@@ -414,6 +415,9 @@ func (s *adminServer) GetTenantByDomain(
 			return nil, connect.NewError(connect.CodeNotFound, "tenant not found")
 		}
 		return nil, s.internalDBError(ctx, "failed to get tenant by domain", err)
+	}
+	if tenantstatus.IsSuspended(tenant) {
+		return nil, tenantstatus.Refusal()
 	}
 
 	defaultLocale, err := locale.Resolve(tenant.DefaultLocale)

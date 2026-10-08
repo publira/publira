@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/requestmeta"
+	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/tracing"
 )
@@ -197,14 +198,8 @@ func NewHandler(resolver ResolverQuerier, public, admin SiteDB, objects ObjectSt
 func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "tenant not found", http.StatusNotFound)
-			return
-		}
-		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+	tenant, adminHost, ok := h.tenantFromHost(w, r)
+	if !ok {
 		return
 	}
 
@@ -552,14 +547,8 @@ func (h *Handler) activeUserForClaims(
 func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "tenant not found", http.StatusNotFound)
-			return
-		}
-		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+	tenant, adminHost, ok := h.tenantFromHost(w, r)
+	if !ok {
 		return
 	}
 
@@ -607,14 +596,8 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "tenant not found", http.StatusNotFound)
-			return
-		}
-		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+	tenant, adminHost, ok := h.tenantFromHost(w, r)
+	if !ok {
 		return
 	}
 
@@ -662,14 +645,8 @@ func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "tenant not found", http.StatusNotFound)
-			return
-		}
-		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+	tenant, adminHost, ok := h.tenantFromHost(w, r)
+	if !ok {
 		return
 	}
 
@@ -723,14 +700,8 @@ func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleGetGenreImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "tenant not found", http.StatusNotFound)
-			return
-		}
-		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+	tenant, adminHost, ok := h.tenantFromHost(w, r)
+	if !ok {
 		return
 	}
 
@@ -784,14 +755,8 @@ func (h *Handler) handleGetGenreImage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "tenant not found", http.StatusNotFound)
-			return
-		}
-		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+	tenant, adminHost, ok := h.tenantFromHost(w, r)
+	if !ok {
 		return
 	}
 
@@ -865,6 +830,32 @@ func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (d
 	}
 	tracing.SetTenant(ctx, tenant.PublicID)
 	return tenant, true, nil
+}
+
+// tenantFromHost resolves the tenant a request arrived for and answers the
+// request itself when there is none to serve: not found for a host no tenant
+// serves, and forbidden for a suspended tenant. The refusal is no-store so that
+// nothing between here and the reader keeps answering it once the tenant is
+// resumed, and it is a 4xx rather than unavailable because the server is
+// working as the operator asked, not failing.
+func (h *Handler) tenantFromHost(w http.ResponseWriter, r *http.Request) (dbmodels.Tenant, bool, bool) {
+	ctx := r.Context()
+	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "tenant not found", http.StatusNotFound)
+			return dbmodels.Tenant{}, false, false
+		}
+		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return dbmodels.Tenant{}, false, false
+	}
+	if tenantstatus.IsSuspended(tenant) {
+		w.Header().Set("Cache-Control", "no-store")
+		http.Error(w, "tenant is suspended", http.StatusForbidden)
+		return dbmodels.Tenant{}, false, false
+	}
+	return tenant, adminHost, true
 }
 
 // tenantQueries opens the tenant-scoped queries on the pool belonging to the

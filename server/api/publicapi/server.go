@@ -36,6 +36,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/tenantconn"
+	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/tracing"
 	"github.com/publira/publira/server/internal/webpushsettings"
 )
@@ -328,6 +329,9 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.ServerInterceptor {
 				return connect.NewError(connect.CodeNotFound, "tenant not found")
 			}
 			return s.internalDBError(ctx, "failed to get tenant", err, "tenant_id", tenantID.String())
+		}
+		if tenantstatus.IsSuspended(tenant) {
+			return tenantstatus.Refusal()
 		}
 
 		conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, s.logger)

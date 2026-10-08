@@ -255,6 +255,10 @@ service AdminAuthService {
   rpc RequestPasswordReset(AdminAuthServiceRequestPasswordResetRequest) returns (AdminAuthServiceRequestPasswordResetResponse) {}
   rpc ConfirmPasswordReset(AdminAuthServiceConfirmPasswordResetRequest) returns (AdminAuthServiceConfirmPasswordResetResponse) {}
   rpc GetMe(AdminAuthServiceGetMeRequest) returns (AdminAuthServiceGetMeResponse) {}
+  // The tenant whose console host is the first of domains any tenant serves.
+  // not_found when none is, and failed_precondition with the ErrorInfo reason
+  // TENANT_SUSPENDED when that tenant is suspended, so the console can tell a
+  // tenant that is not being served from a host that serves no tenant.
   rpc GetTenantByDomain(AdminAuthServiceGetTenantByDomainRequest) returns (AdminAuthServiceGetTenantByDomainResponse) {}
   // Minimum role: tenant_auditor.
   rpc GetTenant(AdminAuthServiceGetTenantRequest) returns (AdminAuthServiceGetTenantResponse) {}

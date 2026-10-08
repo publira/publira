@@ -66,11 +66,13 @@ func (e *permanentError) Unwrap() error {
 type Registry struct {
 	mu       sync.RWMutex
 	handlers map[string]Handler
+	// messages are the event types registered through RegisterMessage.
+	messages map[string]bool
 }
 
 // NewRegistry returns an empty handler set.
 func NewRegistry() *Registry {
-	return &Registry{handlers: make(map[string]Handler)}
+	return &Registry{handlers: make(map[string]Handler), messages: make(map[string]bool)}
 }
 
 // DefaultRegistry registers the test event used by the worker's own
@@ -81,9 +83,30 @@ func DefaultRegistry() *Registry {
 	return r
 }
 
-// Register installs handler for eventType. A later call with the same
-// type replaces the previous handler.
+// Register installs handler for eventType, which the worker runs whatever
+// state the event's tenant is in. A later call with the same type replaces the
+// previous handler.
+//
+// That is the registration for work that keeps the tenant's own state and the
+// outside world's in step — dropping a cache entry, updating the search index,
+// settling a store purchase — and for mail the platform operator sends while
+// managing the tenant. A handler that writes to the tenant's readers or staff
+// is registered with [Registry.RegisterMessage] instead.
 func (r *Registry) Register(eventType string, handler Handler) {
+	r.register(eventType, handler, false)
+}
+
+// RegisterMessage installs handler for eventType, an event that sends mail or
+// a push notification to a tenant's readers or staff. The worker marks such an
+// event done without running it while its tenant is suspended: everything it
+// links to is refused until the tenant is resumed, and holding it until then
+// would deliver news that is no longer new and links whose tokens have
+// expired.
+func (r *Registry) RegisterMessage(eventType string, handler Handler) {
+	r.register(eventType, handler, true)
+}
+
+func (r *Registry) register(eventType string, handler Handler, message bool) {
 	if r == nil || eventType == "" || handler == nil {
 		return
 	}
@@ -92,7 +115,11 @@ func (r *Registry) Register(eventType string, handler Handler) {
 	if r.handlers == nil {
 		r.handlers = make(map[string]Handler)
 	}
+	if r.messages == nil {
+		r.messages = make(map[string]bool)
+	}
 	r.handlers[eventType] = handler
+	r.messages[eventType] = message
 }
 
 // Lookup returns the handler for eventType.
@@ -104,6 +131,17 @@ func (r *Registry) Lookup(eventType string) (Handler, bool) {
 	defer r.mu.RUnlock()
 	h, ok := r.handlers[eventType]
 	return h, ok
+}
+
+// IsMessage reports whether eventType was registered with
+// [Registry.RegisterMessage].
+func (r *Registry) IsMessage(eventType string) bool {
+	if r == nil {
+		return false
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.messages[eventType]
 }
 
 // TestPayload is the JSON body of [EventTypeTest]. Tenant events still

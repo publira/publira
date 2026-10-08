@@ -38,14 +38,8 @@ const episodePreviewRendition = "episode-preview/v1"
 func (h *Handler) handleGetEpisodePreviewImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "tenant not found", http.StatusNotFound)
-			return
-		}
-		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+	tenant, adminHost, ok := h.tenantFromHost(w, r)
+	if !ok {
 		return
 	}
 

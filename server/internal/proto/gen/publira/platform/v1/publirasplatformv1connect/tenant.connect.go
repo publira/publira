@@ -176,7 +176,30 @@ type PlatformTenantServiceClient interface {
 	GetTenant(context.Context, *v1.GetTenantRequest) (*v1.GetTenantResponse, error)
 	CreateTenant(context.Context, *v1.CreateTenantRequest) (*v1.CreateTenantResponse, error)
 	UpdateTenant(context.Context, *v1.UpdateTenantRequest) (*v1.UpdateTenantResponse, error)
+	// Stops serving the tenant, and leaves its data as it is. The public API,
+	// the admin API, and the image routes refuse it from then on, as
+	// TenantContext describes; this service keeps managing it — its details,
+	// members, and invitations included.
+	//
+	// The worker treats it as follows while it is suspended:
+	//
+	// - Mail and push notifications to its readers and staff are dropped,
+	//   whether queued before the suspension or produced during it: what they
+	//   link to is refused, and holding them until the tenant is resumed would
+	//   deliver news that is no longer new and links whose tokens have expired.
+	//   An invitation to administer it is the exception: an operator sends it
+	//   from here on purpose, and it goes out. Its link is refused until the
+	//   tenant is resumed, and once it has expired, Resend issues another.
+	// - Every other outbox event runs: cache invalidations, search index
+	//   updates, and the follow-up calls to the app stores and sign-in providers
+	//   keep the tenant's data and the outside world's in step.
+	// - Its scheduled jobs run as they do for an active tenant — scheduled
+	//   publications, free windows, royalty closing, the daily statistics and
+	//   the retention purges — so a resumed tenant is where its own schedule
+	//   would have put it.
 	SuspendTenant(context.Context, *v1.SuspendTenantRequest) (*v1.SuspendTenantResponse, error)
+	// Serves a suspended tenant again, at once and with nothing else to do:
+	// its sessions are honoured again, and its data is what it was.
 	ResumeTenant(context.Context, *v1.ResumeTenantRequest) (*v1.ResumeTenantResponse, error)
 	ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error)
 	AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error)
@@ -202,7 +225,30 @@ type PlatformTenantServiceHandler interface {
 	GetTenant(context.Context, *v1.GetTenantRequest) (*v1.GetTenantResponse, error)
 	CreateTenant(context.Context, *v1.CreateTenantRequest) (*v1.CreateTenantResponse, error)
 	UpdateTenant(context.Context, *v1.UpdateTenantRequest) (*v1.UpdateTenantResponse, error)
+	// Stops serving the tenant, and leaves its data as it is. The public API,
+	// the admin API, and the image routes refuse it from then on, as
+	// TenantContext describes; this service keeps managing it — its details,
+	// members, and invitations included.
+	//
+	// The worker treats it as follows while it is suspended:
+	//
+	// - Mail and push notifications to its readers and staff are dropped,
+	//   whether queued before the suspension or produced during it: what they
+	//   link to is refused, and holding them until the tenant is resumed would
+	//   deliver news that is no longer new and links whose tokens have expired.
+	//   An invitation to administer it is the exception: an operator sends it
+	//   from here on purpose, and it goes out. Its link is refused until the
+	//   tenant is resumed, and once it has expired, Resend issues another.
+	// - Every other outbox event runs: cache invalidations, search index
+	//   updates, and the follow-up calls to the app stores and sign-in providers
+	//   keep the tenant's data and the outside world's in step.
+	// - Its scheduled jobs run as they do for an active tenant — scheduled
+	//   publications, free windows, royalty closing, the daily statistics and
+	//   the retention purges — so a resumed tenant is where its own schedule
+	//   would have put it.
 	SuspendTenant(context.Context, *v1.SuspendTenantRequest) (*v1.SuspendTenantResponse, error)
+	// Serves a suspended tenant again, at once and with nothing else to do:
+	// its sessions are honoured again, and its data is what it was.
 	ResumeTenant(context.Context, *v1.ResumeTenantRequest) (*v1.ResumeTenantResponse, error)
 	ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error)
 	AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error)

@@ -9,9 +9,9 @@ import (
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
 
-	"github.com/publira/publira/server/internal/platformtenants"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -51,8 +51,8 @@ func TestDBCreateTenantPersistsAndLists(t *testing.T) {
 	if tenant.Domain != "integration.example.com" {
 		t.Fatalf("tenant.domain = %q, want integration.example.com", tenant.Domain)
 	}
-	if tenant.Status != platformtenants.StatusActive {
-		t.Fatalf("tenant.status = %q, want %s", tenant.Status, platformtenants.StatusActive)
+	if tenant.Status != tenantstatus.Active {
+		t.Fatalf("tenant.status = %q, want %s", tenant.Status, tenantstatus.Active)
 	}
 	if tenant.PublicId == "" {
 		t.Fatal("tenant.public_id is empty")
@@ -220,8 +220,8 @@ func TestDBSuspendAndResumeTenant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SuspendTenant: %v", err)
 	}
-	if suspendResp.Tenant.Status != platformtenants.StatusSuspended {
-		t.Fatalf("status after suspend = %q, want %s", suspendResp.Tenant.Status, platformtenants.StatusSuspended)
+	if suspendResp.Tenant.Status != tenantstatus.Suspended {
+		t.Fatalf("status after suspend = %q, want %s", suspendResp.Tenant.Status, tenantstatus.Suspended)
 	}
 
 	resumeResp, err := client.ResumeTenant(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.ResumeTenantRequest{
@@ -230,8 +230,8 @@ func TestDBSuspendAndResumeTenant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResumeTenant: %v", err)
 	}
-	if resumeResp.Tenant.Status != platformtenants.StatusActive {
-		t.Fatalf("status after resume = %q, want %s", resumeResp.Tenant.Status, platformtenants.StatusActive)
+	if resumeResp.Tenant.Status != tenantstatus.Active {
+		t.Fatalf("status after resume = %q, want %s", resumeResp.Tenant.Status, tenantstatus.Active)
 	}
 }
 

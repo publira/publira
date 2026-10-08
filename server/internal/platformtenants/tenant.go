@@ -14,12 +14,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/publicid"
-)
-
-// Tenant statuses.
-const (
-	StatusActive    = "active"
-	StatusSuspended = "suspended"
+	"github.com/publira/publira/server/internal/tenantstatus"
 )
 
 // FieldTenant is the field [Find] refuses: a tenant named by public ID or by
@@ -201,13 +196,13 @@ func Update(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 
 // Suspend stops serving the tenant inside tx and files the entry under actor.
 func Suspend(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, id uuid.UUID) (dbmodels.Tenant, error) {
-	return setStatus(ctx, tx, logger, actor, id, StatusSuspended, "tenant_suspended")
+	return setStatus(ctx, tx, logger, actor, id, tenantstatus.Suspended, "tenant_suspended")
 }
 
 // Resume serves a suspended tenant again inside tx and files the entry under
 // actor.
 func Resume(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, id uuid.UUID) (dbmodels.Tenant, error) {
-	return setStatus(ctx, tx, logger, actor, id, StatusActive, "tenant_resumed")
+	return setStatus(ctx, tx, logger, actor, id, tenantstatus.Active, "tenant_resumed")
 }
 
 func setStatus(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, id uuid.UUID, status, action string) (dbmodels.Tenant, error) {

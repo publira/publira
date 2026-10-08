@@ -37,6 +37,7 @@ import (
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/tenantconn"
+	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/tracing"
 )
 
@@ -495,6 +496,9 @@ func (s *adminServer) tenantScopedQuerierInterceptor() connect.ServerInterceptor
 				return connect.NewError(connect.CodeNotFound, "tenant not found")
 			}
 			return s.internalDBError(ctx, "failed to get tenant for request scope", err, "tenant_id", tenantID.String())
+		}
+		if tenantstatus.IsSuspended(tenant) {
+			return tenantstatus.Refusal()
 		}
 
 		conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, s.logger)
