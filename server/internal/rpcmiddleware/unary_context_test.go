@@ -134,7 +134,7 @@ func (s *wireStream) Receive(msg any) error {
 
 // An upload reaches the handler read once and without a copy of its bytes,
 // however many of these interceptors the server chains: the admin console
-// reads messages of any size.
+// reads uploads of up to 128 MiB.
 func TestNewUnaryRequestInterceptor_ReadsTheMessageOnceAndCopiesNoBytes(t *testing.T) {
 	spec := connect.Spec{
 		StreamType: connect.StreamTypeUnary,

@@ -29,8 +29,8 @@ type UnaryRequestFunc func(ctx context.Context, spec connect.Spec, req proto.Mes
 //
 // The message is read once however many of these interceptors a server
 // chains, and the handler is handed its fields rather than a copy of them: the
-// admin console reads uploads of any size, and a copy per interceptor would
-// hold that payload in memory several times over.
+// admin console reads uploads of up to 128 MiB, and a copy per interceptor
+// would hold that payload in memory several times over.
 func NewUnaryRequestInterceptor(intercept UnaryRequestFunc) connect.ServerInterceptor {
 	return func(next connect.ServerFunc) connect.ServerFunc {
 		return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {

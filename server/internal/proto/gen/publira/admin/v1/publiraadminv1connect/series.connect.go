@@ -297,6 +297,12 @@ type AdminSeriesServiceClient interface {
 	ReorderEpisodes(context.Context, *v1.ReorderEpisodesRequest) (*v1.ReorderEpisodesResponse, error)
 	// Minimum role: tenant_editor.
 	CreateEpisode(context.Context, *v1.CreateEpisodeRequest) (*v1.CreateEpisodeResponse, error)
+	// An upload carries at most 128 MiB, its archive or its images taken
+	// together, and a larger one is invalid_argument: a whole episode's pages
+	// fit in one ZIP or ePub of that size, and an episode of larger pages goes
+	// up in several requests. A request past what such an upload takes in the
+	// JSON encoding is resource_exhausted, refused while it is read.
+	//
 	// Minimum role: tenant_editor.
 	UploadEpisodeImages(context.Context, *v1.UploadEpisodeImagesRequest) (*v1.UploadEpisodeImagesResponse, error)
 	// Minimum role: tenant_auditor.
@@ -358,6 +364,12 @@ type AdminSeriesServiceHandler interface {
 	ReorderEpisodes(context.Context, *v1.ReorderEpisodesRequest) (*v1.ReorderEpisodesResponse, error)
 	// Minimum role: tenant_editor.
 	CreateEpisode(context.Context, *v1.CreateEpisodeRequest) (*v1.CreateEpisodeResponse, error)
+	// An upload carries at most 128 MiB, its archive or its images taken
+	// together, and a larger one is invalid_argument: a whole episode's pages
+	// fit in one ZIP or ePub of that size, and an episode of larger pages goes
+	// up in several requests. A request past what such an upload takes in the
+	// JSON encoding is resource_exhausted, refused while it is read.
+	//
 	// Minimum role: tenant_editor.
 	UploadEpisodeImages(context.Context, *v1.UploadEpisodeImagesRequest) (*v1.UploadEpisodeImagesResponse, error)
 	// Minimum role: tenant_auditor.

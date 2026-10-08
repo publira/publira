@@ -262,8 +262,22 @@ func handlerFromServer(server *apiServer) http.Handler {
 	return mux
 }
 
+// maxInboundEmailWebhookRequestBytes is the most ProcessInboundEmailWebhook
+// reads of one request. It leaves room for the headers and the tenant beside
+// the largest payload the webhook takes.
+const maxInboundEmailWebhookRequestBytes = maxInboundEmailWebhookPayload + 1<<20
+
+// readLimits are the procedures of this namespace that read more of one
+// request than rpcmiddleware.DefaultReadMaxBytes. The payment and App Store
+// webhooks are not among them: their payloads are capped at
+// maxPaymentWebhookPayload, which the default holds with room to spare.
+var readLimits = map[string]int{
+	publirav1connect.ContactServiceProcessInboundEmailWebhookProcedure: maxInboundEmailWebhookRequestBytes,
+}
+
 func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	traced := tracing.ConnectServerInterceptors(ServiceName)
+	limits := rpcmiddleware.ReadLimits(readLimits)
 	tenantScoped := slices.Concat(traced, []connect.ServerInterceptor{server.tenantScopedQuerierInterceptor()})
 
 	services := connect.NewServer(tenantScoped...)
@@ -279,17 +293,14 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	publirav1connect.RegisterAuthServiceHandler(services, server)
 	publirav1connect.RegisterNotificationServiceHandler(services, server)
 	publirav1connect.RegisterTenantServiceHandler(services, server)
-	connecthttp.Mount(mux, services)
-
-	contact := connect.NewServer(tenantScoped...)
-	publirav1connect.RegisterContactServiceHandler(contact, server)
-	connecthttp.Mount(mux, contact, connecthttp.WithReadMaxBytes(maxContactServiceRequestBytes))
+	publirav1connect.RegisterContactServiceHandler(services, server)
+	connecthttp.Mount(mux, services, limits...)
 
 	// DomainService is used before tenant context is known (e.g. proxy domain resolution),
 	// so it must not require tenant-scoped interception.
 	domain := connect.NewServer(traced...)
 	publirav1connect.RegisterDomainServiceHandler(domain, server)
-	connecthttp.Mount(mux, domain)
+	connecthttp.Mount(mux, domain, limits...)
 }
 
 func (s *apiServer) tenantScopedQuerierInterceptor() connect.ServerInterceptor {

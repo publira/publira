@@ -19,7 +19,9 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/episodeimages"
 	"github.com/publira/publira/server/internal/health"
+	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/inboundprovider"
 	inboundproviders "github.com/publira/publira/server/internal/inboundprovider/providers"
 	"github.com/publira/publira/server/internal/loginguard"
@@ -390,13 +392,45 @@ func handlerFromServer(server *adminServer) http.Handler {
 	return mux
 }
 
+const (
+	// maxUploadedImageBytes is the largest image a procedure that carries one
+	// takes: a cover, a label's or genre's eye-catch, an author's icon, the
+	// tenant's icon or logo.
+	maxUploadedImageBytes = max(imageproc.EyeCatchMaxBytes, imageproc.IconMaxBytes, imageproc.LogoMaxBytes, creatorIconMaxUploadBytes)
+	// imageUploadReadMaxBytes is what a procedure that carries one image reads
+	// of a request: that image as the JSON encoding carries it, in base64 and
+	// a third larger than the binary one, and the fields sent beside it, which
+	// are bounded by rpcmiddleware.DefaultReadMaxBytes everywhere else.
+	imageUploadReadMaxBytes = (maxUploadedImageBytes+2)/3*4 + rpcmiddleware.DefaultReadMaxBytes
+	// episodeUploadReadMaxBytes is what UploadEpisodeImages reads of a
+	// request: the largest upload episodeimages takes, in the base64 of the
+	// JSON encoding as well, and the fields sent beside it.
+	episodeUploadReadMaxBytes = (episodeimages.MaxUploadBytes+2)/3*4 + rpcmiddleware.DefaultReadMaxBytes
+)
+
+// readLimits are the procedures of this namespace that read more of one
+// request than rpcmiddleware.DefaultReadMaxBytes: the ones whose request
+// carries an upload.
+var readLimits = map[string]int{
+	publiraadminv1connect.AdminSeriesServiceUploadEpisodeImagesProcedure:             episodeUploadReadMaxBytes,
+	publiraadminv1connect.AdminSeriesServiceCreateSeriesProcedure:                    imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminSeriesServiceUpdateSeriesProcedure:                    imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure: imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminLabelServiceCreateLabelProcedure:                      imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminLabelServiceUpdateLabelProcedure:                      imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminLabelServiceUploadLabelEyeCatchAspectImageProcedure:   imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminGenreServiceCreateGenreProcedure:                      imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminGenreServiceUpdateGenreProcedure:                      imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure:   imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminCreatorServiceCreateCreatorProcedure:                  imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminCreatorServiceUpdateCreatorProcedure:                  imageUploadReadMaxBytes,
+	publiraadminv1connect.TenantThemeServiceUploadTenantIconProcedure:                imageUploadReadMaxBytes,
+	publiraadminv1connect.TenantThemeServiceUploadTenantLogoProcedure:                imageUploadReadMaxBytes,
+}
+
 func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 	traced := tracing.ConnectServerInterceptors(ServiceName)
-
-	// Episode archives and images arrive inside the request message and run
-	// well past connect-go's default 4 MiB read limit, so the console reads a
-	// message of any size, as it did before that limit existed.
-	unbounded := connecthttp.WithReadMaxBytes(0)
+	limits := rpcmiddleware.ReadLimits(readLimits)
 
 	services := connect.NewServer(slices.Concat(traced, []connect.ServerInterceptor{
 		server.tenantScopedQuerierInterceptor(),
@@ -425,7 +459,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 	publiraadminv1connect.RegisterAdminContactServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminRoyaltyServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminTenantMemberServiceHandler(services, server)
-	connecthttp.Mount(mux, services, unbounded)
+	connecthttp.Mount(mux, services, limits...)
 
 	// AdminAuthService signs a session in, so it runs before there is one to
 	// build a context from.
@@ -433,7 +467,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 		server.tenantScopedQuerierInterceptor(),
 	})...)
 	publiraadminv1connect.RegisterAdminAuthServiceHandler(auth, server)
-	connecthttp.Mount(mux, auth, unbounded)
+	connecthttp.Mount(mux, auth, limits...)
 }
 
 func (s *adminServer) tenantScopedQuerierInterceptor() connect.ServerInterceptor {

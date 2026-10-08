@@ -219,6 +219,9 @@ func registerPlatformRoutes(mux *http.ServeMux, server *platformServer) {
 	}
 
 	traced := tracing.ConnectServerInterceptors(ServiceName)
+	// Nothing in this namespace carries an upload or a webhook body, so every
+	// procedure reads at most rpcmiddleware.DefaultReadMaxBytes.
+	limits := rpcmiddleware.ReadLimits(nil)
 
 	services := connect.NewServer(slices.Concat(traced, []connect.ServerInterceptor{authInterceptor})...)
 	publirasplatformv1connect.RegisterPlatformTenantServiceHandler(services, server)
@@ -232,7 +235,7 @@ func registerPlatformRoutes(mux *http.ServeMux, server *platformServer) {
 	publirasplatformv1connect.RegisterPlatformNotificationServiceHandler(services, server)
 	publirasplatformv1connect.RegisterPlatformUserServiceHandler(services, server)
 	publirasplatformv1connect.RegisterPlatformDashboardServiceHandler(services, server)
-	connecthttp.Mount(mux, services)
+	connecthttp.Mount(mux, services, limits...)
 
 	// Signing in and the first-run setup are served without a session, and
 	// the audit log authenticates its caller itself.
@@ -240,5 +243,5 @@ func registerPlatformRoutes(mux *http.ServeMux, server *platformServer) {
 	publirasplatformv1connect.RegisterPlatformAuthServiceHandler(open, server)
 	publirasplatformv1connect.RegisterPlatformSetupServiceHandler(open, server)
 	publirasplatformv1connect.RegisterPlatformAuditLogServiceHandler(open, server)
-	connecthttp.Mount(mux, open)
+	connecthttp.Mount(mux, open, limits...)
 }

@@ -12,9 +12,8 @@
 //     connections stay open indefinitely.
 //   - ReadTimeout and WriteTimeout stay at zero (unlimited). A global
 //     ReadTimeout covers the entire request body, and UploadEpisodeImages
-//     accepts zip/epub archives of unbounded compressed size (each of up
-//     to 1000 entries is capped at 20 MiB uncompressed). A timeout short
-//     enough to stop a slow-body attack would fail legitimate uploads.
+//     accepts a zip/epub archive of up to 128 MiB. A timeout short enough
+//     to stop a slow-body attack would fail legitimate uploads.
 //     WriteTimeout similarly covers handler work plus the response: image
 //     processing can run 15s per image, and the image routes stream
 //     object bytes to the client. Per-route deadlines belong on the
