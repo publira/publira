@@ -1492,7 +1492,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.test_routing == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Four of the probes are console page uploads spread over 75 seconds each.
+    timeout-minutes: 20
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -554,22 +554,38 @@ enable_trusted_hop() {
 # a body the edge refuses for its size is a delivery the provider retries for
 # days and then drops.
 assert_webhook_delivered() {
-  local name="$1" host="$2" path="$3" want_backend="$4" bytes="$5"
-  shift 5
+  assert_upload_delivered "$1" "$2" "$3" "$4" "$5" 0 "${@:6}"
+}
+
+# The same POST, sent no faster than spreads the body over `seconds` seconds,
+# the way an upload leaves a slow uplink, or as fast as it goes when `seconds`
+# is 0. An edge that limits how long a request may take to arrive cuts a slow
+# body off part way, which a body sent at full speed never shows.
+assert_upload_delivered() {
+  local name="$1" host="$2" path="$3" want_backend="$4" bytes="$5" seconds="$6"
+  shift 6
   local header_args=() header field want value
   for header in "$@"; do
     header_args+=(-H "${header}")
   done
+  # curl averages its rate over the whole transfer, so the body cannot arrive
+  # sooner than `seconds`; the deadline leaves the edge a minute on top.
+  local rate_args=() max_time=60
+  if ((seconds > 0)); then
+    rate_args=(--limit-rate "$((bytes / seconds))")
+    max_time=$((seconds + 60))
+  fi
 
   local payload response code body actual_backend actual_path actual_bytes
   payload="$(mktemp)"
   response="$(mktemp)"
   head -c "${bytes}" /dev/zero > "${payload}"
   code="$(
-    curl -sS -o "${response}" -w '%{http_code}' --max-time 60 \
+    curl -sS -o "${response}" -w '%{http_code}' --max-time "${max_time}" \
+      ${rate_args[@]+"${rate_args[@]}"} \
       -X POST \
       -H "Host: ${host}" \
-      "${header_args[@]}" \
+      ${header_args[@]+"${header_args[@]}"} \
       --data-binary "@${payload}" \
       "http://127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT}${path}" 2> /dev/null || true
   )"
@@ -577,7 +593,7 @@ assert_webhook_delivered() {
   rm -f "${payload}" "${response}"
 
   if [[ "${code}" != "200" ]]; then
-    routing_fail "${name}: HTTP ${code} (want 200) host=${host} POST ${path} bytes=${bytes} body=${body}"
+    routing_fail "${name}: HTTP ${code} (want 200) host=${host} POST ${path} bytes=${bytes} seconds=${seconds} body=${body}"
   fi
 
   actual_backend="$(json_string_field "${body}" backend)"

@@ -16,6 +16,16 @@ entryPoints:
         # dynamic/routes.yaml.
         - strip-trace-context@file
         - strip-forwarded@file
+    # Traefik gives a request 60 seconds to arrive, body included, unless told
+    # otherwise, and the tenant console posts a whole episode's pages in one
+    # upload of up to 256 MiB: 60 seconds cut it off on any uplink slower than
+    # about 36 Mbit/s. Traefik sets this per entry point, never per router, so
+    # every request here is given the same 300 seconds, which is as long as
+    # web-admin's Node.js server gives a request to arrive whole; a longer
+    # value would not get an upload any further.
+    transport:
+      respondingTimeouts:
+        readTimeout: 300s
     # A load balancer, a CDN, or a TLS terminator in front of this entry
     # point is the peer of every request, so without this every request is
     # recorded with that hop's address. Listing the hop's own addresses, and
@@ -39,6 +49,9 @@ entryPoints:
   #       - strip-trace-context@file
   #       - strip-forwarded@file
   #     tls: {}
+  #   transport:
+  #     respondingTimeouts:
+  #       readTimeout: 300s
 
 providers:
   file:

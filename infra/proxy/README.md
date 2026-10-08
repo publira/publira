@@ -62,6 +62,8 @@ A webhook an outside service calls on the public site lives at `/api/v1/webhook/
 
 A request under `/api/v1` is admitted with a body of up to 33 MiB: an inbound email webhook carries a whole mail with its attachments, which SendGrid accepts up to 30 MB, and `web-host` reads up to 32 MiB of it. On a console host, `/api/v1/episode-pages` is admitted with a body of up to 256 MiB: the episode edit screen posts a whole episode's pages there in one upload, and `web-admin` reads up to 256 MiB of it. Traefik and Caddy set no limit unless one is configured; nginx's default is 1 MB, so its sample raises it on those locations.
 
+That upload is given 300 seconds to arrive, which takes 256 MiB over an uplink of about 7.2 Mbit/s. It is as long as `web-admin`'s Node.js server gives a request to arrive whole, so an edge that streams the body on gains nothing by waiting longer. Traefik gives a request 60 seconds, body included, unless configured otherwise, and it sets that per entry point rather than per router, so every Traefik edge here gives every request on the `web` entry point 300 seconds. nginx limits only the wait between two reads of a body, 60 seconds by default, and passes the body on once all of it has arrived; Caddy sets no limit on reading a body. Neither sample changes its default.
+
 ### Precedence
 
 Highest first. A proxy with no numeric priorities reaches the same result by ordering its blocks this way.

@@ -25,4 +25,11 @@ assert_hop_client_address "images through the trusted hop" admin.localhost /imag
 assert_forwarded_headers "web-host from outside the trusted range" GET localhost / web-host
 assert_forwarded_headers "api from outside the trusted range" GET localhost /api/foo api
 
+# Traefik takes its read timeout from the static configuration, which only
+# this pass starts from traefik.yaml; the others start from the Dev
+# Container's flags. nginx and Caddy start from the same sample either way.
+if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" ]]; then
+  assert_upload_delivered "page upload of 256 MiB over 75 seconds reaches web-admin whole" admin.localhost /api/v1/episode-pages web-admin 268435456 75
+fi
+
 routing_log "=== route probes behind a trusted hop passed ==="
