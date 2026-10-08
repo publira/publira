@@ -5,771 +5,916 @@
 package publiraadminv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// TenantSettingsServiceName is the fully-qualified name of the TenantSettingsService service.
 	TenantSettingsServiceName = "publira.admin.v1.TenantSettingsService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// TenantSettingsServiceGetTenantTimezoneProcedure is the fully-qualified name of the
+	// TenantSettingsServiceGetTenantTimezoneProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantTimezone RPC.
 	TenantSettingsServiceGetTenantTimezoneProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantTimezone"
-	// TenantSettingsServiceUpdateTenantTimezoneProcedure is the fully-qualified name of the
+	// TenantSettingsServiceUpdateTenantTimezoneProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantTimezone RPC.
 	TenantSettingsServiceUpdateTenantTimezoneProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantTimezone"
-	// TenantSettingsServiceGetTenantDefaultLocaleProcedure is the fully-qualified name of the
+	// TenantSettingsServiceGetTenantDefaultLocaleProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantDefaultLocale RPC.
 	TenantSettingsServiceGetTenantDefaultLocaleProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantDefaultLocale"
-	// TenantSettingsServiceUpdateTenantDefaultLocaleProcedure is the fully-qualified name of the
+	// TenantSettingsServiceUpdateTenantDefaultLocaleProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantDefaultLocale RPC.
 	TenantSettingsServiceUpdateTenantDefaultLocaleProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantDefaultLocale"
-	// TenantSettingsServiceGetTenantCommentSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsServiceGetTenantCommentSettingsProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantCommentSettings RPC.
 	TenantSettingsServiceGetTenantCommentSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantCommentSettings"
-	// TenantSettingsServiceUpdateTenantCommentSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsServiceUpdateTenantCommentSettingsProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantCommentSettings RPC.
 	TenantSettingsServiceUpdateTenantCommentSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantCommentSettings"
-	// TenantSettingsServiceGetTenantAgeVerificationProcedure is the fully-qualified name of the
+	// TenantSettingsServiceGetTenantAgeVerificationProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantAgeVerification RPC.
 	TenantSettingsServiceGetTenantAgeVerificationProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantAgeVerification"
-	// TenantSettingsServiceUpdateTenantAgeVerificationProcedure is the fully-qualified name of the
+	// TenantSettingsServiceUpdateTenantAgeVerificationProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantAgeVerification RPC.
 	TenantSettingsServiceUpdateTenantAgeVerificationProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantAgeVerification"
-	// TenantSettingsServiceGetTenantPurchaseSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsServiceGetTenantPurchaseSettingsProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantPurchaseSettings RPC.
 	TenantSettingsServiceGetTenantPurchaseSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantPurchaseSettings"
-	// TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantPurchaseSettings RPC.
 	TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantPurchaseSettings"
-	// TenantSettingsServiceGetTenantLegalPagesProcedure is the fully-qualified name of the
+	// TenantSettingsServiceGetTenantLegalPagesProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantLegalPages RPC.
 	TenantSettingsServiceGetTenantLegalPagesProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantLegalPages"
-	// TenantSettingsServiceUpdateTenantLegalPagesProcedure is the fully-qualified name of the
+	// TenantSettingsServiceUpdateTenantLegalPagesProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantLegalPages RPC.
 	TenantSettingsServiceUpdateTenantLegalPagesProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantLegalPages"
-	// TenantSettingsServiceGetTenantMobileAppAssociationProcedure is the fully-qualified name of the
+	// TenantSettingsServiceGetTenantMobileAppAssociationProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantMobileAppAssociation RPC.
 	TenantSettingsServiceGetTenantMobileAppAssociationProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantMobileAppAssociation"
-	// TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure is the fully-qualified name of the
+	// TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantMobileAppAssociation RPC.
 	TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantMobileAppAssociation"
-	// TenantSettingsServiceGetTenantSignInSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsServiceGetTenantSignInSettingsProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantSignInSettings RPC.
 	TenantSettingsServiceGetTenantSignInSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantSignInSettings"
-	// TenantSettingsServiceUpdateTenantSignInSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsServiceUpdateTenantSignInSettingsProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantSignInSettings RPC.
 	TenantSettingsServiceUpdateTenantSignInSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantSignInSettings"
-	// TenantSettingsServiceGetTenantRetentionSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsServiceGetTenantRetentionSettingsProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantRetentionSettings RPC.
 	TenantSettingsServiceGetTenantRetentionSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantRetentionSettings"
-	// TenantSettingsServiceUpdateTenantRetentionSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsServiceUpdateTenantRetentionSettingsProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantRetentionSettings RPC.
 	TenantSettingsServiceUpdateTenantRetentionSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantRetentionSettings"
-	// TenantSettingsServiceGetTenantCommunityLimitSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsServiceGetTenantCommunityLimitSettingsProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantCommunityLimitSettings RPC.
 	TenantSettingsServiceGetTenantCommunityLimitSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantCommunityLimitSettings"
-	// TenantSettingsServiceUpdateTenantCommunityLimitSettingsProcedure is the fully-qualified name of
-	// the TenantSettingsService's UpdateTenantCommunityLimitSettings RPC.
+	// TenantSettingsServiceUpdateTenantCommunityLimitSettingsProcedure is the procedure name of the
+	// TenantSettingsService's UpdateTenantCommunityLimitSettings RPC.
 	TenantSettingsServiceUpdateTenantCommunityLimitSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantCommunityLimitSettings"
-	// TenantSettingsServiceGetTenantEmailRejectionSettingsProcedure is the fully-qualified name of the
+	// TenantSettingsServiceGetTenantEmailRejectionSettingsProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantEmailRejectionSettings RPC.
 	TenantSettingsServiceGetTenantEmailRejectionSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantEmailRejectionSettings"
-	// TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure is the fully-qualified name of
-	// the TenantSettingsService's UpdateTenantEmailRejectionSettings RPC.
+	// TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure is the procedure name of the
+	// TenantSettingsService's UpdateTenantEmailRejectionSettings RPC.
 	TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantEmailRejectionSettings"
+)
+
+var (
+	tenantSettingsServiceGetTenantTimezoneSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantTimezone"),
+			Procedure:  TenantSettingsServiceGetTenantTimezoneProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantTimezoneSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantTimezone"),
+			Procedure:  TenantSettingsServiceUpdateTenantTimezoneProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantDefaultLocaleSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantDefaultLocale"),
+			Procedure:  TenantSettingsServiceGetTenantDefaultLocaleProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantDefaultLocaleSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantDefaultLocale"),
+			Procedure:  TenantSettingsServiceUpdateTenantDefaultLocaleProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantCommentSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantCommentSettings"),
+			Procedure:  TenantSettingsServiceGetTenantCommentSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantCommentSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantCommentSettings"),
+			Procedure:  TenantSettingsServiceUpdateTenantCommentSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantAgeVerificationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantAgeVerification"),
+			Procedure:  TenantSettingsServiceGetTenantAgeVerificationProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantAgeVerificationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantAgeVerification"),
+			Procedure:  TenantSettingsServiceUpdateTenantAgeVerificationProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantPurchaseSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantPurchaseSettings"),
+			Procedure:  TenantSettingsServiceGetTenantPurchaseSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantPurchaseSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantPurchaseSettings"),
+			Procedure:  TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantLegalPagesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantLegalPages"),
+			Procedure:  TenantSettingsServiceGetTenantLegalPagesProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantLegalPagesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantLegalPages"),
+			Procedure:  TenantSettingsServiceUpdateTenantLegalPagesProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantMobileAppAssociationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantMobileAppAssociation"),
+			Procedure:  TenantSettingsServiceGetTenantMobileAppAssociationProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantMobileAppAssociationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantMobileAppAssociation"),
+			Procedure:  TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantSignInSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantSignInSettings"),
+			Procedure:  TenantSettingsServiceGetTenantSignInSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantSignInSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantSignInSettings"),
+			Procedure:  TenantSettingsServiceUpdateTenantSignInSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantRetentionSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantRetentionSettings"),
+			Procedure:  TenantSettingsServiceGetTenantRetentionSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantRetentionSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantRetentionSettings"),
+			Procedure:  TenantSettingsServiceUpdateTenantRetentionSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantCommunityLimitSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantCommunityLimitSettings"),
+			Procedure:  TenantSettingsServiceGetTenantCommunityLimitSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantCommunityLimitSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantCommunityLimitSettings"),
+			Procedure:  TenantSettingsServiceUpdateTenantCommunityLimitSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantEmailRejectionSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantEmailRejectionSettings"),
+			Procedure:  TenantSettingsServiceGetTenantEmailRejectionSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantEmailRejectionSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantEmailRejectionSettings"),
+			Procedure:  TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure,
+		}
+	})
 )
 
 // TenantSettingsServiceClient is a client for the publira.admin.v1.TenantSettingsService service.
 type TenantSettingsServiceClient interface {
 	// Minimum role: tenant_auditor.
-	GetTenantTimezone(context.Context, *connect.Request[v1.GetTenantTimezoneRequest]) (*connect.Response[v1.GetTenantTimezoneResponse], error)
+	GetTenantTimezone(context.Context, *v1.GetTenantTimezoneRequest) (*v1.GetTenantTimezoneResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantTimezone(context.Context, *connect.Request[v1.UpdateTenantTimezoneRequest]) (*connect.Response[v1.UpdateTenantTimezoneResponse], error)
+	UpdateTenantTimezone(context.Context, *v1.UpdateTenantTimezoneRequest) (*v1.UpdateTenantTimezoneResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantDefaultLocale(context.Context, *connect.Request[v1.GetTenantDefaultLocaleRequest]) (*connect.Response[v1.GetTenantDefaultLocaleResponse], error)
+	GetTenantDefaultLocale(context.Context, *v1.GetTenantDefaultLocaleRequest) (*v1.GetTenantDefaultLocaleResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error)
+	UpdateTenantDefaultLocale(context.Context, *v1.UpdateTenantDefaultLocaleRequest) (*v1.UpdateTenantDefaultLocaleResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantCommentSettings(context.Context, *connect.Request[v1.GetTenantCommentSettingsRequest]) (*connect.Response[v1.GetTenantCommentSettingsResponse], error)
+	GetTenantCommentSettings(context.Context, *v1.GetTenantCommentSettingsRequest) (*v1.GetTenantCommentSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantCommentSettings(context.Context, *connect.Request[v1.UpdateTenantCommentSettingsRequest]) (*connect.Response[v1.UpdateTenantCommentSettingsResponse], error)
+	UpdateTenantCommentSettings(context.Context, *v1.UpdateTenantCommentSettingsRequest) (*v1.UpdateTenantCommentSettingsResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantAgeVerification(context.Context, *connect.Request[v1.GetTenantAgeVerificationRequest]) (*connect.Response[v1.GetTenantAgeVerificationResponse], error)
+	GetTenantAgeVerification(context.Context, *v1.GetTenantAgeVerificationRequest) (*v1.GetTenantAgeVerificationResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error)
+	UpdateTenantAgeVerification(context.Context, *v1.UpdateTenantAgeVerificationRequest) (*v1.UpdateTenantAgeVerificationResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantPurchaseSettings(context.Context, *connect.Request[v1.GetTenantPurchaseSettingsRequest]) (*connect.Response[v1.GetTenantPurchaseSettingsResponse], error)
+	GetTenantPurchaseSettings(context.Context, *v1.GetTenantPurchaseSettingsRequest) (*v1.GetTenantPurchaseSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error)
+	UpdateTenantPurchaseSettings(context.Context, *v1.UpdateTenantPurchaseSettingsRequest) (*v1.UpdateTenantPurchaseSettingsResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error)
+	GetTenantLegalPages(context.Context, *v1.GetTenantLegalPagesRequest) (*v1.GetTenantLegalPagesResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error)
+	UpdateTenantLegalPages(context.Context, *v1.UpdateTenantLegalPagesRequest) (*v1.UpdateTenantLegalPagesResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error)
+	GetTenantMobileAppAssociation(context.Context, *v1.GetTenantMobileAppAssociationRequest) (*v1.GetTenantMobileAppAssociationResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantMobileAppAssociation(context.Context, *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error)
+	UpdateTenantMobileAppAssociation(context.Context, *v1.UpdateTenantMobileAppAssociationRequest) (*v1.UpdateTenantMobileAppAssociationResponse, error)
 	// Minimum role: tenant_admin.
-	GetTenantSignInSettings(context.Context, *connect.Request[v1.GetTenantSignInSettingsRequest]) (*connect.Response[v1.GetTenantSignInSettingsResponse], error)
+	GetTenantSignInSettings(context.Context, *v1.GetTenantSignInSettingsRequest) (*v1.GetTenantSignInSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantSignInSettings(context.Context, *connect.Request[v1.UpdateTenantSignInSettingsRequest]) (*connect.Response[v1.UpdateTenantSignInSettingsResponse], error)
+	UpdateTenantSignInSettings(context.Context, *v1.UpdateTenantSignInSettingsRequest) (*v1.UpdateTenantSignInSettingsResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error)
+	GetTenantRetentionSettings(context.Context, *v1.GetTenantRetentionSettingsRequest) (*v1.GetTenantRetentionSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error)
+	UpdateTenantRetentionSettings(context.Context, *v1.UpdateTenantRetentionSettingsRequest) (*v1.UpdateTenantRetentionSettingsResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
+	GetTenantCommunityLimitSettings(context.Context, *v1.GetTenantCommunityLimitSettingsRequest) (*v1.GetTenantCommunityLimitSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantCommunityLimitSettings(context.Context, *connect.Request[v1.UpdateTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.UpdateTenantCommunityLimitSettingsResponse], error)
+	UpdateTenantCommunityLimitSettings(context.Context, *v1.UpdateTenantCommunityLimitSettingsRequest) (*v1.UpdateTenantCommunityLimitSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	GetTenantEmailRejectionSettings(context.Context, *connect.Request[v1.GetTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.GetTenantEmailRejectionSettingsResponse], error)
+	GetTenantEmailRejectionSettings(context.Context, *v1.GetTenantEmailRejectionSettingsRequest) (*v1.GetTenantEmailRejectionSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantEmailRejectionSettings(context.Context, *connect.Request[v1.UpdateTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailRejectionSettingsResponse], error)
+	UpdateTenantEmailRejectionSettings(context.Context, *v1.UpdateTenantEmailRejectionSettingsRequest) (*v1.UpdateTenantEmailRejectionSettingsResponse, error)
 }
 
 // NewTenantSettingsServiceClient constructs a client for the publira.admin.v1.TenantSettingsService
-// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
-// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
-// the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewTenantSettingsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) TenantSettingsServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	tenantSettingsServiceMethods := v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods()
-	return &tenantSettingsServiceClient{
-		getTenantTimezone: connect.NewClient[v1.GetTenantTimezoneRequest, v1.GetTenantTimezoneResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceGetTenantTimezoneProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantTimezone")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantTimezone: connect.NewClient[v1.UpdateTenantTimezoneRequest, v1.UpdateTenantTimezoneResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceUpdateTenantTimezoneProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantTimezone")),
-			connect.WithClientOptions(opts...),
-		),
-		getTenantDefaultLocale: connect.NewClient[v1.GetTenantDefaultLocaleRequest, v1.GetTenantDefaultLocaleResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceGetTenantDefaultLocaleProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantDefaultLocale")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantDefaultLocale: connect.NewClient[v1.UpdateTenantDefaultLocaleRequest, v1.UpdateTenantDefaultLocaleResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceUpdateTenantDefaultLocaleProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantDefaultLocale")),
-			connect.WithClientOptions(opts...),
-		),
-		getTenantCommentSettings: connect.NewClient[v1.GetTenantCommentSettingsRequest, v1.GetTenantCommentSettingsResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceGetTenantCommentSettingsProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantCommentSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantCommentSettings: connect.NewClient[v1.UpdateTenantCommentSettingsRequest, v1.UpdateTenantCommentSettingsResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceUpdateTenantCommentSettingsProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantCommentSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		getTenantAgeVerification: connect.NewClient[v1.GetTenantAgeVerificationRequest, v1.GetTenantAgeVerificationResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceGetTenantAgeVerificationProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantAgeVerification")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantAgeVerification: connect.NewClient[v1.UpdateTenantAgeVerificationRequest, v1.UpdateTenantAgeVerificationResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceUpdateTenantAgeVerificationProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantAgeVerification")),
-			connect.WithClientOptions(opts...),
-		),
-		getTenantPurchaseSettings: connect.NewClient[v1.GetTenantPurchaseSettingsRequest, v1.GetTenantPurchaseSettingsResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceGetTenantPurchaseSettingsProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantPurchaseSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantPurchaseSettings: connect.NewClient[v1.UpdateTenantPurchaseSettingsRequest, v1.UpdateTenantPurchaseSettingsResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantPurchaseSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		getTenantLegalPages: connect.NewClient[v1.GetTenantLegalPagesRequest, v1.GetTenantLegalPagesResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceGetTenantLegalPagesProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantLegalPages")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantLegalPages: connect.NewClient[v1.UpdateTenantLegalPagesRequest, v1.UpdateTenantLegalPagesResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceUpdateTenantLegalPagesProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantLegalPages")),
-			connect.WithClientOptions(opts...),
-		),
-		getTenantMobileAppAssociation: connect.NewClient[v1.GetTenantMobileAppAssociationRequest, v1.GetTenantMobileAppAssociationResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceGetTenantMobileAppAssociationProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantMobileAppAssociation")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantMobileAppAssociation: connect.NewClient[v1.UpdateTenantMobileAppAssociationRequest, v1.UpdateTenantMobileAppAssociationResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantMobileAppAssociation")),
-			connect.WithClientOptions(opts...),
-		),
-		getTenantSignInSettings: connect.NewClient[v1.GetTenantSignInSettingsRequest, v1.GetTenantSignInSettingsResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceGetTenantSignInSettingsProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantSignInSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantSignInSettings: connect.NewClient[v1.UpdateTenantSignInSettingsRequest, v1.UpdateTenantSignInSettingsResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceUpdateTenantSignInSettingsProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantSignInSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		getTenantRetentionSettings: connect.NewClient[v1.GetTenantRetentionSettingsRequest, v1.GetTenantRetentionSettingsResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceGetTenantRetentionSettingsProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantRetentionSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantRetentionSettings: connect.NewClient[v1.UpdateTenantRetentionSettingsRequest, v1.UpdateTenantRetentionSettingsResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceUpdateTenantRetentionSettingsProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantRetentionSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		getTenantCommunityLimitSettings: connect.NewClient[v1.GetTenantCommunityLimitSettingsRequest, v1.GetTenantCommunityLimitSettingsResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceGetTenantCommunityLimitSettingsProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantCommunityLimitSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantCommunityLimitSettings: connect.NewClient[v1.UpdateTenantCommunityLimitSettingsRequest, v1.UpdateTenantCommunityLimitSettingsResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceUpdateTenantCommunityLimitSettingsProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantCommunityLimitSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		getTenantEmailRejectionSettings: connect.NewClient[v1.GetTenantEmailRejectionSettingsRequest, v1.GetTenantEmailRejectionSettingsResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceGetTenantEmailRejectionSettingsProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantEmailRejectionSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantEmailRejectionSettings: connect.NewClient[v1.UpdateTenantEmailRejectionSettingsRequest, v1.UpdateTenantEmailRejectionSettingsResponse](
-			httpClient,
-			baseURL+TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure,
-			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantEmailRejectionSettings")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// tenantSettingsServiceClient implements TenantSettingsServiceClient.
-type tenantSettingsServiceClient struct {
-	getTenantTimezone                  *connect.Client[v1.GetTenantTimezoneRequest, v1.GetTenantTimezoneResponse]
-	updateTenantTimezone               *connect.Client[v1.UpdateTenantTimezoneRequest, v1.UpdateTenantTimezoneResponse]
-	getTenantDefaultLocale             *connect.Client[v1.GetTenantDefaultLocaleRequest, v1.GetTenantDefaultLocaleResponse]
-	updateTenantDefaultLocale          *connect.Client[v1.UpdateTenantDefaultLocaleRequest, v1.UpdateTenantDefaultLocaleResponse]
-	getTenantCommentSettings           *connect.Client[v1.GetTenantCommentSettingsRequest, v1.GetTenantCommentSettingsResponse]
-	updateTenantCommentSettings        *connect.Client[v1.UpdateTenantCommentSettingsRequest, v1.UpdateTenantCommentSettingsResponse]
-	getTenantAgeVerification           *connect.Client[v1.GetTenantAgeVerificationRequest, v1.GetTenantAgeVerificationResponse]
-	updateTenantAgeVerification        *connect.Client[v1.UpdateTenantAgeVerificationRequest, v1.UpdateTenantAgeVerificationResponse]
-	getTenantPurchaseSettings          *connect.Client[v1.GetTenantPurchaseSettingsRequest, v1.GetTenantPurchaseSettingsResponse]
-	updateTenantPurchaseSettings       *connect.Client[v1.UpdateTenantPurchaseSettingsRequest, v1.UpdateTenantPurchaseSettingsResponse]
-	getTenantLegalPages                *connect.Client[v1.GetTenantLegalPagesRequest, v1.GetTenantLegalPagesResponse]
-	updateTenantLegalPages             *connect.Client[v1.UpdateTenantLegalPagesRequest, v1.UpdateTenantLegalPagesResponse]
-	getTenantMobileAppAssociation      *connect.Client[v1.GetTenantMobileAppAssociationRequest, v1.GetTenantMobileAppAssociationResponse]
-	updateTenantMobileAppAssociation   *connect.Client[v1.UpdateTenantMobileAppAssociationRequest, v1.UpdateTenantMobileAppAssociationResponse]
-	getTenantSignInSettings            *connect.Client[v1.GetTenantSignInSettingsRequest, v1.GetTenantSignInSettingsResponse]
-	updateTenantSignInSettings         *connect.Client[v1.UpdateTenantSignInSettingsRequest, v1.UpdateTenantSignInSettingsResponse]
-	getTenantRetentionSettings         *connect.Client[v1.GetTenantRetentionSettingsRequest, v1.GetTenantRetentionSettingsResponse]
-	updateTenantRetentionSettings      *connect.Client[v1.UpdateTenantRetentionSettingsRequest, v1.UpdateTenantRetentionSettingsResponse]
-	getTenantCommunityLimitSettings    *connect.Client[v1.GetTenantCommunityLimitSettingsRequest, v1.GetTenantCommunityLimitSettingsResponse]
-	updateTenantCommunityLimitSettings *connect.Client[v1.UpdateTenantCommunityLimitSettingsRequest, v1.UpdateTenantCommunityLimitSettingsResponse]
-	getTenantEmailRejectionSettings    *connect.Client[v1.GetTenantEmailRejectionSettingsRequest, v1.GetTenantEmailRejectionSettingsResponse]
-	updateTenantEmailRejectionSettings *connect.Client[v1.UpdateTenantEmailRejectionSettingsRequest, v1.UpdateTenantEmailRejectionSettingsResponse]
-}
-
-// GetTenantTimezone calls publira.admin.v1.TenantSettingsService.GetTenantTimezone.
-func (c *tenantSettingsServiceClient) GetTenantTimezone(ctx context.Context, req *connect.Request[v1.GetTenantTimezoneRequest]) (*connect.Response[v1.GetTenantTimezoneResponse], error) {
-	return c.getTenantTimezone.CallUnary(ctx, req)
-}
-
-// UpdateTenantTimezone calls publira.admin.v1.TenantSettingsService.UpdateTenantTimezone.
-func (c *tenantSettingsServiceClient) UpdateTenantTimezone(ctx context.Context, req *connect.Request[v1.UpdateTenantTimezoneRequest]) (*connect.Response[v1.UpdateTenantTimezoneResponse], error) {
-	return c.updateTenantTimezone.CallUnary(ctx, req)
-}
-
-// GetTenantDefaultLocale calls publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale.
-func (c *tenantSettingsServiceClient) GetTenantDefaultLocale(ctx context.Context, req *connect.Request[v1.GetTenantDefaultLocaleRequest]) (*connect.Response[v1.GetTenantDefaultLocaleResponse], error) {
-	return c.getTenantDefaultLocale.CallUnary(ctx, req)
-}
-
-// UpdateTenantDefaultLocale calls publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale.
-func (c *tenantSettingsServiceClient) UpdateTenantDefaultLocale(ctx context.Context, req *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error) {
-	return c.updateTenantDefaultLocale.CallUnary(ctx, req)
-}
-
-// GetTenantCommentSettings calls publira.admin.v1.TenantSettingsService.GetTenantCommentSettings.
-func (c *tenantSettingsServiceClient) GetTenantCommentSettings(ctx context.Context, req *connect.Request[v1.GetTenantCommentSettingsRequest]) (*connect.Response[v1.GetTenantCommentSettingsResponse], error) {
-	return c.getTenantCommentSettings.CallUnary(ctx, req)
-}
-
-// UpdateTenantCommentSettings calls
-// publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings.
-func (c *tenantSettingsServiceClient) UpdateTenantCommentSettings(ctx context.Context, req *connect.Request[v1.UpdateTenantCommentSettingsRequest]) (*connect.Response[v1.UpdateTenantCommentSettingsResponse], error) {
-	return c.updateTenantCommentSettings.CallUnary(ctx, req)
-}
-
-// GetTenantAgeVerification calls publira.admin.v1.TenantSettingsService.GetTenantAgeVerification.
-func (c *tenantSettingsServiceClient) GetTenantAgeVerification(ctx context.Context, req *connect.Request[v1.GetTenantAgeVerificationRequest]) (*connect.Response[v1.GetTenantAgeVerificationResponse], error) {
-	return c.getTenantAgeVerification.CallUnary(ctx, req)
-}
-
-// UpdateTenantAgeVerification calls
-// publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification.
-func (c *tenantSettingsServiceClient) UpdateTenantAgeVerification(ctx context.Context, req *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error) {
-	return c.updateTenantAgeVerification.CallUnary(ctx, req)
-}
-
-// GetTenantPurchaseSettings calls publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings.
-func (c *tenantSettingsServiceClient) GetTenantPurchaseSettings(ctx context.Context, req *connect.Request[v1.GetTenantPurchaseSettingsRequest]) (*connect.Response[v1.GetTenantPurchaseSettingsResponse], error) {
-	return c.getTenantPurchaseSettings.CallUnary(ctx, req)
-}
-
-// UpdateTenantPurchaseSettings calls
-// publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings.
-func (c *tenantSettingsServiceClient) UpdateTenantPurchaseSettings(ctx context.Context, req *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error) {
-	return c.updateTenantPurchaseSettings.CallUnary(ctx, req)
-}
-
-// GetTenantLegalPages calls publira.admin.v1.TenantSettingsService.GetTenantLegalPages.
-func (c *tenantSettingsServiceClient) GetTenantLegalPages(ctx context.Context, req *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error) {
-	return c.getTenantLegalPages.CallUnary(ctx, req)
-}
-
-// UpdateTenantLegalPages calls publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages.
-func (c *tenantSettingsServiceClient) UpdateTenantLegalPages(ctx context.Context, req *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error) {
-	return c.updateTenantLegalPages.CallUnary(ctx, req)
-}
-
-// GetTenantMobileAppAssociation calls
-// publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation.
-func (c *tenantSettingsServiceClient) GetTenantMobileAppAssociation(ctx context.Context, req *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error) {
-	return c.getTenantMobileAppAssociation.CallUnary(ctx, req)
-}
-
-// UpdateTenantMobileAppAssociation calls
-// publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation.
-func (c *tenantSettingsServiceClient) UpdateTenantMobileAppAssociation(ctx context.Context, req *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error) {
-	return c.updateTenantMobileAppAssociation.CallUnary(ctx, req)
-}
-
-// GetTenantSignInSettings calls publira.admin.v1.TenantSettingsService.GetTenantSignInSettings.
-func (c *tenantSettingsServiceClient) GetTenantSignInSettings(ctx context.Context, req *connect.Request[v1.GetTenantSignInSettingsRequest]) (*connect.Response[v1.GetTenantSignInSettingsResponse], error) {
-	return c.getTenantSignInSettings.CallUnary(ctx, req)
-}
-
-// UpdateTenantSignInSettings calls
-// publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings.
-func (c *tenantSettingsServiceClient) UpdateTenantSignInSettings(ctx context.Context, req *connect.Request[v1.UpdateTenantSignInSettingsRequest]) (*connect.Response[v1.UpdateTenantSignInSettingsResponse], error) {
-	return c.updateTenantSignInSettings.CallUnary(ctx, req)
-}
-
-// GetTenantRetentionSettings calls
-// publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings.
-func (c *tenantSettingsServiceClient) GetTenantRetentionSettings(ctx context.Context, req *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error) {
-	return c.getTenantRetentionSettings.CallUnary(ctx, req)
-}
-
-// UpdateTenantRetentionSettings calls
-// publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings.
-func (c *tenantSettingsServiceClient) UpdateTenantRetentionSettings(ctx context.Context, req *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error) {
-	return c.updateTenantRetentionSettings.CallUnary(ctx, req)
-}
-
-// GetTenantCommunityLimitSettings calls
-// publira.admin.v1.TenantSettingsService.GetTenantCommunityLimitSettings.
-func (c *tenantSettingsServiceClient) GetTenantCommunityLimitSettings(ctx context.Context, req *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error) {
-	return c.getTenantCommunityLimitSettings.CallUnary(ctx, req)
-}
-
-// UpdateTenantCommunityLimitSettings calls
-// publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings.
-func (c *tenantSettingsServiceClient) UpdateTenantCommunityLimitSettings(ctx context.Context, req *connect.Request[v1.UpdateTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.UpdateTenantCommunityLimitSettingsResponse], error) {
-	return c.updateTenantCommunityLimitSettings.CallUnary(ctx, req)
-}
-
-// GetTenantEmailRejectionSettings calls
-// publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings.
-func (c *tenantSettingsServiceClient) GetTenantEmailRejectionSettings(ctx context.Context, req *connect.Request[v1.GetTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.GetTenantEmailRejectionSettingsResponse], error) {
-	return c.getTenantEmailRejectionSettings.CallUnary(ctx, req)
-}
-
-// UpdateTenantEmailRejectionSettings calls
-// publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings.
-func (c *tenantSettingsServiceClient) UpdateTenantEmailRejectionSettings(ctx context.Context, req *connect.Request[v1.UpdateTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailRejectionSettingsResponse], error) {
-	return c.updateTenantEmailRejectionSettings.CallUnary(ctx, req)
+// service. Multiple service clients may share a single connect.Client.
+func NewTenantSettingsServiceClient(client *connect.Client) TenantSettingsServiceClient {
+	return &tenantSettingsServiceClient{client: client}
 }
 
 // TenantSettingsServiceHandler is an implementation of the publira.admin.v1.TenantSettingsService
 // service.
 type TenantSettingsServiceHandler interface {
 	// Minimum role: tenant_auditor.
-	GetTenantTimezone(context.Context, *connect.Request[v1.GetTenantTimezoneRequest]) (*connect.Response[v1.GetTenantTimezoneResponse], error)
+	GetTenantTimezone(context.Context, *v1.GetTenantTimezoneRequest) (*v1.GetTenantTimezoneResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantTimezone(context.Context, *connect.Request[v1.UpdateTenantTimezoneRequest]) (*connect.Response[v1.UpdateTenantTimezoneResponse], error)
+	UpdateTenantTimezone(context.Context, *v1.UpdateTenantTimezoneRequest) (*v1.UpdateTenantTimezoneResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantDefaultLocale(context.Context, *connect.Request[v1.GetTenantDefaultLocaleRequest]) (*connect.Response[v1.GetTenantDefaultLocaleResponse], error)
+	GetTenantDefaultLocale(context.Context, *v1.GetTenantDefaultLocaleRequest) (*v1.GetTenantDefaultLocaleResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error)
+	UpdateTenantDefaultLocale(context.Context, *v1.UpdateTenantDefaultLocaleRequest) (*v1.UpdateTenantDefaultLocaleResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantCommentSettings(context.Context, *connect.Request[v1.GetTenantCommentSettingsRequest]) (*connect.Response[v1.GetTenantCommentSettingsResponse], error)
+	GetTenantCommentSettings(context.Context, *v1.GetTenantCommentSettingsRequest) (*v1.GetTenantCommentSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantCommentSettings(context.Context, *connect.Request[v1.UpdateTenantCommentSettingsRequest]) (*connect.Response[v1.UpdateTenantCommentSettingsResponse], error)
+	UpdateTenantCommentSettings(context.Context, *v1.UpdateTenantCommentSettingsRequest) (*v1.UpdateTenantCommentSettingsResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantAgeVerification(context.Context, *connect.Request[v1.GetTenantAgeVerificationRequest]) (*connect.Response[v1.GetTenantAgeVerificationResponse], error)
+	GetTenantAgeVerification(context.Context, *v1.GetTenantAgeVerificationRequest) (*v1.GetTenantAgeVerificationResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error)
+	UpdateTenantAgeVerification(context.Context, *v1.UpdateTenantAgeVerificationRequest) (*v1.UpdateTenantAgeVerificationResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantPurchaseSettings(context.Context, *connect.Request[v1.GetTenantPurchaseSettingsRequest]) (*connect.Response[v1.GetTenantPurchaseSettingsResponse], error)
+	GetTenantPurchaseSettings(context.Context, *v1.GetTenantPurchaseSettingsRequest) (*v1.GetTenantPurchaseSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error)
+	UpdateTenantPurchaseSettings(context.Context, *v1.UpdateTenantPurchaseSettingsRequest) (*v1.UpdateTenantPurchaseSettingsResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error)
+	GetTenantLegalPages(context.Context, *v1.GetTenantLegalPagesRequest) (*v1.GetTenantLegalPagesResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error)
+	UpdateTenantLegalPages(context.Context, *v1.UpdateTenantLegalPagesRequest) (*v1.UpdateTenantLegalPagesResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error)
+	GetTenantMobileAppAssociation(context.Context, *v1.GetTenantMobileAppAssociationRequest) (*v1.GetTenantMobileAppAssociationResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantMobileAppAssociation(context.Context, *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error)
+	UpdateTenantMobileAppAssociation(context.Context, *v1.UpdateTenantMobileAppAssociationRequest) (*v1.UpdateTenantMobileAppAssociationResponse, error)
 	// Minimum role: tenant_admin.
-	GetTenantSignInSettings(context.Context, *connect.Request[v1.GetTenantSignInSettingsRequest]) (*connect.Response[v1.GetTenantSignInSettingsResponse], error)
+	GetTenantSignInSettings(context.Context, *v1.GetTenantSignInSettingsRequest) (*v1.GetTenantSignInSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantSignInSettings(context.Context, *connect.Request[v1.UpdateTenantSignInSettingsRequest]) (*connect.Response[v1.UpdateTenantSignInSettingsResponse], error)
+	UpdateTenantSignInSettings(context.Context, *v1.UpdateTenantSignInSettingsRequest) (*v1.UpdateTenantSignInSettingsResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error)
+	GetTenantRetentionSettings(context.Context, *v1.GetTenantRetentionSettingsRequest) (*v1.GetTenantRetentionSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error)
+	UpdateTenantRetentionSettings(context.Context, *v1.UpdateTenantRetentionSettingsRequest) (*v1.UpdateTenantRetentionSettingsResponse, error)
 	// Minimum role: tenant_auditor.
-	GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error)
+	GetTenantCommunityLimitSettings(context.Context, *v1.GetTenantCommunityLimitSettingsRequest) (*v1.GetTenantCommunityLimitSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantCommunityLimitSettings(context.Context, *connect.Request[v1.UpdateTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.UpdateTenantCommunityLimitSettingsResponse], error)
+	UpdateTenantCommunityLimitSettings(context.Context, *v1.UpdateTenantCommunityLimitSettingsRequest) (*v1.UpdateTenantCommunityLimitSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	GetTenantEmailRejectionSettings(context.Context, *connect.Request[v1.GetTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.GetTenantEmailRejectionSettingsResponse], error)
+	GetTenantEmailRejectionSettings(context.Context, *v1.GetTenantEmailRejectionSettingsRequest) (*v1.GetTenantEmailRejectionSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantEmailRejectionSettings(context.Context, *connect.Request[v1.UpdateTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailRejectionSettingsResponse], error)
+	UpdateTenantEmailRejectionSettings(context.Context, *v1.UpdateTenantEmailRejectionSettingsRequest) (*v1.UpdateTenantEmailRejectionSettingsResponse, error)
 }
 
-// NewTenantSettingsServiceHandler builds an HTTP handler from the service implementation. It
-// returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	tenantSettingsServiceMethods := v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods()
-	tenantSettingsServiceGetTenantTimezoneHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceGetTenantTimezoneProcedure,
-		svc.GetTenantTimezone,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantTimezone")),
-		connect.WithHandlerOptions(opts...),
+// RegisterTenantSettingsServiceHandler registers svc as the publira.admin.v1.TenantSettingsService
+// implementation on server.
+func RegisterTenantSettingsServiceHandler(server *connect.Server, svc TenantSettingsServiceHandler) {
+	adapter := tenantSettingsServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: tenantSettingsServiceGetTenantTimezoneSpec(), Handler: adapter.getTenantTimezone},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantTimezoneSpec(), Handler: adapter.updateTenantTimezone},
+		connect.Method{Spec: tenantSettingsServiceGetTenantDefaultLocaleSpec(), Handler: adapter.getTenantDefaultLocale},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantDefaultLocaleSpec(), Handler: adapter.updateTenantDefaultLocale},
+		connect.Method{Spec: tenantSettingsServiceGetTenantCommentSettingsSpec(), Handler: adapter.getTenantCommentSettings},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantCommentSettingsSpec(), Handler: adapter.updateTenantCommentSettings},
+		connect.Method{Spec: tenantSettingsServiceGetTenantAgeVerificationSpec(), Handler: adapter.getTenantAgeVerification},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantAgeVerificationSpec(), Handler: adapter.updateTenantAgeVerification},
+		connect.Method{Spec: tenantSettingsServiceGetTenantPurchaseSettingsSpec(), Handler: adapter.getTenantPurchaseSettings},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantPurchaseSettingsSpec(), Handler: adapter.updateTenantPurchaseSettings},
+		connect.Method{Spec: tenantSettingsServiceGetTenantLegalPagesSpec(), Handler: adapter.getTenantLegalPages},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantLegalPagesSpec(), Handler: adapter.updateTenantLegalPages},
+		connect.Method{Spec: tenantSettingsServiceGetTenantMobileAppAssociationSpec(), Handler: adapter.getTenantMobileAppAssociation},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantMobileAppAssociationSpec(), Handler: adapter.updateTenantMobileAppAssociation},
+		connect.Method{Spec: tenantSettingsServiceGetTenantSignInSettingsSpec(), Handler: adapter.getTenantSignInSettings},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantSignInSettingsSpec(), Handler: adapter.updateTenantSignInSettings},
+		connect.Method{Spec: tenantSettingsServiceGetTenantRetentionSettingsSpec(), Handler: adapter.getTenantRetentionSettings},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantRetentionSettingsSpec(), Handler: adapter.updateTenantRetentionSettings},
+		connect.Method{Spec: tenantSettingsServiceGetTenantCommunityLimitSettingsSpec(), Handler: adapter.getTenantCommunityLimitSettings},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantCommunityLimitSettingsSpec(), Handler: adapter.updateTenantCommunityLimitSettings},
+		connect.Method{Spec: tenantSettingsServiceGetTenantEmailRejectionSettingsSpec(), Handler: adapter.getTenantEmailRejectionSettings},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantEmailRejectionSettingsSpec(), Handler: adapter.updateTenantEmailRejectionSettings},
 	)
-	tenantSettingsServiceUpdateTenantTimezoneHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceUpdateTenantTimezoneProcedure,
-		svc.UpdateTenantTimezone,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantTimezone")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceGetTenantDefaultLocaleHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceGetTenantDefaultLocaleProcedure,
-		svc.GetTenantDefaultLocale,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantDefaultLocale")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceUpdateTenantDefaultLocaleHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceUpdateTenantDefaultLocaleProcedure,
-		svc.UpdateTenantDefaultLocale,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantDefaultLocale")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceGetTenantCommentSettingsHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceGetTenantCommentSettingsProcedure,
-		svc.GetTenantCommentSettings,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantCommentSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceUpdateTenantCommentSettingsHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceUpdateTenantCommentSettingsProcedure,
-		svc.UpdateTenantCommentSettings,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantCommentSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceGetTenantAgeVerificationHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceGetTenantAgeVerificationProcedure,
-		svc.GetTenantAgeVerification,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantAgeVerification")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceUpdateTenantAgeVerificationHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceUpdateTenantAgeVerificationProcedure,
-		svc.UpdateTenantAgeVerification,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantAgeVerification")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceGetTenantPurchaseSettingsHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceGetTenantPurchaseSettingsProcedure,
-		svc.GetTenantPurchaseSettings,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantPurchaseSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceUpdateTenantPurchaseSettingsHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure,
-		svc.UpdateTenantPurchaseSettings,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantPurchaseSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceGetTenantLegalPagesHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceGetTenantLegalPagesProcedure,
-		svc.GetTenantLegalPages,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantLegalPages")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceUpdateTenantLegalPagesHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceUpdateTenantLegalPagesProcedure,
-		svc.UpdateTenantLegalPages,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantLegalPages")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceGetTenantMobileAppAssociationHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceGetTenantMobileAppAssociationProcedure,
-		svc.GetTenantMobileAppAssociation,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantMobileAppAssociation")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceUpdateTenantMobileAppAssociationHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure,
-		svc.UpdateTenantMobileAppAssociation,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantMobileAppAssociation")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceGetTenantSignInSettingsHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceGetTenantSignInSettingsProcedure,
-		svc.GetTenantSignInSettings,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantSignInSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceUpdateTenantSignInSettingsHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceUpdateTenantSignInSettingsProcedure,
-		svc.UpdateTenantSignInSettings,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantSignInSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceGetTenantRetentionSettingsHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceGetTenantRetentionSettingsProcedure,
-		svc.GetTenantRetentionSettings,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantRetentionSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceUpdateTenantRetentionSettingsHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceUpdateTenantRetentionSettingsProcedure,
-		svc.UpdateTenantRetentionSettings,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantRetentionSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceGetTenantCommunityLimitSettingsHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceGetTenantCommunityLimitSettingsProcedure,
-		svc.GetTenantCommunityLimitSettings,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantCommunityLimitSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceUpdateTenantCommunityLimitSettingsHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceUpdateTenantCommunityLimitSettingsProcedure,
-		svc.UpdateTenantCommunityLimitSettings,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantCommunityLimitSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceGetTenantEmailRejectionSettingsHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceGetTenantEmailRejectionSettingsProcedure,
-		svc.GetTenantEmailRejectionSettings,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantEmailRejectionSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tenantSettingsServiceUpdateTenantEmailRejectionSettingsHandler := connect.NewUnaryHandler(
-		TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure,
-		svc.UpdateTenantEmailRejectionSettings,
-		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantEmailRejectionSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.admin.v1.TenantSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case TenantSettingsServiceGetTenantTimezoneProcedure:
-			tenantSettingsServiceGetTenantTimezoneHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceUpdateTenantTimezoneProcedure:
-			tenantSettingsServiceUpdateTenantTimezoneHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceGetTenantDefaultLocaleProcedure:
-			tenantSettingsServiceGetTenantDefaultLocaleHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceUpdateTenantDefaultLocaleProcedure:
-			tenantSettingsServiceUpdateTenantDefaultLocaleHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceGetTenantCommentSettingsProcedure:
-			tenantSettingsServiceGetTenantCommentSettingsHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceUpdateTenantCommentSettingsProcedure:
-			tenantSettingsServiceUpdateTenantCommentSettingsHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceGetTenantAgeVerificationProcedure:
-			tenantSettingsServiceGetTenantAgeVerificationHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceUpdateTenantAgeVerificationProcedure:
-			tenantSettingsServiceUpdateTenantAgeVerificationHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceGetTenantPurchaseSettingsProcedure:
-			tenantSettingsServiceGetTenantPurchaseSettingsHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceUpdateTenantPurchaseSettingsProcedure:
-			tenantSettingsServiceUpdateTenantPurchaseSettingsHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceGetTenantLegalPagesProcedure:
-			tenantSettingsServiceGetTenantLegalPagesHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceUpdateTenantLegalPagesProcedure:
-			tenantSettingsServiceUpdateTenantLegalPagesHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceGetTenantMobileAppAssociationProcedure:
-			tenantSettingsServiceGetTenantMobileAppAssociationHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceUpdateTenantMobileAppAssociationProcedure:
-			tenantSettingsServiceUpdateTenantMobileAppAssociationHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceGetTenantSignInSettingsProcedure:
-			tenantSettingsServiceGetTenantSignInSettingsHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceUpdateTenantSignInSettingsProcedure:
-			tenantSettingsServiceUpdateTenantSignInSettingsHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceGetTenantRetentionSettingsProcedure:
-			tenantSettingsServiceGetTenantRetentionSettingsHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceUpdateTenantRetentionSettingsProcedure:
-			tenantSettingsServiceUpdateTenantRetentionSettingsHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceGetTenantCommunityLimitSettingsProcedure:
-			tenantSettingsServiceGetTenantCommunityLimitSettingsHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceUpdateTenantCommunityLimitSettingsProcedure:
-			tenantSettingsServiceUpdateTenantCommunityLimitSettingsHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceGetTenantEmailRejectionSettingsProcedure:
-			tenantSettingsServiceGetTenantEmailRejectionSettingsHandler.ServeHTTP(w, r)
-		case TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure:
-			tenantSettingsServiceUpdateTenantEmailRejectionSettingsHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedTenantSettingsServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedTenantSettingsServiceHandler struct{}
 
-func (UnimplementedTenantSettingsServiceHandler) GetTenantTimezone(context.Context, *connect.Request[v1.GetTenantTimezoneRequest]) (*connect.Response[v1.GetTenantTimezoneResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantTimezone is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) GetTenantTimezone(context.Context, *v1.GetTenantTimezoneRequest) (*v1.GetTenantTimezoneResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantTimezone is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) UpdateTenantTimezone(context.Context, *connect.Request[v1.UpdateTenantTimezoneRequest]) (*connect.Response[v1.UpdateTenantTimezoneResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantTimezone is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantTimezone(context.Context, *v1.UpdateTenantTimezoneRequest) (*v1.UpdateTenantTimezoneResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantTimezone is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) GetTenantDefaultLocale(context.Context, *connect.Request[v1.GetTenantDefaultLocaleRequest]) (*connect.Response[v1.GetTenantDefaultLocaleResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) GetTenantDefaultLocale(context.Context, *v1.GetTenantDefaultLocaleRequest) (*v1.GetTenantDefaultLocaleResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantDefaultLocale(context.Context, *v1.UpdateTenantDefaultLocaleRequest) (*v1.UpdateTenantDefaultLocaleResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) GetTenantCommentSettings(context.Context, *connect.Request[v1.GetTenantCommentSettingsRequest]) (*connect.Response[v1.GetTenantCommentSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantCommentSettings is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) GetTenantCommentSettings(context.Context, *v1.GetTenantCommentSettingsRequest) (*v1.GetTenantCommentSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantCommentSettings is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) UpdateTenantCommentSettings(context.Context, *connect.Request[v1.UpdateTenantCommentSettingsRequest]) (*connect.Response[v1.UpdateTenantCommentSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantCommentSettings(context.Context, *v1.UpdateTenantCommentSettingsRequest) (*v1.UpdateTenantCommentSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) GetTenantAgeVerification(context.Context, *connect.Request[v1.GetTenantAgeVerificationRequest]) (*connect.Response[v1.GetTenantAgeVerificationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantAgeVerification is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) GetTenantAgeVerification(context.Context, *v1.GetTenantAgeVerificationRequest) (*v1.GetTenantAgeVerificationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantAgeVerification is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) UpdateTenantAgeVerification(context.Context, *connect.Request[v1.UpdateTenantAgeVerificationRequest]) (*connect.Response[v1.UpdateTenantAgeVerificationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantAgeVerification(context.Context, *v1.UpdateTenantAgeVerificationRequest) (*v1.UpdateTenantAgeVerificationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) GetTenantPurchaseSettings(context.Context, *connect.Request[v1.GetTenantPurchaseSettingsRequest]) (*connect.Response[v1.GetTenantPurchaseSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) GetTenantPurchaseSettings(context.Context, *v1.GetTenantPurchaseSettingsRequest) (*v1.GetTenantPurchaseSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) UpdateTenantPurchaseSettings(context.Context, *connect.Request[v1.UpdateTenantPurchaseSettingsRequest]) (*connect.Response[v1.UpdateTenantPurchaseSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantPurchaseSettings(context.Context, *v1.UpdateTenantPurchaseSettingsRequest) (*v1.UpdateTenantPurchaseSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) GetTenantLegalPages(context.Context, *connect.Request[v1.GetTenantLegalPagesRequest]) (*connect.Response[v1.GetTenantLegalPagesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantLegalPages is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) GetTenantLegalPages(context.Context, *v1.GetTenantLegalPagesRequest) (*v1.GetTenantLegalPagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantLegalPages is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) UpdateTenantLegalPages(context.Context, *connect.Request[v1.UpdateTenantLegalPagesRequest]) (*connect.Response[v1.UpdateTenantLegalPagesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantLegalPages(context.Context, *v1.UpdateTenantLegalPagesRequest) (*v1.UpdateTenantLegalPagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) GetTenantMobileAppAssociation(context.Context, *connect.Request[v1.GetTenantMobileAppAssociationRequest]) (*connect.Response[v1.GetTenantMobileAppAssociationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) GetTenantMobileAppAssociation(context.Context, *v1.GetTenantMobileAppAssociationRequest) (*v1.GetTenantMobileAppAssociationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) UpdateTenantMobileAppAssociation(context.Context, *connect.Request[v1.UpdateTenantMobileAppAssociationRequest]) (*connect.Response[v1.UpdateTenantMobileAppAssociationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantMobileAppAssociation(context.Context, *v1.UpdateTenantMobileAppAssociationRequest) (*v1.UpdateTenantMobileAppAssociationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) GetTenantSignInSettings(context.Context, *connect.Request[v1.GetTenantSignInSettingsRequest]) (*connect.Response[v1.GetTenantSignInSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantSignInSettings is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) GetTenantSignInSettings(context.Context, *v1.GetTenantSignInSettingsRequest) (*v1.GetTenantSignInSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantSignInSettings is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) UpdateTenantSignInSettings(context.Context, *connect.Request[v1.UpdateTenantSignInSettingsRequest]) (*connect.Response[v1.UpdateTenantSignInSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantSignInSettings(context.Context, *v1.UpdateTenantSignInSettingsRequest) (*v1.UpdateTenantSignInSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) GetTenantRetentionSettings(context.Context, *connect.Request[v1.GetTenantRetentionSettingsRequest]) (*connect.Response[v1.GetTenantRetentionSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) GetTenantRetentionSettings(context.Context, *v1.GetTenantRetentionSettingsRequest) (*v1.GetTenantRetentionSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) UpdateTenantRetentionSettings(context.Context, *connect.Request[v1.UpdateTenantRetentionSettingsRequest]) (*connect.Response[v1.UpdateTenantRetentionSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantRetentionSettings(context.Context, *v1.UpdateTenantRetentionSettingsRequest) (*v1.UpdateTenantRetentionSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) GetTenantCommunityLimitSettings(context.Context, *connect.Request[v1.GetTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.GetTenantCommunityLimitSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantCommunityLimitSettings is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) GetTenantCommunityLimitSettings(context.Context, *v1.GetTenantCommunityLimitSettingsRequest) (*v1.GetTenantCommunityLimitSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantCommunityLimitSettings is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) UpdateTenantCommunityLimitSettings(context.Context, *connect.Request[v1.UpdateTenantCommunityLimitSettingsRequest]) (*connect.Response[v1.UpdateTenantCommunityLimitSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantCommunityLimitSettings(context.Context, *v1.UpdateTenantCommunityLimitSettingsRequest) (*v1.UpdateTenantCommunityLimitSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) GetTenantEmailRejectionSettings(context.Context, *connect.Request[v1.GetTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.GetTenantEmailRejectionSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) GetTenantEmailRejectionSettings(context.Context, *v1.GetTenantEmailRejectionSettingsRequest) (*v1.GetTenantEmailRejectionSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings is not implemented")
 }
 
-func (UnimplementedTenantSettingsServiceHandler) UpdateTenantEmailRejectionSettings(context.Context, *connect.Request[v1.UpdateTenantEmailRejectionSettingsRequest]) (*connect.Response[v1.UpdateTenantEmailRejectionSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings is not implemented"))
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantEmailRejectionSettings(context.Context, *v1.UpdateTenantEmailRejectionSettingsRequest) (*v1.UpdateTenantEmailRejectionSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings is not implemented")
+}
+
+type tenantSettingsServiceClient struct {
+	client *connect.Client
+}
+
+func (c *tenantSettingsServiceClient) GetTenantTimezone(ctx context.Context, req *v1.GetTenantTimezoneRequest) (*v1.GetTenantTimezoneResponse, error) {
+	var res v1.GetTenantTimezoneResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantTimezoneSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantTimezone(ctx context.Context, req *v1.UpdateTenantTimezoneRequest) (*v1.UpdateTenantTimezoneResponse, error) {
+	var res v1.UpdateTenantTimezoneResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantTimezoneSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantDefaultLocale(ctx context.Context, req *v1.GetTenantDefaultLocaleRequest) (*v1.GetTenantDefaultLocaleResponse, error) {
+	var res v1.GetTenantDefaultLocaleResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantDefaultLocaleSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantDefaultLocale(ctx context.Context, req *v1.UpdateTenantDefaultLocaleRequest) (*v1.UpdateTenantDefaultLocaleResponse, error) {
+	var res v1.UpdateTenantDefaultLocaleResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantDefaultLocaleSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantCommentSettings(ctx context.Context, req *v1.GetTenantCommentSettingsRequest) (*v1.GetTenantCommentSettingsResponse, error) {
+	var res v1.GetTenantCommentSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantCommentSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantCommentSettings(ctx context.Context, req *v1.UpdateTenantCommentSettingsRequest) (*v1.UpdateTenantCommentSettingsResponse, error) {
+	var res v1.UpdateTenantCommentSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantCommentSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantAgeVerification(ctx context.Context, req *v1.GetTenantAgeVerificationRequest) (*v1.GetTenantAgeVerificationResponse, error) {
+	var res v1.GetTenantAgeVerificationResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantAgeVerificationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantAgeVerification(ctx context.Context, req *v1.UpdateTenantAgeVerificationRequest) (*v1.UpdateTenantAgeVerificationResponse, error) {
+	var res v1.UpdateTenantAgeVerificationResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantAgeVerificationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantPurchaseSettings(ctx context.Context, req *v1.GetTenantPurchaseSettingsRequest) (*v1.GetTenantPurchaseSettingsResponse, error) {
+	var res v1.GetTenantPurchaseSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantPurchaseSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantPurchaseSettings(ctx context.Context, req *v1.UpdateTenantPurchaseSettingsRequest) (*v1.UpdateTenantPurchaseSettingsResponse, error) {
+	var res v1.UpdateTenantPurchaseSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantPurchaseSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantLegalPages(ctx context.Context, req *v1.GetTenantLegalPagesRequest) (*v1.GetTenantLegalPagesResponse, error) {
+	var res v1.GetTenantLegalPagesResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantLegalPagesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantLegalPages(ctx context.Context, req *v1.UpdateTenantLegalPagesRequest) (*v1.UpdateTenantLegalPagesResponse, error) {
+	var res v1.UpdateTenantLegalPagesResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantLegalPagesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantMobileAppAssociation(ctx context.Context, req *v1.GetTenantMobileAppAssociationRequest) (*v1.GetTenantMobileAppAssociationResponse, error) {
+	var res v1.GetTenantMobileAppAssociationResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantMobileAppAssociationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantMobileAppAssociation(ctx context.Context, req *v1.UpdateTenantMobileAppAssociationRequest) (*v1.UpdateTenantMobileAppAssociationResponse, error) {
+	var res v1.UpdateTenantMobileAppAssociationResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantMobileAppAssociationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantSignInSettings(ctx context.Context, req *v1.GetTenantSignInSettingsRequest) (*v1.GetTenantSignInSettingsResponse, error) {
+	var res v1.GetTenantSignInSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantSignInSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantSignInSettings(ctx context.Context, req *v1.UpdateTenantSignInSettingsRequest) (*v1.UpdateTenantSignInSettingsResponse, error) {
+	var res v1.UpdateTenantSignInSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantSignInSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantRetentionSettings(ctx context.Context, req *v1.GetTenantRetentionSettingsRequest) (*v1.GetTenantRetentionSettingsResponse, error) {
+	var res v1.GetTenantRetentionSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantRetentionSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantRetentionSettings(ctx context.Context, req *v1.UpdateTenantRetentionSettingsRequest) (*v1.UpdateTenantRetentionSettingsResponse, error) {
+	var res v1.UpdateTenantRetentionSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantRetentionSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantCommunityLimitSettings(ctx context.Context, req *v1.GetTenantCommunityLimitSettingsRequest) (*v1.GetTenantCommunityLimitSettingsResponse, error) {
+	var res v1.GetTenantCommunityLimitSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantCommunityLimitSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantCommunityLimitSettings(ctx context.Context, req *v1.UpdateTenantCommunityLimitSettingsRequest) (*v1.UpdateTenantCommunityLimitSettingsResponse, error) {
+	var res v1.UpdateTenantCommunityLimitSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantCommunityLimitSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantEmailRejectionSettings(ctx context.Context, req *v1.GetTenantEmailRejectionSettingsRequest) (*v1.GetTenantEmailRejectionSettingsResponse, error) {
+	var res v1.GetTenantEmailRejectionSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantEmailRejectionSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantEmailRejectionSettings(ctx context.Context, req *v1.UpdateTenantEmailRejectionSettingsRequest) (*v1.UpdateTenantEmailRejectionSettingsResponse, error) {
+	var res v1.UpdateTenantEmailRejectionSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantEmailRejectionSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type tenantSettingsServiceHandler struct{ svc TenantSettingsServiceHandler }
+
+func (h tenantSettingsServiceHandler) getTenantTimezone(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantTimezoneRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantTimezone(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantTimezone(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantTimezoneRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantTimezone(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantDefaultLocale(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantDefaultLocaleRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantDefaultLocale(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantDefaultLocale(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantDefaultLocaleRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantDefaultLocale(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantCommentSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantCommentSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantCommentSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantCommentSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantCommentSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantCommentSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantAgeVerification(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantAgeVerificationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantAgeVerification(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantAgeVerification(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantAgeVerificationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantAgeVerification(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantPurchaseSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantPurchaseSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantPurchaseSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantPurchaseSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantPurchaseSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantPurchaseSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantLegalPages(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantLegalPagesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantLegalPages(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantLegalPages(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantLegalPagesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantLegalPages(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantMobileAppAssociation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantMobileAppAssociationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantMobileAppAssociation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantMobileAppAssociation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantMobileAppAssociationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantMobileAppAssociation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantSignInSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantSignInSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantSignInSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantSignInSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantSignInSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantSignInSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantRetentionSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantRetentionSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantRetentionSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantRetentionSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantRetentionSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantRetentionSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantCommunityLimitSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantCommunityLimitSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantCommunityLimitSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantCommunityLimitSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantCommunityLimitSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantCommunityLimitSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantEmailRejectionSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantEmailRejectionSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantEmailRejectionSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantEmailRejectionSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantEmailRejectionSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantEmailRejectionSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

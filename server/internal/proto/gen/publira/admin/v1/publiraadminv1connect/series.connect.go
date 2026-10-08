@@ -5,856 +5,1033 @@
 package publiraadminv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AdminSeriesServiceName is the fully-qualified name of the AdminSeriesService service.
 	AdminSeriesServiceName = "publira.admin.v1.AdminSeriesService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AdminSeriesServiceCreateSeriesProcedure is the fully-qualified name of the AdminSeriesService's
+	// AdminSeriesServiceCreateSeriesProcedure is the procedure name of the AdminSeriesService's
 	// CreateSeries RPC.
 	AdminSeriesServiceCreateSeriesProcedure = "/publira.admin.v1.AdminSeriesService/CreateSeries"
-	// AdminSeriesServiceUpdateSeriesProcedure is the fully-qualified name of the AdminSeriesService's
+	// AdminSeriesServiceUpdateSeriesProcedure is the procedure name of the AdminSeriesService's
 	// UpdateSeries RPC.
 	AdminSeriesServiceUpdateSeriesProcedure = "/publira.admin.v1.AdminSeriesService/UpdateSeries"
-	// AdminSeriesServiceListSeriesProcedure is the fully-qualified name of the AdminSeriesService's
+	// AdminSeriesServiceListSeriesProcedure is the procedure name of the AdminSeriesService's
 	// ListSeries RPC.
 	AdminSeriesServiceListSeriesProcedure = "/publira.admin.v1.AdminSeriesService/ListSeries"
-	// AdminSeriesServiceGetSeriesProcedure is the fully-qualified name of the AdminSeriesService's
-	// GetSeries RPC.
+	// AdminSeriesServiceGetSeriesProcedure is the procedure name of the AdminSeriesService's GetSeries
+	// RPC.
 	AdminSeriesServiceGetSeriesProcedure = "/publira.admin.v1.AdminSeriesService/GetSeries"
-	// AdminSeriesServiceListEpisodesProcedure is the fully-qualified name of the AdminSeriesService's
+	// AdminSeriesServiceListEpisodesProcedure is the procedure name of the AdminSeriesService's
 	// ListEpisodes RPC.
 	AdminSeriesServiceListEpisodesProcedure = "/publira.admin.v1.AdminSeriesService/ListEpisodes"
-	// AdminSeriesServiceGetEpisodeProcedure is the fully-qualified name of the AdminSeriesService's
+	// AdminSeriesServiceGetEpisodeProcedure is the procedure name of the AdminSeriesService's
 	// GetEpisode RPC.
 	AdminSeriesServiceGetEpisodeProcedure = "/publira.admin.v1.AdminSeriesService/GetEpisode"
-	// AdminSeriesServiceReorderEpisodesProcedure is the fully-qualified name of the
-	// AdminSeriesService's ReorderEpisodes RPC.
+	// AdminSeriesServiceReorderEpisodesProcedure is the procedure name of the AdminSeriesService's
+	// ReorderEpisodes RPC.
 	AdminSeriesServiceReorderEpisodesProcedure = "/publira.admin.v1.AdminSeriesService/ReorderEpisodes"
-	// AdminSeriesServiceCreateEpisodeProcedure is the fully-qualified name of the AdminSeriesService's
+	// AdminSeriesServiceCreateEpisodeProcedure is the procedure name of the AdminSeriesService's
 	// CreateEpisode RPC.
 	AdminSeriesServiceCreateEpisodeProcedure = "/publira.admin.v1.AdminSeriesService/CreateEpisode"
-	// AdminSeriesServiceUploadEpisodeImagesProcedure is the fully-qualified name of the
-	// AdminSeriesService's UploadEpisodeImages RPC.
+	// AdminSeriesServiceUploadEpisodeImagesProcedure is the procedure name of the AdminSeriesService's
+	// UploadEpisodeImages RPC.
 	AdminSeriesServiceUploadEpisodeImagesProcedure = "/publira.admin.v1.AdminSeriesService/UploadEpisodeImages"
-	// AdminSeriesServiceListEpisodeImagesProcedure is the fully-qualified name of the
-	// AdminSeriesService's ListEpisodeImages RPC.
+	// AdminSeriesServiceListEpisodeImagesProcedure is the procedure name of the AdminSeriesService's
+	// ListEpisodeImages RPC.
 	AdminSeriesServiceListEpisodeImagesProcedure = "/publira.admin.v1.AdminSeriesService/ListEpisodeImages"
-	// AdminSeriesServiceReorderEpisodeImagesProcedure is the fully-qualified name of the
-	// AdminSeriesService's ReorderEpisodeImages RPC.
+	// AdminSeriesServiceReorderEpisodeImagesProcedure is the procedure name of the AdminSeriesService's
+	// ReorderEpisodeImages RPC.
 	AdminSeriesServiceReorderEpisodeImagesProcedure = "/publira.admin.v1.AdminSeriesService/ReorderEpisodeImages"
-	// AdminSeriesServiceUpdateEpisodePublishScheduleProcedure is the fully-qualified name of the
+	// AdminSeriesServiceUpdateEpisodePublishScheduleProcedure is the procedure name of the
 	// AdminSeriesService's UpdateEpisodePublishSchedule RPC.
 	AdminSeriesServiceUpdateEpisodePublishScheduleProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodePublishSchedule"
-	// AdminSeriesServiceUpdateEpisodeLayoutProcedure is the fully-qualified name of the
-	// AdminSeriesService's UpdateEpisodeLayout RPC.
+	// AdminSeriesServiceUpdateEpisodeLayoutProcedure is the procedure name of the AdminSeriesService's
+	// UpdateEpisodeLayout RPC.
 	AdminSeriesServiceUpdateEpisodeLayoutProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodeLayout"
-	// AdminSeriesServiceUpdateEpisodeAvailabilityProcedure is the fully-qualified name of the
+	// AdminSeriesServiceUpdateEpisodeAvailabilityProcedure is the procedure name of the
 	// AdminSeriesService's UpdateEpisodeAvailability RPC.
 	AdminSeriesServiceUpdateEpisodeAvailabilityProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodeAvailability"
-	// AdminSeriesServiceUpdateEpisodePurchaseAvailabilityProcedure is the fully-qualified name of the
+	// AdminSeriesServiceUpdateEpisodePurchaseAvailabilityProcedure is the procedure name of the
 	// AdminSeriesService's UpdateEpisodePurchaseAvailability RPC.
 	AdminSeriesServiceUpdateEpisodePurchaseAvailabilityProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodePurchaseAvailability"
-	// AdminSeriesServiceListEpisodeCreditsProcedure is the fully-qualified name of the
-	// AdminSeriesService's ListEpisodeCredits RPC.
+	// AdminSeriesServiceListEpisodeCreditsProcedure is the procedure name of the AdminSeriesService's
+	// ListEpisodeCredits RPC.
 	AdminSeriesServiceListEpisodeCreditsProcedure = "/publira.admin.v1.AdminSeriesService/ListEpisodeCredits"
-	// AdminSeriesServiceReplaceEpisodeCreditsProcedure is the fully-qualified name of the
+	// AdminSeriesServiceReplaceEpisodeCreditsProcedure is the procedure name of the
 	// AdminSeriesService's ReplaceEpisodeCredits RPC.
 	AdminSeriesServiceReplaceEpisodeCreditsProcedure = "/publira.admin.v1.AdminSeriesService/ReplaceEpisodeCredits"
-	// AdminSeriesServiceBulkEditEpisodeCreditsProcedure is the fully-qualified name of the
+	// AdminSeriesServiceBulkEditEpisodeCreditsProcedure is the procedure name of the
 	// AdminSeriesService's BulkEditEpisodeCredits RPC.
 	AdminSeriesServiceBulkEditEpisodeCreditsProcedure = "/publira.admin.v1.AdminSeriesService/BulkEditEpisodeCredits"
-	// AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure is the fully-qualified name of the
+	// AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure is the procedure name of the
 	// AdminSeriesService's UploadSeriesEyeCatchAspectImage RPC.
 	AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure = "/publira.admin.v1.AdminSeriesService/UploadSeriesEyeCatchAspectImage"
-	// AdminSeriesServiceCreateEpisodeFreeWindowProcedure is the fully-qualified name of the
+	// AdminSeriesServiceCreateEpisodeFreeWindowProcedure is the procedure name of the
 	// AdminSeriesService's CreateEpisodeFreeWindow RPC.
 	AdminSeriesServiceCreateEpisodeFreeWindowProcedure = "/publira.admin.v1.AdminSeriesService/CreateEpisodeFreeWindow"
-	// AdminSeriesServiceCreateSeriesFreeWindowsProcedure is the fully-qualified name of the
+	// AdminSeriesServiceCreateSeriesFreeWindowsProcedure is the procedure name of the
 	// AdminSeriesService's CreateSeriesFreeWindows RPC.
 	AdminSeriesServiceCreateSeriesFreeWindowsProcedure = "/publira.admin.v1.AdminSeriesService/CreateSeriesFreeWindows"
-	// AdminSeriesServiceListEpisodeFreeWindowsProcedure is the fully-qualified name of the
+	// AdminSeriesServiceListEpisodeFreeWindowsProcedure is the procedure name of the
 	// AdminSeriesService's ListEpisodeFreeWindows RPC.
 	AdminSeriesServiceListEpisodeFreeWindowsProcedure = "/publira.admin.v1.AdminSeriesService/ListEpisodeFreeWindows"
-	// AdminSeriesServiceDeleteEpisodeFreeWindowProcedure is the fully-qualified name of the
+	// AdminSeriesServiceDeleteEpisodeFreeWindowProcedure is the procedure name of the
 	// AdminSeriesService's DeleteEpisodeFreeWindow RPC.
 	AdminSeriesServiceDeleteEpisodeFreeWindowProcedure = "/publira.admin.v1.AdminSeriesService/DeleteEpisodeFreeWindow"
-	// AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure is the fully-qualified name of the
+	// AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure is the procedure name of the
 	// AdminSeriesService's GetSeriesWaitFreeSettings RPC.
 	AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure = "/publira.admin.v1.AdminSeriesService/GetSeriesWaitFreeSettings"
-	// AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure is the fully-qualified name of the
+	// AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure is the procedure name of the
 	// AdminSeriesService's UpdateSeriesWaitFreeSettings RPC.
 	AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure = "/publira.admin.v1.AdminSeriesService/UpdateSeriesWaitFreeSettings"
+)
+
+var (
+	adminSeriesServiceCreateSeriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("CreateSeries"),
+			Procedure:  AdminSeriesServiceCreateSeriesProcedure,
+		}
+	})
+	adminSeriesServiceUpdateSeriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateSeries"),
+			Procedure:  AdminSeriesServiceUpdateSeriesProcedure,
+		}
+	})
+	adminSeriesServiceListSeriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ListSeries"),
+			Procedure:  AdminSeriesServiceListSeriesProcedure,
+		}
+	})
+	adminSeriesServiceGetSeriesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("GetSeries"),
+			Procedure:  AdminSeriesServiceGetSeriesProcedure,
+		}
+	})
+	adminSeriesServiceListEpisodesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ListEpisodes"),
+			Procedure:  AdminSeriesServiceListEpisodesProcedure,
+		}
+	})
+	adminSeriesServiceGetEpisodeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("GetEpisode"),
+			Procedure:  AdminSeriesServiceGetEpisodeProcedure,
+		}
+	})
+	adminSeriesServiceReorderEpisodesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ReorderEpisodes"),
+			Procedure:  AdminSeriesServiceReorderEpisodesProcedure,
+		}
+	})
+	adminSeriesServiceCreateEpisodeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("CreateEpisode"),
+			Procedure:  AdminSeriesServiceCreateEpisodeProcedure,
+		}
+	})
+	adminSeriesServiceUploadEpisodeImagesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UploadEpisodeImages"),
+			Procedure:  AdminSeriesServiceUploadEpisodeImagesProcedure,
+		}
+	})
+	adminSeriesServiceListEpisodeImagesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ListEpisodeImages"),
+			Procedure:  AdminSeriesServiceListEpisodeImagesProcedure,
+		}
+	})
+	adminSeriesServiceReorderEpisodeImagesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ReorderEpisodeImages"),
+			Procedure:  AdminSeriesServiceReorderEpisodeImagesProcedure,
+		}
+	})
+	adminSeriesServiceUpdateEpisodePublishScheduleSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateEpisodePublishSchedule"),
+			Procedure:  AdminSeriesServiceUpdateEpisodePublishScheduleProcedure,
+		}
+	})
+	adminSeriesServiceUpdateEpisodeLayoutSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateEpisodeLayout"),
+			Procedure:  AdminSeriesServiceUpdateEpisodeLayoutProcedure,
+		}
+	})
+	adminSeriesServiceUpdateEpisodeAvailabilitySpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateEpisodeAvailability"),
+			Procedure:  AdminSeriesServiceUpdateEpisodeAvailabilityProcedure,
+		}
+	})
+	adminSeriesServiceUpdateEpisodePurchaseAvailabilitySpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateEpisodePurchaseAvailability"),
+			Procedure:  AdminSeriesServiceUpdateEpisodePurchaseAvailabilityProcedure,
+		}
+	})
+	adminSeriesServiceListEpisodeCreditsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ListEpisodeCredits"),
+			Procedure:  AdminSeriesServiceListEpisodeCreditsProcedure,
+		}
+	})
+	adminSeriesServiceReplaceEpisodeCreditsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ReplaceEpisodeCredits"),
+			Procedure:  AdminSeriesServiceReplaceEpisodeCreditsProcedure,
+		}
+	})
+	adminSeriesServiceBulkEditEpisodeCreditsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("BulkEditEpisodeCredits"),
+			Procedure:  AdminSeriesServiceBulkEditEpisodeCreditsProcedure,
+		}
+	})
+	adminSeriesServiceUploadSeriesEyeCatchAspectImageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UploadSeriesEyeCatchAspectImage"),
+			Procedure:  AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure,
+		}
+	})
+	adminSeriesServiceCreateEpisodeFreeWindowSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("CreateEpisodeFreeWindow"),
+			Procedure:  AdminSeriesServiceCreateEpisodeFreeWindowProcedure,
+		}
+	})
+	adminSeriesServiceCreateSeriesFreeWindowsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("CreateSeriesFreeWindows"),
+			Procedure:  AdminSeriesServiceCreateSeriesFreeWindowsProcedure,
+		}
+	})
+	adminSeriesServiceListEpisodeFreeWindowsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ListEpisodeFreeWindows"),
+			Procedure:  AdminSeriesServiceListEpisodeFreeWindowsProcedure,
+		}
+	})
+	adminSeriesServiceDeleteEpisodeFreeWindowSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("DeleteEpisodeFreeWindow"),
+			Procedure:  AdminSeriesServiceDeleteEpisodeFreeWindowProcedure,
+		}
+	})
+	adminSeriesServiceGetSeriesWaitFreeSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("GetSeriesWaitFreeSettings"),
+			Procedure:  AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure,
+		}
+	})
+	adminSeriesServiceUpdateSeriesWaitFreeSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateSeriesWaitFreeSettings"),
+			Procedure:  AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure,
+		}
+	})
 )
 
 // AdminSeriesServiceClient is a client for the publira.admin.v1.AdminSeriesService service.
 type AdminSeriesServiceClient interface {
 	// Minimum role: tenant_editor.
-	CreateSeries(context.Context, *connect.Request[v1.CreateSeriesRequest]) (*connect.Response[v1.CreateSeriesResponse], error)
+	CreateSeries(context.Context, *v1.CreateSeriesRequest) (*v1.CreateSeriesResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateSeries(context.Context, *connect.Request[v1.UpdateSeriesRequest]) (*connect.Response[v1.UpdateSeriesResponse], error)
+	UpdateSeries(context.Context, *v1.UpdateSeriesRequest) (*v1.UpdateSeriesResponse, error)
 	// Minimum role: tenant_auditor.
-	ListSeries(context.Context, *connect.Request[v1.ListSeriesRequest]) (*connect.Response[v1.ListSeriesResponse], error)
+	ListSeries(context.Context, *v1.ListSeriesRequest) (*v1.ListSeriesResponse, error)
 	// Minimum role: tenant_auditor.
-	GetSeries(context.Context, *connect.Request[v1.GetSeriesRequest]) (*connect.Response[v1.GetSeriesResponse], error)
+	GetSeries(context.Context, *v1.GetSeriesRequest) (*v1.GetSeriesResponse, error)
 	// Minimum role: tenant_auditor.
-	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
+	ListEpisodes(context.Context, *v1.ListEpisodesRequest) (*v1.ListEpisodesResponse, error)
 	// Minimum role: tenant_auditor.
-	GetEpisode(context.Context, *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error)
+	GetEpisode(context.Context, *v1.GetEpisodeRequest) (*v1.GetEpisodeResponse, error)
 	// Minimum role: tenant_editor.
-	ReorderEpisodes(context.Context, *connect.Request[v1.ReorderEpisodesRequest]) (*connect.Response[v1.ReorderEpisodesResponse], error)
+	ReorderEpisodes(context.Context, *v1.ReorderEpisodesRequest) (*v1.ReorderEpisodesResponse, error)
 	// Minimum role: tenant_editor.
-	CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error)
+	CreateEpisode(context.Context, *v1.CreateEpisodeRequest) (*v1.CreateEpisodeResponse, error)
 	// Minimum role: tenant_editor.
-	UploadEpisodeImages(context.Context, *connect.Request[v1.UploadEpisodeImagesRequest]) (*connect.Response[v1.UploadEpisodeImagesResponse], error)
+	UploadEpisodeImages(context.Context, *v1.UploadEpisodeImagesRequest) (*v1.UploadEpisodeImagesResponse, error)
 	// Minimum role: tenant_auditor.
-	ListEpisodeImages(context.Context, *connect.Request[v1.ListEpisodeImagesRequest]) (*connect.Response[v1.ListEpisodeImagesResponse], error)
+	ListEpisodeImages(context.Context, *v1.ListEpisodeImagesRequest) (*v1.ListEpisodeImagesResponse, error)
 	// Minimum role: tenant_editor.
-	ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error)
+	ReorderEpisodeImages(context.Context, *v1.ReorderEpisodeImagesRequest) (*v1.ReorderEpisodeImagesResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
+	UpdateEpisodePublishSchedule(context.Context, *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateEpisodeLayout(context.Context, *connect.Request[v1.UpdateEpisodeLayoutRequest]) (*connect.Response[v1.UpdateEpisodeLayoutResponse], error)
+	UpdateEpisodeLayout(context.Context, *v1.UpdateEpisodeLayoutRequest) (*v1.UpdateEpisodeLayoutResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateEpisodeAvailability(context.Context, *connect.Request[v1.UpdateEpisodeAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodeAvailabilityResponse], error)
+	UpdateEpisodeAvailability(context.Context, *v1.UpdateEpisodeAvailabilityRequest) (*v1.UpdateEpisodeAvailabilityResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateEpisodePurchaseAvailability(context.Context, *connect.Request[v1.UpdateEpisodePurchaseAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodePurchaseAvailabilityResponse], error)
+	UpdateEpisodePurchaseAvailability(context.Context, *v1.UpdateEpisodePurchaseAvailabilityRequest) (*v1.UpdateEpisodePurchaseAvailabilityResponse, error)
 	// Minimum role: tenant_auditor.
-	ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error)
+	ListEpisodeCredits(context.Context, *v1.ListEpisodeCreditsRequest) (*v1.ListEpisodeCreditsResponse, error)
 	// Minimum role: tenant_editor.
-	ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error)
+	ReplaceEpisodeCredits(context.Context, *v1.ReplaceEpisodeCreditsRequest) (*v1.ReplaceEpisodeCreditsResponse, error)
 	// Minimum role: tenant_editor.
-	BulkEditEpisodeCredits(context.Context, *connect.Request[v1.BulkEditEpisodeCreditsRequest]) (*connect.Response[v1.BulkEditEpisodeCreditsResponse], error)
+	BulkEditEpisodeCredits(context.Context, *v1.BulkEditEpisodeCreditsRequest) (*v1.BulkEditEpisodeCreditsResponse, error)
 	// Minimum role: tenant_editor.
-	UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error)
+	UploadSeriesEyeCatchAspectImage(context.Context, *v1.UploadSeriesEyeCatchAspectImageRequest) (*v1.UploadSeriesEyeCatchAspectImageResponse, error)
 	// Minimum role: tenant_editor.
-	CreateEpisodeFreeWindow(context.Context, *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error)
+	CreateEpisodeFreeWindow(context.Context, *v1.CreateEpisodeFreeWindowRequest) (*v1.CreateEpisodeFreeWindowResponse, error)
 	// Minimum role: tenant_editor.
-	CreateSeriesFreeWindows(context.Context, *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error)
+	CreateSeriesFreeWindows(context.Context, *v1.CreateSeriesFreeWindowsRequest) (*v1.CreateSeriesFreeWindowsResponse, error)
 	// Minimum role: tenant_auditor.
-	ListEpisodeFreeWindows(context.Context, *connect.Request[v1.ListEpisodeFreeWindowsRequest]) (*connect.Response[v1.ListEpisodeFreeWindowsResponse], error)
+	ListEpisodeFreeWindows(context.Context, *v1.ListEpisodeFreeWindowsRequest) (*v1.ListEpisodeFreeWindowsResponse, error)
 	// Minimum role: tenant_editor.
-	DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error)
+	DeleteEpisodeFreeWindow(context.Context, *v1.DeleteEpisodeFreeWindowRequest) (*v1.DeleteEpisodeFreeWindowResponse, error)
 	// Minimum role: tenant_auditor.
-	GetSeriesWaitFreeSettings(context.Context, *connect.Request[v1.GetSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.GetSeriesWaitFreeSettingsResponse], error)
+	GetSeriesWaitFreeSettings(context.Context, *v1.GetSeriesWaitFreeSettingsRequest) (*v1.GetSeriesWaitFreeSettingsResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateSeriesWaitFreeSettings(context.Context, *connect.Request[v1.UpdateSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.UpdateSeriesWaitFreeSettingsResponse], error)
+	UpdateSeriesWaitFreeSettings(context.Context, *v1.UpdateSeriesWaitFreeSettingsRequest) (*v1.UpdateSeriesWaitFreeSettingsResponse, error)
 }
 
 // NewAdminSeriesServiceClient constructs a client for the publira.admin.v1.AdminSeriesService
-// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
-// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
-// the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewAdminSeriesServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdminSeriesServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	adminSeriesServiceMethods := v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods()
-	return &adminSeriesServiceClient{
-		createSeries: connect.NewClient[v1.CreateSeriesRequest, v1.CreateSeriesResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceCreateSeriesProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("CreateSeries")),
-			connect.WithClientOptions(opts...),
-		),
-		updateSeries: connect.NewClient[v1.UpdateSeriesRequest, v1.UpdateSeriesResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceUpdateSeriesProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateSeries")),
-			connect.WithClientOptions(opts...),
-		),
-		listSeries: connect.NewClient[v1.ListSeriesRequest, v1.ListSeriesResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceListSeriesProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("ListSeries")),
-			connect.WithClientOptions(opts...),
-		),
-		getSeries: connect.NewClient[v1.GetSeriesRequest, v1.GetSeriesResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceGetSeriesProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("GetSeries")),
-			connect.WithClientOptions(opts...),
-		),
-		listEpisodes: connect.NewClient[v1.ListEpisodesRequest, v1.ListEpisodesResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceListEpisodesProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("ListEpisodes")),
-			connect.WithClientOptions(opts...),
-		),
-		getEpisode: connect.NewClient[v1.GetEpisodeRequest, v1.GetEpisodeResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceGetEpisodeProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("GetEpisode")),
-			connect.WithClientOptions(opts...),
-		),
-		reorderEpisodes: connect.NewClient[v1.ReorderEpisodesRequest, v1.ReorderEpisodesResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceReorderEpisodesProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("ReorderEpisodes")),
-			connect.WithClientOptions(opts...),
-		),
-		createEpisode: connect.NewClient[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceCreateEpisodeProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("CreateEpisode")),
-			connect.WithClientOptions(opts...),
-		),
-		uploadEpisodeImages: connect.NewClient[v1.UploadEpisodeImagesRequest, v1.UploadEpisodeImagesResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceUploadEpisodeImagesProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("UploadEpisodeImages")),
-			connect.WithClientOptions(opts...),
-		),
-		listEpisodeImages: connect.NewClient[v1.ListEpisodeImagesRequest, v1.ListEpisodeImagesResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceListEpisodeImagesProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("ListEpisodeImages")),
-			connect.WithClientOptions(opts...),
-		),
-		reorderEpisodeImages: connect.NewClient[v1.ReorderEpisodeImagesRequest, v1.ReorderEpisodeImagesResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceReorderEpisodeImagesProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("ReorderEpisodeImages")),
-			connect.WithClientOptions(opts...),
-		),
-		updateEpisodePublishSchedule: connect.NewClient[v1.UpdateEpisodePublishScheduleRequest, v1.UpdateEpisodePublishScheduleResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceUpdateEpisodePublishScheduleProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodePublishSchedule")),
-			connect.WithClientOptions(opts...),
-		),
-		updateEpisodeLayout: connect.NewClient[v1.UpdateEpisodeLayoutRequest, v1.UpdateEpisodeLayoutResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceUpdateEpisodeLayoutProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodeLayout")),
-			connect.WithClientOptions(opts...),
-		),
-		updateEpisodeAvailability: connect.NewClient[v1.UpdateEpisodeAvailabilityRequest, v1.UpdateEpisodeAvailabilityResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceUpdateEpisodeAvailabilityProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodeAvailability")),
-			connect.WithClientOptions(opts...),
-		),
-		updateEpisodePurchaseAvailability: connect.NewClient[v1.UpdateEpisodePurchaseAvailabilityRequest, v1.UpdateEpisodePurchaseAvailabilityResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceUpdateEpisodePurchaseAvailabilityProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodePurchaseAvailability")),
-			connect.WithClientOptions(opts...),
-		),
-		listEpisodeCredits: connect.NewClient[v1.ListEpisodeCreditsRequest, v1.ListEpisodeCreditsResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceListEpisodeCreditsProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("ListEpisodeCredits")),
-			connect.WithClientOptions(opts...),
-		),
-		replaceEpisodeCredits: connect.NewClient[v1.ReplaceEpisodeCreditsRequest, v1.ReplaceEpisodeCreditsResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceReplaceEpisodeCreditsProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("ReplaceEpisodeCredits")),
-			connect.WithClientOptions(opts...),
-		),
-		bulkEditEpisodeCredits: connect.NewClient[v1.BulkEditEpisodeCreditsRequest, v1.BulkEditEpisodeCreditsResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceBulkEditEpisodeCreditsProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("BulkEditEpisodeCredits")),
-			connect.WithClientOptions(opts...),
-		),
-		uploadSeriesEyeCatchAspectImage: connect.NewClient[v1.UploadSeriesEyeCatchAspectImageRequest, v1.UploadSeriesEyeCatchAspectImageResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("UploadSeriesEyeCatchAspectImage")),
-			connect.WithClientOptions(opts...),
-		),
-		createEpisodeFreeWindow: connect.NewClient[v1.CreateEpisodeFreeWindowRequest, v1.CreateEpisodeFreeWindowResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceCreateEpisodeFreeWindowProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("CreateEpisodeFreeWindow")),
-			connect.WithClientOptions(opts...),
-		),
-		createSeriesFreeWindows: connect.NewClient[v1.CreateSeriesFreeWindowsRequest, v1.CreateSeriesFreeWindowsResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceCreateSeriesFreeWindowsProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("CreateSeriesFreeWindows")),
-			connect.WithClientOptions(opts...),
-		),
-		listEpisodeFreeWindows: connect.NewClient[v1.ListEpisodeFreeWindowsRequest, v1.ListEpisodeFreeWindowsResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceListEpisodeFreeWindowsProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("ListEpisodeFreeWindows")),
-			connect.WithClientOptions(opts...),
-		),
-		deleteEpisodeFreeWindow: connect.NewClient[v1.DeleteEpisodeFreeWindowRequest, v1.DeleteEpisodeFreeWindowResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceDeleteEpisodeFreeWindowProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("DeleteEpisodeFreeWindow")),
-			connect.WithClientOptions(opts...),
-		),
-		getSeriesWaitFreeSettings: connect.NewClient[v1.GetSeriesWaitFreeSettingsRequest, v1.GetSeriesWaitFreeSettingsResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("GetSeriesWaitFreeSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updateSeriesWaitFreeSettings: connect.NewClient[v1.UpdateSeriesWaitFreeSettingsRequest, v1.UpdateSeriesWaitFreeSettingsResponse](
-			httpClient,
-			baseURL+AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure,
-			connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateSeriesWaitFreeSettings")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// adminSeriesServiceClient implements AdminSeriesServiceClient.
-type adminSeriesServiceClient struct {
-	createSeries                      *connect.Client[v1.CreateSeriesRequest, v1.CreateSeriesResponse]
-	updateSeries                      *connect.Client[v1.UpdateSeriesRequest, v1.UpdateSeriesResponse]
-	listSeries                        *connect.Client[v1.ListSeriesRequest, v1.ListSeriesResponse]
-	getSeries                         *connect.Client[v1.GetSeriesRequest, v1.GetSeriesResponse]
-	listEpisodes                      *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
-	getEpisode                        *connect.Client[v1.GetEpisodeRequest, v1.GetEpisodeResponse]
-	reorderEpisodes                   *connect.Client[v1.ReorderEpisodesRequest, v1.ReorderEpisodesResponse]
-	createEpisode                     *connect.Client[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse]
-	uploadEpisodeImages               *connect.Client[v1.UploadEpisodeImagesRequest, v1.UploadEpisodeImagesResponse]
-	listEpisodeImages                 *connect.Client[v1.ListEpisodeImagesRequest, v1.ListEpisodeImagesResponse]
-	reorderEpisodeImages              *connect.Client[v1.ReorderEpisodeImagesRequest, v1.ReorderEpisodeImagesResponse]
-	updateEpisodePublishSchedule      *connect.Client[v1.UpdateEpisodePublishScheduleRequest, v1.UpdateEpisodePublishScheduleResponse]
-	updateEpisodeLayout               *connect.Client[v1.UpdateEpisodeLayoutRequest, v1.UpdateEpisodeLayoutResponse]
-	updateEpisodeAvailability         *connect.Client[v1.UpdateEpisodeAvailabilityRequest, v1.UpdateEpisodeAvailabilityResponse]
-	updateEpisodePurchaseAvailability *connect.Client[v1.UpdateEpisodePurchaseAvailabilityRequest, v1.UpdateEpisodePurchaseAvailabilityResponse]
-	listEpisodeCredits                *connect.Client[v1.ListEpisodeCreditsRequest, v1.ListEpisodeCreditsResponse]
-	replaceEpisodeCredits             *connect.Client[v1.ReplaceEpisodeCreditsRequest, v1.ReplaceEpisodeCreditsResponse]
-	bulkEditEpisodeCredits            *connect.Client[v1.BulkEditEpisodeCreditsRequest, v1.BulkEditEpisodeCreditsResponse]
-	uploadSeriesEyeCatchAspectImage   *connect.Client[v1.UploadSeriesEyeCatchAspectImageRequest, v1.UploadSeriesEyeCatchAspectImageResponse]
-	createEpisodeFreeWindow           *connect.Client[v1.CreateEpisodeFreeWindowRequest, v1.CreateEpisodeFreeWindowResponse]
-	createSeriesFreeWindows           *connect.Client[v1.CreateSeriesFreeWindowsRequest, v1.CreateSeriesFreeWindowsResponse]
-	listEpisodeFreeWindows            *connect.Client[v1.ListEpisodeFreeWindowsRequest, v1.ListEpisodeFreeWindowsResponse]
-	deleteEpisodeFreeWindow           *connect.Client[v1.DeleteEpisodeFreeWindowRequest, v1.DeleteEpisodeFreeWindowResponse]
-	getSeriesWaitFreeSettings         *connect.Client[v1.GetSeriesWaitFreeSettingsRequest, v1.GetSeriesWaitFreeSettingsResponse]
-	updateSeriesWaitFreeSettings      *connect.Client[v1.UpdateSeriesWaitFreeSettingsRequest, v1.UpdateSeriesWaitFreeSettingsResponse]
-}
-
-// CreateSeries calls publira.admin.v1.AdminSeriesService.CreateSeries.
-func (c *adminSeriesServiceClient) CreateSeries(ctx context.Context, req *connect.Request[v1.CreateSeriesRequest]) (*connect.Response[v1.CreateSeriesResponse], error) {
-	return c.createSeries.CallUnary(ctx, req)
-}
-
-// UpdateSeries calls publira.admin.v1.AdminSeriesService.UpdateSeries.
-func (c *adminSeriesServiceClient) UpdateSeries(ctx context.Context, req *connect.Request[v1.UpdateSeriesRequest]) (*connect.Response[v1.UpdateSeriesResponse], error) {
-	return c.updateSeries.CallUnary(ctx, req)
-}
-
-// ListSeries calls publira.admin.v1.AdminSeriesService.ListSeries.
-func (c *adminSeriesServiceClient) ListSeries(ctx context.Context, req *connect.Request[v1.ListSeriesRequest]) (*connect.Response[v1.ListSeriesResponse], error) {
-	return c.listSeries.CallUnary(ctx, req)
-}
-
-// GetSeries calls publira.admin.v1.AdminSeriesService.GetSeries.
-func (c *adminSeriesServiceClient) GetSeries(ctx context.Context, req *connect.Request[v1.GetSeriesRequest]) (*connect.Response[v1.GetSeriesResponse], error) {
-	return c.getSeries.CallUnary(ctx, req)
-}
-
-// ListEpisodes calls publira.admin.v1.AdminSeriesService.ListEpisodes.
-func (c *adminSeriesServiceClient) ListEpisodes(ctx context.Context, req *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error) {
-	return c.listEpisodes.CallUnary(ctx, req)
-}
-
-// GetEpisode calls publira.admin.v1.AdminSeriesService.GetEpisode.
-func (c *adminSeriesServiceClient) GetEpisode(ctx context.Context, req *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error) {
-	return c.getEpisode.CallUnary(ctx, req)
-}
-
-// ReorderEpisodes calls publira.admin.v1.AdminSeriesService.ReorderEpisodes.
-func (c *adminSeriesServiceClient) ReorderEpisodes(ctx context.Context, req *connect.Request[v1.ReorderEpisodesRequest]) (*connect.Response[v1.ReorderEpisodesResponse], error) {
-	return c.reorderEpisodes.CallUnary(ctx, req)
-}
-
-// CreateEpisode calls publira.admin.v1.AdminSeriesService.CreateEpisode.
-func (c *adminSeriesServiceClient) CreateEpisode(ctx context.Context, req *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error) {
-	return c.createEpisode.CallUnary(ctx, req)
-}
-
-// UploadEpisodeImages calls publira.admin.v1.AdminSeriesService.UploadEpisodeImages.
-func (c *adminSeriesServiceClient) UploadEpisodeImages(ctx context.Context, req *connect.Request[v1.UploadEpisodeImagesRequest]) (*connect.Response[v1.UploadEpisodeImagesResponse], error) {
-	return c.uploadEpisodeImages.CallUnary(ctx, req)
-}
-
-// ListEpisodeImages calls publira.admin.v1.AdminSeriesService.ListEpisodeImages.
-func (c *adminSeriesServiceClient) ListEpisodeImages(ctx context.Context, req *connect.Request[v1.ListEpisodeImagesRequest]) (*connect.Response[v1.ListEpisodeImagesResponse], error) {
-	return c.listEpisodeImages.CallUnary(ctx, req)
-}
-
-// ReorderEpisodeImages calls publira.admin.v1.AdminSeriesService.ReorderEpisodeImages.
-func (c *adminSeriesServiceClient) ReorderEpisodeImages(ctx context.Context, req *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error) {
-	return c.reorderEpisodeImages.CallUnary(ctx, req)
-}
-
-// UpdateEpisodePublishSchedule calls
-// publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule.
-func (c *adminSeriesServiceClient) UpdateEpisodePublishSchedule(ctx context.Context, req *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error) {
-	return c.updateEpisodePublishSchedule.CallUnary(ctx, req)
-}
-
-// UpdateEpisodeLayout calls publira.admin.v1.AdminSeriesService.UpdateEpisodeLayout.
-func (c *adminSeriesServiceClient) UpdateEpisodeLayout(ctx context.Context, req *connect.Request[v1.UpdateEpisodeLayoutRequest]) (*connect.Response[v1.UpdateEpisodeLayoutResponse], error) {
-	return c.updateEpisodeLayout.CallUnary(ctx, req)
-}
-
-// UpdateEpisodeAvailability calls publira.admin.v1.AdminSeriesService.UpdateEpisodeAvailability.
-func (c *adminSeriesServiceClient) UpdateEpisodeAvailability(ctx context.Context, req *connect.Request[v1.UpdateEpisodeAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodeAvailabilityResponse], error) {
-	return c.updateEpisodeAvailability.CallUnary(ctx, req)
-}
-
-// UpdateEpisodePurchaseAvailability calls
-// publira.admin.v1.AdminSeriesService.UpdateEpisodePurchaseAvailability.
-func (c *adminSeriesServiceClient) UpdateEpisodePurchaseAvailability(ctx context.Context, req *connect.Request[v1.UpdateEpisodePurchaseAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodePurchaseAvailabilityResponse], error) {
-	return c.updateEpisodePurchaseAvailability.CallUnary(ctx, req)
-}
-
-// ListEpisodeCredits calls publira.admin.v1.AdminSeriesService.ListEpisodeCredits.
-func (c *adminSeriesServiceClient) ListEpisodeCredits(ctx context.Context, req *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error) {
-	return c.listEpisodeCredits.CallUnary(ctx, req)
-}
-
-// ReplaceEpisodeCredits calls publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits.
-func (c *adminSeriesServiceClient) ReplaceEpisodeCredits(ctx context.Context, req *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error) {
-	return c.replaceEpisodeCredits.CallUnary(ctx, req)
-}
-
-// BulkEditEpisodeCredits calls publira.admin.v1.AdminSeriesService.BulkEditEpisodeCredits.
-func (c *adminSeriesServiceClient) BulkEditEpisodeCredits(ctx context.Context, req *connect.Request[v1.BulkEditEpisodeCreditsRequest]) (*connect.Response[v1.BulkEditEpisodeCreditsResponse], error) {
-	return c.bulkEditEpisodeCredits.CallUnary(ctx, req)
-}
-
-// UploadSeriesEyeCatchAspectImage calls
-// publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage.
-func (c *adminSeriesServiceClient) UploadSeriesEyeCatchAspectImage(ctx context.Context, req *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error) {
-	return c.uploadSeriesEyeCatchAspectImage.CallUnary(ctx, req)
-}
-
-// CreateEpisodeFreeWindow calls publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow.
-func (c *adminSeriesServiceClient) CreateEpisodeFreeWindow(ctx context.Context, req *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error) {
-	return c.createEpisodeFreeWindow.CallUnary(ctx, req)
-}
-
-// CreateSeriesFreeWindows calls publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows.
-func (c *adminSeriesServiceClient) CreateSeriesFreeWindows(ctx context.Context, req *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error) {
-	return c.createSeriesFreeWindows.CallUnary(ctx, req)
-}
-
-// ListEpisodeFreeWindows calls publira.admin.v1.AdminSeriesService.ListEpisodeFreeWindows.
-func (c *adminSeriesServiceClient) ListEpisodeFreeWindows(ctx context.Context, req *connect.Request[v1.ListEpisodeFreeWindowsRequest]) (*connect.Response[v1.ListEpisodeFreeWindowsResponse], error) {
-	return c.listEpisodeFreeWindows.CallUnary(ctx, req)
-}
-
-// DeleteEpisodeFreeWindow calls publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow.
-func (c *adminSeriesServiceClient) DeleteEpisodeFreeWindow(ctx context.Context, req *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error) {
-	return c.deleteEpisodeFreeWindow.CallUnary(ctx, req)
-}
-
-// GetSeriesWaitFreeSettings calls publira.admin.v1.AdminSeriesService.GetSeriesWaitFreeSettings.
-func (c *adminSeriesServiceClient) GetSeriesWaitFreeSettings(ctx context.Context, req *connect.Request[v1.GetSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.GetSeriesWaitFreeSettingsResponse], error) {
-	return c.getSeriesWaitFreeSettings.CallUnary(ctx, req)
-}
-
-// UpdateSeriesWaitFreeSettings calls
-// publira.admin.v1.AdminSeriesService.UpdateSeriesWaitFreeSettings.
-func (c *adminSeriesServiceClient) UpdateSeriesWaitFreeSettings(ctx context.Context, req *connect.Request[v1.UpdateSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.UpdateSeriesWaitFreeSettingsResponse], error) {
-	return c.updateSeriesWaitFreeSettings.CallUnary(ctx, req)
+// service. Multiple service clients may share a single connect.Client.
+func NewAdminSeriesServiceClient(client *connect.Client) AdminSeriesServiceClient {
+	return &adminSeriesServiceClient{client: client}
 }
 
 // AdminSeriesServiceHandler is an implementation of the publira.admin.v1.AdminSeriesService
 // service.
 type AdminSeriesServiceHandler interface {
 	// Minimum role: tenant_editor.
-	CreateSeries(context.Context, *connect.Request[v1.CreateSeriesRequest]) (*connect.Response[v1.CreateSeriesResponse], error)
+	CreateSeries(context.Context, *v1.CreateSeriesRequest) (*v1.CreateSeriesResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateSeries(context.Context, *connect.Request[v1.UpdateSeriesRequest]) (*connect.Response[v1.UpdateSeriesResponse], error)
+	UpdateSeries(context.Context, *v1.UpdateSeriesRequest) (*v1.UpdateSeriesResponse, error)
 	// Minimum role: tenant_auditor.
-	ListSeries(context.Context, *connect.Request[v1.ListSeriesRequest]) (*connect.Response[v1.ListSeriesResponse], error)
+	ListSeries(context.Context, *v1.ListSeriesRequest) (*v1.ListSeriesResponse, error)
 	// Minimum role: tenant_auditor.
-	GetSeries(context.Context, *connect.Request[v1.GetSeriesRequest]) (*connect.Response[v1.GetSeriesResponse], error)
+	GetSeries(context.Context, *v1.GetSeriesRequest) (*v1.GetSeriesResponse, error)
 	// Minimum role: tenant_auditor.
-	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
+	ListEpisodes(context.Context, *v1.ListEpisodesRequest) (*v1.ListEpisodesResponse, error)
 	// Minimum role: tenant_auditor.
-	GetEpisode(context.Context, *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error)
+	GetEpisode(context.Context, *v1.GetEpisodeRequest) (*v1.GetEpisodeResponse, error)
 	// Minimum role: tenant_editor.
-	ReorderEpisodes(context.Context, *connect.Request[v1.ReorderEpisodesRequest]) (*connect.Response[v1.ReorderEpisodesResponse], error)
+	ReorderEpisodes(context.Context, *v1.ReorderEpisodesRequest) (*v1.ReorderEpisodesResponse, error)
 	// Minimum role: tenant_editor.
-	CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error)
+	CreateEpisode(context.Context, *v1.CreateEpisodeRequest) (*v1.CreateEpisodeResponse, error)
 	// Minimum role: tenant_editor.
-	UploadEpisodeImages(context.Context, *connect.Request[v1.UploadEpisodeImagesRequest]) (*connect.Response[v1.UploadEpisodeImagesResponse], error)
+	UploadEpisodeImages(context.Context, *v1.UploadEpisodeImagesRequest) (*v1.UploadEpisodeImagesResponse, error)
 	// Minimum role: tenant_auditor.
-	ListEpisodeImages(context.Context, *connect.Request[v1.ListEpisodeImagesRequest]) (*connect.Response[v1.ListEpisodeImagesResponse], error)
+	ListEpisodeImages(context.Context, *v1.ListEpisodeImagesRequest) (*v1.ListEpisodeImagesResponse, error)
 	// Minimum role: tenant_editor.
-	ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error)
+	ReorderEpisodeImages(context.Context, *v1.ReorderEpisodeImagesRequest) (*v1.ReorderEpisodeImagesResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
+	UpdateEpisodePublishSchedule(context.Context, *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateEpisodeLayout(context.Context, *connect.Request[v1.UpdateEpisodeLayoutRequest]) (*connect.Response[v1.UpdateEpisodeLayoutResponse], error)
+	UpdateEpisodeLayout(context.Context, *v1.UpdateEpisodeLayoutRequest) (*v1.UpdateEpisodeLayoutResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateEpisodeAvailability(context.Context, *connect.Request[v1.UpdateEpisodeAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodeAvailabilityResponse], error)
+	UpdateEpisodeAvailability(context.Context, *v1.UpdateEpisodeAvailabilityRequest) (*v1.UpdateEpisodeAvailabilityResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateEpisodePurchaseAvailability(context.Context, *connect.Request[v1.UpdateEpisodePurchaseAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodePurchaseAvailabilityResponse], error)
+	UpdateEpisodePurchaseAvailability(context.Context, *v1.UpdateEpisodePurchaseAvailabilityRequest) (*v1.UpdateEpisodePurchaseAvailabilityResponse, error)
 	// Minimum role: tenant_auditor.
-	ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error)
+	ListEpisodeCredits(context.Context, *v1.ListEpisodeCreditsRequest) (*v1.ListEpisodeCreditsResponse, error)
 	// Minimum role: tenant_editor.
-	ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error)
+	ReplaceEpisodeCredits(context.Context, *v1.ReplaceEpisodeCreditsRequest) (*v1.ReplaceEpisodeCreditsResponse, error)
 	// Minimum role: tenant_editor.
-	BulkEditEpisodeCredits(context.Context, *connect.Request[v1.BulkEditEpisodeCreditsRequest]) (*connect.Response[v1.BulkEditEpisodeCreditsResponse], error)
+	BulkEditEpisodeCredits(context.Context, *v1.BulkEditEpisodeCreditsRequest) (*v1.BulkEditEpisodeCreditsResponse, error)
 	// Minimum role: tenant_editor.
-	UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error)
+	UploadSeriesEyeCatchAspectImage(context.Context, *v1.UploadSeriesEyeCatchAspectImageRequest) (*v1.UploadSeriesEyeCatchAspectImageResponse, error)
 	// Minimum role: tenant_editor.
-	CreateEpisodeFreeWindow(context.Context, *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error)
+	CreateEpisodeFreeWindow(context.Context, *v1.CreateEpisodeFreeWindowRequest) (*v1.CreateEpisodeFreeWindowResponse, error)
 	// Minimum role: tenant_editor.
-	CreateSeriesFreeWindows(context.Context, *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error)
+	CreateSeriesFreeWindows(context.Context, *v1.CreateSeriesFreeWindowsRequest) (*v1.CreateSeriesFreeWindowsResponse, error)
 	// Minimum role: tenant_auditor.
-	ListEpisodeFreeWindows(context.Context, *connect.Request[v1.ListEpisodeFreeWindowsRequest]) (*connect.Response[v1.ListEpisodeFreeWindowsResponse], error)
+	ListEpisodeFreeWindows(context.Context, *v1.ListEpisodeFreeWindowsRequest) (*v1.ListEpisodeFreeWindowsResponse, error)
 	// Minimum role: tenant_editor.
-	DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error)
+	DeleteEpisodeFreeWindow(context.Context, *v1.DeleteEpisodeFreeWindowRequest) (*v1.DeleteEpisodeFreeWindowResponse, error)
 	// Minimum role: tenant_auditor.
-	GetSeriesWaitFreeSettings(context.Context, *connect.Request[v1.GetSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.GetSeriesWaitFreeSettingsResponse], error)
+	GetSeriesWaitFreeSettings(context.Context, *v1.GetSeriesWaitFreeSettingsRequest) (*v1.GetSeriesWaitFreeSettingsResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateSeriesWaitFreeSettings(context.Context, *connect.Request[v1.UpdateSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.UpdateSeriesWaitFreeSettingsResponse], error)
+	UpdateSeriesWaitFreeSettings(context.Context, *v1.UpdateSeriesWaitFreeSettingsRequest) (*v1.UpdateSeriesWaitFreeSettingsResponse, error)
 }
 
-// NewAdminSeriesServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	adminSeriesServiceMethods := v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods()
-	adminSeriesServiceCreateSeriesHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceCreateSeriesProcedure,
-		svc.CreateSeries,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("CreateSeries")),
-		connect.WithHandlerOptions(opts...),
+// RegisterAdminSeriesServiceHandler registers svc as the publira.admin.v1.AdminSeriesService
+// implementation on server.
+func RegisterAdminSeriesServiceHandler(server *connect.Server, svc AdminSeriesServiceHandler) {
+	adapter := adminSeriesServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: adminSeriesServiceCreateSeriesSpec(), Handler: adapter.createSeries},
+		connect.Method{Spec: adminSeriesServiceUpdateSeriesSpec(), Handler: adapter.updateSeries},
+		connect.Method{Spec: adminSeriesServiceListSeriesSpec(), Handler: adapter.listSeries},
+		connect.Method{Spec: adminSeriesServiceGetSeriesSpec(), Handler: adapter.getSeries},
+		connect.Method{Spec: adminSeriesServiceListEpisodesSpec(), Handler: adapter.listEpisodes},
+		connect.Method{Spec: adminSeriesServiceGetEpisodeSpec(), Handler: adapter.getEpisode},
+		connect.Method{Spec: adminSeriesServiceReorderEpisodesSpec(), Handler: adapter.reorderEpisodes},
+		connect.Method{Spec: adminSeriesServiceCreateEpisodeSpec(), Handler: adapter.createEpisode},
+		connect.Method{Spec: adminSeriesServiceUploadEpisodeImagesSpec(), Handler: adapter.uploadEpisodeImages},
+		connect.Method{Spec: adminSeriesServiceListEpisodeImagesSpec(), Handler: adapter.listEpisodeImages},
+		connect.Method{Spec: adminSeriesServiceReorderEpisodeImagesSpec(), Handler: adapter.reorderEpisodeImages},
+		connect.Method{Spec: adminSeriesServiceUpdateEpisodePublishScheduleSpec(), Handler: adapter.updateEpisodePublishSchedule},
+		connect.Method{Spec: adminSeriesServiceUpdateEpisodeLayoutSpec(), Handler: adapter.updateEpisodeLayout},
+		connect.Method{Spec: adminSeriesServiceUpdateEpisodeAvailabilitySpec(), Handler: adapter.updateEpisodeAvailability},
+		connect.Method{Spec: adminSeriesServiceUpdateEpisodePurchaseAvailabilitySpec(), Handler: adapter.updateEpisodePurchaseAvailability},
+		connect.Method{Spec: adminSeriesServiceListEpisodeCreditsSpec(), Handler: adapter.listEpisodeCredits},
+		connect.Method{Spec: adminSeriesServiceReplaceEpisodeCreditsSpec(), Handler: adapter.replaceEpisodeCredits},
+		connect.Method{Spec: adminSeriesServiceBulkEditEpisodeCreditsSpec(), Handler: adapter.bulkEditEpisodeCredits},
+		connect.Method{Spec: adminSeriesServiceUploadSeriesEyeCatchAspectImageSpec(), Handler: adapter.uploadSeriesEyeCatchAspectImage},
+		connect.Method{Spec: adminSeriesServiceCreateEpisodeFreeWindowSpec(), Handler: adapter.createEpisodeFreeWindow},
+		connect.Method{Spec: adminSeriesServiceCreateSeriesFreeWindowsSpec(), Handler: adapter.createSeriesFreeWindows},
+		connect.Method{Spec: adminSeriesServiceListEpisodeFreeWindowsSpec(), Handler: adapter.listEpisodeFreeWindows},
+		connect.Method{Spec: adminSeriesServiceDeleteEpisodeFreeWindowSpec(), Handler: adapter.deleteEpisodeFreeWindow},
+		connect.Method{Spec: adminSeriesServiceGetSeriesWaitFreeSettingsSpec(), Handler: adapter.getSeriesWaitFreeSettings},
+		connect.Method{Spec: adminSeriesServiceUpdateSeriesWaitFreeSettingsSpec(), Handler: adapter.updateSeriesWaitFreeSettings},
 	)
-	adminSeriesServiceUpdateSeriesHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceUpdateSeriesProcedure,
-		svc.UpdateSeries,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateSeries")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceListSeriesHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceListSeriesProcedure,
-		svc.ListSeries,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("ListSeries")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceGetSeriesHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceGetSeriesProcedure,
-		svc.GetSeries,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("GetSeries")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceListEpisodesHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceListEpisodesProcedure,
-		svc.ListEpisodes,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("ListEpisodes")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceGetEpisodeHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceGetEpisodeProcedure,
-		svc.GetEpisode,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("GetEpisode")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceReorderEpisodesHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceReorderEpisodesProcedure,
-		svc.ReorderEpisodes,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("ReorderEpisodes")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceCreateEpisodeHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceCreateEpisodeProcedure,
-		svc.CreateEpisode,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("CreateEpisode")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceUploadEpisodeImagesHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceUploadEpisodeImagesProcedure,
-		svc.UploadEpisodeImages,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("UploadEpisodeImages")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceListEpisodeImagesHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceListEpisodeImagesProcedure,
-		svc.ListEpisodeImages,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("ListEpisodeImages")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceReorderEpisodeImagesHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceReorderEpisodeImagesProcedure,
-		svc.ReorderEpisodeImages,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("ReorderEpisodeImages")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceUpdateEpisodePublishScheduleHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceUpdateEpisodePublishScheduleProcedure,
-		svc.UpdateEpisodePublishSchedule,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodePublishSchedule")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceUpdateEpisodeLayoutHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceUpdateEpisodeLayoutProcedure,
-		svc.UpdateEpisodeLayout,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodeLayout")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceUpdateEpisodeAvailabilityHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceUpdateEpisodeAvailabilityProcedure,
-		svc.UpdateEpisodeAvailability,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodeAvailability")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceUpdateEpisodePurchaseAvailabilityHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceUpdateEpisodePurchaseAvailabilityProcedure,
-		svc.UpdateEpisodePurchaseAvailability,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateEpisodePurchaseAvailability")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceListEpisodeCreditsHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceListEpisodeCreditsProcedure,
-		svc.ListEpisodeCredits,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("ListEpisodeCredits")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceReplaceEpisodeCreditsHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceReplaceEpisodeCreditsProcedure,
-		svc.ReplaceEpisodeCredits,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("ReplaceEpisodeCredits")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceBulkEditEpisodeCreditsHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceBulkEditEpisodeCreditsProcedure,
-		svc.BulkEditEpisodeCredits,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("BulkEditEpisodeCredits")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceUploadSeriesEyeCatchAspectImageHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure,
-		svc.UploadSeriesEyeCatchAspectImage,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("UploadSeriesEyeCatchAspectImage")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceCreateEpisodeFreeWindowHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceCreateEpisodeFreeWindowProcedure,
-		svc.CreateEpisodeFreeWindow,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("CreateEpisodeFreeWindow")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceCreateSeriesFreeWindowsHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceCreateSeriesFreeWindowsProcedure,
-		svc.CreateSeriesFreeWindows,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("CreateSeriesFreeWindows")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceListEpisodeFreeWindowsHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceListEpisodeFreeWindowsProcedure,
-		svc.ListEpisodeFreeWindows,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("ListEpisodeFreeWindows")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceDeleteEpisodeFreeWindowHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceDeleteEpisodeFreeWindowProcedure,
-		svc.DeleteEpisodeFreeWindow,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("DeleteEpisodeFreeWindow")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceGetSeriesWaitFreeSettingsHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure,
-		svc.GetSeriesWaitFreeSettings,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("GetSeriesWaitFreeSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminSeriesServiceUpdateSeriesWaitFreeSettingsHandler := connect.NewUnaryHandler(
-		AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure,
-		svc.UpdateSeriesWaitFreeSettings,
-		connect.WithSchema(adminSeriesServiceMethods.ByName("UpdateSeriesWaitFreeSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.admin.v1.AdminSeriesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case AdminSeriesServiceCreateSeriesProcedure:
-			adminSeriesServiceCreateSeriesHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceUpdateSeriesProcedure:
-			adminSeriesServiceUpdateSeriesHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceListSeriesProcedure:
-			adminSeriesServiceListSeriesHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceGetSeriesProcedure:
-			adminSeriesServiceGetSeriesHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceListEpisodesProcedure:
-			adminSeriesServiceListEpisodesHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceGetEpisodeProcedure:
-			adminSeriesServiceGetEpisodeHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceReorderEpisodesProcedure:
-			adminSeriesServiceReorderEpisodesHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceCreateEpisodeProcedure:
-			adminSeriesServiceCreateEpisodeHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceUploadEpisodeImagesProcedure:
-			adminSeriesServiceUploadEpisodeImagesHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceListEpisodeImagesProcedure:
-			adminSeriesServiceListEpisodeImagesHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceReorderEpisodeImagesProcedure:
-			adminSeriesServiceReorderEpisodeImagesHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceUpdateEpisodePublishScheduleProcedure:
-			adminSeriesServiceUpdateEpisodePublishScheduleHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceUpdateEpisodeLayoutProcedure:
-			adminSeriesServiceUpdateEpisodeLayoutHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceUpdateEpisodeAvailabilityProcedure:
-			adminSeriesServiceUpdateEpisodeAvailabilityHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceUpdateEpisodePurchaseAvailabilityProcedure:
-			adminSeriesServiceUpdateEpisodePurchaseAvailabilityHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceListEpisodeCreditsProcedure:
-			adminSeriesServiceListEpisodeCreditsHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceReplaceEpisodeCreditsProcedure:
-			adminSeriesServiceReplaceEpisodeCreditsHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceBulkEditEpisodeCreditsProcedure:
-			adminSeriesServiceBulkEditEpisodeCreditsHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure:
-			adminSeriesServiceUploadSeriesEyeCatchAspectImageHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceCreateEpisodeFreeWindowProcedure:
-			adminSeriesServiceCreateEpisodeFreeWindowHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceCreateSeriesFreeWindowsProcedure:
-			adminSeriesServiceCreateSeriesFreeWindowsHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceListEpisodeFreeWindowsProcedure:
-			adminSeriesServiceListEpisodeFreeWindowsHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceDeleteEpisodeFreeWindowProcedure:
-			adminSeriesServiceDeleteEpisodeFreeWindowHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure:
-			adminSeriesServiceGetSeriesWaitFreeSettingsHandler.ServeHTTP(w, r)
-		case AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure:
-			adminSeriesServiceUpdateSeriesWaitFreeSettingsHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedAdminSeriesServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminSeriesServiceHandler struct{}
 
-func (UnimplementedAdminSeriesServiceHandler) CreateSeries(context.Context, *connect.Request[v1.CreateSeriesRequest]) (*connect.Response[v1.CreateSeriesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.CreateSeries is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) CreateSeries(context.Context, *v1.CreateSeriesRequest) (*v1.CreateSeriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.CreateSeries is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) UpdateSeries(context.Context, *connect.Request[v1.UpdateSeriesRequest]) (*connect.Response[v1.UpdateSeriesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UpdateSeries is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) UpdateSeries(context.Context, *v1.UpdateSeriesRequest) (*v1.UpdateSeriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateSeries is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) ListSeries(context.Context, *connect.Request[v1.ListSeriesRequest]) (*connect.Response[v1.ListSeriesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.ListSeries is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) ListSeries(context.Context, *v1.ListSeriesRequest) (*v1.ListSeriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ListSeries is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) GetSeries(context.Context, *connect.Request[v1.GetSeriesRequest]) (*connect.Response[v1.GetSeriesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.GetSeries is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) GetSeries(context.Context, *v1.GetSeriesRequest) (*v1.GetSeriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.GetSeries is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.ListEpisodes is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) ListEpisodes(context.Context, *v1.ListEpisodesRequest) (*v1.ListEpisodesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ListEpisodes is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) GetEpisode(context.Context, *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.GetEpisode is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) GetEpisode(context.Context, *v1.GetEpisodeRequest) (*v1.GetEpisodeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.GetEpisode is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) ReorderEpisodes(context.Context, *connect.Request[v1.ReorderEpisodesRequest]) (*connect.Response[v1.ReorderEpisodesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.ReorderEpisodes is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) ReorderEpisodes(context.Context, *v1.ReorderEpisodesRequest) (*v1.ReorderEpisodesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ReorderEpisodes is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.CreateEpisode is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) CreateEpisode(context.Context, *v1.CreateEpisodeRequest) (*v1.CreateEpisodeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.CreateEpisode is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) UploadEpisodeImages(context.Context, *connect.Request[v1.UploadEpisodeImagesRequest]) (*connect.Response[v1.UploadEpisodeImagesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UploadEpisodeImages is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) UploadEpisodeImages(context.Context, *v1.UploadEpisodeImagesRequest) (*v1.UploadEpisodeImagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UploadEpisodeImages is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) ListEpisodeImages(context.Context, *connect.Request[v1.ListEpisodeImagesRequest]) (*connect.Response[v1.ListEpisodeImagesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.ListEpisodeImages is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) ListEpisodeImages(context.Context, *v1.ListEpisodeImagesRequest) (*v1.ListEpisodeImagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ListEpisodeImages is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) ReorderEpisodeImages(context.Context, *connect.Request[v1.ReorderEpisodeImagesRequest]) (*connect.Response[v1.ReorderEpisodeImagesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.ReorderEpisodeImages is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) ReorderEpisodeImages(context.Context, *v1.ReorderEpisodeImagesRequest) (*v1.ReorderEpisodeImagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ReorderEpisodeImages is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePublishSchedule(context.Context, *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodeLayout(context.Context, *connect.Request[v1.UpdateEpisodeLayoutRequest]) (*connect.Response[v1.UpdateEpisodeLayoutResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UpdateEpisodeLayout is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodeLayout(context.Context, *v1.UpdateEpisodeLayoutRequest) (*v1.UpdateEpisodeLayoutResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateEpisodeLayout is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodeAvailability(context.Context, *connect.Request[v1.UpdateEpisodeAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodeAvailabilityResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UpdateEpisodeAvailability is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodeAvailability(context.Context, *v1.UpdateEpisodeAvailabilityRequest) (*v1.UpdateEpisodeAvailabilityResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateEpisodeAvailability is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePurchaseAvailability(context.Context, *connect.Request[v1.UpdateEpisodePurchaseAvailabilityRequest]) (*connect.Response[v1.UpdateEpisodePurchaseAvailabilityResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UpdateEpisodePurchaseAvailability is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePurchaseAvailability(context.Context, *v1.UpdateEpisodePurchaseAvailabilityRequest) (*v1.UpdateEpisodePurchaseAvailabilityResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateEpisodePurchaseAvailability is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) ListEpisodeCredits(context.Context, *connect.Request[v1.ListEpisodeCreditsRequest]) (*connect.Response[v1.ListEpisodeCreditsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.ListEpisodeCredits is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) ListEpisodeCredits(context.Context, *v1.ListEpisodeCreditsRequest) (*v1.ListEpisodeCreditsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ListEpisodeCredits is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) ReplaceEpisodeCredits(context.Context, *connect.Request[v1.ReplaceEpisodeCreditsRequest]) (*connect.Response[v1.ReplaceEpisodeCreditsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) ReplaceEpisodeCredits(context.Context, *v1.ReplaceEpisodeCreditsRequest) (*v1.ReplaceEpisodeCreditsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ReplaceEpisodeCredits is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) BulkEditEpisodeCredits(context.Context, *connect.Request[v1.BulkEditEpisodeCreditsRequest]) (*connect.Response[v1.BulkEditEpisodeCreditsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.BulkEditEpisodeCredits is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) BulkEditEpisodeCredits(context.Context, *v1.BulkEditEpisodeCreditsRequest) (*v1.BulkEditEpisodeCreditsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.BulkEditEpisodeCredits is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) UploadSeriesEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadSeriesEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadSeriesEyeCatchAspectImageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) UploadSeriesEyeCatchAspectImage(context.Context, *v1.UploadSeriesEyeCatchAspectImageRequest) (*v1.UploadSeriesEyeCatchAspectImageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) CreateEpisodeFreeWindow(context.Context, *connect.Request[v1.CreateEpisodeFreeWindowRequest]) (*connect.Response[v1.CreateEpisodeFreeWindowResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) CreateEpisodeFreeWindow(context.Context, *v1.CreateEpisodeFreeWindowRequest) (*v1.CreateEpisodeFreeWindowResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.CreateEpisodeFreeWindow is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) CreateSeriesFreeWindows(context.Context, *connect.Request[v1.CreateSeriesFreeWindowsRequest]) (*connect.Response[v1.CreateSeriesFreeWindowsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) CreateSeriesFreeWindows(context.Context, *v1.CreateSeriesFreeWindowsRequest) (*v1.CreateSeriesFreeWindowsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.CreateSeriesFreeWindows is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) ListEpisodeFreeWindows(context.Context, *connect.Request[v1.ListEpisodeFreeWindowsRequest]) (*connect.Response[v1.ListEpisodeFreeWindowsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.ListEpisodeFreeWindows is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) ListEpisodeFreeWindows(context.Context, *v1.ListEpisodeFreeWindowsRequest) (*v1.ListEpisodeFreeWindowsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ListEpisodeFreeWindows is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) DeleteEpisodeFreeWindow(context.Context, *connect.Request[v1.DeleteEpisodeFreeWindowRequest]) (*connect.Response[v1.DeleteEpisodeFreeWindowResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) DeleteEpisodeFreeWindow(context.Context, *v1.DeleteEpisodeFreeWindowRequest) (*v1.DeleteEpisodeFreeWindowResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) GetSeriesWaitFreeSettings(context.Context, *connect.Request[v1.GetSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.GetSeriesWaitFreeSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.GetSeriesWaitFreeSettings is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) GetSeriesWaitFreeSettings(context.Context, *v1.GetSeriesWaitFreeSettingsRequest) (*v1.GetSeriesWaitFreeSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.GetSeriesWaitFreeSettings is not implemented")
 }
 
-func (UnimplementedAdminSeriesServiceHandler) UpdateSeriesWaitFreeSettings(context.Context, *connect.Request[v1.UpdateSeriesWaitFreeSettingsRequest]) (*connect.Response[v1.UpdateSeriesWaitFreeSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.UpdateSeriesWaitFreeSettings is not implemented"))
+func (UnimplementedAdminSeriesServiceHandler) UpdateSeriesWaitFreeSettings(context.Context, *v1.UpdateSeriesWaitFreeSettingsRequest) (*v1.UpdateSeriesWaitFreeSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateSeriesWaitFreeSettings is not implemented")
+}
+
+type adminSeriesServiceClient struct {
+	client *connect.Client
+}
+
+func (c *adminSeriesServiceClient) CreateSeries(ctx context.Context, req *v1.CreateSeriesRequest) (*v1.CreateSeriesResponse, error) {
+	var res v1.CreateSeriesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceCreateSeriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UpdateSeries(ctx context.Context, req *v1.UpdateSeriesRequest) (*v1.UpdateSeriesResponse, error) {
+	var res v1.UpdateSeriesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateSeriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ListSeries(ctx context.Context, req *v1.ListSeriesRequest) (*v1.ListSeriesResponse, error) {
+	var res v1.ListSeriesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceListSeriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) GetSeries(ctx context.Context, req *v1.GetSeriesRequest) (*v1.GetSeriesResponse, error) {
+	var res v1.GetSeriesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceGetSeriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ListEpisodes(ctx context.Context, req *v1.ListEpisodesRequest) (*v1.ListEpisodesResponse, error) {
+	var res v1.ListEpisodesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceListEpisodesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) GetEpisode(ctx context.Context, req *v1.GetEpisodeRequest) (*v1.GetEpisodeResponse, error) {
+	var res v1.GetEpisodeResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceGetEpisodeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ReorderEpisodes(ctx context.Context, req *v1.ReorderEpisodesRequest) (*v1.ReorderEpisodesResponse, error) {
+	var res v1.ReorderEpisodesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceReorderEpisodesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) CreateEpisode(ctx context.Context, req *v1.CreateEpisodeRequest) (*v1.CreateEpisodeResponse, error) {
+	var res v1.CreateEpisodeResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceCreateEpisodeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UploadEpisodeImages(ctx context.Context, req *v1.UploadEpisodeImagesRequest) (*v1.UploadEpisodeImagesResponse, error) {
+	var res v1.UploadEpisodeImagesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUploadEpisodeImagesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ListEpisodeImages(ctx context.Context, req *v1.ListEpisodeImagesRequest) (*v1.ListEpisodeImagesResponse, error) {
+	var res v1.ListEpisodeImagesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceListEpisodeImagesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ReorderEpisodeImages(ctx context.Context, req *v1.ReorderEpisodeImagesRequest) (*v1.ReorderEpisodeImagesResponse, error) {
+	var res v1.ReorderEpisodeImagesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceReorderEpisodeImagesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UpdateEpisodePublishSchedule(ctx context.Context, req *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error) {
+	var res v1.UpdateEpisodePublishScheduleResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateEpisodePublishScheduleSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UpdateEpisodeLayout(ctx context.Context, req *v1.UpdateEpisodeLayoutRequest) (*v1.UpdateEpisodeLayoutResponse, error) {
+	var res v1.UpdateEpisodeLayoutResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateEpisodeLayoutSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UpdateEpisodeAvailability(ctx context.Context, req *v1.UpdateEpisodeAvailabilityRequest) (*v1.UpdateEpisodeAvailabilityResponse, error) {
+	var res v1.UpdateEpisodeAvailabilityResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateEpisodeAvailabilitySpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UpdateEpisodePurchaseAvailability(ctx context.Context, req *v1.UpdateEpisodePurchaseAvailabilityRequest) (*v1.UpdateEpisodePurchaseAvailabilityResponse, error) {
+	var res v1.UpdateEpisodePurchaseAvailabilityResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateEpisodePurchaseAvailabilitySpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ListEpisodeCredits(ctx context.Context, req *v1.ListEpisodeCreditsRequest) (*v1.ListEpisodeCreditsResponse, error) {
+	var res v1.ListEpisodeCreditsResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceListEpisodeCreditsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ReplaceEpisodeCredits(ctx context.Context, req *v1.ReplaceEpisodeCreditsRequest) (*v1.ReplaceEpisodeCreditsResponse, error) {
+	var res v1.ReplaceEpisodeCreditsResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceReplaceEpisodeCreditsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) BulkEditEpisodeCredits(ctx context.Context, req *v1.BulkEditEpisodeCreditsRequest) (*v1.BulkEditEpisodeCreditsResponse, error) {
+	var res v1.BulkEditEpisodeCreditsResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceBulkEditEpisodeCreditsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UploadSeriesEyeCatchAspectImage(ctx context.Context, req *v1.UploadSeriesEyeCatchAspectImageRequest) (*v1.UploadSeriesEyeCatchAspectImageResponse, error) {
+	var res v1.UploadSeriesEyeCatchAspectImageResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUploadSeriesEyeCatchAspectImageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) CreateEpisodeFreeWindow(ctx context.Context, req *v1.CreateEpisodeFreeWindowRequest) (*v1.CreateEpisodeFreeWindowResponse, error) {
+	var res v1.CreateEpisodeFreeWindowResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceCreateEpisodeFreeWindowSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) CreateSeriesFreeWindows(ctx context.Context, req *v1.CreateSeriesFreeWindowsRequest) (*v1.CreateSeriesFreeWindowsResponse, error) {
+	var res v1.CreateSeriesFreeWindowsResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceCreateSeriesFreeWindowsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ListEpisodeFreeWindows(ctx context.Context, req *v1.ListEpisodeFreeWindowsRequest) (*v1.ListEpisodeFreeWindowsResponse, error) {
+	var res v1.ListEpisodeFreeWindowsResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceListEpisodeFreeWindowsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) DeleteEpisodeFreeWindow(ctx context.Context, req *v1.DeleteEpisodeFreeWindowRequest) (*v1.DeleteEpisodeFreeWindowResponse, error) {
+	var res v1.DeleteEpisodeFreeWindowResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceDeleteEpisodeFreeWindowSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) GetSeriesWaitFreeSettings(ctx context.Context, req *v1.GetSeriesWaitFreeSettingsRequest) (*v1.GetSeriesWaitFreeSettingsResponse, error) {
+	var res v1.GetSeriesWaitFreeSettingsResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceGetSeriesWaitFreeSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UpdateSeriesWaitFreeSettings(ctx context.Context, req *v1.UpdateSeriesWaitFreeSettingsRequest) (*v1.UpdateSeriesWaitFreeSettingsResponse, error) {
+	var res v1.UpdateSeriesWaitFreeSettingsResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateSeriesWaitFreeSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type adminSeriesServiceHandler struct{ svc AdminSeriesServiceHandler }
+
+func (h adminSeriesServiceHandler) createSeries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateSeriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateSeries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) updateSeries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateSeriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateSeries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) listSeries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListSeriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListSeries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) getSeries(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetSeriesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetSeries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) listEpisodes(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListEpisodesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListEpisodes(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) getEpisode(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetEpisodeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetEpisode(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) reorderEpisodes(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ReorderEpisodesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ReorderEpisodes(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) createEpisode(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateEpisodeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateEpisode(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) uploadEpisodeImages(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UploadEpisodeImagesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UploadEpisodeImages(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) listEpisodeImages(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListEpisodeImagesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListEpisodeImages(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) reorderEpisodeImages(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ReorderEpisodeImagesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ReorderEpisodeImages(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) updateEpisodePublishSchedule(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateEpisodePublishScheduleRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateEpisodePublishSchedule(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) updateEpisodeLayout(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateEpisodeLayoutRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateEpisodeLayout(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) updateEpisodeAvailability(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateEpisodeAvailabilityRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateEpisodeAvailability(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) updateEpisodePurchaseAvailability(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateEpisodePurchaseAvailabilityRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateEpisodePurchaseAvailability(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) listEpisodeCredits(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListEpisodeCreditsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListEpisodeCredits(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) replaceEpisodeCredits(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ReplaceEpisodeCreditsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ReplaceEpisodeCredits(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) bulkEditEpisodeCredits(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.BulkEditEpisodeCreditsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.BulkEditEpisodeCredits(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) uploadSeriesEyeCatchAspectImage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UploadSeriesEyeCatchAspectImageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UploadSeriesEyeCatchAspectImage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) createEpisodeFreeWindow(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateEpisodeFreeWindowRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateEpisodeFreeWindow(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) createSeriesFreeWindows(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateSeriesFreeWindowsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateSeriesFreeWindows(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) listEpisodeFreeWindows(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListEpisodeFreeWindowsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListEpisodeFreeWindows(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) deleteEpisodeFreeWindow(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteEpisodeFreeWindowRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteEpisodeFreeWindow(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) getSeriesWaitFreeSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetSeriesWaitFreeSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetSeriesWaitFreeSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) updateSeriesWaitFreeSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateSeriesWaitFreeSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateSeriesWaitFreeSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

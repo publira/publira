@@ -5,263 +5,291 @@
 package publiraadminv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AdminGenreServiceName is the fully-qualified name of the AdminGenreService service.
 	AdminGenreServiceName = "publira.admin.v1.AdminGenreService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AdminGenreServiceListGenresProcedure is the fully-qualified name of the AdminGenreService's
-	// ListGenres RPC.
+	// AdminGenreServiceListGenresProcedure is the procedure name of the AdminGenreService's ListGenres
+	// RPC.
 	AdminGenreServiceListGenresProcedure = "/publira.admin.v1.AdminGenreService/ListGenres"
-	// AdminGenreServiceCreateGenreProcedure is the fully-qualified name of the AdminGenreService's
+	// AdminGenreServiceCreateGenreProcedure is the procedure name of the AdminGenreService's
 	// CreateGenre RPC.
 	AdminGenreServiceCreateGenreProcedure = "/publira.admin.v1.AdminGenreService/CreateGenre"
-	// AdminGenreServiceUpdateGenreProcedure is the fully-qualified name of the AdminGenreService's
+	// AdminGenreServiceUpdateGenreProcedure is the procedure name of the AdminGenreService's
 	// UpdateGenre RPC.
 	AdminGenreServiceUpdateGenreProcedure = "/publira.admin.v1.AdminGenreService/UpdateGenre"
-	// AdminGenreServiceReorderGenresProcedure is the fully-qualified name of the AdminGenreService's
+	// AdminGenreServiceReorderGenresProcedure is the procedure name of the AdminGenreService's
 	// ReorderGenres RPC.
 	AdminGenreServiceReorderGenresProcedure = "/publira.admin.v1.AdminGenreService/ReorderGenres"
-	// AdminGenreServiceDeleteGenreProcedure is the fully-qualified name of the AdminGenreService's
+	// AdminGenreServiceDeleteGenreProcedure is the procedure name of the AdminGenreService's
 	// DeleteGenre RPC.
 	AdminGenreServiceDeleteGenreProcedure = "/publira.admin.v1.AdminGenreService/DeleteGenre"
-	// AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure is the fully-qualified name of the
+	// AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure is the procedure name of the
 	// AdminGenreService's UploadGenreEyeCatchAspectImage RPC.
 	AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure = "/publira.admin.v1.AdminGenreService/UploadGenreEyeCatchAspectImage"
+)
+
+var (
+	adminGenreServiceListGenresSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_genre_proto.Services().ByName("AdminGenreService").Methods().ByName("ListGenres"),
+			Procedure:  AdminGenreServiceListGenresProcedure,
+		}
+	})
+	adminGenreServiceCreateGenreSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_genre_proto.Services().ByName("AdminGenreService").Methods().ByName("CreateGenre"),
+			Procedure:  AdminGenreServiceCreateGenreProcedure,
+		}
+	})
+	adminGenreServiceUpdateGenreSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_genre_proto.Services().ByName("AdminGenreService").Methods().ByName("UpdateGenre"),
+			Procedure:  AdminGenreServiceUpdateGenreProcedure,
+		}
+	})
+	adminGenreServiceReorderGenresSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_genre_proto.Services().ByName("AdminGenreService").Methods().ByName("ReorderGenres"),
+			Procedure:  AdminGenreServiceReorderGenresProcedure,
+		}
+	})
+	adminGenreServiceDeleteGenreSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_genre_proto.Services().ByName("AdminGenreService").Methods().ByName("DeleteGenre"),
+			Procedure:  AdminGenreServiceDeleteGenreProcedure,
+		}
+	})
+	adminGenreServiceUploadGenreEyeCatchAspectImageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_genre_proto.Services().ByName("AdminGenreService").Methods().ByName("UploadGenreEyeCatchAspectImage"),
+			Procedure:  AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure,
+		}
+	})
 )
 
 // AdminGenreServiceClient is a client for the publira.admin.v1.AdminGenreService service.
 type AdminGenreServiceClient interface {
 	// Minimum role: tenant_auditor.
-	ListGenres(context.Context, *connect.Request[v1.ListGenresRequest]) (*connect.Response[v1.ListGenresResponse], error)
+	ListGenres(context.Context, *v1.ListGenresRequest) (*v1.ListGenresResponse, error)
 	// Minimum role: tenant_editor.
-	CreateGenre(context.Context, *connect.Request[v1.CreateGenreRequest]) (*connect.Response[v1.CreateGenreResponse], error)
+	CreateGenre(context.Context, *v1.CreateGenreRequest) (*v1.CreateGenreResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateGenre(context.Context, *connect.Request[v1.UpdateGenreRequest]) (*connect.Response[v1.UpdateGenreResponse], error)
+	UpdateGenre(context.Context, *v1.UpdateGenreRequest) (*v1.UpdateGenreResponse, error)
 	// Minimum role: tenant_editor.
-	ReorderGenres(context.Context, *connect.Request[v1.ReorderGenresRequest]) (*connect.Response[v1.ReorderGenresResponse], error)
+	ReorderGenres(context.Context, *v1.ReorderGenresRequest) (*v1.ReorderGenresResponse, error)
 	// Minimum role: tenant_editor.
-	DeleteGenre(context.Context, *connect.Request[v1.DeleteGenreRequest]) (*connect.Response[v1.DeleteGenreResponse], error)
+	DeleteGenre(context.Context, *v1.DeleteGenreRequest) (*v1.DeleteGenreResponse, error)
 	// Minimum role: tenant_editor.
-	UploadGenreEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadGenreEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadGenreEyeCatchAspectImageResponse], error)
+	UploadGenreEyeCatchAspectImage(context.Context, *v1.UploadGenreEyeCatchAspectImageRequest) (*v1.UploadGenreEyeCatchAspectImageResponse, error)
 }
 
 // NewAdminGenreServiceClient constructs a client for the publira.admin.v1.AdminGenreService
-// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
-// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
-// the connect.WithGRPC() or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewAdminGenreServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdminGenreServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	adminGenreServiceMethods := v1.File_publira_admin_v1_genre_proto.Services().ByName("AdminGenreService").Methods()
-	return &adminGenreServiceClient{
-		listGenres: connect.NewClient[v1.ListGenresRequest, v1.ListGenresResponse](
-			httpClient,
-			baseURL+AdminGenreServiceListGenresProcedure,
-			connect.WithSchema(adminGenreServiceMethods.ByName("ListGenres")),
-			connect.WithClientOptions(opts...),
-		),
-		createGenre: connect.NewClient[v1.CreateGenreRequest, v1.CreateGenreResponse](
-			httpClient,
-			baseURL+AdminGenreServiceCreateGenreProcedure,
-			connect.WithSchema(adminGenreServiceMethods.ByName("CreateGenre")),
-			connect.WithClientOptions(opts...),
-		),
-		updateGenre: connect.NewClient[v1.UpdateGenreRequest, v1.UpdateGenreResponse](
-			httpClient,
-			baseURL+AdminGenreServiceUpdateGenreProcedure,
-			connect.WithSchema(adminGenreServiceMethods.ByName("UpdateGenre")),
-			connect.WithClientOptions(opts...),
-		),
-		reorderGenres: connect.NewClient[v1.ReorderGenresRequest, v1.ReorderGenresResponse](
-			httpClient,
-			baseURL+AdminGenreServiceReorderGenresProcedure,
-			connect.WithSchema(adminGenreServiceMethods.ByName("ReorderGenres")),
-			connect.WithClientOptions(opts...),
-		),
-		deleteGenre: connect.NewClient[v1.DeleteGenreRequest, v1.DeleteGenreResponse](
-			httpClient,
-			baseURL+AdminGenreServiceDeleteGenreProcedure,
-			connect.WithSchema(adminGenreServiceMethods.ByName("DeleteGenre")),
-			connect.WithClientOptions(opts...),
-		),
-		uploadGenreEyeCatchAspectImage: connect.NewClient[v1.UploadGenreEyeCatchAspectImageRequest, v1.UploadGenreEyeCatchAspectImageResponse](
-			httpClient,
-			baseURL+AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure,
-			connect.WithSchema(adminGenreServiceMethods.ByName("UploadGenreEyeCatchAspectImage")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// adminGenreServiceClient implements AdminGenreServiceClient.
-type adminGenreServiceClient struct {
-	listGenres                     *connect.Client[v1.ListGenresRequest, v1.ListGenresResponse]
-	createGenre                    *connect.Client[v1.CreateGenreRequest, v1.CreateGenreResponse]
-	updateGenre                    *connect.Client[v1.UpdateGenreRequest, v1.UpdateGenreResponse]
-	reorderGenres                  *connect.Client[v1.ReorderGenresRequest, v1.ReorderGenresResponse]
-	deleteGenre                    *connect.Client[v1.DeleteGenreRequest, v1.DeleteGenreResponse]
-	uploadGenreEyeCatchAspectImage *connect.Client[v1.UploadGenreEyeCatchAspectImageRequest, v1.UploadGenreEyeCatchAspectImageResponse]
-}
-
-// ListGenres calls publira.admin.v1.AdminGenreService.ListGenres.
-func (c *adminGenreServiceClient) ListGenres(ctx context.Context, req *connect.Request[v1.ListGenresRequest]) (*connect.Response[v1.ListGenresResponse], error) {
-	return c.listGenres.CallUnary(ctx, req)
-}
-
-// CreateGenre calls publira.admin.v1.AdminGenreService.CreateGenre.
-func (c *adminGenreServiceClient) CreateGenre(ctx context.Context, req *connect.Request[v1.CreateGenreRequest]) (*connect.Response[v1.CreateGenreResponse], error) {
-	return c.createGenre.CallUnary(ctx, req)
-}
-
-// UpdateGenre calls publira.admin.v1.AdminGenreService.UpdateGenre.
-func (c *adminGenreServiceClient) UpdateGenre(ctx context.Context, req *connect.Request[v1.UpdateGenreRequest]) (*connect.Response[v1.UpdateGenreResponse], error) {
-	return c.updateGenre.CallUnary(ctx, req)
-}
-
-// ReorderGenres calls publira.admin.v1.AdminGenreService.ReorderGenres.
-func (c *adminGenreServiceClient) ReorderGenres(ctx context.Context, req *connect.Request[v1.ReorderGenresRequest]) (*connect.Response[v1.ReorderGenresResponse], error) {
-	return c.reorderGenres.CallUnary(ctx, req)
-}
-
-// DeleteGenre calls publira.admin.v1.AdminGenreService.DeleteGenre.
-func (c *adminGenreServiceClient) DeleteGenre(ctx context.Context, req *connect.Request[v1.DeleteGenreRequest]) (*connect.Response[v1.DeleteGenreResponse], error) {
-	return c.deleteGenre.CallUnary(ctx, req)
-}
-
-// UploadGenreEyeCatchAspectImage calls
-// publira.admin.v1.AdminGenreService.UploadGenreEyeCatchAspectImage.
-func (c *adminGenreServiceClient) UploadGenreEyeCatchAspectImage(ctx context.Context, req *connect.Request[v1.UploadGenreEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadGenreEyeCatchAspectImageResponse], error) {
-	return c.uploadGenreEyeCatchAspectImage.CallUnary(ctx, req)
+// service. Multiple service clients may share a single connect.Client.
+func NewAdminGenreServiceClient(client *connect.Client) AdminGenreServiceClient {
+	return &adminGenreServiceClient{client: client}
 }
 
 // AdminGenreServiceHandler is an implementation of the publira.admin.v1.AdminGenreService service.
 type AdminGenreServiceHandler interface {
 	// Minimum role: tenant_auditor.
-	ListGenres(context.Context, *connect.Request[v1.ListGenresRequest]) (*connect.Response[v1.ListGenresResponse], error)
+	ListGenres(context.Context, *v1.ListGenresRequest) (*v1.ListGenresResponse, error)
 	// Minimum role: tenant_editor.
-	CreateGenre(context.Context, *connect.Request[v1.CreateGenreRequest]) (*connect.Response[v1.CreateGenreResponse], error)
+	CreateGenre(context.Context, *v1.CreateGenreRequest) (*v1.CreateGenreResponse, error)
 	// Minimum role: tenant_editor.
-	UpdateGenre(context.Context, *connect.Request[v1.UpdateGenreRequest]) (*connect.Response[v1.UpdateGenreResponse], error)
+	UpdateGenre(context.Context, *v1.UpdateGenreRequest) (*v1.UpdateGenreResponse, error)
 	// Minimum role: tenant_editor.
-	ReorderGenres(context.Context, *connect.Request[v1.ReorderGenresRequest]) (*connect.Response[v1.ReorderGenresResponse], error)
+	ReorderGenres(context.Context, *v1.ReorderGenresRequest) (*v1.ReorderGenresResponse, error)
 	// Minimum role: tenant_editor.
-	DeleteGenre(context.Context, *connect.Request[v1.DeleteGenreRequest]) (*connect.Response[v1.DeleteGenreResponse], error)
+	DeleteGenre(context.Context, *v1.DeleteGenreRequest) (*v1.DeleteGenreResponse, error)
 	// Minimum role: tenant_editor.
-	UploadGenreEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadGenreEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadGenreEyeCatchAspectImageResponse], error)
+	UploadGenreEyeCatchAspectImage(context.Context, *v1.UploadGenreEyeCatchAspectImageRequest) (*v1.UploadGenreEyeCatchAspectImageResponse, error)
 }
 
-// NewAdminGenreServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewAdminGenreServiceHandler(svc AdminGenreServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	adminGenreServiceMethods := v1.File_publira_admin_v1_genre_proto.Services().ByName("AdminGenreService").Methods()
-	adminGenreServiceListGenresHandler := connect.NewUnaryHandler(
-		AdminGenreServiceListGenresProcedure,
-		svc.ListGenres,
-		connect.WithSchema(adminGenreServiceMethods.ByName("ListGenres")),
-		connect.WithHandlerOptions(opts...),
+// RegisterAdminGenreServiceHandler registers svc as the publira.admin.v1.AdminGenreService
+// implementation on server.
+func RegisterAdminGenreServiceHandler(server *connect.Server, svc AdminGenreServiceHandler) {
+	adapter := adminGenreServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: adminGenreServiceListGenresSpec(), Handler: adapter.listGenres},
+		connect.Method{Spec: adminGenreServiceCreateGenreSpec(), Handler: adapter.createGenre},
+		connect.Method{Spec: adminGenreServiceUpdateGenreSpec(), Handler: adapter.updateGenre},
+		connect.Method{Spec: adminGenreServiceReorderGenresSpec(), Handler: adapter.reorderGenres},
+		connect.Method{Spec: adminGenreServiceDeleteGenreSpec(), Handler: adapter.deleteGenre},
+		connect.Method{Spec: adminGenreServiceUploadGenreEyeCatchAspectImageSpec(), Handler: adapter.uploadGenreEyeCatchAspectImage},
 	)
-	adminGenreServiceCreateGenreHandler := connect.NewUnaryHandler(
-		AdminGenreServiceCreateGenreProcedure,
-		svc.CreateGenre,
-		connect.WithSchema(adminGenreServiceMethods.ByName("CreateGenre")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminGenreServiceUpdateGenreHandler := connect.NewUnaryHandler(
-		AdminGenreServiceUpdateGenreProcedure,
-		svc.UpdateGenre,
-		connect.WithSchema(adminGenreServiceMethods.ByName("UpdateGenre")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminGenreServiceReorderGenresHandler := connect.NewUnaryHandler(
-		AdminGenreServiceReorderGenresProcedure,
-		svc.ReorderGenres,
-		connect.WithSchema(adminGenreServiceMethods.ByName("ReorderGenres")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminGenreServiceDeleteGenreHandler := connect.NewUnaryHandler(
-		AdminGenreServiceDeleteGenreProcedure,
-		svc.DeleteGenre,
-		connect.WithSchema(adminGenreServiceMethods.ByName("DeleteGenre")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminGenreServiceUploadGenreEyeCatchAspectImageHandler := connect.NewUnaryHandler(
-		AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure,
-		svc.UploadGenreEyeCatchAspectImage,
-		connect.WithSchema(adminGenreServiceMethods.ByName("UploadGenreEyeCatchAspectImage")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.admin.v1.AdminGenreService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case AdminGenreServiceListGenresProcedure:
-			adminGenreServiceListGenresHandler.ServeHTTP(w, r)
-		case AdminGenreServiceCreateGenreProcedure:
-			adminGenreServiceCreateGenreHandler.ServeHTTP(w, r)
-		case AdminGenreServiceUpdateGenreProcedure:
-			adminGenreServiceUpdateGenreHandler.ServeHTTP(w, r)
-		case AdminGenreServiceReorderGenresProcedure:
-			adminGenreServiceReorderGenresHandler.ServeHTTP(w, r)
-		case AdminGenreServiceDeleteGenreProcedure:
-			adminGenreServiceDeleteGenreHandler.ServeHTTP(w, r)
-		case AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure:
-			adminGenreServiceUploadGenreEyeCatchAspectImageHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedAdminGenreServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminGenreServiceHandler struct{}
 
-func (UnimplementedAdminGenreServiceHandler) ListGenres(context.Context, *connect.Request[v1.ListGenresRequest]) (*connect.Response[v1.ListGenresResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminGenreService.ListGenres is not implemented"))
+func (UnimplementedAdminGenreServiceHandler) ListGenres(context.Context, *v1.ListGenresRequest) (*v1.ListGenresResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminGenreService.ListGenres is not implemented")
 }
 
-func (UnimplementedAdminGenreServiceHandler) CreateGenre(context.Context, *connect.Request[v1.CreateGenreRequest]) (*connect.Response[v1.CreateGenreResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminGenreService.CreateGenre is not implemented"))
+func (UnimplementedAdminGenreServiceHandler) CreateGenre(context.Context, *v1.CreateGenreRequest) (*v1.CreateGenreResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminGenreService.CreateGenre is not implemented")
 }
 
-func (UnimplementedAdminGenreServiceHandler) UpdateGenre(context.Context, *connect.Request[v1.UpdateGenreRequest]) (*connect.Response[v1.UpdateGenreResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminGenreService.UpdateGenre is not implemented"))
+func (UnimplementedAdminGenreServiceHandler) UpdateGenre(context.Context, *v1.UpdateGenreRequest) (*v1.UpdateGenreResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminGenreService.UpdateGenre is not implemented")
 }
 
-func (UnimplementedAdminGenreServiceHandler) ReorderGenres(context.Context, *connect.Request[v1.ReorderGenresRequest]) (*connect.Response[v1.ReorderGenresResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminGenreService.ReorderGenres is not implemented"))
+func (UnimplementedAdminGenreServiceHandler) ReorderGenres(context.Context, *v1.ReorderGenresRequest) (*v1.ReorderGenresResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminGenreService.ReorderGenres is not implemented")
 }
 
-func (UnimplementedAdminGenreServiceHandler) DeleteGenre(context.Context, *connect.Request[v1.DeleteGenreRequest]) (*connect.Response[v1.DeleteGenreResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminGenreService.DeleteGenre is not implemented"))
+func (UnimplementedAdminGenreServiceHandler) DeleteGenre(context.Context, *v1.DeleteGenreRequest) (*v1.DeleteGenreResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminGenreService.DeleteGenre is not implemented")
 }
 
-func (UnimplementedAdminGenreServiceHandler) UploadGenreEyeCatchAspectImage(context.Context, *connect.Request[v1.UploadGenreEyeCatchAspectImageRequest]) (*connect.Response[v1.UploadGenreEyeCatchAspectImageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminGenreService.UploadGenreEyeCatchAspectImage is not implemented"))
+func (UnimplementedAdminGenreServiceHandler) UploadGenreEyeCatchAspectImage(context.Context, *v1.UploadGenreEyeCatchAspectImageRequest) (*v1.UploadGenreEyeCatchAspectImageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminGenreService.UploadGenreEyeCatchAspectImage is not implemented")
+}
+
+type adminGenreServiceClient struct {
+	client *connect.Client
+}
+
+func (c *adminGenreServiceClient) ListGenres(ctx context.Context, req *v1.ListGenresRequest) (*v1.ListGenresResponse, error) {
+	var res v1.ListGenresResponse
+	if err := c.client.CallUnary(ctx, adminGenreServiceListGenresSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminGenreServiceClient) CreateGenre(ctx context.Context, req *v1.CreateGenreRequest) (*v1.CreateGenreResponse, error) {
+	var res v1.CreateGenreResponse
+	if err := c.client.CallUnary(ctx, adminGenreServiceCreateGenreSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminGenreServiceClient) UpdateGenre(ctx context.Context, req *v1.UpdateGenreRequest) (*v1.UpdateGenreResponse, error) {
+	var res v1.UpdateGenreResponse
+	if err := c.client.CallUnary(ctx, adminGenreServiceUpdateGenreSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminGenreServiceClient) ReorderGenres(ctx context.Context, req *v1.ReorderGenresRequest) (*v1.ReorderGenresResponse, error) {
+	var res v1.ReorderGenresResponse
+	if err := c.client.CallUnary(ctx, adminGenreServiceReorderGenresSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminGenreServiceClient) DeleteGenre(ctx context.Context, req *v1.DeleteGenreRequest) (*v1.DeleteGenreResponse, error) {
+	var res v1.DeleteGenreResponse
+	if err := c.client.CallUnary(ctx, adminGenreServiceDeleteGenreSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminGenreServiceClient) UploadGenreEyeCatchAspectImage(ctx context.Context, req *v1.UploadGenreEyeCatchAspectImageRequest) (*v1.UploadGenreEyeCatchAspectImageResponse, error) {
+	var res v1.UploadGenreEyeCatchAspectImageResponse
+	if err := c.client.CallUnary(ctx, adminGenreServiceUploadGenreEyeCatchAspectImageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type adminGenreServiceHandler struct{ svc AdminGenreServiceHandler }
+
+func (h adminGenreServiceHandler) listGenres(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListGenresRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListGenres(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminGenreServiceHandler) createGenre(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateGenreRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateGenre(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminGenreServiceHandler) updateGenre(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateGenreRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateGenre(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminGenreServiceHandler) reorderGenres(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ReorderGenresRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ReorderGenres(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminGenreServiceHandler) deleteGenre(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteGenreRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteGenre(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminGenreServiceHandler) uploadGenreEyeCatchAspectImage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UploadGenreEyeCatchAspectImageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UploadGenreEyeCatchAspectImage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

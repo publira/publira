@@ -5,20 +5,11 @@
 package publiraadminv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AdminInboundEmailSettingsServiceName is the fully-qualified name of the
@@ -26,155 +17,168 @@ const (
 	AdminInboundEmailSettingsServiceName = "publira.admin.v1.AdminInboundEmailSettingsService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AdminInboundEmailSettingsServiceListInboundEmailProvidersProcedure is the fully-qualified name of
-	// the AdminInboundEmailSettingsService's ListInboundEmailProviders RPC.
+	// AdminInboundEmailSettingsServiceListInboundEmailProvidersProcedure is the procedure name of the
+	// AdminInboundEmailSettingsService's ListInboundEmailProviders RPC.
 	AdminInboundEmailSettingsServiceListInboundEmailProvidersProcedure = "/publira.admin.v1.AdminInboundEmailSettingsService/ListInboundEmailProviders"
-	// AdminInboundEmailSettingsServiceGetTenantInboundEmailSettingsProcedure is the fully-qualified
-	// name of the AdminInboundEmailSettingsService's GetTenantInboundEmailSettings RPC.
+	// AdminInboundEmailSettingsServiceGetTenantInboundEmailSettingsProcedure is the procedure name of
+	// the AdminInboundEmailSettingsService's GetTenantInboundEmailSettings RPC.
 	AdminInboundEmailSettingsServiceGetTenantInboundEmailSettingsProcedure = "/publira.admin.v1.AdminInboundEmailSettingsService/GetTenantInboundEmailSettings"
-	// AdminInboundEmailSettingsServiceUpdateTenantInboundEmailSettingsProcedure is the fully-qualified
-	// name of the AdminInboundEmailSettingsService's UpdateTenantInboundEmailSettings RPC.
+	// AdminInboundEmailSettingsServiceUpdateTenantInboundEmailSettingsProcedure is the procedure name
+	// of the AdminInboundEmailSettingsService's UpdateTenantInboundEmailSettings RPC.
 	AdminInboundEmailSettingsServiceUpdateTenantInboundEmailSettingsProcedure = "/publira.admin.v1.AdminInboundEmailSettingsService/UpdateTenantInboundEmailSettings"
+)
+
+var (
+	adminInboundEmailSettingsServiceListInboundEmailProvidersSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_inbound_email_proto.Services().ByName("AdminInboundEmailSettingsService").Methods().ByName("ListInboundEmailProviders"),
+			Procedure:  AdminInboundEmailSettingsServiceListInboundEmailProvidersProcedure,
+		}
+	})
+	adminInboundEmailSettingsServiceGetTenantInboundEmailSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_inbound_email_proto.Services().ByName("AdminInboundEmailSettingsService").Methods().ByName("GetTenantInboundEmailSettings"),
+			Procedure:  AdminInboundEmailSettingsServiceGetTenantInboundEmailSettingsProcedure,
+		}
+	})
+	adminInboundEmailSettingsServiceUpdateTenantInboundEmailSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_inbound_email_proto.Services().ByName("AdminInboundEmailSettingsService").Methods().ByName("UpdateTenantInboundEmailSettings"),
+			Procedure:  AdminInboundEmailSettingsServiceUpdateTenantInboundEmailSettingsProcedure,
+		}
+	})
 )
 
 // AdminInboundEmailSettingsServiceClient is a client for the
 // publira.admin.v1.AdminInboundEmailSettingsService service.
 type AdminInboundEmailSettingsServiceClient interface {
 	// Minimum role: tenant_admin.
-	ListInboundEmailProviders(context.Context, *connect.Request[v1.ListInboundEmailProvidersRequest]) (*connect.Response[v1.ListInboundEmailProvidersResponse], error)
+	ListInboundEmailProviders(context.Context, *v1.ListInboundEmailProvidersRequest) (*v1.ListInboundEmailProvidersResponse, error)
 	// Minimum role: tenant_admin.
-	GetTenantInboundEmailSettings(context.Context, *connect.Request[v1.GetTenantInboundEmailSettingsRequest]) (*connect.Response[v1.GetTenantInboundEmailSettingsResponse], error)
+	GetTenantInboundEmailSettings(context.Context, *v1.GetTenantInboundEmailSettingsRequest) (*v1.GetTenantInboundEmailSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantInboundEmailSettings(context.Context, *connect.Request[v1.UpdateTenantInboundEmailSettingsRequest]) (*connect.Response[v1.UpdateTenantInboundEmailSettingsResponse], error)
+	UpdateTenantInboundEmailSettings(context.Context, *v1.UpdateTenantInboundEmailSettingsRequest) (*v1.UpdateTenantInboundEmailSettingsResponse, error)
 }
 
 // NewAdminInboundEmailSettingsServiceClient constructs a client for the
-// publira.admin.v1.AdminInboundEmailSettingsService service. By default, it uses the Connect
-// protocol with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed
-// requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
-// connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewAdminInboundEmailSettingsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdminInboundEmailSettingsServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	adminInboundEmailSettingsServiceMethods := v1.File_publira_admin_v1_inbound_email_proto.Services().ByName("AdminInboundEmailSettingsService").Methods()
-	return &adminInboundEmailSettingsServiceClient{
-		listInboundEmailProviders: connect.NewClient[v1.ListInboundEmailProvidersRequest, v1.ListInboundEmailProvidersResponse](
-			httpClient,
-			baseURL+AdminInboundEmailSettingsServiceListInboundEmailProvidersProcedure,
-			connect.WithSchema(adminInboundEmailSettingsServiceMethods.ByName("ListInboundEmailProviders")),
-			connect.WithClientOptions(opts...),
-		),
-		getTenantInboundEmailSettings: connect.NewClient[v1.GetTenantInboundEmailSettingsRequest, v1.GetTenantInboundEmailSettingsResponse](
-			httpClient,
-			baseURL+AdminInboundEmailSettingsServiceGetTenantInboundEmailSettingsProcedure,
-			connect.WithSchema(adminInboundEmailSettingsServiceMethods.ByName("GetTenantInboundEmailSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTenantInboundEmailSettings: connect.NewClient[v1.UpdateTenantInboundEmailSettingsRequest, v1.UpdateTenantInboundEmailSettingsResponse](
-			httpClient,
-			baseURL+AdminInboundEmailSettingsServiceUpdateTenantInboundEmailSettingsProcedure,
-			connect.WithSchema(adminInboundEmailSettingsServiceMethods.ByName("UpdateTenantInboundEmailSettings")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// adminInboundEmailSettingsServiceClient implements AdminInboundEmailSettingsServiceClient.
-type adminInboundEmailSettingsServiceClient struct {
-	listInboundEmailProviders        *connect.Client[v1.ListInboundEmailProvidersRequest, v1.ListInboundEmailProvidersResponse]
-	getTenantInboundEmailSettings    *connect.Client[v1.GetTenantInboundEmailSettingsRequest, v1.GetTenantInboundEmailSettingsResponse]
-	updateTenantInboundEmailSettings *connect.Client[v1.UpdateTenantInboundEmailSettingsRequest, v1.UpdateTenantInboundEmailSettingsResponse]
-}
-
-// ListInboundEmailProviders calls
-// publira.admin.v1.AdminInboundEmailSettingsService.ListInboundEmailProviders.
-func (c *adminInboundEmailSettingsServiceClient) ListInboundEmailProviders(ctx context.Context, req *connect.Request[v1.ListInboundEmailProvidersRequest]) (*connect.Response[v1.ListInboundEmailProvidersResponse], error) {
-	return c.listInboundEmailProviders.CallUnary(ctx, req)
-}
-
-// GetTenantInboundEmailSettings calls
-// publira.admin.v1.AdminInboundEmailSettingsService.GetTenantInboundEmailSettings.
-func (c *adminInboundEmailSettingsServiceClient) GetTenantInboundEmailSettings(ctx context.Context, req *connect.Request[v1.GetTenantInboundEmailSettingsRequest]) (*connect.Response[v1.GetTenantInboundEmailSettingsResponse], error) {
-	return c.getTenantInboundEmailSettings.CallUnary(ctx, req)
-}
-
-// UpdateTenantInboundEmailSettings calls
-// publira.admin.v1.AdminInboundEmailSettingsService.UpdateTenantInboundEmailSettings.
-func (c *adminInboundEmailSettingsServiceClient) UpdateTenantInboundEmailSettings(ctx context.Context, req *connect.Request[v1.UpdateTenantInboundEmailSettingsRequest]) (*connect.Response[v1.UpdateTenantInboundEmailSettingsResponse], error) {
-	return c.updateTenantInboundEmailSettings.CallUnary(ctx, req)
+// publira.admin.v1.AdminInboundEmailSettingsService service. Multiple service clients may share a
+// single connect.Client.
+func NewAdminInboundEmailSettingsServiceClient(client *connect.Client) AdminInboundEmailSettingsServiceClient {
+	return &adminInboundEmailSettingsServiceClient{client: client}
 }
 
 // AdminInboundEmailSettingsServiceHandler is an implementation of the
 // publira.admin.v1.AdminInboundEmailSettingsService service.
 type AdminInboundEmailSettingsServiceHandler interface {
 	// Minimum role: tenant_admin.
-	ListInboundEmailProviders(context.Context, *connect.Request[v1.ListInboundEmailProvidersRequest]) (*connect.Response[v1.ListInboundEmailProvidersResponse], error)
+	ListInboundEmailProviders(context.Context, *v1.ListInboundEmailProvidersRequest) (*v1.ListInboundEmailProvidersResponse, error)
 	// Minimum role: tenant_admin.
-	GetTenantInboundEmailSettings(context.Context, *connect.Request[v1.GetTenantInboundEmailSettingsRequest]) (*connect.Response[v1.GetTenantInboundEmailSettingsResponse], error)
+	GetTenantInboundEmailSettings(context.Context, *v1.GetTenantInboundEmailSettingsRequest) (*v1.GetTenantInboundEmailSettingsResponse, error)
 	// Minimum role: tenant_admin.
-	UpdateTenantInboundEmailSettings(context.Context, *connect.Request[v1.UpdateTenantInboundEmailSettingsRequest]) (*connect.Response[v1.UpdateTenantInboundEmailSettingsResponse], error)
+	UpdateTenantInboundEmailSettings(context.Context, *v1.UpdateTenantInboundEmailSettingsRequest) (*v1.UpdateTenantInboundEmailSettingsResponse, error)
 }
 
-// NewAdminInboundEmailSettingsServiceHandler builds an HTTP handler from the service
-// implementation. It returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewAdminInboundEmailSettingsServiceHandler(svc AdminInboundEmailSettingsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	adminInboundEmailSettingsServiceMethods := v1.File_publira_admin_v1_inbound_email_proto.Services().ByName("AdminInboundEmailSettingsService").Methods()
-	adminInboundEmailSettingsServiceListInboundEmailProvidersHandler := connect.NewUnaryHandler(
-		AdminInboundEmailSettingsServiceListInboundEmailProvidersProcedure,
-		svc.ListInboundEmailProviders,
-		connect.WithSchema(adminInboundEmailSettingsServiceMethods.ByName("ListInboundEmailProviders")),
-		connect.WithHandlerOptions(opts...),
+// RegisterAdminInboundEmailSettingsServiceHandler registers svc as the
+// publira.admin.v1.AdminInboundEmailSettingsService implementation on server.
+func RegisterAdminInboundEmailSettingsServiceHandler(server *connect.Server, svc AdminInboundEmailSettingsServiceHandler) {
+	adapter := adminInboundEmailSettingsServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: adminInboundEmailSettingsServiceListInboundEmailProvidersSpec(), Handler: adapter.listInboundEmailProviders},
+		connect.Method{Spec: adminInboundEmailSettingsServiceGetTenantInboundEmailSettingsSpec(), Handler: adapter.getTenantInboundEmailSettings},
+		connect.Method{Spec: adminInboundEmailSettingsServiceUpdateTenantInboundEmailSettingsSpec(), Handler: adapter.updateTenantInboundEmailSettings},
 	)
-	adminInboundEmailSettingsServiceGetTenantInboundEmailSettingsHandler := connect.NewUnaryHandler(
-		AdminInboundEmailSettingsServiceGetTenantInboundEmailSettingsProcedure,
-		svc.GetTenantInboundEmailSettings,
-		connect.WithSchema(adminInboundEmailSettingsServiceMethods.ByName("GetTenantInboundEmailSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminInboundEmailSettingsServiceUpdateTenantInboundEmailSettingsHandler := connect.NewUnaryHandler(
-		AdminInboundEmailSettingsServiceUpdateTenantInboundEmailSettingsProcedure,
-		svc.UpdateTenantInboundEmailSettings,
-		connect.WithSchema(adminInboundEmailSettingsServiceMethods.ByName("UpdateTenantInboundEmailSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.admin.v1.AdminInboundEmailSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case AdminInboundEmailSettingsServiceListInboundEmailProvidersProcedure:
-			adminInboundEmailSettingsServiceListInboundEmailProvidersHandler.ServeHTTP(w, r)
-		case AdminInboundEmailSettingsServiceGetTenantInboundEmailSettingsProcedure:
-			adminInboundEmailSettingsServiceGetTenantInboundEmailSettingsHandler.ServeHTTP(w, r)
-		case AdminInboundEmailSettingsServiceUpdateTenantInboundEmailSettingsProcedure:
-			adminInboundEmailSettingsServiceUpdateTenantInboundEmailSettingsHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedAdminInboundEmailSettingsServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminInboundEmailSettingsServiceHandler struct{}
 
-func (UnimplementedAdminInboundEmailSettingsServiceHandler) ListInboundEmailProviders(context.Context, *connect.Request[v1.ListInboundEmailProvidersRequest]) (*connect.Response[v1.ListInboundEmailProvidersResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminInboundEmailSettingsService.ListInboundEmailProviders is not implemented"))
+func (UnimplementedAdminInboundEmailSettingsServiceHandler) ListInboundEmailProviders(context.Context, *v1.ListInboundEmailProvidersRequest) (*v1.ListInboundEmailProvidersResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminInboundEmailSettingsService.ListInboundEmailProviders is not implemented")
 }
 
-func (UnimplementedAdminInboundEmailSettingsServiceHandler) GetTenantInboundEmailSettings(context.Context, *connect.Request[v1.GetTenantInboundEmailSettingsRequest]) (*connect.Response[v1.GetTenantInboundEmailSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminInboundEmailSettingsService.GetTenantInboundEmailSettings is not implemented"))
+func (UnimplementedAdminInboundEmailSettingsServiceHandler) GetTenantInboundEmailSettings(context.Context, *v1.GetTenantInboundEmailSettingsRequest) (*v1.GetTenantInboundEmailSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminInboundEmailSettingsService.GetTenantInboundEmailSettings is not implemented")
 }
 
-func (UnimplementedAdminInboundEmailSettingsServiceHandler) UpdateTenantInboundEmailSettings(context.Context, *connect.Request[v1.UpdateTenantInboundEmailSettingsRequest]) (*connect.Response[v1.UpdateTenantInboundEmailSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminInboundEmailSettingsService.UpdateTenantInboundEmailSettings is not implemented"))
+func (UnimplementedAdminInboundEmailSettingsServiceHandler) UpdateTenantInboundEmailSettings(context.Context, *v1.UpdateTenantInboundEmailSettingsRequest) (*v1.UpdateTenantInboundEmailSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminInboundEmailSettingsService.UpdateTenantInboundEmailSettings is not implemented")
+}
+
+type adminInboundEmailSettingsServiceClient struct {
+	client *connect.Client
+}
+
+func (c *adminInboundEmailSettingsServiceClient) ListInboundEmailProviders(ctx context.Context, req *v1.ListInboundEmailProvidersRequest) (*v1.ListInboundEmailProvidersResponse, error) {
+	var res v1.ListInboundEmailProvidersResponse
+	if err := c.client.CallUnary(ctx, adminInboundEmailSettingsServiceListInboundEmailProvidersSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminInboundEmailSettingsServiceClient) GetTenantInboundEmailSettings(ctx context.Context, req *v1.GetTenantInboundEmailSettingsRequest) (*v1.GetTenantInboundEmailSettingsResponse, error) {
+	var res v1.GetTenantInboundEmailSettingsResponse
+	if err := c.client.CallUnary(ctx, adminInboundEmailSettingsServiceGetTenantInboundEmailSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminInboundEmailSettingsServiceClient) UpdateTenantInboundEmailSettings(ctx context.Context, req *v1.UpdateTenantInboundEmailSettingsRequest) (*v1.UpdateTenantInboundEmailSettingsResponse, error) {
+	var res v1.UpdateTenantInboundEmailSettingsResponse
+	if err := c.client.CallUnary(ctx, adminInboundEmailSettingsServiceUpdateTenantInboundEmailSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type adminInboundEmailSettingsServiceHandler struct {
+	svc AdminInboundEmailSettingsServiceHandler
+}
+
+func (h adminInboundEmailSettingsServiceHandler) listInboundEmailProviders(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListInboundEmailProvidersRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListInboundEmailProviders(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminInboundEmailSettingsServiceHandler) getTenantInboundEmailSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantInboundEmailSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantInboundEmailSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminInboundEmailSettingsServiceHandler) updateTenantInboundEmailSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantInboundEmailSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantInboundEmailSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

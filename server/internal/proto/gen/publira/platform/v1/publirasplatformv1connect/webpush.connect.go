@@ -5,20 +5,11 @@
 package publirasplatformv1connect
 
 import (
-	connect "connectrpc.com/connect"
+	connect "connectrpc.com/connect/v2"
 	context "context"
-	errors "errors"
 	v1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
-	http "net/http"
-	strings "strings"
+	sync "sync"
 )
-
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// PlatformWebPushSettingsServiceName is the fully-qualified name of the
@@ -26,119 +17,125 @@ const (
 	PlatformWebPushSettingsServiceName = "publira.platform.v1.PlatformWebPushSettingsService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// PlatformWebPushSettingsServiceGetPlatformWebPushSettingsProcedure is the fully-qualified name of
-	// the PlatformWebPushSettingsService's GetPlatformWebPushSettings RPC.
+	// PlatformWebPushSettingsServiceGetPlatformWebPushSettingsProcedure is the procedure name of the
+	// PlatformWebPushSettingsService's GetPlatformWebPushSettings RPC.
 	PlatformWebPushSettingsServiceGetPlatformWebPushSettingsProcedure = "/publira.platform.v1.PlatformWebPushSettingsService/GetPlatformWebPushSettings"
-	// PlatformWebPushSettingsServiceUpdatePlatformWebPushSubjectProcedure is the fully-qualified name
-	// of the PlatformWebPushSettingsService's UpdatePlatformWebPushSubject RPC.
+	// PlatformWebPushSettingsServiceUpdatePlatformWebPushSubjectProcedure is the procedure name of the
+	// PlatformWebPushSettingsService's UpdatePlatformWebPushSubject RPC.
 	PlatformWebPushSettingsServiceUpdatePlatformWebPushSubjectProcedure = "/publira.platform.v1.PlatformWebPushSettingsService/UpdatePlatformWebPushSubject"
+)
+
+var (
+	platformWebPushSettingsServiceGetPlatformWebPushSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_webpush_proto.Services().ByName("PlatformWebPushSettingsService").Methods().ByName("GetPlatformWebPushSettings"),
+			Procedure:  PlatformWebPushSettingsServiceGetPlatformWebPushSettingsProcedure,
+		}
+	})
+	platformWebPushSettingsServiceUpdatePlatformWebPushSubjectSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_webpush_proto.Services().ByName("PlatformWebPushSettingsService").Methods().ByName("UpdatePlatformWebPushSubject"),
+			Procedure:  PlatformWebPushSettingsServiceUpdatePlatformWebPushSubjectProcedure,
+		}
+	})
 )
 
 // PlatformWebPushSettingsServiceClient is a client for the
 // publira.platform.v1.PlatformWebPushSettingsService service.
 type PlatformWebPushSettingsServiceClient interface {
-	GetPlatformWebPushSettings(context.Context, *connect.Request[v1.GetPlatformWebPushSettingsRequest]) (*connect.Response[v1.GetPlatformWebPushSettingsResponse], error)
-	UpdatePlatformWebPushSubject(context.Context, *connect.Request[v1.UpdatePlatformWebPushSubjectRequest]) (*connect.Response[v1.UpdatePlatformWebPushSubjectResponse], error)
+	GetPlatformWebPushSettings(context.Context, *v1.GetPlatformWebPushSettingsRequest) (*v1.GetPlatformWebPushSettingsResponse, error)
+	UpdatePlatformWebPushSubject(context.Context, *v1.UpdatePlatformWebPushSubjectRequest) (*v1.UpdatePlatformWebPushSubjectResponse, error)
 }
 
 // NewPlatformWebPushSettingsServiceClient constructs a client for the
-// publira.platform.v1.PlatformWebPushSettingsService service. By default, it uses the Connect
-// protocol with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed
-// requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
-// connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewPlatformWebPushSettingsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PlatformWebPushSettingsServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	platformWebPushSettingsServiceMethods := v1.File_publira_platform_v1_webpush_proto.Services().ByName("PlatformWebPushSettingsService").Methods()
-	return &platformWebPushSettingsServiceClient{
-		getPlatformWebPushSettings: connect.NewClient[v1.GetPlatformWebPushSettingsRequest, v1.GetPlatformWebPushSettingsResponse](
-			httpClient,
-			baseURL+PlatformWebPushSettingsServiceGetPlatformWebPushSettingsProcedure,
-			connect.WithSchema(platformWebPushSettingsServiceMethods.ByName("GetPlatformWebPushSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updatePlatformWebPushSubject: connect.NewClient[v1.UpdatePlatformWebPushSubjectRequest, v1.UpdatePlatformWebPushSubjectResponse](
-			httpClient,
-			baseURL+PlatformWebPushSettingsServiceUpdatePlatformWebPushSubjectProcedure,
-			connect.WithSchema(platformWebPushSettingsServiceMethods.ByName("UpdatePlatformWebPushSubject")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// platformWebPushSettingsServiceClient implements PlatformWebPushSettingsServiceClient.
-type platformWebPushSettingsServiceClient struct {
-	getPlatformWebPushSettings   *connect.Client[v1.GetPlatformWebPushSettingsRequest, v1.GetPlatformWebPushSettingsResponse]
-	updatePlatformWebPushSubject *connect.Client[v1.UpdatePlatformWebPushSubjectRequest, v1.UpdatePlatformWebPushSubjectResponse]
-}
-
-// GetPlatformWebPushSettings calls
-// publira.platform.v1.PlatformWebPushSettingsService.GetPlatformWebPushSettings.
-func (c *platformWebPushSettingsServiceClient) GetPlatformWebPushSettings(ctx context.Context, req *connect.Request[v1.GetPlatformWebPushSettingsRequest]) (*connect.Response[v1.GetPlatformWebPushSettingsResponse], error) {
-	return c.getPlatformWebPushSettings.CallUnary(ctx, req)
-}
-
-// UpdatePlatformWebPushSubject calls
-// publira.platform.v1.PlatformWebPushSettingsService.UpdatePlatformWebPushSubject.
-func (c *platformWebPushSettingsServiceClient) UpdatePlatformWebPushSubject(ctx context.Context, req *connect.Request[v1.UpdatePlatformWebPushSubjectRequest]) (*connect.Response[v1.UpdatePlatformWebPushSubjectResponse], error) {
-	return c.updatePlatformWebPushSubject.CallUnary(ctx, req)
+// publira.platform.v1.PlatformWebPushSettingsService service. Multiple service clients may share a
+// single connect.Client.
+func NewPlatformWebPushSettingsServiceClient(client *connect.Client) PlatformWebPushSettingsServiceClient {
+	return &platformWebPushSettingsServiceClient{client: client}
 }
 
 // PlatformWebPushSettingsServiceHandler is an implementation of the
 // publira.platform.v1.PlatformWebPushSettingsService service.
 type PlatformWebPushSettingsServiceHandler interface {
-	GetPlatformWebPushSettings(context.Context, *connect.Request[v1.GetPlatformWebPushSettingsRequest]) (*connect.Response[v1.GetPlatformWebPushSettingsResponse], error)
-	UpdatePlatformWebPushSubject(context.Context, *connect.Request[v1.UpdatePlatformWebPushSubjectRequest]) (*connect.Response[v1.UpdatePlatformWebPushSubjectResponse], error)
+	GetPlatformWebPushSettings(context.Context, *v1.GetPlatformWebPushSettingsRequest) (*v1.GetPlatformWebPushSettingsResponse, error)
+	UpdatePlatformWebPushSubject(context.Context, *v1.UpdatePlatformWebPushSubjectRequest) (*v1.UpdatePlatformWebPushSubjectResponse, error)
 }
 
-// NewPlatformWebPushSettingsServiceHandler builds an HTTP handler from the service implementation.
-// It returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewPlatformWebPushSettingsServiceHandler(svc PlatformWebPushSettingsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	platformWebPushSettingsServiceMethods := v1.File_publira_platform_v1_webpush_proto.Services().ByName("PlatformWebPushSettingsService").Methods()
-	platformWebPushSettingsServiceGetPlatformWebPushSettingsHandler := connect.NewUnaryHandler(
-		PlatformWebPushSettingsServiceGetPlatformWebPushSettingsProcedure,
-		svc.GetPlatformWebPushSettings,
-		connect.WithSchema(platformWebPushSettingsServiceMethods.ByName("GetPlatformWebPushSettings")),
-		connect.WithHandlerOptions(opts...),
+// RegisterPlatformWebPushSettingsServiceHandler registers svc as the
+// publira.platform.v1.PlatformWebPushSettingsService implementation on server.
+func RegisterPlatformWebPushSettingsServiceHandler(server *connect.Server, svc PlatformWebPushSettingsServiceHandler) {
+	adapter := platformWebPushSettingsServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: platformWebPushSettingsServiceGetPlatformWebPushSettingsSpec(), Handler: adapter.getPlatformWebPushSettings},
+		connect.Method{Spec: platformWebPushSettingsServiceUpdatePlatformWebPushSubjectSpec(), Handler: adapter.updatePlatformWebPushSubject},
 	)
-	platformWebPushSettingsServiceUpdatePlatformWebPushSubjectHandler := connect.NewUnaryHandler(
-		PlatformWebPushSettingsServiceUpdatePlatformWebPushSubjectProcedure,
-		svc.UpdatePlatformWebPushSubject,
-		connect.WithSchema(platformWebPushSettingsServiceMethods.ByName("UpdatePlatformWebPushSubject")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/publira.platform.v1.PlatformWebPushSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case PlatformWebPushSettingsServiceGetPlatformWebPushSettingsProcedure:
-			platformWebPushSettingsServiceGetPlatformWebPushSettingsHandler.ServeHTTP(w, r)
-		case PlatformWebPushSettingsServiceUpdatePlatformWebPushSubjectProcedure:
-			platformWebPushSettingsServiceUpdatePlatformWebPushSubjectHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 // UnimplementedPlatformWebPushSettingsServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedPlatformWebPushSettingsServiceHandler struct{}
 
-func (UnimplementedPlatformWebPushSettingsServiceHandler) GetPlatformWebPushSettings(context.Context, *connect.Request[v1.GetPlatformWebPushSettingsRequest]) (*connect.Response[v1.GetPlatformWebPushSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformWebPushSettingsService.GetPlatformWebPushSettings is not implemented"))
+func (UnimplementedPlatformWebPushSettingsServiceHandler) GetPlatformWebPushSettings(context.Context, *v1.GetPlatformWebPushSettingsRequest) (*v1.GetPlatformWebPushSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformWebPushSettingsService.GetPlatformWebPushSettings is not implemented")
 }
 
-func (UnimplementedPlatformWebPushSettingsServiceHandler) UpdatePlatformWebPushSubject(context.Context, *connect.Request[v1.UpdatePlatformWebPushSubjectRequest]) (*connect.Response[v1.UpdatePlatformWebPushSubjectResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformWebPushSettingsService.UpdatePlatformWebPushSubject is not implemented"))
+func (UnimplementedPlatformWebPushSettingsServiceHandler) UpdatePlatformWebPushSubject(context.Context, *v1.UpdatePlatformWebPushSubjectRequest) (*v1.UpdatePlatformWebPushSubjectResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformWebPushSettingsService.UpdatePlatformWebPushSubject is not implemented")
+}
+
+type platformWebPushSettingsServiceClient struct {
+	client *connect.Client
+}
+
+func (c *platformWebPushSettingsServiceClient) GetPlatformWebPushSettings(ctx context.Context, req *v1.GetPlatformWebPushSettingsRequest) (*v1.GetPlatformWebPushSettingsResponse, error) {
+	var res v1.GetPlatformWebPushSettingsResponse
+	if err := c.client.CallUnary(ctx, platformWebPushSettingsServiceGetPlatformWebPushSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformWebPushSettingsServiceClient) UpdatePlatformWebPushSubject(ctx context.Context, req *v1.UpdatePlatformWebPushSubjectRequest) (*v1.UpdatePlatformWebPushSubjectResponse, error) {
+	var res v1.UpdatePlatformWebPushSubjectResponse
+	if err := c.client.CallUnary(ctx, platformWebPushSettingsServiceUpdatePlatformWebPushSubjectSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type platformWebPushSettingsServiceHandler struct {
+	svc PlatformWebPushSettingsServiceHandler
+}
+
+func (h platformWebPushSettingsServiceHandler) getPlatformWebPushSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetPlatformWebPushSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetPlatformWebPushSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformWebPushSettingsServiceHandler) updatePlatformWebPushSubject(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdatePlatformWebPushSubjectRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdatePlatformWebPushSubject(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }
