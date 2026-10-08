@@ -54,9 +54,8 @@ test.describe("web-host public API outage", () => {
    * No cached read throws any more: each one reports failure as a value and
    * drops its own cache entry, so the page renders `SectionError` (a section
    * inside `<Suspense>`) or `PageLoadError` (a detail route, where that read is
-   * the whole page). A missing record answers HTTP 200 with the not-found UI,
-   * because the shell has been committed by the time `notFound()` runs — that
-   * contract belongs to `catalog.not-found.spec.ts`.
+   * the whole page). A missing record renders the not-found UI with the status
+   * `catalog.not-found.spec.ts` asserts.
    *
    * Outage **and** recovery live in one test on purpose: "the failure was not
    * cached" is only a claim about a URL this test itself failed a moment ago,

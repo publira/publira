@@ -20,11 +20,11 @@ const otherTenantUrl = (pathname: string): string =>
  * second tenant sees only its own catalog, neither tenant can reach the
  * other's records by public_id, and an unmapped Host is a 404.
  *
- * A record another tenant owns renders the not-found UI with HTTP 200, not 404:
- * the detail routes read inside `<Suspense>`, so the shell is already committed
- * when `notFound()` runs. What matters for isolation is unchanged and
- * still asserted below — the other tenant's title, episode title and creator
- * name never appear in the response.
+ * A record another tenant owns renders the not-found UI with the status
+ * `catalog.not-found.spec.ts` describes: 404 for series detail, 200 for the
+ * routes that read `searchParams` first. What matters for isolation is the
+ * same either way and asserted below — the other tenant's title, episode title
+ * and creator name never appear in the response.
  */
 test.describe("web-host tenant boundary", () => {
   test.beforeAll(() => {
@@ -134,14 +134,14 @@ test.describe("web-host tenant boundary", () => {
     const foreign = await page.goto(
       otherTenantUrl(`/series/${SEED_TENANT.series.publicId}`)
     );
-    expect(foreign?.status(), await page.content()).toBe(200);
+    expect(foreign?.status(), await page.content()).toBe(404);
     await expect(page.getByText(SEED_TENANT.series.title)).toHaveCount(0);
 
     // …and the same in the other direction.
     const reverse = await page.goto(
       `/series/${OTHER_TENANT.publishedSeries.publicId}`
     );
-    expect(reverse?.status(), await page.content()).toBe(200);
+    expect(reverse?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(OTHER_TENANT.publishedSeries.title)
     ).toHaveCount(0);
@@ -177,7 +177,7 @@ test.describe("web-host tenant boundary", () => {
       otherTenantUrl(`/series/${OTHER_TENANT.unpublishedSeries.publicId}`)
     );
 
-    expect(response?.status(), await page.content()).toBe(200);
+    expect(response?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(OTHER_TENANT.unpublishedSeries.title)
     ).toHaveCount(0);

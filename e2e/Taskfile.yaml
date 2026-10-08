@@ -64,6 +64,9 @@ tasks:
 
   build:
     desc: Build server binaries, web-host, web-admin, web-platform, and email-renderer
+    env:
+      # `instant()` needs the testing API inside the web-admin build.
+      PUBLIRA_EXPOSE_TESTING_API: "1"
     cmds:
       - task: :server:build
       - pnpm build --filter @publira/web-host --filter @publira/web-admin --filter @publira/web-platform --filter @publira/email-renderer

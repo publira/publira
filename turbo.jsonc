@@ -35,6 +35,10 @@
       // restoring one drops another branch's dev state onto a running dev
       // server.
       "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"],
+      // Next.js bakes the instant navigation testing API into a build, so the
+      // E2E build and any other differ in output: the variable belongs in the
+      // hash, not only in the environment.
+      "env": ["PUBLIRA_EXPOSE_TESTING_API"],
     },
     "dev": {
       "dependsOn": ["^build"],
