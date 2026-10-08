@@ -60,13 +60,14 @@ const version: PageVersionListItem = {
 };
 
 const renderWorkspace = async (
-  saveAction: () => Promise<PageFormState> = noopSaveAction
+  saveAction: () => Promise<PageFormState> = noopSaveAction,
+  initialPage: PageListItem = page
 ) => {
   await act(() => {
     renderBase(
       <AdminLocaleTestProvider locale="en">
         <PageWorkspace
-          initialPage={page}
+          initialPage={initialPage}
           initialVersions={[version]}
           locale="en"
           publishAction={noopFormAction}
@@ -128,6 +129,29 @@ describe("PageWorkspace", () => {
       await screen.findByRole("button", { name: "Save page" })
     ).toBeDefined();
   });
+
+  it.each([true, false])(
+    "shows Show in footer as stored (%s) and saves it with the page",
+    async (displayInFooter) => {
+      await renderWorkspace(noopSaveAction, { ...page, displayInFooter });
+
+      const form = editForm();
+      const checkbox = screen.getByRole("checkbox", { name: "Show in footer" });
+
+      expect(checkbox.getAttribute("aria-checked")).toBe(
+        String(displayInFooter)
+      );
+      expect(new FormData(form).get("initial_display_in_footer")).toBe(
+        String(displayInFooter)
+      );
+
+      fireEvent.click(checkbox);
+
+      expect(new FormData(form).get("display_in_footer")).toBe(
+        String(!displayInFooter)
+      );
+    }
+  );
 
   it("keeps the editor submittable while the preview tab is showing", async () => {
     await renderWorkspace();

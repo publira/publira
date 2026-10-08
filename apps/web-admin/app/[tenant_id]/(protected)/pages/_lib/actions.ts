@@ -55,6 +55,7 @@ const pageCommonSchema = async (locale: Locale) => {
       .string()
       .optional()
       .transform((value) => value ?? ""),
+    initialDisplayInFooter: displayInFooterSchema,
     initialTitle: optionalTrimmedString(),
     pageId: optionalTrimmedString(),
     slug: optionalTrimmedString(
@@ -83,6 +84,7 @@ const pageFormFields = {
   contentMarkdown: { kind: "value", name: "content_markdown" },
   displayInFooter: { kind: "value", name: "display_in_footer" },
   initialContentMarkdown: { kind: "value", name: "initial_content_markdown" },
+  initialDisplayInFooter: { kind: "value", name: "initial_display_in_footer" },
   initialTitle: { kind: "value", name: "initial_title" },
   pageId: { kind: "value", name: "page_id" },
   slug: "value",
@@ -169,9 +171,12 @@ export const createPageAction = async (
 
 /**
  * The edit screen's one save, within the translation the screen is showing. The
- * title lives on the translation and the body lives on a version, so each half is written only where the editor changed it and a
- * failure names the half it belongs to — the two are separate RPCs, and the
- * first can be written before the second fails.
+ * title lives on the translation, Show in footer on the page, and the body on a
+ * version. The first two go out in one RPC and the body in another, so each half
+ * is written only where the editor changed it and a failure names the half it
+ * belongs to — the first can be written before the second fails. Show in footer
+ * is sent only when it changed, so a save from one language tab never puts back
+ * a value another tab changed since this one loaded.
  */
 export const savePageAction = async (
   _prevState: PageFormState,
@@ -193,7 +198,11 @@ export const savePageAction = async (
     return toFailure(t("admin.pages.validation.title_required"));
   }
 
-  const detailsChanged = parsed.data.title !== parsed.data.initialTitle;
+  const footerChanged =
+    parsed.data.displayInFooter !== undefined &&
+    parsed.data.displayInFooter !== parsed.data.initialDisplayInFooter;
+  const detailsChanged =
+    parsed.data.title !== parsed.data.initialTitle || footerChanged;
   const contentChanged =
     parsed.data.contentMarkdown !== parsed.data.initialContentMarkdown;
 
@@ -201,7 +210,9 @@ export const savePageAction = async (
     const result = await withAdminSessionReauth(() =>
       updatePage(
         {
-          displayInFooter: parsed.data.displayInFooter,
+          displayInFooter: footerChanged
+            ? parsed.data.displayInFooter
+            : undefined,
           pageId: parsed.data.pageId,
           tenantId: parsed.data.tenantId,
           title: parsed.data.title,

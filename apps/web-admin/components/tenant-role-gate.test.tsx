@@ -4,7 +4,8 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { cleanup, render, screen } from "@testing-library/react";
+import { Checkbox } from "@publira/ui-components/checkbox";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getAdminCurrentUser } from "#lib/admin-auth";
@@ -193,6 +194,24 @@ describe("TenantEditorFieldset", () => {
     expect(screen.getByRole("status").textContent).toContain(
       EDITOR_ONLY_NOTICE
     );
+  });
+
+  // Base UI renders a checkbox as a `<span>`, which a disabled `<fieldset>`
+  // alone does not reach: it would still toggle under the auditor's click.
+  it("keeps a tenant auditor from ticking a checkbox", async () => {
+    signedInAs("tenant_auditor");
+
+    render(
+      await TenantEditorFieldset({
+        children: <Checkbox aria-label="Show in footer" defaultChecked />,
+      })
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: "Show in footer" });
+    fireEvent.click(checkbox);
+
+    expect(checkbox.getAttribute("aria-checked")).toBe("true");
+    expect(checkbox.getAttribute("aria-disabled")).toBe("true");
   });
 });
 
