@@ -404,7 +404,7 @@ No lint covers this: nothing can tell a route segment from any other identifier,
 
 When the validation reports `blocking-prerender-dynamic`, the fix is the one it names: move the data access inside `<Suspense>` so the route keeps a non-empty static shell. A page whose whole body is one read becomes a `<Suspense>` with a skeleton around an async content component, which is also what lets a failed read render a fallback at all.
 
-One consequence to know about, rather than to work around with the escape hatch: `notFound()` raised inside `<Suspense>` streams into an already-committed 200 response, so a missing record renders `not-found.tsx` without an HTTP 404 status. Where that status matters it needs a different mechanism, not a blocking page body.
+One consequence to know about, rather than to work around with the escape hatch: the HTTP status of a `notFound()` raised inside `<Suspense>` depends on when it runs. A lookup that depends on the path alone runs while the route is prerendered, and the response carries 404. One that awaits request data first — `searchParams`, `cookies()` — runs after the shell has been committed with a 200, so a missing record renders `not-found.tsx` without a 404. Where that status matters, the lookup has to come before the request data, not behind a blocking page body.
 
 | Inside a `"use cache"` function | Do |
 | --- | --- |

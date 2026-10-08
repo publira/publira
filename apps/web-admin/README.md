@@ -61,6 +61,10 @@ The payment webhook URL on Payment settings is the tenant's storefront (`storefr
 - `PNCH_REDIS_URL` (the same value as the server's `PUBLIRA_REDIS_URL`)
 - `PNCH_CACHE_APP=web-admin` (set by the `dev` and `start` scripts; it separates the key space)
 
+### E2E build
+
+- `PUBLIRA_EXPOSE_TESTING_API` — `1` builds the console with the Next.js instant navigation testing API that `instant()` from `@next/playwright` drives. Set only by `task e2e:build`; it takes effect at `next build`, not at `next start`, and a deployment never sets it.
+
 ### Session cookie (JWE)
 
 Required environment variables:
