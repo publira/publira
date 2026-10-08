@@ -30,6 +30,7 @@ import {
 } from "#lib/storefront-url";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantMobileAppAssociation } from "#lib/tenant-mobile-app-association";
 import { getTenantSignInSettings } from "#lib/tenant-sign-in-settings";
 
 import { TenantSignInSettingsForm } from "./_components/tenant-sign-in-settings-form";
@@ -65,20 +66,31 @@ const SignInSettingsSkeleton = () => (
 const SignInSettingsSection = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const [result, currentUserResult, tenantResult] = await Promise.all([
-    getTenantSignInSettings(tenantId, locale),
-    getAdminCurrentUser(tenantId),
-    getTenantForSession(tenantId),
-  ]);
+  const [result, currentUserResult, tenantResult, associationResult] =
+    await Promise.all([
+      getTenantSignInSettings(tenantId, locale),
+      getAdminCurrentUser(tenantId),
+      getTenantForSession(tenantId),
+      getTenantMobileAppAssociation(tenantId, locale),
+    ]);
   await redirectToLoginIfSessionRejected(
     result,
     currentUserResult,
-    tenantResult
+    tenantResult,
+    associationResult
   );
   const domain = tenantResult.ok ? tenantResult.tenant.domain : "";
 
   return (
     <TenantSignInSettingsForm
+      androidApplicationId={
+        associationResult.ok
+          ? (associationResult.association.android?.applicationId ?? "")
+          : undefined
+      }
+      appLinksErrorMessage={
+        associationResult.ok ? undefined : associationResult.message
+      }
       callbackUrls={{
         apple: signInCallbackUrl(domain, "apple"),
         appleAndroid: appleAndroidCallbackUrl(domain),

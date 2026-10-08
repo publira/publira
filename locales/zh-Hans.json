@@ -2666,13 +2666,20 @@
         "copy_callback_url": "复制回调URL",
         "status": {
           "ready": "已提供",
-          "ready_description": "读者可以用此方式登录。",
+          "ready_description": "在下方标为“已显示”的位置，读者可以用此方式登录。",
           "incomplete": "未完成",
           "incomplete_description": "已启用，但缺少所需信息，因此不会向读者显示。",
           "disabled": "已停用",
           "disabled_description": "已保存，但不会向读者显示。",
           "unset": "未设置",
           "unset_description": "此方式尚未登记任何内容。"
+        },
+        "offers": {
+          "title": "显示按钮的位置",
+          "site": "网站",
+          "ios": "iOS应用",
+          "android": "Android应用",
+          "shown": "已显示"
         },
         "apple": {
           "title": "Apple",
@@ -2689,7 +2696,12 @@
           "private_key": "私钥（.p8）",
           "private_key_description": "选择Apple Developer账号为该密钥签发的 .p8文件，或粘贴其内容。",
           "bundle_identifier": "iOS Bundle ID",
-          "bundle_identifier_description": "在“应用链接”中设置的iOS应用用它登录。请在那里修改。"
+          "bundle_identifier_description": "在“应用链接”中设置的iOS应用用它登录。请在那里修改。",
+          "not_offered": {
+            "site": "未显示。要在网站上显示，请填写Services ID。",
+            "ios": "未显示。要在iOS应用中显示，请在“应用链接”中指定iOS应用。",
+            "android": "未显示。要在Android应用中显示，请填写Services ID，并在“应用链接”中指定Android应用。"
+          }
         },
         "google": {
           "title": "Google",
@@ -2698,7 +2710,13 @@
           "web_client_id": "Web客户端ID",
           "web_client_id_description": "Google Cloud控制台中类型为“Web应用”的OAuth客户端的客户端ID。网站和Android应用用它登录。",
           "ios_client_id": "iOS客户端ID",
-          "ios_client_id_description": "iOS应用登录所用的、类型为“iOS”的OAuth客户端的客户端ID。如果租户没有iOS应用，请留空。"
+          "ios_client_id_description": "iOS应用登录所用的、类型为“iOS”的OAuth客户端的客户端ID。如果租户没有iOS应用，请留空。",
+          "shown_ios": "在使用此iOS客户端ID构建的iOS应用中显示。",
+          "not_offered": {
+            "site": "未显示。要在网站上显示，请填写Web客户端ID。",
+            "ios": "未显示。iOS应用只在显示Apple时才一并显示Google，因此需要iOS客户端ID，并且iOS应用中要显示通过Apple登录。",
+            "android": "未显示。要在Android应用中显示，请填写Web客户端ID。"
+          }
         },
         "key_text": "或粘贴内容",
         "key_change": "替换",

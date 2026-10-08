@@ -2666,13 +2666,20 @@
         "copy_callback_url": "Copy the callback URL",
         "status": {
           "ready": "Offered",
-          "ready_description": "Readers can sign in with this provider.",
+          "ready_description": "Readers can sign in with this provider wherever its button is shown below.",
           "incomplete": "Incomplete",
           "incomplete_description": "On, but something it needs is missing, so readers are not offered it.",
           "disabled": "Off",
           "disabled_description": "Saved, but readers are not offered it.",
           "unset": "Not set",
           "unset_description": "Nothing is registered for this provider."
+        },
+        "offers": {
+          "title": "Where readers see its button",
+          "site": "Site",
+          "ios": "iOS app",
+          "android": "Android app",
+          "shown": "Shown"
         },
         "apple": {
           "title": "Apple",
@@ -2689,7 +2696,12 @@
           "private_key": "Private key (.p8)",
           "private_key_description": "Choose the .p8 file the Apple Developer account issued for that key, or paste its contents.",
           "bundle_identifier": "iOS bundle ID",
-          "bundle_identifier_description": "The iOS app named under App links signs in with this. Change it there."
+          "bundle_identifier_description": "The iOS app named under App links signs in with this. Change it there.",
+          "not_offered": {
+            "site": "Not shown. Enter a Services ID to show it on the site.",
+            "ios": "Not shown. Name the iOS app under App links to show it in the iOS app.",
+            "android": "Not shown. Enter a Services ID and name the Android app under App links to show it in the Android app."
+          }
         },
         "google": {
           "title": "Google",
@@ -2698,7 +2710,13 @@
           "web_client_id": "Web client ID",
           "web_client_id_description": "The client ID of the Web application OAuth client in the Google Cloud console. The site and the Android app sign in with it.",
           "ios_client_id": "iOS client ID",
-          "ios_client_id_description": "The client ID of the iOS OAuth client, which the iOS app signs in with. Leave it empty if the tenant has no iOS app."
+          "ios_client_id_description": "The client ID of the iOS OAuth client, which the iOS app signs in with. Leave it empty if the tenant has no iOS app.",
+          "shown_ios": "Shown in an iOS app built with this iOS client ID.",
+          "not_offered": {
+            "site": "Not shown. Enter a Web client ID to show it on the site.",
+            "ios": "Not shown. The iOS app shows Google only beside Apple, so it needs an iOS client ID and Sign in with Apple shown in the iOS app.",
+            "android": "Not shown. Enter a Web client ID to show it in the Android app."
+          }
         },
         "key_text": "Or paste the contents",
         "key_change": "Replace",

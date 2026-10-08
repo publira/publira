@@ -2666,13 +2666,20 @@
         "copy_callback_url": "複製回呼URL",
         "status": {
           "ready": "已提供",
-          "ready_description": "讀者可以用此方式登入。",
+          "ready_description": "在下方標為「已顯示」的位置，讀者可以用此方式登入。",
           "incomplete": "未完成",
           "incomplete_description": "已啟用，但缺少所需資訊，因此不會向讀者顯示。",
           "disabled": "已停用",
           "disabled_description": "已儲存，但不會向讀者顯示。",
           "unset": "未設定",
           "unset_description": "此方式尚未登錄任何內容。"
+        },
+        "offers": {
+          "title": "顯示按鈕的位置",
+          "site": "網站",
+          "ios": "iOS應用程式",
+          "android": "Android應用程式",
+          "shown": "已顯示"
         },
         "apple": {
           "title": "Apple",
@@ -2689,7 +2696,12 @@
           "private_key": "私密金鑰（.p8）",
           "private_key_description": "選擇Apple Developer帳戶為該金鑰核發的 .p8檔案，或貼上其內容。",
           "bundle_identifier": "iOS Bundle ID",
-          "bundle_identifier_description": "在「應用程式連結」中設定的iOS應用程式以它登入。請在該處變更。"
+          "bundle_identifier_description": "在「應用程式連結」中設定的iOS應用程式以它登入。請在該處變更。",
+          "not_offered": {
+            "site": "未顯示。若要在網站上顯示，請填寫Services ID。",
+            "ios": "未顯示。若要在iOS應用程式中顯示，請在「應用程式連結」中指定iOS應用程式。",
+            "android": "未顯示。若要在Android應用程式中顯示，請填寫Services ID，並在「應用程式連結」中指定Android應用程式。"
+          }
         },
         "google": {
           "title": "Google",
@@ -2698,7 +2710,13 @@
           "web_client_id": "網頁用戶端ID",
           "web_client_id_description": "Google Cloud主控台中類型為「網頁應用程式」的OAuth用戶端的用戶端ID。網站與Android應用程式以它登入。",
           "ios_client_id": "iOS用戶端ID",
-          "ios_client_id_description": "iOS應用程式登入所用、類型為「iOS」的OAuth用戶端的用戶端ID。若租戶沒有iOS應用程式，請留空。"
+          "ios_client_id_description": "iOS應用程式登入所用、類型為「iOS」的OAuth用戶端的用戶端ID。若租戶沒有iOS應用程式，請留空。",
+          "shown_ios": "在使用此iOS用戶端ID建置的iOS應用程式中顯示。",
+          "not_offered": {
+            "site": "未顯示。若要在網站上顯示，請填寫網頁用戶端ID。",
+            "ios": "未顯示。iOS應用程式只在顯示Apple時才一併顯示Google，因此需要iOS用戶端ID，且iOS應用程式中要顯示使用Apple登入。",
+            "android": "未顯示。若要在Android應用程式中顯示，請填寫網頁用戶端ID。"
+          }
         },
         "key_text": "或貼上內容",
         "key_change": "替換",

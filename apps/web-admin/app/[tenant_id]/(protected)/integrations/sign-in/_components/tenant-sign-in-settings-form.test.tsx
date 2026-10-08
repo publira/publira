@@ -159,6 +159,84 @@ describe("TenantSignInSettingsForm", () => {
     expect(screen.getByText("Off")).toBeDefined();
   });
 
+  it("says the site does not offer Apple saved without a Services ID", async () => {
+    await renderForm(
+      <TenantSignInSettingsForm
+        androidApplicationId="com.example.reader"
+        canEdit
+        initialSettings={{
+          ...savedSettings,
+          apple: { ...savedSettings.apple, servicesId: "" },
+        }}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(
+      screen.getByText("Not shown. Enter a Services ID to show it on the site.")
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "Not shown. Enter a Services ID and name the Android app under App links to show it in the Android app."
+      )
+    ).toBeDefined();
+    expect(screen.getAllByText("Shown")).toHaveLength(1);
+    // Google is off, so only Apple says where its button is.
+    expect(screen.getAllByText("Where readers see its button")).toHaveLength(1);
+  });
+
+  it("says the site does not offer Google saved without a Web client ID", async () => {
+    await renderForm(
+      <TenantSignInSettingsForm
+        androidApplicationId=""
+        canEdit
+        initialSettings={{
+          ...savedSettings,
+          google: {
+            enabled: true,
+            iosClientId: "123456789012-def456.apps.googleusercontent.com",
+            ready: true,
+            webClientId: "",
+          },
+        }}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(
+      screen.getByText(
+        "Not shown. Enter a Web client ID to show it on the site."
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "Not shown. Enter a Web client ID to show it in the Android app."
+      )
+    ).toBeDefined();
+    // Whether the iOS app shows it also depends on the client the app was
+    // built with, which the console cannot see.
+    expect(
+      screen.getByText("Shown in an iOS app built with this iOS client ID.")
+    ).toBeDefined();
+  });
+
+  it("says why Apple's Android app has no answer when App links could not be read", async () => {
+    const failure = "Could not load the app links. Please try again later.";
+    await renderForm(
+      <TenantSignInSettingsForm
+        appLinksErrorMessage={failure}
+        canEdit
+        initialSettings={savedSettings}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(screen.getByText("Site")).toBeDefined();
+    expect(screen.getByText("iOS app")).toBeDefined();
+    expect(screen.getByText("Android app")).toBeDefined();
+    expect(screen.getByText(failure)).toBeDefined();
+  });
+
   it("posts a removal until the operator keeps the key again", async () => {
     await renderForm(
       <TenantSignInSettingsForm
