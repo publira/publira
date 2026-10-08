@@ -793,6 +793,11 @@ type Querier interface {
 	// Returns no rows for a tenant that has saved nothing, which reads as Google
 	// sign-in disabled.
 	GetTenantGoogleSignInConfig(ctx context.Context, tenantID uuid.UUID) (TenantGoogleSignInConfig, error)
+	// Whether a tenant other than id already serves the domain or the console host
+	// as either of its own: its domain, or its console host, which is its
+	// admin_domain or else admin.{domain}. Take LockTenantHosts first, in a
+	// statement of its own, so this sees every write that held it before.
+	GetTenantHostsTaken(ctx context.Context, arg GetTenantHostsTakenParams) (GetTenantHostsTakenRow, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
 	// A tenant's inbound email settings. Only internal/inboundemail calls these:
 	// the rows carry ciphertext.
@@ -2192,6 +2197,12 @@ type Querier interface {
 	// so waiting for the lock in the same statement would still see the pre-wait
 	// row.
 	LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
+	// Serializes, for the rest of the transaction, the writes that decide which
+	// tenant a host name belongs to. The unique constraints keep two domains or two
+	// stored admin domains apart, but none of them can see a domain equal to
+	// another tenant's console host, so two writes that each pass
+	// GetTenantHostsTaken would otherwise both commit.
+	LockTenantHosts(ctx context.Context) error
 	LockTenantRetentionSettings(ctx context.Context, tenantID uuid.UUID) (TenantRetentionSetting, error)
 	// Removing the tags a save let go of takes two statements, because one cannot
 	// be trusted on its own.

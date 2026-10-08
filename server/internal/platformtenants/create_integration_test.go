@@ -6,6 +6,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -178,28 +179,40 @@ func TestCreateFilesTheSystemActorWithNoOperator(t *testing.T) {
 	}
 }
 
-func TestCreateRefusesADomainAnotherTenantHolds(t *testing.T) {
+func TestCreateRefusesAHostAnotherTenantServes(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
-	if _, err := create(t, pg, auditlog.SystemPlatformActor, CreateParams{
-		Name:          "First",
-		Domain:        "first.example.com",
-		AdminDomain:   "admin.first.example.com",
-		DefaultLocale: "en",
-	}); err != nil {
-		t.Fatalf("Create first: %v", err)
+	for _, p := range []CreateParams{
+		// A console host of its own, and one implied by the domain.
+		{Name: "Stored", Domain: "stored.example.com", AdminDomain: "console.stored.example.com", DefaultLocale: "en"},
+		{Name: "Implied", Domain: "implied.example.com", DefaultLocale: "en"},
+		// A domain that is the admin.{domain} of a name no tenant has yet.
+		{Name: "Prefixed", Domain: "admin.shop.example.com", DefaultLocale: "en"},
+	} {
+		if _, err := create(t, pg, auditlog.SystemPlatformActor, p); err != nil {
+			t.Fatalf("Create %s: %v", p.Name, err)
+		}
 	}
 
 	for _, tc := range []struct {
-		name   string
-		params CreateParams
-		field  string
+		name        string
+		domain      string
+		adminDomain string
+		field       string
 	}{
-		{name: "domain", params: CreateParams{Name: "Second", Domain: "first.example.com", DefaultLocale: "en"}, field: FieldDomain},
-		{name: "admin domain", params: CreateParams{Name: "Second", Domain: "second.example.com", AdminDomain: "admin.first.example.com", DefaultLocale: "en"}, field: FieldAdminDomain},
+		{name: "domain equal to a domain", domain: "stored.example.com", field: FieldDomain},
+		{name: "domain equal to a stored console host", domain: "console.stored.example.com", field: FieldDomain},
+		{name: "domain equal to an implied console host", domain: "admin.implied.example.com", field: FieldDomain},
+		{name: "admin domain equal to a stored console host", domain: "new.example.com", adminDomain: "console.stored.example.com", field: FieldAdminDomain},
+		{name: "admin domain equal to an implied console host", domain: "new.example.com", adminDomain: "admin.implied.example.com", field: FieldAdminDomain},
+		{name: "admin domain equal to a domain", domain: "new.example.com", adminDomain: "implied.example.com", field: FieldAdminDomain},
+		{name: "implied console host equal to a domain", domain: "shop.example.com", field: FieldAdminDomain},
+		{name: "admin domain equal to its own domain", domain: "new.example.com", adminDomain: "new.example.com", field: FieldAdminDomain},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := create(t, pg, auditlog.SystemPlatformActor, tc.params)
+			_, err := create(t, pg, auditlog.SystemPlatformActor, CreateParams{
+				Name: "New", Domain: tc.domain, AdminDomain: tc.adminDomain, DefaultLocale: "en",
+			})
 			var conflict *fielderr.Conflict
 			if !errors.As(err, &conflict) {
 				t.Fatalf("err = %v, want *fielderr.Conflict", err)
@@ -208,5 +221,88 @@ func TestCreateRefusesADomainAnotherTenantHolds(t *testing.T) {
 				t.Fatalf("field = %q, want %q", conflict.Field, tc.field)
 			}
 		})
+	}
+
+	// The implied console host of shop.example.com is taken, and an admin
+	// domain of its own is what lets it in.
+	if _, err := create(t, pg, auditlog.SystemPlatformActor, CreateParams{
+		Name: "Shop", Domain: "shop.example.com", AdminDomain: "console.shop.example.com", DefaultLocale: "en",
+	}); err != nil {
+		t.Fatalf("Create with an admin domain of its own: %v", err)
+	}
+}
+
+func TestCreateRefusesAHostAConcurrentCreateTakes(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	ctx := context.Background()
+	db := pg.OpenPlatformDB(t)
+	validate := func(p CreateParams) Creation {
+		t.Helper()
+		c, err := p.Validate()
+		if err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		return c
+	}
+
+	// The first create holds its transaction open, with its tenant written,
+	// while the second one claims the console host that tenant's domain is.
+	first, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("BeginTx: %v", err)
+	}
+	defer first.Rollback() //nolint:errcheck
+	if _, err := Create(ctx, first, nil, auditlog.SystemPlatformActor, validate(CreateParams{
+		Name: "First", Domain: "admin.comics.example.com", DefaultLocale: "en",
+	})); err != nil {
+		t.Fatalf("Create first: %v", err)
+	}
+
+	secondCreation := validate(CreateParams{Name: "Second", Domain: "comics.example.com", DefaultLocale: "en"})
+	second := make(chan error, 1)
+	go func() {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			second <- err
+			return
+		}
+		defer tx.Rollback() //nolint:errcheck
+		if _, err := Create(ctx, tx, nil, auditlog.SystemPlatformActor, secondCreation); err != nil {
+			second <- err
+			return
+		}
+		second <- tx.Commit()
+	}()
+
+	// Commit the first only once the second is queued behind it, so the second
+	// cannot have read the hosts before the first tenant was there to see.
+	for deadline := time.Now().Add(10 * time.Second); ; {
+		var waiting bool
+		if err := pg.DB.QueryRowContext(ctx,
+			`SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND NOT granted)`).Scan(&waiting); err != nil {
+			t.Fatalf("read pg_locks: %v", err)
+		}
+		if waiting {
+			break
+		}
+		select {
+		case err := <-second:
+			t.Fatalf("second create finished while the first was open: %v", err)
+		default:
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("second create never waited for the first")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err := first.Commit(); err != nil {
+		t.Fatalf("Commit first: %v", err)
+	}
+
+	err = <-second
+	var conflict *fielderr.Conflict
+	if !errors.As(err, &conflict) || conflict.Field != FieldAdminDomain {
+		t.Fatalf("second create: err = %v, want a conflict on %s", err, FieldAdminDomain)
 	}
 }

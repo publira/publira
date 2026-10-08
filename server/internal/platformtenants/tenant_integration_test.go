@@ -124,6 +124,80 @@ func TestUpdateChangesOnlyTheFieldsItIsGiven(t *testing.T) {
 	}
 }
 
+func TestUpdateRefusesAHostAnotherTenantServes(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	for _, p := range []CreateParams{
+		{Name: "Stored", Domain: "stored.example.com", AdminDomain: "console.stored.example.com", DefaultLocale: "en"},
+		{Name: "Implied", Domain: "implied.example.com", DefaultLocale: "en"},
+		// Domains that are the admin.{domain} of a name no tenant has yet.
+		{Name: "Prefixed", Domain: "admin.shop.example.com", DefaultLocale: "en"},
+		{Name: "Prefixed own", Domain: "admin.target.example.com", DefaultLocale: "en"},
+	} {
+		if _, err := create(t, pg, auditlog.SystemPlatformActor, p); err != nil {
+			t.Fatalf("Create %s: %v", p.Name, err)
+		}
+	}
+	// The tenant every case changes, whose own console host has to be a name of
+	// its own: admin.target.example.com is another tenant's domain.
+	target, err := create(t, pg, auditlog.SystemPlatformActor, CreateParams{
+		Name: "Target", Domain: "target.example.com", AdminDomain: "console.target.example.com", DefaultLocale: "en",
+	})
+	if err != nil {
+		t.Fatalf("Create target: %v", err)
+	}
+
+	update := func(p UpdateParams) error {
+		p.ID = target.Tenant.ID
+		c, err := p.Validate()
+		if err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		return inPlatformTx(t, pg, func(tx *sql.Tx) error {
+			_, err := Update(context.Background(), tx, nil, auditlog.SystemPlatformActor, c)
+			return err
+		})
+	}
+
+	for _, tc := range []struct {
+		name   string
+		params UpdateParams
+		field  string
+	}{
+		{name: "domain equal to a stored console host", params: UpdateParams{Domain: ptr("console.stored.example.com")}, field: FieldDomain},
+		{name: "domain equal to an implied console host", params: UpdateParams{Domain: ptr("admin.implied.example.com")}, field: FieldDomain},
+		{name: "admin domain equal to a domain", params: UpdateParams{AdminDomain: ptr("implied.example.com")}, field: FieldAdminDomain},
+		{name: "admin domain equal to an implied console host", params: UpdateParams{AdminDomain: ptr("admin.implied.example.com")}, field: FieldAdminDomain},
+		{name: "admin domain equal to its own domain", params: UpdateParams{AdminDomain: ptr("target.example.com")}, field: FieldAdminDomain},
+		{name: "clearing the admin domain onto a domain", params: UpdateParams{AdminDomain: ptr("")}, field: FieldAdminDomain},
+		{name: "a domain whose implied console host is a domain", params: UpdateParams{Domain: ptr("shop.example.com"), AdminDomain: ptr("")}, field: FieldAdminDomain},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := update(tc.params)
+			var conflict *fielderr.Conflict
+			if !errors.As(err, &conflict) {
+				t.Fatalf("err = %v, want *fielderr.Conflict", err)
+			}
+			if conflict.Field != tc.field {
+				t.Fatalf("field = %q, want %q", conflict.Field, tc.field)
+			}
+		})
+	}
+
+	// Its own hosts are not another tenant's: storing the console host its new
+	// domain would imply anyway is a change, not a collision.
+	if err := update(UpdateParams{Domain: ptr("moved.example.com"), AdminDomain: ptr("admin.moved.example.com")}); err != nil {
+		t.Fatalf("store the implied console host: %v", err)
+	}
+	if err := update(UpdateParams{AdminDomain: ptr("")}); err != nil {
+		t.Fatalf("clear the admin domain back to the same host: %v", err)
+	}
+	// A rename moves no host name, so it is not judged by them.
+	if err := update(UpdateParams{Name: ptr("Renamed")}); err != nil {
+		t.Fatalf("rename: %v", err)
+	}
+}
+
 func TestSuspendAndResumeFileTheirEntries(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
