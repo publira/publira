@@ -3,6 +3,7 @@ package rpcmiddleware
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 
 	"connectrpc.com/connect/v2"
@@ -25,11 +26,22 @@ type UnaryRequestFunc func(ctx context.Context, spec connect.Spec, req proto.Mes
 // the request names, who the session belongs to — therefore has to receive the
 // message itself, ahead of the handler, and hand the handler that same message
 // when it asks for it. Streaming calls pass through untouched.
+//
+// The message is read once however many of these interceptors a server
+// chains, and the handler is handed its fields rather than a copy of them: the
+// admin console reads uploads of any size, and a copy per interceptor would
+// hold that payload in memory several times over.
 func NewUnaryRequestInterceptor(intercept UnaryRequestFunc) connect.ServerInterceptor {
 	return func(next connect.ServerFunc) connect.ServerFunc {
 		return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {
 			if spec.StreamType != connect.StreamTypeUnary {
 				return next(ctx, spec, stream)
+			}
+			if received, ok := stream.(*receivedStream); ok && !received.consumed {
+				// An interceptor further out already read the message.
+				return intercept(ctx, spec, received.req, func(ctx context.Context) error {
+					return next(ctx, spec, received)
+				})
 			}
 			req, err := newRequestMessage(spec)
 			if err != nil {
@@ -58,7 +70,9 @@ func newRequestMessage(spec connect.Spec) (proto.Message, error) {
 }
 
 // receivedStream answers the handler's Receive with the message the
-// interceptor already read off the wire.
+// interceptor already read off the wire. The handler's message takes over that
+// message's fields, sharing their contents, since nothing reads the original
+// after it.
 type receivedStream struct {
 	connect.ServerStream
 	req      proto.Message
@@ -73,9 +87,17 @@ func (s *receivedStream) Receive(msg any) error {
 	if !ok {
 		return errors.New("receive target is not a protobuf message")
 	}
+	from, to := s.req.ProtoReflect(), dst.ProtoReflect()
+	if from.Descriptor().FullName() != to.Descriptor().FullName() {
+		return fmt.Errorf("receive target is %s, want %s", to.Descriptor().FullName(), from.Descriptor().FullName())
+	}
 	s.consumed = true
 	proto.Reset(dst)
-	proto.Merge(dst, s.req)
+	from.Range(func(field protoreflect.FieldDescriptor, value protoreflect.Value) bool {
+		to.Set(field, value)
+		return true
+	})
+	to.SetUnknown(from.GetUnknown())
 	return nil
 }
 

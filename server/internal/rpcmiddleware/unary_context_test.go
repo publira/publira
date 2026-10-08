@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"unsafe"
 
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connectinprocess"
 	"google.golang.org/protobuf/proto"
 
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publiraemailv1 "github.com/publira/publira/server/internal/proto/gen/publira/email/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/email/v1/publiraemailv1connect"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -112,5 +115,53 @@ func TestNewUnaryRequestInterceptor_HandsTheHandlerTheMessageItRead(t *testing.T
 	}
 	if res.GetHtml() != "welcome" {
 		t.Errorf("html = %q, want the template echoed back", res.GetHtml())
+	}
+}
+
+// wireStream is a server stream with one request message on the wire, which
+// counts how often it is read.
+type wireStream struct {
+	connect.ServerStream
+	req   proto.Message
+	reads int
+}
+
+func (s *wireStream) Receive(msg any) error {
+	s.reads++
+	proto.Merge(msg.(proto.Message), s.req)
+	return nil
+}
+
+// An upload reaches the handler read once and without a copy of its bytes,
+// however many of these interceptors the server chains: the admin console
+// reads messages of any size.
+func TestNewUnaryRequestInterceptor_ReadsTheMessageOnceAndCopiesNoBytes(t *testing.T) {
+	spec := connect.Spec{
+		StreamType: connect.StreamTypeUnary,
+		Schema:     publiraadminv1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UploadEpisodeImages"),
+		Procedure:  publiraadminv1connect.AdminSeriesServiceUploadEpisodeImagesProcedure,
+	}
+	var read []byte
+	pass := rpcmiddleware.NewUnaryRequestInterceptor(func(ctx context.Context, _ connect.Spec, req proto.Message, next func(context.Context) error) error {
+		read = req.(*publiraadminv1.UploadEpisodeImagesRequest).GetArchiveData()
+		return next(ctx)
+	})
+	handler := func(_ context.Context, _ connect.Spec, stream connect.ServerStream) error {
+		var req publiraadminv1.UploadEpisodeImagesRequest
+		if err := stream.Receive(&req); err != nil {
+			return err
+		}
+		if unsafe.SliceData(req.GetArchiveData()) != unsafe.SliceData(read) {
+			t.Error("the handler's archive_data is a copy of the one the interceptors read")
+		}
+		return nil
+	}
+
+	wire := &wireStream{req: &publiraadminv1.UploadEpisodeImagesRequest{ArchiveData: []byte("archive")}}
+	if err := pass(pass(handler))(t.Context(), spec, wire); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if wire.reads != 1 {
+		t.Errorf("message read %d times, want once", wire.reads)
 	}
 }
