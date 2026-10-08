@@ -1,5 +1,6 @@
 import { smtpTestFailureMessage } from "@publira/api-client/error-messages";
 import type { Locale } from "@publira/i18n";
+import { CloseIcon } from "@publira/icons";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import { Input } from "@publira/ui-components/input";
@@ -43,6 +44,7 @@ import {
 } from "#lib/audit-log-labels";
 import { listPlatformAuditLogs } from "#lib/audit-logs";
 import type {
+  ListPlatformAuditLogsInput,
   ListPlatformAuditLogsResult,
   PlatformAuditLogSummary,
 } from "#lib/audit-logs";
@@ -53,6 +55,7 @@ import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { searchTestFailureMessage } from "#lib/search-settings";
 import { storageTestFailureMessage } from "#lib/storage-settings";
+import { getPlatformTenant } from "#lib/tenants";
 
 import { AuditActionName } from "./_components/audit-action-name";
 import { AuditLogTarget } from "./_components/audit-log-target";
@@ -61,6 +64,8 @@ import {
   parseAuditLogFilters,
   toAllowedActionValues,
 } from "./_lib/search-params";
+import { resolveAuditLogTenantFilter } from "./_lib/tenant-filter";
+import type { AuditLogTenantFilter } from "./_lib/tenant-filter";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
@@ -139,14 +144,50 @@ const getSummaryText = async (
   return t("platform.audit.showing", { count: result.auditLogs.length });
 };
 
+/**
+ * The tenant the list is narrowed to, with a way to drop that filter alone.
+ * The tenant has no field in the form, so this is the only place the screen
+ * says it is applied.
+ */
+const AuditLogsTenantFilter = async ({
+  removeHref,
+  tenantFilter,
+}: {
+  removeHref: string;
+  tenantFilter: Exclude<AuditLogTenantFilter, { kind: "none" }>;
+}) => {
+  const t = await getMessagesFor(await getPlatformLocale());
+
+  return (
+    <p className="flex h-10 max-w-full items-center gap-1 rounded-control bg-muted px-3 text-sm">
+      <span className="truncate">
+        {t("platform.audit.tenant_filter", { name: tenantFilter.label })}
+      </span>
+      <Link
+        className="rounded-control p-0.5 transition-colors duration-state ease-state hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        href={removeHref}
+      >
+        <CloseIcon aria-hidden className="h-4 w-4" />
+        <span className="sr-only">
+          {t("platform.audit.tenant_filter_remove")}
+        </span>
+      </Link>
+    </p>
+  );
+};
+
 const AuditLogsFilters = async ({
   actionFilter,
   actorFilter,
   hasFilter,
+  tenantFilter,
+  tenantPublicId,
 }: {
   actionFilter: string;
   actorFilter: string;
   hasFilter: boolean;
+  tenantFilter: AuditLogTenantFilter;
+  tenantPublicId: string;
 }) => {
   const locale = await getPlatformLocale();
   const [t, actionItems] = await Promise.all([
@@ -157,9 +198,23 @@ const AuditLogsFilters = async ({
   return (
     <Form
       action="/audit-logs"
-      className="flex flex-wrap gap-3"
-      key={`${actorFilter}::${actionFilter}`}
+      className="flex flex-wrap items-center gap-3"
+      key={`${tenantPublicId}::${actorFilter}::${actionFilter}`}
     >
+      {tenantFilter.kind === "none" ? null : (
+        <>
+          <input name="tenant_id" type="hidden" value={tenantPublicId} />
+          <AuditLogsTenantFilter
+            removeHref={buildAuditLogsPath({
+              action: actionFilter,
+              actorUserPublicId: actorFilter,
+              tenantPublicId: "",
+              token: "",
+            })}
+            tenantFilter={tenantFilter}
+          />
+        </>
+      )}
       <Input
         className="w-48"
         defaultValue={actorFilter}
@@ -249,6 +304,34 @@ const AuditLogReason = async ({
   return reason ? (
     <p className="text-xs text-muted-foreground">{reason}</p>
   ) : null;
+};
+
+/**
+ * The page of entries the filters allow. Only a tenant filter that resolved
+ * reaches the API; why the others list nothing is on `AuditLogTenantFilter`.
+ */
+const readAuditLogs = async (
+  tenantFilter: AuditLogTenantFilter,
+  input: Omit<ListPlatformAuditLogsInput, "tenantId">
+): Promise<ListPlatformAuditLogsResult> => {
+  if (tenantFilter.kind === "unknown") {
+    return { auditLogs: [], nextToken: "", ok: true, previousToken: "" };
+  }
+  if (tenantFilter.kind === "failed") {
+    return {
+      auditLogs: [],
+      message: tenantFilter.message,
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+      requiresSignIn: false,
+    };
+  }
+  return await listPlatformAuditLogs({
+    ...input,
+    tenantId:
+      tenantFilter.kind === "resolved" ? tenantFilter.tenantId : undefined,
+  });
 };
 
 /**
@@ -362,15 +445,22 @@ const AuditLogsContent = async ({
   const {
     action: actionFilter,
     actorUserPublicId: actorFilter,
+    tenantPublicId,
     token,
   } = parseAuditLogFilters(search, toAllowedActionValues(actionItems));
 
-  const hasFilter = Boolean(actorFilter || actionFilter);
+  const hasFilter = Boolean(actorFilter || actionFilter || tenantPublicId);
+  const tenantFilter = resolveAuditLogTenantFilter(
+    tenantPublicId,
+    tenantPublicId
+      ? await getPlatformTenant(tenantPublicId)
+      : { ok: true, tenant: null }
+  );
 
   // Timestamps follow the platform default time zone, not the host's or the
   // browser's, so every operator reads the same wall clock.
   const [result, timeZone] = await Promise.all([
-    listPlatformAuditLogs({
+    readAuditLogs(tenantFilter, {
       action: actionFilter || undefined,
       actorUserPublicId: actorFilter || undefined,
       limit: pageSize,
@@ -385,6 +475,7 @@ const AuditLogsContent = async ({
   const filterParams = {
     action: actionFilter,
     actorUserPublicId: actorFilter,
+    tenantPublicId,
   };
   const previousHref = result.previousToken
     ? buildAuditLogsPath({ ...filterParams, token: result.previousToken })
@@ -399,6 +490,8 @@ const AuditLogsContent = async ({
           actionFilter={actionFilter}
           actorFilter={actorFilter}
           hasFilter={hasFilter}
+          tenantFilter={tenantFilter}
+          tenantPublicId={tenantPublicId}
         />
       </Suspense>
 

@@ -211,7 +211,7 @@ An install keeps two audit logs that never share entries: the Platform Console's
 
 ### The Platform Console's log
 
-**Audit logs**, under **Governance** in the Platform Console, lists the newest entries first, 20 to a page. Every operator can read it, an **Auditor** included. Each entry shows the **Time**, the **Actor** with their role, the action with its outcome, and the **Target**. A change made from `publiractl` names no operator: its actor is **Command line**. The list can be narrowed to one actor by public ID and to one kind of action, but not to a date or a tenant: **View audit logs** on a tenant's page opens the whole log ([#3835](https://github.com/publira/publira/issues/3835)).
+**Audit logs**, under **Governance** in the Platform Console, lists the newest entries first, 20 to a page. Every operator can read it, an **Auditor** included. Each entry shows the **Time**, the **Actor** with their role, the action with its outcome, and the **Target**. A change made from `publiractl` names no operator: its actor is **Command line**. The list can be narrowed to one actor by public ID and to one kind of action, but not to a date. **View audit logs** on a tenant's page opens it narrowed to that tenant as well: the entries that changed the tenant, its admin invitations, or the accounts of its staff and readers. The tenant is named above the list, and its close button drops that filter alone; **Clear** drops every filter.
 
 It records:
 

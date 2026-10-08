@@ -4693,6 +4693,8 @@
         "tenant_admin_invitation": "发给{$email}的管理员邀请",
         "webpush_config": "Web Push设置"
       },
+      "tenant_filter": "租户：{$name}",
+      "tenant_filter_remove": "取消租户筛选",
       "title": "审计日志",
       "unset": "未设置"
     },

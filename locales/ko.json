@@ -4693,6 +4693,8 @@
         "tenant_admin_invitation": "{$email}에게 보낸 관리자 초대",
         "webpush_config": "Web Push 설정"
       },
+      "tenant_filter": "테넌트: {$name}",
+      "tenant_filter_remove": "테넌트 필터 해제",
       "title": "감사 로그",
       "unset": "미설정"
     },
