@@ -45,6 +45,7 @@ import type { TenantMemberItem } from "#lib/tenant-members";
 
 import { updateTenantMemberRoleAction } from "../_lib/actions";
 import { MemberRemoveButton } from "./member-remove-button";
+import { memberRoleItems } from "./member-role-items";
 
 type MemberListProps = CursorPageHrefs & {
   listErrorMessage?: string;
@@ -54,33 +55,6 @@ type MemberListProps = CursorPageHrefs & {
   tenantId: string;
   timeZone: string;
 };
-
-const roleItems = [
-  {
-    label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-        <Message message="admin.common.roles.tenant_admin" />
-      </Suspense>
-    ),
-    value: "tenant_admin",
-  },
-  {
-    label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-        <Message message="admin.common.roles.tenant_editor" />
-      </Suspense>
-    ),
-    value: "tenant_editor",
-  },
-  {
-    label: (
-      <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-        <Message message="admin.common.roles.tenant_auditor" />
-      </Suspense>
-    ),
-    value: "tenant_auditor",
-  },
-];
 
 const MemberStatusBadge = ({ status }: { status: string }) => {
   switch (status) {
@@ -142,7 +116,7 @@ const MemberRoleForm = ({
             invitation granting it on the spot, replaces the selection. */}
           <Select
             defaultValue={member.role}
-            items={roleItems}
+            items={memberRoleItems}
             key={member.role}
             name="role"
           />

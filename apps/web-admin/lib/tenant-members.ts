@@ -41,6 +41,8 @@ export interface TenantMemberItem {
 export interface TenantAdminInvitationItem {
   id: string;
   email: string;
+  /** The console role accepting the invitation grants. */
+  role: string;
   status: string;
   createdAt: string;
   expiresAt: string;
@@ -80,7 +82,7 @@ export type RemoveTenantMemberResult =
 
 /**
  * `roleGrantedImmediately` is an address that already belongs to a user of the
- * tenant: the API made them a tenant admin on the spot and mailed nothing.
+ * tenant: the API gave them the role on the spot and mailed nothing.
  */
 export type CreateTenantAdminInvitationResult =
   | { ok: true; roleGrantedImmediately: boolean }
@@ -115,7 +117,7 @@ const mapTenantMember = (member: RawTenantMember): TenantMemberItem => ({
 
 type RawTenantAdminInvitation = Pick<
   TenantAdminInvitation,
-  "createdAt" | "email" | "expiresAt" | "id" | "status"
+  "createdAt" | "email" | "expiresAt" | "id" | "role" | "status"
 >;
 
 const mapTenantAdminInvitation = (
@@ -125,6 +127,7 @@ const mapTenantAdminInvitation = (
   email: invitation.email ?? "",
   expiresAt: invitation.expiresAt ?? "",
   id: invitation.id ?? "",
+  role: invitation.role ?? "",
   status: invitation.status ?? "",
 });
 
@@ -367,7 +370,7 @@ export const removeTenantMember = async (
 };
 
 export const createTenantAdminInvitation = async (
-  input: { tenantId: string; email: string },
+  input: { tenantId: string; email: string; role: string },
   locale: Locale
 ): Promise<CreateTenantAdminInvitationResult> => {
   const [t, sessionId] = await Promise.all([
@@ -380,7 +383,11 @@ export const createTenantAdminInvitation = async (
 
   try {
     const response = await apiClient.members.createTenantAdminInvitation(
-      { email: input.email, tenant: { tenantId: input.tenantId } },
+      {
+        email: input.email,
+        role: input.role,
+        tenant: { tenantId: input.tenantId },
+      },
       withSessionHeaders(sessionId)
     );
 
@@ -395,6 +402,12 @@ export const createTenantAdminInvitation = async (
       message: rpcErrorMessage(error, t("admin.members.invite_failed"), {
         locale,
         overrides: {
+          // Only a role other than tenant_admin is refused this way: the
+          // address's user already holds a role, and changing it is the
+          // member list's.
+          conflict: t("admin.members.invite_already_member", {
+            email: input.email,
+          }),
           "invalid-argument": t("admin.members.invite_email_invalid"),
         },
       }),

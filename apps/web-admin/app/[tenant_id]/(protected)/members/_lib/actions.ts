@@ -66,6 +66,9 @@ const inviteSchema = async (locale: Locale) => {
     email: requiredTrimmedString(
       t("admin.members.validation.email_required")
     ).pipe(z.email(t("admin.members.invite_email_invalid"))),
+    role: z.enum(TENANT_MEMBER_ROLES, {
+      error: t("admin.members.validation.role_invalid"),
+    }),
     tenantId: await tenantIdSchema(locale),
   });
 };
@@ -150,6 +153,7 @@ export const createTenantAdminInvitationAction = async (
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       email: "value",
+      role: "value",
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
@@ -157,27 +161,30 @@ export const createTenantAdminInvitationAction = async (
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
-  const { email, tenantId } = parsed.data;
+  const { email, role, tenantId } = parsed.data;
   const result = await withAdminSessionReauth(() =>
-    createTenantAdminInvitation({ email, tenantId }, locale)
+    createTenantAdminInvitation({ email, role, tenantId }, locale)
   );
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
 
-  // An address that already had an account became an admin on the spot, so
-  // the member list changed and no invitation was written.
+  // An address that already had an account was given the role on the spot,
+  // so the member list changed and no invitation was written.
   if (result.roleGrantedImmediately) {
     updateTag(tenantMembersCacheTag(tenantId));
     return {
-      message: t("admin.members.invite_granted", { email }),
+      message: t("admin.members.invite_granted", { email, role }),
       ok: true,
     };
   }
 
   updateTag(tenantAdminInvitationsCacheTag(tenantId));
 
-  return { message: t("admin.members.invite_sent", { email }), ok: true };
+  return {
+    message: t("admin.members.invite_sent", { email, role }),
+    ok: true,
+  };
 };
 
 export const resendTenantAdminInvitationAction = async (

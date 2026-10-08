@@ -188,6 +188,7 @@ describe("listTenantAdminInvitations", () => {
           email: "invitee@example.com",
           expiresAt: "2026-09-02T00:00:00Z",
           id: "INV1",
+          role: "tenant_auditor",
           status: "pending",
         },
       ],
@@ -205,6 +206,7 @@ describe("listTenantAdminInvitations", () => {
           email: "invitee@example.com",
           expiresAt: "2026-09-02T00:00:00Z",
           id: "INV1",
+          role: "tenant_auditor",
           status: "pending",
         },
       ],
@@ -340,13 +342,49 @@ describe("createTenantAdminInvitation", () => {
       const { createTenantAdminInvitation } = await import("./tenant-members");
 
       const result = await createTenantAdminInvitation(
-        { email: "invitee@example.com", tenantId: "TENANT001" },
+        {
+          email: "invitee@example.com",
+          role: "tenant_editor",
+          tenantId: "TENANT001",
+        },
         "en"
       );
 
       expect(result).toEqual({ ok: true, roleGrantedImmediately });
+      expect(mockCreateInvitation).toHaveBeenCalledWith(
+        {
+          email: "invitee@example.com",
+          role: "tenant_editor",
+          tenant: { tenantId: "TENANT001" },
+        },
+        expect.anything()
+      );
     }
   );
+
+  // The API refuses only a role below tenant_admin this way, for a user who
+  // already holds one; the member list is where that role is changed.
+  it("points a user who already holds a role at the member list", async () => {
+    mockCreateInvitation.mockRejectedValueOnce(
+      new ConnectError("user already has tenant roles", Code.AlreadyExists)
+    );
+    const { createTenantAdminInvitation } = await import("./tenant-members");
+
+    const result = await createTenantAdminInvitation(
+      {
+        email: "editor@example.com",
+        role: "tenant_auditor",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "editor@example.com already holds a role in this console. Change it in the member list instead.",
+      ok: false,
+    });
+  });
 
   it("words an address the API refuses", async () => {
     mockCreateInvitation.mockRejectedValueOnce(
@@ -355,7 +393,7 @@ describe("createTenantAdminInvitation", () => {
     const { createTenantAdminInvitation } = await import("./tenant-members");
 
     const result = await createTenantAdminInvitation(
-      { email: "invitee@example", tenantId: "TENANT001" },
+      { email: "invitee@example", role: "tenant_admin", tenantId: "TENANT001" },
       "en"
     );
 

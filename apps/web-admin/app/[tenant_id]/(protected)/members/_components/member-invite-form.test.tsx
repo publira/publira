@@ -62,4 +62,14 @@ describe("MemberInviteForm", () => {
       expect(field.matches(":disabled")).toBe(false);
     });
   });
+
+  // Sending the form without looking at the role must not hand out the one
+  // that can change the staff.
+  it("offers Editor as the role until another is chosen", () => {
+    render(<MemberInviteForm tenantId="TENANT001" />);
+
+    expect(screen.getByRole("combobox", { name: /Role/u }).textContent).toBe(
+      "Editor"
+    );
+  });
 });
