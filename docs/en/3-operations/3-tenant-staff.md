@@ -2,6 +2,7 @@
 title: A tenant's staff
 description: Give a tenant's staff access to its console, choose their roles, and recover a tenant that lost its last administrator.
 published: 2026-10-06
+updated: 2026-10-08
 ---
 
 A tenant's staff are the people who sign in to its console. This page covers how they get there from the operator's side: inviting the first administrator, the roles staff hold, and what to do when a tenant has no administrator left. Once a tenant has an administrator, that administrator manages the rest of the staff from **Members** in the tenant console, as [Members](../4-console/3-setup/5-members.md) describes, and the operator is needed again only when something goes wrong.
@@ -46,7 +47,7 @@ An address that already belongs to a user of the tenant is not invited: it becom
 
 The invitation mail is sent by `publira worker`, from the tenant's own SMTP settings if it has saved some, and from the platform's otherwise. An install with no worker running creates the invitation and sends nothing.
 
-An invitation can only make a Tenant admin. Editors and Auditors are given their role as described in [Adding an existing user](#adding-an-existing-user).
+An invitation sent from the Platform Console or `publiractl` can only make a Tenant admin. Editors and Auditors are given their role as described in [Adding an existing user](#adding-an-existing-user), or are invited by one of the tenant's own administrators, whose console lets an invitation grant any of the three roles.
 
 ### Following an invitation up
 

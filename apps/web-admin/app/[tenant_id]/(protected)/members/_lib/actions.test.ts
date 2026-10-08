@@ -54,7 +54,7 @@ beforeEach(() => {
 });
 
 describe("createTenantAdminInvitationAction", () => {
-  it("announces the mail when an invitation was sent", async () => {
+  it("announces the mail, naming the role, when an invitation was sent", async () => {
     mockCreateInvitation.mockResolvedValueOnce({
       ok: true,
       roleGrantedImmediately: false,
@@ -63,15 +63,20 @@ describe("createTenantAdminInvitationAction", () => {
 
     const result = await createTenantAdminInvitationAction(
       null,
-      formData({ email: " new-admin@example.com " })
+      formData({ email: " new-editor@example.com ", role: "tenant_editor" })
     );
 
     expect(result).toEqual({
-      message: "An invitation was sent to new-admin@example.com.",
+      message:
+        "An invitation to become an editor was sent to new-editor@example.com.",
       ok: true,
     });
     expect(mockCreateInvitation).toHaveBeenCalledWith(
-      { email: "new-admin@example.com", tenantId: "TENANT001" },
+      {
+        email: "new-editor@example.com",
+        role: "tenant_editor",
+        tenantId: "TENANT001",
+      },
       "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith(
@@ -90,12 +95,12 @@ describe("createTenantAdminInvitationAction", () => {
 
     const result = await createTenantAdminInvitationAction(
       null,
-      formData({ email: "editor@example.com" })
+      formData({ email: "reader@example.com", role: "tenant_auditor" })
     );
 
     expect(result).toEqual({
       message:
-        "editor@example.com already has an account in this tenant and is now a tenant admin. No invitation email was sent.",
+        "reader@example.com already has an account in this tenant and is now an auditor. No invitation email was sent.",
       ok: true,
     });
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant-members-TENANT001");
@@ -106,13 +111,25 @@ describe("createTenantAdminInvitationAction", () => {
 
     const result = await createTenantAdminInvitationAction(
       null,
-      formData({ email: "not-an-address" })
+      formData({ email: "not-an-address", role: "tenant_editor" })
     );
 
     expect(result).toEqual({
       message: "Check the email address format.",
       ok: false,
     });
+    expect(mockCreateInvitation).not.toHaveBeenCalled();
+  });
+
+  it("refuses a role the console does not hand out", async () => {
+    const { createTenantAdminInvitationAction } = await import("./actions");
+
+    const result = await createTenantAdminInvitationAction(
+      null,
+      formData({ email: "owner@example.com", role: "tenant_owner" })
+    );
+
+    expect(result).toEqual({ message: "Choose a role.", ok: false });
     expect(mockCreateInvitation).not.toHaveBeenCalled();
   });
 });

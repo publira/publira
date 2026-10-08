@@ -41,6 +41,7 @@ import type { TenantAdminInvitationItem } from "#lib/tenant-members";
 
 import { resendTenantAdminInvitationAction } from "../_lib/actions";
 import { InvitationCancelButton } from "./invitation-cancel-button";
+import { MemberRoleLabel } from "./member-role-items";
 
 type InvitationListProps = CursorPageHrefs & {
   invitations: TenantAdminInvitationItem[];
@@ -144,6 +145,11 @@ const InvitationTable = ({
         </TableHead>
         <TableHead>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="admin.members.columns.role" />
+          </Suspense>
+        </TableHead>
+        <TableHead>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.status" />
           </Suspense>
         </TableHead>
@@ -168,6 +174,9 @@ const InvitationTable = ({
       {invitations.map((invitation) => (
         <TableRow key={invitation.id}>
           <TableCell className="font-medium">{invitation.email}</TableCell>
+          <TableCell>
+            <MemberRoleLabel role={invitation.role} />
+          </TableCell>
           <TableCell>
             <InvitationStatusBadge status={invitation.status} />
           </TableCell>

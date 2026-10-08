@@ -1,7 +1,8 @@
 ---
 title: Members
-description: Invite the publisher's staff to the console, give each of them the role they need, and remove them when they leave.
+description: Invite the publisher's staff to the console with the role each of them needs, change it, and remove them when they leave.
 published: 2026-10-07
+updated: 2026-10-08
 ---
 
 **Members**, under **Administration**, lists everyone who can sign in to this console, and is where a Tenant admin brings staff in, changes their roles, and takes them out again. Only a Tenant admin sees it.
@@ -18,25 +19,16 @@ A member of staff is an account on the tenant's site that also holds a console r
 
 [Tenant console](../index.md#roles) lists what each role covers. Keep the number of Tenant admins small: a Tenant admin can replace the tenant's payment and mail credentials, suspend and delete its readers' accounts, and change its staff.
 
-## Inviting a Tenant admin
+## Inviting a member
 
-Under **Invite a tenant admin**, enter the address in **Email address to invite** and choose **Send invitation**:
+Under **Invite a member**, enter the address in **Email address to invite**, choose its **Role**, and choose **Send invitation**. The role starts at **Editor**, so choose **Tenant admin** deliberately when that is what the person needs.
 
-- **An address with no account on the site** is mailed an invitation, in the tenant's default language. The link in it leads to this console, where the invitee enters their **Full name** and a **Password** and chooses **Accept invitation**. They then sign in as a Tenant admin. The link is valid for 24 hours.
-- **An address that already has an account on the site** is made a Tenant admin at once, and no mail is sent. Any role it held before is replaced.
+- **An address with no account on the site** is mailed an invitation to the chosen role, in the tenant's default language. The link in it leads to this console, where the invitee enters their **Full name** and a **Password** and chooses **Accept invitation**. They then sign in with that role. The link is valid for 24 hours.
+- **An address that already has an account on the site** is given the role at once, and no mail is sent. An account that already holds a role can be made a Tenant admin this way, which replaces its role; for any other role the console refuses it and points to **Members**, where the role is changed as described below.
 
-An invitation can only make a Tenant admin.
-
-**Admin invitations** lists each invitation as **Pending**, **Accepted**, **Canceled**, or **Expired**. On a pending one, **Resend** mails it again with a new link, valid for another 24 hours, and **Cancel invitation** withdraws it. Either way the earlier link stops working. To try again after an invitation has expired or been canceled, invite the same address again.
+**Invitations** lists each invitation with the **Role** it grants, as **Pending**, **Accepted**, **Canceled**, or **Expired**. On a pending one, **Resend** mails it again with a new link, valid for another 24 hours, and **Cancel invitation** withdraws it. Either way the earlier link stops working. To try again after an invitation has expired or been canceled, or to change the role a pending one grants, invite the same address again with the role it should have.
 
 An invitation is mailed by the platform's mail server unless the tenant sends through its own, as [Email](./6-email.md) describes. If one does not arrive, check the invitee's spam folder, then the tenant's mail settings.
-
-## Adding an Editor or an Auditor
-
-The console cannot yet give an Editor or an Auditor role to someone who holds no role ([#3795](https://github.com/publira/publira/issues/3795)). Until it can, choose one of these:
-
-- **Ask the operator.** The Platform Console and `publiractl` can give any role to an account that already exists on the site, so the person signs up on the site first and the operator then gives the account its role, as [Adding an existing user](../../3-operations/3-tenant-staff.md#adding-an-existing-user) describes. The account never holds more than the role it needs.
-- **Invite, then change the role.** Invite the person as a Tenant admin, and once they hold the role, change it as described below. For as long as they are a Tenant admin, they can do everything a Tenant admin can, so do this only for someone you would trust with it, and change the role as soon as they appear in **Members**.
 
 ## Changing a role
 

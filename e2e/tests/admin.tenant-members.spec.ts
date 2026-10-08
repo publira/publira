@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Browser, Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { fillField, selectOption, signInAsAdmin } from "../src/admin";
@@ -19,15 +19,20 @@ import { WEB_ADMIN_TENANT_MEMBERS_BASE_URL } from "../src/urls";
 
 /**
  * A tenant admin managing who else can use the console: inviting an
- * administrator who accepts on the acceptance screen, granting the role to an
- * existing account, changing and removing members, and being stopped before
- * the tenant is left without an admin. None of it touches the Platform
- * Console.
+ * administrator and an editor who accept on the acceptance screen, granting a
+ * role to an existing account, changing and removing members, and being
+ * stopped before the tenant is left without an admin. None of it touches the
+ * Platform Console.
  */
 
 const MEMBERS_PATH = "/members";
 const ACCEPT_INVITE_PATH = "/accept-invite";
 const SECOND_INVITEE = "team-second-invitee@example.com";
+const EDITOR_INVITEE = {
+  email: "team-editor-invitee@example.com",
+  name: "Team E2E Editor Invitee",
+  password: "editor-invitee-pass-3795",
+} as const;
 
 const LAST_ADMIN_DEMOTE =
   "This member is the tenant's last tenant admin. Make someone else a tenant admin before changing this role.";
@@ -60,7 +65,11 @@ const membersSection = (page: Page): Locator =>
 
 const invitationsSection = (page: Page): Locator =>
   page.locator("section section").filter({
-    has: page.getByRole("heading", { level: 2, name: "Admin invitations" }),
+    has: page.getByRole("heading", {
+      exact: true,
+      level: 2,
+      name: "Invitations",
+    }),
   });
 
 const memberRow = (page: Page, email: string): Locator =>
@@ -91,9 +100,56 @@ const confirmIn = async (
     .click();
 };
 
-const invite = async (page: Page, email: string): Promise<void> => {
+const invite = async (
+  page: Page,
+  email: string,
+  roleLabel: string
+): Promise<void> => {
   await fillField(page.getByLabel("Email address to invite"), email);
+  await selectOption(
+    page,
+    // The required mark is part of the label, and every member row has a
+    // combobox named "Role of …".
+    page.getByRole("combobox", { name: /^Role\W*$/u }),
+    roleLabel
+  );
   await page.getByRole("button", { name: "Send invitation" }).click();
+};
+
+/**
+ * Follows the mailed link in a browser with no admin session, as the invitee
+ * would, and signs them in once the account exists.
+ */
+const acceptInvitation = async (
+  browser: Browser,
+  invitee: { email: string; name: string; password: string },
+  nextPath: string,
+  signedIn: (page: Page) => Promise<void>
+): Promise<void> => {
+  const message = await waitForMessageTo(invitee.email);
+  const invitation = linkFrom(message, ACCEPT_INVITE_PATH);
+
+  const inviteeContext = await browser.newContext();
+  try {
+    const page = await inviteeContext.newPage();
+    // The mailed link itself, which names the tenant's console on this
+    // stack's edge rather than an https origin nothing here serves.
+    await page.goto(invitation);
+    await fillField(page.getByLabel("Full name"), invitee.name);
+    await fillField(
+      // The required mark is part of the label, so "Password" alone matches both.
+      page.getByLabel(/^Password\W*$/u),
+      invitee.password
+    );
+    await fillField(page.getByLabel("Password (confirm)"), invitee.password);
+    await page.getByRole("button", { name: "Accept invitation" }).click();
+    await page.waitForURL((url) => url.pathname.endsWith("/login"));
+
+    await signIn(page, invitee, nextPath);
+    await signedIn(page);
+  } finally {
+    await inviteeContext.close();
+  }
 };
 
 test.describe.configure({ mode: "serial" });
@@ -103,6 +159,7 @@ test.beforeAll(async () => {
   await clearMessagesTo(TENANT_MEMBERS_INVITEE.email);
   await clearMessagesTo(TENANT_MEMBERS_EDITOR.email);
   await clearMessagesTo(SECOND_INVITEE);
+  await clearMessagesTo(EDITOR_INVITEE.email);
 });
 
 test.afterAll(() => {
@@ -156,49 +213,26 @@ test.describe("tenant members", () => {
     page,
   }) => {
     await signIn(page, TENANT_MEMBERS_ADMIN, MEMBERS_PATH);
-    await invite(page, TENANT_MEMBERS_INVITEE.email);
+    await invite(page, TENANT_MEMBERS_INVITEE.email, "Tenant admin");
     await expect(
       page.getByText(
-        `An invitation was sent to ${TENANT_MEMBERS_INVITEE.email}.`
+        `An invitation to become a tenant admin was sent to ${TENANT_MEMBERS_INVITEE.email}.`
       )
     ).toBeVisible();
-    await expect(
-      invitationRow(page, TENANT_MEMBERS_INVITEE.email).getByText("Pending")
-    ).toBeVisible();
+    const row = invitationRow(page, TENANT_MEMBERS_INVITEE.email);
+    await expect(row.getByText("Pending")).toBeVisible();
+    await expect(row.getByText("Tenant admin", { exact: true })).toBeVisible();
 
-    const message = await waitForMessageTo(TENANT_MEMBERS_INVITEE.email);
-    const invitation = linkFrom(message, ACCEPT_INVITE_PATH);
-
-    // The invitee is somebody else, in a browser with no admin session.
-    const inviteeContext = await browser.newContext();
-    try {
-      const invitee = await inviteeContext.newPage();
-      // The mailed link itself, which names the tenant's console on this
-      // stack's edge rather than an https origin nothing here serves.
-      await invitee.goto(invitation);
-      await fillField(
-        invitee.getByLabel("Full name"),
-        TENANT_MEMBERS_INVITEE.name
-      );
-      await fillField(
-        // The required mark is part of the label, so "Password" alone matches both.
-        invitee.getByLabel(/^Password\W*$/u),
-        TENANT_MEMBERS_INVITEE.password
-      );
-      await fillField(
-        invitee.getByLabel("Password (confirm)"),
-        TENANT_MEMBERS_INVITEE.password
-      );
-      await invitee.getByRole("button", { name: "Accept invitation" }).click();
-      await invitee.waitForURL((url) => url.pathname.endsWith("/login"));
-
-      await signIn(invitee, TENANT_MEMBERS_INVITEE, MEMBERS_PATH);
-      await expect(
-        invitee.getByRole("heading", { level: 1, name: "Members" })
-      ).toBeVisible();
-    } finally {
-      await inviteeContext.close();
-    }
+    await acceptInvitation(
+      browser,
+      TENANT_MEMBERS_INVITEE,
+      MEMBERS_PATH,
+      async (invitee) => {
+        await expect(
+          invitee.getByRole("heading", { level: 1, name: "Members" })
+        ).toBeVisible();
+      }
+    );
 
     await openMembers(page);
     await expect(
@@ -207,6 +241,40 @@ test.describe("tenant members", () => {
     await expect(
       memberRow(page, TENANT_MEMBERS_INVITEE.email).getByRole("combobox")
     ).toHaveText("Tenant admin");
+  });
+
+  // The editor never holds the administrator's role, not even for the moment
+  // between accepting and being demoted.
+  test("invites an editor who accepts without passing through tenant admin", async ({
+    browser,
+    page,
+  }) => {
+    await signIn(page, TENANT_MEMBERS_ADMIN, MEMBERS_PATH);
+    await invite(page, EDITOR_INVITEE.email, "Editor");
+    await expect(
+      page.getByText(
+        `An invitation to become an editor was sent to ${EDITOR_INVITEE.email}.`
+      )
+    ).toBeVisible();
+    await expect(
+      invitationRow(page, EDITOR_INVITEE.email).getByText("Editor", {
+        exact: true,
+      })
+    ).toBeVisible();
+
+    await acceptInvitation(browser, EDITOR_INVITEE, "/", async (invitee) => {
+      await expect(
+        invitee.getByRole("button", { name: /Team E2E Editor Invitee/u })
+      ).toBeVisible();
+      await expect(
+        invitee.getByRole("link", { exact: true, name: "Members" })
+      ).toHaveCount(0);
+    });
+
+    await openMembers(page);
+    await expect(
+      memberRow(page, EDITOR_INVITEE.email).getByRole("combobox")
+    ).toHaveText("Editor");
   });
 
   test("changes and removes a member once another admin exists", async ({
@@ -228,7 +296,20 @@ test.describe("tenant members", () => {
     page,
   }) => {
     await signIn(page, TENANT_MEMBERS_ADMIN, MEMBERS_PATH);
-    await invite(page, TENANT_MEMBERS_EDITOR.email);
+
+    // Only Tenant admin replaces a role the account already holds; any other
+    // change is the member list's.
+    await invite(page, TENANT_MEMBERS_EDITOR.email, "Auditor");
+    await expect(
+      page.getByText(
+        `${TENANT_MEMBERS_EDITOR.email} already holds a role in this console. Change it in the member list instead.`
+      )
+    ).toBeVisible();
+    await expect(
+      memberRow(page, TENANT_MEMBERS_EDITOR.email).getByRole("combobox")
+    ).toHaveText("Editor");
+
+    await invite(page, TENANT_MEMBERS_EDITOR.email, "Tenant admin");
 
     await expect(
       page.getByText(
@@ -243,12 +324,15 @@ test.describe("tenant members", () => {
 
   test("resends and cancels a pending invitation", async ({ page }) => {
     await signIn(page, TENANT_MEMBERS_ADMIN, MEMBERS_PATH);
-    await invite(page, SECOND_INVITEE);
+    await invite(page, SECOND_INVITEE, "Auditor");
     await expect(
-      page.getByText(`An invitation was sent to ${SECOND_INVITEE}.`)
+      page.getByText(
+        `An invitation to become an auditor was sent to ${SECOND_INVITEE}.`
+      )
     ).toBeVisible();
 
     const row = invitationRow(page, SECOND_INVITEE);
+    await expect(row.getByText("Auditor", { exact: true })).toBeVisible();
     await row.getByRole("button", { name: "Resend" }).click();
     await expect(row.getByText("The invitation was sent again.")).toBeVisible();
 
