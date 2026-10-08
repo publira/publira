@@ -4,6 +4,8 @@ import {
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
   apiClient,
@@ -102,9 +104,28 @@ export interface EmailChangeConfirmResult {
   pendingConfirmationFor: string;
 }
 
+/**
+ * The tag `confirmPlatformEmailChange` carries. No Action changes what it
+ * reports, so nothing clears it.
+ */
+export const platformEmailChangeConfirmationCacheTag =
+  "platform:email-change-confirmation";
+
+/**
+ * Confirms the change the link's token stands for. The RPC spends the token,
+ * so it runs once, for the request that opened the link. In a
+ * `"use cache: private"` scope the prerender Cache Components spawns from that
+ * request finds the answer already filled in instead of calling the API again,
+ * and with `stale` under 30 seconds it leaves the answer out rather than
+ * keeping it for a prefetch.
+ */
 export const confirmPlatformEmailChange = async (
   token: string
 ): Promise<EmailChangeConfirmResult | null> => {
+  "use cache: private";
+  cacheLife({ stale: 0 });
+  cacheTag(platformEmailChangeConfirmationCacheTag);
+
   try {
     const response = await apiClient.auth.confirmEmailChange(
       { token },
@@ -117,6 +138,7 @@ export const confirmPlatformEmailChange = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return null;
   }
 };
