@@ -164,13 +164,14 @@ if [[ -n "${PUBLIRA_ROUTING_PLATFORM_HOSTS// /}" ]]; then
   PUBLIRA_ROUTING_ROUTERS+=(web-platform)
 fi
 
-# Middleware names from the same file. `strip-trace-context` is attached to
-# the `web` entrypoint in the static configuration, so every router on that
+# Middleware names from the same file. Both are attached to the `web`
+# entrypoint in the static configuration, so every router on that
 # entrypoint refuses requests until the file provider has advertised it;
 # waiting for it turns that into one readable message instead of a wall of
 # failing probes.
 PUBLIRA_ROUTING_MIDDLEWARES=(
   strip-trace-context
+  strip-forwarded
 )
 
 # W3C Trace Context a caller could forge. echo.ts reports each of these
@@ -183,9 +184,11 @@ PUBLIRA_ROUTING_TRACE_CONTEXT_HEADERS=(
 
 # Forwarded headers a caller could send ahead of the edge. echo.ts reports
 # each of them back, so a probe can assert the edge replaced the value rather
-# than passing the caller's through: X-Forwarded-For is where the server finds
-# the client IP it records, and the CSRF origin check reads the other two.
+# than passing the caller's through: publira server finds the client IP it
+# records in Forwarded, ahead of X-Forwarded-For, and the CSRF origin check
+# reads the other two.
 PUBLIRA_ROUTING_FORGED_FORWARDED_HEADERS=(
+  "Forwarded: for=203.0.113.9"
   "X-Forwarded-For: 203.0.113.9"
   "X-Forwarded-Host: forged.example.test"
   "X-Forwarded-Proto: https"
@@ -392,8 +395,9 @@ assert_trace_context_stripped() {
 # The headers a backend is promised, on a request that forges all of them.
 # `Host` arrives as the browser sent it, `X-Forwarded-Host` and
 # `X-Forwarded-Proto` describe this request rather than the caller's claim,
-# and `X-Forwarded-For` is the peer address alone — appending would leave the
-# forged address in front of the real one, where the backend reads it.
+# `X-Forwarded-For` is the peer address alone — appending would pass the
+# forged address on in front of the real one — and `Forwarded`, which the edge
+# does not write, is gone.
 assert_forwarded_headers() {
   local name="$1" method="$2" host="$3" path="$4" want_backend="$5"
   local out code body actual_backend value
@@ -435,6 +439,11 @@ assert_forwarded_headers() {
   fi
   if [[ "${value}" == *,* ]]; then
     routing_fail "${name}: X-Forwarded-For '${value}' is a list (want the peer address alone) ${method} ${path} body=${body}"
+  fi
+
+  value="$(json_string_field "${body}" forwarded)"
+  if [[ -n "${value}" ]]; then
+    routing_fail "${name}: backend saw Forwarded '${value}' (want it stripped) ${method} ${path} body=${body}"
   fi
 
   routing_log "ok: ${name} → ${want_backend} with the edge's own forwarded headers"

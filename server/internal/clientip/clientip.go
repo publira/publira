@@ -19,11 +19,16 @@ import (
 	"net/http"
 	"net/netip"
 	"os"
+	"strconv"
 	"strings"
 )
 
 // Env names the variable that replaces [DefaultTrustedProxies].
 const Env = "PUBLIRA_TRUSTED_PROXIES"
+
+// ForwardedEnv names the variable that turns the Forwarded header off, for an
+// install whose proxies pass on a Forwarded header the caller sent.
+const ForwardedEnv = "PUBLIRA_FORWARDED_HEADER_ENABLED"
 
 // DefaultTrustedProxies are the ranges Rails trusts when
 // config.action_dispatch.trusted_proxies is not set: loopback, private, and
@@ -40,55 +45,88 @@ var DefaultTrustedProxies = []netip.Prefix{
 	netip.MustParsePrefix("fe80::/10"),
 }
 
+// Config is what a [Resolver] believes.
+type Config struct {
+	// TrustedProxies are the addresses and ranges whose forwarded entries are
+	// believed, and no others.
+	TrustedProxies []netip.Prefix
+	// IgnoreForwarded reads the chain from X-Forwarded-For alone, for proxies
+	// that write that header and pass on a Forwarded header the caller sent.
+	IgnoreForwarded bool
+}
+
 // Resolver determines the client address of a request from the proxies it
 // trusts.
 type Resolver struct {
-	trusted []netip.Prefix
+	config Config
 }
 
-// New returns a Resolver that trusts the given addresses and ranges, and no
-// others.
-func New(trusted []netip.Prefix) *Resolver {
-	return &Resolver{trusted: trusted}
+// New returns a Resolver that believes what config says.
+func New(config Config) *Resolver {
+	return &Resolver{config: config}
 }
 
 // FromEnv returns a Resolver trusting the proxies [Env] lists, or
-// [DefaultTrustedProxies] when it is unset or empty. A list naming anything
-// but an address or a range is an error, so a typo stops the process rather
-// than trusting less, or more, than the operator wrote.
+// [DefaultTrustedProxies] when it is unset or empty, and reading Forwarded
+// unless [ForwardedEnv] is false. A value it cannot read is an error, so a
+// typo stops the process rather than trusting less, or more, than the
+// operator wrote.
 func FromEnv() (*Resolver, error) {
-	raw := strings.TrimSpace(os.Getenv(Env))
-	if raw == "" {
-		return New(DefaultTrustedProxies), nil
+	config := Config{TrustedProxies: DefaultTrustedProxies}
+	if raw := strings.TrimSpace(os.Getenv(Env)); raw != "" {
+		trusted, err := ParseTrustedProxies(raw)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", Env, err)
+		}
+		config.TrustedProxies = trusted
 	}
-	trusted, err := ParseTrustedProxies(raw)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", Env, err)
+	if raw := strings.TrimSpace(os.Getenv(ForwardedEnv)); raw != "" {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %q is not a boolean", ForwardedEnv, raw)
+		}
+		config.IgnoreForwarded = !enabled
 	}
-	return New(trusted), nil
+	return New(config), nil
 }
 
 // ParseTrustedProxies reads addresses and CIDR ranges separated by commas or
 // white space. A bare address is the range holding that address alone.
+//
+// An IPv4-mapped IPv6 address or range is read as the IPv4 one it maps, since
+// the hops it is matched against are unmapped first and would never fall in
+// it. A range of length zero is refused: trusting every address makes the
+// furthest address in the chain the client, which is the one the caller wrote.
 func ParseTrustedProxies(raw string) ([]netip.Prefix, error) {
 	fields := strings.FieldsFunc(raw, func(r rune) bool {
 		return r == ',' || r == ' ' || r == '\t' || r == '\n' || r == '\r'
 	})
 	trusted := make([]netip.Prefix, 0, len(fields))
 	for _, field := range fields {
+		var prefix netip.Prefix
 		if strings.Contains(field, "/") {
-			prefix, err := netip.ParsePrefix(field)
+			parsed, err := netip.ParsePrefix(field)
 			if err != nil {
 				return nil, fmt.Errorf("%q is not an address or a CIDR range", field)
 			}
-			trusted = append(trusted, prefix.Masked())
-			continue
+			prefix = parsed
+		} else {
+			addr, err := netip.ParseAddr(field)
+			if err != nil || addr.Zone() != "" {
+				return nil, fmt.Errorf("%q is not an address or a CIDR range", field)
+			}
+			prefix = netip.PrefixFrom(addr, addr.BitLen())
 		}
-		addr, err := netip.ParseAddr(field)
-		if err != nil || addr.Zone() != "" {
-			return nil, fmt.Errorf("%q is not an address or a CIDR range", field)
+		if prefix.Addr().Is4In6() {
+			if prefix.Bits() < 96 {
+				return nil, fmt.Errorf("%q is an IPv4-mapped range shorter than /96", field)
+			}
+			prefix = netip.PrefixFrom(prefix.Addr().Unmap(), prefix.Bits()-96)
 		}
-		trusted = append(trusted, netip.PrefixFrom(addr, addr.BitLen()))
+		if prefix.Bits() == 0 {
+			return nil, fmt.Errorf("%q trusts every address", field)
+		}
+		trusted = append(trusted, prefix.Masked())
 	}
 	return trusted, nil
 }
@@ -96,12 +134,11 @@ func ParseTrustedProxies(raw string) ([]netip.Prefix, error) {
 // Resolve returns the client address of a request carrying header that
 // arrived from remoteAddr, the peer's host and port.
 //
-// The chain comes from X-Forwarded-For when the request carries one, and from
-// the for= parameters of Forwarded otherwise. Rack reads Forwarded first by
-// default and makes the order a setting; this one is fixed the other way
-// round, because the proxies in front of an install overwhelmingly write
-// X-Forwarded-For and pass a Forwarded header the caller sent on untouched,
-// and reading that first would let any caller name their own address.
+// The chain comes from the for= parameters of Forwarded when the request
+// carries any, and from X-Forwarded-For otherwise, which is the order Rack
+// reads them in by default. [Config.IgnoreForwarded] drops the first: a proxy
+// that writes only X-Forwarded-For and passes on a Forwarded header the caller
+// sent would otherwise let any caller name their own address.
 //
 // Entries that are not an address, such as Forwarded's "unknown" and its
 // obfuscated identifiers, are skipped, as Rails skips them. When every address
@@ -119,10 +156,12 @@ func (r *Resolver) Resolve(header http.Header, remoteAddr string) string {
 	}
 
 	var chain []netip.Addr
-	if values := header.Values("X-Forwarded-For"); len(values) > 0 {
-		chain = forwardedForChain(values)
-	} else {
-		chain = forwardedChain(header.Values("Forwarded"))
+	found := false
+	if !r.config.IgnoreForwarded {
+		chain, found = forwardedChain(header.Values("Forwarded"))
+	}
+	if !found {
+		chain = forwardedForChain(header.Values("X-Forwarded-For"))
 	}
 	chain = append(chain, peer)
 
@@ -135,7 +174,7 @@ func (r *Resolver) Resolve(header http.Header, remoteAddr string) string {
 }
 
 func (r *Resolver) trusts(addr netip.Addr) bool {
-	for _, prefix := range r.trusted {
+	for _, prefix := range r.config.TrustedProxies {
 		if prefix.Contains(addr) {
 			return true
 		}
@@ -181,23 +220,23 @@ func forwardedForChain(values []string) []netip.Addr {
 }
 
 // forwardedChain reads the for= parameter of every element of the Forwarded
-// lines in order (RFC 7239).
-func forwardedChain(values []string) []netip.Addr {
-	var chain []netip.Addr
+// lines in order (RFC 7239), and reports whether there was any.
+func forwardedChain(values []string) (chain []netip.Addr, found bool) {
 	for _, value := range values {
 		for _, element := range splitUnquoted(value, ',') {
 			for _, pair := range splitUnquoted(element, ';') {
-				name, node, found := strings.Cut(pair, "=")
-				if !found || !strings.EqualFold(strings.TrimSpace(name), "for") {
+				name, node, ok := strings.Cut(pair, "=")
+				if !ok || !strings.EqualFold(strings.TrimSpace(name), "for") {
 					continue
 				}
+				found = true
 				if addr, ok := parseNode(node); ok {
 					chain = append(chain, addr)
 				}
 			}
 		}
 	}
-	return chain
+	return chain, found
 }
 
 // splitUnquoted splits s at every sep outside a quoted string.

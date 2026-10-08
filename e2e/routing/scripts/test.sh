@@ -98,10 +98,10 @@ assert_trace_context_stripped "images on admin host drop trace context" GET admi
 
 # The headers the edge sets for the backend, on requests that forge all of
 # them. Tenant resolution reads `Host` and `X-Forwarded-Host`, the CSRF origin
-# check reads `X-Forwarded-Host` and `X-Forwarded-Proto`, and an access token
-# and an audit log entry record the first address in `X-Forwarded-For`, so a
-# caller that could plant any of them would choose what a backend believes
-# about its own request.
+# check reads `X-Forwarded-Host` and `X-Forwarded-Proto`, and the server finds
+# the client IP an access token and an audit log entry record in `Forwarded`
+# or `X-Forwarded-For`, so a caller that could plant any of them would choose
+# what a backend believes about its own request.
 assert_forwarded_headers "web-host is given the edge's forwarded headers" GET localhost / web-host
 assert_forwarded_headers "web-admin is given the edge's forwarded headers" GET admin.localhost / web-admin
 assert_forwarded_headers "web-platform is given the edge's forwarded headers" GET platform.localhost / web-platform

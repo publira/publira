@@ -20,11 +20,12 @@ import { createServer } from "node:http";
 const TRACE_CONTEXT_HEADERS = ["traceparent", "tracestate", "baggage"];
 
 /**
- * The headers the edge sets for the backend. A caller can send all three, so
- * echoing them is how the suite asserts the edge replaced rather than kept
- * what arrived.
+ * The headers the edge sets for the backend, and `Forwarded`, which it drops.
+ * A caller can send all four, so echoing them is how the suite asserts the
+ * edge replaced or removed rather than kept what arrived.
  */
 const FORWARDED_HEADERS = [
+  "forwarded",
   "x-forwarded-host",
   "x-forwarded-proto",
   "x-forwarded-for",

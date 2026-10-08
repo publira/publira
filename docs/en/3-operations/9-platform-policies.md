@@ -67,7 +67,7 @@ Each limit is a count per minute or per hour, with a second count per day, and t
 
 Each invitation counts as one request, including every **Initial admin emails** address on **Create tenant**, which are all counted before the tenant is created: if one is over a limit, no tenant is created and no mail is sent. `publiractl` sends through no form and counts against none of these limits.
 
-The client address is the one `publira server` finds in `X-Forwarded-For` by stepping over the proxies it trusts, as [The proxies Publira trusts](../2-deployments/4-reverse-proxy.md#the-proxies-publira-trusts) describes. Readers behind one shared address, such as an office or a mobile carrier's gateway, share its per-source and per-client counts.
+The client address is the one `publira server` finds in `Forwarded` or `X-Forwarded-For` by stepping over the proxies it trusts, as [The proxies Publira trusts](../2-deployments/4-reverse-proxy.md#the-proxies-publira-trusts) describes. Readers behind one shared address, such as an office or a mobile carrier's gateway, share its per-source and per-client counts.
 
 ### Sign-in attempts
 

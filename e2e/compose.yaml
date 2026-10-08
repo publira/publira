@@ -158,7 +158,7 @@ services:
       - "--entrypoints.web.address=127.0.0.1:${PUBLIRA_E2E_EDGE_PORT:-3080}"
       # Inbound W3C Trace Context is dropped before any router runs, the same
       # way the Dev Container edge does it.
-      - "--entrypoints.web.http.middlewares=strip-trace-context@file"
+      - "--entrypoints.web.http.middlewares=strip-trace-context@file,strip-forwarded@file"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
     # Every host the suite opens, since routes.yaml routes no other: the

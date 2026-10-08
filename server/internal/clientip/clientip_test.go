@@ -34,13 +34,14 @@ func TestResolve(t *testing.T) {
 		{name: "Forwarded's unknown and obfuscated nodes are skipped", peer: "10.0.0.2:41000", forwarded: "for=203.0.113.10, for=unknown, for=_hidden", want: "203.0.113.10"},
 
 		// Both
-		{name: "X-Forwarded-For is read when a request carries both", peer: "10.0.0.2:41000", forwarded: "for=198.51.100.7", xff: []string{"203.0.113.10"}, want: "203.0.113.10"},
+		{name: "Forwarded is read when a request carries both", peer: "10.0.0.2:41000", forwarded: "for=203.0.113.10", xff: []string{"198.51.100.7"}, want: "203.0.113.10"},
+		{name: "X-Forwarded-For is read when Forwarded names no for=", peer: "10.0.0.2:41000", forwarded: "proto=https;host=shop.example", xff: []string{"203.0.113.10"}, want: "203.0.113.10"},
 
 		// No header
 		{name: "the peer when nothing is forwarded", peer: "192.0.2.5:41000", want: "192.0.2.5"},
 		{name: "a trusted peer with nothing forwarded is the client itself", peer: "127.0.0.1:41000", want: "127.0.0.1"},
 	}
-	resolver := New(DefaultTrustedProxies)
+	resolver := New(Config{TrustedProxies: DefaultTrustedProxies})
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			header := http.Header{}
@@ -58,7 +59,7 @@ func TestResolve(t *testing.T) {
 }
 
 func TestResolveTrustsOnlyTheConfiguredProxies(t *testing.T) {
-	resolver := New([]netip.Prefix{netip.MustParsePrefix("198.51.100.0/24")})
+	resolver := New(Config{TrustedProxies: []netip.Prefix{netip.MustParsePrefix("198.51.100.0/24")}})
 	header := http.Header{}
 	header.Set("X-Forwarded-For", "192.0.2.1, 10.0.0.3")
 
@@ -67,6 +68,21 @@ func TestResolveTrustsOnlyTheConfiguredProxies(t *testing.T) {
 	}
 	if got := resolver.Resolve(header, "10.0.0.2:443"); got != "10.0.0.2" {
 		t.Fatalf("Resolve() = %q, want a peer outside the configured proxies", got)
+	}
+}
+
+func TestResolveIgnoresForwardedWhenTurnedOff(t *testing.T) {
+	resolver := New(Config{TrustedProxies: DefaultTrustedProxies, IgnoreForwarded: true})
+	header := http.Header{}
+	header.Set("Forwarded", "for=198.51.100.7")
+	header.Set("X-Forwarded-For", "203.0.113.10")
+
+	if got := resolver.Resolve(header, "10.0.0.2:41000"); got != "203.0.113.10" {
+		t.Fatalf("Resolve() = %q, want the X-Forwarded-For chain", got)
+	}
+	header.Del("X-Forwarded-For")
+	if got := resolver.Resolve(header, "10.0.0.2:41000"); got != "10.0.0.2" {
+		t.Fatalf("Resolve() = %q, want the peer with Forwarded unread", got)
 	}
 }
 
@@ -85,7 +101,15 @@ func TestParseTrustedProxies(t *testing.T) {
 		t.Fatalf("ParseTrustedProxies() = %v, want %v", got, want)
 	}
 
-	for _, raw := range []string{"proxy.example", "192.0.2.0/33", "fe80::1%eth0"} {
+	mapped, err := ParseTrustedProxies("::ffff:192.0.2.0/120, ::ffff:198.51.100.7")
+	if err != nil {
+		t.Fatalf("ParseTrustedProxies() error = %v", err)
+	}
+	if want := []netip.Prefix{netip.MustParsePrefix("192.0.2.0/24"), netip.MustParsePrefix("198.51.100.7/32")}; !slices.Equal(mapped, want) {
+		t.Fatalf("ParseTrustedProxies() = %v, want the IPv4 ranges the mapped ones name", mapped)
+	}
+
+	for _, raw := range []string{"proxy.example", "192.0.2.0/33", "fe80::1%eth0", "0.0.0.0/0", "::/0", "::ffff:0:0/95", "::ffff:0:0/96"} {
 		if _, err := ParseTrustedProxies(raw); err == nil {
 			t.Errorf("ParseTrustedProxies(%q) succeeded, want an error", raw)
 		}
@@ -120,9 +144,39 @@ func TestFromEnv(t *testing.T) {
 	}
 }
 
+func TestFromEnvReadsForwardedUnlessTurnedOff(t *testing.T) {
+	header := http.Header{}
+	header.Set("Forwarded", "for=203.0.113.10")
+	header.Set("X-Forwarded-For", "198.51.100.7")
+
+	t.Setenv(Env, "")
+	t.Setenv(ForwardedEnv, "")
+	resolver, err := FromEnv()
+	if err != nil {
+		t.Fatalf("FromEnv() error = %v", err)
+	}
+	if got := resolver.Resolve(header, "10.0.0.2:443"); got != "203.0.113.10" {
+		t.Fatalf("unset: Resolve() = %q, want Forwarded read", got)
+	}
+
+	t.Setenv(ForwardedEnv, "false")
+	resolver, err = FromEnv()
+	if err != nil {
+		t.Fatalf("FromEnv() error = %v", err)
+	}
+	if got := resolver.Resolve(header, "10.0.0.2:443"); got != "198.51.100.7" {
+		t.Fatalf("false: Resolve() = %q, want X-Forwarded-For read", got)
+	}
+
+	t.Setenv(ForwardedEnv, "maybe")
+	if _, err := FromEnv(); err == nil {
+		t.Fatal("FromEnv() succeeded on a value that is not a boolean, want an error")
+	}
+}
+
 func TestMiddlewareStoresTheClientAddress(t *testing.T) {
 	var got string
-	handler := New(DefaultTrustedProxies).Middleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+	handler := New(Config{TrustedProxies: DefaultTrustedProxies}).Middleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		got = FromContext(r.Context())
 	}))
 	req := httptest.NewRequest(http.MethodPost, "/api/x", nil)
