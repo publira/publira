@@ -57,11 +57,18 @@ func newTestAdminServerWithStorage(t *testing.T, provider storage.Provider) (*ht
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	handler, err := newTestHandler(db, dbmodels.New(db), provider, slog.Default(), nil, nil)
+	completions, _, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("sqlmock.New: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = completions.Close()
+	})
+	api, err := newTestAPI(db, completions, dbmodels.New(db), provider, slog.Default(), nil, nil)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
-	server := httptest.NewServer(handler)
+	server := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(server.Close)
 	return server, mock
 }
@@ -78,6 +85,36 @@ func newTestHandler(
 	encryptor emailsettings.SecretManager,
 	tester internalsmtp.Tester,
 ) (http.Handler, error) {
+	api, err := newTestAPI(db, nil, queries, storageProvider, logger, encryptor, tester)
+	if err != nil {
+		return nil, err
+	}
+	return handlerFromServer(api.server), nil
+}
+
+// newTestAPI is newTestHandler's server, with completions as the database the
+// revalidate requester marks a sent invalidation done on; nil leaves it on db.
+//
+// The completion runs on the requester's own goroutine once the recorder has
+// answered, while the handler goes on with what it does after its commit on
+// db, whose sqlmock expectations are ordered. Sharing db, whichever of the two
+// reaches it first takes the expectation the other was owed, so a test that
+// expects a statement after the commit passes or fails on scheduling alone.
+// On a database of its own the completion reaches none of them. It finds no
+// expectation there either and gives up, which costs nothing: what these tests
+// assert is the tags each write sends and the outbox row it records, and
+// marking that row done is the requester's own behaviour, tested where it is
+// defined. Its logger is silenced so the failure is not mistaken for the
+// handler's.
+func newTestAPI(
+	db *sql.DB,
+	completions *sql.DB,
+	queries Querier,
+	storageProvider storage.Provider,
+	logger *slog.Logger,
+	encryptor emailsettings.SecretManager,
+	tester internalsmtp.Tester,
+) (*API, error) {
 	// The client is built from the environment the way the process builds its
 	// own, which is what lets newRevalidateRecorder turn it on.
 	reval, err := revalidate.NewClient(os.Getenv("PUBLIRA_REVALIDATE_TOKEN"), logger)
@@ -88,7 +125,15 @@ func newTestHandler(
 	if err != nil {
 		return nil, err
 	}
-	return handlerFromServer(api.server), nil
+	if completions != nil {
+		api.server.reval = revalidate.NewRequester(revalidate.RequesterConfig{
+			Client:  reval,
+			Queries: queries,
+			DB:      completions,
+			Logger:  slog.New(slog.DiscardHandler),
+		})
+	}
+	return api, nil
 }
 
 // openMailGuard allows far more than any case that is not about the mail limit
