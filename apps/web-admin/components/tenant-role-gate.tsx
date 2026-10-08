@@ -1,3 +1,4 @@
+import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { TableSkeleton } from "@publira/ui-components/table";
@@ -82,8 +83,10 @@ export const TenantEditorOnly = async ({
 /**
  * Forms a tenant auditor may read but not submit. For an editor they are left
  * as they are; for an auditor every control inside is disabled by a disabled
- * `<fieldset>`, links excepted, under a notice saying why. The fieldset lays
- * out as its children would, so the screen keeps its shape either way.
+ * {@link Fieldset}, links excepted, under a notice saying why: a bare
+ * `<fieldset>` would leave a checkbox, which Base UI renders as a `<span>`,
+ * still clickable. The fieldset lays out as its children would, so the screen
+ * keeps its shape either way.
  */
 export const TenantEditorFieldset = async ({
   children,
@@ -101,9 +104,9 @@ export const TenantEditorFieldset = async ({
           <Message message="admin.common.editor_only" />
         </Suspense>
       </FormMessage>
-      <fieldset className="contents" disabled>
+      <Fieldset className="contents" disabled>
         {children}
-      </fieldset>
+      </Fieldset>
     </>
   );
 };
@@ -128,9 +131,9 @@ export const TenantAdminFieldset = async ({
           <Message message="admin.settings.admin_only" />
         </Suspense>
       </FormMessage>
-      <fieldset className="contents" disabled>
+      <Fieldset className="contents" disabled>
         {children}
-      </fieldset>
+      </Fieldset>
     </>
   );
 };

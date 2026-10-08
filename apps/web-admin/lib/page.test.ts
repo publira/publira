@@ -17,6 +17,7 @@ const {
   mockListPages,
   mockListPageTranslations,
   mockListVersions,
+  mockUpdatePage,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
@@ -29,6 +30,7 @@ const {
   mockListPageTranslations: vi.fn(),
   mockListPages: vi.fn(),
   mockListVersions: vi.fn(),
+  mockUpdatePage: vi.fn(),
 }));
 
 vi.mock("./session", () => ({
@@ -46,6 +48,7 @@ vi.mock("./api", () => ({
       listPageTranslations: mockListPageTranslations,
       listPages: mockListPages,
       listVersions: mockListVersions,
+      updatePage: mockUpdatePage,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -367,6 +370,41 @@ const translation = (locale: string, title: string) => ({
   publishedVersionId: "",
   title,
   updatedAt: "2026-01-01T00:00:00Z",
+});
+
+describe("updatePage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+    mockUpdatePage.mockResolvedValue({ page: page("PAGE001", "Help") });
+  });
+
+  it("leaves the title out of a request that does not set it", async () => {
+    const { updatePage } = await import("./page");
+
+    await updatePage(
+      { displayInFooter: true, pageId: "PAGE001", tenantId: "TENANT001" },
+      "en"
+    );
+
+    const [request] = mockUpdatePage.mock.calls[0] ?? [];
+    expect(request).toEqual(expect.objectContaining({ displayInFooter: true }));
+    expect(request).not.toHaveProperty("title");
+  });
+
+  it("leaves Show in footer out of a request that does not set it", async () => {
+    const { updatePage } = await import("./page");
+
+    await updatePage(
+      { pageId: "PAGE001", tenantId: "TENANT001", title: "Help" },
+      "en"
+    );
+
+    const [request] = mockUpdatePage.mock.calls[0] ?? [];
+    expect(request).toEqual(expect.objectContaining({ title: "Help" }));
+    expect(request).not.toHaveProperty("displayInFooter");
+  });
 });
 
 describe("listPageTranslations", () => {

@@ -59,26 +59,34 @@ const version: PageVersionListItem = {
   versionNumber: 1,
 };
 
+const workspace = (
+  saveAction: () => Promise<PageFormState>,
+  initialPage: PageListItem
+) => (
+  <AdminLocaleTestProvider locale="en">
+    <PageWorkspace
+      initialPage={initialPage}
+      initialVersions={[version]}
+      locale="en"
+      publishAction={noopFormAction}
+      rollbackAction={noopFormAction}
+      saveAction={saveAction}
+      tenantId="TENANT001"
+      timeZone="UTC"
+      unpublishAction={noopFormAction}
+    />
+  </AdminLocaleTestProvider>
+);
+
 const renderWorkspace = async (
-  saveAction: () => Promise<PageFormState> = noopSaveAction
+  saveAction: () => Promise<PageFormState> = noopSaveAction,
+  initialPage: PageListItem = page
 ) => {
+  let rendered: ReturnType<typeof renderBase> | undefined;
   await act(() => {
-    renderBase(
-      <AdminLocaleTestProvider locale="en">
-        <PageWorkspace
-          initialPage={page}
-          initialVersions={[version]}
-          locale="en"
-          publishAction={noopFormAction}
-          rollbackAction={noopFormAction}
-          saveAction={saveAction}
-          tenantId="TENANT001"
-          timeZone="UTC"
-          unpublishAction={noopFormAction}
-        />
-      </AdminLocaleTestProvider>
-    );
+    rendered = renderBase(workspace(saveAction, initialPage));
   });
+  return rendered as ReturnType<typeof renderBase>;
 };
 
 const editForm = (): HTMLFormElement => {
@@ -127,6 +135,48 @@ describe("PageWorkspace", () => {
     expect(
       await screen.findByRole("button", { name: "Save page" })
     ).toBeDefined();
+  });
+
+  it.each([true, false])(
+    "shows Show in footer as stored (%s) and saves it with the page",
+    async (displayInFooter) => {
+      await renderWorkspace(noopSaveAction, { ...page, displayInFooter });
+
+      const form = editForm();
+      const checkbox = screen.getByRole("checkbox", { name: "Show in footer" });
+
+      expect(checkbox.getAttribute("aria-checked")).toBe(
+        String(displayInFooter)
+      );
+      expect(new FormData(form).get("initial_display_in_footer")).toBe(
+        String(displayInFooter)
+      );
+
+      fireEvent.click(checkbox);
+
+      expect(new FormData(form).get("display_in_footer")).toBe(
+        String(!displayInFooter)
+      );
+    }
+  );
+
+  // A save re-renders the screen with what the server stored, and the box has
+  // to start from that rather than from the value it first mounted with.
+  it("follows a stored Show in footer that changed under it", async () => {
+    const { rerender } = await renderWorkspace(noopSaveAction, page);
+
+    await act(() => {
+      rerender(workspace(noopSaveAction, { ...page, displayInFooter: true }));
+    });
+
+    expect(
+      screen
+        .getByRole("checkbox", { name: "Show in footer" })
+        .getAttribute("aria-checked")
+    ).toBe("true");
+    expect(new FormData(editForm()).get("initial_display_in_footer")).toBe(
+      "true"
+    );
   });
 
   it("keeps the editor submittable while the preview tab is showing", async () => {

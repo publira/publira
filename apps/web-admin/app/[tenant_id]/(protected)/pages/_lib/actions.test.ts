@@ -55,7 +55,9 @@ const PAGE_ID = "PAGE001";
 
 const saveForm = (values: {
   contentMarkdown: string;
+  displayInFooter?: boolean;
   initialContentMarkdown: string;
+  initialDisplayInFooter?: boolean;
   initialTitle: string;
   title: string;
 }): FormData => {
@@ -66,6 +68,15 @@ const saveForm = (values: {
   data.set("initial_title", values.initialTitle);
   data.set("content_markdown", values.contentMarkdown);
   data.set("initial_content_markdown", values.initialContentMarkdown);
+  if (values.displayInFooter !== undefined) {
+    data.set("display_in_footer", String(values.displayInFooter));
+  }
+  if (values.initialDisplayInFooter !== undefined) {
+    data.set(
+      "initial_display_in_footer",
+      String(values.initialDisplayInFooter)
+    );
+  }
   return data;
 };
 
@@ -181,6 +192,62 @@ describe("savePageAction", () => {
     expect(mockRedirect).toHaveBeenCalledWith(`/pages/${PAGE_ID}?saved=1`);
   });
 
+  // Someone else may have renamed the translation since this screen loaded,
+  // and the title it loaded would put the old one back.
+  it.each([true, false])(
+    "writes Show in footer as %s without the title or a version when only it changed",
+    async (displayInFooter) => {
+      await savePage(
+        saveForm({
+          ...unchanged,
+          displayInFooter,
+          initialDisplayInFooter: !displayInFooter,
+        })
+      );
+
+      expect(mockUpdatePage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          displayInFooter,
+          pageId: PAGE_ID,
+          title: undefined,
+        }),
+        "en"
+      );
+      expect(mockCreatePageVersion).not.toHaveBeenCalled();
+      expect(mockRedirect).toHaveBeenCalledWith(`/pages/${PAGE_ID}?saved=1`);
+    }
+  );
+
+  // Another language tab may have changed it since this one loaded, and an
+  // unchanged box would put the old value back.
+  it("leaves Show in footer out of a save that did not change it", async () => {
+    await savePage(
+      saveForm({
+        ...unchanged,
+        displayInFooter: true,
+        initialDisplayInFooter: true,
+        title: "Privacy notice",
+      })
+    );
+
+    expect(mockUpdatePage).toHaveBeenCalledWith(
+      expect.objectContaining({ displayInFooter: undefined }),
+      "en"
+    );
+  });
+
+  it("writes nothing when Show in footer is as it was loaded", async () => {
+    await savePage(
+      saveForm({
+        ...unchanged,
+        displayInFooter: false,
+        initialDisplayInFooter: false,
+      })
+    );
+
+    expect(mockUpdatePage).not.toHaveBeenCalled();
+  });
+
   it("leaves the body alone when the title could not be saved, and says so", async () => {
     mockUpdatePage.mockResolvedValueOnce({
       message: "Could not save the page. Please try again later.",
@@ -198,7 +265,7 @@ describe("savePageAction", () => {
     expect(mockCreatePageVersion).not.toHaveBeenCalled();
     expect(mockRedirect).not.toHaveBeenCalled();
     expect(state?.message).toBe(
-      "The title could not be saved, so the content was not saved either. Could not save the page. Please try again later."
+      "The title and Show in footer could not be saved, so the content was not saved either. Could not save the page. Please try again later."
     );
   });
 
@@ -218,8 +285,11 @@ describe("savePageAction", () => {
 
     expect(mockUpdatePage).toHaveBeenCalledTimes(1);
     expect(mockRedirect).not.toHaveBeenCalled();
+    // What re-renders the screen with the written title and footer setting as
+    // its new baseline, so a retry sends only the body.
+    expect(mockUpdateTag).toHaveBeenCalledWith(`page-${TENANT_ID}-${PAGE_ID}`);
     expect(state?.message).toBe(
-      "The title was saved, but the content could not be saved as a new draft version. Could not save the page. Please try again later."
+      "The title and Show in footer were saved, but the content could not be saved as a new draft version. Could not save the page. Please try again later."
     );
   });
 

@@ -7,6 +7,7 @@ import {
 } from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
+import { Checkbox } from "@publira/ui-components/checkbox";
 import {
   Field,
   FieldContent,
@@ -215,6 +216,11 @@ export const PageWorkspace = ({
             type="hidden"
             value={initialVersions[0]?.contentMarkdown ?? ""}
           />
+          <input
+            name="initial_display_in_footer"
+            type="hidden"
+            value={String(initialPage.displayInFooter)}
+          />
 
           <ActionFormFieldset className="grid gap-4">
             <div className="grid gap-4 md:grid-cols-2">
@@ -250,6 +256,30 @@ export const PageWorkspace = ({
                 </FieldContent>
               </Field>
             </div>
+
+            {/* The page's, not the translation's: every language tab shows and saves the same value. */}
+            <Field>
+              <div className="flex items-center gap-2">
+                {/* Keyed by the stored value, so a save that re-renders the screen with a new one starts the box from it: Base UI's uncontrolled default is read once. */}
+                <Checkbox
+                  defaultChecked={initialPage.displayInFooter}
+                  key={String(initialPage.displayInFooter)}
+                  name="display_in_footer"
+                  uncheckedValue="false"
+                  value="true"
+                />
+                <FieldLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                    <Message message="admin.pages.workspace.footer_visible" />
+                  </Suspense>
+                </FieldLabel>
+              </div>
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                  <Message message="admin.pages.workspace.footer_description" />
+                </Suspense>
+              </FieldDescription>
+            </Field>
 
             <Field>
               <FieldLabel>

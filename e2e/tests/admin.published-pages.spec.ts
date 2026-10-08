@@ -211,6 +211,59 @@ test.describe("admin published pages", () => {
     await expect(page.getByText(body)).toBeVisible();
   });
 
+  test("Show in footer can be turned on and off from the edit screen", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const slug = `/e2e-page-${suffix}`;
+    const title = `E2E Footer Page ${suffix}`;
+
+    const pageId = trackPage(
+      await createPageViaUi(page, {
+        contentMarkdown: `## Heading\n\nFooter body ${suffix}`,
+        slug,
+        title,
+      })
+    );
+
+    await publishVersion(page, 1);
+    await expectPublicPageHeading(page, slug, title);
+    await expect(
+      footerLinks(page).getByRole("link", { name: title })
+    ).toHaveCount(0);
+
+    const setFooter = async (checked: boolean): Promise<void> => {
+      await page.goto(adminUrl(`/pages/${pageId}`));
+      const checkbox = page.getByRole("checkbox", { name: "Show in footer" });
+      await checkbox.setChecked(checked);
+      await page.getByRole("button", { name: "Save page" }).click();
+      // The toast says the Action finished; see the title test below.
+      await expect(page.getByText("Page saved.")).toBeVisible({
+        timeout: 30_000,
+      });
+      // The screen reloads with what was stored, not what was ticked.
+      await expect(checkbox).toBeChecked({ checked });
+      await expect(versionRow(page, 2)).toHaveCount(0);
+    };
+
+    // The footer comes off the same cache tags as the page, which the admin
+    // API drops out of band, so the public read is polled.
+    const expectFooterLink = async (count: number): Promise<void> => {
+      await expect(async () => {
+        await page.goto(hostUrl(slug));
+        await expect(
+          footerLinks(page).getByRole("link", { name: title })
+        ).toHaveCount(count, { timeout: 5000 });
+      }).toPass({ timeout: 60_000 });
+    };
+
+    await setFooter(true);
+    await expectFooterLink(1);
+
+    await setFooter(false);
+    await expectFooterLink(0);
+  });
+
   test("editing the title and the body reaches the public page", async ({
     page,
   }) => {

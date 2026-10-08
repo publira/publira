@@ -14,7 +14,7 @@ Choose **Create page** and fill in:
 
 - **slug**: the page's address on the site. `privacy` serves the page at `https://comics.example.com/privacy`, and `legal/terms` at `https://comics.example.com/legal/terms`. Use lowercase letters, digits, and hyphens, with `/` between the parts of a nested path. The slug cannot be changed once the page exists, because links to it would break. Paths the site uses itself, such as its sign-in and account pages, are refused.
 - **Title**: shown at the top of the page and wherever it is linked. The page is created in the site's default language.
-- **Show in footer**: lists the page by its title in the footer of every page of the site once it is published. Decide it now: it cannot be changed after the page is created ([#3790](https://github.com/publira/publira/issues/3790)).
+- **Show in footer**: lists the page by its title in the footer of every page of the site once it is published. It can be changed later on the edit screen.
 - **Content**: the first version of the page's body, in Markdown. It may be left empty and written on the next screen.
 
 **Create page** creates the page as a draft and opens its edit screen. Nothing appears on the site until a version is published.
@@ -25,7 +25,9 @@ Pages cannot be deleted. A page that should no longer be read is unpublished ins
 
 The edit screen holds the page's body on two tabs: **Write**, where you write Markdown, and **Preview**, which shows how it will look. The body takes headings, paragraphs, lists, quotes, code blocks, bold and italic text, and links.
 
-**Save page** saves a changed title at once. A changed body is saved as a new **Draft** version, which readers do not see. Saving never publishes.
+**Save page** saves a changed title and **Show in footer** at once. A changed body is saved as a new **Draft** version, which readers do not see. Saving never publishes.
+
+**Show in footer** belongs to the page rather than to one of its translations, so changing it on any language's tab changes it for every language. The footer follows moments after the save, for as long as the page is published.
 
 **Versions** lists every version of the page, numbered `v1`, `v2`, and onward, with its status: **Published** for the one readers see, **Previously published**, or **Draft**. On each one:
 
