@@ -2827,7 +2827,8 @@
           "save_failed": "无法保存保留期限。请稍后重试。",
           "load_error_hint": "此时保存会覆盖已保存的期限。请先重新加载页面再进行更改。",
           "validation": {
-            "days_invalid": "请为{$setting}输入1至36500之间的整数天数。"
+            "days_invalid": "请为{$setting}输入1至36500之间的整数天数。",
+            "content_event_days_invalid": "请为{$setting}输入30至36500之间的整数天数。推荐和统计基于这些事件生成，因此至少保留30天。"
           },
           "withdrawn_comment_legend": "已撤回评论",
           "content_event_legend": "内容事件",
@@ -4631,6 +4632,7 @@
         "weekly_ranking_label": "每周排行榜快照（天）",
         "withdrawn_comment_label": "已撤回评论（天）",
         "days_invalid": "请为{$setting}输入1至36500之间的整数天数。",
+        "content_event_days_invalid": "请为{$setting}输入30至36500之间的整数天数。推荐和统计基于这些事件生成，因此至少保留30天。",
         "save": "保存保留期限默认值",
         "saved": "已保存保留期限默认值。"
       }

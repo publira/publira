@@ -217,6 +217,49 @@ describe("updateTenantRetentionSettingsAction", () => {
     expect(mockUpdateTenantRetentionSettings).not.toHaveBeenCalled();
   });
 
+  it("saves a content-event period at the lower bound", async () => {
+    mockUpdateTenantRetentionSettings.mockResolvedValueOnce({ ok: true });
+
+    const { updateTenantRetentionSettingsAction } = await import("./actions");
+
+    const result = await updateTenantRetentionSettingsAction(
+      null,
+      textFormData({
+        content_event_days: "30",
+        revision: "0",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result?.ok).toBe(true);
+    expect(mockUpdateTenantRetentionSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        overrides: expect.objectContaining({ contentEventDays: 30 }),
+      }),
+      "en"
+    );
+  });
+
+  it("refuses a content-event period below the lower bound and says what it is", async () => {
+    const { updateTenantRetentionSettingsAction } = await import("./actions");
+
+    const result = await updateTenantRetentionSettingsAction(
+      null,
+      textFormData({
+        content_event_days: "29",
+        revision: "0",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      message:
+        "Enter a whole number of days from 30 through 36500 for Content events. Recommendations and statistics are built from content events, so they are kept for at least 30 days.",
+      ok: false,
+    });
+    expect(mockUpdateTenantRetentionSettings).not.toHaveBeenCalled();
+  });
+
   it("refuses a form whose revision is not a number the server can compare", async () => {
     const { updateTenantRetentionSettingsAction } = await import("./actions");
 

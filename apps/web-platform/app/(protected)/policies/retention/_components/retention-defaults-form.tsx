@@ -18,6 +18,7 @@ import type { PlatformRetentionDefaults } from "#lib/platform-policy";
 
 import { PolicyLimitField } from "../../_components/policy-limit-field";
 import { updatePlatformRetentionDefaultsAction } from "../../_lib/actions";
+import { MIN_CONTENT_EVENT_DAYS } from "../../_lib/form-schemas";
 
 export const RetentionDefaultsForm = ({
   values,
@@ -59,6 +60,7 @@ export const RetentionDefaultsForm = ({
         <PolicyLimitField
           defaultValue={values.contentEventDays}
           disabled={Boolean(loadErrorMessage)}
+          min={MIN_CONTENT_EVENT_DAYS}
           name="content_event_days"
         >
           <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>

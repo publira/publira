@@ -21,6 +21,7 @@ import {
 import { Message } from "#components/message";
 import {
   MAX_RETENTION_DAYS,
+  MIN_CONTENT_EVENT_DAYS,
   MIN_POLICY_VALUE,
 } from "#lib/tenant-policy-shared";
 import type {
@@ -169,7 +170,7 @@ export const TenantRetentionSettingsForm = ({
                     }
                     inputMode="numeric"
                     max={MAX_RETENTION_DAYS}
-                    min={MIN_POLICY_VALUE}
+                    min={MIN_CONTENT_EVENT_DAYS}
                     name="content_event_days"
                     step={1}
                     type="number"

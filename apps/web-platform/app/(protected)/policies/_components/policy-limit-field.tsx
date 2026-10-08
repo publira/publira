@@ -10,11 +10,14 @@ export const PolicyLimitField = ({
   children,
   defaultValue,
   disabled,
+  min = 1,
   name,
 }: {
   children: ReactNode;
   defaultValue: number;
   disabled: boolean;
+  /** The smallest value the server accepts for this limit. */
+  min?: number;
   name: string;
 }) => (
   <Field>
@@ -23,7 +26,7 @@ export const PolicyLimitField = ({
       <Input
         defaultValue={String(defaultValue)}
         disabled={disabled}
-        min={1}
+        min={min}
         name={name}
         required
         type="number"

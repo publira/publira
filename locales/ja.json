@@ -2827,7 +2827,8 @@
           "save_failed": "保持期間を保存できませんでした。しばらくしてからもう一度お試しください。",
           "load_error_hint": "このまま保存すると保存済みの期間を上書きしてしまいます。変更する前にページを再読み込みしてください。",
           "validation": {
-            "days_invalid": "{$setting}には、1から36500の日数を整数で入力してください。"
+            "days_invalid": "{$setting}には、1から36500の日数を整数で入力してください。",
+            "content_event_days_invalid": "{$setting}には、30から36500の日数を整数で入力してください。おすすめと統計はこのイベントから作られるため、30日以上保持します。"
           },
           "withdrawn_comment_legend": "取り下げられたコメント",
           "content_event_legend": "コンテンツイベント",
@@ -4631,6 +4632,7 @@
         "weekly_ranking_label": "週次ランキングのスナップショット（日）",
         "withdrawn_comment_label": "取り下げられたコメント（日）",
         "days_invalid": "{$setting}には、1から36500の日数を整数で入力してください。",
+        "content_event_days_invalid": "{$setting}には、30から36500の日数を整数で入力してください。おすすめと統計はこのイベントから作られるため、30日以上保持します。",
         "save": "保持期間の既定値を保存",
         "saved": "保持期間の既定値を保存しました。"
       }

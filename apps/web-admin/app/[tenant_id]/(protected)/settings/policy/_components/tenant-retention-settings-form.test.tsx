@@ -138,6 +138,29 @@ describe("TenantRetentionSettingsForm", () => {
     expect(days.value).toBe("30");
   });
 
+  // A period saved before the lower bound existed still shows as saved, so the
+  // tenant sees what has to be raised, and the browser refuses to submit it.
+  it("holds a content-event period to its lower bound before submitting", async () => {
+    await renderForm(
+      <TenantRetentionSettingsForm
+        canEdit
+        overrides={{ contentEventDays: 7 }}
+        platformDefaults={platformDefaults}
+        revision="4"
+        tenantId="TENANT001"
+      />
+    );
+
+    const days = group("Content events").getByRole<HTMLInputElement>(
+      "spinbutton",
+      { name: "Days kept" }
+    );
+
+    expect(days.value).toBe("7");
+    expect(days.min).toBe("30");
+    expect(days.validity.rangeUnderflow).toBe(true);
+  });
+
   it("returns a period to the platform default when the box is ticked again", async () => {
     await renderForm(
       <TenantRetentionSettingsForm

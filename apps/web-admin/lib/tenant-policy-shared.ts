@@ -25,5 +25,8 @@ export const MAX_DUPLICATE_COMMENT_WINDOW_MINUTES = 10_080;
 /** Mirrors `retention.MaxDays`. */
 export const MAX_RETENTION_DAYS = 36_500;
 
+/** Mirrors `retention.MinContentEventDays`. */
+export const MIN_CONTENT_EVENT_DAYS = 30;
+
 /** The shortest period or limit a tenant may save. */
 export const MIN_POLICY_VALUE = 1;
