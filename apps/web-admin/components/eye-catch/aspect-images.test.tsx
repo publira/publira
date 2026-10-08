@@ -19,6 +19,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import { EyeCatchAspectImages } from "./aspect-images";
+import type { EyeCatchEntity } from "./aspect-messages";
 import type { EyeCatchAspectActionState, EyeCatchVariantItem } from "./types";
 
 vi.mock("#components/message", () => ({
@@ -52,13 +53,13 @@ const render = (ui: ReactNode) =>
   });
 
 const renderImages = ({
+  entity = "series",
   id = "series-1",
-  idField = "series_id",
   uploadAction = action,
   variants,
 }: {
+  entity?: EyeCatchEntity;
   id?: string;
-  idField?: string;
   uploadAction?: (
     prevState: EyeCatchAspectActionState,
     formData: FormData
@@ -67,8 +68,8 @@ const renderImages = ({
 }) =>
   render(
     <EyeCatchAspectImages
+      entity={entity}
       id={id}
-      idField={idField}
       tenantId="TENANT001"
       uploadAction={uploadAction}
       variants={variants}
@@ -148,9 +149,67 @@ afterEach(() => {
 it("shows a slot for every delivered ratio", () => {
   renderImages({ variants: [variant("portrait", 1200, 1600)] });
 
-  for (const variantType of ["portrait", "square", "landscape", "og"]) {
-    expect(screen.getByText(variantType)).toBeTruthy();
+  for (const name of [
+    "Portrait (3:4)",
+    "Square (1:1)",
+    "Landscape (16:9)",
+    "Link preview (1200:630)",
+  ]) {
+    expect(screen.getByText(name)).toBeTruthy();
   }
+});
+
+it("says where the site and the app use each ratio of a series", () => {
+  renderImages({ variants: [variant("portrait", 1200, 1600)] });
+
+  expect(
+    screen.getByText(
+      "The cover on shelves on the site and in the app, and on the series' page on the site."
+    )
+  ).toBeTruthy();
+  expect(
+    screen.getByText("One of the images the site offers search engines.")
+  ).toBeTruthy();
+});
+
+// A label's portrait image is drawn nowhere, which is worth knowing before
+// framing one; a line written for a series would claim otherwise.
+it("says where each ratio of a label is used, not where a series' is", () => {
+  renderImages({
+    entity: "label",
+    id: "label-1",
+    variants: [variant("portrait", 1200, 1600)],
+  });
+
+  expect(screen.getByText("The label's tile in the app.")).toBeTruthy();
+  expect(
+    screen.getAllByText("Not shown on the site or in the app yet.")
+  ).toHaveLength(2);
+  expect(screen.queryByText(/series' page/u)).toBeNull();
+});
+
+// The ratio keys are what the RPCs take, and a staff member reading or
+// hearing one learns nothing about the image it stands for.
+it("neither shows nor reads out a ratio by its key", () => {
+  const { container } = renderImages({
+    variants: [
+      variant("portrait", 1200, 1600),
+      variant("square", 1200, 1200),
+      variant("landscape", 1600, 900),
+      variant("og", 1200, 630),
+    ],
+  });
+
+  const keys = /\b(?:portrait|square|landscape|og)\b/u;
+  const accessibleNames = [
+    ...screen
+      .getAllByRole("button")
+      .map((button) => button.getAttribute("aria-label")),
+    ...screen.getAllByRole("img").map((image) => image.getAttribute("alt")),
+  ];
+
+  expect(container.textContent).not.toMatch(keys);
+  expect(accessibleNames.filter((name) => keys.test(name ?? ""))).toEqual([]);
 });
 
 it("shows the size of the image a ratio currently holds", () => {
@@ -175,7 +234,7 @@ it("marks a ratio the eye-catch holds no image for", () => {
 it("asks for a cover image before opening the ratio slots", () => {
   renderImages({ variants: [] });
 
-  expect(screen.queryByText("portrait")).toBeNull();
+  expect(screen.queryByText("Portrait (3:4)")).toBeNull();
   expect(screen.getByText(/Register a cover image first/u)).toBeTruthy();
 });
 
@@ -190,7 +249,7 @@ it("shows what is stored once the upload is on its way", async () => {
   const stored = "/images/series/img/landscape/1600";
   const image = () =>
     container
-      .querySelector<HTMLImageElement>('img[alt="Generated image landscape"]')
+      .querySelector<HTMLImageElement>('img[alt="Landscape (16:9) image"]')
       ?.getAttribute("src");
 
   expect(image()).toBe(stored);
@@ -223,8 +282,8 @@ it("shows what is stored once the upload is on its way", async () => {
 
 it("posts the record's ID under the field its upload action reads", () => {
   const { container } = renderImages({
+    entity: "label",
     id: "label-1",
-    idField: "label_id",
     variants: [variant("landscape", 1600, 900)],
   });
 
@@ -240,6 +299,9 @@ it("frames the picked file where the API would have cut it anyway", () => {
   });
 
   const form = pickImage(container, "landscape");
+  expect(
+    screen.getByRole("heading", { name: "Frame the Landscape (16:9) image" })
+  ).toBeTruthy();
   // Nothing has been decoded yet, so the upload states no rectangle and the
   // API takes the cut from the centre as it always has.
   expect(form.querySelector('input[name="crop"]')).toBeNull();
@@ -263,7 +325,7 @@ it("previews the framed region rather than the whole picked file", () => {
   decodePickedImage(2400, 3200);
 
   const preview = container.querySelector<HTMLImageElement>(
-    'img[alt="Generated image landscape"]'
+    'img[alt="Landscape (16:9) image"]'
   );
   // The file is 2400 wide and the frame keeps all of that width, so the slot
   // shows it at its own width, shifted up by the part above the frame.
@@ -288,7 +350,7 @@ it("closes the slot's picker while its upload is in flight", async () => {
     throw new Error("the landscape slot has no file input");
   }
   const picker = screen.getByRole<HTMLButtonElement>("button", {
-    name: "Select an image for landscape",
+    name: "Select an image for Landscape (16:9)",
   });
 
   expect(picker.matches(":disabled")).toBe(false);

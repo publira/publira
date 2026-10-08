@@ -19,6 +19,17 @@ export const EYE_CATCH_ASPECTS = [
 
 export type EyeCatchAspect = (typeof EYE_CATCH_ASPECTS)[number];
 
+/**
+ * What the console calls each ratio in `en`. A slot is found by this name,
+ * since the ratio key is an identifier the screen never shows.
+ */
+export const EYE_CATCH_ASPECT_NAMES: Record<EyeCatchAspect, string> = {
+  landscape: "Landscape (16:9)",
+  og: "Link preview (1200:630)",
+  portrait: "Portrait (3:4)",
+  square: "Square (1:1)",
+};
+
 const FIXTURE_DIR = path.join(import.meta.dirname, "../../fixtures/eye-catch");
 
 /**

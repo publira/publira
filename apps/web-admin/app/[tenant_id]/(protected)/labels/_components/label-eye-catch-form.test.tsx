@@ -43,9 +43,9 @@ const label: LabelListItem = {
       contentType: "image/webp",
       fileSizeBytes: 1024,
       height: 3200,
-      label: "3:4 2400w",
+      label: "portrait_2400w",
       url: "https://cdn.example.com/labels/LABEL001/3x4.webp",
-      variantType: "3:4",
+      variantType: "portrait",
       width: 2400,
     },
   ],
@@ -59,10 +59,10 @@ afterEach(() => {
 });
 
 const submittedControls = () => [
-  screen.getByLabelText<HTMLInputElement>("Eye-catch image"),
-  screen.getByRole<HTMLButtonElement>("button", { name: /3:4/u }),
+  screen.getByLabelText<HTMLInputElement>("Cover image"),
+  screen.getByRole<HTMLButtonElement>("button", { name: /Portrait \(3:4\)/u }),
   screen.getByRole<HTMLButtonElement>("button", {
-    name: "Delete the current eye-catch image",
+    name: "Delete the current cover image",
   }),
 ];
 

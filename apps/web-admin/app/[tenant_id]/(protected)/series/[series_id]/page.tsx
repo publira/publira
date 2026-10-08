@@ -229,7 +229,7 @@ const EditSeriesFormData = async ({
         />
         <EyeCatchAspectImages
           id={result.series.id}
-          idField="series_id"
+          entity="series"
           tenantId={tenantId}
           uploadAction={uploadSeriesEyeCatchAspectImageAction}
           variants={result.series.eyeCatchImageVariants}

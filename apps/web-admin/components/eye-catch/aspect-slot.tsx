@@ -34,7 +34,7 @@ import type { CropRect } from "#lib/crop-rect";
 import { CROP_RECT_FIELD, formatCropRect } from "#lib/crop-rect";
 
 import type { EyeCatchAspect } from "./aspects";
-import { eyeCatchAspectClassName } from "./aspects";
+import { eyeCatchAspectClassName, eyeCatchAspectName } from "./aspects";
 
 interface EyeCatchAspectSlotContextValue {
   aspect: EyeCatchAspect;
@@ -173,6 +173,7 @@ export const EyeCatchAspectPicker = ({ children }: { children: ReactNode }) => {
     useEyeCatchAspectSlot();
   const { pending } = useFormStatus();
   const { variantType } = aspect;
+  const name = eyeCatchAspectName(t, variantType);
   // An upload in flight has taken the file, so the slot shows what is stored.
   const pickedUrl = pending ? "" : localPreviewUrl;
   const previewUrl = pickedUrl || currentUrl;
@@ -185,9 +186,7 @@ export const EyeCatchAspectPicker = ({ children }: { children: ReactNode }) => {
 
   return (
     <button
-      aria-label={t("admin.eye_catch.aspect.select_aria", {
-        variant_type: variantType,
-      })}
+      aria-label={t("admin.eye_catch.aspect.select_aria", { aspect: name })}
       className={cn(
         "relative overflow-hidden rounded-surface border border-border bg-muted/40 transition-colors duration-state ease-state hover:border-primary disabled:pointer-events-none disabled:opacity-50",
         eyeCatchAspectClassName(variantType)
@@ -202,9 +201,7 @@ export const EyeCatchAspectPicker = ({ children }: { children: ReactNode }) => {
         // cannot carry both behind one src.
         // oxlint-disable-next-line next/no-img-element, react-doctor/nextjs-no-img-element
         <img
-          alt={t("admin.eye_catch.variant_alt", {
-            variant_type: variantType,
-          })}
+          alt={t("admin.eye_catch.variant_alt", { aspect: name })}
           className={
             framedStyle ? "absolute max-w-none" : "h-full w-full object-cover"
           }
@@ -263,6 +260,16 @@ export const EyeCatchAspectUpload = ({ children }: { children: ReactNode }) => {
       {children}
     </ActionFormSubmit>
   );
+};
+
+/** The heading of the ratio's frame, naming the ratio being framed. */
+export const EyeCatchAspectCropTitle = () => {
+  const t = useClientMessages();
+  const { aspect } = useEyeCatchAspectSlot();
+
+  return t("admin.eye_catch.aspect.crop_title", {
+    aspect: eyeCatchAspectName(t, aspect.variantType),
+  });
 };
 
 /** The frame of the picked file; `children` is the dialog's `ImageCropDialogTitle`. */

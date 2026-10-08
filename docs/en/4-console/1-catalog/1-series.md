@@ -70,20 +70,20 @@ The series form has a **Reading period**, in hours, but nothing uses it: each ep
 
 ## The cover image
 
-The **Cover image** tab of a series replaces or removes the image chosen when the series was created. Under **Eye-catch image**, select a new image and choose **Update cover image**, or choose **Delete the current eye-catch image** to leave the series without one. A new image must be a JPEG, PNG, or WebP image of at most 10 MB and at least 2400 × 3200 pixels.
+The **Cover image** tab of a series replaces or removes the image chosen when the series was created. Under **Cover image**, select a new image and choose **Update cover image**, or choose **Delete the current cover image** to leave the series without one. A new image must be a JPEG, PNG, or WebP image of at most 10 MB and at least 2400 × 3200 pixels.
 
-The site does not show the image as uploaded. Saving it cuts four images of fixed shapes out of it, which **Aspect ratio images** below shows. Their slots are headed by the names the site uses for them ([#3828](https://github.com/publira/publira/issues/3828)):
+The site does not show the image as uploaded. Saving it cuts four images of fixed shapes out of it, which **Aspect ratio images** below shows. Each slot is headed by the shape's name, with a line under it saying where that shape is used:
 
-| Slot | Shape | At least | Where it is used |
-| --- | --- | --- | --- |
-| `portrait` | 3:4 | 1200 × 1600 | The series' cover on its page and wherever the series is listed |
-| `square` | 1:1 | 1200 × 1200 | Square tiles in the app, and one of the images the site offers search engines |
-| `landscape` | 16:9 | 1600 × 900 | Wide banners, and the picture beside each episode in the series' episode list |
-| `og` | 1200:630 | 1200 × 630 | The preview shown when a link to the series is shared |
+| Slot | At least | Where it is used |
+| --- | --- | --- |
+| **Portrait (3:4)** | 1200 × 1600 | The cover on shelves on the site and in the app, and on the series' page on the site |
+| **Square (1:1)** | 1200 × 1200 | One of the images the site offers search engines |
+| **Landscape (16:9)** | 1600 × 900 | Wide banners on the site and in the app, and the small picture beside the series and its episodes in the site's lists |
+| **Link preview (1200:630)** | 1200 × 630 | The preview shown when a link to the series or one of its episodes is shared |
 
 Each shape is cropped from the centre of the image. To frame one differently, choose **Adjust the frame** on its slot, or upload a separate image for that shape alone with **Replace**, which leaves the other three as they are. Uploading a new cover image above replaces all four.
 
-Labels and genres have the same tab, with the same sizes.
+Labels and genres have the same tab, with the same sizes. Where each shape is used differs for them, and the line under each slot says where for the record being edited: a label's square image is its tile in the app and its portrait image is not shown anywhere yet, for example.
 
 ## Free if you wait
 

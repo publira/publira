@@ -16,9 +16,15 @@ import {
 import { ImageCropDialogTitle } from "#components/image-crop/crop-dialog";
 import { Message } from "#components/message";
 
+import type { EyeCatchEntity } from "./aspect-messages";
+import {
+  EyeCatchAspectNameMessage,
+  EyeCatchAspectUsageMessage,
+} from "./aspect-messages";
 import {
   EyeCatchAspectAdjust,
   EyeCatchAspectCropDialog,
+  EyeCatchAspectCropTitle,
   EyeCatchAspectFileInput,
   EyeCatchAspectPicker,
   EyeCatchAspectSlot,
@@ -28,8 +34,8 @@ import { EYE_CATCH_ASPECTS } from "./aspects";
 import type { EyeCatchAspectActionState, EyeCatchVariantItem } from "./types";
 
 interface EyeCatchAspectImagesProps {
-  /** The hidden field the upload action reads the record's ID from. */
-  idField: string;
+  /** The kind of record the ratios belong to. */
+  entity: EyeCatchEntity;
   /** The ID of the series, label, or genre the ratios belong to. */
   id: string;
   tenantId: string;
@@ -40,6 +46,13 @@ interface EyeCatchAspectImagesProps {
     formData: FormData
   ) => Promise<EyeCatchAspectActionState>;
 }
+
+/** The hidden field each record's upload action reads its ID from. */
+const ID_FIELDS: Record<EyeCatchEntity, string> = {
+  genre: "genre_id",
+  label: "label_id",
+  series: "series_id",
+};
 
 const largestVariant = (
   variants: EyeCatchVariantItem[],
@@ -58,8 +71,8 @@ const largestVariant = (
  * above fills all four at once.
  */
 export const EyeCatchAspectImages = ({
+  entity,
   id,
-  idField,
   tenantId,
   uploadAction,
   variants,
@@ -98,7 +111,7 @@ export const EyeCatchAspectImages = ({
               key={variantType}
             >
               <input name="tenant_id" type="hidden" value={tenantId} />
-              <input name={idField} type="hidden" value={id} />
+              <input name={ID_FIELDS[entity]} type="hidden" value={id} />
               <input name="variant_type" type="hidden" value={variantType} />
 
               <EyeCatchAspectSlot
@@ -106,13 +119,26 @@ export const EyeCatchAspectImages = ({
                 currentUrl={current?.url ?? ""}
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-sm font-medium">{variantType}</p>
+                  <p className="text-sm font-medium">
+                    <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                      <EyeCatchAspectNameMessage variantType={variantType} />
+                    </Suspense>
+                  </p>
                   {current ? (
                     <p className="text-xs text-muted-foreground">
                       {current.width}&times;{current.height}
                     </p>
                   ) : null}
                 </div>
+
+                <p className="text-xs text-muted-foreground">
+                  <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
+                    <EyeCatchAspectUsageMessage
+                      entity={entity}
+                      variantType={variantType}
+                    />
+                  </Suspense>
+                </p>
 
                 <EyeCatchAspectPicker>
                   <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
@@ -159,12 +185,7 @@ export const EyeCatchAspectImages = ({
 
                 <EyeCatchAspectCropDialog>
                   <ImageCropDialogTitle>
-                    <Suspense fallback={<SkeletonLine className="h-6 w-48" />}>
-                      <Message
-                        message="admin.eye_catch.aspect.crop_title"
-                        values={{ variant_type: variantType }}
-                      />
-                    </Suspense>
+                    <EyeCatchAspectCropTitle />
                   </ImageCropDialogTitle>
                 </EyeCatchAspectCropDialog>
               </EyeCatchAspectSlot>

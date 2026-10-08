@@ -935,12 +935,39 @@
       "undo_delete": "復原刪除",
       "description": "點擊某個比例的圖片即可取代它。選擇刪除後，圖片將變為未設定。請選擇不超過10MB、尺寸至少為2400x3200px的JPEG、PNG或WebP圖片。",
       "variants_empty": "尚未新增任何圖片。",
-      "variant_alt": "產生的圖片{$variant_type}",
+      "variant_alt": "{$aspect}圖片",
       "aspect": {
         "title": "各比例圖片",
         "description": "每種比例都有各自獨立的圖片。在上方上傳封面圖會一次填滿全部四種比例；在這裡取代其中一種，不會影響其餘三種。",
+        "names": {
+          "portrait": "直式 (3:4)",
+          "square": "方形 (1:1)",
+          "landscape": "橫式 (16:9)",
+          "og": "連結預覽 (1200:630)",
+          "other": "其他比例"
+        },
+        "usages": {
+          "series": {
+            "portrait": "用作網站和應用程式書架上的封面，以及網站系列頁面上的封面。",
+            "square": "作為網站提供給搜尋引擎的圖片之一。",
+            "landscape": "用於網站和應用程式中的橫幅，以及網站列表中系列和章節旁邊的小圖。",
+            "og": "用於分享系列或其章節連結時顯示的預覽。"
+          },
+          "label": {
+            "portrait": "網站和應用程式中尚未使用。",
+            "square": "用於應用程式中的品牌卡片。",
+            "landscape": "用於網站和應用程式中品牌頁面的橫幅，以及網站列表中品牌旁邊的小圖。",
+            "og": "網站和應用程式中尚未使用。"
+          },
+          "genre": {
+            "portrait": "用於網站和應用程式類型列表中的類型卡片。",
+            "square": "網站和應用程式中尚未使用。在本控制台的類型列表中用作縮圖。",
+            "landscape": "用於網站和應用程式中類型頁面的橫幅。",
+            "og": "網站和應用程式中尚未使用。"
+          }
+        },
         "eye_catch_required": "請先設定封面圖。封面圖存在後才能單獨取代各個比例。",
-        "select_aria": "為{$variant_type}選擇圖片",
+        "select_aria": "為{$aspect}選擇圖片",
         "empty": "目前沒有圖片",
         "minimum": "至少{$width}x{$height}px",
         "upload": "取代",
@@ -948,7 +975,7 @@
         "uploaded": "該比例的圖片已取代。",
         "image_required": "請選擇要上傳的圖片。",
         "image_invalid": "請檢查圖片。該比例需要不超過10MB、尺寸至少為{$width}x{$height}px的JPEG、PNG或WebP圖片，請重新嘗試。",
-        "crop_title": "調整{$variant_type}圖片的取景",
+        "crop_title": "調整{$aspect}圖片的取景",
         "variant_type_missing": "缺少圖片比例。"
       }
     },
