@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
@@ -44,6 +45,7 @@ func newOperatorHandlerTestServer(t *testing.T) (*platformServer, sqlmock.Sqlmoc
 		tokens:   testutil.TokenManager(),
 		logger:   slog.Default(),
 		mail:     openMailGuard(),
+		login:    loginguard.NewDefault(),
 	}, mock
 }
 

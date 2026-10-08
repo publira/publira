@@ -101,7 +101,7 @@ func TestInternalListenerServesAllThreeNamespaces(t *testing.T) {
 
 func newTestPublicAPI(t *testing.T) *publicapi.API {
 	t.Helper()
-	api, err := publicapi.New(nil, nil, nil, nil, nil, nil, signin.VerifierConfig{})
+	api, err := publicapi.New(nil, nil, nil, nil, nil, nil, signin.VerifierConfig{}, nil)
 	if err != nil {
 		t.Fatalf("publicapi.New: %v", err)
 	}

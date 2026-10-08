@@ -28,12 +28,13 @@ psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
 "
 
 # The forms that cause mail — sign-up, the resend, the password reset, the
-# address change — are limited per address and per origin. A suite drives them
-# far more often than a person does, and every spec reaches the servers from the
-# one browser, so the built-in allowances would refuse the later cases of a run
-# instead of letting them assert what they are about. The limit itself is
-# covered by the Go tests; every other value here is the built-in default.
-e2e_log "widening the mail-request limits of the platform policy"
+# address change — are limited per address and per origin, and so are the
+# sign-ins that fail. A suite drives them far more often than a person does, and
+# every spec reaches the servers from the one browser, so the built-in
+# allowances would refuse the later cases of a run instead of letting them
+# assert what they are about. The limits themselves are covered by the Go tests;
+# every other value here is the built-in default.
+e2e_log "widening the mail-request and failed sign-in limits of the platform policy"
 psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
   INSERT INTO platform_policy_config (
     singleton, mfa_required_for_tenant_admin,
@@ -49,14 +50,18 @@ psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
     viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day,
     store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day,
     wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day,
+    login_account_limit_per_minute, login_account_limit_per_day,
+    login_source_limit_per_hour, login_source_limit_per_day,
     disposable_email_domains_url
   )
-  VALUES (TRUE, FALSE, 5, 50, 1000, 1000, 1000, 1000, 10, 100, 10, 50, 10, 30, 300, 3, 10, 10, 30, 30, 300, 10, 100, 10, 100, '')
+  VALUES (TRUE, FALSE, 5, 50, 1000, 1000, 1000, 1000, 10, 100, 10, 50, 10, 30, 300, 3, 10, 10, 30, 30, 300, 10, 100, 10, 100, 5, 50, 1000, 1000, '')
   ON CONFLICT (singleton) DO UPDATE
   SET mail_request_limit_per_address_per_hour = EXCLUDED.mail_request_limit_per_address_per_hour,
       mail_request_limit_per_address_per_day = EXCLUDED.mail_request_limit_per_address_per_day,
       mail_request_limit_per_source_per_hour = EXCLUDED.mail_request_limit_per_source_per_hour,
       mail_request_limit_per_source_per_day = EXCLUDED.mail_request_limit_per_source_per_day,
+      login_source_limit_per_hour = EXCLUDED.login_source_limit_per_hour,
+      login_source_limit_per_day = EXCLUDED.login_source_limit_per_day,
       revision = platform_policy_config.revision + 1,
       updated_at = NOW();
 "

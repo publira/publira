@@ -39,6 +39,8 @@ func TestDefaultsKeepThePreviousDeploymentDefaults(t *testing.T) {
 		},
 		StorePurchaseConfirmation: MinuteDay{PerMinute: 10, PerDay: 100},
 		WaitFreeTicketUse:         MinuteDay{PerMinute: 10, PerDay: 100},
+		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
+		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
 	}
 	if got := Defaults(); got != want {
 		t.Fatalf("Defaults() = %+v, want %+v", got, want)
@@ -54,6 +56,8 @@ func TestValidateRefusesALimitNobodyCanLiveWithin(t *testing.T) {
 		"zero viewer preferences day": func(p *Policy) { p.Community.ViewerPreferencesUpdate.PerDay = 0 },
 		"zero store confirmations":    func(p *Policy) { p.StorePurchaseConfirmation.PerMinute = 0 },
 		"wait-free day below minute":  func(p *Policy) { p.WaitFreeTicketUse = MinuteDay{PerMinute: 5, PerDay: 4} },
+		"zero login account minute":   func(p *Policy) { p.LoginAttemptsPerAccount.PerMinute = 0 },
+		"login source day below hour": func(p *Policy) { p.LoginAttemptsPerSource = HourDay{PerHour: 5, PerDay: 4} },
 		"no duplicate window":         func(p *Policy) { p.Community.DuplicateCommentWindow = 0 },
 		"duplicate window over a week": func(p *Policy) {
 			p.Community.DuplicateCommentWindow = MaxDuplicateCommentWindow + time.Minute
@@ -154,6 +158,10 @@ func rowFromParams(params dbmodels.UpdatePlatformPolicyConfigParams) dbmodels.Pl
 		StorePurchaseConfirmLimitPerDay:      params.StorePurchaseConfirmLimitPerDay,
 		WaitFreeTicketUseLimitPerMinute:      params.WaitFreeTicketUseLimitPerMinute,
 		WaitFreeTicketUseLimitPerDay:         params.WaitFreeTicketUseLimitPerDay,
+		LoginAccountLimitPerMinute:           params.LoginAccountLimitPerMinute,
+		LoginAccountLimitPerDay:              params.LoginAccountLimitPerDay,
+		LoginSourceLimitPerHour:              params.LoginSourceLimitPerHour,
+		LoginSourceLimitPerDay:               params.LoginSourceLimitPerDay,
 		DisposableEmailDomainsUrl:            params.DisposableEmailDomainsUrl,
 	}
 }

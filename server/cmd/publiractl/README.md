@@ -127,7 +127,7 @@ Environment variables:
 
 ## policy
 
-Changes the platform policy: the tenant-admin MFA requirement, the step-up password limit, the in-app purchase confirmation limit, the mail limits, the community limits every tenant starts from and may loosen up to, and where the list of disposable email domains is read from. It does what `PlatformPolicyService` does from the Platform Console, through the same implementation, `internal/platformpolicy`. An install that saves no policy runs on the built-in defaults, so this is for an install that wants a value other than one of them.
+Changes the platform policy: the tenant-admin MFA requirement, the step-up password limit, the sign-in limits, the in-app purchase confirmation limit, the mail limits, the community limits every tenant starts from and may loosen up to, and where the list of disposable email domains is read from. It does what `PlatformPolicyService` does from the Platform Console, through the same implementation, `internal/platformpolicy`. An install that saves no policy runs on the built-in defaults, so this is for an install that wants a value other than one of them.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -148,6 +148,8 @@ go -C server run ./cmd/publiractl policy show
 | `--password-verification-per-minute`, `--password-verification-per-day` | How often one account's password may be verified by the RPCs that ask for it on top of the session | 5, 50 |
 | `--store-purchase-confirmation-per-minute`, `--store-purchase-confirmation-per-day` | How many store transactions one reader may hand the server to verify | 10, 100 |
 | `--wait-free-ticket-use-per-minute`, `--wait-free-ticket-use-per-day` | How many times one reader may ask to spend a wait-for-free ticket | 10, 100 |
+| `--login-attempts-per-account-per-minute`, `--login-attempts-per-account-per-day` | How many passwords may be tried at sign-in for one address, per tenant or for the Platform Console. A sign-in whose password is right clears the count | 5, 50 |
+| `--login-attempts-per-source-per-hour`, `--login-attempts-per-source-per-day` | How many sign-ins one origin may fail, across every address, tenant and console | 60, 300 |
 | `--mail-requests-per-address-per-hour`, `--mail-requests-per-address-per-day` | How much mail the forms that take an address may send one address | 5, 20 |
 | `--mail-requests-per-source-per-hour`, `--mail-requests-per-source-per-day` | How much mail those forms may send for one origin, across every address and tenant | 30, 150 |
 | `--comment-post-per-minute`, `--comment-post-per-day` | Comments one reader may post. A community limit, like every flag below | 10, 100 |

@@ -71,10 +71,26 @@ message PlatformPolicy {
   // wait-for-free ticket. A spent ticket is bounded by the series' recharge
   // interval already; this bounds the requests that are refused.
   //
-  // Unlike the other limits, UpdatePlatformPolicy keeps the saved value when
-  // a request leaves it unset, so a console built before the field existed
-  // can still save the rest of the policy.
+  // Unlike the limits above it, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset, so a console built before the field
+  // existed can still save the rest of the policy.
   MinuteDayLimit wait_free_ticket_use = 8;
+  // How often a password may be tried at sign-in for one address, counted per
+  // tenant (the storefront and the tenant console together) or for the
+  // platform console, and cleared by a sign-in whose password is right. An
+  // attempt past it is refused with RESOURCE_EXHAUSTED before any password is
+  // checked, whether or not the address belongs to an account.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  MinuteDayLimit login_attempts_per_account = 9;
+  // How often one client source may fail to sign in, across every address,
+  // tenant and console. A sign-in whose password is right does not count
+  // against it.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  HourDayLimit login_attempts_per_source = 10;
 }
 
 message GetPlatformPolicyRequest {}

@@ -27,6 +27,8 @@ func platformPolicyToProto(policy platformpolicy.Policy) *publirasplatformv1.Pla
 		PasswordVerification:      minuteDayToProto(policy.PasswordVerification),
 		StorePurchaseConfirmation: minuteDayToProto(policy.StorePurchaseConfirmation),
 		WaitFreeTicketUse:         minuteDayToProto(policy.WaitFreeTicketUse),
+		LoginAttemptsPerAccount:   minuteDayToProto(policy.LoginAttemptsPerAccount),
+		LoginAttemptsPerSource:    hourDayToProto(policy.LoginAttemptsPerSource),
 		MailRequestsPerAddress:    hourDayToProto(policy.MailRequestsPerAddress),
 		MailRequestsPerSource:     hourDayToProto(policy.MailRequestsPerSource),
 		CommunityLimitDefaults: &publirasplatformv1.CommunityLimitDefaults{
@@ -59,6 +61,8 @@ func platformPolicyFromProto(policy *publirasplatformv1.PlatformPolicy) platform
 		PasswordVerification:      minuteDayFromProto(policy.GetPasswordVerification()),
 		StorePurchaseConfirmation: minuteDayFromProto(policy.GetStorePurchaseConfirmation()),
 		WaitFreeTicketUse:         minuteDayFromProto(policy.GetWaitFreeTicketUse()),
+		LoginAttemptsPerAccount:   minuteDayFromProto(policy.GetLoginAttemptsPerAccount()),
+		LoginAttemptsPerSource:    hourDayFromProto(policy.GetLoginAttemptsPerSource()),
 		MailRequestsPerAddress:    hourDayFromProto(policy.GetMailRequestsPerAddress()),
 		MailRequestsPerSource:     hourDayFromProto(policy.GetMailRequestsPerSource()),
 		Community: platformpolicy.CommunityLimits{
@@ -112,18 +116,28 @@ func (s *platformServer) UpdatePlatformPolicy(
 		Policy:           platformPolicyFromProto(req.GetPolicy()),
 		ExpectedRevision: &expectedRevision,
 	}
-	// wait_free_ticket_use reached the policy after the console screens that
-	// save it, and those are deployed apart from this server, so a request
-	// that leaves it out keeps what is stored rather than being refused. The
-	// stored value is read here and the save is held to expected_revision, so
-	// a value another operator saved since the caller's read is refused with
-	// the rest of the stale request rather than written back over.
-	if req.GetPolicy().GetWaitFreeTicketUse() == nil {
+	// wait_free_ticket_use and the login limits reached the policy after the
+	// console screens that save it, and those are deployed apart from this
+	// server, so a request that leaves one out keeps what is stored rather than
+	// being refused. The stored value is read here and the save is held to
+	// expected_revision, so a value another operator saved since the caller's
+	// read is refused with the rest of the stale request rather than written
+	// back over.
+	requested := req.GetPolicy()
+	if requested.GetWaitFreeTicketUse() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil {
 		stored, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read platform policy", err)
 		}
-		params.Policy.WaitFreeTicketUse = stored.WaitFreeTicketUse
+		if requested.GetWaitFreeTicketUse() == nil {
+			params.Policy.WaitFreeTicketUse = stored.WaitFreeTicketUse
+		}
+		if requested.GetLoginAttemptsPerAccount() == nil {
+			params.Policy.LoginAttemptsPerAccount = stored.LoginAttemptsPerAccount
+		}
+		if requested.GetLoginAttemptsPerSource() == nil {
+			params.Policy.LoginAttemptsPerSource = stored.LoginAttemptsPerSource
+		}
 	}
 	if err := params.Validate(); err != nil {
 		return nil, s.platformPolicyError(ctx, err)

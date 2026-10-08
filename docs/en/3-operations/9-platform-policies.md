@@ -16,6 +16,7 @@ Each group can be set from the Platform Console or from `publiractl`, run the wa
 | --- | --- | --- |
 | The default language and time zone | **General**, under **Platform** | `platform set`, `platform show` |
 | Two-step verification, the password, purchase, ticket, and mail limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
+| The sign-in attempt limits | None yet | `policy set`, `policy show` |
 | The comment, report, rating, contact, and viewer limits | **Community**, under **Policies** | `policy set`, `policy show` |
 | How long expiring records are kept | **Retention**, under **Policies** | `retention set`, `retention show` |
 
@@ -67,7 +68,18 @@ Each invitation counts as one request, including every **Initial admin emails** 
 
 The client address is the first address in `X-Forwarded-For`, which the reverse proxy has to set rather than append to, as [The headers the proxy owns](../2-deployments/4-reverse-proxy.md#the-headers-the-proxy-owns) describes. Readers behind one shared address, such as an office or a mobile carrier's gateway, share its per-source and per-client counts.
 
-None of these limits applies to signing in itself: Publira does not yet limit how often a password may be tried at sign-in ([#3764](https://github.com/publira/publira/issues/3764)).
+### Sign-in attempts
+
+Two more limits guard signing in itself, with a password, to a tenant's site, its tenant console, or the Platform Console. The **Security** page does not show them yet ([#3765](https://github.com/publira/publira/issues/3765)), so they are set with `publiractl policy set` alone, and saving the page keeps them as they are stored:
+
+| Flags | What it guards |
+| --- | --- |
+| `--login-attempts-per-account-per-minute` and `--login-attempts-per-account-per-day` | Passwords tried for one address. An address counts within its own tenant, where the tenant's site and its tenant console share one count, or within the Platform Console. A sign-in with the right password clears the count, so it slows someone guessing one account's password, not a person who mistyped |
+| `--login-attempts-per-source-per-hour` and `--login-attempts-per-source-per-day` | Failed sign-ins from one client address, across every address, every tenant, and the Platform Console, so one client cannot try a password against a long list of addresses. A sign-in with the right password does not count against it |
+
+An attempt over either limit is refused before the password is checked, and refused the same way whether or not the address has an account, so the refusal tells a guesser nothing about which addresses are registered. Two-step verification is a separate check after the password, and these limits do not count its codes.
+
+The per-account limit also lets anyone who knows an address keep its owner from signing in with a password until the window passes, by spending its count with wrong passwords. Sign-in with Apple or Google and a password reset are not affected by it. Keep the per-day value high enough that a day without a password sign-in is not the price of someone else's script.
 
 ### Where the counts are kept
 

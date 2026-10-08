@@ -22,6 +22,7 @@ import (
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/inboundprovider"
 	inboundproviders "github.com/publira/publira/server/internal/inboundprovider/providers"
+	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
@@ -64,6 +65,8 @@ type adminServer struct {
 	policy platformpolicy.Source
 	// mail bounds how much mail the console's own forms may cause.
 	mail *mailguard.Guard
+	// login bounds how often a password may be tried at sign-in.
+	login *loginguard.Guard
 	// paymentProviders are the providers a tenant's payment settings may name.
 	paymentProviders *paymentprovider.Registry
 	// inboundProviders are the providers a tenant's inbound email settings may
@@ -293,20 +296,40 @@ type API struct {
 // security. reval sends the cache tags its writes leave stale; a nil one turns
 // revalidation off.
 func New(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, reval *revalidate.Client) (*API, error) {
-	return newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, reval, nil, nil)
+	api, err := newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, reval, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	api.server.shareLoginGuard()
+	return api, nil
 }
 
 // NewWithAsyncRecorder is New with an AsyncRecorder, and with the service
 // token the web apps read tenant-level data with; a nil one admits no web app.
 // The asynchronous writer acquires a fresh tenant-scoped connection for every
 // tenant audit entry.
-func NewWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, reval *revalidate.Client, recorder *auditlog.AsyncRecorder, serviceToken *auth.ServiceToken) (*API, error) {
+//
+// login is the sign-in limit the process hands every namespace it serves, as
+// publicapi.New describes; a nil one counts on its own.
+func NewWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager, reval *revalidate.Client, recorder *auditlog.AsyncRecorder, serviceToken *auth.ServiceToken, login *loginguard.Guard) (*API, error) {
 	api, err := newAPI(db, queries, storageProvider, logger, encryptor, tester, tokens, reval, recorder, nil)
 	if err != nil {
 		return nil, err
 	}
 	api.server.serviceToken = serviceToken
+	if login == nil {
+		api.server.shareLoginGuard()
+	} else {
+		api.server.login = login
+	}
 	return api, nil
+}
+
+// shareLoginGuard puts the sign-in limit on counters of this namespace's own
+// over the ones the deployment shares. newAPI leaves it on in-process counters,
+// so no test that signs in reaches the Redis the environment may name.
+func (s *adminServer) shareLoginGuard() {
+	s.login = loginguard.NewShared(s.policy, s.logger)
 }
 
 // Register mounts the publira.admin.v1 services on mux. What a mux carries is
@@ -351,6 +374,7 @@ func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logge
 
 		policy:           policy,
 		mail:             mail,
+		login:            loginguard.NewDefault(),
 		paymentProviders: providers.Registry(),
 		inboundProviders: inboundproviders.Registry(),
 	}
