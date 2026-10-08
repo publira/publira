@@ -159,6 +159,8 @@ services:
       # Inbound W3C Trace Context is dropped before any router runs, the same
       # way the Dev Container edge does it.
       - "--entrypoints.web.http.middlewares=strip-trace-context@file,strip-forwarded@file"
+      # A console page upload is given 300 seconds, as on every other edge.
+      - "--entrypoints.web.transport.respondingTimeouts.readTimeout=300s"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
     # Every host the suite opens, since routes.yaml routes no other: the

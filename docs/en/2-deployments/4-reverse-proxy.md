@@ -145,6 +145,9 @@ entryPoints:
         - strip-trace-context@file
         - strip-forwarded@file
       tls: {}
+    transport:
+      respondingTimeouts:
+        readTimeout: 300s
 ```
 
 In `dynamic/routes.yaml`, change `entryPoints: [web]` to `entryPoints: [websecure]` on every router. A router answers only on the entry points it names, so one left on `web` is never reached over HTTPS.
@@ -238,6 +241,8 @@ Set it when:
 ## Uploads in the tenant console
 
 The episode edit screen in the tenant console adds an episode's pages in one upload of up to 256 MiB, posted to `/api/v1/episode-pages` on the console host. Traefik and Caddy set no limit on a body unless you add one; nginx refuses anything over 1 MB by default, and its sample raises that to `256m` on that path. A smaller limit makes a ZIP of a whole episode fail with a message telling the staff member to split it.
+
+The upload also needs time to arrive: 300 seconds, which is enough for 256 MiB over an uplink of about 7.2 Mbit/s. Traefik cuts off any request that has not arrived whole within 60 seconds unless you set a longer time, and it sets that per entry point, not per path, so the Traefik sample gives every request on its `web` entry point 300 seconds with `transport.respondingTimeouts.readTimeout`. Give an entry point you add, such as `websecure`, the same setting, or an upload over HTTPS is cut off after a minute. nginx waits up to 60 seconds between two reads of a body rather than for the whole of it, and Caddy does not limit the time at all, so neither sample changes it. A TLS terminator, a load balancer, or a CDN in front of the proxy has to allow the same time.
 
 ## Webhooks
 
