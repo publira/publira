@@ -60,8 +60,8 @@ describe("loginPlatform", () => {
 
     const result = await loginPlatform("admin@example.com", "secret");
     expect(result).toEqual({
-      accessToken: "tok_abc",
-      expiresAt: new Date(expiresAt),
+      ok: true,
+      session: { accessToken: "tok_abc", expiresAt: new Date(expiresAt) },
     });
     expect(mockLogin).toHaveBeenCalledWith(
       { email: "admin@example.com", password: "secret" },
@@ -69,18 +69,35 @@ describe("loginPlatform", () => {
     );
   });
 
-  it("returns null when the API returns no session", async () => {
+  it("refuses the credentials when the API returns no session", async () => {
     mockLogin.mockResolvedValueOnce({ user: {} });
 
-    await expect(loginPlatform("a@b.com", "x")).resolves.toBeNull();
+    await expect(loginPlatform("a@b.com", "x")).resolves.toEqual({
+      ok: false,
+      refusal: "credentials",
+    });
   });
 
-  it("returns null for authentication failures", async () => {
+  it("refuses the credentials for authentication failures", async () => {
     mockLogin.mockRejectedValueOnce(
       new ConnectError("invalid credentials", Code.Unauthenticated)
     );
 
-    await expect(loginPlatform("a@b.com", "wrong")).resolves.toBeNull();
+    await expect(loginPlatform("a@b.com", "wrong")).resolves.toEqual({
+      ok: false,
+      refusal: "credentials",
+    });
+  });
+
+  it("reports too many attempts apart from wrong credentials", async () => {
+    mockLogin.mockRejectedValueOnce(
+      new ConnectError("rate limited", Code.ResourceExhausted)
+    );
+
+    await expect(loginPlatform("a@b.com", "secret")).resolves.toEqual({
+      ok: false,
+      refusal: "rate-limited",
+    });
   });
 
   it("rethrows unexpected errors", async () => {

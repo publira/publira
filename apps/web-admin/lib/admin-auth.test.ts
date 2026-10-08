@@ -14,6 +14,7 @@ import {
   requestAdminPasswordReset,
 } from "./admin-auth";
 import { ADMIN_SESSION_CACHE_TAG } from "./admin-auth-shared";
+import { getMessagesFor } from "./messages";
 
 const {
   mockAcceptTenantAdminInvitation,
@@ -178,6 +179,32 @@ describe("loginAdmin", () => {
     // Signing in on the password alone would make the second factor optional.
     expect(result).toEqual({
       message: "Could not sign you in. Please try again later.",
+      ok: false,
+    });
+  });
+
+  it("says the email address or password is incorrect when the credentials are refused", async () => {
+    mockLogin.mockRejectedValueOnce(
+      new ConnectError("invalid credentials", Code.Unauthenticated)
+    );
+    const t = await getMessagesFor("en");
+
+    await expect(loginAdmin(...credentials, "en")).resolves.toEqual({
+      message: t("admin.auth.errors.login_failed"),
+      ok: false,
+    });
+  });
+
+  // Too many attempts are refused before the password is checked, so the
+  // person may well have typed it correctly.
+  it("asks the person to wait, not to check their password, after too many attempts", async () => {
+    mockLogin.mockRejectedValueOnce(
+      new ConnectError("rate limited", Code.ResourceExhausted)
+    );
+    const t = await getMessagesFor("en");
+
+    await expect(loginAdmin(...credentials, "en")).resolves.toEqual({
+      message: t("errors.rpc.rate-limited"),
       ok: false,
     });
   });
