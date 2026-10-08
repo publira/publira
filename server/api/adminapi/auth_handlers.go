@@ -159,7 +159,7 @@ func (s *adminServer) Login(
 	// charges the same allowance for the same account.
 	attempt, err := s.login.Begin(ctx, tenant.ID.String(), req.Email)
 	if err != nil {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "admin_login", "failure", tenant.PublicID, "", "rate_limited")
+		auth.AuditEvent(ctx, "admin_login", "failure", tenant.PublicID, "", "rate_limited")
 		return nil, err
 	}
 	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true}, Email: req.Email})

@@ -179,7 +179,7 @@ func (s *platformServer) Login(
 	// whether or not it holds an account and costs no bcrypt.
 	attempt, err := s.login.Begin(ctx, loginguard.PlatformScope, email)
 	if err != nil {
-		auth.AuditEvent(rpcmiddleware.RequestHeader(ctx), "platform_login", "failure", "", "", "rate_limited")
+		auth.AuditEvent(ctx, "platform_login", "failure", "", "", "rate_limited")
 		return nil, err
 	}
 	platformUser, err := s.queriesFor(ctx).GetPlatformUserByEmail(ctx, email)

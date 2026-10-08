@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect/v2"
 
+	"github.com/publira/publira/server/internal/clientip"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
@@ -47,12 +48,12 @@ func newTestGuard(t *testing.T, perAccount platformpolicy.MinuteDay, perSource p
 	return New(limiter, platformpolicy.Fixed(policy), slog.Default()), clock
 }
 
-// callFrom is the context of an RPC the edge recorded as coming from source.
+// callFrom is the context of an RPC whose client address was determined as
+// source.
 func callFrom(t *testing.T, source string) context.Context {
 	t.Helper()
-	ctx, info := testutil.NewServerContext(t.Context())
-	info.RequestHeader().Set("X-Forwarded-For", source+", 10.0.0.1")
-	return ctx
+	ctx, _ := testutil.NewServerContext(t.Context())
+	return clientip.NewContext(ctx, source)
 }
 
 const (
@@ -245,8 +246,7 @@ func TestGuardSaysHowLongToWait(t *testing.T) {
 		t.Fatalf("the first attempt = %v, want it allowed", err)
 	}
 	ctx, info := testutil.NewServerContext(t.Context())
-	info.RequestHeader().Set("X-Forwarded-For", testSource)
-	_, err := guard.Begin(ctx, testScope, testAddress)
+	_, err := guard.Begin(clientip.NewContext(ctx, testSource), testScope, testAddress)
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
