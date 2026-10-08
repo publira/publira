@@ -1624,6 +1624,7 @@
         "get_failed": "无法加载该章节。请稍后再试。",
         "schedule_failed": "无法更新发布设置。请稍后再试。",
         "upload_failed": "无法添加页面图片。请稍后再试。",
+        "upload_interrupted": "发送过程中连接中断，部分页面可能已被添加。再次添加前，请先检查已登记的页面图片。",
         "image_list_failed": "无法加载页面图片。请稍后再试。",
         "reorder_failed": "无法更新章节顺序。请稍后再试。",
         "image_reorder_failed": "无法更新页面图片顺序。请稍后再试。",

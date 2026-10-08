@@ -252,33 +252,44 @@ describe("EpisodePagesForm", () => {
     });
   });
 
-  it("holds an upload the network refused and sends it again once the browser is back online", async () => {
-    const fetch = vi
-      .fn<(input: string, init: RequestInit) => Promise<Response>>()
-      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
-      .mockResolvedValueOnce(
-        Response.json({ message: "Page images added.", ok: true })
-      );
+  it("holds an upload started offline and sends it once the browser is back online", async () => {
+    const onLine = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    onTestFinished(() => {
+      onLine.mockRestore();
+    });
+    const fetch = stubUpload({ message: "Page images added.", ok: true });
+    await renderForm();
+
+    fireEvent.submit(fileInput().form as HTMLFormElement);
+
+    // Held rather than failed: nothing is sent while the browser is offline.
+    await waitFor(() => {
+      expect(fileInput().matches(":disabled")).toBe(true);
+    });
+    expect(fetch).not.toHaveBeenCalled();
+
+    onLine.mockReturnValue(true);
+    window.dispatchEvent(new Event("online"));
+
+    expect(await screen.findByText("Page images added.")).toBeTruthy();
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("does not send an upload again once the connection drops under it, and shows what landed", async () => {
+    const fetch = vi.fn(() => Promise.reject(new TypeError("Failed to fetch")));
     vi.stubGlobal("fetch", fetch);
     await renderForm();
 
     fireEvent.submit(fileInput().form as HTMLFormElement);
 
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledOnce();
-    });
-    // Held rather than failed: nothing is said while the connection is gone.
     expect(
-      screen.queryByText(
-        "Could not add the page images. Please try again later."
+      await screen.findByText(
+        /The connection was lost while the pages were being sent/u
       )
-    ).toBeNull();
-
+    ).toBeTruthy();
     window.dispatchEvent(new Event("online"));
-
-    expect(await screen.findByText("Page images added.")).toBeTruthy();
-    expect(fetch).toHaveBeenCalledTimes(2);
-    expect(fetch.mock.calls[1]?.[1].body).toBe(fetch.mock.calls[0]?.[1].body);
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(mockRefresh).toHaveBeenCalledOnce();
   });
 
   it("refuses an answer that is not the route's own as a failed upload", async () => {

@@ -1624,6 +1624,7 @@
         "get_failed": "無法載入該章節。請稍後再試。",
         "schedule_failed": "無法更新發布設定。請稍後再試。",
         "upload_failed": "無法新增頁面圖片。請稍後再試。",
+        "upload_interrupted": "傳送過程中連線中斷，部分頁面可能已新增。再次新增前，請先確認已新增的頁面圖片。",
         "image_list_failed": "無法載入頁面圖片。請稍後再試。",
         "reorder_failed": "無法更新章節順序。請稍後再試。",
         "image_reorder_failed": "無法更新頁面圖片順序。請稍後再試。",

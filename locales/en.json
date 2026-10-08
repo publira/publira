@@ -1624,6 +1624,7 @@
         "get_failed": "Could not load the episode. Please try again later.",
         "schedule_failed": "Could not update the publishing settings. Please try again later.",
         "upload_failed": "Could not add the page images. Please try again later.",
+        "upload_interrupted": "The connection was lost while the pages were being sent, so some of them may have been added. Check the registered page images before adding them again.",
         "image_list_failed": "Could not load the page images. Please try again later.",
         "reorder_failed": "Could not update the episode order. Please try again later.",
         "image_reorder_failed": "Could not update the page image order. Please try again later.",

@@ -73,43 +73,26 @@ const readUploadResponse = async (
   }
 };
 
-/** How long a failed send waits for the browser to report it is back online before trying again. */
-const RETRY_INTERVAL_MS = 5000;
-
 /**
- * Settles once the browser fires `online`, or after {@link RETRY_INTERVAL_MS}
- * when it does not: `navigator.onLine` stays `true` on a network with no
- * upstream, so the event alone would hold such an upload forever.
+ * Settles once the browser is online: at once when it already says so, or on
+ * its `online` event.
+ *
+ * An upload started offline waits here instead of failing, as
+ * `experimental.useOffline` holds a Server Action — which a `fetch` of our own
+ * is outside of. Only the wait before sending is ours to take: adding pages is
+ * not idempotent, and a `fetch` that rejects after it was sent may have
+ * reached the server all the same, so a send is never repeated.
  */
-const untilWorthRetrying = (): Promise<"online" | "timeout"> => {
-  const { promise, resolve } = Promise.withResolvers<"online" | "timeout">();
-  const settled = AbortSignal.timeout(RETRY_INTERVAL_MS);
-  settled.addEventListener("abort", () => resolve("timeout"), { once: true });
-  window.addEventListener("online", () => resolve("online"), {
-    once: true,
-    signal: settled,
-  });
-  return promise;
-};
-
-/**
- * Sends the form, holding it while the network is gone and sending it again
- * once it is back, as `experimental.useOffline` does for a Server Action —
- * which a `fetch` of our own is outside of. A rejected `fetch` is the network,
- * never the server: any answer the server or a proxy gives resolves it.
- */
-const sendHoldingThroughDrops = async (
-  formData: FormData
-): Promise<Response> => {
-  try {
-    return await fetch(EPISODE_PAGES_UPLOAD_PATH, {
-      body: formData,
-      method: "POST",
+const untilOnline = (): Promise<"online"> => {
+  const { promise, resolve } = Promise.withResolvers<"online">();
+  if (navigator.onLine) {
+    resolve("online");
+  } else {
+    window.addEventListener("online", () => resolve("online"), {
+      once: true,
     });
-  } catch {
-    await untilWorthRetrying();
-    return sendHoldingThroughDrops(formData);
   }
+  return promise;
 };
 
 const submittedBytes = (formData: FormData) =>
@@ -145,7 +128,22 @@ export const EpisodePagesUploadForm = ({
       return tooLarge;
     }
 
-    const response = await sendHoldingThroughDrops(formData);
+    await untilOnline();
+    let response: Response;
+    try {
+      response = await fetch(EPISODE_PAGES_UPLOAD_PATH, {
+        body: formData,
+        method: "POST",
+      });
+    } catch {
+      // The pages may have been added before the connection went, so the list
+      // is read again for the operator to check before sending them twice.
+      router.refresh();
+      return {
+        message: t("admin.series.episodes.upload_interrupted"),
+        ok: false,
+      };
+    }
 
     // A proxy in front with a lower limit than the route answers this itself,
     // in a body of its own.
