@@ -10,9 +10,8 @@ import type {
  * the sizes an image uploaded for that ratio has to meet, and the ratio itself
  * is what a crop frame is locked to.
  *
- * The ratio key is an identifier, never copy: `nameMessage` is what a ratio is
- * called on screen and in an accessible name, and `usageMessage` says where
- * the storefront and the app draw it.
+ * The ratio key is an identifier, never copy: what a ratio is called on screen
+ * and in an accessible name is `eyeCatchAspectName`.
  *
  * The ratio is stated rather than derived from the minimums. They agree today,
  * but a minimum is the largest width generated for the ratio paired with a
@@ -26,8 +25,6 @@ export const EYE_CATCH_ASPECTS = [
     aspectWidth: 3,
     minHeight: 1600,
     minWidth: 1200,
-    nameMessage: "admin.eye_catch.aspect.names.portrait",
-    usageMessage: "admin.eye_catch.aspect.usages.portrait",
     variantType: "portrait",
   },
   {
@@ -36,8 +33,6 @@ export const EYE_CATCH_ASPECTS = [
     aspectWidth: 1,
     minHeight: 1200,
     minWidth: 1200,
-    nameMessage: "admin.eye_catch.aspect.names.square",
-    usageMessage: "admin.eye_catch.aspect.usages.square",
     variantType: "square",
   },
   {
@@ -46,8 +41,6 @@ export const EYE_CATCH_ASPECTS = [
     aspectWidth: 16,
     minHeight: 900,
     minWidth: 1600,
-    nameMessage: "admin.eye_catch.aspect.names.landscape",
-    usageMessage: "admin.eye_catch.aspect.usages.landscape",
     variantType: "landscape",
   },
   {
@@ -56,8 +49,6 @@ export const EYE_CATCH_ASPECTS = [
     aspectWidth: 1200,
     minHeight: 630,
     minWidth: 1200,
-    nameMessage: "admin.eye_catch.aspect.names.og",
-    usageMessage: "admin.eye_catch.aspect.usages.og",
     variantType: "og",
   },
 ] as const;
@@ -92,11 +83,23 @@ export const eyeCatchAspectName = (
   t: AdminClientMessageAccessor,
   variantType: string
 ): string => {
-  const aspect = EYE_CATCH_ASPECTS.find(
-    (entry) => entry.variantType === variantType
-  );
-
-  return t(aspect?.nameMessage ?? "admin.eye_catch.aspect.names.other");
+  switch (variantType) {
+    case "portrait": {
+      return t("admin.eye_catch.aspect.names.portrait");
+    }
+    case "square": {
+      return t("admin.eye_catch.aspect.names.square");
+    }
+    case "landscape": {
+      return t("admin.eye_catch.aspect.names.landscape");
+    }
+    case "og": {
+      return t("admin.eye_catch.aspect.names.og");
+    }
+    default: {
+      return t("admin.eye_catch.aspect.names.other");
+    }
+  }
 };
 
 /** Sort key for a ratio, putting unknown keys after the known ones. */

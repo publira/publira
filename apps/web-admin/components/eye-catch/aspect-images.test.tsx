@@ -19,6 +19,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import { EyeCatchAspectImages } from "./aspect-images";
+import type { EyeCatchEntity } from "./aspect-messages";
 import type { EyeCatchAspectActionState, EyeCatchVariantItem } from "./types";
 
 vi.mock("#components/message", () => ({
@@ -52,13 +53,13 @@ const render = (ui: ReactNode) =>
   });
 
 const renderImages = ({
+  entity = "series",
   id = "series-1",
-  idField = "series_id",
   uploadAction = action,
   variants,
 }: {
+  entity?: EyeCatchEntity;
   id?: string;
-  idField?: string;
   uploadAction?: (
     prevState: EyeCatchAspectActionState,
     formData: FormData
@@ -67,8 +68,8 @@ const renderImages = ({
 }) =>
   render(
     <EyeCatchAspectImages
+      entity={entity}
       id={id}
-      idField={idField}
       tenantId="TENANT001"
       uploadAction={uploadAction}
       variants={variants}
@@ -158,17 +159,33 @@ it("shows a slot for every delivered ratio", () => {
   }
 });
 
-it("says where the storefront uses each ratio", () => {
+it("says where the site and the app use each ratio of a series", () => {
   renderImages({ variants: [variant("portrait", 1200, 1600)] });
 
   expect(
-    screen.getByText("The preview shown when a link to the page is shared.")
-  ).toBeTruthy();
-  expect(
     screen.getByText(
-      "Square tiles in the app, and one of the images offered to search engines."
+      "The cover on shelves on the site and in the app, and on the series' page on the site."
     )
   ).toBeTruthy();
+  expect(
+    screen.getByText("One of the images the site offers search engines.")
+  ).toBeTruthy();
+});
+
+// A label's portrait image is drawn nowhere, which is worth knowing before
+// framing one; a line written for a series would claim otherwise.
+it("says where each ratio of a label is used, not where a series' is", () => {
+  renderImages({
+    entity: "label",
+    id: "label-1",
+    variants: [variant("portrait", 1200, 1600)],
+  });
+
+  expect(screen.getByText("The label's tile in the app.")).toBeTruthy();
+  expect(
+    screen.getAllByText("Not shown on the site or in the app yet.")
+  ).toHaveLength(2);
+  expect(screen.queryByText(/series' page/u)).toBeNull();
 });
 
 // The ratio keys are what the RPCs take, and a staff member reading or
@@ -265,8 +282,8 @@ it("shows what is stored once the upload is on its way", async () => {
 
 it("posts the record's ID under the field its upload action reads", () => {
   const { container } = renderImages({
+    entity: "label",
     id: "label-1",
-    idField: "label_id",
     variants: [variant("landscape", 1600, 900)],
   });
 

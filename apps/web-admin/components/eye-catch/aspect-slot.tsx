@@ -34,7 +34,7 @@ import type { CropRect } from "#lib/crop-rect";
 import { CROP_RECT_FIELD, formatCropRect } from "#lib/crop-rect";
 
 import type { EyeCatchAspect } from "./aspects";
-import { eyeCatchAspectClassName } from "./aspects";
+import { eyeCatchAspectClassName, eyeCatchAspectName } from "./aspects";
 
 interface EyeCatchAspectSlotContextValue {
   aspect: EyeCatchAspect;
@@ -173,7 +173,7 @@ export const EyeCatchAspectPicker = ({ children }: { children: ReactNode }) => {
     useEyeCatchAspectSlot();
   const { pending } = useFormStatus();
   const { variantType } = aspect;
-  const name = t(aspect.nameMessage);
+  const name = eyeCatchAspectName(t, variantType);
   // An upload in flight has taken the file, so the slot shows what is stored.
   const pickedUrl = pending ? "" : localPreviewUrl;
   const previewUrl = pickedUrl || currentUrl;
@@ -268,7 +268,7 @@ export const EyeCatchAspectCropTitle = () => {
   const { aspect } = useEyeCatchAspectSlot();
 
   return t("admin.eye_catch.aspect.crop_title", {
-    aspect: t(aspect.nameMessage),
+    aspect: eyeCatchAspectName(t, aspect.variantType),
   });
 };
 
