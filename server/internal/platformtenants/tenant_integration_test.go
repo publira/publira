@@ -198,6 +198,70 @@ func TestUpdateRefusesAHostAnotherTenantServes(t *testing.T) {
 	}
 }
 
+func TestRenameKeepsTheHostsAConcurrentUpdateWrites(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	ctx := context.Background()
+	created, err := create(t, pg, auditlog.SystemPlatformActor, CreateParams{
+		Name: "Tenant A", Domain: "tenant-a.example.com", DefaultLocale: "en",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	validate := func(p UpdateParams) Change {
+		t.Helper()
+		p.ID = created.Tenant.ID
+		c, err := p.Validate()
+		if err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		return c
+	}
+	db := pg.OpenPlatformDB(t)
+
+	// The domain change holds its transaction open while the rename starts.
+	move, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("BeginTx: %v", err)
+	}
+	defer move.Rollback() //nolint:errcheck
+	if _, err := Update(ctx, move, nil, auditlog.SystemPlatformActor, validate(UpdateParams{Domain: ptr("moved.example.com")})); err != nil {
+		t.Fatalf("move: %v", err)
+	}
+
+	rename := validate(UpdateParams{Name: ptr("Renamed")})
+	renamed := make(chan error, 1)
+	go func() {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			renamed <- err
+			return
+		}
+		defer tx.Rollback() //nolint:errcheck
+		if _, err := Update(ctx, tx, nil, auditlog.SystemPlatformActor, rename); err != nil {
+			renamed <- err
+			return
+		}
+		renamed <- tx.Commit()
+	}()
+
+	waitForHostsLock(t, pg, renamed)
+	if err := move.Commit(); err != nil {
+		t.Fatalf("Commit move: %v", err)
+	}
+	if err := <-renamed; err != nil {
+		t.Fatalf("rename: %v", err)
+	}
+
+	tenant, err := GetByID(ctx, dbmodels.New(pg.DB), created.Tenant.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if tenant.Name != "Renamed" || tenant.Domain != "moved.example.com" {
+		t.Fatalf("tenant = %q on %q, want the rename on the moved domain", tenant.Name, tenant.Domain)
+	}
+}
+
 func TestSuspendAndResumeFileTheirEntries(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

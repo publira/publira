@@ -277,25 +277,7 @@ func TestCreateRefusesAHostAConcurrentCreateTakes(t *testing.T) {
 
 	// Commit the first only once the second is queued behind it, so the second
 	// cannot have read the hosts before the first tenant was there to see.
-	for deadline := time.Now().Add(10 * time.Second); ; {
-		var waiting bool
-		if err := pg.DB.QueryRowContext(ctx,
-			`SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND NOT granted)`).Scan(&waiting); err != nil {
-			t.Fatalf("read pg_locks: %v", err)
-		}
-		if waiting {
-			break
-		}
-		select {
-		case err := <-second:
-			t.Fatalf("second create finished while the first was open: %v", err)
-		default:
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("second create never waited for the first")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	waitForHostsLock(t, pg, second)
 	if err := first.Commit(); err != nil {
 		t.Fatalf("Commit first: %v", err)
 	}
@@ -304,5 +286,31 @@ func TestCreateRefusesAHostAConcurrentCreateTakes(t *testing.T) {
 	var conflict *fielderr.Conflict
 	if !errors.As(err, &conflict) || conflict.Field != FieldAdminDomain {
 		t.Fatalf("second create: err = %v, want a conflict on %s", err, FieldAdminDomain)
+	}
+}
+
+// waitForHostsLock returns once a transaction is waiting for the lock tenant
+// hosts are claimed under, failing when done reports the write it was waiting
+// for finished first instead.
+func waitForHostsLock(t *testing.T, pg *testutil.PostgresEnv, done <-chan error) {
+	t.Helper()
+	for deadline := time.Now().Add(10 * time.Second); ; {
+		var waiting bool
+		if err := pg.DB.QueryRowContext(context.Background(),
+			`SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND NOT granted)`).Scan(&waiting); err != nil {
+			t.Fatalf("read pg_locks: %v", err)
+		}
+		if waiting {
+			return
+		}
+		select {
+		case err := <-done:
+			t.Fatalf("finished without waiting for the open transaction: %v", err)
+		default:
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("never waited for the open transaction")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
