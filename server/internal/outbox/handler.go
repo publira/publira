@@ -89,9 +89,13 @@ func DefaultRegistry() *Registry {
 //
 // That is the registration for work that keeps the tenant's own state and the
 // outside world's in step — dropping a cache entry, updating the search index,
-// settling a store purchase — and for mail the platform operator sends while
-// managing the tenant. A handler that writes to the tenant's readers or staff
-// is registered with [Registry.RegisterMessage] instead.
+// settling a store purchase — for mail the platform operator sends while
+// managing the tenant, and for a request a form recorded, which opens an
+// account or issues a token before it queues its mail as an event of its own.
+// Dropping such a request would lose a sign-up the API had already accepted;
+// running it leaves only the mail it queues to be dropped. A handler that
+// writes to the tenant's readers or staff is registered with
+// [Registry.RegisterMessage] instead.
 func (r *Registry) Register(eventType string, handler Handler) {
 	r.register(eventType, handler, false)
 }

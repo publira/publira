@@ -26,11 +26,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.EventTypeReaderPasswordResetEmail,
 		outbox.EventTypeReaderPasswordChangedNoticeEmail,
 		outbox.EventTypeReaderSignupAttemptNoticeEmail,
-		outbox.EventTypeReaderSignupRequest,
-		outbox.EventTypeReaderPasswordResetRequest,
-		outbox.EventTypeReaderEmailVerificationRequest,
 		outbox.EventTypeAdminPasswordResetEmail,
-		outbox.EventTypeAdminPasswordResetRequest,
 		outbox.EventTypeAdminEmailChangeConfirmationEmail,
 		outbox.EventTypeAdminEmailChangedNoticeEmail,
 		outbox.EventTypeContactMessageStaffEmail,
@@ -43,6 +39,10 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 	}
 	others := []string{
 		outbox.EventTypeTenantAdminInvitationEmail,
+		outbox.EventTypeReaderSignupRequest,
+		outbox.EventTypeReaderPasswordResetRequest,
+		outbox.EventTypeReaderEmailVerificationRequest,
+		outbox.EventTypeAdminPasswordResetRequest,
 		outbox.EventTypePlatformPasswordResetEmail,
 		outbox.EventTypePlatformPasswordResetRequest,
 		outbox.EventTypePlatformEmailChangeConfirmationEmail,

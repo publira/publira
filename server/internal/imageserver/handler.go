@@ -838,6 +838,12 @@ func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (d
 // nothing between here and the reader keeps answering it once the tenant is
 // resumed, and it is a 4xx rather than unavailable because the server is
 // working as the operator asked, not failing.
+//
+// The refusal reaches only the requests that arrive here. A successful
+// response already held by a browser or a cache in front of the server keeps
+// being reused for the max-age it was served with — an hour at most — because
+// nothing the server does can recall a response it has handed out, and the
+// image URLs do not change with the tenant's status.
 func (h *Handler) tenantFromHost(w http.ResponseWriter, r *http.Request) (dbmodels.Tenant, bool, bool) {
 	ctx := r.Context()
 	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)

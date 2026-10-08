@@ -2,6 +2,7 @@
 title: Tenants
 description: Create a tenant, choose its domain and console host, change them later, and suspend a tenant.
 published: 2026-10-06
+updated: 2026-10-08
 ---
 
 Each publisher an install serves is a tenant, with a public site on its own domain and a console on a second host name. `publiractl setup` created the first one. This page adds the next, and covers what can be changed about a tenant afterwards.
@@ -88,7 +89,7 @@ Moving the domain also moves everything built on it:
 
 Suspension stops serving the tenant, and changes nothing else about it:
 
-- Its site, its app, and its console stop working. The API refuses every request for the tenant, signing in included, and its images are no longer served. The web apps keep the host names they have looked up for up to five minutes, so a page they had already prepared can still be shown until then. What readers and staff see in its place is not settled yet ([#3750](https://github.com/publira/publira/issues/3750)); for now it is the apps' error page.
+- Its site, its app, and its console stop working. The API refuses every request for the tenant, signing in included, and its images are no longer served. Images a reader's browser, or a cache in front of Publira, already holds stay visible for up to an hour, which is how long Publira lets them be kept. The web apps keep the host names they have looked up for up to five minutes, so a page they had already prepared can still be shown until then. What readers and staff see in its place is not settled yet ([#3750](https://github.com/publira/publira/issues/3750)); for now it is the apps' error page.
 - The notifications its payment providers and its inbound mail provider send are refused as well. Each provider retries a refused notification on its own schedule, so one it is still retrying when the tenant is resumed is processed then, and one it has given up on is not.
 - Readers and staff stay signed in. Their sessions are not honoured while the tenant is suspended, and work again once it is resumed.
 - Mail and push notifications to its readers and staff are not sent, and are not kept to send later: what they link to is unavailable, and by the time the tenant is resumed they would be out of date. An invitation to administer the tenant, which you send from the Platform Console or `publiractl`, is the exception and goes out; its link works once the tenant is resumed, and **Resend** issues a new one if it has expired by then.

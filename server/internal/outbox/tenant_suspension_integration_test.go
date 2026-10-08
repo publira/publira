@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/tenantstatus"
@@ -70,9 +72,65 @@ func TestWorkerDropsMessagesToASuspendedTenant(t *testing.T) {
 	}
 }
 
+// A sign-up the API accepted just before the tenant was suspended still opens
+// its account: the request is not a message, only the verification mail it
+// queues is, and that mail is what gets dropped.
+func TestWorkerCarriesOutASignUpForASuspendedTenantAndDropsItsMail(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXSUS001", "outbox-suspended.example.com", "Suspended Tenant")
+	queries := dbmodels.New(pg.DB)
+	hash, err := auth.HashPassword("newcomer-password")
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	userID := uuid.Must(uuid.NewV7())
+	signup := insertSuspensionPayload(t, ctx, queries, tenant.ID, outbox.EventTypeReaderSignupRequest, "suspended:signup", outbox.ReaderSignupRequestPayload{
+		TenantID:     tenant.ID.String(),
+		UserID:       userID.String(),
+		Email:        "newcomer@outbox-suspended.example.com",
+		Name:         "Newcomer",
+		PasswordHash: hash,
+	})
+	pg.SetTenantStatus(t, tenant.ID, tenantstatus.Suspended)
+
+	var sent atomic.Int32
+	handlers := outbox.NewRegistry()
+	handlers.Register(outbox.EventTypeReaderSignupRequest, outbox.NewReaderSignupRequestHandler(outbox.EmailHandlerConfig{DB: pg.OpenOutboxDB(t)}))
+	handlers.RegisterMessage(outbox.EventTypeReaderEmailVerificationEmail, func(context.Context, dbmodels.OutboxEvent) error {
+		sent.Add(1)
+		return nil
+	})
+
+	startTestWorker(t, pg.DB, outbox.Config{Handlers: handlers})
+	waitStatus(t, ctx, queries, signup.ID, outbox.StatusDone)
+
+	var mailID uuid.UUID
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT event.id FROM outbox_events event
+		JOIN user_email_verification_tokens token ON token.id = (event.payload ->> 'token_id')::uuid
+		WHERE event.event_type = $1 AND token.user_id = $2
+	`, outbox.EventTypeReaderEmailVerificationEmail, userID).Scan(&mailID); err != nil {
+		t.Fatalf("read the verification mail the sign-up queued: %v", err)
+	}
+	waitStatus(t, ctx, queries, mailID, outbox.StatusDone)
+	if got := sent.Load(); got != 0 {
+		t.Fatalf("verification mails sent = %d, want 0", got)
+	}
+}
+
 func insertSuspensionEvent(t *testing.T, ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID, eventType, key string) dbmodels.OutboxEvent {
 	t.Helper()
-	body, err := json.Marshal(map[string]string{"tenant_id": tenantID.String()})
+	return insertSuspensionPayload(t, ctx, queries, tenantID, eventType, key, map[string]string{"tenant_id": tenantID.String()})
+}
+
+func insertSuspensionPayload(t *testing.T, ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID, eventType, key string, payload any) dbmodels.OutboxEvent {
+	t.Helper()
+	body, err := json.Marshal(payload)
 	if err != nil {
 		t.Fatalf("marshal payload: %v", err)
 	}

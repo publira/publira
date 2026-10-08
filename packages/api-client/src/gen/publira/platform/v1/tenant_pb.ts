@@ -896,7 +896,10 @@ export const PlatformTenantService: GenService<{
    *   tenant is resumed, and once it has expired, Resend issues another.
    * - Every other outbox event runs: cache invalidations, search index
    *   updates, and the follow-up calls to the app stores and sign-in providers
-   *   keep the tenant's data and the outside world's in step.
+   *   keep the tenant's data and the outside world's in step, and a sign-up,
+   *   password reset, or verification request accepted before the suspension
+   *   is still carried out, so an account it opens is not lost. Only the mail
+   *   it queues is dropped.
    * - Its scheduled jobs run as they do for an active tenant — scheduled
    *   publications, free windows, royalty closing, the daily statistics and
    *   the retention purges — so a resumed tenant is where its own schedule
