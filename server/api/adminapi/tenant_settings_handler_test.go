@@ -79,7 +79,7 @@ func TestUpdateTenantTimezonePersistsIANAName(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "Europe/Berlin", "ja"))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja"))
 	mock.ExpectCommit()
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -113,7 +113,7 @@ func TestUpdateTenantTimezoneRecordsItsInvalidationBeforeCommitting(t *testing.T
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "Europe/Berlin", "ja"))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja"))
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 
@@ -146,7 +146,7 @@ func TestUpdateTenantTimezoneRollsBackWhenItsInvalidationCannotBeRecorded(t *tes
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "Europe/Berlin", "ja"))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja"))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WillReturnError(sql.ErrConnDone)
 	mock.ExpectRollback()
@@ -314,7 +314,7 @@ func TestUpdateTenantDefaultLocalePersistsSupportedCode(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantDefaultLocale)).
 		WithArgs("en", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", nil, now, "active", nil, "UTC", "en"))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "UTC", "en"))
 	mock.ExpectCommit()
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))

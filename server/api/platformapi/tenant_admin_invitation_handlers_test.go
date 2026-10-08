@@ -50,7 +50,7 @@ func expectTenantForInvitationList(mock sqlmock.Sqlmock, tenantID uuid.UUID, now
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
 		WithArgs(uuid.MustParse(testTenantID)).
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "UTC", "ja"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", now, "active", nil, "UTC", "ja"))
 }
 
 // tenantAdminInvitationListKey names the invitation list of testTenantID, the

@@ -1332,14 +1332,8 @@ func (s *adminServer) ListSeries(
 			item.EyeCatchImageVariants = variants
 		}
 	}
-	defaultReadingPeriodHours := int32(0)
-	if tenant.DefaultReadingPeriodHours.Valid {
-		defaultReadingPeriodHours = tenant.DefaultReadingPeriodHours.Int32
-	}
-
 	res := &publiraadminv1.ListSeriesResponse{
-		Series:                    items,
-		DefaultReadingPeriodHours: defaultReadingPeriodHours,
+		Series: items,
 	}
 	switch {
 	case len(rows) > 0:

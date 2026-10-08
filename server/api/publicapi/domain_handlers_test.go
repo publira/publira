@@ -24,7 +24,7 @@ func TestGetTenantByDomainReturnsDefaultLocale(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByDomains)).
 		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", nil, now, "active", nil, "UTC", "en"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", "en"))
 
 	client := publirav1connect.NewDomainServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{
@@ -63,7 +63,7 @@ func TestGetTenantByDomainFailsOnAnUnusableStoredLocale(t *testing.T) {
 
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByDomains)).
 				WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-					AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", nil, now, "active", nil, "UTC", tt.stored))
+					AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", tt.stored))
 
 			client := publirav1connect.NewDomainServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 			_, err := client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{

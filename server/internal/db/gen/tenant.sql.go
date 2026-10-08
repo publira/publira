@@ -55,7 +55,7 @@ func (q *Queries) CountSuspendedTenants(ctx context.Context) (int32, error) {
 const CreateTenant = `-- name: CreateTenant :one
 INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
 VALUES ($1, $2, $3, $4, $5, 'active', $6, $7)
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
 `
 
 type CreateTenantParams struct {
@@ -88,7 +88,6 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		&i.PublicID,
 		&i.Domain,
 		&i.Name,
-		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
@@ -145,7 +144,7 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfig
 }
 
 const GetAdminTenantByDomains = `-- name: GetAdminTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale
+SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t
     ON t.admin_domain = candidate.domain
@@ -167,7 +166,6 @@ func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string)
 		&i.PublicID,
 		&i.Domain,
 		&i.Name,
-		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
@@ -194,7 +192,7 @@ func (q *Queries) GetTenantAppPurchaseRoute(ctx context.Context, tenantID uuid.U
 }
 
 const GetTenantByDomains = `-- name: GetTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale
+SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t ON t.domain = candidate.domain
 ORDER BY candidate.ord
@@ -211,7 +209,6 @@ func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Ten
 		&i.PublicID,
 		&i.Domain,
 		&i.Name,
-		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
@@ -222,7 +219,7 @@ func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Ten
 }
 
 const GetTenantByID = `-- name: GetTenantByID :one
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE id = $1
 LIMIT 1
@@ -236,7 +233,6 @@ func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, erro
 		&i.PublicID,
 		&i.Domain,
 		&i.Name,
-		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
@@ -247,7 +243,7 @@ func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, erro
 }
 
 const GetTenantByPublicID = `-- name: GetTenantByPublicID :one
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE public_id = $1
 LIMIT 1
@@ -261,7 +257,6 @@ func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Ten
 		&i.PublicID,
 		&i.Domain,
 		&i.Name,
-		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
@@ -450,7 +445,7 @@ func (q *Queries) GetTenantLegalPages(ctx context.Context, arg GetTenantLegalPag
 }
 
 const ListTenantsAsc = `-- name: ListTenantsAsc :many
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
   AND ($2::text = '' OR status = $2::text)
@@ -499,7 +494,6 @@ func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) 
 			&i.PublicID,
 			&i.Domain,
 			&i.Name,
-			&i.DefaultReadingPeriodHours,
 			&i.CreatedAt,
 			&i.Status,
 			&i.AdminDomain,
@@ -520,7 +514,7 @@ func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) 
 }
 
 const ListTenantsDesc = `-- name: ListTenantsDesc :many
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
   AND ($2::text = '' OR status = $2::text)
@@ -573,7 +567,6 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 			&i.PublicID,
 			&i.Domain,
 			&i.Name,
-			&i.DefaultReadingPeriodHours,
 			&i.CreatedAt,
 			&i.Status,
 			&i.AdminDomain,
@@ -715,7 +708,7 @@ const UpdateTenantDefaultLocale = `-- name: UpdateTenantDefaultLocale :one
 UPDATE tenants
 SET default_locale = $1
 WHERE id = $2
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
 `
 
 type UpdateTenantDefaultLocaleParams struct {
@@ -731,7 +724,6 @@ func (q *Queries) UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenan
 		&i.PublicID,
 		&i.Domain,
 		&i.Name,
-		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
@@ -745,7 +737,7 @@ const UpdateTenantInfo = `-- name: UpdateTenantInfo :one
 UPDATE tenants
 SET name = $1, domain = $2, admin_domain = $3
 WHERE id = $4
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
 `
 
 type UpdateTenantInfoParams struct {
@@ -769,7 +761,6 @@ func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoPara
 		&i.PublicID,
 		&i.Domain,
 		&i.Name,
-		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
@@ -783,7 +774,7 @@ const UpdateTenantStatus = `-- name: UpdateTenantStatus :one
 UPDATE tenants
 SET status = $2
 WHERE id = $1
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
 `
 
 type UpdateTenantStatusParams struct {
@@ -800,7 +791,6 @@ func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatus
 		&i.PublicID,
 		&i.Domain,
 		&i.Name,
-		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
@@ -814,7 +804,7 @@ const UpdateTenantTimezone = `-- name: UpdateTenantTimezone :one
 UPDATE tenants
 SET timezone = $1
 WHERE id = $2
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
 `
 
 type UpdateTenantTimezoneParams struct {
@@ -831,7 +821,6 @@ func (q *Queries) UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTime
 		&i.PublicID,
 		&i.Domain,
 		&i.Name,
-		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
