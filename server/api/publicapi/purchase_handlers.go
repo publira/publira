@@ -538,6 +538,7 @@ func (s *apiServer) createPurchase(
 			Provider:           providerID,
 			ProviderCheckoutID: event.CheckoutID,
 			ProviderPaymentID:  paymentID,
+			IsTest:             event.Test,
 		})
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("create purchase: %w", err)

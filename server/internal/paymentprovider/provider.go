@@ -130,6 +130,10 @@ type PurchaseCompleted struct {
 	// be empty when the provider reports none.
 	PaymentID string
 	Purchase  Purchase
+	// Test reports a payment made in the provider's test mode. Such a
+	// purchase opens the episode, but no money reached the tenant, so royalty
+	// statements and the daily stats leave it out.
+	Test bool
 }
 
 // Refunded reports the amount refunded so far on one payment.

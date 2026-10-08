@@ -271,8 +271,9 @@ func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate,
 //
 // purchase_count comes from the purchases table alone. A purchase is also
 // projected into content_events, so counting both sources would double every
-// sale; purchases is the one that owns the fact. A store's test purchase is
-// left out, since no reader paid for it.
+// sale; purchases is the one that owns the fact. A test purchase, from a
+// store's sandbox or a payment provider's test mode, is left out, since no
+// reader paid for it.
 //
 // comment_count comes from episode_comments for the same reason and one more:
 // content_events records that a comment was published and never that it was

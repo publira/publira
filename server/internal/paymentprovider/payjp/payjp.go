@@ -230,7 +230,8 @@ func (p *Provider) purchaseCompletedEvent(ctx context.Context, credentials payme
 	}
 
 	// The notification is authenticated by a token alone, so the payment it
-	// reports is taken from the API rather than from the payload.
+	// reports, and whether it was made in test mode, is taken from the API
+	// rather than from the payload.
 	client, err := p.client(credentials)
 	if err != nil {
 		return nil, err
@@ -259,6 +260,7 @@ func (p *Provider) purchaseCompletedEvent(ctx context.Context, credentials payme
 		CheckoutID: session.ID,
 		PaymentID:  flow.Id,
 		Purchase:   purchase,
+		Test:       !flow.Livemode,
 	}, nil
 }
 

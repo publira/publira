@@ -160,15 +160,15 @@ A refund that arrives before the purchase it reverses is kept, and applied when 
 
 Test the whole setup with the provider's test keys before readers can pay: the webhook is the part that most often goes wrong, and only a purchase shows that it works.
 
-Purchases made in the provider's test mode are recorded as real sales for now: they count in the sales figures and in royalty statements ([#3769](https://github.com/publira/publira/issues/3769)). Test on an episode that credits no Author, so that it appears in no royalty statement, and refund every test purchase, so that it nets out of the sales. The console cannot delete an episode, so keep the test in a series of its own, which you hide afterwards.
+A purchase made in the provider's test mode opens the episode but is recorded as a test, and left out of royalty statements and the content statistics. The console cannot delete an episode, so keep the test in a series of its own, which you hide afterwards.
 
 1. Set up the provider with its **test** secret key, and register the webhook in test mode, as above. Check that **Payment settings** shows **Ready**.
-2. Create a series for the test, shown on **Web and app** or **Web only** and published now. In it, create an episode with a **Price** such as `100` and a **Reading period** such as `1`, published now, sold on the web, and with no Author credited.
+2. Create a series for the test, shown on **Web and app** or **Web only** and published now. In it, create an episode with a **Price** such as `100` and a **Reading period** such as `1`, published now, and sold on the web.
 3. On the site, sign in with a reader account that holds no console role, open the episode, and choose **Buy this episode**.
 4. Pay with a test card. `4242 4242 4242 4242`, with any future expiry date and any three-digit security code, works with both providers. PAY.JP then shows its test 3-D Secure screen, where you choose the outcome.
 5. Back on the episode, wait for it to open, then check that it is listed under **Purchases**. If it does not open within a minute, read the delivery in the provider's dashboard, as [When a payment does not open the episode](#when-a-payment-does-not-open-the-episode) describes.
-6. Refund the payment in full from the provider's dashboard. Reload the episode: it is locked again, and **Buy this episode** is back.
+6. Refund the payment in full from the provider's dashboard, which proves that refunds reach the install too. Reload the episode: it is locked again, and **Buy this episode** is back.
 
 When both pass, set the test series' **Shown on** to **Not shown anywhere**. Then replace the test secret key with the live one, register the webhook in live mode, enter its signing secret or token, and save.
 
-To test in-app purchase, use the stores' own test buyers as [Testing a purchase](../5-mobile-app/5-purchases-and-sign-in.md#testing-a-purchase) describes. Those purchases are recorded as tests, so they need no refund.
+To test in-app purchase, use the stores' own test buyers as [Testing a purchase](../5-mobile-app/5-purchases-and-sign-in.md#testing-a-purchase) describes. Those purchases are recorded as tests as well.
