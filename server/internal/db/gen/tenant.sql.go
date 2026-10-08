@@ -336,6 +336,45 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 	return i, err
 }
 
+const GetTenantHostsTaken = `-- name: GetTenantHostsTaken :one
+SELECT COALESCE(
+        bool_or(
+            $1::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)))
+        ),
+        false
+    )::boolean AS domain_taken,
+    COALESCE(
+        bool_or(
+            $2::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)))
+        ),
+        false
+    )::boolean AS console_host_taken
+FROM tenants t
+WHERE t.id <> $3
+`
+
+type GetTenantHostsTakenParams struct {
+	Domain      string    `json:"domain"`
+	ConsoleHost string    `json:"console_host"`
+	ID          uuid.UUID `json:"id"`
+}
+
+type GetTenantHostsTakenRow struct {
+	DomainTaken      bool `json:"domain_taken"`
+	ConsoleHostTaken bool `json:"console_host_taken"`
+}
+
+// Whether a tenant other than id already serves the domain or the console host
+// as either of its own: its domain, or its console host, which is its
+// admin_domain or else admin.{domain}. Take LockTenantHosts first, in a
+// statement of its own, so this sees every write that held it before.
+func (q *Queries) GetTenantHostsTaken(ctx context.Context, arg GetTenantHostsTakenParams) (GetTenantHostsTakenRow, error) {
+	row := q.db.QueryRowContext(ctx, GetTenantHostsTaken, arg.Domain, arg.ConsoleHost, arg.ID)
+	var i GetTenantHostsTakenRow
+	err := row.Scan(&i.DomainTaken, &i.ConsoleHostTaken)
+	return i, err
+}
+
 const GetTenantLegalPages = `-- name: GetTenantLegalPages :one
 SELECT tc.terms_page_id,
     terms.slug AS terms_slug,
@@ -609,6 +648,20 @@ func (q *Queries) LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.U
 	var id_2 uuid.UUID
 	err := row.Scan(&id_2)
 	return id_2, err
+}
+
+const LockTenantHosts = `-- name: LockTenantHosts :exec
+SELECT pg_advisory_xact_lock(hashtextextended('tenant_hosts', 0))
+`
+
+// Serializes, for the rest of the transaction, the writes that decide which
+// tenant a host name belongs to. The unique constraints keep two domains or two
+// stored admin domains apart, but none of them can see a domain equal to
+// another tenant's console host, so two writes that each pass
+// GetTenantHostsTaken would otherwise both commit.
+func (q *Queries) LockTenantHosts(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, LockTenantHosts)
+	return err
 }
 
 const UpdateTenantConfig = `-- name: UpdateTenantConfig :one

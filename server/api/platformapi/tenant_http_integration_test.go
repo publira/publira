@@ -112,6 +112,7 @@ func TestCreateTenantRetriesDuplicatePublicID(t *testing.T) {
 	attempted := &publicIDArgument{}
 	mock.ExpectBegin()
 	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
+	expectTenantHosts(mock, false, false)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
 		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default, "ja").
@@ -151,6 +152,7 @@ func TestCreateTenantPublicIDAttemptsExhaustedIsInternal(t *testing.T) {
 	attempted := &publicIDArgument{}
 	mock.ExpectBegin()
 	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
+	expectTenantHosts(mock, false, false)
 	for range publicid.MaxAttempts {
 		expectPublicIDAttempt(mock)
 		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
@@ -180,6 +182,7 @@ func TestCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 	mock.ExpectBegin()
 	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
+	expectTenantHosts(mock, false, false)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "existing.example.com", Valid: true}, sql.NullString{}, "Domain Duplicate Tenant", tenanttz.Default, "ja").
@@ -206,6 +209,7 @@ func TestCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 	mock.ExpectBegin()
 	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
+	expectTenantHosts(mock, false, false)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "sub001.example.com", Valid: true}, sql.NullString{String: "admin.sub001.example.com", Valid: true}, "Subdomain Duplicate Tenant", tenanttz.Default, "ja").
@@ -224,6 +228,29 @@ func TestCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 	assertIntegrationExpectations(t, mock)
 }
 
+// A console host another tenant serves is refused before anything is written,
+// and named as admin_domain even when it is only the admin.{domain} the
+// request implies, so the console shows it where the existing duplicate shows.
+func TestCreateTenantTakenConsoleHostReturnsAlreadyExists(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+	mock.ExpectBegin()
+	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
+	expectTenantHosts(mock, false, true)
+	mock.ExpectRollback()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.CreateTenantRequest{Name: "Implied Console Tenant", Domain: "comics.example.com", DefaultLocale: "ja"})
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
+	}
+	assertFieldViolation(t, err, "admin_domain")
+	assertIntegrationExpectations(t, mock)
+}
+
 // The locale stored is the one the request names, not the platform default:
 // the settings row here says "ja" and the tenant is still created as "en".
 func TestCreateTenantStoresRequestedLocale(t *testing.T) {
@@ -234,6 +261,7 @@ func TestCreateTenantStoresRequestedLocale(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 	mock.ExpectBegin()
 	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
+	expectTenantHosts(mock, false, false)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "en.example.com", Valid: true}, sql.NullString{}, "English Tenant", tenanttz.Default, "en").

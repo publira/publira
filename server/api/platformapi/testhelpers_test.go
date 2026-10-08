@@ -151,6 +151,15 @@ func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLo
 		WillReturnRows(platformConfigRow(defaultTimezone, defaultLocale, 1, now))
 }
 
+// expectTenantHosts expects the lock a tenant's host names are claimed under
+// and the read of which of them another tenant serves, answering it with
+// domainTaken and consoleHostTaken.
+func expectTenantHosts(mock sqlmock.Sqlmock, domainTaken, consoleHostTaken bool) {
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.LockTenantHosts)).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantHostsTaken)).
+		WillReturnRows(sqlmock.NewRows([]string{"domain_taken", "console_host_taken"}).AddRow(domainTaken, consoleHostTaken))
+}
+
 func integrationOperatorColumns() []string {
 	return []string{"id", "public_id", "email", "name", "role", "status", "created_at"}
 }

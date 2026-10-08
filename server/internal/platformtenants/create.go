@@ -142,8 +142,9 @@ type Created struct {
 // administrator, and the audit entries filed under actor. The caller commits,
 // so a tenant reaches the database with all of it or not at all.
 //
-// A domain or admin domain another tenant holds is refused with a
-// [*fielderr.Conflict]; anything else is a failure of the database.
+// A domain or admin domain another tenant serves, as its domain or as its
+// console host, is refused with a [*fielderr.Conflict]; anything else is a
+// failure of the database.
 func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, c Creation) (Created, error) {
 	q := dbmodels.New(tx)
 
@@ -157,6 +158,12 @@ func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 	timezone := c.timezone
 	if timezone == "" {
 		timezone = platformconfig.DefaultTimeZone(ctx, q)
+	}
+	if err := lockHosts(ctx, q); err != nil {
+		return Created{}, err
+	}
+	if err := checkHosts(ctx, q, tenantID, c.domain, c.adminDomain); err != nil {
+		return Created{}, err
 	}
 
 	tenant, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.Tenant, error) {

@@ -99,6 +99,34 @@ JOIN tenants t
 ORDER BY candidate.ord
 LIMIT 1;
 
+-- name: LockTenantHosts :exec
+-- Serializes, for the rest of the transaction, the writes that decide which
+-- tenant a host name belongs to. The unique constraints keep two domains or two
+-- stored admin domains apart, but none of them can see a domain equal to
+-- another tenant's console host, so two writes that each pass
+-- GetTenantHostsTaken would otherwise both commit.
+SELECT pg_advisory_xact_lock(hashtextextended('tenant_hosts', 0));
+
+-- name: GetTenantHostsTaken :one
+-- Whether a tenant other than id already serves the domain or the console host
+-- as either of its own: its domain, or its console host, which is its
+-- admin_domain or else admin.{domain}. Take LockTenantHosts first, in a
+-- statement of its own, so this sees every write that held it before.
+SELECT COALESCE(
+        bool_or(
+            sqlc.arg('domain')::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)))
+        ),
+        false
+    )::boolean AS domain_taken,
+    COALESCE(
+        bool_or(
+            sqlc.arg('console_host')::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)))
+        ),
+        false
+    )::boolean AS console_host_taken
+FROM tenants t
+WHERE t.id <> sqlc.arg('id');
+
 -- name: LockTenantForUpdate :one
 -- Lock the tenant row so concurrent tenant branding image uploads and deletes
 -- (icon, logo) serialize. The following read of the current image must be a

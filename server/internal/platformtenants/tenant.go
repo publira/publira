@@ -149,10 +149,20 @@ func (p UpdateParams) Validate() (Change, error) {
 }
 
 // Update writes c inside tx and files the entry under actor. A domain or admin
-// domain another tenant holds is refused with a [*fielderr.Conflict].
+// domain another tenant serves, as its domain or as its console host, is
+// refused with a [*fielderr.Conflict], and so is a change that moves the
+// console host it implies onto one: clearing the admin domain, or a domain
+// whose admin.{domain} is taken.
 func Update(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, c Change) (dbmodels.Tenant, error) {
 	q := dbmodels.New(tx)
 	params := dbmodels.UpdateTenantInfoParams{ID: c.id}
+	// Every change takes the lock before reading what it keeps, a rename alone
+	// included: the write puts back the hosts it read, so a change to them that
+	// committed in between would be undone, and a name another tenant claimed
+	// once it was freed would be written back beside that claim unchecked.
+	if err := lockHosts(ctx, q); err != nil {
+		return dbmodels.Tenant{}, err
+	}
 	if c.name == nil || c.domain == nil || c.adminDomain == nil {
 		current, err := found(q.GetTenantByID(ctx, c.id))
 		if err != nil {
@@ -168,6 +178,12 @@ func Update(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 	}
 	if c.adminDomain != nil {
 		params.AdminDomain = *c.adminDomain
+	}
+	// A rename alone moves no host name, so it is not judged by them.
+	if c.domain != nil || c.adminDomain != nil {
+		if err := checkHosts(ctx, q, c.id, params.Domain, params.AdminDomain); err != nil {
+			return dbmodels.Tenant{}, err
+		}
 	}
 
 	tenant, err := q.UpdateTenantInfo(ctx, params)
