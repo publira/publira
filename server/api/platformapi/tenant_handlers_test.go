@@ -841,11 +841,11 @@ func TestPlatformTenantRPCsNameTheRefusedField(t *testing.T) {
 			return err
 		}},
 		{name: "update with a blank name", field: "name", call: func(s *platformServer) error {
-			_, err := s.UpdateTenant(ctx, &publirasplatformv1.UpdateTenantRequest{TenantId: testTenantID, Domain: "tenant.example.com"})
+			_, err := s.UpdateTenant(ctx, &publirasplatformv1.UpdateTenantRequest{TenantId: testTenantID, Name: new(" "), Domain: new("tenant.example.com")})
 			return err
 		}},
 		{name: "update with a blank domain", field: "domain", call: func(s *platformServer) error {
-			_, err := s.UpdateTenant(ctx, &publirasplatformv1.UpdateTenantRequest{TenantId: testTenantID, Name: "Tenant"})
+			_, err := s.UpdateTenant(ctx, &publirasplatformv1.UpdateTenantRequest{TenantId: testTenantID, Name: new("Tenant"), Domain: new(" ")})
 			return err
 		}},
 		{name: "add a member with an unknown role", field: "role", call: func(s *platformServer) error {

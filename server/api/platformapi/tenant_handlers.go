@@ -279,12 +279,14 @@ func (s *platformServer) UpdateTenant(
 	if err != nil {
 		return nil, s.tenantError(ctx, "invalid update tenant request", err)
 	}
-	// The request replaces all three, so an admin_domain left empty clears it.
+	// Only the fields the request carries change, so a form that edits the name
+	// cannot write back a domain or admin domain it read before someone else
+	// changed it.
 	change, err := platformtenants.UpdateParams{
 		ID:          tenantID,
-		Name:        &req.Name,
-		Domain:      &req.Domain,
-		AdminDomain: &req.AdminDomain,
+		Name:        req.Name,
+		Domain:      req.Domain,
+		AdminDomain: req.AdminDomain,
 	}.Validate()
 	if err != nil {
 		return nil, s.tenantError(ctx, "invalid update tenant request", err)

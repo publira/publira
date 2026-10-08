@@ -1707,11 +1707,14 @@ func (x *CancelTenantAdminInvitationResponse) GetInvitation() *TenantAdminInvita
 	return nil
 }
 
+// Only the fields a request carries change: an absent one keeps the tenant's
+// value, and a present empty admin_domain moves the console back to
+// admin.<domain>.
 type UpdateTenantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Domain        string                 `protobuf:"bytes,4,opt,name=domain,proto3" json:"domain,omitempty"`
-	AdminDomain   string                 `protobuf:"bytes,5,opt,name=admin_domain,json=adminDomain,proto3" json:"admin_domain,omitempty"`
+	Name          *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Domain        *string                `protobuf:"bytes,4,opt,name=domain,proto3,oneof" json:"domain,omitempty"`
+	AdminDomain   *string                `protobuf:"bytes,5,opt,name=admin_domain,json=adminDomain,proto3,oneof" json:"admin_domain,omitempty"`
 	TenantId      string                 `protobuf:"bytes,6,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1748,22 +1751,22 @@ func (*UpdateTenantRequest) Descriptor() ([]byte, []int) {
 }
 
 func (x *UpdateTenantRequest) GetName() string {
-	if x != nil {
-		return x.Name
+	if x != nil && x.Name != nil {
+		return *x.Name
 	}
 	return ""
 }
 
 func (x *UpdateTenantRequest) GetDomain() string {
-	if x != nil {
-		return x.Domain
+	if x != nil && x.Domain != nil {
+		return *x.Domain
 	}
 	return ""
 }
 
 func (x *UpdateTenantRequest) GetAdminDomain() string {
-	if x != nil {
-		return x.AdminDomain
+	if x != nil && x.AdminDomain != nil {
+		return *x.AdminDomain
 	}
 	return ""
 }
@@ -1944,12 +1947,15 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"#CancelTenantAdminInvitationResponse\x12J\n" +
 	"\n" +
 	"invitation\x18\x01 \x01(\v2*.publira.platform.v1.TenantAdminInvitationR\n" +
-	"invitation\"\x98\x01\n" +
-	"\x13UpdateTenantRequest\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
-	"\x06domain\x18\x04 \x01(\tR\x06domain\x12!\n" +
-	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomain\x12\x1b\n" +
-	"\ttenant_id\x18\x06 \x01(\tR\btenantIdJ\x04\b\x01\x10\x02J\x04\b\x03\x10\x04R\tpublic_id\"K\n" +
+	"invitation\"\xcc\x01\n" +
+	"\x13UpdateTenantRequest\x12\x17\n" +
+	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x1b\n" +
+	"\x06domain\x18\x04 \x01(\tH\x01R\x06domain\x88\x01\x01\x12&\n" +
+	"\fadmin_domain\x18\x05 \x01(\tH\x02R\vadminDomain\x88\x01\x01\x12\x1b\n" +
+	"\ttenant_id\x18\x06 \x01(\tR\btenantIdB\a\n" +
+	"\x05_nameB\t\n" +
+	"\a_domainB\x0f\n" +
+	"\r_admin_domainJ\x04\b\x01\x10\x02J\x04\b\x03\x10\x04R\tpublic_id\"K\n" +
 	"\x14UpdateTenantResponse\x123\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant2\xae\r\n" +
 	"\x15PlatformTenantService\x12b\n" +
@@ -2068,6 +2074,7 @@ func file_publira_platform_v1_tenant_proto_init() {
 	if File_publira_platform_v1_tenant_proto != nil {
 		return
 	}
+	file_publira_platform_v1_tenant_proto_msgTypes[29].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
