@@ -2,7 +2,7 @@
 # Probe an edge started with its sample's trusted-proxy setting enabled for the
 # hop's address alone: a request through the hop reaches the backend with the
 # client address the hop named, and a request from anywhere else is treated as
-# it is without the setting, its forged X-Forwarded-For replaced by the peer
+# it is without the setting, its forged client address replaced by the peer
 # address.
 set -euo pipefail
 

@@ -186,7 +186,7 @@ PUBLIRA_ROUTING_TRACE_CONTEXT_HEADERS=(
 # each of them back, so a probe can assert the edge replaced the value rather
 # than passing the caller's through: publira server finds the client IP it
 # records in Forwarded, ahead of X-Forwarded-For, and the CSRF origin check
-# reads the other two.
+# reads X-Forwarded-Host and X-Forwarded-Proto.
 PUBLIRA_ROUTING_FORGED_FORWARDED_HEADERS=(
   "Forwarded: for=203.0.113.9"
   "X-Forwarded-For: 203.0.113.9"
@@ -392,12 +392,65 @@ assert_trace_context_stripped() {
   routing_log "ok: ${name} → ${want_backend}${want_path} without trace context"
 }
 
+# The header each sample hands the client address over in. publira server
+# reads it from either: Traefik sets X-Forwarded-For itself and has no way to
+# compose Forwarded, while nginx and Caddy set Forwarded. The other header
+# must not arrive at all, or a caller's value would reach the backend in it.
+case "${PUBLIRA_ROUTING_PROXY}" in
+  traefik)
+    PUBLIRA_ROUTING_CLIENT_ADDRESS_HEADER=X-Forwarded-For
+    PUBLIRA_ROUTING_REMOVED_ADDRESS_HEADER=Forwarded
+    ;;
+  *)
+    PUBLIRA_ROUTING_CLIENT_ADDRESS_HEADER=Forwarded
+    PUBLIRA_ROUTING_REMOVED_ADDRESS_HEADER=X-Forwarded-For
+    ;;
+esac
+
+# Sets HANDED_CLIENT_ADDRESSES to the addresses the backend was handed in
+# PUBLIRA_ROUTING_CLIENT_ADDRESS_HEADER, comma-separated in the order they
+# arrived: X-Forwarded-For as it is, and the `for=` of every Forwarded
+# element without the quotes and brackets RFC 7239 puts around an IPv6
+# address. Fails when PUBLIRA_ROUTING_REMOVED_ADDRESS_HEADER arrived as well.
+# A global rather than output, so that a failure here stops the run instead of
+# a subshell.
+read_handed_client_addresses() {
+  local name="$1" body="$2" request="$3"
+  local removed value element address
+  local -a elements
+
+  removed="$(json_string_field "${body}" "${PUBLIRA_ROUTING_REMOVED_ADDRESS_HEADER,,}")"
+  if [[ -n "${removed}" ]]; then
+    routing_fail "${name}: backend saw ${PUBLIRA_ROUTING_REMOVED_ADDRESS_HEADER} '${removed}' (want it removed; ${PUBLIRA_ROUTING_PROXY} hands the client address over in ${PUBLIRA_ROUTING_CLIENT_ADDRESS_HEADER}) ${request} body=${body}"
+  fi
+
+  value="$(json_string_field "${body}" "${PUBLIRA_ROUTING_CLIENT_ADDRESS_HEADER,,}")"
+  if [[ "${PUBLIRA_ROUTING_CLIENT_ADDRESS_HEADER}" == X-Forwarded-For ]]; then
+    HANDED_CLIENT_ADDRESSES="${value// /}"
+    return
+  fi
+
+  HANDED_CLIENT_ADDRESSES=""
+  IFS=',' read -ra elements <<< "${value}"
+  for element in "${elements[@]}"; do
+    if [[ "${element}" != *for=* ]]; then
+      routing_fail "${name}: Forwarded '${value}' has an element without for= ${request} body=${body}"
+    fi
+    address="${element#*for=}"
+    address="${address%%;*}"
+    address="${address//[\\\"]/}"
+    address="${address#[}"
+    address="${address%]}"
+    HANDED_CLIENT_ADDRESSES+="${HANDED_CLIENT_ADDRESSES:+,}${address// /}"
+  done
+}
+
 # The headers a backend is promised, on a request that forges all of them.
 # `Host` arrives as the browser sent it, `X-Forwarded-Host` and
 # `X-Forwarded-Proto` describe this request rather than the caller's claim,
-# `X-Forwarded-For` is the peer address alone — appending would pass the
-# forged address on in front of the real one — and `Forwarded`, which the edge
-# does not write, is gone.
+# and the client address is the peer address alone, in the header the sample
+# hands it over in — appending would pass the forged address on in front of
+# the real one.
 assert_forwarded_headers() {
   local name="$1" method="$2" host="$3" path="$4" want_backend="$5"
   local out code body actual_backend value
@@ -430,20 +483,16 @@ assert_forwarded_headers() {
     routing_fail "${name}: X-Forwarded-Proto '${value}' (want 'http') ${method} ${path} body=${body}"
   fi
 
-  value="$(json_string_field "${body}" x-forwarded-for)"
+  read_handed_client_addresses "${name}" "${body}" "${method} ${path}"
+  value="${HANDED_CLIENT_ADDRESSES}"
   if [[ -z "${value}" ]]; then
-    routing_fail "${name}: X-Forwarded-For is empty (want the peer address) ${method} ${path} body=${body}"
+    routing_fail "${name}: ${PUBLIRA_ROUTING_CLIENT_ADDRESS_HEADER} is empty (want the peer address) ${method} ${path} body=${body}"
   fi
   if [[ "${value}" == *"203.0.113.9"* ]]; then
-    routing_fail "${name}: X-Forwarded-For '${value}' kept the forged address ${method} ${path} body=${body}"
+    routing_fail "${name}: ${PUBLIRA_ROUTING_CLIENT_ADDRESS_HEADER} '${value}' kept the forged address ${method} ${path} body=${body}"
   fi
   if [[ "${value}" == *,* ]]; then
-    routing_fail "${name}: X-Forwarded-For '${value}' is a list (want the peer address alone) ${method} ${path} body=${body}"
-  fi
-
-  value="$(json_string_field "${body}" forwarded)"
-  if [[ -n "${value}" ]]; then
-    routing_fail "${name}: backend saw Forwarded '${value}' (want it stripped) ${method} ${path} body=${body}"
+    routing_fail "${name}: ${PUBLIRA_ROUTING_CLIENT_ADDRESS_HEADER} '${value}' is a list (want the peer address alone) ${method} ${path} body=${body}"
   fi
 
   routing_log "ok: ${name} → ${want_backend} with the edge's own forwarded headers"
@@ -451,7 +500,9 @@ assert_forwarded_headers() {
 
 # A request the hop sends to the edge on behalf of a client, naming that
 # client's address in X-Forwarded-For and the scheme it used in
-# X-Forwarded-Proto, the way a TLS terminator that sets the headers does.
+# X-Forwarded-Proto, the way a TLS terminator that sets the headers does. It
+# names them in Forwarded as well, which no sample passes on even from a hop it
+# trusts: each reads the client address from the hop's X-Forwarded-For.
 # Prints the status code on the first line and the body after it, like
 # http_probe.
 hop_probe() {
@@ -459,8 +510,14 @@ hop_probe() {
   # shellcheck disable=SC2016 # JavaScript, run inside the hop container
   compose exec -T hop node -e '
     const [host, path, forwardedFor] = process.argv.slice(1);
+    const headers = {
+      Host: host,
+      "X-Forwarded-For": forwardedFor,
+      "X-Forwarded-Proto": "https",
+      Forwarded: `for=${forwardedFor};host=${host};proto=https`,
+    };
     const request = require("node:http").get(
-      { host: "proxy", port: 80, path, headers: { Host: host, "X-Forwarded-For": forwardedFor, "X-Forwarded-Proto": "https" } },
+      { host: "proxy", port: 80, path, headers },
       (res) => {
         let body = "";
         res.setEncoding("utf8");
@@ -473,12 +530,12 @@ hop_probe() {
   ' "${host}" "${path}" "${PUBLIRA_ROUTING_HOP_CLIENT_ADDRESS}" 2> /dev/null || true
 }
 
-# A request through the trusted hop: the backend has to read the client
-# address the hop named, which is the first address in X-Forwarded-For, and
+# A request through the trusted hop: the backend has to be handed the client
+# address the hop named, first in the header the sample hands it over in, and
 # the scheme it named, which the edge's own plain HTTP would otherwise replace.
-# nginx and Caddy forward that address alone; Traefik keeps the hop's header
-# and appends the hop's own address after it, which leaves the first one as it
-# is.
+# nginx and Caddy set Forwarded to that address alone; Traefik keeps the hop's
+# X-Forwarded-For and appends the hop's own address after it, which leaves the
+# first one as it is.
 assert_hop_client_address() {
   local name="$1" host="$2" path="$3" want_backend="$4"
   local out code body actual_backend value first
@@ -496,11 +553,11 @@ assert_hop_client_address() {
     routing_fail "${name}: backend '${actual_backend}' (want '${want_backend}') host=${host} GET ${path} through the hop body=${body}"
   fi
 
-  value="$(json_string_field "${body}" x-forwarded-for)"
+  read_handed_client_addresses "${name}" "${body}" "host=${host} GET ${path} through the hop"
+  value="${HANDED_CLIENT_ADDRESSES}"
   first="${value%%,*}"
-  first="${first// /}"
   if [[ "${first}" != "${PUBLIRA_ROUTING_HOP_CLIENT_ADDRESS}" ]]; then
-    routing_fail "${name}: X-Forwarded-For '${value}' does not start with the address the trusted hop named (${PUBLIRA_ROUTING_HOP_CLIENT_ADDRESS}) host=${host} GET ${path} body=${body}"
+    routing_fail "${name}: ${PUBLIRA_ROUTING_CLIENT_ADDRESS_HEADER} '${value}' does not start with the address the trusted hop named (${PUBLIRA_ROUTING_HOP_CLIENT_ADDRESS}) host=${host} GET ${path} body=${body}"
   fi
 
   value="$(json_string_field "${body}" x-forwarded-proto)"
