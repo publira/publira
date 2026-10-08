@@ -72,7 +72,6 @@ import {
   updateEpisodePurchaseAvailabilityAction,
   replaceEpisodeCreditsAction,
   updateEpisodeScheduleAction,
-  uploadEpisodePagesAction,
 } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -419,12 +418,10 @@ const EpisodePagesSection = async ({ params }: EditEpisodeSectionProps) => {
 
   return (
     <EpisodePagesForm
-      action={uploadEpisodePagesAction}
       episodeId={episodeResult.episode.id}
       episodePublicId={context.episodeId}
       seriesId={seriesResult.series.id}
       seriesPublicId={context.seriesId}
-      tenantId={context.tenantId}
     />
   );
 };
@@ -590,10 +587,6 @@ const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
       <FlashToast
         keyName="credits_updated"
         message="admin.series.episodes.credits_updated"
-      />
-      <FlashToast
-        keyName="pages_uploaded"
-        message="admin.series.episodes.pages_uploaded"
       />
       <FlashToast
         keyName="images_reordered"

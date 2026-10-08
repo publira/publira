@@ -2,7 +2,7 @@
 title: Reverse proxy
 description: Put a reverse proxy with TLS in front of an install, and change it when a tenant is added.
 published: 2026-10-06
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 Every request a browser or the mobile app sends to an install reaches it through one reverse proxy. The proxy picks the process that answers from the host name and the path, terminates TLS, and is where the headers a caller could forge stop. This page takes one of the sample configurations in the repository to a proxy that serves a tenant's site and its console over HTTPS, and says what to change when a tenant is added.
@@ -216,6 +216,10 @@ To record the reader's own address:
 Every sample then passes on the `X-Forwarded-Proto` the hop names, since the hop reaches the proxy over plain HTTP while the reader used HTTPS. nginx and Caddy take the rightmost address in the hop's `X-Forwarded-For` that is not one of the trusted ones, pass that address on alone, and keep setting `X-Forwarded-Host` themselves. Traefik passes the hop's `X-Forwarded-For` on with the hop's own address appended, so the address the hop named stays first only when the hop set the header rather than appending to the caller's. A request from any other address is treated as it is without the setting.
 
 Trust the hop's own addresses only. A trusted range that also reaches readers lets any of them name an address of their choosing.
+
+## Uploads in the tenant console
+
+The episode edit screen in the tenant console adds an episode's pages in one upload of up to 256 MiB, posted to `/api/v1/episode-pages` on the console host. Traefik and Caddy set no limit on a body unless you add one; nginx refuses anything over 1 MB by default, and its sample raises that to `256m` on that path. A smaller limit makes a ZIP of a whole episode fail with a message telling the staff member to split it.
 
 ## Webhooks
 

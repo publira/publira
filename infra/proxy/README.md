@@ -60,7 +60,7 @@ A webhook an outside service calls on the public site lives at `/api/v1/webhook/
 
 ### Request bodies
 
-A request under `/api/v1` is admitted with a body of up to 33 MiB: an inbound email webhook carries a whole mail with its attachments, which SendGrid accepts up to 30 MB, and `web-host` reads up to 32 MiB of it. Traefik and Caddy set no limit unless one is configured; nginx's default is 1 MB, so its sample raises it on that location.
+A request under `/api/v1` is admitted with a body of up to 33 MiB: an inbound email webhook carries a whole mail with its attachments, which SendGrid accepts up to 30 MB, and `web-host` reads up to 32 MiB of it. On a console host, `/api/v1/episode-pages` is admitted with a body of up to 256 MiB: the episode edit screen posts a whole episode's pages there in one upload, and `web-admin` reads up to 256 MiB of it. Traefik and Caddy set no limit unless one is configured; nginx's default is 1 MB, so its sample raises it on those locations.
 
 ### Precedence
 

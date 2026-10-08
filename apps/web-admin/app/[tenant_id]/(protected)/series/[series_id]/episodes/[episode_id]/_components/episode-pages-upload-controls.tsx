@@ -1,10 +1,22 @@
 "use client";
 
-import { useActionFormSettled } from "@publira/ui-components/action-form";
+import {
+  ActionForm,
+  useActionFormSettled,
+} from "@publira/ui-components/action-form";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Input } from "@publira/ui-components/input";
+import { useRouter } from "next/navigation";
 import { createContext, use, useMemo, useRef, useState } from "react";
 import type { DragEvent, ReactNode, RefObject } from "react";
+
+import { useClientMessages } from "#components/client-message";
+import {
+  EPISODE_PAGES_UPLOAD_MAX_BYTES,
+  EPISODE_PAGES_UPLOAD_PATH,
+} from "#lib/episode-pages-upload";
+import type { EpisodePagesUploadResponse } from "#lib/episode-pages-upload";
 
 type EpisodePagesUploadMode = "epub" | "pages" | "zip";
 
@@ -18,7 +30,12 @@ const FILE_INPUT: Record<
     multiple: false,
     name: "archive",
   },
-  pages: { accept: "image/*", multiple: true, name: "pages" },
+  // The formats publira server decodes; any other image is refused there.
+  pages: {
+    accept: "image/jpeg,image/png,image/gif,image/webp",
+    multiple: true,
+    name: "pages",
+  },
   zip: { accept: ".zip,application/zip", multiple: false, name: "archive" },
 };
 
@@ -45,6 +62,90 @@ const useEpisodePagesUpload = () => {
 
 const toFileNames = (files: FileList | null) =>
   files ? [...files].map((file) => file.name) : [];
+
+const readUploadResponse = async (
+  response: Response
+): Promise<EpisodePagesUploadResponse | null> => {
+  try {
+    return (await response.json()) as EpisodePagesUploadResponse;
+  } catch {
+    return null;
+  }
+};
+
+const submittedBytes = (formData: FormData) =>
+  [...formData.values()].reduce(
+    (total, value) => total + (value instanceof File ? value.size : 0),
+    0
+  );
+
+/**
+ * The form the pages are added through. It posts to the upload route rather
+ * than to a Server Action, whose body is capped well below a whole episode
+ * (`lib/episode-pages-upload.ts`), and refreshes the screen once the pages
+ * are in.
+ */
+export const EpisodePagesUploadForm = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const t = useClientMessages();
+  const router = useRouter();
+
+  const upload = async (
+    _prevState: FormActionState,
+    formData: FormData
+  ): Promise<FormActionState> => {
+    const tooLarge = {
+      message: t("admin.series.episodes.validation.upload_too_large"),
+      ok: false,
+    };
+    // Refused here so a submission the route would refuse is not sent first.
+    if (submittedBytes(formData) > EPISODE_PAGES_UPLOAD_MAX_BYTES) {
+      return tooLarge;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(EPISODE_PAGES_UPLOAD_PATH, {
+        body: formData,
+        method: "POST",
+      });
+    } catch {
+      return {
+        message: t("admin.series.episodes.upload_failed"),
+        ok: false,
+      };
+    }
+
+    // A proxy in front with a lower limit than the route answers this itself,
+    // in a body of its own.
+    if (response.status === 413) {
+      return tooLarge;
+    }
+    const result = await readUploadResponse(response);
+    if (!result) {
+      return {
+        message: t("admin.series.episodes.upload_failed"),
+        ok: false,
+      };
+    }
+    if (result.location) {
+      router.push(result.location);
+    } else if (result.ok) {
+      router.refresh();
+    }
+
+    return { message: result.message, ok: result.ok };
+  };
+
+  return (
+    <ActionForm action={upload} className="grid gap-4">
+      {children}
+    </ActionForm>
+  );
+};
 
 /**
  * Whether the pages arrive as images, a ZIP, or an ePub, and the files picked

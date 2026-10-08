@@ -78,6 +78,10 @@ assert_webhook_delivered "SendGrid post reaches web-host intact" localhost /api/
 assert_webhook_delivered "Resend post reaches web-host intact" localhost /api/v1/webhook/email/resend web-host 1024 "${PUBLIRA_ROUTING_RESEND_HEADERS[@]}"
 assert_webhook_delivered "SendGrid post of 32 MiB reaches web-host whole" localhost /api/v1/webhook/email/sendgrid web-host 33554432 "${PUBLIRA_ROUTING_SENDGRID_HEADERS[@]}"
 
+# The episode edit screen posts a whole episode's pages in one upload, which
+# web-admin reads up to 256 MiB of.
+assert_webhook_delivered "page upload of 256 MiB reaches web-admin whole" admin.localhost /api/v1/episode-pages web-admin 268435456
+
 # Inbound W3C Trace Context is dropped at the edge, before any route runs. The
 # Go servers adopt an inbound `traceparent` as the parent span, so a caller
 # that could set it would pick the trace ID and the sampled flag; every backend
