@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a group of commands, or a command of its own: `db` applies the database migrations, creates the login roles every process connects as, and reports the schema version, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `search` rebuilds the OpenSearch catalog index from the database, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a group of commands, or a command of its own: `db` applies the database migrations, creates the login roles every process connects as, reports the schema version, and seals every stored secret again with the primary encryption key, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `search` rebuilds the OpenSearch catalog index from the database, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
 
 ```bash
 task server:build
@@ -21,18 +21,26 @@ docker run --rm publira/publiractl:local job purge-content-events
 
 ## db
 
-Applies `db/migrations/` to a database, creates the PostgreSQL login roles every process connects as, and reports what the database holds, so a deployment brings its schema and its roles forward with the image it runs rather than with a separately installed golang-migrate CLI, `psql`, or a checkout of this repository.
+Applies `db/migrations/` to a database, creates the PostgreSQL login roles every process connects as, reports what the database holds, and moves every stored secret onto the primary encryption key, so a deployment brings its schema and its roles forward with the image it runs rather than with a separately installed golang-migrate CLI, `psql`, or a checkout of this repository.
 
 | Command | What it does |
 | --- | --- |
 | `db migrate` | Applies every pending migration and exits zero, also when there is nothing to apply. The structured log records the version it started from and the version it ended at. A dirty database is refused before anything runs |
 | `db roles` | Applies `db/seeds/baseline/` — the same files `task db:seed ENV=prod` applies with `psql` — in one transaction: the six login roles and `publira_rls_bypass`, their grants, the default privileges, the `publira_take_back_default_grants` event trigger, and the transfer of River's objects to `publira_outbox`. Then it sets the passwords it is given, and prints what it did to each login role |
 | `db version` | Prints the version `schema_migrations` records (`0` for a database no migration has touched) and whether it is dirty |
+| `db reseal` | Opens every sealed value the database holds with the configured encryption keys, seals each one a key other than the primary sealed again with the primary key, and prints, per key ID a value names, how many it sealed again, how many the primary key sealed already, and how many no configured key opens. `--dry-run` opens and counts the same values and writes nothing |
 
 `db roles` takes one password per login role, named after the role without its `publira_` prefix: `--public-password-*`, `--admin-password-*`, `--platform-password-*`, `--outbox-password-*`, `--ticker-password-*`, and `--content-stats-password-*`. Each is read from a file with its `-file` flag, from stdin with its `-stdin` flag (one per invocation), or from a masked prompt, and is sent to the server as a SCRAM-SHA-256 verifier rather than as the password. A role that does not exist yet needs its password: on a terminal it is asked for, and anywhere else the command exits `2` naming the flag, with nothing created. A role that exists keeps its password unless one is given, so running the command again changes nothing but the passwords it was given, and rotating a password is the same command with that one flag:
 
 ```bash
 publiractl db roles --admin-password-file /run/secrets/publira-admin-db-password
+```
+
+`db reseal` finds the sealed values by convention: every column named `*_encrypted`, text or jsonb, where each string that is an envelope is a sealed value, and `outbox_events.payload`, where only the members named `*_encrypted` hold one, since the rest of a payload is text a reader or a tenant wrote. The plaintext does not change, so nobody is signed out, and it runs while the install serves. A value no configured key opens is left as it is and logged with its column, row, and key ID, and the command exits `1` once every other value has moved.
+
+```bash
+publiractl db reseal --dry-run
+publiractl db reseal
 ```
 
 ### Order of first use
@@ -51,7 +59,8 @@ go -C server run ./cmd/publiractl db version
 
 Environment variables:
 
-- `PUBLIRA_DB_URL`: the connection that owns the schema, which for `db roles` has to be a superuser: it creates roles and an event trigger. Required: unlike the `job` group, the `db` group reads no other variable and never falls back to the development URL, so an unset variable fails before connecting.
+- `PUBLIRA_DB_URL`: the connection that owns the schema, which for `db roles` and `db reseal` has to be a superuser: the first creates roles and an event trigger, and the second writes tables no login role reaches all of. Required: unlike the `job` group, the `db` group connects with no other variable and never falls back to the development URL, so an unset variable fails before connecting.
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS` and `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: the keys `db reseal` opens values with and the one it seals them with, the same ones `publira server` and `publira worker` run with. Required by `db reseal` alone.
 - `PUBLIRA_DB_MIGRATIONS_DIR`: the directory the migrations are read from. Defaults to `migrations` beside the binary, which is `/app/migrations` in the image, and when that does not exist, to the `db/migrations` of the checkout the command runs in, which is what `go run` uses.
 
 `db roles` reads the role definitions the same way, from `roles` beside the binary (`/app/roles` in the image), else from the `db/seeds/baseline` of the checkout.

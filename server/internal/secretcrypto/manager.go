@@ -16,6 +16,10 @@ const (
 	envelopePrefix = "enc"
 	envelopeV1     = "v1"
 	separator      = ":"
+
+	// EnvelopeV1Prefix starts every value [Manager.EncryptString] seals, so a
+	// search for it finds every sealed value a column or a document holds.
+	EnvelopeV1Prefix = envelopePrefix + separator + envelopeV1 + separator
 )
 
 var (
@@ -132,7 +136,20 @@ func (m *Manager) DecryptString(value string) (string, error) {
 }
 
 func IsEncryptedEnvelope(value string) bool {
-	return strings.HasPrefix(value, envelopePrefix+separator+envelopeV1+separator)
+	return strings.HasPrefix(value, EnvelopeV1Prefix)
+}
+
+// EnvelopeKeyID is the ID of the key an envelope names as the one that sealed
+// it, and false for a value that names none.
+func EnvelopeKeyID(value string) (string, bool) {
+	if !IsEncryptedEnvelope(value) {
+		return "", false
+	}
+	parts := strings.Split(value, separator)
+	if len(parts) != 5 || parts[2] == "" {
+		return "", false
+	}
+	return parts[2], true
 }
 
 // EncryptedWithPrimary reports whether value is an envelope sealed with the

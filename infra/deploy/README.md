@@ -67,7 +67,7 @@ The secret encryption keys seal the SMTP password, the object store's access key
 | `publira server` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL` | The `publira_public` and `publira_admin` connections |
 | `publira server`, `publira worker` | `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL` | The private network URLs of `web-host` and `web-admin`, such as `http://web-host:3000`, where the cache revalidation is sent |
 | `publira worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The `publira_outbox`, `publira_ticker`, and `publira_content_stats` connections |
-| `publiractl` | `PUBLIRA_DB_URL` | The superuser connection, read by `db migrate` and `db roles` alone |
+| `publiractl` | `PUBLIRA_DB_URL` | The superuser connection, read by the `db` commands alone |
 
 `PUBLIRA_WEB_PLATFORM_INTERNAL_URL`, `PUBLIRA_PLATFORM_APP_URL`, and `PUBLIRA_EMAIL_RENDERER_URL` are left unset: they name the optional processes. The web images set `PORT`, `HOSTNAME`, and `PNCH_CACHE_APP` themselves.
 

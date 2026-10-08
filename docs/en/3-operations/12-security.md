@@ -2,6 +2,7 @@
 title: Securing an install
 description: How an install keeps tenants and credentials apart, how to rotate its encryption keys, database passwords, signing keys, and tokens, and what two-step verification and the audit logs cover.
 published: 2026-10-07
+updated: 2026-10-08
 ---
 
 An install holds the credentials of every tenant's payment provider and mail server, the personal data of every reader, and the keys that seal them. This page is for the operator who keeps them safe: what the install relies on to keep them apart, where each secret may go, how to replace each one, and what two-step verification and the audit logs give you. Read it before you need it — each procedure below is easier to run on a quiet day than during an incident.
@@ -14,7 +15,7 @@ Generating the secrets for the first time is part of [Installing](../2-deploymen
 
 No process connects to PostgreSQL as its superuser. Each part of the install connects as one of six roles that `publiractl db roles` creates, and each role reaches only what that part needs, as [The database roles](../2-deployments/2-installing.md#the-database-roles) describes. The roles that answer readers and a tenant's staff are bound by row-level security to the tenant a request names, so a defect in those paths cannot read another tenant's rows, and the operators' password hashes and the platform's mail credentials are out of reach of every role but `publira_platform` and the worker role that sends the platform's mail. The tenant console's role reads the address the platform's mail is sent from, and nothing else of the platform's mail settings.
 
-That only holds while each process has the connection URLs of its own roles and no others. Give the superuser's password to `publiractl db migrate` and `publiractl db roles` alone, and never set a process's connection URL to the superuser or to a role it does not use.
+That only holds while each process has the connection URLs of its own roles and no others. Give the superuser's password to the `publiractl db` commands alone, and never set a process's connection URL to the superuser or to a role it does not use.
 
 ### The two listeners
 
@@ -31,7 +32,7 @@ Give each secret only to the processes that read it. A process that does not nee
 | Each web app's session key, `PUBLIRA_AUTH_SECRET` | That web app | `publira server`, `publira worker` | Read and forge that app's session cookies, which carry the user's access token |
 | The cache revalidation token | `publira server`, `publira worker`, and every web app | `publiractl` | Drop any cached page, as often as they like |
 | The web service token | `publira server`, `web-admin`, `web-platform` | `web-host`, `publira worker` | Read, through the internal listener, the catalog of any tenant, unpublished series included, and the platform's tenants, operators, and readers |
-| The superuser's password | `publiractl db migrate` and `db roles` | Every long-lived process | Everything in the database |
+| The superuser's password | The `publiractl db` commands | Every long-lived process | Everything in the database |
 | Each role's password | The processes that connect as that role | The others | What that role reaches |
 
 The web apps may share one session key, but give each its own, as the Compose file does: then replacing one signs out only that app's users.
@@ -65,53 +66,39 @@ The two restarts are separate on purpose. A process that does not have `k2` yet 
 
 On a [Docker Compose](../2-deployments/3-docker-compose.md) install, each step is an edit to the two variables in `.env` followed by `docker compose up -d`, which restarts `server` and `worker` and leaves the rest running.
 
-### 3. Find what is still sealed with the old key
+### 3. Seal the stored values again
 
-This query counts the sealed values in the database by the key that sealed them, including those in outbox entries not sent yet. Run it with `psql`, connected as the superuser:
+Run `publiractl db reseal` on the superuser connection, with the same two variables the processes now have:
 
-```sql
-SELECT string_agg(format(
-    'SELECT %L AS sealed_in, m[1] AS key_id, count(*) FROM %I, regexp_matches(%I::text, ''enc:v1:([^:]+):'', ''g'') AS m GROUP BY 2',
-    table_name || '.' || column_name, table_name, column_name),
-  ' UNION ALL ') || ' ORDER BY 1, 2'
-FROM information_schema.columns
-WHERE table_schema = 'public'
-  AND (column_name LIKE '%\_encrypted' OR (table_name, column_name) = ('outbox_events', 'payload'))
-\gexec
+```bash
+publiractl db reseal
 ```
 
-On a Docker Compose install, save it as `sealed.sql` and run `docker compose exec -T postgres psql -U postgres -d publira < sealed.sql`. Each row names a column, a key ID, and how many values in that column the key sealed:
+It opens every sealed value in the database with the keys in the list and seals each one that names a key other than the primary again with the primary key: the platform's and every tenant's credentials, the two-step verification secret of every member of staff and operator, the token each Sign in with Apple link holds, the Web Push private key, and the ones that outbox entries carry to the worker. The values themselves stay the same, so nobody is signed out and nobody has to enter anything again, and the install keeps serving while it runs: a save that arrives meanwhile waits for it, or it for the save, and neither is lost.
+
+It prints one line per key ID that a stored value names:
 
 ```text
-                      sealed_in                      | key_id | count
------------------------------------------------------+--------+-------
- platform_smtp_config.password_encrypted             | k1     |     1
- platform_storage_config.secret_access_key_encrypted | k1     |     1
- platform_webpush_config.vapid_private_key_encrypted | k1     |     1
- user_mfa_totp.secret_encrypted                      | k1     |     3
+KEY ID        RESEALED  ON PRIMARY  UNREADABLE
+k1            42        0           0
+k2 (primary)  0         3           0
 ```
 
-### 4. Seal the stored values again
+`RESEALED` counts the values that key had sealed and the primary key now seals, `ON PRIMARY` the values the primary key had sealed already, and `UNREADABLE` the values no key in the list opens. To see the same table without writing anything, run `publiractl db reseal --dry-run`.
 
-A stored value moves to the primary key when the same value is saved again. Saving a form without entering the secret keeps the value sealed as it was, so in a console use the button beside the saved secret that replaces it, such as **Change** or **Replace access key**, and enter the same value; with `publiractl`, give the secret again with its `-file` or `-stdin` flag:
+On a [Docker Compose](../2-deployments/3-docker-compose.md) install, the `publiractl` service already has the superuser connection and the keys from `.env`:
 
-| Value | How it is sealed again |
-| --- | --- |
-| The platform's SMTP password | `publiractl smtp set` with the saved settings and the password, or **Email** in the Platform Console |
-| The object store's secret access key | `publiractl storage set` with the saved settings and the key, or **Storage** in the Platform Console |
-| The search engine's password | `publiractl search set` with the saved settings and the password, or **Search** in the Platform Console |
-| A tenant's mail, payment provider, App Store, Google Play, Firebase, Sign in with Apple, and inbound mail credentials | Only from the tenant console: that tenant's administrators enter each one again |
-| A member of staff's two-step verification secret | Only by its owner, turning two-step verification off and setting it up again |
-| The token a reader's Sign in with Apple link holds | Never by signing in again: a link keeps the token it was first given. Only a reader who removes the link and links Apple again gets one sealed with the new key |
-| The Web Push private key | Never: nothing saves the key pair again |
+```bash
+docker compose run --rm publiractl db reseal
+```
 
-Run the query again to see what is left.
+### 4. Remove the old key only when nothing uses it
 
-### 5. Remove the old key only when nothing uses it
+Remove `k1` from the list only when `db reseal` exits `0`, with no value left in the `UNREADABLE` column. Running it again then prints a single line for the primary key, and every value it counts opens without `k1`.
 
-Remove `k1` from the list only when the query shows no value sealed with it. A value whose key is gone cannot be opened: with `k1` removed while a Tenant admin's authenticator secret was still sealed with it, that administrator's sign-in fails at the two-step verification step with an error page, the server logs `secretcrypto: unknown key id: k1`, and the tenant's audit log records a failed **Two-step verification at sign-in** with the reason `secret_undecryptable`. Mail that needs a password sealed with the missing key is not sent either. Putting the key back in the list, and restarting, undoes all of it.
+When a value no key in the list opens, `db reseal` leaves it as it is, seals every other value, and exits `1`. Its log names each such value, with its column, its row, and the key ID it names, and the table counts it under that key ID. The value was sealed with a key that is no longer in the list, or with other key material under the same ID: put that key back in the list and run the command again. A value nobody holds the key to any more has to be entered again where it was saved, as a lost key requires.
 
-Since the last three rows of the table above are out of an operator's hands, an install that has ever saved a Web Push key pair, has staff using two-step verification, or has readers who signed in with Apple keeps its old key in the list for now ([#3833](https://github.com/publira/publira/issues/3833)). Rotating is still worth doing: every value saved from then on is sealed with a key that never coexisted with the old backups.
+A value whose key is gone cannot be opened: with `k1` removed while a Tenant admin's authenticator secret was still sealed with it, that administrator's sign-in fails at the two-step verification step with an error page, the server logs `secretcrypto: unknown key id: k1`, and the tenant's audit log records a failed **Two-step verification at sign-in** with the reason `secret_undecryptable`. Mail that needs a password sealed with the missing key is not sent either. Putting the key back in the list, and restarting, undoes all of it.
 
 When a key has leaked, sealing again is not enough. Whoever holds the old key and any database backup taken before the rotation can open every value in that backup, so replace the credentials themselves where they were issued — a new SMTP password, a new access key for the bucket, new payment provider keys — and save the new ones.
 
@@ -152,7 +139,7 @@ docker compose up -d
 
 ### The superuser's password
 
-`publiractl` does not manage the superuser. Change its password in PostgreSQL, with `ALTER ROLE postgres PASSWORD '<new password>'` in `psql` or through your database provider, and then the `PUBLIRA_DB_URL` you run `db migrate` and `db roles` with. No long-lived process uses it, so nothing restarts.
+`publiractl` does not manage the superuser. Change its password in PostgreSQL, with `ALTER ROLE postgres PASSWORD '<new password>'` in `psql` or through your database provider, and then the `PUBLIRA_DB_URL` you run the `db` commands with. No long-lived process uses it, so nothing restarts.
 
 On a Docker Compose install, PostgreSQL reads `PUBLIRA_POSTGRES_PASSWORD` only when it creates its volume, so changing `.env` alone changes nothing. Run `ALTER ROLE` with `docker compose exec postgres psql -U postgres -d publira`, then set the same value in `.env`. The next `docker compose up -d` restarts the `postgres` container, since its variables changed, which interrupts every process for a few seconds.
 
@@ -207,7 +194,7 @@ publiractl policy set --mfa-required-for-tenant-admin
 
 A member of staff who has lost both the authenticator and every recovery code cannot sign in again, and neither the tenant's other administrators nor you can remove it from their account yet ([#3796](https://github.com/publira/publira/issues/3796)). In the meantime, give their role to another account of theirs, as [A tenant's staff](./3-tenant-staff.md) describes.
 
-Each authenticator's secret is sealed with the encryption keys, which is why [removing an old key](#5-remove-the-old-key-only-when-nothing-uses-it) can lock staff out.
+Each authenticator's secret is sealed with the encryption keys, which is why [removing an old key](#4-remove-the-old-key-only-when-nothing-uses-it) can lock staff out.
 
 ### Platform operators
 
