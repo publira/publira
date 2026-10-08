@@ -1902,9 +1902,10 @@ type Querier interface {
 	//
 	// The month runs from the first day's midnight to the next month's in the
 	// given zone. A fully refunded sale is not a sale; a partial refund stays a
-	// sale and is carried as refunded_amount. A store's test purchase paid the
-	// tenant nothing and is not a sale either. The payout is floored per line over
-	// the month's sum, which keeps the rounding loss to one yen per line.
+	// sale and is carried as refunded_amount. A test purchase, from a store's
+	// sandbox or a payment provider's test mode, paid the tenant nothing and is not
+	// a sale either. The payout is floored per line over the month's sum, which
+	// keeps the rounding loss to one yen per line.
 	ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error)
 	// The lines of a statement in the order they were closed in, with the public
 	// IDs of the catalog rows that still exist.

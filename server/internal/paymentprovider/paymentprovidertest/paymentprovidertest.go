@@ -20,6 +20,9 @@ type Checkout struct {
 	CheckoutID string
 	PaymentID  string
 	Purchase   paymentprovider.Purchase
+	// Test makes it a checkout paid in the provider's test mode, and its
+	// absence one paid in live mode.
+	Test bool
 }
 
 // Refund is a refund a fixture signs a notification for, in yen.
@@ -43,7 +46,8 @@ type Fixture interface {
 	// differently, as another tenant's would.
 	OtherCredentials() paymentprovider.Credentials
 	// CheckoutCompleted answers the notification of a paid checkout, and
-	// makes its payment one the provider's API reports as paid.
+	// makes its payment one the provider's API reports as paid, in the mode
+	// the checkout names.
 	CheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, checkout Checkout) ([]byte, http.Header)
 	// Refunded answers the notification of a refund in yen, and makes the
 	// refund part of what the provider's API reports for the payment.
@@ -83,6 +87,26 @@ func RunParse(t *testing.T, fixture Fixture) {
 		}
 		if completed.Purchase != checkout.Purchase {
 			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, checkout.Purchase)
+		}
+		if completed.Test {
+			t.Fatal("a live-mode checkout is reported as a test")
+		}
+	})
+
+	t.Run("a test-mode checkout is reported as a test", func(t *testing.T) {
+		testCheckout := checkout
+		testCheckout.Test = true
+		payload, headers := fixture.CheckoutCompleted(t, credentials, testCheckout)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		completed, ok := event.(paymentprovider.PurchaseCompleted)
+		if !ok {
+			t.Fatalf("event = %T, want PurchaseCompleted", event)
+		}
+		if !completed.Test {
+			t.Fatal("a test-mode checkout is reported as a live one")
 		}
 	})
 
@@ -153,6 +177,13 @@ type Tenant interface {
 	Deliver(t *testing.T, payload []byte, headers http.Header) error
 	// Purchases counts the tenant's purchases.
 	Purchases(t *testing.T) int
+	// TestPurchases counts the tenant's purchases recorded as test ones.
+	TestPurchases(t *testing.T) int
+	// OpensEpisode reports whether the reader may open the episode.
+	OpensEpisode(t *testing.T) bool
+	// SalesGross answers the gross sales of the current month's royalty
+	// statement.
+	SalesGross(t *testing.T) int64
 	// RefundedAmount answers the refunded amount recorded on the tenant's only
 	// purchase, zero when none is.
 	RefundedAmount(t *testing.T) int32
@@ -179,6 +210,49 @@ func Run(t *testing.T, harness Harness, fixture Fixture) {
 		}
 		if got := tenant.Purchases(t); got != 1 {
 			t.Fatalf("purchases = %d, want 1", got)
+		}
+	})
+
+	t.Run("a live-mode checkout opens the episode and is a sale", func(t *testing.T) {
+		tenant := harness.NewTenant(t, provider, credentials)
+		payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{
+			CheckoutID: "checkout_live",
+			PaymentID:  "payment_live",
+			Purchase:   tenant.Purchase(),
+		})
+		if err := tenant.Deliver(t, payload, headers); err != nil {
+			t.Fatalf("checkout: %v", err)
+		}
+		if !tenant.OpensEpisode(t) {
+			t.Fatal("the purchase does not open the episode")
+		}
+		if got := tenant.TestPurchases(t); got != 0 {
+			t.Fatalf("test purchases = %d, want 0", got)
+		}
+		if got, want := tenant.SalesGross(t), int64(tenant.Purchase().Price); got != want {
+			t.Fatalf("sales gross = %d, want %d", got, want)
+		}
+	})
+
+	t.Run("a test-mode checkout opens the episode and is no sale", func(t *testing.T) {
+		tenant := harness.NewTenant(t, provider, credentials)
+		payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{
+			CheckoutID: "checkout_test_mode",
+			PaymentID:  "payment_test_mode",
+			Purchase:   tenant.Purchase(),
+			Test:       true,
+		})
+		if err := tenant.Deliver(t, payload, headers); err != nil {
+			t.Fatalf("checkout: %v", err)
+		}
+		if !tenant.OpensEpisode(t) {
+			t.Fatal("a test-mode purchase does not open the episode")
+		}
+		if got := tenant.TestPurchases(t); got != 1 {
+			t.Fatalf("test purchases = %d, want 1", got)
+		}
+		if got := tenant.SalesGross(t); got != 0 {
+			t.Fatalf("sales gross = %d, want 0 for a test-mode purchase", got)
 		}
 	})
 

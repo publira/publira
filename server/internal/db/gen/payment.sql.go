@@ -103,7 +103,8 @@ INSERT INTO purchases (
     expires_at,
     provider,
     provider_checkout_id,
-    provider_payment_id
+    provider_payment_id,
+    is_test
 )
 SELECT
     $1::uuid,
@@ -114,7 +115,8 @@ SELECT
     $6::timestamptz,
     $7::text,
     $8::text,
-    $9::text
+    $9::text,
+    $10::boolean
 FROM locked
 WHERE NOT EXISTS (
     SELECT 1
@@ -138,6 +140,7 @@ type CreatePurchaseFromProviderCheckoutParams struct {
 	Provider           string         `json:"provider"`
 	ProviderCheckoutID string         `json:"provider_checkout_id"`
 	ProviderPaymentID  sql.NullString `json:"provider_payment_id"`
+	IsTest             bool           `json:"is_test"`
 }
 
 // The advisory lock serializes different checkouts for the same buyer and
@@ -155,6 +158,7 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 		arg.Provider,
 		arg.ProviderCheckoutID,
 		arg.ProviderPaymentID,
+		arg.IsTest,
 	)
 	var i Purchase
 	err := row.Scan(

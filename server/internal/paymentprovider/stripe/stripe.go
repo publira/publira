@@ -187,6 +187,7 @@ func purchaseCompletedEvent(event *stripego.Event) (paymentprovider.Event, error
 		CheckoutID: session.ID,
 		PaymentID:  paymentIntentID,
 		Purchase:   purchase,
+		Test:       !session.Livemode,
 	}, nil
 }
 

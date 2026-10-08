@@ -91,6 +91,7 @@ func (Fixture) CheckoutCompleted(t testing.TB, credentials paymentprovider.Crede
 		"id":              checkout.CheckoutID,
 		"amount_subtotal": checkout.Purchase.Price,
 		"amount_total":    checkout.Purchase.Price,
+		"livemode":        !checkout.Test,
 		"payment_intent":  checkout.PaymentID,
 		"metadata":        PurchaseMetadata(checkout.Purchase),
 	})
@@ -127,6 +128,10 @@ func recorded(t testing.TB, credentials paymentprovider.Credentials, name string
 		t.Fatalf("%s has no data.object", name)
 	}
 	maps.Copy(object, fields)
+	// An event is delivered in the mode of the object it is about.
+	if livemode, ok := fields["livemode"]; ok {
+		event["livemode"] = livemode
+	}
 	// Stripe refuses an event from an API version other than the library's.
 	event["api_version"] = stripego.APIVersion
 	payload, err := json.Marshal(event)

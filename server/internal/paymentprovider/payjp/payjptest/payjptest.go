@@ -41,6 +41,7 @@ type API struct {
 type paymentFlow struct {
 	status         string
 	amountReceived int
+	livemode       bool
 	refunds        []refund
 }
 
@@ -84,6 +85,14 @@ func (a *API) SetPaymentFlow(secretKey, id, status string, amountReceived int) {
 	flow := a.flow(secretKey, id)
 	flow.status = status
 	flow.amountReceived = amountReceived
+}
+
+// SetLivemode makes the payment flow id, under secretKey, one made in live
+// mode, or in test mode as every flow is until this says otherwise.
+func (a *API) SetLivemode(secretKey, id string, livemode bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.flow(secretKey, id).livemode = livemode
 }
 
 // AddRefund makes a refund of amount yen, in status, on the payment flow id
@@ -176,8 +185,9 @@ func (a *API) getPaymentFlow(w http.ResponseWriter, r *http.Request) {
 	flow, ok := a.flows[secretKey(r)][id]
 	var status string
 	var amountReceived int
+	var livemode bool
 	if ok {
-		status, amountReceived = flow.status, flow.amountReceived
+		status, amountReceived, livemode = flow.status, flow.amountReceived, flow.livemode
 	}
 	a.mu.Unlock()
 	if !ok {
@@ -192,7 +202,7 @@ func (a *API) getPaymentFlow(w http.ResponseWriter, r *http.Request) {
 		"capture_method":       "automatic",
 		"client_secret":        id + "_secret_fake",
 		"currency":             "jpy",
-		"livemode":             false,
+		"livemode":             livemode,
 		"metadata":             map[string]any{},
 		"payment_method_types": []string{"card"},
 		"status":               status,
@@ -344,9 +354,12 @@ func (*Fixture) OtherCredentials() paymentprovider.Credentials {
 
 func (f *Fixture) CheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout) ([]byte, http.Header) {
 	t.Helper()
-	f.API.SetPaymentFlow(credentials[payjp.FieldSecretKey], checkout.PaymentID, "succeeded", int(checkout.Purchase.Price))
+	secretKey := credentials[payjp.FieldSecretKey]
+	f.API.SetPaymentFlow(secretKey, checkout.PaymentID, "succeeded", int(checkout.Purchase.Price))
+	f.API.SetLivemode(secretKey, checkout.PaymentID, !checkout.Test)
 	return Event(t, credentials[payjp.FieldWebhookToken], "checkout.session.completed.json", map[string]any{
 		"id":              checkout.CheckoutID,
+		"livemode":        !checkout.Test,
 		"amount_subtotal": checkout.Purchase.Price,
 		"amount_total":    checkout.Purchase.Price,
 		"payment_flow_id": checkout.PaymentID,

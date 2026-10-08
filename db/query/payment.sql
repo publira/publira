@@ -198,7 +198,8 @@ INSERT INTO purchases (
     expires_at,
     provider,
     provider_checkout_id,
-    provider_payment_id
+    provider_payment_id,
+    is_test
 )
 SELECT
     sqlc.arg('id')::uuid,
@@ -209,7 +210,8 @@ SELECT
     sqlc.narg('expires_at')::timestamptz,
     sqlc.arg('provider')::text,
     sqlc.arg('provider_checkout_id')::text,
-    sqlc.narg('provider_payment_id')::text
+    sqlc.narg('provider_payment_id')::text,
+    sqlc.arg('is_test')::boolean
 FROM locked
 WHERE NOT EXISTS (
     SELECT 1

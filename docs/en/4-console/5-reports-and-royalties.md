@@ -71,7 +71,7 @@ The sales of a month are:
 - Purchases of the episode on the site, through Stripe or PAY.JP, at the price the reader paid.
 - Purchases in the tenant's app through the App Store or Google Play, at the episode's price. The store's commission is not taken off.
 
-Nothing else is a sale. Access tickets, **Free if you wait**, free reading periods, and an Author reading their own episode open an episode without one. A purchase from the App Store sandbox or a Play license tester is a test and is left out, but a purchase made with Stripe's or PAY.JP's test keys is counted for now ([#3769](https://github.com/publira/publira/issues/3769)), as [Testing before going live](./4-selling-episodes.md#testing-before-going-live) explains.
+Nothing else is a sale. Access tickets, **Free if you wait**, free reading periods, and an Author reading their own episode open an episode without one. A purchase from the App Store sandbox or a Play license tester, and one made with Stripe's or PAY.JP's test keys, is a test and is left out.
 
 A purchase that is refunded in full drops out of the month it was bought in. A partial refund leaves the sale in, and its amount is taken off under **Refunded**. Either way the refund counts against the month of the purchase, not the month of the refund, and only while that month is open.
 

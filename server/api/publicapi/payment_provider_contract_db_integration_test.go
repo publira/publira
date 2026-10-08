@@ -131,6 +131,44 @@ func (c *contractTenant) Purchases(t *testing.T) int {
 	return count
 }
 
+func (c *contractTenant) TestPurchases(t *testing.T) int {
+	t.Helper()
+	var count int
+	if err := c.harness.pg.DB.QueryRowContext(context.Background(),
+		`SELECT count(*) FROM purchases WHERE tenant_id = $1 AND is_test`, c.purchase.TenantID,
+	).Scan(&count); err != nil {
+		t.Fatalf("count test purchases: %v", err)
+	}
+	return count
+}
+
+func (c *contractTenant) OpensEpisode(t *testing.T) bool {
+	t.Helper()
+	opens, err := dbmodels.New(c.harness.pg.DB).UserHasEpisodeContentAccess(context.Background(), dbmodels.UserHasEpisodeContentAccessParams{
+		TenantID:  c.purchase.TenantID,
+		UserID:    c.purchase.ReaderID,
+		EpisodeID: c.purchase.EpisodeID,
+	})
+	if err != nil {
+		t.Fatalf("UserHasEpisodeContentAccess: %v", err)
+	}
+	return opens
+}
+
+func (c *contractTenant) SalesGross(t *testing.T) int64 {
+	t.Helper()
+	now := time.Now().UTC()
+	totals, err := dbmodels.New(c.harness.pg.DB).GetRoyaltySalesTotalsForPeriod(context.Background(), dbmodels.GetRoyaltySalesTotalsForPeriodParams{
+		TenantID: c.purchase.TenantID,
+		Period:   time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC),
+		TimeZone: "UTC",
+	})
+	if err != nil {
+		t.Fatalf("GetRoyaltySalesTotalsForPeriod: %v", err)
+	}
+	return totals.TotalGross
+}
+
 func (c *contractTenant) RefundedAmount(t *testing.T) int32 {
 	t.Helper()
 	var amount sql.NullInt32
