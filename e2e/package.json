@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "@next/playwright": "catalog:",
-    "@playwright/test": "1.63.0",
+    "@playwright/test": "1.64.0",
     "@publira/tsconfig": "workspace:*",
     "@publira/web-session": "workspace:*",
     "@types/node": "catalog:",
