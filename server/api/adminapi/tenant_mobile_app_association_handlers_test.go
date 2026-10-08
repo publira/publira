@@ -130,7 +130,8 @@ func TestNormalizeIosAssociationRefusesMalformedValues(t *testing.T) {
 
 func TestTenantMobileAppAssociationRevalidateTags(t *testing.T) {
 	tags := tenantMobileAppAssociationRevalidateTags(" tenant-id ")
-	if len(tags) != 1 || tags[0] != "tenant:tenant-id:mobile-app-association" {
-		t.Fatalf("tenantMobileAppAssociationRevalidateTags() = %v, want [tenant:tenant-id:mobile-app-association]", tags)
+	want := []string{"tenant:tenant-id:mobile-app-association", "tenant:tenant-id:site"}
+	if !slices.Equal(tags, want) {
+		t.Fatalf("tenantMobileAppAssociationRevalidateTags() = %v, want %v", tags, want)
 	}
 }
