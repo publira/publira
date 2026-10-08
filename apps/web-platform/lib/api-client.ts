@@ -1,8 +1,8 @@
 import {
-  createForwardedForInterceptor,
-  FORWARDED_FOR_HEADER,
+  createForwardedInterceptor,
+  forwardedHeadersOf,
   serviceCallContextValues,
-} from "@publira/api-client/forwarded-for";
+} from "@publira/api-client/forwarded";
 import { createPlatformApiClient } from "@publira/api-client/platform/client";
 import {
   buildBearerHeaders,
@@ -22,14 +22,14 @@ import { resolveWebServiceToken } from "./web-service-token";
 // gRPC transport is used for internal Next.js → Go API communication
 const grpcBaseUrl = process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8100";
 
-const readForwardedFor = async () => {
+const readForwardedHeaders = async () => {
   const requestHeaders = await headers();
-  return requestHeaders.get("x-forwarded-for");
+  return forwardedHeadersOf(requestHeaders);
 };
 
 export const apiClient = createPlatformApiClient({
   baseUrl: grpcBaseUrl,
-  interceptors: [createForwardedForInterceptor(readForwardedFor)],
+  interceptors: [createForwardedInterceptor(readForwardedHeaders)],
   transport: "grpc",
 });
 
@@ -39,10 +39,8 @@ export const apiClient = createPlatformApiClient({
  * address from the interceptor.
  */
 export const buildClientAddressHeaders = async () => {
-  const forwardedFor = await readForwardedFor();
-  return forwardedFor
-    ? { headers: { [FORWARDED_FOR_HEADER]: forwardedFor } }
-    : {};
+  const forwarded = await readForwardedHeaders();
+  return { headers: forwarded };
 };
 
 export const buildSessionHeaders = (accessToken: string) =>
@@ -58,7 +56,7 @@ type CallOptions = NonNullable<Parameters<(typeof apiClient.auth)["getMe"]>[1]>;
  *
  * It says nothing about who is looking, so the exported read awaits
  * `verifyPlatformSession` before the cached function it signs. The context
- * value keeps the forwarded-for interceptor from reading `headers()`, which a
+ * value keeps the forwarded headers interceptor from reading `headers()`, which a
  * shared cache scope may not do.
  */
 export const withServiceHeaders = (): CallOptions => ({
