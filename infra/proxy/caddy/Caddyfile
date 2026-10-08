@@ -53,14 +53,16 @@
 # came from a proxy the global options trust, whose value it keeps.
 (publira_forwarded) {
 	header_up X-Forwarded-Host {http.request.hostport}
-	# The client address, replacing whatever arrived: this is the trust
-	# boundary, and publira server finds the client IP an access token and an
-	# audit log entry record in this header. It is the peer address, or the
-	# one a hop the global options trust named.
-	header_up X-Forwarded-For {client_ip}
-	# publira server reads Forwarded ahead of X-Forwarded-For, and this edge
-	# does not write it, so one that arrived is the caller's.
-	header_up -Forwarded
+	# The client address travels in Forwarded (RFC 7239), replacing whatever
+	# arrived: this is the trust boundary, and publira server finds the client
+	# IP an access token and an audit log entry record in this header. It is
+	# the peer address, or the one a hop the global options trust named, in
+	# the form the map in the site block writes it.
+	header_up Forwarded {publira_forwarded}
+	# reverse_proxy writes an X-Forwarded-For of its own otherwise, appending
+	# to the one a trusted hop sent, so it is removed and the client address
+	# travels in Forwarded alone.
+	header_up -X-Forwarded-For
 	# W3C Trace Context ends here, so each backend opens a fresh root span
 	# instead of adopting a trace the caller chose.
 	header_up -traceparent
@@ -77,6 +79,14 @@
 	@unlisted not host no/host {$PUBLIRA_EDGE_SITE_HOSTS} {$PUBLIRA_EDGE_ADMIN_HOSTS} {$PUBLIRA_EDGE_PLATFORM_HOSTS}
 
 	@images path /images*
+
+	# The client address in the form Forwarded takes it, which the
+	# publira_forwarded snippet sends: an IPv6 address has to be quoted and in
+	# brackets, an IPv4 address goes as it is.
+	map {client_ip} {publira_forwarded} {
+		~: `for="[{client_ip}]"`
+		default "for={client_ip}"
+	}
 
 	# Everything under /api except the Next.js Route Handlers on /api/v1:
 	# /api/v1/revalidate on every app, plus the view beacon, the read beacon,

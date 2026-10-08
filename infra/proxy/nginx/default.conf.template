@@ -31,7 +31,7 @@ include /etc/nginx/templates/upstreams.conf;
 # hop's address. Listing the hop's own addresses, and no others, makes nginx
 # take the client address from the X-Forwarded-For a request from them carries:
 # the rightmost address in it that is not one of them. $remote_addr becomes
-# that address, so snippets/proxy-headers.conf still sets X-Forwarded-For to a
+# that address, so snippets/proxy-headers.conf still sets Forwarded to a
 # single address rather than appending. Requests from anywhere else keep their
 # peer address, as they do without these lines. The same addresses go in the
 # geo block below.
@@ -56,6 +56,14 @@ map $publira_trusted_hop$http_x_forwarded_proto $publira_forwarded_proto {
     default $scheme;
     1http   http;
     1https  https;
+}
+
+# The peer address in the form Forwarded takes it, which
+# snippets/proxy-headers.conf sends: an IPv6 address has to be quoted and in
+# brackets, an IPv4 address goes as it is.
+map $remote_addr $publira_forwarded {
+    ~:      "for=\"[$remote_addr]\"";
+    default "for=$remote_addr";
 }
 
 # A host in no list: the edge answers it itself, and no backend sees the
