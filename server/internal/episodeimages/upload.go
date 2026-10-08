@@ -32,6 +32,11 @@ const (
 	imagePersistenceRetryBackoff    = 100 * time.Millisecond
 	imagePersistenceRetryMultiplier = 2
 	maxArchiveEntries               = 1000
+	// MaxUploadBytes is the most one upload carries: its archive, or its
+	// images taken together. A whole episode's pages fit in one ZIP or ePub of
+	// that size, around a hundred pages of a megabyte each, and an episode of
+	// larger pages goes up in several uploads.
+	MaxUploadBytes = 128 << 20
 )
 
 type Querier interface {
@@ -114,6 +119,13 @@ func collectInputs(images []*publiraadminv1.EpisodeImageUpload, archiveData []by
 	}
 	if !hasArchive && len(images) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "images are required")
+	}
+	size := len(archiveData)
+	for _, imageUpload := range images {
+		size += len(imageUpload.GetData())
+	}
+	if size > MaxUploadBytes {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Sprintf("an upload may carry at most %d bytes", MaxUploadBytes))
 	}
 
 	if hasArchive {

@@ -1,15 +1,19 @@
 package adminapi
 
 import (
+	"encoding/base64"
 	"log/slog"
 	"net/http"
 	"testing"
 
 	"connectrpc.com/connect/v2"
 	"github.com/DATA-DOG/go-sqlmock"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/episodeimages"
 	"github.com/publira/publira/server/internal/imageproc"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
@@ -126,6 +130,39 @@ func TestReadLimitsAdmitTheLargestDocumentedUpload(t *testing.T) {
 					t.Errorf("the tenant the upload names was not looked up: %v", err)
 				}
 			})
+		}
+	}
+}
+
+// An episode upload carrying the largest archive episodeimages takes fits its
+// procedure's read limit in either encoding, the JSON one carrying the archive
+// in base64 a third larger. The sizes are worked out rather than sent: such a
+// message runs to well over a hundred megabytes, and
+// TestReadLimitsBoundEveryProcedure already shows that a request of exactly
+// the limit is read.
+func TestReadLimitsAdmitTheLargestEpisodeArchive(t *testing.T) {
+	sample := []byte{0, 0, 0}
+	req := &publiraadminv1.UploadEpisodeImagesRequest{
+		Tenant:             &publirattypesv1.TenantContext{TenantId: "00000000-0000-0000-0000-000000000001"},
+		ArchiveData:        sample,
+		ArchiveFilename:    "episode.zip",
+		ArchiveContentType: "application/zip",
+		EpisodeId:          "EPISODE00001",
+		SeriesId:           "SERIES000001",
+	}
+	encoded, err := protojson.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const archive = episodeimages.MaxUploadBytes
+	sizes := map[string]int{
+		"binary": proto.Size(req) - len(sample) - protowire.SizeVarint(uint64(len(sample))) + archive + protowire.SizeVarint(archive),
+		"JSON":   len(encoded) - base64.StdEncoding.EncodedLen(len(sample)) + base64.StdEncoding.EncodedLen(archive),
+	}
+	limit := readLimits[publiraadminv1connect.AdminSeriesServiceUploadEpisodeImagesProcedure]
+	for encoding, size := range sizes {
+		if size > limit {
+			t.Errorf("an archive of %d bytes in the %s encoding is a %d-byte message, past the %d-byte read limit", archive, encoding, size, limit)
 		}
 	}
 }

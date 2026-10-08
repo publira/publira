@@ -734,9 +734,11 @@ service AdminSeriesService {
   rpc ReorderEpisodes(ReorderEpisodesRequest) returns (ReorderEpisodesResponse) {}
   // Minimum role: tenant_editor.
   rpc CreateEpisode(CreateEpisodeRequest) returns (CreateEpisodeResponse) {}
-  // A request of more than 128 MiB is resource_exhausted, refused while it is
-  // read: a whole episode's pages fit in one ZIP or ePub of that size, and an
-  // episode of larger pages goes up in several requests.
+  // An upload carries at most 128 MiB, its archive or its images taken
+  // together, and a larger one is invalid_argument: a whole episode's pages
+  // fit in one ZIP or ePub of that size, and an episode of larger pages goes
+  // up in several requests. A request past what such an upload takes in the
+  // JSON encoding is resource_exhausted, refused while it is read.
   //
   // Minimum role: tenant_editor.
   rpc UploadEpisodeImages(UploadEpisodeImagesRequest) returns (UploadEpisodeImagesResponse) {}

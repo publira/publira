@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/episodeimages"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/inboundprovider"
@@ -378,11 +379,9 @@ const (
 	// are bounded by rpcmiddleware.DefaultReadMaxBytes everywhere else.
 	imageUploadReadMaxBytes = (maxUploadedImageBytes+2)/3*4 + rpcmiddleware.DefaultReadMaxBytes
 	// episodeUploadReadMaxBytes is what UploadEpisodeImages reads of a
-	// request: a whole episode's pages as one ZIP or ePub, around a hundred
-	// pages of a megabyte each, in either encoding. A page may be as large as
-	// imageproc.MaxUploadBytes, so an episode of pages that size is uploaded
-	// in several requests rather than one.
-	episodeUploadReadMaxBytes = 128 << 20
+	// request: the largest upload episodeimages takes, in the base64 of the
+	// JSON encoding as well, and the fields sent beside it.
+	episodeUploadReadMaxBytes = (episodeimages.MaxUploadBytes+2)/3*4 + rpcmiddleware.DefaultReadMaxBytes
 )
 
 // readLimits are the procedures of this namespace that read more of one
