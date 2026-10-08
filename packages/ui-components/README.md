@@ -64,8 +64,8 @@ Every component can be imported directly:
 
 ```tsx
 import { Button } from "@publira/ui-components/button";
-import { Input } from "@publira/ui-components/input";
 import { Card } from "@publira/ui-components/card";
+import { Input } from "@publira/ui-components/input";
 ```
 
 ## Development

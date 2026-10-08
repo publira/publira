@@ -13,7 +13,6 @@ One component per `src/*-icon.tsx`, exported both from the barrel and from a sub
 ```tsx
 // An app imports from the barrel
 import { ImageIcon, UserIcon } from "@publira/icons";
-
 // packages/ui-components uses a subpath import, as it already does elsewhere
 import { CheckIcon } from "@publira/icons/check-icon";
 

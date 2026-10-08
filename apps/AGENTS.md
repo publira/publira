@@ -624,7 +624,6 @@ import { ChevronDown } from "lucide-react";
 ```tsx
 // OK: apps import from the barrel
 import { ImageIcon, UserIcon } from "@publira/icons";
-
 // OK: packages/ui-components keeps its subpath imports
 import { CheckIcon } from "@publira/icons/check-icon";
 
