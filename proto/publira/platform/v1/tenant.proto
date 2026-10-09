@@ -233,10 +233,13 @@ message CancelTenantAdminInvitationResponse {
   TenantAdminInvitation invitation = 1;
 }
 
+// Only the fields a request carries change: an absent one keeps the tenant's
+// value, and a present empty admin_domain moves the console back to
+// admin.<domain>.
 message UpdateTenantRequest {
-  string name = 2;
-  string domain = 4;
-  string admin_domain = 5;
+  optional string name = 2;
+  optional string domain = 4;
+  optional string admin_domain = 5;
   string tenant_id = 6;
   reserved 1, 3;
   reserved "public_id";

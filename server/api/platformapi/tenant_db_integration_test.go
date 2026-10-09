@@ -235,6 +235,48 @@ func TestDBSuspendAndResumeTenant(t *testing.T) {
 	}
 }
 
+// A console form edits either the name or the host names, and the fields it
+// leaves out keep what the tenant holds now rather than what the form read.
+func TestDBUpdateTenantChangesOnlyTheFieldsTheRequestCarries(t *testing.T) {
+	ts, operator := newDBIntegrationTestServer(t)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	ctx := testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator))
+
+	created, err := client.CreateTenant(ctx, &publirasplatformv1.CreateTenantRequest{
+		DefaultLocale: "en",
+		Name:          "Partial Tenant",
+		Domain:        "partial.example.com",
+		AdminDomain:   "console.partial.example.net",
+	})
+	if err != nil {
+		t.Fatalf("CreateTenant: %v", err)
+	}
+	tenantID := created.Tenant.Id
+
+	renamed, err := client.UpdateTenant(ctx, &publirasplatformv1.UpdateTenantRequest{
+		TenantId: tenantID,
+		Name:     new("Renamed Tenant"),
+	})
+	if err != nil {
+		t.Fatalf("UpdateTenant name: %v", err)
+	}
+	if got := renamed.Tenant; got.Name != "Renamed Tenant" || got.Domain != "partial.example.com" || got.AdminDomain != "console.partial.example.net" {
+		t.Fatalf("after a rename = %q %q %q, want the new name and the same host names", got.Name, got.Domain, got.AdminDomain)
+	}
+
+	moved, err := client.UpdateTenant(ctx, &publirasplatformv1.UpdateTenantRequest{
+		TenantId:    tenantID,
+		Domain:      new("moved.example.com"),
+		AdminDomain: new(""),
+	})
+	if err != nil {
+		t.Fatalf("UpdateTenant domains: %v", err)
+	}
+	if got := moved.Tenant; got.Name != "Renamed Tenant" || got.Domain != "moved.example.com" || got.AdminDomain != "" {
+		t.Fatalf("after a move = %q %q %q, want the same name, the new domain, and no admin domain", got.Name, got.Domain, got.AdminDomain)
+	}
+}
+
 func TestDBCreateTenantRejectsEmptyDomain(t *testing.T) {
 	ts, operator := newDBIntegrationTestServer(t)
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))

@@ -37,8 +37,7 @@ func TestDBTenantRPCsAddressTheTenantAndItsMembersByID(t *testing.T) {
 
 	updated, err := client.UpdateTenant(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.UpdateTenantRequest{
 		TenantId: tenantID,
-		Name:     "Renamed",
-		Domain:   "tenant-a.example.com",
+		Name:     new("Renamed"),
 	})
 	if err != nil {
 		t.Fatalf("UpdateTenant: %v", err)
