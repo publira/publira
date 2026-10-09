@@ -122,7 +122,7 @@ func TestCreateTenantRetriesDuplicatePublicID(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
 		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default, "ja").
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
-			AddRow(tenantID, "4ERDqTx5YB8m", "dup.example.com", "Duplicate Tenant", nil, now, "active", nil, "UTC", "ja"))
+			AddRow(tenantID, "4ERDqTx5YB8m", "dup.example.com", "Duplicate Tenant", now, "active", nil, "UTC", "ja"))
 	expectPublicIDAttemptReleased(mock)
 	expectDefaultCreatorRoleInserts(mock, tenantID, now)
 	expectIntegrationAuditLogInsert(mock)
@@ -266,7 +266,7 @@ func TestCreateTenantStoresRequestedLocale(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "en.example.com", Valid: true}, sql.NullString{}, "English Tenant", tenanttz.Default, "en").
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
-			AddRow(tenantID, "4ERDqTx5YB8m", "en.example.com", "English Tenant", nil, now, "active", nil, "UTC", "en"))
+			AddRow(tenantID, "4ERDqTx5YB8m", "en.example.com", "English Tenant", now, "active", nil, "UTC", "en"))
 	expectPublicIDAttemptReleased(mock)
 	expectDefaultCreatorRoleInserts(mock, tenantID, now)
 	expectIntegrationAuditLogInsert(mock)
@@ -329,7 +329,7 @@ func TestSuspendTenantSuccess(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
 		WithArgs(id, "suspended").
-		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "ACTIVE01", "active.example.com", "Active Tenant", nil, now, "suspended", nil, "UTC", "ja"))
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "ACTIVE01", "active.example.com", "Active Tenant", now, "suspended", nil, "UTC", "ja"))
 	expectIntegrationAuditLogInsert(mock)
 	mock.ExpectCommit()
 
@@ -377,7 +377,7 @@ func TestResumeTenantSuccess(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
 		WithArgs(id, "active").
-		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "SUSP001", "suspended.example.com", "Suspended Tenant", nil, now, "active", nil, "UTC", "ja"))
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "SUSP001", "suspended.example.com", "Suspended Tenant", now, "active", nil, "UTC", "ja"))
 	expectIntegrationAuditLogInsert(mock)
 	mock.ExpectCommit()
 

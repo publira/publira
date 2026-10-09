@@ -211,7 +211,7 @@ func TestStartEpisodeCheckoutRefusesWhenTenantDomainMissing(t *testing.T) {
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-			AddRow(tenantID, "TENANT", "", "Tenant", nil, now, "active", nil, "UTC", "ja"))
+			AddRow(tenantID, "TENANT", "", "Tenant", now, "active", nil, "UTC", "ja"))
 	expectAuthSession(env.mock, tenantID, userID, now)
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))

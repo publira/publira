@@ -324,7 +324,7 @@ var oneByOneJPEG = []byte{
 }
 
 func tenantColumns() []string {
-	return []string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone", "default_locale"}
+	return []string{"id", "public_id", "domain", "name", "created_at", "status", "admin_domain", "timezone", "default_locale"}
 }
 
 func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time) {
@@ -343,7 +343,7 @@ func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, pu
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone, defaultLocale))
+			AddRow(tenantID, publicID, "tenant.example", "Tenant", now, "active", nil, timezone, defaultLocale))
 }
 
 // issueTestAdminToken creates a signed JWT for admin API tests.

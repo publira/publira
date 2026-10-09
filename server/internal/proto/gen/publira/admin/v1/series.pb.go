@@ -147,15 +147,17 @@ func (x *SeriesCreatorCredit) GetRoleId() string {
 }
 
 type CreateSeriesRequest struct {
-	state                    protoimpl.MessageState `protogen:"open.v1"`
-	Tenant                   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Title                    string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Synopsis                 string                 `protobuf:"bytes,3,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
-	IsPublished              bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
-	ReadingPeriodHours       int32                  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
-	EyeCatchImageData        []byte                 `protobuf:"bytes,8,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
-	EyeCatchImageContentType string                 `protobuf:"bytes,9,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
-	PublishedAt              string                 `protobuf:"bytes,12,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Tenant      *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Title       string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Synopsis    string                 `protobuf:"bytes,3,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
+	IsPublished bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
+	// Where the reading period of each new episode in the series starts. Zero
+	// starts them with no limit.
+	ReadingPeriodHours       int32  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
+	EyeCatchImageData        []byte `protobuf:"bytes,8,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
+	EyeCatchImageContentType string `protobuf:"bytes,9,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
+	PublishedAt              string `protobuf:"bytes,12,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
 	// Unspecified stores the default the column carries: ongoing, all ages.
 	Status v1.SeriesStatus `protobuf:"varint,13,opt,name=status,proto3,enum=publira.types.v1.SeriesStatus" json:"status,omitempty"`
 	// EXTRACT(DOW) numbers, 0 (Sunday) to 6 (Saturday). Sorted and deduplicated
@@ -520,7 +522,9 @@ type UpdateSeriesRequest struct {
 	// Empty, sent explicitly, clears the synopsis.
 	Synopsis    *string `protobuf:"bytes,4,opt,name=synopsis,proto3,oneof" json:"synopsis,omitempty"`
 	IsPublished bool    `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
-	// Zero, sent explicitly, returns the series to the tenant's default.
+	// Where the reading period of each new episode in the series starts; an
+	// episode keeps the value it was created with. Zero, sent explicitly, clears
+	// it, so new episodes start with no limit.
 	ReadingPeriodHours       *int32 `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3,oneof" json:"reading_period_hours,omitempty"`
 	EyeCatchImageData        []byte `protobuf:"bytes,9,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
 	EyeCatchImageContentType string `protobuf:"bytes,10,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
@@ -922,9 +926,8 @@ func (x *ListSeriesRequest) GetAgeRating() v1.SeriesAgeRating {
 }
 
 type ListSeriesResponse struct {
-	state                     protoimpl.MessageState `protogen:"open.v1"`
-	Series                    []*v1.Series           `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
-	DefaultReadingPeriodHours int32                  `protobuf:"varint,2,opt,name=default_reading_period_hours,json=defaultReadingPeriodHours,proto3" json:"default_reading_period_hours,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Series []*v1.Series           `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
 	// Token for the previous page. Empty on the first page.
 	PreviousToken string `protobuf:"bytes,3,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
 	// Token for the next page. Empty on the last page.
@@ -968,13 +971,6 @@ func (x *ListSeriesResponse) GetSeries() []*v1.Series {
 		return x.Series
 	}
 	return nil
-}
-
-func (x *ListSeriesResponse) GetDefaultReadingPeriodHours() int32 {
-	if x != nil {
-		return x.DefaultReadingPeriodHours
-	}
-	return 0
 }
 
 func (x *ListSeriesResponse) GetPreviousToken() string {
@@ -4449,13 +4445,12 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x126\n" +
 	"\x06status\x18\x05 \x01(\x0e2\x1e.publira.types.v1.SeriesStatusR\x06status\x12@\n" +
 	"\n" +
-	"age_rating\x18\x06 \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRatingJ\x04\b\x03\x10\x04R\x06offset\"\xcd\x01\n" +
+	"age_rating\x18\x06 \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRatingJ\x04\b\x03\x10\x04R\x06offset\"\xb0\x01\n" +
 	"\x12ListSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12?\n" +
-	"\x1cdefault_reading_period_hours\x18\x02 \x01(\x05R\x19defaultReadingPeriodHours\x12%\n" +
+	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x03 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x04 \x01(\tR\tnextToken\"h\n" +
+	"next_token\x18\x04 \x01(\tR\tnextTokenJ\x04\b\x02\x10\x03R\x1cdefault_reading_period_hours\"h\n" +
 	"\x10GetSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xb2\x03\n" +

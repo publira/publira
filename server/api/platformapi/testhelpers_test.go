@@ -131,7 +131,7 @@ const (
 )
 
 func integrationTenantColumns() []string {
-	return []string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone", "default_locale"}
+	return []string{"id", "public_id", "domain", "name", "created_at", "status", "admin_domain", "timezone", "default_locale"}
 }
 
 func platformConfigColumns() []string {

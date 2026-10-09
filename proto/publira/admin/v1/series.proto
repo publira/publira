@@ -32,6 +32,8 @@ message CreateSeriesRequest {
   string title = 2;
   string synopsis = 3;
   bool is_published = 5;
+  // Where the reading period of each new episode in the series starts. Zero
+  // starts them with no limit.
   int32 reading_period_hours = 6;
   bytes eye_catch_image_data = 8;
   string eye_catch_image_content_type = 9;
@@ -124,7 +126,9 @@ message UpdateSeriesRequest {
   // Empty, sent explicitly, clears the synopsis.
   optional string synopsis = 4;
   bool is_published = 5;
-  // Zero, sent explicitly, returns the series to the tenant's default.
+  // Where the reading period of each new episode in the series starts; an
+  // episode keeps the value it was created with. Zero, sent explicitly, clears
+  // it, so new episodes start with no limit.
   optional int32 reading_period_hours = 6;
   bytes eye_catch_image_data = 9;
   string eye_catch_image_content_type = 10;
@@ -201,8 +205,10 @@ message ListSeriesRequest {
 }
 
 message ListSeriesResponse {
+  reserved 2;
+  reserved "default_reading_period_hours";
+
   repeated publira.types.v1.Series series = 1;
-  int32 default_reading_period_hours = 2;
   // Token for the previous page. Empty on the first page.
   string previous_token = 3;
   // Token for the next page. Empty on the last page.

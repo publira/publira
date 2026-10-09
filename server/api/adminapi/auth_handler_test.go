@@ -23,7 +23,7 @@ import (
 func expectAdminTenantByDomains(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time, defaultLocale string) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAdminTenantByDomains)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", nil, now, "active", "admin.tenant.example.com", "UTC", defaultLocale))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", "admin.tenant.example.com", "UTC", defaultLocale))
 }
 
 // Host resolution is the only tenant read the console makes without a session,
