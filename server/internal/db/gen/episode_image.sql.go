@@ -118,6 +118,30 @@ func (q *Queries) CreateEpisodeImageVariant(ctx context.Context, arg CreateEpiso
 	return i, err
 }
 
+const DeleteEpisodeImageByIDForEpisode = `-- name: DeleteEpisodeImageByIDForEpisode :one
+DELETE FROM episode_images
+WHERE id = $1
+    AND episode_id = $2
+RETURNING display_order
+`
+
+type DeleteEpisodeImageByIDForEpisodeParams struct {
+	ID        uuid.UUID `json:"id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// Takes one page out of its episode, its renditions with it, and answers the
+// place it held so a replacement can be put there. No page is renumbered: the
+// body is read in display_order, so a gap leaves every other page where it was
+// relative to the rest. The objects the renditions named are left for the
+// orphan image sweep, which deletes them once no row names them.
+func (q *Queries) DeleteEpisodeImageByIDForEpisode(ctx context.Context, arg DeleteEpisodeImageByIDForEpisodeParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, DeleteEpisodeImageByIDForEpisode, arg.ID, arg.EpisodeID)
+	var display_order int32
+	err := row.Scan(&display_order)
+	return display_order, err
+}
+
 const GetEpisodeImageAccessByIDForUser = `-- name: GetEpisodeImageAccessByIDForUser :one
 SELECT ei.id,
     ei.episode_id,

@@ -664,6 +664,12 @@ WHERE r.tenant_id = sqlc.arg('tenant_id')
 ORDER BY e.order_index ASC,
     e.id ASC;
 
+-- name: UpdateEpisodeTitleByIDForTenant :execrows
+UPDATE episodes
+SET title = sqlc.arg('title')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id');
+
 -- name: UpdateEpisodeLayoutByIDForTenant :exec
 -- Both overrides are written together, and NULL returns a value to following
 -- the series.

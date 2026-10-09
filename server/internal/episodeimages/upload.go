@@ -239,24 +239,16 @@ func (s Service) storeImages(
 		}
 		wrote = true
 
-		objectPrefix := objectPrefix(imageInput.Filename)
-		baseObjectID := uuid.NewString()
+		keys := newObjectKeys(tenant.PublicID, episodePublicID, imageInput.Filename)
 		var lastVariant dbmodels.EpisodeImageVariant
 		for _, variant := range variants {
-			objectKey := fmt.Sprintf("tenants/%s/episodes/%s/%s-%s-%s%s", tenant.PublicID, episodePublicID, objectPrefix, baseObjectID, variant.Label, variant.Extension)
+			objectKey := keys.of(variant)
 
 			variantCtx, cancel := context.WithTimeout(ctx, imageProcessingTimeout)
 			createdVariant, persistErr := backoff.Retry(
 				variantCtx,
 				func() (dbmodels.EpisodeImageVariant, error) {
-					uploaded, uploadErr := s.Storage.Upload(variantCtx, storage.UploadRequest{
-						ObjectKey:   objectKey,
-						ContentType: variant.ContentType,
-						Data:        variant.Data,
-					})
-					if errors.Is(uploadErr, storage.ErrNotConfigured) {
-						return dbmodels.EpisodeImageVariant{}, backoff.Permanent(uploadErr)
-					}
+					uploaded, uploadErr := s.uploadVariant(variantCtx, objectKey, variant)
 					if uploadErr != nil {
 						return dbmodels.EpisodeImageVariant{}, uploadErr
 					}
@@ -303,6 +295,42 @@ func (s Service) storeImages(
 	}
 
 	return items, wrote, nil
+}
+
+// objectKeys names the objects of one page's renditions: one prefix taken from
+// the file the page came from, and one random id the renditions share.
+type objectKeys struct {
+	tenantPublicID  string
+	episodePublicID string
+	prefix          string
+	baseID          string
+}
+
+func newObjectKeys(tenantPublicID, episodePublicID, filename string) objectKeys {
+	return objectKeys{
+		tenantPublicID:  tenantPublicID,
+		episodePublicID: episodePublicID,
+		prefix:          objectPrefix(filename),
+		baseID:          uuid.NewString(),
+	}
+}
+
+func (k objectKeys) of(variant imageproc.Variant) string {
+	return fmt.Sprintf("tenants/%s/episodes/%s/%s-%s-%s%s", k.tenantPublicID, k.episodePublicID, k.prefix, k.baseID, variant.Label, variant.Extension)
+}
+
+// uploadVariant stores one rendition, marking a store that is not configured
+// as an error no retry can fix.
+func (s Service) uploadVariant(ctx context.Context, objectKey string, variant imageproc.Variant) (storage.UploadResult, error) {
+	uploaded, err := s.Storage.Upload(ctx, storage.UploadRequest{
+		ObjectKey:   objectKey,
+		ContentType: variant.ContentType,
+		Data:        variant.Data,
+	})
+	if errors.Is(err, storage.ErrNotConfigured) {
+		return storage.UploadResult{}, backoff.Permanent(err)
+	}
+	return uploaded, err
 }
 
 func objectPrefix(filename string) string {

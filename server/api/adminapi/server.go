@@ -408,6 +408,10 @@ const (
 	// request: the largest upload episodeimages takes, in the base64 of the
 	// JSON encoding as well, and the fields sent beside it.
 	episodeUploadReadMaxBytes = (episodeimages.MaxUploadBytes+2)/3*4 + rpcmiddleware.DefaultReadMaxBytes
+	// episodePageReadMaxBytes is what ReplaceEpisodeImage reads of a request:
+	// the one page image it carries, in the base64 of the JSON encoding as
+	// well, and the fields sent beside it.
+	episodePageReadMaxBytes = (imageproc.MaxUploadBytes+2)/3*4 + rpcmiddleware.DefaultReadMaxBytes
 )
 
 // readLimits are the procedures of this namespace that read more of one
@@ -415,6 +419,7 @@ const (
 // carries an upload.
 var readLimits = map[string]int{
 	publiraadminv1connect.AdminSeriesServiceUploadEpisodeImagesProcedure:             episodeUploadReadMaxBytes,
+	publiraadminv1connect.AdminSeriesServiceReplaceEpisodeImageProcedure:             episodePageReadMaxBytes,
 	publiraadminv1connect.AdminSeriesServiceCreateSeriesProcedure:                    imageUploadReadMaxBytes,
 	publiraadminv1connect.AdminSeriesServiceUpdateSeriesProcedure:                    imageUploadReadMaxBytes,
 	publiraadminv1connect.AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure: imageUploadReadMaxBytes,

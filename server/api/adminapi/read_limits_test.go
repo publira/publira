@@ -74,6 +74,9 @@ func TestReadLimitsAdmitTheLargestDocumentedUpload(t *testing.T) {
 			Tenant: tenant,
 			Images: []*publiraadminv1.EpisodeImageUpload{{Filename: "001.png", ContentType: "image/png", Data: image(imageproc.MaxUploadBytes)}},
 		},
+		publiraadminv1connect.AdminSeriesServiceReplaceEpisodeImageProcedure: &publiraadminv1.ReplaceEpisodeImageRequest{
+			Tenant: tenant, Filename: "001.png", ContentType: "image/png", Data: image(imageproc.MaxUploadBytes),
+		},
 		publiraadminv1connect.AdminSeriesServiceCreateSeriesProcedure: &publiraadminv1.CreateSeriesRequest{
 			Tenant: tenant, EyeCatchImageData: image(imageproc.EyeCatchMaxBytes),
 		},

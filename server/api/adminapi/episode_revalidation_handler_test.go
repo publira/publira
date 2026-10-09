@@ -280,3 +280,102 @@ func TestUpdateEpisodeAvailabilityRevalidatesTheSeriesDetailAndLists(t *testing.
 	revalidations.waitForTags(t, wantEpisodePublicationRevalidateTags(tenantID))
 	assertExpectations(t, mock)
 }
+
+// The series page lists the episodes by title and the viewer heads the body
+// with it, so a rename drops them in the transaction that writes it.
+func TestUpdateEpisodeTitleRevalidatesTheSeriesDetail(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeTitleByIDForTenant)).
+		WithArgs("Episode", tenantID, testEpisodeID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
+	expectPublishedEpisodeLookup(mock, tenantID, nil)
+	expectAdminAuditLogInsert(mock)
+
+	req := &publiraadminv1.UpdateEpisodeTitleRequest{
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: testEpisodeID.String(),
+		Title:     "Episode",
+	}
+
+	if _, err := client.UpdateEpisodeTitle(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
+		t.Fatalf("UpdateEpisodeTitle: %v", err)
+	}
+	revalidations.waitForTags(t, wantEpisodeRevalidateTags(tenantID))
+	assertExpectations(t, mock)
+}
+
+// A rename that reaches no row is not_found, and rolls back before any drop is
+// recorded: nothing a cache holds has changed.
+func TestUpdateEpisodeTitleOfNoEpisodeIsNotFound(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeTitleByIDForTenant)).
+		WithArgs("Episode", tenantID, testEpisodeID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectRollback()
+
+	req := &publiraadminv1.UpdateEpisodeTitleRequest{
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: testEpisodeID.String(),
+		Title:     "Episode",
+	}
+
+	if _, err := client.UpdateEpisodeTitle(testutil.WithBearer(context.Background(), sessionToken), req); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("UpdateEpisodeTitle error = %v, want not_found", err)
+	}
+	assertExpectations(t, mock)
+}
+
+// The viewer shows the pages that are left, so a delete drops it in the
+// transaction that takes the page out.
+func TestDeleteEpisodeImageRevalidatesTheSeriesDetail(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	keptID := uuid.Must(uuid.NewV7())
+	deletedID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	imageColumns := []string{"id", "tenant_id", "episode_id", "display_order", "created_at", "content_type", "file_size_bytes", "width", "height"}
+	expectPublishedEpisodeLookup(mock, tenantID, nil)
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.DeleteEpisodeImageByIDForEpisode)).
+		WithArgs(deletedID, testEpisodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"display_order"}).AddRow(int32(1)))
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeImagesByEpisodeID)).
+		WithArgs(testEpisodeID).
+		WillReturnRows(sqlmock.NewRows(imageColumns).
+			AddRow(keptID, tenantID, testEpisodeID, int32(2), now, "image/jpeg", int64(2048), int32(1600), int32(900)))
+
+	req := &publiraadminv1.DeleteEpisodeImageRequest{
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: testEpisodeID.String(),
+		ImageId:   deletedID.String(),
+	}
+
+	resp, err := client.DeleteEpisodeImage(testutil.WithBearer(context.Background(), sessionToken), req)
+	if err != nil {
+		t.Fatalf("DeleteEpisodeImage: %v", err)
+	}
+	if len(resp.Images) != 1 || resp.Images[0].Id != keptID.String() {
+		t.Fatalf("answered pages = %v, want only %s", resp.Images, keptID)
+	}
+	revalidations.waitForTags(t, wantEpisodeRevalidateTags(tenantID))
+	assertExpectations(t, mock)
+}
