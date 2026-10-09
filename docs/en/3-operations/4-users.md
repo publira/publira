@@ -2,6 +2,7 @@
 title: Users
 description: Find a reader's account across every tenant, and suspend or delete it from the Platform Console.
 published: 2026-10-06
+updated: 2026-10-09
 ---
 
 **Users**, under **Governance** in the Platform Console's sidebar, lists the readers of every tenant in one place. It exists for what a single tenant cannot handle alone: a complaint or a legal request that reaches the operator rather than the publisher, or an account a tenant's administrators cannot reach. Day to day, each tenant's administrators look after their own readers from **Readers** in the tenant console. There is no `publiractl` equivalent.
@@ -10,9 +11,13 @@ published: 2026-10-06
 
 Every account belongs to one tenant, so a person who reads on two tenants' sites appears twice, once for each. The list shows each account's **Name**, its **Tenant**, when it was **Registered**, and its **Status**, and narrows them by status, by tenant, and by registration date. It has no search by name or email address: find an account by narrowing to its tenant and the date it signed up.
 
+![The Users list narrowed to one tenant: the status, tenant search, tenant, registration date, and page size filters with Filter and Clear, and two readers, one suspended and one active, each with their tenant, registration date, and Details.](./users-list.png)
+
 The list holds readers only. An account that holds a role in a tenant's console is staff, and is managed from that tenant's **Members**, as [A tenant's staff](./3-tenant-staff.md) describes.
 
 **Details** opens an account: its **Public ID**, name, **Email address**, registration date, status, and the tenant it belongs to.
+
+![A reader's page: Suspend and Delete at the top, Profile with the Public ID and a copy button, name, email address, registration date, and status, and the tenant the account belongs to.](./users-details.png)
 
 ## Suspending and deleting an account
 
@@ -20,6 +25,8 @@ An Operator or a Super admin can act on an account from its page. An Auditor see
 
 - **Suspend** stops the reader from signing in, on the site and in the app, and ends the sessions they already have. Nothing is removed from the account. **Unsuspend** lets them sign in again.
 - **Delete** removes the account permanently, and cannot be undone. A reader who wants their own account gone can delete it themselves from the tenant's site, which is usually the better path.
+
+![The top of a suspended reader's page: Back to list, Unsuspend, and Delete.](./users-suspended.png)
 
 Neither can be done to an account that holds a console role: take the role away first, from the tenant's **Members**.
 

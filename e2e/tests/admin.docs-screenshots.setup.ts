@@ -1,6 +1,15 @@
 import { test as setup } from "@playwright/test";
 
 import { applyScenarioSql } from "../src/db";
+import {
+  platformAuditLogsTag,
+  platformDashboardTag,
+  platformEndUsersTag,
+  platformNotificationsTag,
+  platformOperatorsTag,
+  platformTenantsTag,
+  revalidatePlatformTags,
+} from "../src/revalidate";
 import { ADMIN_MFA_SETTINGS_SCENARIO } from "../src/scenarios/admin-mfa-settings";
 import { ANNOUNCEMENT_BANNER_SCENARIO } from "../src/scenarios/announcement-banner";
 import { COMMENT_MODERATION_SCENARIO } from "../src/scenarios/comment-moderation";
@@ -15,11 +24,13 @@ import { SIGN_IN_PROVIDERS_SCENARIO } from "../src/scenarios/sign-in-providers";
  * Most of it lives on the tenants other suites own, which are applied here as
  * those suites apply them, and the `4n0_docs_*` files add to them what only
  * the documentation needs: comments in every state, episodes waiting to be
- * published, announcements, invitations, and a closed royalty statement. Applying every file once, rather
- * than from the specs that read them, is what lets those specs run beside one
- * another: a spec applying a file again deletes rows another spec may be
- * photographing at that moment. Nothing is reverted afterwards, since each
- * suite that owns one of these tenants applies its file again before it runs.
+ * published, announcements, invitations, a closed royalty statement, and the
+ * Platform Console's own tenants, operators, and records. Applying every file
+ * once, rather than from the specs that read them, is what lets those specs
+ * run beside one another: a spec applying a file again deletes rows another
+ * spec may be photographing at that moment. Nothing is reverted afterwards,
+ * since each suite that owns one of these tenants applies its file again
+ * before it runs.
  */
 const SCENARIOS = [
   COMMENT_MODERATION_SCENARIO,
@@ -33,10 +44,22 @@ const SCENARIOS = [
   SIGN_IN_PROVIDERS_SCENARIO,
   ADMIN_MFA_SETTINGS_SCENARIO,
   CONTACT_WORKFLOW_SCENARIO,
+  "470_docs_platform",
 ] as const;
 
-setup("the scenario tenants the documentation's screenshots show", () => {
+setup("the scenario tenants the documentation's screenshots show", async () => {
   for (const scenario of SCENARIOS) {
     applyScenarioSql(scenario);
   }
+  // The Platform Console holds its lists for minutes, and the baseline project
+  // before this one has already read the tenants and the dashboard; the rows
+  // written straight to Postgres above reach it only once those are dropped.
+  await revalidatePlatformTags([
+    platformAuditLogsTag,
+    platformDashboardTag,
+    platformEndUsersTag,
+    platformNotificationsTag,
+    platformOperatorsTag,
+    platformTenantsTag,
+  ]);
 });

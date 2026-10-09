@@ -2,7 +2,7 @@
 title: Web Push
 description: Turn on the browser notifications readers can receive from every tenant's site, and the key pair they are signed with.
 published: 2026-10-06
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 A reader can let a tenant's site send notifications to their browser, so they hear of a new episode without opening the site. The install sends them through the push service of each reader's browser, and signs each one with a VAPID key pair that belongs to the install. Web Push is optional and off until you turn it on; an install that never does sends no browser notifications and fails nothing.
@@ -34,6 +34,8 @@ publiractl webpush show
 ### From the Platform Console
 
 Choose **Web Push** under **Services** in the sidebar. Opening the screen generates the key pair if none is stored yet. Enter the **Contact (VAPID subject)** and choose **Save Web Push settings**; the screen then says Web Push is configured. An Operator or a Super admin can save; an Auditor only sees the screen.
+
+![The Browser notifications screen with Web Push configured: Contact (VAPID subject) and Save Web Push settings.](./web-push-settings.png)
 
 If the screen says it cannot set Web Push up because the API server has no secret encryption keys, `publira server` was started without `PUBLIRA_SECRET_ENCRYPTION_KEYS`. Set the same keys the other processes run with, restart it, and open the screen again.
 

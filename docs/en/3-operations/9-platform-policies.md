@@ -2,7 +2,7 @@
 title: Platform defaults and policies
 description: Choose the defaults, security limits, community limits, and retention periods every tenant inherits, and what a tenant can change for itself.
 published: 2026-10-06
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 An install runs on a handful of settings that no tenant owns: the language and time zone new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
@@ -21,6 +21,8 @@ Each group can be set from the Platform Console or from `publiractl`, run the wa
 | The comment, report, rating, contact, and viewer limits | **Community**, under **Policies** | `policy set`, `policy show` |
 | How long expiring records are kept | **Retention**, under **Policies** | `retention set`, `retention show` |
 
+![The Platform Console's sidebar: General under Platform, Email, Storage, Search, and Web Push under Services, and Security, Community, and Retention under Policies.](./platform-policies-sidebar.png)
+
 Both write through the same code. A `set` command changes only the values its flags name and keeps the rest, and a page in the Platform Console saves every value on it at once. A save that changes nothing is not recorded; any other save is recorded in **Audit logs** as **Updated platform settings**, **Updated the platform policy**, or **Updated the retention defaults**. The **Security**, **Community**, and **Retention** pages do not overwrite a save they have not seen: if someone saved that page after you opened it, the Platform Console refuses with "Another operator changed these settings, so nothing was saved. Reload and try again." **Security** and **Community** are saved as one policy, so a save of either one refuses a stale copy of the other too. The two forms on **General settings** do not check this: each saves its own value over whatever is stored, and keeps the other value as stored. `publiractl` reads the stored values just before it writes them, and if another save lands between the two, it exits `1`, after which running the same command again applies its flags over that save.
 
 An Operator or a Super admin can save these pages. An Auditor sees the same forms and has the save refused.
@@ -30,6 +32,8 @@ Until a policy is saved, the **Setup status** card on the Platform Console's das
 ## Platform defaults
 
 **General settings** holds two values, each with its own save button.
+
+![General settings: Default language with Save default language, and Default time zone with Save default time zone.](./platform-policies-general.png)
 
 **Default language** is the language the Platform Console is shown in to an operator who has not chosen one, its sign-in screen included, and the language of the mail the Platform Console sends its operators, such as a password reset. It does not decide any tenant's language: every tenant is given its own default language when it is created, as [Tenants](./2-tenants.md#before-you-create-a-tenant) describes. The first operator chose this value on the setup screen.
 
@@ -49,6 +53,8 @@ publiractl platform set --default-locale en --default-timezone America/New_York
 
 **Require multi-factor authentication for tenant administrators** (`--mfa-required-for-tenant-admin`) stops a tenant administrator from signing in to the tenant console with a password alone. An administrator who has not set up an authenticator app is not turned away: after the password, the console shows **Set up two-step verification**, and signing in finishes only once they have registered one. The screen tells them the tenant requires it, although the requirement is the platform's and a tenant cannot turn it off.
 
+![The Require multi-factor authentication for tenant administrators checkbox on Security.](./platform-policies-mfa-required.png)
+
 It applies to every tenant at once and only to the **Admin** role; editors and auditors are never asked. It takes effect at each administrator's next sign-in, not on sessions already open. An administrator can still turn their authenticator off from their account settings, and is asked to set one up again the next time they sign in.
 
 The Platform Console's own operators are not covered by this setting.
@@ -64,6 +70,8 @@ Each limit is a count per minute or per hour, with a second count per day, and t
 | **Email requests per source per hour** and **per day** | The same mail counted by the client address that asked for it, across every address and every tenant, so one client cannot mail a long list of strangers |
 | **In-app purchase confirmations per reader per minute** and **per day** | Store transactions one reader hands the server to verify with Apple or Google |
 | **Wait-for-free ticket uses per reader per minute** and **per day** | One reader's requests to spend a wait-for-free ticket. A spent ticket is already limited by its series' recharge time; this bounds the refused attempts |
+
+![The rate limits on Security: password verifications, email requests per address and per source, in-app purchase confirmations, and wait-for-free ticket uses, each per minute or per hour and per day.](./platform-policies-rate-limits.png)
 
 Each invitation counts as one request, including every **Initial admin emails** address on **Create tenant**, which are all counted before the tenant is created: if one is over a limit, no tenant is created and no mail is sent. `publiractl` sends through no form and counts against none of these limits.
 
@@ -94,6 +102,8 @@ A saved change reaches every running instance within ten seconds, without a rest
 
 **Disposable email domain list URL** (`--disposable-email-domains-url`) is where `publira server` reads a list of domains made for throwaway mail. No list ships with Publira, so until you give a URL there is none.
 
+![Disposable email domain list URL on Security, with the line under it.](./platform-policies-disposable-email-domains.png)
+
 The list is a plain-text file of one domain per line; blank lines and lines starting with `#` are ignored, which is the format of the [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains) project's blocklist. A listed domain also covers its subdomains. Each instance reads the list when it is first needed and again an hour later. If a read fails, or the file has a line that is not a domain, the instance keeps using the last list it read and logs a warning; with no earlier list, it refuses nothing and tries again an hour later. A new URL is read on the next lookup after it is saved.
 
 Saving a list refuses nothing on its own. A tenant that wants disposable addresses refused turns on **Refuse disposable email domains** under **Refused email addresses** in its console's **Settings**, and from then on a reader cannot sign up with, or change their address to, an address on a listed domain. Sign-in with Apple or Google is not affected. When the platform has no list, that switch says it has no effect.
@@ -101,6 +111,8 @@ Saving a list refuses nothing on its own. A tenant that wants disposable address
 ## Community
 
 **Community limits** are the limits on what readers do in a tenant's community. Each value here is the starting point for every tenant and also the loosest value a tenant may choose: a tenant can make a limit stricter for itself, never looser.
+
+![Community limits: comment posts, comment reports, contact messages per account and per client, episode ratings, and viewer preference updates, each per minute or per hour and per day, Duplicate comment window (minutes), and Save community limits.](./platform-policies-community.png)
 
 | On the Community page | What it limits |
 | --- | --- |
@@ -117,6 +129,8 @@ These are counted in the same place as the security limits, so [Where the counts
 ## Retention
 
 **Retention defaults** sets how long four kinds of record are kept for every tenant that has set no period of its own. Each period is a whole number of days. `publira worker` deletes what has passed its period on its own schedule; nothing has to be set up to run it, and `publiractl job` runs the same purge by hand.
+
+![Retention defaults: Withdrawn comments, Content events, Daily ranking snapshots, and Weekly ranking snapshots, in days, and Save retention defaults.](./platform-policies-retention.png)
 
 | Record | What it is | Deleted by | How often |
 | --- | --- | --- | --- |

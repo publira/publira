@@ -2,6 +2,7 @@
 title: The Platform Console and publiractl
 description: Choose between publiractl and the Platform Console, create the first operator, and manage the operators who sign in.
 published: 2026-10-06
+updated: 2026-10-09
 ---
 
 An install is managed from one of two places, and most tasks can be done from either. This page says how they differ, how the Platform Console gets its first operator, and how operators are added and given roles after that.
@@ -27,6 +28,8 @@ Both write through the same code, so a tenant created from one is the same as a 
 
 Every change either one makes to a tenant or its staff is recorded in the Platform Console's **Audit logs**. A change made from `publiractl` names no operator there: its actor is **Command line**.
 
+![An entry of the Platform Console's audit log: Created a tenant, with Command line as its actor, the outcome success, and the tenant it created.](./platform-console-audit-log-command-line.png)
+
 If you run no Platform Console, `publiractl` is enough to run an install. What you give up is reading the audit log and acting on readers' accounts across tenants; each tenant's administrators still manage their own readers from the tenant console.
 
 ## The first operator
@@ -35,6 +38,8 @@ Run `web-platform` as [Installing](../2-deployments/2-installing.md#the-platform
 
 - **Full name**, **Email address**, and **Password**, with **Password (confirm)**: the first operator's account.
 - **Default language**: the language the Platform Console starts in. It also becomes the platform's default language, replacing the one `publiractl setup` saved. Each operator can switch the language they see later, and each tenant picks its own when it is created.
+
+![The Initial setup screen: Full name, Email address, Password, Password (confirm), Default language, and Create administrator.](./platform-console-initial-setup.png)
 
 **Create administrator** creates the account with the **Super admin** role and sends you to the sign-in screen. From then on the setup screen is gone: there is no second first operator, and nothing in `publiractl` creates an operator. Every later operator is added by a Super admin from **Operators**.
 
@@ -56,15 +61,21 @@ The Platform Console shows an Auditor the same screens and forms as an Operator,
 
 **Operators**, under **Governance** in the sidebar, lists every operator with their role and status. Only a Super admin can change anything there.
 
+![The Operators list with Add operator: a Super admin, an Operator, an Auditor, and a suspended Operator, each with their email address, role, status, and Details.](./platform-console-operators.png)
+
 ### Adding an operator
 
 **Add operator** asks for the operator's **Name**, **Email address**, and **Role**, and creates the account at once. It sends no mail, and the account's password is one nobody is told ([#3753](https://github.com/publira/publira/issues/3753)). Tell the new operator the account exists, and have them open the sign-in screen, choose **Forgot your password?**, and set a password from the link they are mailed. That mail, like every mail the Platform Console sends, is sent by `publira worker`, from the SMTP settings the platform saved.
+
+![The Add operator form: Name, Email address, Role, and Add.](./platform-console-add-operator.png)
 
 An address that already belongs to an operator, including a deactivated one, cannot be added again.
 
 ### Changing an operator's role
 
 Open the operator from **Operators** and choose a new role under **Change role**. Nobody can change their own role, so a Super admin can never demote themself, and the install always keeps the Super admin who is acting.
+
+![An operator's page: Suspend and Deactivate at the top, Profile with the operator's name, email address, current role, status, and when the account was created, and Change role with the Role field and Save.](./platform-console-operator.png)
 
 ### Suspending and deactivating
 
@@ -79,4 +90,10 @@ Neither can be done to your own account.
 
 **Account settings**, in the account menu of the console's header, changes your email address. A confirmation link is mailed to both the current and the new address, and the change takes effect once both have been opened.
 
+![The account menu open from the console's header: the operator's name, public ID, and role, Account settings, and Sign out.](./platform-console-account-menu.png)
+
+![Change email address on Account settings: Current email address, New email address, Current password, and Send confirmation email.](./platform-console-account-settings.png)
+
 There is no form that changes your password while you are signed in. Sign out, choose **Forgot your password?** on the sign-in screen, and set a new one from the link you are mailed; the link is valid for 24 hours.
+
+![The Platform Console's sign-in screen: Email address, Password, Sign in, and Forgot your password?](./platform-console-sign-in.png)

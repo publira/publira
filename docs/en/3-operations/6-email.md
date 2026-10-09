@@ -2,6 +2,7 @@
 title: Email
 description: Set the SMTP account the install sends mail through, let a tenant send through its own, and control what the mail looks like and where its links lead.
 published: 2026-10-06
+updated: 2026-10-09
 ---
 
 The install sends mail for its readers, for each tenant's staff, and for the Platform Console's operators. All of it is sent by `publira worker`, through an SMTP server you provide: `publiractl setup` saved the platform's SMTP account, and a tenant can save one of its own. This page covers both, how to test them, and the settings that decide how a mail looks and where its links go.
@@ -44,6 +45,8 @@ The platform's account is required: without it, no operator can reset a password
 | The address mail is sent from | `--from-address` | **From address** |
 | The address replies go to, when it is not the sender's | `--reply-to` | **Reply-to address (optional)** |
 
+![Email settings: Host, Port, Username, Password, Encryption, From address, Reply-to address (optional), Test connection, and Save.](./email-smtp-settings.png)
+
 Use the values your mail provider gives for SMTP submission. Port 587 is almost always STARTTLS and port 465 TLS from the start. Choose **None** only for a relay on your own private network.
 
 Leave the username empty for a relay that takes mail without signing in; the worker then sends without authenticating, and no password is kept. The password is stored encrypted with the install's encryption keys, so `publira worker` has to run with the same keys that saved it.
@@ -57,11 +60,15 @@ A test sends one short message through the account and reports whether the serve
 - In the Platform Console, **Test connection** under **Email** opens **SMTP connection test**, which sends with the values in the form, before they are saved, to you with **Send to me** or to another **Recipient email address**. It sends from `publira server`.
 - `publiractl smtp test --to operator@example.com` sends with the settings already saved, from wherever `publiractl` runs, and exits `1` when the server refuses it.
 
+![The SMTP connection test dialog: Send to me, ticked, Close, and Send test.](./email-connection-test.png)
+
 A server that took the test message may still deliver it to spam; check the inbox it went to. And since the test is sent by `publira server` or `publiractl`, while real mail is sent by `publira worker`, make sure the worker can reach the SMTP server too.
 
 ### Changing it
 
 In the Platform Console, choose **Email** under **Services** in the sidebar, change the values, and choose **Save**. A saved password is kept unless you choose **Change** beside it; saving the field empty after that removes it. An Operator or a Super admin can save, and an Auditor only sees the screen.
+
+![Username and Password with a password saved: the password is hidden, with Change under it.](./email-saved-password.png)
 
 From `publiractl`:
 

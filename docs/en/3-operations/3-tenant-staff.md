@@ -2,7 +2,7 @@
 title: A tenant's staff
 description: Give a tenant's staff access to its console, choose their roles, and recover a tenant that lost its last administrator.
 published: 2026-10-06
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 A tenant's staff are the people who sign in to its console. This page covers how they get there from the operator's side: inviting the first administrator, the roles staff hold, and what to do when a tenant has no administrator left. Once a tenant has an administrator, that administrator manages the rest of the staff from **Members** in the tenant console, as [Members](../4-console/3-setup/5-members.md) describes, and the operator is needed again only when something goes wrong.
@@ -41,6 +41,8 @@ An invitation is mailed to an address and makes it a Tenant admin when accepted.
 - **Platform Console**: open the tenant from **Tenants**, choose **Members**, enter the address under **Invite a tenant admin**, and choose **Invite admin**.
 - **publiractl**: `publiractl tenant invite create --tenant comics.example.com --email editor-in-chief@comics.example.com`
 
+![A tenant's Members screen in the Platform Console: the Profile and Members tabs, and Invite a tenant admin with Email address to invite and Invite admin.](./tenant-staff-invite-admin.png)
+
 The invitee is mailed a link to the tenant's console, in the tenant's default language. On it they enter their **Full name** and a **Password**, choose **Accept invitation**, and sign in. The link is valid for 24 hours.
 
 An address that already belongs to a user of the tenant is not invited: it becomes a Tenant admin at once, and no mail is sent. This replaces any role it held before, so an Editor invited this way becomes a Tenant admin.
@@ -56,6 +58,8 @@ An invitation sent from the Platform Console or `publiractl` can only make a Ten
 - **Resend**, on a pending or an expired invitation, mails it again with a new link, valid for another 24 hours. The previous link stops working.
 - **Cancel**, on a pending invitation, withdraws it, and its link stops working.
 
+![Admin invitations: one that was canceled and one that expired, each with when it was created and when it expires, Resend, and Cancel.](./tenant-staff-admin-invitations.png)
+
 From the command line, `publiractl tenant invite list --tenant comics.example.com` prints each invitation with its ID, and `tenant invite resend --id <ID>` and `tenant invite cancel --id <ID>` act on one, an expired one included.
 
 The tenant's own administrators see the same invitations in the tenant console, and can send, resend, and cancel them there.
@@ -66,6 +70,8 @@ A reader of the tenant can be given any of the three roles directly, without mai
 
 - **Platform Console**: on the tenant's **Members** screen, enter the address under **Add member**, choose a **Role**, and choose **Add member**.
 - **publiractl**: `publiractl tenant member add --tenant comics.example.com --email reader@example.com --role tenant_editor`. `--role` is one of `tenant_admin`, `tenant_editor`, and `tenant_auditor`.
+
+![Add member: Email address to add, Role, and Add member.](./tenant-staff-add-member.png)
 
 This only works for an address that already has an account in the tenant; any other is refused. Someone without one signs up on the tenant's site first, or is invited as a Tenant admin. An account that already holds a role is changed with **Change role** instead.
 
@@ -87,7 +93,11 @@ The address must not have an account in the tenant yet. For one that does, use `
 
 ## Changing a role and removing someone
 
-On the tenant's **Members** screen in the Platform Console, **Change role** gives a member another role, and **Remove** takes every role from them. From the command line:
+On the tenant's **Members** screen in the Platform Console, **Change role** gives a member another role, and **Remove** takes every role from them.
+
+![The Members list: a Tenant admin, an Editor, and an Auditor, each with their email address, role, status, when they joined, Change role, and Remove.](./tenant-staff-members.png)
+
+From the command line:
 
 ```bash
 publiractl tenant member list --tenant comics.example.com

@@ -103,6 +103,15 @@ export const docsTextPattern = (locale: string, key: string): RegExp => {
 };
 
 /**
+ * The accessible name of the form control labelled with `key` in `locale`:
+ * the label's text, followed by the asterisk a required field's label ends in
+ * when the field is required. Matching the label alone would also match a
+ * longer label that ends in the same words, such as "Admin domain".
+ */
+export const docsLabelPattern = (locale: string, key: string): RegExp =>
+  new RegExp(`^${escapeRegExp(docsText(locale, key))}\\s*\\*?$`, "u");
+
+/**
  * The section of a console screen headed by `heading`, a level-2 heading: a
  * settings card, a form section, a list with its title.
  *
@@ -137,11 +146,15 @@ export const docsScreenHeader = (page: Page): Locator =>
  * The row of a console form that holds `control`: its label, the control,
  * and the hints under it.
  *
- * A row is a direct child of the form's fieldset, which is the one thing the
- * rows of every form have in common; the row itself carries no name.
+ * A row is a direct child of the form's fieldset, or of the form itself where
+ * a form has no fieldset, which is the one thing the rows of every form have
+ * in common; the row itself carries no name. The nearest such ancestor is the
+ * row, so a fieldset inside a form still yields its own rows.
  */
 export const docsField = (control: Locator): Locator =>
-  control.locator("xpath=ancestor-or-self::*[parent::fieldset][1]");
+  control.locator(
+    "xpath=ancestor-or-self::*[parent::fieldset or parent::form][1]"
+  );
 
 /** What `scripts/check-docs.ts` accepts after a page's slug. */
 const SUBJECT = /^[a-z\d]+(?:-[a-z\d]+)*$/u;

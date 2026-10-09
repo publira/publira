@@ -2,7 +2,7 @@
 title: Securing an install
 description: How an install keeps tenants and credentials apart, how to rotate its encryption keys, database passwords, signing keys, and tokens, and what two-step verification and the audit logs cover.
 published: 2026-10-07
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 An install holds the credentials of every tenant's payment provider and mail server, the personal data of every reader, and the keys that seal them. This page is for the operator who keeps them safe: what the install relies on to keep them apart, where each secret may go, how to replace each one, and what two-step verification and the audit logs give you. Read it before you need it — each procedure below is easier to run on a quiet day than during an incident.
@@ -100,7 +100,11 @@ When a value no key in the list opens, `db reseal` leaves it as it is, seals eve
 
 A value whose key is gone cannot be opened: with `k1` removed while a Tenant admin's authenticator secret was still sealed with it, that administrator's sign-in fails at the two-step verification step with an error page, the server logs `secretcrypto: unknown key id: k1`, and the tenant's audit log records a failed **Two-step verification at sign-in** with the reason `secret_undecryptable`. Mail that needs a password sealed with the missing key is not sent either. Putting the key back in the list, and restarting, undoes all of it.
 
-When a key has leaked, sealing again is not enough. Whoever holds the old key and any database backup taken before the rotation can open every value in that backup, so replace the credentials themselves where they were issued — a new SMTP password, a new access key for the bucket, new payment provider keys — and save the new ones.
+When a key has leaked, sealing again is not enough. Whoever holds the old key and any database backup taken before the rotation can open every value in that backup, so replace the credentials themselves where they were issued — a new SMTP password, a new access key for the bucket, new payment provider keys — and save the new ones. In the Platform Console, a new SMTP password is entered with **Change** beside **Password** under **Email**, and a new access key with **Replace access key** under **Storage**, as [Email](./6-email.md#changing-it) and [Object storage](./5-object-storage.md#rotating-the-access-key) describe.
+
+![The SMTP Password with a password saved: the password is hidden, with Change under it.](./security-smtp-password.png)
+
+![Storage's Credentials with an access key saved: the Access key ID, and the secret shown as Saved (hidden) with Replace access key.](./security-replace-access-key.png)
 
 ## Rotating a database role's password
 
@@ -190,6 +194,8 @@ You can require it of every Tenant admin on the install: tick **Require multi-fa
 publiractl policy set --mfa-required-for-tenant-admin
 ```
 
+![The end of the Security policy page: Require multi-factor authentication for tenant administrators, Disposable email domain list URL, and Save security policy.](./security-mfa-required.png)
+
 `--mfa-required-for-tenant-admin=false` stops requiring it. The requirement is checked when a Tenant admin signs in, so it applies from each one's next sign-in rather than to sessions already open; what it does, and whom it covers, is in [Platform defaults and policies](./9-platform-policies.md#two-step-verification-for-tenant-administrators).
 
 A member of staff who has lost both the authenticator and every recovery code cannot sign in again, and neither the tenant's other administrators nor you can remove it from their account yet ([#3796](https://github.com/publira/publira/issues/3796)). In the meantime, give their role to another account of theirs, as [A tenant's staff](./3-tenant-staff.md) describes.
@@ -212,6 +218,8 @@ An install keeps two audit logs that never share entries: the Platform Console's
 ### The Platform Console's log
 
 **Audit logs**, under **Governance** in the Platform Console, lists the newest entries first, 20 to a page. Every operator can read it, an **Auditor** included. Each entry shows the **Time**, the **Actor** with their role, the action with its outcome, and the **Target**. A change made from `publiractl` names no operator: its actor is **Command line**. The list can be narrowed to one actor by public ID and to one kind of action, but not to a date. **View audit logs** on a tenant's page opens it narrowed to that tenant as well: the entries that changed the tenant, its admin invitations, or the accounts of its staff and readers. The tenant is named above the list, and its close button drops that filter alone; **Clear** drops every filter.
+
+![The Platform Console's audit log narrowed to one tenant: Tenant: Platform Docs Tenant with its close button, the actor and event filters, Filter, and Clear, and six entries, each with its time, its actor and their role or Command line, its action and outcome, and its target.](./security-audit-logs.png)
 
 It records:
 
