@@ -39,6 +39,21 @@ class TenantResolver {
     return _pending ??= _fetch();
   }
 
+  /// Asks the domain service about the tenant again, even with its id already
+  /// known, and throws [ConnectException] as [resolve] does.
+  ///
+  /// The id never changes, so [resolve] asks once. Whether the tenant is
+  /// served does, and this is how the app asks while it is suspended: the
+  /// lookup is refused for as long as the tenant is, and answered the moment
+  /// it is resumed.
+  Future<void> confirm() async {
+    if (_tenantId == null) {
+      await resolve();
+      return;
+    }
+    await _fetch();
+  }
+
   Future<String> _fetch() async {
     try {
       final body = await _client.unary(_procedure, {

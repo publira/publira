@@ -314,7 +314,7 @@ mobile/
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
 │   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / linked accounts / notifications / contact / announcements / published page
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
-│   ├── tenant/                   # The tenant's brand and theme, and the controller that loads them
+│   ├── tenant/                   # The tenant's brand and theme, the controller that loads them, and whether the API serves the tenant
 │   ├── viewer/                   # Paged reader
 │   └── wait_free/                # WaitFreeRepository and the wait-for-free ticket offered on a locked episode
 ├── test/                         # Widget / HTTP fixtures
