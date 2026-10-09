@@ -86,6 +86,22 @@ export const securityPolicyFormFields = {
     kind: "value",
     name: "disposable_email_domains_url",
   },
+  loginAttemptsPerAccountPerDay: {
+    kind: "value",
+    name: "login_attempts_per_account_per_day",
+  },
+  loginAttemptsPerAccountPerMinute: {
+    kind: "value",
+    name: "login_attempts_per_account_per_minute",
+  },
+  loginAttemptsPerSourcePerDay: {
+    kind: "value",
+    name: "login_attempts_per_source_per_day",
+  },
+  loginAttemptsPerSourcePerHour: {
+    kind: "value",
+    name: "login_attempts_per_source_per_hour",
+  },
   mailPerAddressPerDay: {
     kind: "value",
     name: "mail_requests_per_address_per_day",
@@ -142,6 +158,12 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
   const waitFreeTicketUse = t(
     "platform.policy.security.wait_free_ticket_use_title"
   );
+  const loginPerAccount = t(
+    "platform.policy.security.login_attempts_per_account_title"
+  );
+  const loginPerSource = t(
+    "platform.policy.security.login_attempts_per_source_title"
+  );
 
   const listUrlInvalid = t(
     "platform.policy.security.disposable_email_domains_url_invalid"
@@ -155,6 +177,10 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
       )
         .refine(fitsListUrlBytes, listUrlInvalid)
         .refine(isListUrl, listUrlInvalid),
+      loginAttemptsPerAccountPerDay: limitSchema(t, loginPerAccount),
+      loginAttemptsPerAccountPerMinute: limitSchema(t, loginPerAccount),
+      loginAttemptsPerSourcePerDay: limitSchema(t, loginPerSource),
+      loginAttemptsPerSourcePerHour: limitSchema(t, loginPerSource),
       mailPerAddressPerDay: limitSchema(t, perAddress),
       mailPerAddressPerHour: limitSchema(t, perAddress),
       mailPerSourcePerDay: limitSchema(t, perSource),
@@ -201,6 +227,20 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
             setting: waitFreeTicketUse,
           }),
           short: "waitFreeTicketUsePerMinute",
+        },
+        {
+          day: "loginAttemptsPerAccountPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: loginPerAccount,
+          }),
+          short: "loginAttemptsPerAccountPerMinute",
+        },
+        {
+          day: "loginAttemptsPerSourcePerDay",
+          message: t("platform.policy.day_below_hour", {
+            setting: loginPerSource,
+          }),
+          short: "loginAttemptsPerSourcePerHour",
         },
       ])
     );

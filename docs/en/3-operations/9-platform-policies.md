@@ -16,8 +16,7 @@ Each group can be set from the Platform Console or from `publiractl`, run the wa
 | Group | Platform Console | `publiractl` |
 | --- | --- | --- |
 | The default language and time zone | **General**, under **Platform** | `platform set`, `platform show` |
-| Two-step verification, the password, purchase, ticket, and mail limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
-| The sign-in attempt limits | None yet | `policy set`, `policy show` |
+| Two-step verification, the sign-in, password, purchase, ticket, and mail limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
 | The comment, report, rating, contact, and viewer limits | **Community**, under **Policies** | `policy set`, `policy show` |
 | How long expiring records are kept | **Retention**, under **Policies** | `retention set`, `retention show` |
 
@@ -79,12 +78,14 @@ The client address is the one `publira server` finds in `Forwarded` or `X-Forwar
 
 ### Sign-in attempts
 
-Two more limits guard signing in itself, with a password, to a tenant's site, its tenant console, or the Platform Console. The **Security** page does not show them yet ([#3765](https://github.com/publira/publira/issues/3765)), so they are set with `publiractl policy set` alone, and saving the page keeps them as they are stored:
+Two more limits guard signing in itself, with a password, to a tenant's site, its tenant console, or the Platform Console. They follow the rate limits on the **Security** page, and are counted the same way:
 
-| Flags | What it guards |
-| --- | --- |
-| `--login-attempts-per-account-per-minute` and `--login-attempts-per-account-per-day` | Passwords tried for one address. An address counts within its own tenant, where the tenant's site and its tenant console share one count, or within the Platform Console. A sign-in with the right password clears the count, so it slows someone guessing one account's password, not a person who mistyped |
-| `--login-attempts-per-source-per-hour` and `--login-attempts-per-source-per-day` | Failed sign-ins from one client address, across every address, every tenant, and the Platform Console, so one client cannot try a password against a long list of addresses. A sign-in with the right password does not count against it |
+| On the Security page | Flags | What it guards |
+| --- | --- | --- |
+| **Sign-in attempts per address per minute** and **per day** | `--login-attempts-per-account-per-minute` and `--login-attempts-per-account-per-day` | Passwords tried for one address. An address counts within its own tenant, where the tenant's site and its tenant console share one count, or within the Platform Console. A sign-in with the right password clears the count, so it slows someone guessing one account's password, not a person who mistyped |
+| **Failed sign-ins per source per hour** and **per day** | `--login-attempts-per-source-per-hour` and `--login-attempts-per-source-per-day` | Failed sign-ins from one client address, across every address, every tenant, and the Platform Console, so one client cannot try a password against a long list of addresses. A sign-in with the right password does not count against it |
+
+![The sign-in attempt limits on Security: sign-in attempts per address per minute and per day, and failed sign-ins per source per hour and per day.](./platform-policies-sign-in-attempts.png)
 
 An attempt over either limit is refused before the password is checked, and refused the same way whether or not the address has an account, so the refusal tells a guesser nothing about which addresses are registered. The sign-in screen then says "Too many requests in a short time. Please wait a moment and try again." rather than that the email address or password is incorrect, since the password may well have been right. Two-step verification is a separate check after the password, and these limits do not count its codes.
 
