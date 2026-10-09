@@ -1487,7 +1487,7 @@
         "synopsis": "簡介",
         "synopsis_placeholder": "請輸入系列的介紹",
         "reading_period": "閱讀期限",
-        "reading_period_description": "單位為小時。填寫0表示不限期閱讀。",
+        "reading_period_description": "單位為小時。在此系列中新建的章節以此期限為初始值，也可以為每個章節單獨設定。修改此值不會改變已建立的章節。填寫0表示不限期閱讀。",
         "published_at": "發布日期與時間",
         "published_at_description": "留空則該系列保持未發布狀態。日期與時間會以租戶時區（{$time_zone}）的當地時間解讀，系列將在該時刻或之後發布。",
         "creators": "作者",
@@ -1695,7 +1695,7 @@
           "price": "價格",
           "price_description": "設為0即可免費發布。",
           "reading_period": "閱讀期限",
-          "reading_period_description": "請填寫小時數。設為0表示不限期閱讀。",
+          "reading_period_description": "請填寫小時數。設為0表示不限期閱讀。初始值為系列的閱讀期限，建立時的值不會因之後修改系列的期限而改變。",
           "publish_at": "發布日期與時間",
           "publish_at_description": "留空則以草稿送出。日期與時間會以租戶時區（{$time_zone}）的當地時間解讀，並在該時刻或之後發布；若指定已過去的時間，則在建立時立即發布。"
         },

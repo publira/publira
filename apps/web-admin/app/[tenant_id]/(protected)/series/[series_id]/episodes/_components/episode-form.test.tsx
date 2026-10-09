@@ -59,6 +59,7 @@ const renderBothForms = async () => {
       action,
       seriesId: "SERIES001-ID",
       seriesPublicId: "SERIES001",
+      seriesReadingPeriodHours: 0,
       tenantId: "TENANT001",
       timeZone: "UTC",
     }),
@@ -66,6 +67,7 @@ const renderBothForms = async () => {
       action,
       seriesId: "SERIES002-ID",
       seriesPublicId: "SERIES002",
+      seriesReadingPeriodHours: 0,
       tenantId: "TENANT001",
       timeZone: "UTC",
     }),
@@ -124,6 +126,7 @@ it("creates an episode that follows its series unless told otherwise", async () 
     seriesAvailability: "app",
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
+    seriesReadingPeriodHours: 0,
     timeZone: "UTC",
   });
 
@@ -147,6 +150,7 @@ it("creates an episode sold where its series is unless told otherwise", async ()
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
     seriesPurchaseAvailability: "web",
+    seriesReadingPeriodHours: 0,
     timeZone: "UTC",
   });
 
@@ -162,11 +166,31 @@ it("creates an episode sold where its series is unless told otherwise", async ()
   );
 });
 
+// The series' reading period is where a new episode's starts, so a series sold
+// with a limit does not hand out episodes without one by default.
+it("starts the reading period at the series' period", async () => {
+  await renderForm({
+    action,
+    seriesId: "SERIES001-ID",
+    seriesPublicId: "SERIES001",
+    seriesReadingPeriodHours: 72,
+    timeZone: "UTC",
+  });
+
+  expect(
+    screen.getByRole("spinbutton", { name: /Reading period/u })
+  ).toHaveProperty("value", "72");
+  expect(
+    screen.getByText(/starts at the series' reading period/u)
+  ).toBeTruthy();
+});
+
 it("says that a publication time already passed publishes the episode as it is created", async () => {
   await renderForm({
     action,
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
+    seriesReadingPeriodHours: 0,
     timeZone: "Asia/Tokyo",
   });
 
@@ -198,6 +222,7 @@ it("closes every field while the save is in flight", async () => {
     action: pendingAction,
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
+    seriesReadingPeriodHours: 0,
     timeZone: "UTC",
   });
 
@@ -251,6 +276,7 @@ it("keeps what was entered when the Action refuses the submission", async () => 
     action: refuse,
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
+    seriesReadingPeriodHours: 0,
     timeZone: "UTC",
   });
 

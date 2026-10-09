@@ -70,7 +70,6 @@ interface SeriesFormProps {
     prevState: SeriesActionState,
     formData: FormData
   ) => Promise<SeriesActionState>;
-  defaultReadingPeriodHours: number;
   creators: CreatorOption[];
   /** The tenant's roles, in the priority order the credit list is shown in. */
   creatorRoles: CreatorRoleOption[];
@@ -130,14 +129,15 @@ type SeriesFormValues = Pick<
   | "title"
 >;
 
-/** What a new series opens on, apart from its tenant's reading period. */
-const NEW_SERIES_VALUES: Omit<SeriesFormValues, "readingPeriodHours"> = {
+/** What a new series opens on. */
+const NEW_SERIES_VALUES: SeriesFormValues = {
   ageRating: DEFAULT_SERIES_AGE_RATING,
   availability: DEFAULT_SURFACE_AVAILABILITY,
   creatorCredits: [],
   genreIds: [],
   labelId: "",
   publishedAt: "",
+  readingPeriodHours: 0,
   scheduleWeekdays: [],
   status: DEFAULT_SERIES_STATUS,
   synopsis: "",
@@ -154,7 +154,6 @@ export const SeriesForm = ({
   mode,
   canCreateLabel = true,
   action,
-  defaultReadingPeriodHours,
   creators,
   creatorRoles,
   labels,
@@ -176,10 +175,7 @@ export const SeriesForm = ({
   timeZone,
   titlePlaceholder,
 }: SeriesFormProps) => {
-  const values: SeriesFormValues = initialSeries ?? {
-    ...NEW_SERIES_VALUES,
-    readingPeriodHours: defaultReadingPeriodHours,
-  };
+  const values: SeriesFormValues = initialSeries ?? NEW_SERIES_VALUES;
 
   return (
     <ActionForm action={action} className="grid gap-4">

@@ -41,6 +41,12 @@ interface EpisodeFormProps {
    * option that follows it. Absent when that could not be read.
    */
   seriesPurchaseAvailability?: SurfaceAvailabilityValue;
+  /**
+   * The series' reading period, which the episode's field starts at. The
+   * episode stores the value it is created with, so changing the series later
+   * leaves it alone.
+   */
+  seriesReadingPeriodHours: number;
   tenantId: string;
   timeZone: string;
 }
@@ -52,6 +58,7 @@ export const EpisodeForm = async ({
   action,
   seriesAvailability,
   seriesPurchaseAvailability,
+  seriesReadingPeriodHours,
   tenantId,
   timeZone,
 }: EpisodeFormProps) => {
@@ -110,7 +117,7 @@ export const EpisodeForm = async ({
           </FieldLabel>
           <FieldContent>
             <Input
-              defaultValue={0}
+              defaultValue={seriesReadingPeriodHours}
               min={0}
               name="reading_period_hours"
               required

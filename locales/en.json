@@ -1487,7 +1487,7 @@
         "synopsis": "Synopsis",
         "synopsis_placeholder": "Enter a series description",
         "reading_period": "Reading period",
-        "reading_period_description": "The unit is hours. Enter 0 for unlimited reading.",
+        "reading_period_description": "The unit is hours. New episodes in this series start with this period, and each can be given its own. Changing it does not change episodes already created. Enter 0 for unlimited reading.",
         "published_at": "Publication date and time",
         "published_at_description": "Leave blank to keep the series unpublished. The date and time are interpreted as wall-clock time in the tenant time zone ({$time_zone}) and it will be published at or after that time.",
         "creators": "Authors",
@@ -1695,7 +1695,7 @@
           "price": "Price",
           "price_description": "Set 0 to publish for free.",
           "reading_period": "Reading period",
-          "reading_period_description": "Enter hours. Set 0 for unlimited reading.",
+          "reading_period_description": "Enter hours. Set 0 for unlimited reading. This starts at the series' reading period, and the episode keeps the value it is created with even if the series' period changes later.",
           "publish_at": "Publication date and time",
           "publish_at_description": "Leave blank to create as a draft. The date and time are interpreted as wall-clock time in the tenant time zone ({$time_zone}) and the episode will be published at or after that time; a time that has already passed publishes it as soon as it is created."
         },

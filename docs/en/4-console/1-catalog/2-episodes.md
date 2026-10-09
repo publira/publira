@@ -25,7 +25,7 @@ Choose **Create** on the episode list and fill in:
 
 - **Title**: the episode's title, such as `Episode 1 — A beginning morning`. It cannot be changed once the episode exists ([#3831](https://github.com/publira/publira/issues/3831)), so check it before saving.
 - **Price**: a whole number of yen. `0` makes the episode free.
-- **Reading period**: how many hours a purchase keeps the episode open. `0` keeps it open with no end.
+- **Reading period**: how many hours a purchase keeps the episode open. `0` keeps it open with no end. It starts at the series' [Reading period](./1-series.md#reading-period).
 - **Publication date and time**: when the episode is published, read in the tenant's time zone. Leave it empty to create a draft. A time that has already passed publishes the episode as soon as it is created.
 - **Shown on** and **Sold on**: where the episode can be found and bought, as [Shown on and Sold on](#shown-on-and-sold-on) describes. Both start by following the series.
 
