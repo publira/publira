@@ -66,7 +66,6 @@ const updateTenantNameFormSchema = async (locale: Locale) => {
   ]);
 
   return z.object({
-    currentDomain: optionalTrimmedString(),
     name: requiredTrimmedString(t("platform.tenants.name_required")),
     tenantId,
   });
@@ -80,7 +79,6 @@ const updateTenantDomainFormSchema = async (locale: Locale) => {
 
   return z.object({
     adminDomain: optionalTrimmedString(),
-    currentName: requiredTrimmedString(t("platform.common.required")),
     domain: requiredTrimmedString(t("platform.tenants.domain_required")),
     tenantId,
   });
@@ -199,7 +197,6 @@ export const updateTenantNameAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
-      currentDomain: { kind: "value", name: "tenant_current_domain" },
       name: { kind: "value", name: "tenant_name" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
@@ -211,8 +208,7 @@ export const updateTenantNameAction = async (
   const result = await withPlatformSessionReauth(() =>
     updatePlatformTenant(
       parsed.data.tenantId,
-      parsed.data.name,
-      parsed.data.currentDomain,
+      { name: parsed.data.name },
       locale
     )
   );
@@ -238,7 +234,6 @@ export const updateTenantDomainAction = async (
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       adminDomain: { kind: "value", name: "tenant_admin_domain" },
-      currentName: { kind: "value", name: "tenant_current_name" },
       domain: { kind: "value", name: "tenant_domain" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
@@ -250,10 +245,8 @@ export const updateTenantDomainAction = async (
   const result = await withPlatformSessionReauth(() =>
     updatePlatformTenant(
       parsed.data.tenantId,
-      parsed.data.currentName,
-      parsed.data.domain,
-      locale,
-      parsed.data.adminDomain
+      { adminDomain: parsed.data.adminDomain, domain: parsed.data.domain },
+      locale
     )
   );
   updateTag(platformTenantsCacheTag);

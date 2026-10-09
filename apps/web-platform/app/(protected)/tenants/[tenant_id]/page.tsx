@@ -245,11 +245,6 @@ const TenantDetailContent = async ({
               </PlatformSectionHeader>
               <ActionForm action={updateTenantNameAction}>
                 <input name="tenant_id" type="hidden" value={tenant.id} />
-                <input
-                  name="tenant_current_domain"
-                  type="hidden"
-                  value={tenant.domain}
-                />
                 <div className="grid gap-4">
                   <Field>
                     <FieldLabel required>
@@ -324,11 +319,6 @@ const TenantDetailContent = async ({
               <TenantDomainCautions showUpdateCaution />
               <ActionForm action={updateTenantDomainAction}>
                 <input name="tenant_id" type="hidden" value={tenant.id} />
-                <input
-                  name="tenant_current_name"
-                  type="hidden"
-                  value={tenant.name}
-                />
                 <div className="grid gap-4">
                   <Field>
                     <FieldLabel required>

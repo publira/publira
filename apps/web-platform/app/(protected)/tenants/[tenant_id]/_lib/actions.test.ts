@@ -115,7 +115,6 @@ describe("tenant detail actions", () => {
     await updateTenantNameAction(
       null,
       formData({
-        tenant_current_domain: "tenant.example.com",
         tenant_id: "01a0deb5-0000-7000-8000-000000000002",
         tenant_name: "Renamed Tenant",
       })
@@ -128,6 +127,51 @@ describe("tenant detail actions", () => {
     ]);
   });
 
+  it("renaming a tenant sends the name alone, so its domain and admin domain stay as they are", async () => {
+    mockUpdatePlatformTenant.mockResolvedValueOnce({ ok: true });
+
+    const { updateTenantNameAction } = await import("./actions");
+
+    await expect(
+      updateTenantNameAction(
+        null,
+        formData({
+          tenant_id: "01a0deb5-0000-7000-8000-000000000002",
+          tenant_name: "Renamed Tenant",
+        })
+      )
+    ).resolves.toMatchObject({ ok: true });
+
+    expect(mockUpdatePlatformTenant).toHaveBeenCalledWith(
+      "01a0deb5-0000-7000-8000-000000000002",
+      { name: "Renamed Tenant" },
+      "en"
+    );
+  });
+
+  it("moving a tenant sends its domains alone, so its name stays as it is", async () => {
+    mockUpdatePlatformTenant.mockResolvedValueOnce({ ok: true });
+
+    const { updateTenantDomainAction } = await import("./actions");
+
+    await expect(
+      updateTenantDomainAction(
+        null,
+        formData({
+          tenant_admin_domain: "console.example.net",
+          tenant_domain: "renamed.example.com",
+          tenant_id: "01a0deb5-0000-7000-8000-000000000002",
+        })
+      )
+    ).resolves.toMatchObject({ ok: true });
+
+    expect(mockUpdatePlatformTenant).toHaveBeenCalledWith(
+      "01a0deb5-0000-7000-8000-000000000002",
+      { adminDomain: "console.example.net", domain: "renamed.example.com" },
+      "en"
+    );
+  });
+
   it("changing a tenant's domain clears the tenants and the audit log", async () => {
     mockUpdatePlatformTenant.mockResolvedValueOnce({ ok: true });
 
@@ -136,7 +180,6 @@ describe("tenant detail actions", () => {
     await updateTenantDomainAction(
       null,
       formData({
-        tenant_current_name: "Example Tenant",
         tenant_domain: "renamed.example.com",
         tenant_id: "01a0deb5-0000-7000-8000-000000000002",
       })
