@@ -118,18 +118,21 @@ export const plantExpiredSessionCookie = async (
   });
 };
 
-export const mintExpiredAccessToken = (claims: {
+/** The claims publira server signs into an access token. */
+interface AccessTokenClaims {
   subject: string;
   audience: "admin" | "platform" | "public";
   tenantId?: string;
   role?: string;
   credentialsVersion?: number;
-}): Promise<string> => {
-  const now = Temporal.Now.instant();
-  const issuedAt = now.subtract({ hours: 2 });
-  const expiresAt = now.subtract({ hours: 1 });
+}
 
-  return new SignJWT({
+const signAccessToken = (
+  claims: AccessTokenClaims,
+  issuedAt: Temporal.Instant,
+  expiresAt: Temporal.Instant
+): Promise<string> =>
+  new SignJWT({
     cv: claims.credentialsVersion ?? 1,
     role: claims.role ?? "",
     tid: claims.tenantId ?? "",
@@ -141,6 +144,36 @@ export const mintExpiredAccessToken = (claims: {
     .setIssuedAt(Math.floor(issuedAt.epochMilliseconds / 1000))
     .setExpirationTime(Math.floor(expiresAt.epochMilliseconds / 1000))
     .sign(resolveJwtSecret());
+
+export const mintExpiredAccessToken = (
+  claims: AccessTokenClaims
+): Promise<string> => {
+  const now = Temporal.Now.instant();
+  return signAccessToken(
+    claims,
+    now.subtract({ hours: 2 }),
+    now.subtract({ hours: 1 })
+  );
+};
+
+/**
+ * The session cookie signing in would have left, for a console the spec
+ * cannot sign in to: one whose tenant the API is refusing, where the sign-in
+ * form is the very thing that is refused.
+ */
+export const plantSessionCookie = async (
+  page: Page,
+  cookieName: string,
+  baseUrl: string,
+  claims: AccessTokenClaims
+): Promise<void> => {
+  const now = Temporal.Now.instant();
+  const expiresAt = now.add({ hours: 1 });
+  await replaceSessionCookie(page, cookieName, baseUrl, {
+    accessToken: await signAccessToken(claims, now, expiresAt),
+    expiresAt: expiresAt.toString(),
+    tenantId: claims.tenantId,
+  });
 };
 
 /**
@@ -152,12 +185,7 @@ export const plantExpiredAccessTokenCookie = async (
   page: Page,
   cookieName: string,
   baseUrl: string,
-  claims: {
-    subject: string;
-    audience: "admin" | "platform" | "public";
-    tenantId?: string;
-    role?: string;
-  }
+  claims: AccessTokenClaims
 ): Promise<void> => {
   await replaceSessionCookie(page, cookieName, baseUrl, {
     accessToken: await mintExpiredAccessToken(claims),

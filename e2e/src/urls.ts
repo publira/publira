@@ -100,7 +100,7 @@ export const PUBLIC_API_BASE_URL = envUrl(
  * no DNS entry or hosts file is needed — but only the browser does, so keep
  * these out of the Node-side `request` fixture.
  */
-const withHostname = (baseUrl: string, hostname: string): string => {
+export const withHostname = (baseUrl: string, hostname: string): string => {
   const url = new URL(baseUrl);
   url.hostname = hostname;
   return url.toString().replace(/\/$/u, "");
