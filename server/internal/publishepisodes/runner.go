@@ -30,6 +30,12 @@ const (
 	notificationTypeEpisodePublishFailed = "episode_publish_failed"
 )
 
+// errNoLongerDue reports an episode that stopped being due between the job
+// listing it and publishing it: the console published it, took it back to a
+// draft, or moved it later. There is nothing to publish or announce, and a
+// retry would find the same.
+var errNoLongerDue = errors.New("episode is no longer scheduled for a time that has passed")
+
 var tracer = otel.Tracer("github.com/publira/publira/server/internal/publishepisodes")
 
 // Runner lists due scheduled episodes and publishes them with retries.
@@ -150,6 +156,13 @@ func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 			)
 		}),
 	)
+	if errors.Is(err, errNoLongerDue) {
+		r.logger.InfoContext(ctx, "episode is no longer due; left as it is",
+			"episode_id", row.EpisodeID,
+			"tenant_id", row.TenantID.String(),
+		)
+		return
+	}
 	if err != nil {
 		if ctx.Err() != nil {
 			return
@@ -332,9 +345,14 @@ func (r *Runner) publishEpisode(ctx context.Context, row dbmodels.ListEpisodesRe
 	}
 
 	qtx := r.queries.WithTx(tx)
-	if err := qtx.MarkEpisodePublished(ctx, row.EpisodeID); err != nil {
+	marked, err := qtx.MarkEpisodePublished(ctx, row.EpisodeID)
+	if err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("mark episode published: %w", err)
+	}
+	if marked == 0 {
+		_ = tx.Rollback()
+		return backoff.Permanent(errNoLongerDue)
 	}
 	if err := r.notifyFollowers(ctx, qtx, row); err != nil {
 		_ = tx.Rollback()

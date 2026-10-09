@@ -154,16 +154,25 @@ func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) 
 	return items, nil
 }
 
-const MarkEpisodePublished = `-- name: MarkEpisodePublished :exec
+const MarkEpisodePublished = `-- name: MarkEpisodePublished :execrows
 UPDATE episode_listings
 SET status = 'published',
     published_at = NOW()
 WHERE episode_id = $1
+    AND status = 'scheduled'
+    AND scheduled_at <= NOW()
 `
 
-func (q *Queries) MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, MarkEpisodePublished, episodeID)
-	return err
+// The scheduled publication job's promotion of an episode it listed as due.
+// The job lists before it publishes, so the listing is matched again here: one
+// the console published, took back to a draft, or moved later in between
+// counts no row and is left as the console saved it.
+func (q *Queries) MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, MarkEpisodePublished, episodeID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const PublishEpisodeNowByIDForTenant = `-- name: PublishEpisodeNowByIDForTenant :execrows

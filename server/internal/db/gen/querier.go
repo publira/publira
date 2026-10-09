@@ -2233,7 +2233,11 @@ type Querier interface {
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
 	MarkEpisodeFreeWindowEndRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkEpisodeFreeWindowStartRevalidated(ctx context.Context, id uuid.UUID) error
-	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
+	// The scheduled publication job's promotion of an episode it listed as due.
+	// The job lists before it publishes, so the listing is matched again here: one
+	// the console published, took back to a draft, or moved later in between
+	// counts no row and is left as the console saved it.
+	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) (int64, error)
 	MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (NotificationRead, error)
 	// Same token drop as MarkOutboxEventDone: a dead auth-mail event is
 	// as terminal as a successful one, and the secret is no longer

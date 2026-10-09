@@ -266,6 +266,63 @@ func TestPublishSuccessDoesNotNotifyOperators(t *testing.T) {
 	assertNotificationCounts(t, pg, notificationCounts{tenant: 2})
 }
 
+// The job lists the due episodes before it publishes them, and the console
+// can change one in between. An episode that is no longer due by the time the
+// job reaches it is left as the console saved it, the published_at of one the
+// console published included, and nothing is announced or queued for it.
+func TestPublishLeavesAnEpisodeThatStoppedBeingDue(t *testing.T) {
+	publishedAt := time.Now().UTC().Add(-time.Hour).Truncate(time.Microsecond)
+	for _, tc := range []struct {
+		name   string
+		update string
+		args   []any
+	}{
+		{
+			name:   "published by the console",
+			update: "UPDATE episode_listings SET status = 'published', published_at = $2 WHERE episode_id = $1",
+			args:   []any{publishedAt},
+		},
+		{
+			name:   "taken back to a draft",
+			update: "UPDATE episode_listings SET status = 'draft', scheduled_at = NULL WHERE episode_id = $1",
+		},
+		{
+			name:   "moved later",
+			update: "UPDATE episode_listings SET scheduled_at = NOW() + interval '1 day' WHERE episode_id = $1",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pg, env := newPublishTestEnv(t)
+			r := env.runner()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			if _, err := pg.DB.ExecContext(ctx, tc.update, append([]any{env.episode.ID}, tc.args...)...); err != nil {
+				t.Fatalf("change the listing: %v", err)
+			}
+			var before string
+			if err := pg.DB.QueryRowContext(ctx, "SELECT row_to_json(el)::text FROM episode_listings el WHERE episode_id = $1", env.episode.ID).Scan(&before); err != nil {
+				t.Fatalf("read the listing: %v", err)
+			}
+
+			r.publishEpisodeWithRetry(ctx, env.readyRow())
+
+			var after string
+			if err := pg.DB.QueryRowContext(ctx, "SELECT row_to_json(el)::text FROM episode_listings el WHERE episode_id = $1", env.episode.ID).Scan(&after); err != nil {
+				t.Fatalf("read the listing: %v", err)
+			}
+			if after != before {
+				t.Fatalf("listing = %s, want it left as %s", after, before)
+			}
+			assertNotificationCounts(t, pg, notificationCounts{})
+			if got := countTable(t, pg, "outbox_events"); got != 0 {
+				t.Fatalf("outbox_events = %d, want 0", got)
+			}
+		})
+	}
+}
+
 func TestPublishNegativeMaxRetriesRunsOneAttempt(t *testing.T) {
 	pg, env := newPublishTestEnv(t)
 	r := New(pg.DB, dbmodels.New(pg.DB), nil, slog.New(slog.NewTextHandler(io.Discard, nil)), -1)
