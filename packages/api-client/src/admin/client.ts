@@ -28,6 +28,7 @@ import { AdminSeriesService } from "../gen/publira/admin/v1/series_pb.js";
 import { TenantSettingsService } from "../gen/publira/admin/v1/tenant_pb.js";
 import { TenantThemeService } from "../gen/publira/admin/v1/theme_pb.js";
 import { AdminUserService } from "../gen/publira/admin/v1/user_pb.js";
+import { grpcSessionOptions } from "../grpc-session.js";
 import { createTenantHeaderInterceptor } from "../tenant-header.js";
 import type { TenantHeaderOptions } from "../tenant-header.js";
 import { createTracingInterceptor } from "../tracing.js";
@@ -93,6 +94,7 @@ export const createAdminApiClient = (
           baseUrl,
           ...transportOptions,
           interceptors,
+          nodeOptions: grpcSessionOptions,
         })
       : createConnectTransport({
           baseUrl,

@@ -18,6 +18,7 @@ import { PlatformStorageSettingsService } from "../gen/publira/platform/v1/stora
 import { PlatformTenantService } from "../gen/publira/platform/v1/tenant_pb.js";
 import { PlatformUserService } from "../gen/publira/platform/v1/user_pb.js";
 import { PlatformWebPushSettingsService } from "../gen/publira/platform/v1/webpush_pb.js";
+import { grpcSessionOptions } from "../grpc-session.js";
 import { createTenantHeaderInterceptor } from "../tenant-header.js";
 import type { TenantHeaderOptions } from "../tenant-header.js";
 import { createTracingInterceptor } from "../tracing.js";
@@ -73,6 +74,7 @@ export const createPlatformApiClient = (
           baseUrl,
           ...transportOptions,
           interceptors,
+          nodeOptions: grpcSessionOptions,
         })
       : createConnectTransport({
           baseUrl,

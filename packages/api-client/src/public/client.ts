@@ -20,6 +20,7 @@ import { DomainService } from "../gen/publira/v1/domain_pb.js";
 import { NotificationService } from "../gen/publira/v1/notification_pb.js";
 import { PublicPagesService } from "../gen/publira/v1/page_pb.js";
 import { TenantService } from "../gen/publira/v1/tenant_pb.js";
+import { grpcSessionOptions } from "../grpc-session.js";
 import { createTenantHeaderInterceptor } from "../tenant-header.js";
 import type { TenantHeaderOptions } from "../tenant-header.js";
 import { createTracingInterceptor } from "../tracing.js";
@@ -75,6 +76,7 @@ export const createPublicApiClient = (
           baseUrl,
           ...transportOptions,
           interceptors,
+          nodeOptions: grpcSessionOptions,
         })
       : createConnectTransport({
           baseUrl,
