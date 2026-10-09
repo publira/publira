@@ -2,15 +2,20 @@
 title: Your account
 description: Change the email address you sign in to the console with, and protect your account with two-step verification and recovery codes.
 published: 2026-10-07
+updated: 2026-10-09
 ---
 
 Every member of staff, whatever their role, manages their own console account from **Account settings**, in the account menu at the top of the console. It has two cards: **Change the email address** and **Two-step verification**.
+
+![The account menu opened from the top of the console: the member's name, public ID, and role, then Account settings and Sign out.](./your-account-menu.png)
 
 The console has no screen for changing your password. Sign out and use **Forgot your password?** on the sign-in screen, which mails you a link to set a new one.
 
 ## Changing your email address
 
 Under **Change the email address**, enter your **Current email address**, the **New email address**, and your **Current password**, and choose **Send the confirmation email**.
+
+![The Change the email address card: Current email address, New email address, Current password, and Send the confirmation email.](./your-account-email-address.png)
 
 A confirmation mail is sent to both addresses, and the change needs both links opened, each within 24 hours. Requiring the current address stops someone who has only your password from moving the account to an address of theirs. Until both are opened, you keep signing in with the current address. Once both are, you sign in with the new one, and the old address is told the address was changed.
 
@@ -24,12 +29,18 @@ Two-step verification asks for a code from an authenticator app on your phone af
 
 The operator can require it of every Tenant admin on the install. A Tenant admin who has not set it up is then asked to, right after their password, before they can use the console, and **Two-step verification** says "This tenant requires two-step verification for administrators." Editors and Auditors are never required to, but can turn it on for themselves.
 
+![The Two-step verification card while it is off, with Set up.](./your-account-two-step.png)
+
 ### Turning it on
 
 1. Under **Two-step verification**, choose **Set up**.
 2. Scan the QR code with your authenticator app. If you cannot scan it, enter the **Setup key** shown beside it by hand.
 3. Enter the six-digit code the app shows under **Verification code**, and choose **Turn on two-step verification**.
 4. The console shows ten **Recovery codes**. Store them somewhere other than your phone, such as a password manager or on paper. They are shown only this once.
+
+![Setting up two-step verification: the QR code to scan and the Setup key beside it, both covered over in this picture, the Verification code field, and Turn on two-step verification.](./your-account-two-step-setup.png)
+
+![Two-step verification just turned on: the ten recovery codes, covered over in this picture, and the Regenerate recovery codes and Turn off two-step verification forms below them.](./your-account-recovery-codes.png)
 
 From then on, the console asks for a code from the app each time you sign in. You have five minutes to enter it after your password. After five wrong codes, the account is locked for fifteen minutes.
 

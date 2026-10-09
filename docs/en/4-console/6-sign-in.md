@@ -2,7 +2,7 @@
 title: Sign-in with Apple and Google
 description: Let readers sign in to the site and the app with an Apple or Google account, and create what Apple and Google need for it.
 published: 2026-10-06
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 Readers sign in to a tenant's site with an email address and a password. **Integrations** › **Sign-in** adds two buttons beside that form, **Continue with Apple** and **Continue with Google**, so a reader can sign up and sign in with an account they already have. This page takes a Tenant admin through both providers for the site, and says what readers see once they are on. The app shares the same setup; what only the app needs is on [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#sign-in-with-apple-and-google).
@@ -52,6 +52,8 @@ In the **Apple** section of **Integrations** › **Sign-in**:
 
 Turn on **Offer Sign in with Apple** and choose **Save the sign-in providers**.
 
+![The Apple section once saved: Offered, Where readers see its button for the site, the iOS app, and the Android app, the Callback URL and the Android app callback URL with buttons to copy them, Offer Sign in with Apple, Services ID, Team ID, Key ID, the stored private key, covered over in this picture, with Replace and Remove, and the iOS bundle ID named under App links.](./sign-in-apple.png)
+
 The key cannot be read back: on a later visit the console shows only that one is stored. **Replace** swaps it for a new one, and **Remove** deletes it when you save.
 
 ## Sign in with Google
@@ -73,6 +75,8 @@ In the **Google** section of **Integrations** › **Sign-in**:
 - **iOS client ID**: the client ID of an iOS client, which only the iOS app uses. Leave it empty if the tenant has no iOS app.
 
 Turn on **Offer Sign in with Google** and choose **Save the sign-in providers**.
+
+![The Google section once saved: Offered, Where readers see its button, the Callback URL with a button to copy it, Offer Sign in with Google, Web client ID, and iOS client ID.](./sign-in-google.png)
 
 ## Checking that it works
 

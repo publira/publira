@@ -2,7 +2,7 @@
 title: Members
 description: Invite the publisher's staff to the console with the role each of them needs, change it, and remove them when they leave.
 published: 2026-10-07
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 **Members**, under **Administration**, lists everyone who can sign in to this console, and is where a Tenant admin brings staff in, changes their roles, and takes them out again. Only a Tenant admin sees it.
@@ -26,13 +26,19 @@ Under **Invite a member**, enter the address in **Email address to invite**, cho
 - **An address with no account on the site** is mailed an invitation to the chosen role, in the tenant's default language. The link in it leads to this console, where the invitee enters their **Full name** and a **Password** and chooses **Accept invitation**. They then sign in with that role. The link is valid for 24 hours.
 - **An address that already has an account on the site** is given the role at once, and no mail is sent. An account that already holds a role can be made a Tenant admin this way, which replaces its role; for any other role the console refuses it and points to **Members**, where the role is changed as described below.
 
+![The Invite a member section: Email address to invite, Role set to Editor, and Send invitation.](./members-invite.png)
+
 **Invitations** lists each invitation with the **Role** it grants, as **Pending**, **Accepted**, **Canceled**, or **Expired**. On a pending one, **Resend** mails it again with a new link, valid for another 24 hours, and **Cancel invitation** withdraws it. Either way the earlier link stops working. To try again after an invitation has expired or been canceled, or to change the role a pending one grants, invite the same address again with the role it should have.
+
+![The Invitations list: an invitation to an Editor that expired, and one to a Tenant admin that was canceled, each with when it was sent and when it expires.](./members-invitations.png)
 
 An invitation is mailed by the platform's mail server unless the tenant sends through its own, as [Email](./6-email.md) describes. If one does not arrive, check the invitee's spam folder, then the tenant's mail settings.
 
 ## Changing a role
 
 In **Members**, choose the new role in the member's **Role** column and choose **Change role**. The change applies to the member's next action in the console, including in a console they already have open.
+
+![The Members list: a Tenant admin's row with the Role field and Change role, their status, when they joined, and Remove.](./members-list.png)
 
 ## Removing a member
 

@@ -2,6 +2,7 @@
 title: Reports and royalties
 description: Read the Dashboard and Read-through, close a month of royalties into a statement for each Author, and export it as CSV.
 published: 2026-10-07
+updated: 2026-10-09
 ---
 
 Three screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands, **Read-through** under **Reports** shows how far members read, and **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
@@ -30,6 +31,8 @@ Set the time zone before the tenant's first sale, and leave it once a statement 
 
 **Publishing queue** lists up to ten of those episodes: the scheduled ones first, soonest release first, then the drafts, newest first. **Scheduled for** is shown in the tenant's time zone, and **Not set** on a draft with no date.
 
+![The Dashboard: one published series, one draft episode, and one scheduled release, and the Publishing queue listing the scheduled episode with its time first and the draft, Not set, after it.](./reports-and-royalties-dashboard.png)
+
 The screen updates as soon as a member of the staff saves a series or an episode, and when a scheduled episode goes live on its own, which then leaves the queue.
 
 ## Read-through
@@ -45,6 +48,8 @@ The screen updates as soon as a member of the staff saves a series or an episode
 Only signed-in members count. A reader who is not signed in cannot be recorded as finishing an episode, so their views are left out as well. How a member came to read the episode makes no difference: an episode bought, opened with a ticket, or free counts the same, and a purchase alone counts nothing.
 
 **Episodes** lists each episode read in the period, the most completions first, twenty to a page. The totals at the top cover the whole period, whichever page is shown.
+
+![Read-through below the line naming its dates: Completions, Member views, and Read-through rate, how the rate is worked out, and the Episodes list.](./reports-and-royalties-read-through.png)
 
 The figures are counted once a day is over. `publira worker` counts each day after midnight in the tenant's time zone, on its next hourly pass, so a read made today appears tomorrow. While the worker is stopped, no new day is counted: the screen keeps showing the days counted before, and empties as they leave the 28-day window. When the worker starts again, it catches up on the days it missed. [Overview](../2-deployments/1-overview.md) describes keeping `publira worker` running.
 
@@ -95,6 +100,8 @@ Above the totals the screen says where the month stands:
 - **This month is over and ready to close.** **Close month** closes it.
 - **This month closes automatically on** a date. The month is closed by `publira worker` on that date, and the console offers no way to close it by hand.
 
+![Royalties showing January 2026: Closed statements and Closing settings at the top, the Month field with Show, the open month's Sales, Refunds, and Payout to authors, This month is over and ready to close with Close month, and Lines by author, with each Author's lines and subtotal.](./reports-and-royalties-open-month.png)
+
 ### Before you close a month
 
 Closing a month fixes it as it stands at that moment, and nothing that happens afterwards reaches it. Check, before closing:
@@ -111,11 +118,17 @@ Close the months in order. The console offers the month after the newest stateme
 2. Check that it says **This month is over and ready to close**, and read through **Lines by author**.
 3. Choose **Close month**. The dialog states the **Payout to authors** that will be fixed. Choose **Close month** again to confirm.
 
+![The dialog that closes a month, giving the payout to authors that will be fixed, with Cancel and Close month.](./reports-and-royalties-close-month.png)
+
 The console then opens the month's **Statement**, which shows **Closed on**, who closed it, and the same totals and lines as the open month had. The close is recorded in **Audit logs** as **Royalty month closed**.
+
+![The statement of December 2025: Closed on, who closed it, and the time zone it was cut in, its totals, Download CSV, and each Author's lines as they stood at the close.](./reports-and-royalties-statement.png)
 
 Once closed, a statement keeps each Author's, series', episode's, and role's name as it was at the close: renaming an Author, editing a share, refunding a purchase, or deleting a credit afterwards leaves it as it is. A closed month cannot be reopened, by staff or by the operator. A mistake found afterwards is corrected outside Publira, in what the tenant pays.
 
 **Closed statements** lists every closed month, newest first, with when it was closed, who closed it, and its totals. A month closed automatically shows `—` under **Closed by**.
+
+![Closed statements: December 2025, closed on 5 January 2026 by the tenant's admin, with its sales, refunds, and payout to authors, and Download CSV.](./reports-and-royalties-closed-statements.png)
 
 ### Exporting a statement as CSV
 
@@ -146,6 +159,8 @@ Names are as they were at the close, and the IDs keep a line tied to its Author 
 - **Close automatically**: each month is closed on the **Close day** of the following month, a day from 1 to 28 in the tenant's time zone.
 
 Choose **Save the closing settings** to apply the choice; the change is recorded in **Audit logs** as **Royalty closing settings updated**.
+
+![Closing settings, with Close each month myself chosen over Close automatically, and Save the closing settings.](./reports-and-royalties-closing-settings.png)
 
 An automatic close happens on the first hourly pass of `publira worker` after midnight on the close day, closes the month exactly as **Close month** would, and records no one under **Closed by**. If the worker was stopped on the close day, it closes the months it owes when it starts again, oldest first. Without `publira worker` running, no month is closed automatically.
 

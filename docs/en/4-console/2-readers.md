@@ -2,6 +2,7 @@
 title: Readers, comments, and contact messages
 description: Find and act on a reader's account, moderate comments and their reports, answer contact messages, and open a paid episode to a reader with an access ticket.
 published: 2026-10-07
+updated: 2026-10-09
 ---
 
 The **Readers** group of the console is where the staff deal with the people who read the site: their accounts, the comments they leave on episodes, the messages they send through the contact form, and the access tickets that open a paid episode to one of them without payment. What is done here reaches a reader directly, sometimes without a way back, so each section below says what an action does before saying how to take it.
@@ -31,9 +32,13 @@ To find someone, type part of their name or email address into **Name or email**
 
 A reader's name in the list opens their page. So does the commenter's name on **Comments**, for a Tenant admin, and the sender of a contact message who was signed in when they wrote.
 
+![The Readers list: the Name or email and Status filters with Apply and Reset, and a row for each account with its name, email address, role, status, and when it signed up.](./readers-list.png)
+
 ### The reader page
 
 **Account** shows the reader's name, their **Public ID** with a button to copy it, their email address, their status, when they signed up, whether and when they confirmed their email address, and their **Birth date**. **Comments** lists everything they have written, newest first, including the comments they deleted themselves until those are purged, with the same actions as on [Comments](#comments).
+
+![A reader's page: the Account section with Suspend and Delete, the reader's name, Public ID with a copy button, email address, status, when they signed up and confirmed their address, and Birth date with Change.](./readers-reader.png)
 
 The public ID is what **Access tickets** filters by, so copy it from here when you look for a reader's tickets.
 
@@ -70,6 +75,8 @@ Readers can comment on an episode only when comments are turned on, under **Sett
 Only signed-in readers comment, up to 1000 characters each. A comment belongs to an episode; there are no replies or threads, so acting on one comment touches no other.
 
 **Comments** shows two lists: **Reported comments** first, then every comment on the tenant's episodes, newest first. An Auditor sees both without the actions.
+
+![The comment list under its filters, State, Series public_id, and Episode public_id: a comment awaiting approval with Approve, Remove, and Purge, two published ones with Remove and Purge, and one removed by a moderator with Restore and Purge.](./readers-comments.png)
 
 ### What a comment's state means
 
@@ -114,6 +121,8 @@ When the reports waiting on a comment reach **Reports that remove a comment**, i
 - **Uphold** records that the report was right. It leaves the comment where it is: to take a published comment down, choose **Remove** as well.
 - **Dismiss** records that the report was wrong. It does not put back a comment that was removed automatically: choose **Restore** for that.
 
+![Reported comments: the Every state, Waiting, Upheld, and Dismissed filters, and a report waiting on a published comment, with its reason and note, Uphold and Dismiss for the report, and Remove and Purge for the comment.](./readers-reported-comments.png)
+
 To work the queue, set it to **Waiting**, then for each comment decide whether it stays. If it goes, **Remove** it and **Uphold** its reports. If it stays, **Restore** it if it was removed, which dismisses all of its waiting reports at once, or **Dismiss** each report if it was not. Deciding a report lowers the count toward the automatic removal, so dismissed reports do not carry a comment over the threshold later.
 
 ### Withdrawn comments
@@ -144,11 +153,15 @@ A new message is mailed to every active member of the staff at their account's a
 | **In progress** | Not handled, and a Tenant admin is assigned |
 | **Handled**     | Marked handled, or answered                 |
 
+![The Contact messages list: the Status filter, and a row for each message with its subject, sender, reply-to address, status, assignee, and when it was received.](./readers-contact-messages.png)
+
 ### Answering a message
 
 1. Open the message from **Contact messages**.
 2. Under **Assignment**, choose **Assign to me**, or pick a Tenant admin and choose **Save assignee**, so the others know it is being dealt with. Only Tenant admins can be assigned.
 3. Write the answer under **Answer**, up to 4000 characters, and choose **Send answer**.
+
+![A contact message in progress: the message with Mark handled, Answers and replies with the Answer field and Send answer, Assignment with Assign to me and Save assignee, and the Staff note with Save note.](./readers-contact-message.png)
 
 The answer is saved under **Answers and replies**, the message becomes **Handled**, and `publira worker` mails the answer to the message's **Reply to** address:
 
@@ -190,6 +203,8 @@ A ticket is not a sale. It earns no Author a royalty, and the episode does not a
 5. Optionally, write a **Note**, up to 1000 characters, such as why the ticket was issued.
 6. Choose **Issue the ticket**.
 
+![The Issue a ticket form: Reader, Series, Episode, Expiry, Note, and Issue the ticket.](./readers-issue-ticket.png)
+
 A reader and an episode have one ticket from the staff at a time:
 
 - If they already have an active one, nothing new is issued, and the existing ticket keeps its expiry and note. The console still says "The ticket was issued." ([#3818](https://github.com/publira/publira/issues/3818)). To change a ticket's expiry or note, revoke it and issue a new one.
@@ -202,6 +217,8 @@ A reader and an episode have one ticket from the staff at a time:
 ### Reading the list
 
 The list shows each ticket's **Status**, **User**, **Episode**, **Note**, **Expires**, and **Created**, newest first, twenty to a page. **Status** is **Active**, **Expired**, or **Revoked**, and the filter's **Active only** leaves out both the expired and the revoked. **User public_id** and **Episode public_id** take a whole public ID, copied from the reader's page or the episode's address in the console; part of an ID or a name finds nothing.
+
+![The Access tickets list: Issue a ticket at the top, the User public_id, Episode public_id, and Status filters, and an active ticket with its user, episode, note, expiry, and creation time, and Revoke.](./readers-access-tickets.png)
 
 The list also holds the tickets readers take themselves through **Free if you wait**, looking like the staff's and with a **Revoke** button of their own ([#3817](https://github.com/publira/publira/issues/3817)). Revoking one takes away a free read the reader was entitled to, so revoke only a ticket you know the staff issued: one with a note, or with an **Access ticket issued** entry in the audit log. Issuing and revoking are recorded there as **Access ticket issued** and **Access ticket revoked**.
 

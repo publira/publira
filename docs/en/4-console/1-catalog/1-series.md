@@ -2,15 +2,20 @@
 title: Series
 description: Create a series, decide when and where it is shown, and set its age rating, reading direction, comments, cover image, and Free if you wait.
 published: 2026-10-07
+updated: 2026-10-09
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
 
 Each row opens the series with **Edit**, or **View** for an Auditor, and its episodes with **Episodes**. A row's **Status** is **Published** once the series has a **Publication date and time**, even one still ahead ([#3827](https://github.com/publira/publira/issues/3827)), and **Draft** without one. A series not shown on both the site and the app carries **Web only** or **App only** beside its title.
 
+![The Series list: Create series at the top, the Serialization status and Age rating filters with Apply and Reset, and rows giving each series' title, label, publication time, reading period, synopsis, serialization status, age rating, and status, with Edit and Episodes.](./series-list.png)
+
 ## Creating a series
 
 Choose **Create series**. The form is the same one the series is edited with later, and every field on it can be changed afterwards. Choose **Create series** at the bottom to save it, which opens its edit page.
+
+![The top of the Create series form: Title, Reading period, Synopsis, Authors with Add author, and Label.](./series-create-form.png)
 
 ### What readers see first
 
@@ -22,9 +27,15 @@ Choose **Create series**. The form is the same one the series is edited with lat
 - **Tags**: up to 20 free words, each up to 50 characters, that readers can browse by. A tag that matches one already in use, ignoring case, is filed under it.
 - **Cover image**: a JPEG, PNG, or WebP image of at most 10 MB and at least 2400 × 3200 pixels. It is offered on this form only when creating the series; afterwards it is changed on the **Cover image** tab, as [The cover image](#the-cover-image) describes.
 
+![The Genres field, searched for the tenant's genres, and the Tags field with its Add button.](./series-genres-and-tags.png)
+
+![The Cover image field of the Create series form: an upload preview and the file picker, with the formats and sizes it takes.](./series-cover-image-field.png)
+
 ### Publication date and time
 
 **Publication date and time** is what makes a series public. It is read in the tenant's time zone, which the field names.
+
+![The Publication date and time field, empty, with the note that an empty field keeps the series unpublished and that the time is read in the tenant's time zone.](./series-publication-date.png)
 
 - **Empty**: the series is hidden. Its page answers as if it did not exist, and none of its episodes can be read, whatever their own state.
 - **A time that has passed**, or the current time: the series is public as soon as it is saved.
@@ -38,21 +49,29 @@ Clearing the field later takes a public series off the site again, with its epis
 
 **Sold on** decides where its paid episodes can be bought. It starts on **Follow the tenant setting**, which follows **Where episodes are sold** under **Integrations** › **Payments**, including after that changes. [Selling episodes](../4-selling-episodes.md#where-episodes-are-sold) covers both settings and why a tenant with an app might keep a series on the site alone.
 
+![The Shown on field set to Web and app, and the Sold on field set to Follow the tenant setting.](./series-shown-on-and-sold-on.png)
+
 ### Serialization status and update schedule
 
 **Serialization status** is **Ongoing**, **Completed**, or **On hiatus**. Readers see it on the series page and can filter the series list by it. It changes nothing else: a **Completed** series can still be given episodes.
 
 **Update schedule** marks the weekdays a new episode is expected on. The series page then reads "Updates on" followed by those days, and the series is listed under each of them in **Browse by weekday** on the site's top page. With no day checked, the series page says nothing about a schedule, and the series is under no day ([#3827](https://github.com/publira/publira/issues/3827)). Nothing publishes an episode on those days: that is still each episode's own **Publication date and time**.
 
+![The Serialization status field set to Ongoing, and the Update schedule with a checkbox for each weekday, none of them checked.](./series-serialization.png)
+
 ### Age rating
 
 **Age rating** is **All ages**, **R15**, or **R18**. A series rated **R15** or **R18** carries the rating on the site, and its pages ask the reader to confirm their age before they open. Until a reader has confirmed it, rated series are also left out of the top page and of search results.
+
+![The Age rating field set to All ages, with what All ages, R15, and R18 each ask of a reader.](./series-age-rating.png)
 
 Whether confirming is enough, or the reader must also be signed in with a date of birth that proves their age, is decided for the whole tenant by **Ratings that need a proven age**, as [Settings](../3-setup/1-settings.md#age-verification) describes. A series cannot set this for itself.
 
 ### Comments
 
 **Comments** decides how readers' comments on the series' episodes are published: **Do not accept comments**, **Publish straight away**, or **Publish after approval**. It starts on **Follow the tenant setting**, which follows **How comments are published** under **Settings**, including after that changes, as [Settings](../3-setup/1-settings.md#reader-comments) describes. Approving and moderating the comments is covered in [Comments](../2-readers.md#comments).
+
+![The Comments field set to Follow the tenant setting, which shows the tenant's choice, Do not accept comments, in brackets.](./series-comments.png)
 
 A choice made here applies to the series whatever the tenant setting is, so a series set to **Publish straight away** takes comments even while the tenant does not accept them.
 
@@ -62,11 +81,15 @@ A choice made here applies to the series whatever the tenant setting is, so a se
 
 **Spreads start at page** decides where pages begin to be shown in pairs, on a screen wide enough for two. Pages before it are shown alone. `2`, the default, keeps the first page, usually the cover, on its own; `1` pairs from the first page. An episode with fewer pages than this is shown one page at a time.
 
+![The Reading direction field set to Right to left, and Spreads start at page set to 2.](./series-reading-direction.png)
+
 An episode can set its own of either, as [Page layout](./2-episodes.md#page-layout) describes. One that does not follows the series, including after it changes.
 
 ### Reading period
 
 **Reading period**, in hours, is where the **Reading period** of each new episode in the series starts. A purchase keeps an episode open for the episode's own period, not the series': an episode can be given a different one when it is created, and changing the series' period later leaves the episodes already created as they are. A new series starts at `0`, which keeps a purchase open with no end. [Selling episodes](../4-selling-episodes.md#price-and-reading-period) describes how the period is used.
+
+![The Reading period field set to 0, with the note that new episodes start with this period.](./series-reading-period.png)
 
 ## The cover image
 
@@ -83,6 +106,8 @@ The site does not show the image as uploaded. Saving it cuts four images of fixe
 
 Each shape is cropped from the centre of the image. To frame one differently, choose **Adjust the frame** on its slot, or upload a separate image for that shape alone with **Replace**, which leaves the other three as they are. Uploading a new cover image above replaces all four.
 
+![A series' Cover image tab: the cover cut into its portrait, square, landscape, and link preview shapes, Delete the current cover image and Update cover image under them, and Aspect ratio images, where each shape's slot gives its size, where it is used, and Replace.](./series-cover-image.png)
+
 Labels and genres have the same tab, with the same sizes. Where each shape is used differs for them, and the line under each slot says where for the record being edited: a label's square image is its tile in the app and the small picture beside it in the site's lists, and its portrait image is not shown anywhere yet, for example.
 
 ## Free if you wait
@@ -95,5 +120,7 @@ Labels and genres have the same tab, with the same sizes. Where each shape is us
 - **Newest episodes a ticket cannot open**: how many of the latest published episodes, counted back from the last one in the series' order, are kept for buyers. `0` lets a ticket open any paid episode.
 
 Choose **Save free-if-you-wait settings** to save. A reader holds one ticket per series, and tickets do not pile up while unused. A ticket cannot open an episode that is already free to everyone, one the reader can already open, or one their age does not allow. The series page tells readers how the tickets work, and marks the episodes a ticket cannot open with **No free ticket**.
+
+![The Free if you wait section below the series form, with the switch that offers free tickets, the three numbers that govern them, and Save free-if-you-wait settings.](./series-free-if-you-wait.png)
 
 [Selling episodes](../4-selling-episodes.md#free-reading-periods-and-free-if-you-wait) describes how tickets sit beside prices and free reading periods.

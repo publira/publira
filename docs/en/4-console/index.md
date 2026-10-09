@@ -2,7 +2,7 @@
 title: Tenant console
 description: The console a publisher's staff run their site from, who may use which part of it, and how to sign in.
 published: 2026-10-06
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 Every tenant has a console of its own, where the publisher's staff manage the works on its site, its readers, and the site's settings. These pages are for those staff. They assume the tenant already exists and that you have been given access to it, as [A tenant's staff](../3-operations/3-tenant-staff.md) describes from the operator's side.
@@ -15,6 +15,8 @@ The console is served on the tenant's console host, which is `admin.` followed b
 
 If your account has two-step verification turned on, the console then asks for the code from your authenticator app. The operator can require it of every Tenant admin on the install, and a Tenant admin who has not registered an authenticator app yet is then asked to register one before going further. [Your account](./3-setup/8-your-account.md) covers turning it on and what to do when you lose your phone.
 
+![The console asking for the code from an authenticator app after the password: the Verification code field, the Verify button, and Back to sign-in.](./index-two-step-code.png)
+
 Your console account is also an account on the tenant's site: you can read and buy there with the same address and password, and the console is simply what your role adds to it.
 
 ## Roles
@@ -26,6 +28,8 @@ Every member of the staff holds one of three roles, and the console shows each o
 | **Tenant admin** | Everything in the console: the staff, every setting of the tenant, its integrations with mail, payments, push notifications, and sign-in, readers' accounts, royalties, and the audit log |
 | **Editor** | Write the catalog and the site's pages and announcements, and moderate comments |
 | **Auditor** | See what an Editor works on, and the tenant's settings, without changing any of it |
+
+![A Tenant admin's sidebar: Dashboard, then the Catalog, Site, Readers, Reports, Integrations, and Administration groups with every screen in each.](./index-sidebar.png)
 
 A Tenant admin gives the other staff their roles under **Members**. [A tenant's staff](../3-operations/3-tenant-staff.md#the-three-roles) describes the roles in full.
 

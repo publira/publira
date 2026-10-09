@@ -2,9 +2,12 @@
 title: Pages
 description: Write the site's own pages in Markdown, publish and roll back their versions, translate them, and make two of them the terms of service and privacy policy readers agree to.
 published: 2026-10-07
+updated: 2026-10-09
 ---
 
 **Pages**, under **Site**, holds the pages the publisher writes for the site: the terms of service, the privacy policy, a page about the publisher, submission guidelines, and anything else that is not a series. A page is written in Markdown, kept in versions, and can be translated into each of the site's languages.
+
+![The Pages list: Create page at the top, and a row for each page with its title, slug, status, whether it is in the footer, when it was updated, and Edit.](./pages-list.png)
 
 A Tenant admin and an Editor can create, edit, publish, and translate pages. An Auditor can open them without changing anything.
 
@@ -19,6 +22,8 @@ Choose **Create page** and fill in:
 
 **Create page** creates the page as a draft and opens its edit screen. Nothing appears on the site until a version is published.
 
+![The Create page form: slug, Title, Show in footer, Content, and Create page.](./pages-create-form.png)
+
 Pages cannot be deleted. A page that should no longer be read is unpublished instead, as described below.
 
 ## Writing and publishing
@@ -26,6 +31,8 @@ Pages cannot be deleted. A page that should no longer be read is unpublished ins
 The edit screen holds the page's body on two tabs: **Write**, where you write Markdown, and **Preview**, which shows how it will look. The body takes headings, paragraphs, lists, quotes, code blocks, bold and italic text, and links.
 
 **Save page** saves a changed title and **Show in footer** at once. A changed body is saved as a new **Draft** version, which readers do not see. Saving never publishes.
+
+![A page's edit screen: a tab for each of the site's languages, the page's status with Unpublish, its slug, Title, Show in footer, the Write and Preview tabs over its Markdown, and Save page.](./pages-editor.png)
 
 **Show in footer** belongs to the page rather than to one of its translations, so changing it on any language's tab changes it for every language. The footer follows moments after the save, for as long as the page is published.
 
@@ -36,6 +43,8 @@ The edit screen holds the page's body on two tabs: **Write**, where you write Ma
 - **Roll back to this version** copies that version's body into a new draft. Publish the draft to put the old text back on the site.
 
 **Compare versions** shows the lines added and removed between any two versions, once the page has two.
+
+![The Versions section of a page with one version, v1, Published, with when it was created and published, and Load content, Publish, and Roll back to this version.](./pages-versions.png)
 
 **Unpublish**, beside the page's status, takes the page off the site. Its versions are kept, and publishing one puts the page back.
 

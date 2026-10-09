@@ -2,7 +2,7 @@
 title: Email
 description: Send the tenant's mail through the publisher's own SMTP server, and receive readers' replies to contact messages back in the console.
 published: 2026-10-07
-updated: 2026-10-07
+updated: 2026-10-09
 ---
 
 The tenant sends mail to its readers and its staff: address confirmations, password resets, invitations, replies to contact messages. Until a Tenant admin sets up a server of the tenant's own, all of it goes out through the platform's mail server, from the platform's address, which the operator chooses. **Integrations** › **Email** sends it through the publisher's own SMTP server instead, from an address on the publisher's domain.
@@ -40,6 +40,10 @@ Have these from whoever runs the publisher's mail:
 3. Choose **Test the connection**, then **Run the test**. The test sends a message through the values in the form, without saving them, to your own address, or to another one if you clear **Send it to myself**. A failed test says which step failed where it can tell: connecting, TLS or STARTTLS, signing in, the server refusing the recipient, or the server taking too long to answer.
 4. Choose **Save**. The next mail the tenant sends goes through the new server.
 
+![The Outgoing email section with Enable the override ticked: Host, Port, Username, Password with Change, Encryption, Sender name, Sender email address, Reply-to address, Test the connection, and Save.](./email-outgoing.png)
+
+![The SMTP connection test dialog: Send it to myself, Close, and Run the test.](./email-test-connection.png)
+
 A saved password is never shown again. The field shows that one is stored, and **Change** replaces it.
 
 ## When it stops working
@@ -67,6 +71,8 @@ An answer to a contact message reaches the reader by mail. Until the tenant rece
    - **SendGrid**: make up a long random string and enter it as **Webhook token**. In your DNS, point the domain's MX record at `mx.sendgrid.net` with priority 10. In SendGrid, add the domain under **Settings** › **Inbound Parse** with the **Webhook URL** as the destination URL, putting the token in place of `<token>`: SendGrid signs nothing, so the token in the URL is how the site tells its requests from anyone else's.
    - **Resend**: create an API key with **Full access** under **API Keys** and enter it as **API key**; replies are read from Resend with it. Add the domain under **Domains**, turn on receiving for it, and add the MX record Resend shows to your DNS. Under **Webhooks**, add the **Webhook URL** for the `email.received` event, and enter the signing secret Resend shows for it (`whsec_…`) as **Webhook signing secret**.
 3. Choose **Save**. The section turns **Ready** and shows the **Reply address**, `contact+*@` followed by the domain: each answer from then on asks the reader to reply to an address of that form, where `*` is the message's ID, and the reply appears under that message.
+
+![The Inbound email section with Enable ticked: Inbound email provider, Inbound domain, the provider's credentials, the Webhook URL with a button to copy it, and Save.](./email-inbound.png)
 
 Until the section is **Ready**, answers keep the answering staff member's address, and the section says so. **Not set** means nothing is stored; **Disabled** means the settings are stored but **Enable** is cleared; **Incomplete** means it is enabled but the domain or a credential the provider needs is missing.
 

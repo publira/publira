@@ -2,6 +2,7 @@
 title: Authors and Author roles
 description: Register the people credited on a work, choose what they are credited as, and link an Author to their own reader account.
 published: 2026-10-07
+updated: 2026-10-09
 ---
 
 An Author is a person credited on a work: the writer, the artist, the original author of an adaptation. A series and each of its episodes credit their Authors, each in an Author role, and those credits are what readers see beside a title and what royalties are paid on.
@@ -13,6 +14,10 @@ An Author is a person credited on a work: the writer, the artist, the original a
 - **Name**: the name readers see, a pen name if the person publishes under one.
 - **Profile**: an optional biography, shown on the Author's page as written, line breaks included.
 - **Author icon image**: an optional JPEG, PNG, or WebP image of at most 10 MB and at least 256 × 256 pixels. **Adjust the frame** chooses the square cut from it.
+
+![The Authors list: Create author at the top, and a row for each Author.](./authors-list.png)
+
+![The Create author form: Name, Profile, the optional Author icon image, and Create author.](./authors-create-form.png)
 
 Choose **Create author** to save. The same form, with **Update author**, changes the Author later. An Author cannot be deleted, and two Authors can share a name, so check the list first.
 
@@ -31,6 +36,8 @@ The credits on a series or episode page are plain text and do not link to the Au
 A Tenant admin can record that an Author is a particular reader of the site, under **Reader accounts** on the Author's page. Editors and Auditors do not see this section.
 
 Search **Reader account** for the reader by name or email address, and choose **Link account**. The reader must already have an account on the site, with a confirmed email address, and a staff account cannot be linked. An account can be linked to several Authors, and an Author to several accounts.
+
+![The Reader accounts section of an Author's page: the Reader account search, Link account, and the note that no reader account is linked yet.](./authors-reader-accounts.png)
 
 Once linked, the reader:
 
@@ -53,11 +60,15 @@ A new tenant has four roles: **Original Author**, **Artist**, **Writer**, and **
 - Drag a role by its handle to change the order.
 - **Delete** removes a role that no credit names. A role still in use cannot be deleted: the console says how many credits use it, and those credits must first be moved to another role.
 
+![The Author roles screen: New role with Role name and Create role, and the four roles in priority order, each with a drag handle, its name, Save, and Delete.](./authors-roles.png)
+
 Without any role, nobody can be credited.
 
 ## Crediting Authors
 
 Credits are entered under **Authors** on the series form and on each episode's edit screen. Each row names an **Author**, a **Role**, and a share, the percentage of the sales the Author is paid royalties on. Whatever the shares leave is the publisher's. The shares together cannot go over 100%.
+
+![The Authors field of a series form: a credit naming an Author, a role, and a share, Add author, and the notes on how credits are ordered and what the shares are.](./authors-credits.png)
 
 On saving, the rows are grouped by role in the roles' priority order; drag a row to order the Authors inside one role.
 

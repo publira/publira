@@ -2,6 +2,7 @@
 title: Genres
 description: The categories readers browse a tenant's catalog by, their order, and their images.
 published: 2026-10-07
+updated: 2026-10-09
 ---
 
 A genre is a category the tenant files its series under, such as fantasy or romance. A series can be in any number of genres, chosen on its form, and readers browse the catalog by them. The genres are the tenant's own: nothing is predefined, and there is one flat list of them.
@@ -15,6 +16,8 @@ A genre is a category the tenant files its series under, such as fantasy or roma
 - Drag a genre by its handle to change its place. The order is the one the site lists genres in, and the one a series' genres are shown in.
 - **Edit** opens a genre's page, whose **Cover image** tab gives it an image, as [The cover image](./1-series.md#the-cover-image) describes for a series.
 - **Delete** removes a genre no series is in. A genre still in use cannot be deleted: take it off every series first.
+
+![The Genres screen: New genre with Genre name and Create genre, and the genres in order, each with a drag handle, an image, its name, Save, its slug, Edit, and Delete.](./genres-list.png)
 
 A genre's name is shown as written in every language the site offers, so choose names that read in all of them.
 
