@@ -69,6 +69,15 @@ func TestDBEpisodeWritesQueueTheirSeriesSearchSync(t *testing.T) {
 		})
 		return err
 	})
+	// The search document holds the series' own title and no episode's.
+	step("UpdateEpisodeTitle", 0, func() error {
+		_, err := client.UpdateEpisodeTitle(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateEpisodeTitleRequest{
+			Tenant:    tenant.tenantContext(),
+			EpisodeId: episodeID,
+			Title:     "Chapter One, Revised",
+		})
+		return err
+	})
 	step("UpdateEpisodeAvailability", 1, func() error {
 		_, err := client.UpdateEpisodeAvailability(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateEpisodeAvailabilityRequest{
 			Tenant:       tenant.tenantContext(),

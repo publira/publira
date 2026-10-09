@@ -935,6 +935,168 @@ func (s *adminServer) ReorderEpisodeImages(
 	return &publiraadminv1.ReorderEpisodeImagesResponse{Images: images}, nil
 }
 
+func (s *adminServer) DeleteEpisodeImage(
+	ctx context.Context,
+	req *publiraadminv1.DeleteEpisodeImageRequest,
+) (*publiraadminv1.DeleteEpisodeImageResponse, error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	episodeID, err := parseRecordID(req.EpisodeId, "episode_id")
+	if err != nil {
+		return nil, err
+	}
+	imageID, err := parseRecordID(req.ImageId, "image_id")
+	if err != nil {
+		return nil, err
+	}
+	episode, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
+		}
+		return nil, s.internalDBError(ctx, "failed to get episode for delete image", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+	}
+
+	// The viewer shows the pages that are left, so the delete and the drop of
+	// the pages the site holds commit together.
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		if _, err := s.queriesFor(txCtx).DeleteEpisodeImageByIDForEpisode(txCtx, dbmodels.DeleteEpisodeImageByIDForEpisodeParams{
+			ID:        imageID,
+			EpisodeID: episode.ID,
+		}); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, connect.NewError(connect.CodeNotFound, "episode image not found")
+			}
+			return nil, s.internalDBError(ctx, "failed to delete episode image", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String(), "image_id", imageID.String())
+		}
+		return episodeRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
+	}
+	s.recordEpisodeUpdated(ctx, tenant.ID, episode.PublicID)
+
+	images, err := s.episodeImages(ctx, tenant.ID, episode.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.DeleteEpisodeImageResponse{Images: images}, nil
+}
+
+func (s *adminServer) ReplaceEpisodeImage(
+	ctx context.Context,
+	req *publiraadminv1.ReplaceEpisodeImageRequest,
+) (*publiraadminv1.ReplaceEpisodeImageResponse, error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	episodeID, err := parseRecordID(req.EpisodeId, "episode_id")
+	if err != nil {
+		return nil, err
+	}
+	imageID, err := parseRecordID(req.ImageId, "image_id")
+	if err != nil {
+		return nil, err
+	}
+	episode, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
+		}
+		return nil, s.internalDBError(ctx, "failed to get episode for replace image", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+	}
+	// Looked up before anything is stored, so a page that is not the episode's
+	// costs no upload. The delete below is what decides it.
+	current, err := s.queriesFor(ctx).GetEpisodeImageByIDForTenant(ctx, dbmodels.GetEpisodeImageByIDForTenantParams{ID: imageID, TenantID: tenant.ID})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, "episode image not found")
+		}
+		return nil, s.internalDBError(ctx, "failed to get episode image for replace", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String(), "image_id", imageID.String())
+	}
+	if current.EpisodeID != episode.ID {
+		return nil, connect.NewError(connect.CodeNotFound, "episode image not found")
+	}
+
+	staged, err := episodeimages.Service{Storage: s.storage}.Stage(ctx, tenant, episode.PublicID, req.Filename, req.ContentType, req.Data)
+	if err != nil {
+		return nil, err
+	}
+	// The old page goes and the new one takes its place in one transaction, so
+	// the body never shows both or neither, and the drop of the pages the site
+	// holds commits with them.
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		q := s.queriesFor(txCtx)
+		displayOrder, err := q.DeleteEpisodeImageByIDForEpisode(txCtx, dbmodels.DeleteEpisodeImageByIDForEpisodeParams{
+			ID:        imageID,
+			EpisodeID: episode.ID,
+		})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, connect.NewError(connect.CodeNotFound, "episode image not found")
+			}
+			return nil, s.internalDBError(ctx, "failed to delete the replaced episode image", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String(), "image_id", imageID.String())
+		}
+		if err := staged.Insert(txCtx, q, tenant.ID, episode.ID, displayOrder); err != nil {
+			return nil, s.internalDBError(ctx, "failed to insert the replacing episode image", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String(), "image_id", imageID.String())
+		}
+		return episodeRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
+	}
+	s.recordEpisodeUpdated(ctx, tenant.ID, episode.PublicID)
+
+	images, err := s.episodeImages(ctx, tenant.ID, episode.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.ReplaceEpisodeImageResponse{Images: images}, nil
+}
+
+// episodeImages answers the episode's pages in reading order, as
+// ListEpisodeImages does.
+func (s *adminServer) episodeImages(ctx context.Context, tenantID, episodeID uuid.UUID) ([]*publirattypesv1.EpisodeImage, error) {
+	rows, err := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, episodeID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list episode images", err, "tenant_id", tenantID.String(), "episode_id", episodeID.String())
+	}
+	images := make([]*publirattypesv1.EpisodeImage, 0, len(rows))
+	for _, row := range rows {
+		images = append(images, protomapper.EpisodeImageFromEpisodeImage(row))
+	}
+	if err := s.attachAdminMediaToken(ctx, tenantID, episodeID, images); err != nil {
+		return nil, err
+	}
+	return images, nil
+}
+
+// recordEpisodeUpdated writes the episode_updated audit entry for a write the
+// caller's session made.
+func (s *adminServer) recordEpisodeUpdated(ctx context.Context, tenantID uuid.UUID, episodePublicID string) {
+	sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx)
+	if !ok {
+		return
+	}
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+		TenantID:    tenantID,
+		ActorUserID: sessionCtx.User.ID,
+		ActorRole:   sessionCtx.Role,
+		Action:      "episode_updated",
+		TargetType:  "episode",
+		TargetID:    episodePublicID,
+		Outcome:     auditlog.OutcomeSuccess,
+		ClientIP:    clientip.FromContext(ctx),
+	})
+}
+
 // attachAdminMediaToken puts the short-lived credential a browser <img> needs
 // onto each image URL. The admin access token cannot travel with that
 // request, and without this query token image-server would apply the public
@@ -1065,6 +1227,59 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 	return &publiraadminv1.UpdateEpisodePublishScheduleResponse{Episode: mapped}, nil
 }
 
+func (s *adminServer) UpdateEpisodeTitle(
+	ctx context.Context,
+	req *publiraadminv1.UpdateEpisodeTitleRequest,
+) (*publiraadminv1.UpdateEpisodeTitleResponse, error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	episodeID, err := parseRecordID(req.EpisodeId, "episode_id")
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(req.Title) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "title is required")
+	}
+
+	// The series page lists its episodes by title, and the viewer heads the body
+	// with it. No series list shows it and neither does the search document, so
+	// the lists stay cached and no sync is queued.
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		updated, err := s.queriesFor(txCtx).UpdateEpisodeTitleByIDForTenant(txCtx, dbmodels.UpdateEpisodeTitleByIDForTenantParams{
+			TenantID: tenant.ID,
+			ID:       episodeID,
+			Title:    req.Title,
+		})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to update episode title", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+		}
+		if updated == 0 {
+			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
+		}
+		return episodeRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
+	}
+	updated, err := s.queriesFor(ctx).GetEpisodeByIDForTenant(ctx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get episode after title update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+	}
+	mapped := protomapper.EpisodeFromGetEpisodeByIDForTenantRow(updated)
+	if err := setEpisodeAvailability(mapped, updated.Availability); err != nil {
+		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
+	}
+	if _, err := episodePurchaseAvailability(mapped, updated.PurchaseAvailability, updated.ResolvedPurchaseAvailability); err != nil {
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
+	}
+	s.recordEpisodeUpdated(ctx, tenant.ID, updated.PublicID)
+	return &publiraadminv1.UpdateEpisodeTitleResponse{Episode: mapped}, nil
+}
+
 func (s *adminServer) UpdateEpisodeLayout(
 	ctx context.Context,
 	req *publiraadminv1.UpdateEpisodeLayoutRequest,
@@ -1099,9 +1314,10 @@ func (s *adminServer) UpdateEpisodeLayout(
 		}
 		return nil, s.internalDBError(ctx, "failed to get episode for layout update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 	}
-	// Pages are only ever added to an episode, so a count read outside a lock
-	// can fall short of the truth but never exceed it: a race refuses an index
-	// that has just become valid rather than storing one that is not.
+	// The count is read outside a lock, so a page added or deleted meanwhile
+	// can leave it stale either way. Neither is worth one: an index that ends up
+	// past the last page lays the episode out without a spread, which is where
+	// deleting a page after a valid index was stored leads as well.
 	if storedSpreadStartIndex.Valid {
 		pageCount, countErr := s.queriesFor(ctx).CountEpisodeImagesByEpisodeID(ctx, episode.ID)
 		if countErr != nil {

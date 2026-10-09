@@ -564,7 +564,7 @@ Every reader who opens one free episode within one window is handed the identica
 
 ### Admin media tokens (audience `admin-media`)
 
-Episode image previews in the admin UI also go through the browser's `<img>` / `next/image`, so they carry no `Authorization` either. `ListEpisodeImages` / `UploadEpisodeImages` / `ReorderEpisodeImages` return the body image URLs with a `t=<JWT>` query appended.
+Episode image previews in the admin UI also go through the browser's `<img>` / `next/image`, so they carry no `Authorization` either. `ListEpisodeImages` / `UploadEpisodeImages` / `ReorderEpisodeImages` / `DeleteEpisodeImage` / `ReplaceEpisodeImage` return the body image URLs with a `t=<JWT>` query appended.
 
 | Item | Value |
 | --- | --- |

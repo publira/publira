@@ -277,6 +277,21 @@ message GetEpisodeResponse {
   publira.types.v1.SurfaceAvailability purchase_availability = 4;
 }
 
+// Renames one episode. Only the title is written: its place in the series,
+// its price, and its schedule are each changed through an RPC of their own.
+message UpdateEpisodeTitleRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  // Stored as it is sent. A title of nothing but white space is
+  // invalid_argument, as it is to CreateEpisode.
+  string title = 3;
+}
+
+message UpdateEpisodeTitleResponse {
+  // Carries the resolved values, as GetEpisode does.
+  publira.types.v1.Episode episode = 1;
+}
+
 // Sets how one episode is laid out, overriding its series. Both overrides are
 // written on every call, so a field left empty returns that value to following
 // the series.
@@ -428,6 +443,47 @@ message ReorderEpisodeImagesRequest {
 }
 
 message ReorderEpisodeImagesResponse {
+  repeated publira.types.v1.EpisodeImage images = 1;
+}
+
+// Takes one page out of an episode's body. The pages after it move up one
+// place, in the order they had.
+//
+// The episode's own spread_start_index is left as it was stored. One that now
+// lies past the last page lays the episode out without a spread, as a series'
+// index does an episode shorter than it, until pages are added up to it again.
+message DeleteEpisodeImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  // A page of another episode is not_found.
+  string image_id = 3;
+}
+
+message DeleteEpisodeImageResponse {
+  // The pages left, in reading order.
+  repeated publira.types.v1.EpisodeImage images = 1;
+}
+
+// Puts one new image in the place of one of an episode's pages, leaving every
+// other page where it was.
+//
+// The new page is a page of its own with an id of its own, rather than new
+// content under the old id: the image URLs name the page, so a copy of the old
+// image a browser or a cache still holds is never answered for the new one.
+message ReplaceEpisodeImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  // The page to replace. A page of another episode is not_found.
+  string image_id = 3;
+  // The new image, in UploadEpisodeImages' terms: an image of at most 20 MiB.
+  string filename = 4;
+  string content_type = 5;
+  bytes data = 6;
+}
+
+message ReplaceEpisodeImageResponse {
+  // The episode's pages in reading order, the new one in the place of the one
+  // it replaced.
   repeated publira.types.v1.EpisodeImage images = 1;
 }
 
@@ -752,6 +808,10 @@ service AdminSeriesService {
   rpc ListEpisodeImages(ListEpisodeImagesRequest) returns (ListEpisodeImagesResponse) {}
   // Minimum role: tenant_editor.
   rpc ReorderEpisodeImages(ReorderEpisodeImagesRequest) returns (ReorderEpisodeImagesResponse) {}
+  // Minimum role: tenant_editor.
+  rpc DeleteEpisodeImage(DeleteEpisodeImageRequest) returns (DeleteEpisodeImageResponse) {}
+  // Minimum role: tenant_editor.
+  rpc ReplaceEpisodeImage(ReplaceEpisodeImageRequest) returns (ReplaceEpisodeImageResponse) {}
   // An empty scheduled_at takes the episode back to a draft, and a time still
   // ahead schedules it, taking it off the site until then if it is published.
   // A time that has passed publishes a draft or scheduled episode at once and
@@ -760,6 +820,8 @@ service AdminSeriesService {
   //
   // Minimum role: tenant_editor.
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
+  // Minimum role: tenant_editor.
+  rpc UpdateEpisodeTitle(UpdateEpisodeTitleRequest) returns (UpdateEpisodeTitleResponse) {}
   // Minimum role: tenant_editor.
   rpc UpdateEpisodeLayout(UpdateEpisodeLayoutRequest) returns (UpdateEpisodeLayoutResponse) {}
   // Minimum role: tenant_editor.

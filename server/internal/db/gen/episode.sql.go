@@ -1731,6 +1731,27 @@ func (q *Queries) UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Con
 	return err
 }
 
+const UpdateEpisodeTitleByIDForTenant = `-- name: UpdateEpisodeTitleByIDForTenant :execrows
+UPDATE episodes
+SET title = $1
+WHERE tenant_id = $2
+    AND id = $3
+`
+
+type UpdateEpisodeTitleByIDForTenantParams struct {
+	Title    string    `json:"title"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+func (q *Queries) UpdateEpisodeTitleByIDForTenant(ctx context.Context, arg UpdateEpisodeTitleByIDForTenantParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, UpdateEpisodeTitleByIDForTenant, arg.Title, arg.TenantID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const UpsertEpisodeListing = `-- name: UpsertEpisodeListing :one
 INSERT INTO episode_listings (
         episode_id,

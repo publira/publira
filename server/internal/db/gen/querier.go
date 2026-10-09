@@ -331,6 +331,12 @@ type Querier interface {
 	// has already closed the window, and the series is the one whose search
 	// document a window it has not closed yet leaves stale.
 	DeleteEpisodeFreeWindowByIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByIDForTenantParams) (DeleteEpisodeFreeWindowByIDForTenantRow, error)
+	// Takes one page out of its episode, its renditions with it, and answers the
+	// place it held so a replacement can be put there. No page is renumbered: the
+	// body is read in display_order, so a gap leaves every other page where it was
+	// relative to the rest. The objects the renditions named are left for the
+	// orphan image sweep, which deletes them once no row names them.
+	DeleteEpisodeImageByIDForEpisode(ctx context.Context, arg DeleteEpisodeImageByIDForEpisodeParams) (int32, error)
 	DeleteGenre(ctx context.Context, id uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch.
 	DeleteGenreImageVariantsByType(ctx context.Context, arg DeleteGenreImageVariantsByTypeParams) (int64, error)
@@ -2591,6 +2597,7 @@ type Querier interface {
 	UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error
 	// NULL returns the episode to following its series.
 	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error
+	UpdateEpisodeTitleByIDForTenant(ctx context.Context, arg UpdateEpisodeTitleByIDForTenantParams) (int64, error)
 	UpdateGenre(ctx context.Context, arg UpdateGenreParams) error
 	UpdateGenreDisplayOrder(ctx context.Context, arg UpdateGenreDisplayOrderParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error

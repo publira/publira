@@ -267,3 +267,14 @@ UPDATE episode_images
 SET display_order = $3
 WHERE id = $1
     AND episode_id = $2;
+
+-- name: DeleteEpisodeImageByIDForEpisode :one
+-- Takes one page out of its episode, its renditions with it, and answers the
+-- place it held so a replacement can be put there. No page is renumbered: the
+-- body is read in display_order, so a gap leaves every other page where it was
+-- relative to the rest. The objects the renditions named are left for the
+-- orphan image sweep, which deletes them once no row names them.
+DELETE FROM episode_images
+WHERE id = sqlc.arg('id')
+    AND episode_id = sqlc.arg('episode_id')
+RETURNING display_order;

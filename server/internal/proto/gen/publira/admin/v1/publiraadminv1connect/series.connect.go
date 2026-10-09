@@ -57,9 +57,18 @@ const (
 	// AdminSeriesServiceReorderEpisodeImagesProcedure is the procedure name of the AdminSeriesService's
 	// ReorderEpisodeImages RPC.
 	AdminSeriesServiceReorderEpisodeImagesProcedure = "/publira.admin.v1.AdminSeriesService/ReorderEpisodeImages"
+	// AdminSeriesServiceDeleteEpisodeImageProcedure is the procedure name of the AdminSeriesService's
+	// DeleteEpisodeImage RPC.
+	AdminSeriesServiceDeleteEpisodeImageProcedure = "/publira.admin.v1.AdminSeriesService/DeleteEpisodeImage"
+	// AdminSeriesServiceReplaceEpisodeImageProcedure is the procedure name of the AdminSeriesService's
+	// ReplaceEpisodeImage RPC.
+	AdminSeriesServiceReplaceEpisodeImageProcedure = "/publira.admin.v1.AdminSeriesService/ReplaceEpisodeImage"
 	// AdminSeriesServiceUpdateEpisodePublishScheduleProcedure is the procedure name of the
 	// AdminSeriesService's UpdateEpisodePublishSchedule RPC.
 	AdminSeriesServiceUpdateEpisodePublishScheduleProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodePublishSchedule"
+	// AdminSeriesServiceUpdateEpisodeTitleProcedure is the procedure name of the AdminSeriesService's
+	// UpdateEpisodeTitle RPC.
+	AdminSeriesServiceUpdateEpisodeTitleProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodeTitle"
 	// AdminSeriesServiceUpdateEpisodeLayoutProcedure is the procedure name of the AdminSeriesService's
 	// UpdateEpisodeLayout RPC.
 	AdminSeriesServiceUpdateEpisodeLayoutProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodeLayout"
@@ -179,11 +188,32 @@ var (
 			Procedure:  AdminSeriesServiceReorderEpisodeImagesProcedure,
 		}
 	})
+	adminSeriesServiceDeleteEpisodeImageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("DeleteEpisodeImage"),
+			Procedure:  AdminSeriesServiceDeleteEpisodeImageProcedure,
+		}
+	})
+	adminSeriesServiceReplaceEpisodeImageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ReplaceEpisodeImage"),
+			Procedure:  AdminSeriesServiceReplaceEpisodeImageProcedure,
+		}
+	})
 	adminSeriesServiceUpdateEpisodePublishScheduleSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateEpisodePublishSchedule"),
 			Procedure:  AdminSeriesServiceUpdateEpisodePublishScheduleProcedure,
+		}
+	})
+	adminSeriesServiceUpdateEpisodeTitleSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateEpisodeTitle"),
+			Procedure:  AdminSeriesServiceUpdateEpisodeTitleProcedure,
 		}
 	})
 	adminSeriesServiceUpdateEpisodeLayoutSpec = sync.OnceValue(func() connect.Spec {
@@ -309,6 +339,10 @@ type AdminSeriesServiceClient interface {
 	ListEpisodeImages(context.Context, *v1.ListEpisodeImagesRequest) (*v1.ListEpisodeImagesResponse, error)
 	// Minimum role: tenant_editor.
 	ReorderEpisodeImages(context.Context, *v1.ReorderEpisodeImagesRequest) (*v1.ReorderEpisodeImagesResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteEpisodeImage(context.Context, *v1.DeleteEpisodeImageRequest) (*v1.DeleteEpisodeImageResponse, error)
+	// Minimum role: tenant_editor.
+	ReplaceEpisodeImage(context.Context, *v1.ReplaceEpisodeImageRequest) (*v1.ReplaceEpisodeImageResponse, error)
 	// An empty scheduled_at takes the episode back to a draft, and a time still
 	// ahead schedules it, taking it off the site until then if it is published.
 	// A time that has passed publishes a draft or scheduled episode at once and
@@ -317,6 +351,8 @@ type AdminSeriesServiceClient interface {
 	//
 	// Minimum role: tenant_editor.
 	UpdateEpisodePublishSchedule(context.Context, *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error)
+	// Minimum role: tenant_editor.
+	UpdateEpisodeTitle(context.Context, *v1.UpdateEpisodeTitleRequest) (*v1.UpdateEpisodeTitleResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateEpisodeLayout(context.Context, *v1.UpdateEpisodeLayoutRequest) (*v1.UpdateEpisodeLayoutResponse, error)
 	// Minimum role: tenant_editor.
@@ -382,6 +418,10 @@ type AdminSeriesServiceHandler interface {
 	ListEpisodeImages(context.Context, *v1.ListEpisodeImagesRequest) (*v1.ListEpisodeImagesResponse, error)
 	// Minimum role: tenant_editor.
 	ReorderEpisodeImages(context.Context, *v1.ReorderEpisodeImagesRequest) (*v1.ReorderEpisodeImagesResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteEpisodeImage(context.Context, *v1.DeleteEpisodeImageRequest) (*v1.DeleteEpisodeImageResponse, error)
+	// Minimum role: tenant_editor.
+	ReplaceEpisodeImage(context.Context, *v1.ReplaceEpisodeImageRequest) (*v1.ReplaceEpisodeImageResponse, error)
 	// An empty scheduled_at takes the episode back to a draft, and a time still
 	// ahead schedules it, taking it off the site until then if it is published.
 	// A time that has passed publishes a draft or scheduled episode at once and
@@ -390,6 +430,8 @@ type AdminSeriesServiceHandler interface {
 	//
 	// Minimum role: tenant_editor.
 	UpdateEpisodePublishSchedule(context.Context, *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error)
+	// Minimum role: tenant_editor.
+	UpdateEpisodeTitle(context.Context, *v1.UpdateEpisodeTitleRequest) (*v1.UpdateEpisodeTitleResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateEpisodeLayout(context.Context, *v1.UpdateEpisodeLayoutRequest) (*v1.UpdateEpisodeLayoutResponse, error)
 	// Minimum role: tenant_editor.
@@ -434,7 +476,10 @@ func RegisterAdminSeriesServiceHandler(server *connect.Server, svc AdminSeriesSe
 		connect.Method{Spec: adminSeriesServiceUploadEpisodeImagesSpec(), Handler: adapter.uploadEpisodeImages},
 		connect.Method{Spec: adminSeriesServiceListEpisodeImagesSpec(), Handler: adapter.listEpisodeImages},
 		connect.Method{Spec: adminSeriesServiceReorderEpisodeImagesSpec(), Handler: adapter.reorderEpisodeImages},
+		connect.Method{Spec: adminSeriesServiceDeleteEpisodeImageSpec(), Handler: adapter.deleteEpisodeImage},
+		connect.Method{Spec: adminSeriesServiceReplaceEpisodeImageSpec(), Handler: adapter.replaceEpisodeImage},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodePublishScheduleSpec(), Handler: adapter.updateEpisodePublishSchedule},
+		connect.Method{Spec: adminSeriesServiceUpdateEpisodeTitleSpec(), Handler: adapter.updateEpisodeTitle},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodeLayoutSpec(), Handler: adapter.updateEpisodeLayout},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodeAvailabilitySpec(), Handler: adapter.updateEpisodeAvailability},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodePurchaseAvailabilitySpec(), Handler: adapter.updateEpisodePurchaseAvailability},
@@ -498,8 +543,20 @@ func (UnimplementedAdminSeriesServiceHandler) ReorderEpisodeImages(context.Conte
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ReorderEpisodeImages is not implemented")
 }
 
+func (UnimplementedAdminSeriesServiceHandler) DeleteEpisodeImage(context.Context, *v1.DeleteEpisodeImageRequest) (*v1.DeleteEpisodeImageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.DeleteEpisodeImage is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) ReplaceEpisodeImage(context.Context, *v1.ReplaceEpisodeImageRequest) (*v1.ReplaceEpisodeImageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ReplaceEpisodeImage is not implemented")
+}
+
 func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePublishSchedule(context.Context, *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodeTitle(context.Context, *v1.UpdateEpisodeTitleRequest) (*v1.UpdateEpisodeTitleResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateEpisodeTitle is not implemented")
 }
 
 func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodeLayout(context.Context, *v1.UpdateEpisodeLayoutRequest) (*v1.UpdateEpisodeLayoutResponse, error) {
@@ -646,9 +703,33 @@ func (c *adminSeriesServiceClient) ReorderEpisodeImages(ctx context.Context, req
 	return &res, nil
 }
 
+func (c *adminSeriesServiceClient) DeleteEpisodeImage(ctx context.Context, req *v1.DeleteEpisodeImageRequest) (*v1.DeleteEpisodeImageResponse, error) {
+	var res v1.DeleteEpisodeImageResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceDeleteEpisodeImageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ReplaceEpisodeImage(ctx context.Context, req *v1.ReplaceEpisodeImageRequest) (*v1.ReplaceEpisodeImageResponse, error) {
+	var res v1.ReplaceEpisodeImageResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceReplaceEpisodeImageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
 func (c *adminSeriesServiceClient) UpdateEpisodePublishSchedule(ctx context.Context, req *v1.UpdateEpisodePublishScheduleRequest) (*v1.UpdateEpisodePublishScheduleResponse, error) {
 	var res v1.UpdateEpisodePublishScheduleResponse
 	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateEpisodePublishScheduleSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UpdateEpisodeTitle(ctx context.Context, req *v1.UpdateEpisodeTitleRequest) (*v1.UpdateEpisodeTitleResponse, error) {
+	var res v1.UpdateEpisodeTitleResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateEpisodeTitleSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -892,12 +973,48 @@ func (h adminSeriesServiceHandler) reorderEpisodeImages(ctx context.Context, _ c
 	return stream.Send(res)
 }
 
+func (h adminSeriesServiceHandler) deleteEpisodeImage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteEpisodeImageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteEpisodeImage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) replaceEpisodeImage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ReplaceEpisodeImageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ReplaceEpisodeImage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
 func (h adminSeriesServiceHandler) updateEpisodePublishSchedule(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
 	var req v1.UpdateEpisodePublishScheduleRequest
 	if err := stream.Receive(&req); err != nil {
 		return err
 	}
 	res, err := h.svc.UpdateEpisodePublishSchedule(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) updateEpisodeTitle(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateEpisodeTitleRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateEpisodeTitle(ctx, &req)
 	if err != nil {
 		return err
 	}
