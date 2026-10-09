@@ -149,6 +149,7 @@ The same rules apply to all three apps:
 | --- | --- |
 | Record missing, or not visible to this caller | `isMissingResourceRpcError()` → treat as `notFound()`. Never distinguish the two — that leaks whether the record exists |
 | Session-scoped read that may resolve to `null` | `isExpectedNullableRpcError()` |
+| Tenant suspended | `isTenantSuspendedRpcError()`. Only the proxy's host lookup acts on it, with the page `@publira/utils/suspended-tenant` writes; never cache it, since resuming the tenant serves it again at once |
 | Form submission the server rejected | `isRejectedRequestRpcError()` |
 | Any `catch` that turns an error into a message | `rethrowUnclassifiedRpcError(error)` first, then `rpcErrorMessage(error, fallback, options?)` |
 

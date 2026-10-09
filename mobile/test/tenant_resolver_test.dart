@@ -51,6 +51,26 @@ void main() {
     expect(lookups, 1);
   });
 
+  test(
+    'confirm asks the domain service again for a tenant already known',
+    () async {
+      var lookups = 0;
+      final resolver = _resolverOver(
+        MockClient((_) async {
+          lookups++;
+          return http.Response(jsonEncode(const {'tenantId': _tenantId}), 200);
+        }),
+      );
+
+      await resolver.confirm();
+      expect(lookups, 1);
+      await resolver.confirm();
+      expect(lookups, 2);
+      expect(await resolver.resolve(), _tenantId);
+      expect(lookups, 2);
+    },
+  );
+
   test('callers waiting at the same time share one lookup', () async {
     final released = Completer<void>();
     var lookups = 0;

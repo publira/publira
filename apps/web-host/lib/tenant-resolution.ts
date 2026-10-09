@@ -1,4 +1,7 @@
-import { isMissingResourceRpcError } from "@publira/api-client/errors";
+import {
+  isMissingResourceRpcError,
+  isTenantSuspendedRpcError,
+} from "@publira/api-client/errors";
 import type { PublicApiClient } from "@publira/api-client/public/client";
 import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
@@ -17,6 +20,16 @@ export interface ResolvedTenant {
   defaultLocale: Locale;
   tenantId: string;
 }
+
+/**
+ * What the Host resolves to while its tenant is suspended.
+ *
+ * It is never cached, unlike the answer for an unknown host: the API refuses
+ * the lookup for as long as the tenant is suspended and answers it again the
+ * moment it is resumed, and a cached refusal would keep the site down past
+ * that moment.
+ */
+export const SUSPENDED_TENANT = "suspended";
 
 interface TenantCacheValue {
   tenant: ResolvedTenant | null;
@@ -50,7 +63,7 @@ export const createTenantResolver = (
 
   return async function resolveTenant(
     domainCandidates: readonly string[]
-  ): Promise<ResolvedTenant | null> {
+  ): Promise<ResolvedTenant | typeof SUSPENDED_TENANT | null> {
     if (domainCandidates.length === 0) {
       return null;
     }
@@ -81,6 +94,9 @@ export const createTenantResolver = (
       if (isMissingResourceRpcError(error)) {
         tenantCache.set(cacheKey, { tenant: null });
         return null;
+      }
+      if (isTenantSuspendedRpcError(error)) {
+        return SUSPENDED_TENANT;
       }
 
       throw error;

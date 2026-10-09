@@ -39,6 +39,10 @@
       "types": "./dist/health.d.mts",
       "default": "./dist/health.mjs"
     },
+    "./suspended-tenant": {
+      "types": "./dist/suspended-tenant.d.mts",
+      "default": "./dist/suspended-tenant.mjs"
+    },
     "./static-param-placeholder": {
       "types": "./dist/static-param-placeholder.d.mts",
       "default": "./dist/static-param-placeholder.mjs"

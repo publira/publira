@@ -14,6 +14,7 @@ vi.mock("./lib/api-client", () => ({
 }));
 
 vi.mock("./lib/tenant-resolution", () => ({
+  SUSPENDED_TENANT: "suspended",
   createTenantResolver: () => mockResolveTenant,
 }));
 
@@ -353,6 +354,45 @@ describe("web-host proxy locale routing", () => {
     const response = await proxy(request("https://unknown.example.com/series"));
 
     expect(response.status).toBe(404);
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
+  it("Answer every page of a suspended tenant with a 503 saying the site is unavailable", async () => {
+    mockResolveTenant.mockResolvedValue("suspended");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(request("https://paused.example.com/series"));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("location")).toBeNull();
+    expect(await response.text()).toContain(
+      "<h1>This site is unavailable</h1>"
+    );
+  });
+
+  it("Write a suspended tenant's page in the language the URL names", async () => {
+    mockResolveTenant.mockResolvedValue("suspended");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://paused.example.com/ja/series")
+    );
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("content-language")).toBe("ja");
+  });
+
+  it("Answer a suspended tenant's machine-facing paths with the same 503", async () => {
+    mockResolveTenant.mockResolvedValue("suspended");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://paused.example.com/theme.css")
+    );
+
+    expect(response.status).toBe(503);
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
   });
 

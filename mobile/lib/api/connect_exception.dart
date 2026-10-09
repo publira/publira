@@ -1,3 +1,5 @@
+import 'package:publira/api/error_details.dart';
+
 /// A Connect RPC error, classified by the wire `code` (not the message).
 class ConnectException implements Exception {
   const ConnectException({
@@ -25,6 +27,11 @@ class ConnectException implements Exception {
 
   bool get isUnavailable =>
       code == 'unavailable' || code == 'deadline_exceeded';
+
+  /// The tenant the app was built for is suspended, so the API refuses every
+  /// request for it until it is resumed.
+  bool get isTenantSuspended =>
+      code == 'failed_precondition' && reasons.contains(tenantSuspendedReason);
 
   @override
   String toString() => 'ConnectException($code, $message)';

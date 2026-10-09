@@ -10,6 +10,7 @@ import {
   isExpectedNullableRpcError,
   isMissingResourceRpcError,
   isRpcError,
+  isTenantSuspendedRpcError,
   isUnauthenticatedRpcError,
   rpcErrorCode,
   rpcErrorDisposition,
@@ -29,6 +30,11 @@ const creatorRoleInUseError = (metadata: Record<string, string>) =>
         reason: "CREATOR_ROLE_IN_USE",
       },
     },
+  ]);
+
+const tenantRefusal = (reason: string, code = Code.FailedPrecondition) =>
+  new ConnectError("tenant is suspended", code, undefined, [
+    { desc: ErrorInfoSchema, value: { domain: "publira", reason } },
   ]);
 
 /**
@@ -229,6 +235,23 @@ describe("Connect error details", () => {
     );
 
     expect(rpcErrorHasReason(foreignError, "INVITATION_CANCELED")).toBe(false);
+  });
+
+  it("tells a suspended tenant from any other failed precondition", () => {
+    expect(isTenantSuspendedRpcError(tenantRefusal("TENANT_SUSPENDED"))).toBe(
+      true
+    );
+    expect(
+      isTenantSuspendedRpcError(tenantRefusal("INVITATION_CANCELED"))
+    ).toBe(false);
+    expect(
+      isTenantSuspendedRpcError(
+        tenantRefusal("TENANT_SUSPENDED", Code.NotFound)
+      )
+    ).toBe(false);
+    expect(isMissingResourceRpcError(tenantRefusal("TENANT_SUSPENDED"))).toBe(
+      false
+    );
   });
 
   it("a value that did not come from an RPC has no details", () => {

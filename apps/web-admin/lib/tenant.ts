@@ -1,4 +1,7 @@
-import { isMissingResourceRpcError } from "@publira/api-client/errors";
+import {
+  isMissingResourceRpcError,
+  isTenantSuspendedRpcError,
+} from "@publira/api-client/errors";
 import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { LRUCache } from "lru-cache";
@@ -18,6 +21,17 @@ export interface TenantRouting {
   defaultLocale: Locale | null;
   tenantId: string | null;
 }
+
+/**
+ * What the Host resolves to while its tenant is suspended, which the proxy
+ * answers with the page saying the console is unavailable.
+ *
+ * It is never cached, unlike the answer for an unknown host: the API refuses
+ * the lookup for as long as the tenant is suspended and answers it again the
+ * moment it is resumed, and a cached refusal would keep the console shut past
+ * that moment.
+ */
+export const SUSPENDED_TENANT = "suspended";
 
 const tenantCache = new LRUCache<string, TenantRouting>({
   max: 500,
@@ -39,7 +53,7 @@ const tenantCache = new LRUCache<string, TenantRouting>({
  */
 export const resolveTenantRouting = async (
   domainCandidates: readonly string[]
-): Promise<TenantRouting> => {
+): Promise<TenantRouting | typeof SUSPENDED_TENANT> => {
   if (domainCandidates.length === 0) {
     return { defaultLocale: null, tenantId: null };
   }
@@ -67,6 +81,9 @@ export const resolveTenantRouting = async (
       const missing: TenantRouting = { defaultLocale: null, tenantId: null };
       tenantCache.set(cacheKey, missing);
       return missing;
+    }
+    if (isTenantSuspendedRpcError(error)) {
+      return SUSPENDED_TENANT;
     }
 
     throw error;

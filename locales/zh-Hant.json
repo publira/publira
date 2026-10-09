@@ -924,7 +924,9 @@
       "console_title": "無法顯示此頁面",
       "root_description": "無法載入管理主控台。請稍後再試。",
       "root_title": "無法顯示管理主控台",
-      "storage_not_configured": "平台尚未設定圖片儲存空間，因此無法上傳圖片。請聯絡平台營運人員進行設定。"
+      "storage_not_configured": "平台尚未設定圖片儲存空間，因此無法上傳圖片。請聯絡平台營運人員進行設定。",
+      "suspended_description": "此網站已被停用，因此無法使用管理主控台。詳情請聯絡本服務的營運方。",
+      "suspended_title": "此管理主控台目前無法使用"
     },
     "eye_catch": {
       "label": "封面圖",
@@ -3507,7 +3509,9 @@
       "page_description": "請稍候重試。如果問題持續發生，請過一段時間再來。",
       "page_title": "無法顯示此頁面",
       "site_description": "無法載入該網站。請稍後再試。",
-      "site_title": "無法顯示此網站"
+      "site_title": "無法顯示此網站",
+      "suspended_description": "目前無法瀏覽此網站。請過一段時間再來。",
+      "suspended_title": "此網站目前無法瀏覽"
     },
     "follow": {
       "control_error": "無法顯示追蹤按鈕",
@@ -4585,6 +4589,10 @@
       "unlink": "解除連結",
       "unlink_failed": "無法解除連結。請稍後再試。",
       "unlinked": "已解除連結。"
+    },
+    "tenant_suspended": {
+      "description": "請過一段時間再試。",
+      "title": "此應用程式目前無法使用"
     }
   },
   "platform": {

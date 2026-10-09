@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/error_details.dart';
+import 'package:publira/tenant/tenant_availability.dart';
 
 /// Reads the public-audience JWT the app holds right now.
 ///
@@ -28,6 +29,7 @@ class ConnectClient {
     required this.baseUrl,
     http.Client? httpClient,
     this._accessToken,
+    this._availability,
     this.timeout = const Duration(seconds: 10),
   }) : _http = httpClient ?? http.Client();
 
@@ -36,6 +38,12 @@ class ConnectClient {
   final Duration timeout;
 
   final AccessTokenReader? _accessToken;
+
+  /// Told of every answer, so the app learns that the tenant has been
+  /// suspended, and that it has been resumed, from whichever request comes
+  /// first. Every public RPC names the tenant, so any answer is about it.
+  final TenantAvailability? _availability;
+
   final http.Client _http;
 
   static const _tenantHeader = 'X-Publira-Tenant-Id';
@@ -116,12 +124,13 @@ class ConnectClient {
       );
     }
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      _availability?.reportServed();
       return (body: decoded, headers: response.headers);
     }
 
     final responseCode = _readString(decoded, 'code');
     final responseMessage = _readString(decoded, 'message');
-    throw ConnectException(
+    final error = ConnectException(
       code: responseCode.isEmpty
           ? _fallbackCode(response.statusCode)
           : responseCode,
@@ -131,6 +140,10 @@ class ConnectClient {
       fieldViolations: fieldViolationsOf(decoded['details']),
       reasons: errorReasonsOf(decoded['details']),
     );
+    if (error.isTenantSuspended) {
+      _availability?.reportSuspended();
+    }
+    throw error;
   }
 
   String _fallbackCode(int statusCode) {

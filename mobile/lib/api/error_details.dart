@@ -11,6 +11,10 @@ const _errorInfoType = 'google.rpc.ErrorInfo';
 /// any other domain is not one of the values below.
 const _errorInfoDomain = 'publira';
 
+/// The ErrorInfo reason the API refuses every request for a suspended tenant
+/// with, its domain lookup included, under `failed_precondition`.
+const tenantSuspendedReason = 'TENANT_SUSPENDED';
+
 /// The ErrorInfo reason the API refuses a rating, a checkout, or a store
 /// purchase with when the reader is credited on the episode.
 const readerCreditedOnEpisodeReason = 'READER_CREDITED_ON_EPISODE';

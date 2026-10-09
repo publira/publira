@@ -26,6 +26,7 @@ vi.mock("next/cache", () => ({ revalidateTag: mockRevalidateTag }));
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/tenant", () => ({
+  SUSPENDED_TENANT: "suspended",
   resolveTenantRouting: mockResolveTenantRouting,
 }));
 

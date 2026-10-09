@@ -1,7 +1,11 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  Code,
+  ConnectError,
+  ErrorInfoSchema,
+} from "@publira/api-client/errors";
 import { describe, expect, it, vi } from "vitest";
 
-import { createTenantResolver } from "./tenant-resolution";
+import { createTenantResolver, SUSPENDED_TENANT } from "./tenant-resolution";
 
 describe("createTenantResolver", () => {
   it("If the candidate is empty, do not call the API and return null", async () => {
@@ -98,6 +102,41 @@ describe("createTenantResolver", () => {
     await expect(resolver(["flaky.example.com"])).rejects.toThrow(
       "upstream down"
     );
+
+    expect(getTenantByDomain).toHaveBeenCalledTimes(2);
+  });
+  it("answers a suspended tenant without remembering it, so a resume serves the site at once", async () => {
+    const getTenantByDomain = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ConnectError(
+          "tenant is suspended",
+          Code.FailedPrecondition,
+          undefined,
+          [
+            {
+              desc: ErrorInfoSchema,
+              value: { domain: "publira", reason: "TENANT_SUSPENDED" },
+            },
+          ]
+        )
+      )
+      .mockResolvedValueOnce({
+        defaultLocale: "en",
+        tenantId: "tenant-1",
+      });
+    const resolver = createTenantResolver(
+      { domain: { getTenantByDomain } } as never,
+      { max: 10, ttl: 10_000 }
+    );
+
+    await expect(resolver(["paused.example.com"])).resolves.toBe(
+      SUSPENDED_TENANT
+    );
+    await expect(resolver(["paused.example.com"])).resolves.toEqual({
+      defaultLocale: "en",
+      tenantId: "tenant-1",
+    });
 
     expect(getTenantByDomain).toHaveBeenCalledTimes(2);
   });

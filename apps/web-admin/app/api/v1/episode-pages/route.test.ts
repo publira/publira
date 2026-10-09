@@ -23,6 +23,7 @@ vi.mock("next/cache", () => ({ revalidateTag: mockRevalidateTag }));
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/tenant", () => ({
+  SUSPENDED_TENANT: "suspended",
   resolveTenantRouting: mockResolveTenantRouting,
 }));
 
@@ -215,6 +216,23 @@ describe("POST /api/v1/episode-pages", () => {
     const { response } = await upload(pagesForm({ upload_mode: "pages" }));
 
     expect(response.status).toBe(404);
+    expect(mockGetAdminCurrentUser).not.toHaveBeenCalled();
+  });
+
+  it("says the console is unavailable for a suspended tenant, before reading the body", async () => {
+    mockResolveTenantRouting.mockResolvedValueOnce("suspended");
+
+    const { request, response } = await upload(
+      pagesForm({ upload_mode: "pages" })
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      message:
+        "This site has been suspended, so its admin console cannot be used. Contact the operator of this service for details.",
+      ok: false,
+    });
+    expect(request.bodyUsed).toBe(false);
     expect(mockGetAdminCurrentUser).not.toHaveBeenCalled();
   });
 

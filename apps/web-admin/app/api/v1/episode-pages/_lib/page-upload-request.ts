@@ -1,5 +1,7 @@
 import type { Locale } from "@publira/i18n";
+import { sharedMessage } from "@publira/i18n/catalog";
 import { getTenantDomainCandidates } from "@publira/utils";
+import { suspendedTenantLocale } from "@publira/utils/suspended-tenant";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -10,7 +12,7 @@ import type { EpisodePagesUploadResponse } from "#lib/episode-pages-upload";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import type { AdminMessageAccessor } from "#lib/messages";
-import { resolveTenantRouting } from "#lib/tenant";
+import { resolveTenantRouting, SUSPENDED_TENANT } from "#lib/tenant";
 
 export const respond = (body: EpisodePagesUploadResponse, status: number) =>
   NextResponse.json(body, {
@@ -79,9 +81,24 @@ export const readPageUploadForm = async (
 
   let tenantId: string | null;
   try {
-    ({ tenantId } = await resolveTenantRouting(
+    const routing = await resolveTenantRouting(
       getTenantDomainCandidates(request.headers)
-    ));
+    );
+    // The screen the upload was sent from was open when the tenant was
+    // suspended. Its next navigation lands on the page the proxy answers for
+    // a suspended console, and until then the message says the same.
+    if (routing === SUSPENDED_TENANT) {
+      return {
+        response: refuse(
+          sharedMessage(
+            "admin.errors.suspended_description",
+            suspendedTenantLocale(request)
+          ),
+          503
+        ),
+      };
+    }
+    ({ tenantId } = routing);
   } catch {
     return {
       response: new NextResponse("Service Unavailable", {

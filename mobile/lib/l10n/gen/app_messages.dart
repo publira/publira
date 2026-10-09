@@ -2648,6 +2648,16 @@ final class AppMessages {
     return _format('mobile.tag.title');
   }
 
+  /// `mobile.tenant_suspended.description`
+  String get tenantSuspendedDescription {
+    return _format('mobile.tenant_suspended.description');
+  }
+
+  /// `mobile.tenant_suspended.title`
+  String get tenantSuspendedTitle {
+    return _format('mobile.tenant_suspended.title');
+  }
+
   /// `mobile.verify_email.expired`
   String get verifyEmailExpired {
     return _format('mobile.verify_email.expired');
@@ -3463,6 +3473,8 @@ const _jaSources = <String, String>{
   'mobile.tag.not_found': 'タグが見つかりません ({\$slug})',
   'mobile.tag.series_empty': 'このタグのシリーズはまだ公開されていません。',
   'mobile.tag.title': 'タグ',
+  'mobile.tenant_suspended.description': 'しばらく経ってから再試行してください。',
+  'mobile.tenant_suspended.title': 'このアプリは現在ご利用いただけません',
   'mobile.verify_email.expired': 'この確認リンクは有効期限が切れています。',
   'mobile.verify_email.failed': 'メールアドレスを確認できませんでした。再試行してください。',
   'mobile.verify_email.invalid_token': 'この確認リンクは無効です。',
@@ -4177,6 +4189,8 @@ const _enSources = <String, String>{
   'mobile.tag.not_found': 'Tag not found ({\$slug})',
   'mobile.tag.series_empty': 'No published series carry this tag yet.',
   'mobile.tag.title': 'Tag',
+  'mobile.tenant_suspended.description': 'Please try again a little later.',
+  'mobile.tenant_suspended.title': 'This app is unavailable right now',
   'mobile.verify_email.expired': 'This confirmation link has expired.',
   'mobile.verify_email.failed':
       'Could not confirm your email address. Try again.',
@@ -4801,6 +4815,8 @@ const _koSources = <String, String>{
   'mobile.tag.not_found': '태그를 찾을 수 없습니다 ({\$slug})',
   'mobile.tag.series_empty': '이 태그의 시리즈는 아직 공개되지 않았습니다.',
   'mobile.tag.title': '태그',
+  'mobile.tenant_suspended.description': '잠시 후 다시 시도해 주세요.',
+  'mobile.tenant_suspended.title': '이 앱은 현재 이용할 수 없습니다',
   'mobile.verify_email.expired': '이 확인 링크는 유효 기간이 지났습니다.',
   'mobile.verify_email.failed': '이메일 주소를 확인하지 못했습니다. 다시 시도해 주세요.',
   'mobile.verify_email.invalid_token': '이 확인 링크는 유효하지 않습니다.',
@@ -5374,6 +5390,8 @@ const _zhHansSources = <String, String>{
   'mobile.tag.not_found': '找不到该标签（{\$slug}）',
   'mobile.tag.series_empty': '尚无带有该标签的已发布系列。',
   'mobile.tag.title': '标签',
+  'mobile.tenant_suspended.description': '请过一段时间再试。',
+  'mobile.tenant_suspended.title': '此应用目前无法使用',
   'mobile.verify_email.expired': '此确认链接已失效。',
   'mobile.verify_email.failed': '无法确认您的邮箱地址。请重试。',
   'mobile.verify_email.invalid_token': '此确认链接无效。',
@@ -5939,6 +5957,8 @@ const _zhHantSources = <String, String>{
   'mobile.tag.not_found': '找不到該標籤（{\$slug}）',
   'mobile.tag.series_empty': '尚無帶有該標籤的已發布系列。',
   'mobile.tag.title': '標籤',
+  'mobile.tenant_suspended.description': '請過一段時間再試。',
+  'mobile.tenant_suspended.title': '此應用程式目前無法使用',
   'mobile.verify_email.expired': '此確認連結已失效。',
   'mobile.verify_email.failed': '無法確認您的電子郵件地址。請重試。',
   'mobile.verify_email.invalid_token': '此確認連結無效。',

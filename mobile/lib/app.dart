@@ -57,10 +57,12 @@ import 'package:publira/push/push_messaging.dart';
 import 'package:publira/push/push_scope.dart';
 import 'package:publira/router.dart';
 import 'package:publira/settings/age_rating_confirmation.dart';
+import 'package:publira/tenant/tenant_availability.dart';
 import 'package:publira/tenant/tenant_brand.dart';
 import 'package:publira/tenant/tenant_brand_controller.dart';
 import 'package:publira/tenant/tenant_brand_repository.dart';
 import 'package:publira/tenant/tenant_theme.dart';
+import 'package:publira/tenant/tenant_unavailable_screen.dart';
 import 'package:publira/typography/autospaced_snack_bar_action.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/screen_captures.dart';
@@ -99,6 +101,7 @@ class PubliraApp extends StatefulWidget {
     this.share,
     this.browser,
     this.tenantBrand,
+    this.tenantAvailability,
     this.screenCaptures,
   });
 
@@ -157,14 +160,14 @@ class PubliraApp extends StatefulWidget {
     final library =
         offline ?? FileOfflineLibrary(tenantHost: resolved.tenantHost);
     late final AuthController auth;
+    late final TenantResolver tenants;
+    final availability = TenantAvailability(check: () => tenants.confirm());
     final client = ConnectClient(
       baseUrl: resolved.baseUrl,
       accessToken: () => auth.accessToken,
+      availability: availability,
     );
-    final tenants = TenantResolver(
-      client: client,
-      tenantHost: resolved.tenantHost,
-    );
+    tenants = TenantResolver(client: client, tenantHost: resolved.tenantHost);
     auth = AuthController(
       repository: HttpAuthRepository(
         config: resolved,
@@ -262,6 +265,7 @@ class PubliraApp extends StatefulWidget {
         library: library,
         logoRequestHeaders: resolved.publicImageRequestHeaders,
       ),
+      tenantAvailability: availability,
       // Only the app's own Android and iOS sources report a screenshot.
       screenCaptures:
           !kIsWeb &&
@@ -436,6 +440,15 @@ class PubliraApp extends StatefulWidget {
   /// brand defaults with no tenant name.
   final TenantBrandController? tenantBrand;
 
+  /// Whether the API is serving the tenant, which every screen gives way to
+  /// one saying the app is unavailable while it is not.
+  ///
+  /// [PubliraApp.fromConfig] always supplies the one its client reports to.
+  /// It is nullable for the direct constructor, which a widget test uses to
+  /// build the app with a tenant that is always served, or to inject one it
+  /// suspends itself.
+  final TenantAvailability? tenantAvailability;
+
   /// The screenshots the episode viewer answers with a notice.
   ///
   /// [PubliraApp.fromConfig] supplies one everywhere but the web. It is
@@ -487,6 +500,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     }
     widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
     widget.tenantBrand?.addListener(_onTenantBrandChanged);
+    widget.tenantAvailability?.addListener(_onTenantAvailabilityChanged);
     unawaited(_restore());
     unawaited(widget.storePurchaser?.start());
     unawaited(widget.tenantBrand?.start());
@@ -561,6 +575,12 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       );
       widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
     }
+    if (widget.tenantAvailability != oldWidget.tenantAvailability) {
+      oldWidget.tenantAvailability?.removeListener(
+        _onTenantAvailabilityChanged,
+      );
+      widget.tenantAvailability?.addListener(_onTenantAvailabilityChanged);
+    }
     if (widget.tenantBrand != oldWidget.tenantBrand) {
       oldWidget.tenantBrand?.removeListener(_onTenantBrandChanged);
       widget.tenantBrand?.addListener(_onTenantBrandChanged);
@@ -570,6 +590,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    widget.tenantAvailability?.removeListener(_onTenantAvailabilityChanged);
     widget.tenantBrand?.removeListener(_onTenantBrandChanged);
     widget.tenantDefaultLocale?.removeListener(_onTenantDefaultLocaleChanged);
     widget.push?.removeListener(_onPushChanged);
@@ -597,6 +618,13 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     if (state != AppLifecycleState.resumed) {
       return;
     }
+    final availability = widget.tenantAvailability;
+    if (availability != null && availability.suspended) {
+      // Nothing else can be read until the tenant is served again, and coming
+      // back to the app is when a reader expects to find out whether it is.
+      unawaited(availability.recheck());
+      return;
+    }
     unawaited(widget.announcements?.refreshPinned());
     if (widget.auth.isSignedIn) {
       unawaited(widget.notifications?.refresh());
@@ -611,6 +639,11 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
 
   /// The tenant's colours and name arrived, off the device or from the API.
   void _onTenantBrandChanged() {
+    setState(() {});
+  }
+
+  /// The API refused the tenant as suspended, or served it again.
+  void _onTenantAvailabilityChanged() {
     setState(() {});
   }
 
@@ -729,6 +762,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final site = widget.site;
     final brand = widget.tenantBrand?.brand;
+    final availability = widget.tenantAvailability;
     Widget app = MaterialApp.router(
       title: brand?.name ?? '',
       scaffoldMessengerKey: _messengerKey,
@@ -738,6 +772,14 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       theme: tenantLightTheme(brand?.palette ?? TenantPalette.standard),
       darkTheme: tenantDarkTheme(brand?.palette ?? TenantPalette.standard),
       routerConfig: widget.router,
+      // In place of the navigator rather than over it, so the screens a
+      // resumed tenant comes back to are built again and read afresh, not left
+      // showing the refusals they were answered with.
+      builder: availability == null
+          ? null
+          : (context, child) => availability.suspended
+                ? TenantUnavailableScreen(availability: availability)
+                : child ?? const SizedBox.shrink(),
     );
     if (site != null) {
       app = LinkScope(

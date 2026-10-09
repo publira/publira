@@ -924,7 +924,9 @@
       "console_title": "Could not display this page",
       "root_description": "Failed to load the admin console. Please try again later.",
       "root_title": "Could not display the admin console",
-      "storage_not_configured": "Images cannot be uploaded because image storage has not been set up on the platform yet. Ask a platform operator to set it up."
+      "storage_not_configured": "Images cannot be uploaded because image storage has not been set up on the platform yet. Ask a platform operator to set it up.",
+      "suspended_description": "This site has been suspended, so its admin console cannot be used. Contact the operator of this service for details.",
+      "suspended_title": "This admin console is unavailable"
     },
     "eye_catch": {
       "label": "Cover image",
@@ -3507,7 +3509,9 @@
       "page_description": "Please try again in a moment. If this keeps happening, come back a little later.",
       "page_title": "Could not show this page",
       "site_description": "The site could not be loaded. Please try again later.",
-      "site_title": "Could not show this site"
+      "site_title": "Could not show this site",
+      "suspended_description": "This site cannot be visited right now. Please come back later.",
+      "suspended_title": "This site is unavailable"
     },
     "follow": {
       "control_error": "Could not show the follow button",
@@ -4585,6 +4589,10 @@
       "unlink": "Unlink",
       "unlink_failed": "Could not unlink the account. Try again later.",
       "unlinked": "The account was unlinked."
+    },
+    "tenant_suspended": {
+      "description": "Please try again a little later.",
+      "title": "This app is unavailable right now"
     }
   },
   "platform": {

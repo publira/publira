@@ -30,6 +30,7 @@ export const RPC_ERROR_REASON = {
   smtpTestTimeout: "SMTP_TEST_TIMEOUT",
   smtpTestUnknown: "SMTP_TEST_UNKNOWN",
   storageNotConfigured: "STORAGE_NOT_CONFIGURED",
+  tenantSuspended: "TENANT_SUSPENDED",
   waitFreeEpisodeExcluded: "WAIT_FREE_EPISODE_EXCLUDED",
   waitFreeEpisodeFree: "WAIT_FREE_EPISODE_FREE",
   waitFreeNotOffered: "WAIT_FREE_NOT_OFFERED",
@@ -307,6 +308,18 @@ export const rpcErrorHasReason = (
       (detail) =>
         detail.domain === RPC_ERROR_INFO_DOMAIN && detail.reason === reason
     );
+
+/**
+ * The tenant the request named is suspended: the public and admin APIs refuse
+ * every request for it, its domain lookup included, until it is resumed.
+ *
+ * Unlike {@link isMissingResourceRpcError} this is not "there is nothing
+ * here", so a caller must not remember it the way it remembers an unknown
+ * host: resuming the tenant serves it again at once.
+ */
+export const isTenantSuspendedRpcError = (error: unknown): boolean =>
+  isRpcError(error, Code.FailedPrecondition) &&
+  rpcErrorHasReason(error, RPC_ERROR_REASON.tenantSuspended);
 
 /**
  * The numeric value stored under `key` on a Publira-owned ErrorInfo whose

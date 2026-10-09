@@ -1,4 +1,8 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  Code,
+  ConnectError,
+  ErrorInfoSchema,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetTenantByDomain } = vi.hoisted(() => ({
@@ -83,6 +87,40 @@ describe("tenant", () => {
     await expect(
       resolveTenantRouting(["admin.unknown.example"])
     ).resolves.toEqual({ defaultLocale: null, tenantId: null });
+  });
+
+  it("answers a suspended tenant without remembering it, so a resume opens the console at once", async () => {
+    mockGetTenantByDomain
+      .mockRejectedValueOnce(
+        new ConnectError(
+          "tenant is suspended",
+          Code.FailedPrecondition,
+          undefined,
+          [
+            {
+              desc: ErrorInfoSchema,
+              value: { domain: "publira", reason: "TENANT_SUSPENDED" },
+            },
+          ]
+        )
+      )
+      .mockResolvedValueOnce({
+        defaultLocale: "en",
+        tenantId: "018f0e6a-1000-7000-8000-000000000001",
+      });
+
+    const { resolveTenantRouting, SUSPENDED_TENANT } = await import("./tenant");
+
+    await expect(resolveTenantRouting(["admin.paused.example"])).resolves.toBe(
+      SUSPENDED_TENANT
+    );
+    await expect(
+      resolveTenantRouting(["admin.paused.example"])
+    ).resolves.toEqual({
+      defaultLocale: "en",
+      tenantId: "018f0e6a-1000-7000-8000-000000000001",
+    });
+    expect(mockGetTenantByDomain).toHaveBeenCalledTimes(2);
   });
 
   it("rethrows an unexpected error", async () => {
