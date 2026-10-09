@@ -99,68 +99,76 @@ test.describe("a suspended tenant", () => {
       `${hosts.console}${pathname}`;
     const reader = await openVisitor(browser);
     const staff = await openVisitor(browser);
-    await plantSessionCookie(
-      staff.page,
-      ADMIN_SESSION_COOKIE_NAME,
-      hosts.console,
-      {
-        audience: "admin",
-        role: SUSPENSION_ADMIN.role,
-        subject: SUSPENSION_ADMIN.publicId,
-        tenantId: SUSPENSION_TENANT.id,
-      }
-    );
+    try {
+      await plantSessionCookie(
+        staff.page,
+        ADMIN_SESSION_COOKIE_NAME,
+        hosts.console,
+        {
+          audience: "admin",
+          role: SUSPENSION_ADMIN.role,
+          subject: SUSPENSION_ADMIN.publicId,
+          tenantId: SUSPENSION_TENANT.id,
+        }
+      );
 
-    await signInAsSeedPlatformSuperAdmin(
-      page,
-      `/tenants/${SUSPENSION_TENANT.publicId}`
-    );
-    await page.getByRole("button", { name: "Suspend" }).click();
-    await expect(page.getByRole("button", { name: "Resume" })).toBeVisible({
-      timeout: 30_000,
-    });
+      await signInAsSeedPlatformSuperAdmin(
+        page,
+        `/tenants/${SUSPENSION_TENANT.publicId}`
+      );
+      await page.getByRole("button", { name: "Suspend" }).click();
+      await expect(page.getByRole("button", { name: "Resume" })).toBeVisible({
+        timeout: 30_000,
+      });
 
-    // Every page of the site, whatever it would have shown, and in the
-    // language the URL names.
-    await expectUnavailable(reader.page, siteUrl("/"), SITE_UNAVAILABLE);
-    await expect(reader.page.getByText(SUSPENSION_TENANT.name)).toHaveCount(0);
-    await expectUnavailable(reader.page, siteUrl("/series"), SITE_UNAVAILABLE);
-    const localized = await reader.page.goto(siteUrl("/ja/series"));
-    expect(localized?.status()).toBe(503);
-    await expect(reader.page.locator("html")).toHaveAttribute("lang", "ja");
+      // Every page of the site, whatever it would have shown, and in the
+      // language the URL names.
+      await expectUnavailable(reader.page, siteUrl("/"), SITE_UNAVAILABLE);
+      await expect(reader.page.getByText(SUSPENSION_TENANT.name)).toHaveCount(
+        0
+      );
+      await expectUnavailable(
+        reader.page,
+        siteUrl("/series"),
+        SITE_UNAVAILABLE
+      );
+      const localized = await reader.page.goto(siteUrl("/ja/series"));
+      expect(localized?.status()).toBe(503);
+      await expect(reader.page.locator("html")).toHaveAttribute("lang", "ja");
 
-    // The console refuses the sign-in form and a session alike, and keeps the
-    // session for when the tenant is back.
-    await expectUnavailable(
-      staff.page,
-      consoleUrl("/login"),
-      CONSOLE_UNAVAILABLE
-    );
-    await expect(staff.page.getByLabel(/Email address/u)).toHaveCount(0);
-    await expectUnavailable(staff.page, consoleUrl("/"), CONSOLE_UNAVAILABLE);
-    await expect(staff.page.getByText(/has been suspended/u)).toBeVisible();
+      // The console refuses the sign-in form and a session alike, and keeps the
+      // session for when the tenant is back.
+      await expectUnavailable(
+        staff.page,
+        consoleUrl("/login"),
+        CONSOLE_UNAVAILABLE
+      );
+      await expect(staff.page.getByLabel(/Email address/u)).toHaveCount(0);
+      await expectUnavailable(staff.page, consoleUrl("/"), CONSOLE_UNAVAILABLE);
+      await expect(staff.page.getByText(/has been suspended/u)).toBeVisible();
 
-    await page.getByRole("button", { name: "Resume" }).click();
-    await expect(page.getByRole("button", { name: "Suspend" })).toBeVisible({
-      timeout: 30_000,
-    });
+      await page.getByRole("button", { name: "Resume" }).click();
+      await expect(page.getByRole("button", { name: "Suspend" })).toBeVisible({
+        timeout: 30_000,
+      });
 
-    const siteResponse = await reader.page.goto(siteUrl("/"));
-    expect(siteResponse?.status(), await reader.page.content()).toBe(200);
-    await expect(
-      reader.page.getByRole("link", {
-        exact: true,
-        name: SUSPENSION_TENANT.name,
-      })
-    ).toBeVisible();
+      const siteResponse = await reader.page.goto(siteUrl("/"));
+      expect(siteResponse?.status(), await reader.page.content()).toBe(200);
+      await expect(
+        reader.page.getByRole("link", {
+          exact: true,
+          name: SUSPENSION_TENANT.name,
+        })
+      ).toBeVisible();
 
-    const consoleResponse = await staff.page.goto(consoleUrl("/"));
-    expect(consoleResponse?.status(), await staff.page.content()).toBe(200);
-    await expect(
-      staff.page.getByRole("heading", { exact: true, name: "Dashboard" })
-    ).toBeVisible();
-
-    await reader.context.close();
-    await staff.context.close();
+      const consoleResponse = await staff.page.goto(consoleUrl("/"));
+      expect(consoleResponse?.status(), await staff.page.content()).toBe(200);
+      await expect(
+        staff.page.getByRole("heading", { exact: true, name: "Dashboard" })
+      ).toBeVisible();
+    } finally {
+      await reader.context.close();
+      await staff.context.close();
+    }
   });
 });
