@@ -19,7 +19,8 @@ import (
 // the console published at once, the way the scheduled publication job tells
 // them about one it published.
 //
-// It is drained here rather than written by CreateEpisode itself because the
+// It is drained here rather than written by the RPC itself — CreateEpisode, or
+// UpdateEpisodePublishSchedule given a time that has passed — because the
 // console's connection cannot see the followers: every follow table is
 // isolated to the reader who follows.
 const EventTypeEpisodePublishedNotification = "episode_published_notification"
@@ -34,8 +35,9 @@ const NotificationTypeEpisodePublished = "episode_published"
 const DefaultEpisodeFollowerPageSize = int32(500)
 
 // EpisodePublishedIdempotencyKey is the outbox key for one episode's event.
-// The episode id is unique across every tenant, and an episode is published
-// from the console at most once, when it is created.
+// The episode id is unique across every tenant, and the key is the same every
+// time the console publishes the episode, so one taken down and published
+// again is not announced a second time.
 func EpisodePublishedIdempotencyKey(episodeID uuid.UUID) string {
 	return EventTypeEpisodePublishedNotification + ":" + episodeID.String()
 }

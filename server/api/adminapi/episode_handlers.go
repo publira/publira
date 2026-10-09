@@ -45,17 +45,6 @@ func parseScheduledAtOrZero(value string) (sql.NullTime, error) {
 	return sql.NullTime{Time: t, Valid: true}, nil
 }
 
-func normalizeAndValidateScheduledAt(scheduledAt sql.NullTime, now time.Time) (sql.NullTime, error) {
-	if !scheduledAt.Valid {
-		return scheduledAt, nil
-	}
-	normalized := scheduledAt.Time.UTC()
-	if !normalized.After(now.UTC()) {
-		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, "scheduled_at must be in the future")
-	}
-	return sql.NullTime{Time: normalized, Valid: true}, nil
-}
-
 // episodeRevalidateTags names the public caches that answer with what an
 // episode holds and how it reads — its pages, its place and number in its
 // series, its credits, its layout, and how it may be bought: the series detail
@@ -700,9 +689,12 @@ func (s *adminServer) CreateEpisode(
 	}
 	var owed revalidate.Owed
 	if publishNow {
-		owed, err = s.recordEpisodePublication(txCtx, q, tenant.ID, seriesID, base.ID)
-		if err != nil {
+		if err := recordEpisodePublication(txCtx, q, tenant.ID, seriesID, base.ID); err != nil {
 			return nil, s.internalDBError(ctx, "failed to record the publication of the created episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
+		}
+		owed, err = s.recordRevalidation(txCtx, tenant.ID, publishepisodes.RevalidateTags(tenant.ID))
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to record a next cache invalidation", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -742,25 +734,26 @@ func (s *adminServer) CreateEpisode(
 }
 
 // recordEpisodePublication writes down, in the transaction that publishes the
-// episode, what the scheduled publication job would have done in its own: the
-// drop of the caches that list the episode and its series, the sync of the
-// series' search document, and the notice to the episode's followers, which the
-// worker writes because this connection cannot see them.
-func (s *adminServer) recordEpisodePublication(txCtx context.Context, q *dbmodels.Queries, tenantID, seriesID, episodeID uuid.UUID) (revalidate.Owed, error) {
+// episode, what the scheduled publication job would have written in its own:
+// the sync of the series' search document, and the notice to the episode's
+// followers, which the worker writes because this connection cannot see them.
+// The drop of the caches that list the episode and its series is the caller's
+// to record with the rest of its write.
+func recordEpisodePublication(txCtx context.Context, q Querier, tenantID, seriesID, episodeID uuid.UUID) error {
 	payload, err := json.Marshal(outbox.EpisodePublishedNotificationPayload{
 		TenantID:  tenantID.String(),
 		EpisodeID: episodeID.String(),
 	})
 	if err != nil {
-		return revalidate.Owed{}, fmt.Errorf("encode episode published notification payload: %w", err)
+		return fmt.Errorf("encode episode published notification payload: %w", err)
 	}
 	if err := insertAdminOutboxEvent(txCtx, q, tenantID, outbox.EventTypeEpisodePublishedNotification, payload, outbox.EpisodePublishedIdempotencyKey(episodeID)); err != nil {
-		return revalidate.Owed{}, fmt.Errorf("queue episode published notification: %w", err)
+		return fmt.Errorf("queue episode published notification: %w", err)
 	}
 	if err := catalogindex.Queue(txCtx, q, tenantID, catalogindex.SeriesRef(seriesID)); err != nil {
-		return revalidate.Owed{}, fmt.Errorf("queue catalog index sync: %w", err)
+		return fmt.Errorf("queue catalog index sync: %w", err)
 	}
-	return s.recordRevalidation(txCtx, tenantID, publishepisodes.RevalidateTags(tenantID))
+	return nil
 }
 
 func (s *adminServer) UploadEpisodeImages(
@@ -1000,20 +993,29 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 	if err != nil {
 		return nil, err
 	}
-	scheduledAt, err = normalizeAndValidateScheduledAt(scheduledAt, time.Now())
-	if err != nil {
-		return nil, err
-	}
+	scheduledAt.Time = scheduledAt.Time.UTC()
+	// A time that has already passed publishes the episode now, the way
+	// CreateEpisode publishes one created with it, rather than leaving it for
+	// the scheduled publication job to reach.
+	publishNow := scheduledAt.Valid && !scheduledAt.Time.After(time.Now())
 	episodeID, err := parseRecordID(req.EpisodeId, "episode_id")
 	if err != nil {
 		return nil, err
 	}
 	var ep dbmodels.GetEpisodeByIDForTenantRow
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
-		if err := s.queriesFor(txCtx).UpdateEpisodePublishScheduleByIDForTenant(txCtx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: episodeID, ScheduledAt: scheduledAt}); err != nil {
+		q := s.queriesFor(txCtx)
+		published := false
+		if publishNow {
+			rows, err := q.PublishEpisodeNowByIDForTenant(txCtx, dbmodels.PublishEpisodeNowByIDForTenantParams{TenantID: tenant.ID, ID: episodeID, ScheduledAt: scheduledAt.Time})
+			if err != nil {
+				return nil, s.internalDBError(ctx, "failed to publish episode", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+			}
+			published = rows > 0
+		} else if err := q.UpdateEpisodePublishScheduleByIDForTenant(txCtx, dbmodels.UpdateEpisodePublishScheduleByIDForTenantParams{TenantID: tenant.ID, ID: episodeID, ScheduledAt: scheduledAt}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to update episode publish schedule", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 		}
-		row, err := s.queriesFor(txCtx).GetEpisodeByIDForTenant(txCtx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
+		row, err := q.GetEpisodeByIDForTenant(txCtx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, connect.NewError(connect.CodeNotFound, "episode not found")
@@ -1021,10 +1023,21 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 			return nil, s.internalDBError(ctx, "failed to get episode after schedule update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 		}
 		ep = row
-		// A schedule saved over a published episode takes it down, which can
-		// change its series' latest episode and whether a free one is open.
-		if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.SeriesRef(row.SeriesID)); err != nil {
-			return nil, s.internalDBError(ctx, "failed to queue the search index sync for the episode's series", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+		switch {
+		case published:
+			if err := recordEpisodePublication(txCtx, q, tenant.ID, row.SeriesID, episodeID); err != nil {
+				return nil, s.internalDBError(ctx, "failed to record the publication of the episode", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+			}
+		case publishNow:
+			// The episode was already published, and a time that has passed
+			// leaves it as it is: nothing a reader sees has changed.
+			return nil, nil
+		default:
+			// A schedule saved over a published episode takes it down, which can
+			// change its series' latest episode and whether a free one is open.
+			if err := catalogindex.Queue(txCtx, q, tenant.ID, catalogindex.SeriesRef(row.SeriesID)); err != nil {
+				return nil, s.internalDBError(ctx, "failed to queue the search index sync for the episode's series", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+			}
 		}
 		return publishepisodes.RevalidateTags(tenant.ID), nil
 	}); err != nil {

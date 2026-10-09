@@ -474,49 +474,6 @@ func (q *Queries) GetNextPublishedFreeEpisodeForTenant(ctx context.Context, arg 
 	return i, err
 }
 
-const GetPublishedEpisodeForFollowerNotification = `-- name: GetPublishedEpisodeForFollowerNotification :one
-SELECT e.id AS episode_id,
-    e.public_id AS episode_public_id,
-    e.title AS episode_title,
-    s.public_id AS series_public_id,
-    s.title AS series_title
-FROM episodes e
-    JOIN series s ON s.id = e.series_id
-    JOIN episode_listings el ON el.episode_id = e.id
-WHERE e.tenant_id = $1
-    AND e.id = $2
-    AND el.status = 'published'
-`
-
-type GetPublishedEpisodeForFollowerNotificationParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	ID       uuid.UUID `json:"id"`
-}
-
-type GetPublishedEpisodeForFollowerNotificationRow struct {
-	EpisodeID       uuid.UUID `json:"episode_id"`
-	EpisodePublicID string    `json:"episode_public_id"`
-	EpisodeTitle    string    `json:"episode_title"`
-	SeriesPublicID  string    `json:"series_public_id"`
-	SeriesTitle     string    `json:"series_title"`
-}
-
-// Worker read: what the episode_published notification of an episode the
-// console published at once says. An episode that is no longer published by
-// the time the event drains answers no row, so its followers are not told.
-func (q *Queries) GetPublishedEpisodeForFollowerNotification(ctx context.Context, arg GetPublishedEpisodeForFollowerNotificationParams) (GetPublishedEpisodeForFollowerNotificationRow, error) {
-	row := q.db.QueryRowContext(ctx, GetPublishedEpisodeForFollowerNotification, arg.TenantID, arg.ID)
-	var i GetPublishedEpisodeForFollowerNotificationRow
-	err := row.Scan(
-		&i.EpisodeID,
-		&i.EpisodePublicID,
-		&i.EpisodeTitle,
-		&i.SeriesPublicID,
-		&i.SeriesTitle,
-	)
-	return i, err
-}
-
 const GetPublishedEpisodeForTenant = `-- name: GetPublishedEpisodeForTenant :one
 SELECT e.id,
     e.public_id,
@@ -940,104 +897,6 @@ func (q *Queries) ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg Lis
 			&i.ScheduledAt,
 			&i.PublishedAt,
 			&i.Availability,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const ListEpisodesReadyToPublish = `-- name: ListEpisodesReadyToPublish :many
-SELECT el.episode_id
-FROM episode_listings el
-WHERE el.status = 'scheduled'
-    AND el.scheduled_at IS NOT NULL
-    AND el.scheduled_at <= NOW()
-`
-
-func (q *Queries) ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, ListEpisodesReadyToPublish)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []uuid.UUID
-	for rows.Next() {
-		var episode_id uuid.UUID
-		if err := rows.Scan(&episode_id); err != nil {
-			return nil, err
-		}
-		items = append(items, episode_id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const ListEpisodesReadyToPublishWithTenantInfo = `-- name: ListEpisodesReadyToPublishWithTenantInfo :many
-SELECT el.episode_id,
-    e.public_id AS episode_public_id,
-    e.title AS episode_title,
-    s.id AS series_id,
-    s.public_id AS series_public_id,
-    s.title AS series_title,
-    t.id AS tenant_id,
-    t.public_id AS tenant_public_id,
-    t.name AS tenant_name,
-    t.domain AS tenant_domain
-FROM episode_listings el
-    JOIN episodes e ON e.id = el.episode_id
-    JOIN series s ON s.id = e.series_id
-    JOIN tenants t ON t.id = el.tenant_id
-WHERE el.status = 'scheduled'
-    AND el.scheduled_at IS NOT NULL
-    AND el.scheduled_at <= NOW()
-`
-
-type ListEpisodesReadyToPublishWithTenantInfoRow struct {
-	EpisodeID       uuid.UUID `json:"episode_id"`
-	EpisodePublicID string    `json:"episode_public_id"`
-	EpisodeTitle    string    `json:"episode_title"`
-	SeriesID        uuid.UUID `json:"series_id"`
-	SeriesPublicID  string    `json:"series_public_id"`
-	SeriesTitle     string    `json:"series_title"`
-	TenantID        uuid.UUID `json:"tenant_id"`
-	TenantPublicID  string    `json:"tenant_public_id"`
-	TenantName      string    `json:"tenant_name"`
-	TenantDomain    string    `json:"tenant_domain"`
-}
-
-func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListEpisodesReadyToPublishWithTenantInfo)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListEpisodesReadyToPublishWithTenantInfoRow
-	for rows.Next() {
-		var i ListEpisodesReadyToPublishWithTenantInfoRow
-		if err := rows.Scan(
-			&i.EpisodeID,
-			&i.EpisodePublicID,
-			&i.EpisodeTitle,
-			&i.SeriesID,
-			&i.SeriesPublicID,
-			&i.SeriesTitle,
-			&i.TenantID,
-			&i.TenantPublicID,
-			&i.TenantName,
-			&i.TenantDomain,
 		); err != nil {
 			return nil, err
 		}
@@ -1723,18 +1582,6 @@ func (q *Queries) LockEpisodesByIDsForTenantAndSeries(ctx context.Context, arg L
 	return items, nil
 }
 
-const MarkEpisodePublished = `-- name: MarkEpisodePublished :exec
-UPDATE episode_listings
-SET status = 'published',
-    published_at = NOW()
-WHERE episode_id = $1
-`
-
-func (q *Queries) MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, MarkEpisodePublished, episodeID)
-	return err
-}
-
 const MarkPublishedEpisodeAsRead = `-- name: MarkPublishedEpisodeAsRead :one
 INSERT INTO episode_reads (id, tenant_id, user_id, episode_id)
 SELECT $1, $2, $3, e.id
@@ -1862,35 +1709,6 @@ func (q *Queries) UpdateEpisodeOrderIndexByIDForTenantAndSeries(ctx context.Cont
 		arg.SeriesID,
 		arg.ID,
 	)
-	return err
-}
-
-const UpdateEpisodePublishScheduleByIDForTenant = `-- name: UpdateEpisodePublishScheduleByIDForTenant :exec
-UPDATE episode_listings el
-SET status = CASE
-        WHEN $1::timestamptz IS NULL THEN 'draft'
-        ELSE 'scheduled'
-    END,
-    scheduled_at = $1::timestamptz,
-    published_at = CASE
-        WHEN $1::timestamptz IS NULL THEN NULL
-        ELSE el.published_at
-    END
-FROM episodes e
-    JOIN series s ON s.id = e.series_id
-WHERE el.episode_id = e.id
-    AND s.tenant_id = $2
-    AND e.id = $3
-`
-
-type UpdateEpisodePublishScheduleByIDForTenantParams struct {
-	ScheduledAt sql.NullTime `json:"scheduled_at"`
-	TenantID    uuid.UUID    `json:"tenant_id"`
-	ID          uuid.UUID    `json:"id"`
-}
-
-func (q *Queries) UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error {
-	_, err := q.db.ExecContext(ctx, UpdateEpisodePublishScheduleByIDForTenant, arg.ScheduledAt, arg.TenantID, arg.ID)
 	return err
 }
 
