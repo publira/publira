@@ -16,8 +16,9 @@
 -- every later suite reads as well.
 --
 -- Used by e2e/tests/host.screenshots.spec.ts,
--- e2e/tests/admin.screenshots.spec.ts, and
--- e2e/tests/platform.screenshots.spec.ts.
+-- e2e/tests/admin.screenshots.spec.ts,
+-- e2e/tests/platform.screenshots.spec.ts, and the documentation's
+-- e2e/tests/*.docs-screenshots.spec.ts.
 
 BEGIN;
 
@@ -69,10 +70,73 @@ UPDATE users
 SET created_at = TIMESTAMPTZ '2026-01-05 10:00:00+00'
 WHERE public_id = 'SeedMMBRAAA1';
 
+-- A reader's page in the console prints when the address was confirmed.
+UPDATE users
+SET email_verified_at = created_at + INTERVAL '5 minutes'
+WHERE public_id IN ('SeedADMNAAA1', 'SeedMMBRAAA1')
+    AND email_verified_at IS NOT NULL;
+
 UPDATE platform_user_roles pur
 SET created_at = TIMESTAMPTZ '2026-01-05 08:00:00+00'
 FROM platform_users pu
 WHERE pu.id = pur.platform_user_id
     AND pu.public_id = 'SeedPFUSAAA1';
+
+-- The audit log prints when each entry was recorded, and the development seed
+-- spreads its fifty entries over the thirty days before it ran. The same
+-- spread is kept, ending on a fixed day instead: an entry's number is the last
+-- part of its id, the one db/seeds/dev/020_audit_logs.sql derives the offset
+-- from.
+WITH numbered AS (
+    SELECT
+        al.id,
+        ('x' || RIGHT(al.id::text, 12))::bit(48)::bigint::int AS n
+    FROM audit_logs al
+        JOIN tenants t ON t.id = al.tenant_id
+    WHERE t.public_id = 'SeedTNNTAAA1'
+        AND al.id::text LIKE '018f0e74-%'
+)
+UPDATE audit_logs al
+SET created_at = TIMESTAMPTZ '2026-05-01 00:00:00+00' - make_interval(
+        days  => 30 - ((numbered.n - 1) / 2),
+        hours => (numbered.n * 3) % 24,
+        mins  => (numbered.n * 7) % 60
+    )
+FROM numbered
+WHERE al.id = numbered.id;
+
+-- The access ticket list prints when each ticket was issued.
+UPDATE access_tickets at
+SET created_at = TIMESTAMPTZ '2026-01-05 11:00:00+00'
+FROM tenants t
+WHERE t.id = at.tenant_id
+    AND t.public_id = 'SeedTNNTAAA1'
+    AND at.public_id = 'SeedTCKTAAA1';
+
+-- The page list and a page's version history print when each page, each of
+-- its translations, and each version was last written or published.
+UPDATE pages p
+SET created_at = TIMESTAMPTZ '2026-01-05 12:00:00+00',
+    updated_at = TIMESTAMPTZ '2026-01-05 12:00:00+00'
+FROM tenants t
+WHERE t.id = p.tenant_id
+    AND t.public_id = 'SeedTNNTAAA1';
+
+UPDATE page_translations pt
+SET created_at = TIMESTAMPTZ '2026-01-05 12:00:00+00',
+    updated_at = TIMESTAMPTZ '2026-01-05 12:00:00+00'
+FROM tenants t
+WHERE t.id = pt.tenant_id
+    AND t.public_id = 'SeedTNNTAAA1';
+
+UPDATE page_versions pv
+SET created_at = TIMESTAMPTZ '2026-01-05 12:00:00+00',
+    published_at = CASE
+        WHEN pv.published_at IS NULL THEN NULL
+        ELSE TIMESTAMPTZ '2026-01-05 12:00:00+00'
+    END
+FROM tenants t
+WHERE t.id = pv.tenant_id
+    AND t.public_id = 'SeedTNNTAAA1';
 
 COMMIT;

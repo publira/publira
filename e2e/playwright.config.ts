@@ -158,6 +158,12 @@ const screenshotSpecs = /\.screenshots\./u;
 const docsScreenshotSpecs = /\.docs-screenshots\./u;
 
 /**
+ * Writes the scenario tenants those suites photograph, once, before any of
+ * them runs.
+ */
+const docsScreenshotSetup = /\.docs-screenshots\.setup\./u;
+
+/**
  * The suites that drive the three apps the way a tablet does: across the
  * widths a tablet is held at, and by tapping rather than hovering. They run in
  * projects of their own, under {@link tabletChrome}, so every other project
@@ -222,9 +228,25 @@ const screenshotProjects: PlaywrightTestProject[] = [
   // `docs/<locale>/<page directory>/<page slug>-<subject>.png`, which
   // `expectDocsScreenshot` passes as the snapshot name. Twice the density, as
   // the website scales the image down to its content column.
+  //
+  // After the three projects above: a screen the documentation explains has
+  // to show what the seed does not hold, such as a comment waiting for
+  // approval, so the setup writes the scenario tenants that hold it, and a
+  // tenant added while the platform baseline runs is in its tenant list.
   {
+    dependencies: [
+      "screenshots-host",
+      "screenshots-admin",
+      "screenshots-platform",
+    ],
+    name: "docs-screenshots-setup",
+    testMatch: [docsScreenshotSetup],
+  },
+  {
+    dependencies: ["docs-screenshots-setup"],
     name: "docs-screenshots",
     snapshotPathTemplate: `${DOCS_ROOT}/{arg}{ext}`,
+    testIgnore: [docsScreenshotSetup],
     testMatch: [docsScreenshotSpecs],
     timeout: 120_000,
     use: {
