@@ -1,6 +1,6 @@
 ---
 title: Episodes
-description: Create an episode, add its pages, set its layout, credits, and where it is shown and sold, give it free reading periods, and publish it on time.
+description: Create an episode, add, replace, and delete its pages, change its title, set its layout, credits, and where it is shown and sold, give it free reading periods, and publish it on time.
 published: 2026-10-07
 updated: 2026-10-09
 ---
@@ -25,7 +25,7 @@ A new order reaches the site as soon as it is saved.
 
 Choose **Create** on the episode list and fill in:
 
-- **Title**: the episode's title, such as `Episode 1 — A beginning morning`. It cannot be changed once the episode exists ([#3831](https://github.com/publira/publira/issues/3831)), so check it before saving.
+- **Title**: the episode's title, such as `Episode 1 — A beginning morning`. It can be [changed later](#changing-the-title).
 - **Price**: a whole number of yen. `0` makes the episode free.
 - **Reading period**: how many hours a purchase keeps the episode open. `0` keeps it open with no end. It starts at the series' [Reading period](./1-series.md#reading-period).
 - **Publication date and time**: when the episode is published, read in the tenant's time zone. Leave it empty to create a draft. A time that has already passed publishes the episode as soon as it is created.
@@ -36,6 +36,12 @@ Choose **Create** on the episode list and fill in:
 **Price** and **Reading period** cannot be changed after the episode is created either ([#3771](https://github.com/publira/publira/issues/3771)). [Selling episodes](../4-selling-episodes.md#how-a-reader-buys-an-episode) explains both.
 
 Choose **Create episode**. The episode is created with the Authors credited on the series, and its edit screen opens to add its pages.
+
+## Changing the title
+
+**Title**, at the top of the episode's edit screen, holds the episode's title. Change it and choose **Update title**. The site and the app show the new title as soon as it is saved. A title cannot be left empty.
+
+![The Title section of an episode: the Title field holding the episode's title, and Update title.](./episodes-title.png)
 
 ## Adding the pages
 
@@ -49,11 +55,16 @@ Choose **Add page images**, **Add a ZIP**, or **Add an ePub** to upload. Each im
 
 ![The Add comic pages section: the series and episode the pages go to, the Upload method buttons, the Page images picker with its formats and limits, and Add page images.](./episodes-add-pages.png)
 
-**Registered page images** shows the pages in order. Drag a page by its handle, or focus the handle and use the arrow keys, to move it. A page cannot be removed or replaced once it is added ([#3831](https://github.com/publira/publira/issues/3831)), so check a batch before adding it.
+**Registered page images** shows the pages in order. Drag a page by its handle, or focus the handle and use the arrow keys, to move it. Under each page:
 
-![Registered page images: the episode's eight pages in order, each with its number, its size, and a drag handle.](./episodes-registered-pages.png)
+- **Replace** puts a new image in the page's place. Choose one JPEG, PNG, GIF, or WebP image of up to 20 MB under **New page image**, and choose **Replace page**. Every other page stays where it is.
+- **Delete** takes the page out of the episode once **Delete page** confirms it. The pages after it move up one place. A deleted page cannot be brought back; add its image again to restore it.
 
-Pages added to an episode that is already published, and a new order of its pages, reach readers as soon as they are saved. A published episode with no pages shows readers that its pages have not been published yet.
+![Registered page images: the episode's eight pages in order, each with its number, its size, a drag handle, and Replace and Delete.](./episodes-registered-pages.png)
+
+Pages added to an episode that is already published, a page replaced or deleted, and a new order of its pages reach readers as soon as they are saved. A published episode with no pages shows readers that its pages have not been published yet.
+
+Deleting pages leaves the episode's own **Spreads start** under [Page layout](#page-layout) as it was. If that page is now past the last one, the episode is shown without spreads until it has that many pages again.
 
 ## Page layout
 

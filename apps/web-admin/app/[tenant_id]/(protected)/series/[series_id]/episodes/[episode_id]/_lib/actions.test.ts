@@ -4,6 +4,7 @@ const {
   mockAssertSameOrigin,
   mockCreateEpisodeFreeWindow,
   mockDeleteEpisodeFreeWindow,
+  mockDeleteEpisodeImage,
   mockGetAccessToken,
   mockGetEpisode,
   mockGetTenantDisplayTimeZone,
@@ -14,12 +15,14 @@ const {
   mockUpdateEpisodeLayout,
   mockUpdateEpisodePublishSchedule,
   mockUpdateEpisodePurchaseAvailability,
+  mockUpdateEpisodeTitle,
   mockUpdateTag,
   mockVerifyAdminSession,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockCreateEpisodeFreeWindow: vi.fn(),
   mockDeleteEpisodeFreeWindow: vi.fn(),
+  mockDeleteEpisodeImage: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetEpisode: vi.fn(),
   mockGetTenantDisplayTimeZone: vi.fn(),
@@ -30,6 +33,7 @@ const {
   mockUpdateEpisodeLayout: vi.fn(),
   mockUpdateEpisodePublishSchedule: vi.fn(),
   mockUpdateEpisodePurchaseAvailability: vi.fn(),
+  mockUpdateEpisodeTitle: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockVerifyAdminSession: vi.fn(),
 }));
@@ -67,7 +71,12 @@ vi.mock("#lib/session", () => ({
   getAccessToken: mockGetAccessToken,
 }));
 
+vi.mock("#lib/access-ticket", () => ({
+  accessTicketsCacheTag: (tenantId: string) => `access-tickets-${tenantId}`,
+}));
+
 vi.mock("#lib/episode", () => ({
+  deleteEpisodeImage: mockDeleteEpisodeImage,
   episodeCacheTag: (tenantId: string, episodeId: string) =>
     `episode-${tenantId}-${episodeId}`,
   episodesCacheTag: (tenantId: string) => `episodes-${tenantId}`,
@@ -78,6 +87,7 @@ vi.mock("#lib/episode", () => ({
   updateEpisodeLayout: mockUpdateEpisodeLayout,
   updateEpisodePublishSchedule: mockUpdateEpisodePublishSchedule,
   updateEpisodePurchaseAvailability: mockUpdateEpisodePurchaseAvailability,
+  updateEpisodeTitle: mockUpdateEpisodeTitle,
 }));
 
 vi.mock("#lib/episode-free-window", () => ({
@@ -110,6 +120,14 @@ const deleteFormData = (freeWindowId: string) => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
   formData.set("free_window_id", freeWindowId);
+  return formData;
+};
+
+const deleteImageFormData = (imageId: string) => {
+  const formData = new FormData();
+  formData.set("tenant_id", "TENANT001");
+  formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
+  formData.set("image_id", imageId);
   return formData;
 };
 
@@ -696,6 +714,128 @@ describe("episode actions", () => {
       expect(result).toEqual({ message: "overlaps", ok: false });
       expect(mockUpdateTag).not.toHaveBeenCalled();
       expect(mockRedirect).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("renaming the episode", () => {
+    it("sends the trimmed title and clears every read that shows it", async () => {
+      mockUpdateEpisodeTitle.mockResolvedValueOnce({
+        episode: { title: "Episode 1 — Morning" },
+        ok: true,
+      });
+
+      const { updateEpisodeTitleAction } = await import("./actions");
+      await updateEpisodeTitleAction(
+        null,
+        layoutFormData({ title: "  Episode 1 — Morning  " })
+      );
+
+      expect(mockUpdateEpisodeTitle).toHaveBeenCalledWith(
+        {
+          episodeId: "018f0e6a-4000-7000-8000-000000000001",
+          tenantId: "TENANT001",
+          title: "Episode 1 — Morning",
+        },
+        "en"
+      );
+      expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
+      );
+      // The access ticket list names the episode each ticket opens.
+      expect(mockUpdateTag).toHaveBeenCalledWith("access-tickets-TENANT001");
+      expect(mockRedirect).toHaveBeenCalledWith(
+        "/series/SERIES001/episodes/EP001?title_updated=1"
+      );
+    });
+
+    it("refuses a title of nothing but white space", async () => {
+      const { updateEpisodeTitleAction } = await import("./actions");
+      const result = await updateEpisodeTitleAction(
+        null,
+        layoutFormData({ title: "   " })
+      );
+
+      expect(result).toEqual({ message: "Title is required.", ok: false });
+      expect(mockUpdateEpisodeTitle).not.toHaveBeenCalled();
+    });
+
+    it("shows the failure the API reported and stays on the form", async () => {
+      mockUpdateEpisodeTitle.mockResolvedValueOnce({
+        message: "Could not update the title. Please try again later.",
+        ok: false,
+      });
+
+      const { updateEpisodeTitleAction } = await import("./actions");
+      const result = await updateEpisodeTitleAction(
+        null,
+        layoutFormData({ title: "Episode 1" })
+      );
+
+      expect(result).toEqual({
+        message: "Could not update the title. Please try again later.",
+        ok: false,
+      });
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("deleting a page", () => {
+    it("deletes the page and clears the episode's tags", async () => {
+      mockDeleteEpisodeImage.mockResolvedValueOnce({ images: [], ok: true });
+
+      const { deleteEpisodeImageAction } = await import("./actions");
+      const result = await deleteEpisodeImageAction(
+        null,
+        deleteImageFormData("018f0e6a-5000-7000-8000-000000000001")
+      );
+
+      expect(mockDeleteEpisodeImage).toHaveBeenCalledWith(
+        {
+          episodeId: "018f0e6a-4000-7000-8000-000000000001",
+          imageId: "018f0e6a-5000-7000-8000-000000000001",
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+      expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
+      );
+      expect(result).toEqual({ message: "Page deleted.", ok: true });
+    });
+
+    it("leaves the tags alone when the delete failed", async () => {
+      mockDeleteEpisodeImage.mockResolvedValueOnce({
+        message:
+          "The page could not be found. Reload the screen and try again.",
+        ok: false,
+      });
+
+      const { deleteEpisodeImageAction } = await import("./actions");
+      const result = await deleteEpisodeImageAction(
+        null,
+        deleteImageFormData("018f0e6a-5000-7000-8000-000000000001")
+      );
+
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        message:
+          "The page could not be found. Reload the screen and try again.",
+        ok: false,
+      });
+    });
+
+    it("refuses a page id that is not one", async () => {
+      const { deleteEpisodeImageAction } = await import("./actions");
+      const result = await deleteEpisodeImageAction(
+        null,
+        deleteImageFormData("not-an-id")
+      );
+
+      expect(result).toEqual({ message: "Page ID is missing.", ok: false });
+      expect(mockDeleteEpisodeImage).not.toHaveBeenCalled();
     });
   });
 

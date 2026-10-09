@@ -17,7 +17,7 @@ Everything a reader can open on the site is an episode of a series, and a series
 
 ![The sidebar's Catalog group: Series, Labels, Authors, Author roles, and Genres.](./index-catalog-group.png)
 
-A Tenant admin and an Editor can create and change everything on these screens, except that only a Tenant admin sees and changes the **Reader accounts** linked to an Author. An Auditor can open every one of them, with their forms read-only, and does not see the buttons that create anything. Nothing in the catalog can be deleted except Author roles and genres that nothing uses, so a series or an episode that should no longer be read is taken off the site rather than removed.
+A Tenant admin and an Editor can create and change everything on these screens, except that only a Tenant admin sees and changes the **Reader accounts** linked to an Author. An Auditor can open every one of them, with their forms read-only, and does not see the buttons that create anything. Nothing in the catalog can be deleted except an episode's pages, and Author roles and genres that nothing uses, so a series or an episode that should no longer be read is taken off the site rather than removed.
 
 ## From an empty catalog to a first episode
 

@@ -32,29 +32,35 @@ const {
   mockCacheLife,
   mockCacheTag,
   mockCreateEpisode,
+  mockDeleteEpisodeImage,
   mockGetAccessToken,
   mockGetEpisode,
   mockListEpisodeCredits,
   mockListEpisodeImages,
   mockListEpisodes,
   mockReorderEpisodes,
+  mockReplaceEpisodeImage,
   mockUpdateEpisodeAvailability,
   mockUpdateEpisodeLayout,
   mockUpdateEpisodePurchaseAvailability,
+  mockUpdateEpisodeTitle,
 } = vi.hoisted(() => ({
   mockBulkEditEpisodeCredits: vi.fn(),
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockCreateEpisode: vi.fn(),
+  mockDeleteEpisodeImage: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetEpisode: vi.fn(),
   mockListEpisodeCredits: vi.fn(),
   mockListEpisodeImages: vi.fn(),
   mockListEpisodes: vi.fn(),
   mockReorderEpisodes: vi.fn(),
+  mockReplaceEpisodeImage: vi.fn(),
   mockUpdateEpisodeAvailability: vi.fn(),
   mockUpdateEpisodeLayout: vi.fn(),
   mockUpdateEpisodePurchaseAvailability: vi.fn(),
+  mockUpdateEpisodeTitle: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -71,14 +77,17 @@ vi.mock("./api", () => ({
     series: {
       bulkEditEpisodeCredits: mockBulkEditEpisodeCredits,
       createEpisode: mockCreateEpisode,
+      deleteEpisodeImage: mockDeleteEpisodeImage,
       getEpisode: mockGetEpisode,
       listEpisodeCredits: mockListEpisodeCredits,
       listEpisodeImages: mockListEpisodeImages,
       listEpisodes: mockListEpisodes,
       reorderEpisodes: mockReorderEpisodes,
+      replaceEpisodeImage: mockReplaceEpisodeImage,
       updateEpisodeAvailability: mockUpdateEpisodeAvailability,
       updateEpisodeLayout: mockUpdateEpisodeLayout,
       updateEpisodePurchaseAvailability: mockUpdateEpisodePurchaseAvailability,
+      updateEpisodeTitle: mockUpdateEpisodeTitle,
     },
   },
   withServiceHeaders: () => ({
@@ -877,6 +886,178 @@ describe("updateEpisodeLayout", () => {
     expect(result).toEqual({
       message:
         "Spreads cannot start past the episode's last page. Choose one of its pages.",
+      ok: false,
+    });
+  });
+});
+
+describe("updateEpisodeTitle", () => {
+  it("sends the title and reads back the renamed episode", async () => {
+    mockUpdateEpisodeTitle.mockResolvedValue({
+      episode: { ...episode("EPISODE001", 1), title: "Episode 1 — Morning" },
+    });
+
+    const { updateEpisodeTitle } = await import("./episode");
+    const result = await updateEpisodeTitle(
+      {
+        episodeId: "EPISODE001-ID",
+        tenantId: "TENANT001",
+        title: "Episode 1 — Morning",
+      },
+      "en"
+    );
+
+    expect(mockUpdateEpisodeTitle).toHaveBeenCalledWith(
+      {
+        episodeId: "EPISODE001-ID",
+        tenant: { tenantId: "TENANT001" },
+        title: "Episode 1 — Morning",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toMatchObject({
+      episode: { publicId: "EPISODE001", title: "Episode 1 — Morning" },
+      ok: true,
+    });
+  });
+
+  it("reports the failure when the API answers no episode", async () => {
+    mockUpdateEpisodeTitle.mockResolvedValue({});
+
+    const { updateEpisodeTitle } = await import("./episode");
+    const result = await updateEpisodeTitle(
+      { episodeId: "EPISODE001-ID", tenantId: "TENANT001", title: "Episode 1" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message: "Could not update the title. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("deleteEpisodeImage", () => {
+  it("sends the page and reads back the pages left", async () => {
+    mockDeleteEpisodeImage.mockResolvedValue({
+      images: [
+        {
+          contentType: "image/webp",
+          displayOrder: 1,
+          fileSizeBytes: 2048n,
+          height: 1600,
+          id: "IMAGE002",
+          imageUrl: "https://cdn.example.com/2.webp",
+          width: 1200,
+        },
+      ],
+    });
+
+    const { deleteEpisodeImage } = await import("./episode");
+    const result = await deleteEpisodeImage(
+      {
+        episodeId: "EPISODE001-ID",
+        imageId: "IMAGE001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockDeleteEpisodeImage).toHaveBeenCalledWith(
+      {
+        episodeId: "EPISODE001-ID",
+        imageId: "IMAGE001",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({
+      images: [
+        {
+          contentType: "image/webp",
+          displayOrder: 1,
+          fileSizeBytes: "2048",
+          height: 1600,
+          id: "IMAGE002",
+          imageUrl: "https://cdn.example.com/2.webp",
+          width: 1200,
+        },
+      ],
+      ok: true,
+    });
+  });
+
+  // Someone else deleted or replaced the page since the screen was drawn.
+  it("says the page is gone when it is not the episode's", async () => {
+    mockDeleteEpisodeImage.mockRejectedValue(
+      new ConnectError("episode image not found", Code.NotFound)
+    );
+
+    const { deleteEpisodeImage } = await import("./episode");
+    const result = await deleteEpisodeImage(
+      {
+        episodeId: "EPISODE001-ID",
+        imageId: "IMAGE001",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message: "The page could not be found. Reload the screen and try again.",
+      ok: false,
+    });
+  });
+});
+
+describe("replaceEpisodeImage", () => {
+  it("sends the image's bytes, name, and type for the page it replaces", async () => {
+    mockReplaceEpisodeImage.mockResolvedValue({ images: [] });
+
+    const { replaceEpisodeImage } = await import("./episode");
+    const result = await replaceEpisodeImage(
+      {
+        episodeId: "EPISODE001-ID",
+        image: new File(["png"], "page-3.png", { type: "image/png" }),
+        imageId: "IMAGE003",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockReplaceEpisodeImage).toHaveBeenCalledWith(
+      {
+        contentType: "image/png",
+        data: new TextEncoder().encode("png"),
+        episodeId: "EPISODE001-ID",
+        filename: "page-3.png",
+        imageId: "IMAGE003",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ images: [], ok: true });
+  });
+
+  it("says the image cannot be used when the API refuses it", async () => {
+    mockReplaceEpisodeImage.mockRejectedValue(
+      new ConnectError("data: unsupported image", Code.InvalidArgument)
+    );
+
+    const { replaceEpisodeImage } = await import("./episode");
+    const result = await replaceEpisodeImage(
+      {
+        episodeId: "EPISODE001-ID",
+        image: new File(["text"], "notes.txt", { type: "text/plain" }),
+        imageId: "IMAGE003",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "The image could not be used. Choose a JPEG, PNG, GIF, or WebP image of up to 20MB.",
       ok: false,
     });
   });

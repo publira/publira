@@ -152,6 +152,18 @@ export type ReorderEpisodeImagesResult =
   | { ok: true; images: EpisodeImageItem[] }
   | { ok: false; message: string };
 
+export type DeleteEpisodeImageResult =
+  | { ok: true; images: EpisodeImageItem[] }
+  | { ok: false; message: string };
+
+export type ReplaceEpisodeImageResult =
+  | { ok: true; images: EpisodeImageItem[] }
+  | { ok: false; message: string };
+
+export type UpdateEpisodeTitleResult =
+  | { ok: true; episode: EpisodeItem }
+  | { ok: false; message: string };
+
 export interface EpisodeCreditPair {
   creatorId: string;
   roleId: string;
@@ -1502,6 +1514,200 @@ export const reorderEpisodeImages = async (
       message: await mapErrorToMessage(
         error,
         t("admin.series.episodes.image_reorder_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * A page that is not the episode's, or no longer is, is `not_found`: someone
+ * else deleted or replaced it since the screen was drawn.
+ */
+const mapEpisodeImageErrorToMessage = async (
+  error: unknown,
+  fallbackMessage: string,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, fallbackMessage, {
+    locale,
+    overrides: {
+      "not-found": t("admin.series.episodes.page_not_found"),
+    },
+  });
+};
+
+/** Takes one page out of the episode; the pages after it move up one place. */
+export const deleteEpisodeImage = async (
+  input: {
+    tenantId: string;
+    episodeId: string;
+    imageId: string;
+  },
+  locale: Locale
+): Promise<DeleteEpisodeImageResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.deleteEpisodeImage(
+      {
+        episodeId: input.episodeId,
+        imageId: input.imageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      images: (response.images ?? []).map((image) => mapEpisodeImage(image)),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapEpisodeImageErrorToMessage(
+        error,
+        t("admin.series.episodes.image_delete.failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Puts `image` in the place of one page, leaving every other page where it
+ * was. The new page gets an id of its own, so the screen reads the list again
+ * rather than keeping the old one's.
+ */
+export const replaceEpisodeImage = async (
+  input: {
+    tenantId: string;
+    episodeId: string;
+    imageId: string;
+    image: File;
+  },
+  locale: Locale
+): Promise<ReplaceEpisodeImageResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.replaceEpisodeImage(
+      {
+        contentType: input.image.type || "application/octet-stream",
+        data: new Uint8Array(await input.image.arrayBuffer()),
+        episodeId: input.episodeId,
+        filename: input.image.name,
+        imageId: input.imageId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      images: (response.images ?? []).map((image) => mapEpisodeImage(image)),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        t("admin.series.episodes.image_replace.failed"),
+        {
+          locale,
+          overrides: {
+            // The ids come from the screen, so what the server refuses is
+            // the image: one it cannot decode, or one over its size.
+            "invalid-argument": t(
+              "admin.series.episodes.image_replace.invalid"
+            ),
+            "not-found": t("admin.series.episodes.page_not_found"),
+            precondition: mentionsStorageNotConfigured(error)
+              ? t("admin.errors.storage_not_configured")
+              : undefined,
+          },
+        }
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Renames the episode. The title is sent as the caller hands it over, already
+ * trimmed: the API stores what it is given.
+ */
+export const updateEpisodeTitle = async (
+  input: {
+    tenantId: string;
+    episodeId: string;
+    title: string;
+  },
+  locale: Locale
+): Promise<UpdateEpisodeTitleResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.updateEpisodeTitle(
+      {
+        episodeId: input.episodeId,
+        tenant: { tenantId: input.tenantId },
+        title: input.title,
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.episode?.publicId?.trim()) {
+      return {
+        message: t("admin.series.episodes.rename.failed"),
+        ok: false,
+      };
+    }
+
+    return {
+      episode: mapEpisode(response.episode),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.episodes.rename.failed"),
         locale
       ),
       ok: false,

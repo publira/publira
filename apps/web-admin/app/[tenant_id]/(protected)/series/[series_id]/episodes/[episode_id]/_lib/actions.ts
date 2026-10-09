@@ -9,11 +9,13 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { accessTicketsCacheTag } from "#lib/access-ticket";
 import { getActionLocale } from "#lib/action-messages";
 import { verifyAdminSession, withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
+  deleteEpisodeImage,
   episodeCacheTag,
   episodesCacheTag,
   getEpisodeForTenant,
@@ -23,6 +25,7 @@ import {
   updateEpisodePurchaseAvailability,
   replaceEpisodeCredits,
   updateEpisodePublishSchedule,
+  updateEpisodeTitle,
 } from "#lib/episode";
 import {
   createEpisodeFreeWindow,
@@ -266,6 +269,58 @@ export const updateEpisodeScheduleAction = async (
 
   redirect(
     `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?schedule_updated=1`
+  );
+};
+
+const titleFormSchema = async (locale: Locale) => {
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    hiddenParamsSchema(locale),
+  ]);
+
+  return base.extend({
+    title: requiredTrimmedString(
+      t("admin.series.episodes.validation.title_required")
+    ),
+  });
+};
+
+export const updateEpisodeTitleAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await titleFormSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      title: "value",
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { episodeId, episodePublicId, seriesPublicId, tenantId, title } =
+    parsed.data;
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return { message: mismatch, ok: false };
+  }
+  const result = await withAdminSessionReauth(() =>
+    updateEpisodeTitle({ episodeId, tenantId, title }, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(episodesCacheTag(tenantId));
+  updateTag(episodeCacheTag(tenantId, episodeId));
+  updateTag(accessTicketsCacheTag(tenantId));
+
+  redirect(
+    `/series/${seriesPublicId}/episodes/${episodePublicId}?title_updated=1`
   );
 };
 
@@ -563,6 +618,55 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
   return {
     ok: true,
   };
+};
+
+const deleteImageSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    episodeId: requiredRecordId(
+      t("admin.series.episodes.validation.episode_missing")
+    ),
+    imageId: requiredRecordId(
+      t("admin.series.episodes.validation.image_missing")
+    ),
+    tenantId: requiredTrimmedString(
+      t("admin.series.episodes.validation.tenant_missing")
+    ),
+  });
+};
+
+export const deleteEpisodeImageAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await deleteImageSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      episodeId: { kind: "value", name: "episode_id" },
+      imageId: { kind: "value", name: "image_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    deleteEpisodeImage(parsed.data, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  // The page goes from the grid with the button in it, so success is a toast
+  // rather than a message left under a form that is gone.
+  updateTag(episodesCacheTag(parsed.data.tenantId));
+  updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodeId));
+  const t = await getMessagesFor(locale);
+  return { message: t("admin.series.episodes.image_delete.deleted"), ok: true };
 };
 
 export const createEpisodeFreeWindowAction = async (

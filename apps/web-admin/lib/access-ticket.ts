@@ -142,6 +142,14 @@ const mapTicket = (item: RawAccessTicket): AccessTicketItem => ({
   userPublicId: item.userPublicId,
 });
 
+/**
+ * The tag the access ticket list is cached under. Its rows name the episode
+ * each ticket opens, so renaming an episode clears it as well as issuing or
+ * revoking a ticket does.
+ */
+export const accessTicketsCacheTag = (tenantId: string): string =>
+  `access-tickets-${tenantId}`;
+
 const listAccessTicketsForSession = async (
   tenantId: string,
   locale: Locale,
@@ -149,7 +157,7 @@ const listAccessTicketsForSession = async (
   sessionId: string
 ): Promise<ListAccessTicketsResult> => {
   "use cache: private";
-  cacheTag(`access-tickets-${tenantId}`);
+  cacheTag(accessTicketsCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {

@@ -8,7 +8,11 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { issueAccessTicket, revokeAccessTicket } from "#lib/access-ticket";
+import {
+  accessTicketsCacheTag,
+  issueAccessTicket,
+  revokeAccessTicket,
+} from "#lib/access-ticket";
 import { getActionLocale } from "#lib/action-messages";
 import { verifyAdminSession, withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
@@ -165,7 +169,7 @@ export const issueAccessTicketAction = async (
     };
   }
 
-  updateTag(`access-tickets-${parsed.data.tenantId}`);
+  updateTag(accessTicketsCacheTag(parsed.data.tenantId));
   redirect("/access-tickets?created=1");
 };
 
@@ -243,7 +247,7 @@ export const revokeAccessTicketAction = async (
     return { message: result.message, ok: false };
   }
 
-  updateTag(`access-tickets-${parsed.data.tenantId}`);
+  updateTag(accessTicketsCacheTag(parsed.data.tenantId));
   const t = await getMessagesFor(locale);
   return { message: t("admin.access_tickets.revoked"), ok: true };
 };
