@@ -9,14 +9,14 @@
 -- the tenant's admin: the episode of that file sold eight times, credited 30%
 -- and 20% to its two Authors, as January's sales are.
 --
--- Applied by e2e/tests/admin.docs-screenshots.setup.ts. The royalties suite
--- applies 260_royalties.sql again before it runs, which deletes the tenant
--- with this statement, and closes January itself.
+-- Applied by e2e/tests/admin.docs-screenshots.setup.ts. A closed statement
+-- refuses every change and every delete but the one a deleted tenant makes to
+-- it, so the file writes its rows only where they are missing rather than
+-- deleting and writing them again, and can be applied any number of times.
+-- The royalties suite applies 260_royalties.sql again before it runs, which
+-- deletes the tenant with this statement, and closes January itself.
 
 BEGIN;
-
-DELETE FROM royalty_statements
-WHERE id = '018f1090-0006-7000-8000-000000000001'::uuid;
 
 INSERT INTO royalty_statements (
     id,
@@ -41,7 +41,8 @@ SELECT
     2000
 FROM tenants t
 JOIN users u ON u.public_id = 'RoyaADMNAAA1'
-WHERE t.public_id = 'RoyaTNNTAAA1';
+WHERE t.public_id = 'RoyaTNNTAAA1'
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO royalty_statement_lines (
     tenant_id,
@@ -86,6 +87,7 @@ FROM (
 JOIN episodes e ON e.public_id = 'RoyaEPSDAAA1'
 JOIN series s ON s.id = e.series_id
 JOIN creators c ON c.public_id = line.creator_public_id
-JOIN creator_roles r ON r.tenant_id = e.tenant_id AND r.name = line.role_name;
+JOIN creator_roles r ON r.tenant_id = e.tenant_id AND r.name = line.role_name
+ON CONFLICT (statement_id, line_number) DO NOTHING;
 
 COMMIT;
