@@ -102,6 +102,25 @@ describe("checkPage", () => {
     );
   });
 
+  it("reports an image without alt text, in either syntax", () => {
+    const reported = checkPage(
+      "docs/en/1-page.md",
+      page(VALID, [
+        "![](./page-diagram.png)",
+        "",
+        "![ ][diagram] and ![A diagram][diagram]",
+        "",
+        "[diagram]: ./page-diagram.png",
+      ])
+    ).findings;
+
+    assert.deepEqual(
+      reported.map((finding) => finding.line),
+      [7, 9]
+    );
+    assert.match(reported[0]?.message ?? "", /no alt text/u);
+  });
+
   it("does not read a `#` inside a code block as a heading", () => {
     assert.deepEqual(
       messages(page(VALID, ["```bash", "# A shell comment", "```"])),
@@ -185,15 +204,15 @@ describe("scan", () => {
       page(VALID, [
         "See [the overview](./1-overview.md#what-an-install-runs) and [the start](../1-getting-started.md).",
         "",
-        "![A diagram](./diagram.png) and ![the same diagram][diagram]",
+        "![A diagram](./index-diagram.png) and ![the same diagram][diagram]",
         "",
-        "[diagram]: ./diagram.png",
+        "[diagram]: ./index-diagram.png",
         "",
         "The [code](https://github.com/publira/publira/blob/main/server/README.md) and [this section](#a-section).",
       ])
     );
     await write("docs/en/2-deployments/1-overview.md");
-    await write("docs/en/2-deployments/diagram.png", "");
+    await write("docs/en/2-deployments/index-diagram.png", "");
   });
 
   afterEach(async () => {
@@ -270,6 +289,91 @@ describe("scan", () => {
       ["docs/en/3-upgrading.md:7", "docs/en/3-upgrading.md:9"]
     );
     assert.match(reported[0]?.message ?? "", /does not exist/u);
+  });
+
+  it("reports an image that is not a file beside the page", async () => {
+    await write(
+      "docs/en/3-upgrading.md",
+      page(VALID, [
+        "![A remote diagram](https://example.com/diagram.png)",
+        "",
+        "![A fragment](#a-section)",
+      ])
+    );
+
+    const reported = await scan(repository);
+    assert.deepEqual(
+      reported.map((finding) => `${finding.file}:${finding.line}`),
+      ["docs/en/3-upgrading.md:7", "docs/en/3-upgrading.md:9"]
+    );
+    assert.match(reported[0]?.message ?? "", /is not a file in docs\/en\//u);
+  });
+
+  it("reports an image no page beside it shows", async () => {
+    await write("docs/en/2-deployments/overview-unused.png", "");
+    // Shown, but from a page in another directory.
+    await write("docs/en/2-deployments/overview-elsewhere.png", "");
+    await write(
+      "docs/en/3-upgrading.md",
+      page(VALID, ["![A diagram](./2-deployments/overview-elsewhere.png)"])
+    );
+
+    const reported = await scan(repository);
+    assert.deepEqual(
+      reported.map((finding) => finding.file),
+      [
+        "docs/en/2-deployments/overview-elsewhere.png",
+        "docs/en/2-deployments/overview-unused.png",
+      ]
+    );
+    assert.match(reported[0]?.message ?? "", /No page beside the image/u);
+  });
+
+  it("reports an image not named after a page that shows it", async () => {
+    const names = [
+      "diagram.png",
+      "1-overview-diagram.png",
+      "overview-.png",
+      "overview-Diagram.png",
+      "upgrading-diagram.png",
+      "deployments-diagram.png",
+      // Named after a sibling page that does not show it.
+      "index-overview.png",
+    ];
+    await Promise.all(
+      names.map((name) => write(`docs/en/2-deployments/${name}`, ""))
+    );
+    // Shown by both pages, and named after one of them.
+    await write("docs/en/2-deployments/index-shared.png", "");
+    await write(
+      "docs/en/2-deployments/1-overview.md",
+      page(
+        VALID,
+        [...names, "index-shared.png"].flatMap((name) => [
+          `![A diagram](./${name})`,
+          "",
+        ])
+      )
+    );
+    await write(
+      "docs/en/2-deployments/index.md",
+      page(VALID, [
+        "![A diagram](./index-diagram.png) and ![the same diagram](./index-shared.png)",
+      ])
+    );
+
+    const reported = await scan(repository);
+    assert.deepEqual(
+      reported.map((finding) => finding.file),
+      names
+        .map((name) => `docs/en/2-deployments/${name}`)
+        .toSorted((a, b) => a.localeCompare(b, "en"))
+    );
+    assert.match(
+      reported.find((finding) => finding.file.endsWith("/index-overview.png"))
+        ?.message ?? "",
+      /after a page that shows it \(`overview`\)/u
+    );
   });
 
   it("reports a link the website cannot rewrite", async () => {

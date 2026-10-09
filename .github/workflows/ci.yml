@@ -246,6 +246,9 @@ jobs:
               # Traefik routing has its own job; a probe-only change must
               # not start the Playwright suite.
               - '!e2e/routing/**'
+              # The documentation's screenshots, which the docs-screenshots
+              # project compares with the console it photographs.
+              - 'docs/**/*.png'
               # The E2E edge mounts the same routers every environment runs.
               - 'infra/proxy/traefik/**'
               - 'apps/web-host/**'
@@ -255,6 +258,9 @@ jobs:
               # every mail it delivers through it.
               - 'apps/email-renderer/**'
               - 'packages/**'
+              # The apps' copy, which every screen the suite photographs or
+              # locates by name renders: @publira/i18n imports the catalogs.
+              - 'locales/**'
               - 'server/**'
               - 'db/**'
               - 'package.json'

@@ -1,6 +1,7 @@
 import type { PlaywrightTestProject } from "@playwright/test";
 import { defineConfig, devices } from "@playwright/test";
 
+import { DOCS_ROOT } from "./src/docs-screenshots";
 import {
   BROWSER_WS_ENDPOINT,
   WEB_ADMIN_AGE_VERIFICATION_BASE_URL,
@@ -149,6 +150,14 @@ const platformSearchSettingsSpecs = /platform\.search-settings\./u;
 const screenshotSpecs = /\.screenshots\./u;
 
 /**
+ * The suites that take the user documentation's screenshots. They run before
+ * the publishing suites for the reason the suites above do, in the same pinned
+ * browser, and write beside the pages under `docs/` rather than under
+ * `tests/__screenshots__/`: an image there is part of the page that shows it.
+ */
+const docsScreenshotSpecs = /\.docs-screenshots\./u;
+
+/**
  * The suites that drive the three apps the way a tablet does: across the
  * widths a tablet is held at, and by tapping rather than hovering. They run in
  * projects of their own, under {@link tabletChrome}, so every other project
@@ -156,7 +165,7 @@ const screenshotSpecs = /\.screenshots\./u;
  */
 const tabletSpecs = /\.tablet\./u;
 
-/** What a screenshot project shares with the two others. */
+/** What every screenshot project shares. */
 const screenshotProjectUse = {
   ...desktopChrome,
   connectOptions: { wsEndpoint: BROWSER_WS_ENDPOINT },
@@ -167,6 +176,7 @@ const screenshotDependencies = [
   "screenshots-host",
   "screenshots-admin",
   "screenshots-platform",
+  "docs-screenshots",
 ];
 
 /**
@@ -207,6 +217,22 @@ const screenshotProjects: PlaywrightTestProject[] = [
       baseURL: WEB_PLATFORM_BASE_URL,
     },
   },
+  // Both consoles, in every locale `docs/` has a tree for: each spec names its
+  // console's `baseURL` and loops over the locales itself. The image path is
+  // `docs/<locale>/<page directory>/<page slug>-<subject>.png`, which
+  // `expectDocsScreenshot` passes as the snapshot name. Twice the density, as
+  // the website scales the image down to its content column.
+  {
+    name: "docs-screenshots",
+    snapshotPathTemplate: `${DOCS_ROOT}/{arg}{ext}`,
+    testMatch: [docsScreenshotSpecs],
+    timeout: 120_000,
+    use: {
+      ...screenshotProjectUse,
+      deviceScaleFactor: 2,
+      viewport: { height: 900, width: 1280 },
+    },
+  },
 ];
 
 const mainProjects: PlaywrightTestProject[] = [
@@ -219,6 +245,7 @@ const mainProjects: PlaywrightTestProject[] = [
       processIsolatedSpecs,
       performanceSpecs,
       screenshotSpecs,
+      docsScreenshotSpecs,
       serverLogSpecs,
       catalogSearchSpecs,
       tabletSpecs,
@@ -268,6 +295,7 @@ const mainProjects: PlaywrightTestProject[] = [
       platformSetupSpecs,
       performanceSpecs,
       screenshotSpecs,
+      docsScreenshotSpecs,
       serverLogSpecs,
       tabletSpecs,
     ],
@@ -315,6 +343,7 @@ const adminProjects: PlaywrightTestProject[] = [
       adminMfaSignInSpecs,
       performanceSpecs,
       screenshotSpecs,
+      docsScreenshotSpecs,
       serverLogSpecs,
       tabletSpecs,
     ],

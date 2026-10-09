@@ -130,11 +130,7 @@ const expectNoHorizontalOverflow = async (page: Page): Promise<void> => {
 };
 
 /**
- * Record one screen, or compare it with what was recorded before.
- *
- * Full-page rather than the viewport alone: a section below the fold is as
- * much of the design as the header, and a redesign that moved one would
- * otherwise pass unseen.
+ * Wait until a screen is finished, which is not when it stops changing.
  *
  * `toHaveScreenshot` waits for the page to stop changing, not for it to be
  * finished, and it freezes CSS animations for the shot — so a skeleton that is
@@ -158,17 +154,29 @@ const expectNoHorizontalOverflow = async (page: Page): Promise<void> => {
  * placeholder, so every image is loaded explicitly before the shot, as
  * {@link expectEveryImageLoaded} explains.
  */
-export const expectScreenshot = async (
-  page: Page,
-  viewport: ScreenshotViewport,
-  name: string
-): Promise<void> => {
+export const waitForScreenToSettle = async (page: Page): Promise<void> => {
   // The quiet network is the readiness condition, as explained above: no
   // locator can tell the hydration that is still to come from one that is done.
   // oxlint-disable-next-line sonarjs/no-networkidle-wait
   await page.waitForLoadState("networkidle");
   await expect(page.locator(LOADING_PLACEHOLDER)).toHaveCount(0);
   await expectEveryImageLoaded(page);
+};
+
+/**
+ * Record one screen, or compare it with what was recorded before.
+ *
+ * Full-page rather than the viewport alone: a section below the fold is as
+ * much of the design as the header, and a redesign that moved one would
+ * otherwise pass unseen. What the shot waits for first is
+ * {@link waitForScreenToSettle}'s.
+ */
+export const expectScreenshot = async (
+  page: Page,
+  viewport: ScreenshotViewport,
+  name: string
+): Promise<void> => {
+  await waitForScreenToSettle(page);
   await expectNoHorizontalOverflow(page);
 
   await expect(page).toHaveScreenshot(`${name}-${viewport.label}.png`, {
@@ -181,7 +189,7 @@ export const expectScreenshot = async (
  *
  * A panel that floats over the page is not part of the document a full-page
  * shot walks, so what changed inside one is photographed as the panel itself.
- * The waits are the ones {@link expectScreenshot} explains; the overflow
+ * The waits are the ones {@link waitForScreenToSettle} explains; the overflow
  * measurement is not among them, because it is about the page column rather
  * than about a panel of a fixed width.
  */
@@ -191,10 +199,7 @@ export const expectElementScreenshot = async (
   element: Locator,
   name: string
 ): Promise<void> => {
-  // oxlint-disable-next-line sonarjs/no-networkidle-wait
-  await page.waitForLoadState("networkidle");
-  await expect(page.locator(LOADING_PLACEHOLDER)).toHaveCount(0);
-  await expectEveryImageLoaded(page);
+  await waitForScreenToSettle(page);
 
   await expect(element).toHaveScreenshot(`${name}-${viewport.label}.png`);
 };
