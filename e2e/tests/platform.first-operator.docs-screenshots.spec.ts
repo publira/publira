@@ -7,6 +7,14 @@ import {
   expectDocsScreenshot,
   setDocsLocale,
 } from "../src/docs-screenshots";
+import {
+  platformAuditLogsTag,
+  platformDashboardTag,
+  platformNotificationsTag,
+  platformOperatorsTag,
+  platformSettingsTag,
+  revalidatePlatformTags,
+} from "../src/revalidate";
 import { PLATFORM_SETUP_SCENARIO } from "../src/scenarios/platform-setup";
 import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
@@ -29,10 +37,22 @@ test.use({ baseURL: WEB_PLATFORM_BASE_URL });
  * Put back what the test emptied: the development seed's platform rows, and
  * the operators `470_docs_platform.sql` writes for the other documentation
  * screenshots.
+ *
+ * Emptying the operators also deletes the platform's audit log and its
+ * settings, and the files above write back only some of those rows straight
+ * to Postgres, so the Platform Console's shared reads of them are dropped as
+ * well: `platform-setup`, which runs next, reads the operator list.
  */
-const restoreOperators = (): void => {
+const restoreOperators = async (): Promise<void> => {
   applyScenarioSql(PLATFORM_SETUP_SCENARIO);
   applyScenarioSql("470_docs_platform");
+  await revalidatePlatformTags([
+    platformAuditLogsTag,
+    platformDashboardTag,
+    platformNotificationsTag,
+    platformOperatorsTag,
+    platformSettingsTag,
+  ]);
 };
 
 for (const locale of DOCS_LOCALES) {
@@ -55,7 +75,7 @@ for (const locale of DOCS_LOCALES) {
         subject: "initial-setup",
       });
     } finally {
-      restoreOperators();
+      await restoreOperators();
     }
   });
 }
