@@ -1,7 +1,12 @@
 import type { Locale } from "@publira/i18n";
+import { sharedMessage } from "@publira/i18n/catalog";
 import { getTenantDomainCandidates } from "@publira/utils";
 import { isHealthProbePath } from "@publira/utils/health";
 import { applyResolvedLocaleCookie } from "@publira/utils/resolved-locale";
+import {
+  suspendedTenantLocale,
+  suspendedTenantResponse,
+} from "@publira/utils/suspended-tenant";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -13,7 +18,7 @@ import {
   isSessionRevokedRedirect,
   RETURN_TO_HEADER_NAME,
 } from "./lib/admin-auth-shared";
-import { resolveTenantRouting } from "./lib/tenant";
+import { resolveTenantRouting, SUSPENDED_TENANT } from "./lib/tenant";
 
 const PUBLIC_PATHS = new Set([
   "/accept-invite",
@@ -35,6 +40,24 @@ const serviceUnavailableResponse = () =>
     headers: { "Retry-After": "30" },
     status: 503,
   });
+
+/**
+ * What every path of a suspended tenant's console answers, the sign-in screen
+ * included: the page saying the console is unavailable because the site is
+ * suspended.
+ *
+ * It is answered before the session cookie is looked at. A suspension does not
+ * end the staff's sessions, so the cookie is left where it is, and the console
+ * opens with it again once the tenant is resumed.
+ */
+const suspendedConsoleResponse = (request: NextRequest): NextResponse => {
+  const locale = suspendedTenantLocale(request);
+  return suspendedTenantResponse({
+    description: sharedMessage("admin.errors.suspended_description", locale),
+    locale,
+    title: sharedMessage("admin.errors.suspended_title", locale),
+  });
+};
 
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
@@ -67,9 +90,13 @@ export const proxy = async (request: NextRequest) => {
   let tenantId: string | null;
   let defaultLocale: Locale | null;
   try {
-    ({ defaultLocale, tenantId } = await resolveTenantRouting(
+    const routing = await resolveTenantRouting(
       getTenantDomainCandidates(request.headers)
-    ));
+    );
+    if (routing === SUSPENDED_TENANT) {
+      return suspendedConsoleResponse(request);
+    }
+    ({ defaultLocale, tenantId } = routing);
   } catch {
     return serviceUnavailableResponse();
   }

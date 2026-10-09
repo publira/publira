@@ -14,6 +14,7 @@ beforeEach(() => {
 });
 
 vi.mock("./lib/tenant", () => ({
+  SUSPENDED_TENANT: "suspended",
   resolveTenantRouting: mockResolveTenantRouting,
 }));
 
@@ -42,6 +43,31 @@ describe("web-admin proxy", () => {
 
     expect(response.status).toBe(404);
   });
+
+  it.each(["/", "/login", "/series?draft=1"])(
+    "answers %s with a 503 saying a suspended tenant's console is unavailable",
+    async (path) => {
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("./proxy");
+
+      mockResolveTenantRouting.mockResolvedValueOnce("suspended");
+
+      const response = await proxy(
+        new NextRequest(`https://admin.paused.example${path}`, {
+          headers: { "accept-language": "ja" },
+        })
+      );
+
+      expect(response.status).toBe(503);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("content-language")).toBe("ja");
+      expect(response.headers.get("location")).toBeNull();
+      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+      expect(await response.text()).toContain(
+        "<h1>この管理コンソールは現在ご利用いただけません</h1>"
+      );
+    }
+  );
 
   it("redirects to the login screen for a protected route with no session", async () => {
     const { NextRequest } = await import("next/server");

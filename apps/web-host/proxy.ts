@@ -1,7 +1,12 @@
 import type { Locale } from "@publira/i18n";
+import { sharedMessage } from "@publira/i18n/catalog";
 import { getTenantDomainCandidates } from "@publira/utils";
 import { isHealthProbePath } from "@publira/utils/health";
 import { applyResolvedLocaleCookie } from "@publira/utils/resolved-locale";
+import {
+  suspendedTenantLocale,
+  suspendedTenantResponse,
+} from "@publira/utils/suspended-tenant";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -23,7 +28,10 @@ import {
 } from "./lib/published-page-path";
 import { createPublishedPageSlugResolver } from "./lib/published-page-slugs";
 import { GUEST_ONLY_PATHS, MEMBER_PATH_PREFIXES } from "./lib/reader-paths";
-import { createTenantResolver } from "./lib/tenant-resolution";
+import {
+  createTenantResolver,
+  SUSPENDED_TENANT,
+} from "./lib/tenant-resolution";
 import type { ResolvedTenant } from "./lib/tenant-resolution";
 
 const resolveTenantByDomain = createTenantResolver(apiClient);
@@ -104,11 +112,38 @@ const redirectMovedPathname = (
   );
 };
 
-/** The tenant this host resolves to, or the response that says why not. */
+/**
+ * What every path of a suspended tenant's site answers: the page saying the
+ * site is unavailable, as a `503` a crawler takes for an absence that ends.
+ *
+ * It names the site's state and nothing else, since a reader has nothing to do
+ * about a suspension but come back. The machine-facing paths answer the same
+ * way: a payment provider retries a `503` on its own schedule, and a crawler
+ * reads one on `robots.txt` as "not now" rather than "nothing here".
+ */
+const suspendedSiteResponse = (
+  request: NextRequest,
+  pathLocale: Locale | null
+): NextResponse => {
+  const locale = suspendedTenantLocale(request, pathLocale);
+  return suspendedTenantResponse({
+    description: sharedMessage("host.errors.suspended_description", locale),
+    locale,
+    title: sharedMessage("host.errors.suspended_title", locale),
+  });
+};
+
+/**
+ * The tenant this host resolves to, or the response that says why not.
+ *
+ * `pathLocale` is the locale the URL names, which is the language a suspended
+ * tenant's page is written in when there is one.
+ */
 const resolveTenant = async (
-  request: NextRequest
+  request: NextRequest,
+  pathLocale: Locale | null
 ): Promise<ResolvedTenant | { response: NextResponse }> => {
-  let tenant: ResolvedTenant | null;
+  let tenant: ResolvedTenant | typeof SUSPENDED_TENANT | null;
   try {
     tenant = await resolveTenantByDomain(
       getTenantDomainCandidates(request.headers)
@@ -119,6 +154,9 @@ const resolveTenant = async (
 
   if (!tenant) {
     return { response: new NextResponse("Not Found", { status: 404 }) };
+  }
+  if (tenant === SUSPENDED_TENANT) {
+    return { response: suspendedSiteResponse(request, pathLocale) };
   }
 
   return tenant;
@@ -142,7 +180,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   // and Route Handlers cannot read `next/root-params`, so they are rewritten
   // onto the tenant alone and never gain a locale segment.
   if (isLocaleExemptPathname(pathname)) {
-    const tenant = await resolveTenant(request);
+    const tenant = await resolveTenant(request, null);
     if ("response" in tenant) {
       return tenant.response;
     }
@@ -151,7 +189,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
 
   const { locale: requestedLocale, pathname: publicPath } =
     splitLocalePathname(pathname);
-  const tenant = await resolveTenant(request);
+  const tenant = await resolveTenant(request, requestedLocale);
   if ("response" in tenant) {
     return tenant.response;
   }

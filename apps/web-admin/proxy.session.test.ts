@@ -7,6 +7,7 @@ const { mockResolveTenantRouting } = vi.hoisted(() => ({
 }));
 
 vi.mock("./lib/tenant", () => ({
+  SUSPENDED_TENANT: "suspended",
   resolveTenantRouting: mockResolveTenantRouting,
 }));
 
@@ -106,6 +107,20 @@ describe("web-admin proxy session handling", () => {
     expect(
       response.headers.get(`x-middleware-request-${RETURN_TO_HEADER_NAME}`)
     ).toBe("/series?token=abc");
+  });
+
+  it("keeps a signed-in session through a suspension, answering the page that says the console is unavailable", async () => {
+    mockResolveTenantRouting.mockResolvedValueOnce("suspended");
+    const cookie = await activeCookie();
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://admin.example.com/series", cookie)
+    );
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.getSetCookie()).toEqual([]);
   });
 
   /**
