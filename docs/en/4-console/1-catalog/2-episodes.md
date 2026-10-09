@@ -2,12 +2,14 @@
 title: Episodes
 description: Create an episode, add its pages, set its layout, credits, and where it is shown and sold, give it free reading periods, and publish it on time.
 published: 2026-10-07
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
 
 The list shows each episode as its position and title, with its status, **Draft**, **Scheduled**, or **Published**, its price, and, for a scheduled one, the time it is due. An episode not shown on both the site and the app is marked **Web only**, **App only**, or **Not shown anywhere**. **Edit** opens the episode, or **View** for an Auditor.
+
+![The episode list of a series: Create, Credits, Free reading period, and Back to series at the top, Select all on this page, and a row for each episode with a checkbox, a drag handle, its position and title, its status and price, and Edit. The first episode is published, the second scheduled, with the time it is due, and the third a draft.](./episodes-list.png)
 
 An episode is made of page images, whether the work is a comic or not. Novels written as text are not supported yet ([#505](https://github.com/publira/publira/issues/505)).
 
@@ -29,6 +31,8 @@ Choose **Create** on the episode list and fill in:
 - **Publication date and time**: when the episode is published, read in the tenant's time zone. Leave it empty to create a draft. A time that has already passed publishes the episode as soon as it is created.
 - **Shown on** and **Sold on**: where the episode can be found and bought, as [Shown on and Sold on](#shown-on-and-sold-on) describes. Both start by following the series.
 
+![The Create episode form: Title, Price, Reading period, Publication date and time, Shown on, Sold on, and Create episode.](./episodes-create-form.png)
+
 **Price** and **Reading period** cannot be changed after the episode is created either ([#3771](https://github.com/publira/publira/issues/3771)). [Selling episodes](../4-selling-episodes.md#how-a-reader-buys-an-episode) explains both.
 
 Choose **Create episode**. The episode is created with the Authors credited on the series, and its edit screen opens to add its pages.
@@ -43,7 +47,11 @@ Choose **Create episode**. The episode is created with the Authors credited on t
 
 Choose **Add page images**, **Add a ZIP**, or **Add an ePub** to upload. Each image may be up to 20 MB, and one upload up to 256 MB, whichever of the three it is, so a whole episode can be added as one ZIP or ePub. One larger than that is added over several uploads; each adds its pages after the last one. The card states these formats and limits under the file picker.
 
+![The Add comic pages section: the series and episode the pages go to, the Upload method buttons, the Page images picker with its formats and limits, and Add page images.](./episodes-add-pages.png)
+
 **Registered page images** shows the pages in order. Drag a page by its handle, or focus the handle and use the arrow keys, to move it. A page cannot be removed or replaced once it is added ([#3831](https://github.com/publira/publira/issues/3831)), so check a batch before adding it.
+
+![Registered page images: the episode's eight pages in order, each with its number, its size, and a drag handle.](./episodes-registered-pages.png)
 
 Pages added to an episode that is already published, and a new order of its pages, reach readers as soon as they are saved. A published episode with no pages shows readers that its pages have not been published yet.
 
@@ -56,11 +64,15 @@ Pages added to an episode that is already published, and a new order of its page
 
 Choose **Update page layout** to save. A value that follows the series changes whenever the series does. [Reading direction and spreads](./1-series.md#reading-direction-and-spreads) describes what each does in the viewer.
 
+![The Page layout section: Reading direction and Spreads start, both following the series, and Update page layout.](./episodes-page-layout.png)
+
 The site shows two pages side by side only in a viewer at least 768 pixels wide and no taller than it is wide, and the app only on a tablet or a phone held sideways. Elsewhere pages are shown one at a time.
 
 ## Credits
 
 **Authors**, on the episode's edit screen, lists the Authors credited on this episode, each in a role, with their share of its sales. A new episode starts with the series' credits, and is changed here on its own: a later change to the series' credits does not reach it. A credit added here is marked **Episode only**, for a guest who worked on this episode alone. Choose **Save authors** to save.
+
+![The Authors section of an episode: a credit naming an Author, a role, and a share, the authors' and the publisher's shares in total, Add author, and Save authors.](./episodes-credits.png)
 
 The episode page on the site shows these credits, and the series page shows the series' own. The episode's credits are also the ones royalties are paid on, as [Reports and royalties](../5-reports-and-royalties.md#what-an-author-is-owed) describes, and an Author linked to a reader account can read the episodes credited to them, as [Authors and Author roles](./4-authors.md#linking-an-author-to-a-reader-account) describes.
 
@@ -73,12 +85,16 @@ To change the credits of many episodes at once, such as when an artist joins fro
 
 Choose the **Author** and **Role** the operation applies to, check the episodes under **Episodes**, which lists every episode of the series, up to 1000 at a time, and choose **Apply**. **Replace**, **Remove**, and **Set share** leave **Episode only** credits alone. The result says how many episodes changed, and why each of the others did not.
 
+![The Edit credits on selected episodes dialog: Add, Replace, Remove, and Set share under Operation, the Author and Role fields, and the Episodes filter, with Cancel and Apply.](./episodes-bulk-credits.png)
+
 ## Shown on and Sold on
 
 Each episode has its own **Shown on** and **Sold on**, which start by following the series:
 
 - **Shown on** can narrow where the series is shown, but not widen it. An episode set to **Web only** in a series shown on **App only** is shown nowhere, and the screen warns about it. Choose **Update where it is shown** to save.
 - **Sold on** can name a surface the series' own **Sold on** does not, but an episode is only ever sold where it is also shown. Choose **Update where it is sold** to save.
+
+![The Shown on and Sold on sections of an episode, each following the series, with Update where it is shown and Update where it is sold.](./episodes-shown-on-and-sold-on.png)
 
 Setting **Shown on** so that the episode is shown nowhere takes a published episode off the site without unpublishing it. [Selling episodes](../4-selling-episodes.md#where-episodes-are-sold) covers what readers see where an episode is not sold.
 
@@ -88,9 +104,13 @@ A free reading period opens a paid episode to everyone, signed in or not, betwee
 
 **Free reading periods**, on the episode's edit screen, lists its periods as **Free now**, **Scheduled**, or **Ended**. To add one, enter **Starts** and **Ends**, both in the tenant's time zone, and choose **Add free reading period**. **Ends** must be after **Starts** and still in the future; **Starts** may be in the past, which makes the episode free from now. Two periods of one episode cannot overlap, though one may start exactly when another ends.
 
+![The Free reading periods section of an episode with none scheduled: the Starts and Ends fields, the time zone they are read in, and Add free reading period.](./episodes-free-reading-periods.png)
+
 A period cannot be edited. **Delete** it and add another; deleting a period that has started prices the episode again at once.
 
 To give many episodes the same period, choose **Free reading period** on the episode list. Under **Episodes**, choose **Selected episodes**, the episodes checked on the list, **First episodes**, the first so many in the series' order, or **All episodes**. Then enter **Starts** and **Ends** and choose **Add**. Nothing is added if the period overlaps one already on any of the episodes.
+
+![The Add a free reading period dialog: Selected episodes, First episodes, and All episodes under Episodes, the Starts and Ends fields, and Add.](./episodes-bulk-free-reading-period.png)
 
 The site shows a period from the moment it starts, and drops it the moment it ends: `publira worker` refreshes the cached pages at both ends, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#free-reading-periods-and-other-cached-pages) describes.
 
@@ -109,6 +129,8 @@ Until an episode is published, its page answers as if it did not exist, it is in
 ### Setting the time
 
 **Publishing settings**, on the episode's edit screen, sets or changes the time of an episode that already exists. Enter a time in the future, in the tenant's time zone, and choose **Update publication date and time**. The field does not take a time that has passed, so a draft cannot be published at once from here ([#3830](https://github.com/publira/publira/issues/3830)): set it a minute or two ahead.
+
+![The Publishing settings section: the Publication date and time field and Update publication date and time.](./episodes-publishing-settings.png)
 
 The usual way to publish a new episode of a public series is therefore:
 

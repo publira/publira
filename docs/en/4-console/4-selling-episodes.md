@@ -2,6 +2,7 @@
 title: Selling episodes
 description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
+updated: 2026-10-09
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -18,6 +19,8 @@ An episode's **Price** and **Reading period** are entered on the form that creat
 
 - **Price** is a whole number of yen. `0` makes the episode free; any other value makes it a paid episode.
 - **Reading period** is how many hours a purchase keeps the episode open. `0` keeps it open with no end.
+
+![The Price and Reading period fields of the Create episode form.](./selling-episodes-price-and-reading-period.png)
 
 Both are fixed when the episode is created: the console has no way yet to change them on an existing episode ([#3771](https://github.com/publira/publira/issues/3771)). A new episode's **Reading period** starts at the series' **Reading period**, so setting it on the series once gives every episode created afterwards the same period unless it is changed on the form. Changing the series' period does not reach the episodes already created.
 
@@ -80,6 +83,8 @@ Then in the console, under **Payment settings**:
 2. Enter the **Secret key** and the **Webhook signing secret**.
 3. Under **Enable payments**, check **Enable**, and choose **Save**.
 
+![Payment settings with Stripe chosen and nothing saved yet: the Not set status, Payment provider, Enable payments, Secret key, Webhook signing secret, the Webhook URL to register with Stripe, and Save.](./selling-episodes-stripe-settings.png)
+
 Stripe keeps test-mode and live-mode webhook endpoints apart, each with its own signing secret. When you move to live keys, add the endpoint again in live mode, and enter its signing secret together with the live secret key.
 
 An endpoint registered before at `/api/v1/webhook/stripe` still receives notifications, but that URL will be removed in a later release; replace it with the URL the console shows.
@@ -97,6 +102,8 @@ Then in the console, under **Payment settings**:
 1. Choose PAY.JP as the **Payment provider**.
 2. Enter the **Secret key** and the **Webhook token**.
 3. Under **Enable payments**, check **Enable**, and choose **Save**.
+
+![Payment settings with PAY.JP chosen and nothing saved yet: the Not set status, Payment provider, Enable payments, Secret key, Webhook token, the Webhook URL to register with PAY.JP, and Save.](./selling-episodes-payjp-settings.png)
 
 PAY.JP signs nothing: the install trusts a notification because it carries the webhook token, and refuses one that does not, so keep the token as secret as the secret key.
 
@@ -122,6 +129,8 @@ Both providers retry a failed delivery for some time, and their dashboards can r
 - **Web only**: on the site. The app shows the episode as sold on the website, and opens it once it is bought there.
 - **App only**: in the app. The site shows the episode as sold in the app, opens it to a reader who bought it there, and links to the app's listing in each store under **App Store address** and **Google Play address**.
 
+![Where episodes are sold: Sold on, App Store address, Google Play address, and Save where episodes are sold.](./selling-episodes-where-sold.png)
+
 A series or an episode can set its own **Sold on**, and one that sets nothing follows the series, or the tenant, including after either changes. An episode is sold only where it is also shown.
 
 The choice exists because of the app stores. Apple and Google each set rules on how an app may sell digital content, decide in review whether an app follows them, and take a commission on what the app sells through them. A tenant whose app sells through the stores' own payment, as the next section describes, pays that commission on every episode bought in the app, and can keep a series on the site alone with **Web only**. A tenant with no app, or one that does not sell in its app, chooses **Web only** for every episode.
@@ -133,6 +142,8 @@ The **In-app purchase** section decides how the tenant's app sells an episode it
 - **Web checkout** opens the site's checkout in the phone's browser, through the provider above, and brings the reader back to the episode once paid.
 - **In-app purchase** sells with the App Store's and Google Play's own payment sheet. The store charges the reader and keeps its commission, and the payment provider above is not involved.
 
+![The In-app purchase section: How the app sells episodes, then the App Store and Google Play, each with its status, its switch, its key, and the app named under App links, and Save the in-app purchase settings.](./selling-episodes-in-app-purchase.png)
+
 With **In-app purchase**, the app needs no payment provider from [Choosing a payment provider](#choosing-a-payment-provider): it buys through the store and the install verifies the purchase with the store.
 
 On an episode sold **App only**, the site shows the episode as sold in the app and links to the stores only while the app can sell it: with **Web checkout**, while a payment provider is **Ready**; with **In-app purchase**, while a store is **Ready**, and then only to the listing of a store that is. Until then the site quotes the episode's price and tells readers it cannot take purchases. An episode sold **Web and app** is bought on the site while a payment provider is **Ready**; while none is and the app can sell it, the site treats it the same way as one sold **App only**.
@@ -140,6 +151,8 @@ On an episode sold **App only**, the site shows the episode as sold in the app a
 **In-app purchase** can be chosen once at least one store is **Ready**: turned on with **Use the App Store** or **Use Google Play**, with its key entered, and with its app named under **Integrations** › **App links**.
 
 The app buys each episode as the store product named after its price, such as `episode_300` for a ¥300 episode, so a store sells only the prices it has a product for. **Store products**, at the bottom of the screen, lists the product ID every price your app sells at needs. Create each one in App Store Connect and in Play Console as a consumable product at that price, and add one whenever a new price appears in the list.
+
+![Store products: the product ID each price needs, such as episode_500 at ¥500, with a button to copy it and the number of episodes at that price.](./selling-episodes-store-products.png)
 
 What each store needs, from the key the install verifies purchases with to testing with the stores' test buyers, is on [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#selling-episodes-in-the-app), with the app's own setup. A purchase from the App Store sandbox or a Play license tester opens the episode but is recorded as a test, and left out of royalty statements and the content statistics.
 

@@ -2,11 +2,14 @@
 title: Settings
 description: Set the site's copy, time zone, language, reader comments, age verification, legal pages, and refused email addresses, and tighten the platform's limits for the tenant.
 published: 2026-10-07
+updated: 2026-10-09
 ---
 
 **Settings**, under **Administration**, has two tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds.
 
 Each card on these tabs has its own save button and saves only its own fields, so save one card before you move on to the next. Every member of the staff can open **Settings**, but only a Tenant admin can save it. An Editor or an Auditor sees each card with "Only a tenant administrator can change this setting. You have read-only access."
+
+![The Public site display card as an Editor sees it: its fields and Save the settings turned off, and the notice that only a tenant administrator can change the setting.](./settings-read-only.png)
 
 ## General
 
@@ -20,9 +23,13 @@ Three pieces of copy, each of which may be left empty:
 
 **Save the settings** saves all three.
 
+![The General tab of Settings: the Public site display card with Copyright notice, Site tagline, Site description, and Save the settings.](./settings-public-site-display.png)
+
 ### Time zone
 
 **Time zone** is the zone every date and time is shown and entered in, both in the console and on the public site. A publication time entered on a series or an episode is read in it, and so is the time a banner stops, and the days the reports and the audit log are counted by. It also decides where one month's sales end and the next month's begin for royalties, and the calendar day a reader's age is counted on. Type a city or a region to narrow the list, and choose **Save the time zone**.
+
+![The Time zone card: the Time zone field and Save the time zone.](./settings-time-zone.png)
 
 Set it before the first sales: changing it later moves where the open month is cut, while a month already closed for royalties keeps the time zone it was cut in.
 
@@ -39,6 +46,8 @@ The default language is also:
 
 The operator chose it when creating the tenant. **Save the default language** changes it.
 
+![The Default language card: the Default language field and Save the default language.](./settings-default-language.png)
+
 ### Reader comments
 
 **How comments are published** decides whether readers can comment on episodes, and when others see a comment:
@@ -52,6 +61,8 @@ The operator chose it when creating the tenant. **Save the default language** ch
 **Reports that remove a comment** is how many different readers must report a comment before it is hidden without waiting for staff. A hidden comment waits in the [report queue](../2-readers.md#reported-comments) under **Comments**, its commenter still sees it, and staff can put it back. It starts at `3`; `0` leaves every removal to your moderators.
 
 A series can set its own **Comments** choice on its form, which then applies to that series instead of this one. A series left on **Follow the tenant setting** follows any later change here. Choose **Save the comment settings** to save.
+
+![The Reader comments card: How comments are published, Reports that remove a comment set to 3, and Save the comment settings.](./settings-reader-comments.png)
 
 ### Age verification
 
@@ -69,9 +80,13 @@ To "confirm", a reader presses **I am 15 or older** or **I am 18 or older**, and
 
 Choose **Save the age verification** to save.
 
+![The Age verification card: Ratings that need a proven age and Save the age verification.](./settings-age-verification.png)
+
 ### Terms and privacy policy
 
 **Terms of service** and **Privacy policy** each name one of the tenant's published pages. The site and the app link to them, and a reader agrees to them when creating an account. Write and publish the pages first, as [Pages](./3-pages.md#the-terms-of-service-and-the-privacy-policy) describes, then choose them here and choose **Save the terms and privacy policy**. **None** leaves either one unset.
+
+![The Terms and privacy policy card: a Terms of service and a Privacy policy field, each naming one of the tenant's pages, and Save the terms and privacy policy.](./settings-terms-and-privacy-policy.png)
 
 If a page chosen here is later taken off the site, the card says that nothing links to it any more, and sign-up stops asking readers to agree to it. Publish it again, or choose another page.
 
@@ -84,6 +99,8 @@ Addresses that readers cannot sign up with or change their email address to. A r
 
 Choose **Save the refused email addresses** to save. The list applies to the next sign-up or address change. Readers already signed up with a refused address keep their accounts.
 
+![The Refused email addresses card: Refuse disposable email domains, a field for an address or a domain with Add an address or domain, and Save the refused email addresses.](./settings-refused-email-addresses.png)
+
 Sign-in with Apple or Google is never refused here, since the provider supplies the address. Only a Tenant admin can see this card's contents.
 
 ## Limits and retention
@@ -94,6 +111,10 @@ Sign-in with Apple or Google is never refused here, since the provider supplies 
 - **Retention periods**: how long withdrawn comments, content events, and daily and weekly ranking snapshots are kept before they are deleted.
 
 Each group on these forms starts with **Use the platform default** ticked, and shows the operator's value beside it. A tenant on the default follows the operator's later changes. To set the tenant's own value, clear the box, enter the value, and save the form with **Save the community limits** or **Save the retention periods**. To return to the platform's value, tick the box again and save.
+
+![The Community limits form: each limit with Use the platform default ticked and the platform's limit under it, and Save the community limits.](./settings-community-limits.png)
+
+![The Retention periods form: each period with Use the platform default ticked and the days kept, and Save the retention periods.](./settings-retention-periods.png)
 
 - A community limit can only be made stricter than the platform's: a lower count, or a longer duplicate comment window. A looser value is refused with a message that names the setting. If the operator later tightens the platform's limit below the tenant's, the platform's applies.
 - A retention period can be longer or shorter than the platform's default, from 1 to 36500 days. **Content events** start at 30 days instead, and a shorter period is refused: the site's recommendations are built from the last 28 whole days of them.

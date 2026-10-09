@@ -33,7 +33,9 @@ export const CONTACT_WORKFLOW_COLLEAGUE = {
 
 /** A tenant editor, who cannot open the inbox and so is never an assignee. */
 export const CONTACT_WORKFLOW_EDITOR = {
+  email: "desk-editor@example.com",
   name: "Desk E2E Editor",
+  password: "adminpass",
   publicId: "DeskEDTRAAA1",
 } as const;
 

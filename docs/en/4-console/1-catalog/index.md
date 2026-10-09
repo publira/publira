@@ -2,6 +2,7 @@
 title: Publishing works
 description: Take an empty catalog to a first episode a reader can open, through the console's labels, Authors, series, and episodes.
 published: 2026-10-07
+updated: 2026-10-09
 ---
 
 Everything a reader can open on the site is an episode of a series, and a series is filed under a label and credits its Authors. The sidebar's **Catalog** group holds the five screens these are made on:
@@ -13,6 +14,8 @@ Everything a reader can open on the site is an episode of a series, and a series
 | **Authors** | The people credited on series and episodes |
 | **Author roles** | What an Author is credited as, such as **Original Author** or **Artist** |
 | **Genres** | The categories readers browse the catalog by |
+
+![The sidebar's Catalog group: Series, Labels, Authors, Author roles, and Genres.](./index-catalog-group.png)
 
 A Tenant admin and an Editor can create and change everything on these screens, except that only a Tenant admin sees and changes the **Reader accounts** linked to an Author. An Auditor can open every one of them, with their forms read-only, and does not see the buttons that create anything. Nothing in the catalog can be deleted except Author roles and genres that nothing uses, so a series or an episode that should no longer be read is taken off the site rather than removed.
 

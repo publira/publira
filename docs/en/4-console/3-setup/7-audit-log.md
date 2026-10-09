@@ -2,6 +2,7 @@
 title: Audit log
 description: Find out who on the staff changed what in the tenant, and when, from the record the console keeps of its staff's actions.
 published: 2026-10-07
+updated: 2026-10-09
 ---
 
 **Audit logs**, under **Administration**, is the tenant's record of what its staff did in the console: who changed what, when, and whether it worked. It answers questions such as who suspended a reader, who changed the payment settings, or when a member was given a role. Only a Tenant admin sees it.
@@ -16,6 +17,8 @@ Each entry shows:
 - **Outcome**: **Success** or **Failure**. A failed attempt is recorded too, such as a wrong code at a two-step verification sign-in or a mail server test that did not get through.
 
 The newest entries come first, 20 to a page. To narrow the list, set **From** and **To**, which are whole days in the tenant's time zone, an **Action**, or an **Actor**, and choose **Apply**. **Reset** clears them.
+
+![The Audit log narrowed to April 2026: the From, To, Action, and Actor filters with Apply and Reset, and entries giving the date and time, the actor with their public ID and role, the action with what it acted on, and the outcome.](./audit-log-list.png)
 
 The log cannot be exported, and its entries are never deleted. An entry keeps the name and public ID of a member of staff whose account has since been deleted.
 

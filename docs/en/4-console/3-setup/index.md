@@ -2,9 +2,12 @@
 title: Setting up the tenant
 description: Take a new tenant to a site that carries the publisher's name, look, legal pages, and staff, in the order the console needs them.
 published: 2026-10-07
+updated: 2026-10-09
 ---
 
 A new tenant starts as a bare site. It has the operator's choice of language and time zone, Publira's default colors, no logo, no pages, no comments, and only the administrators the operator invited. These pages take a Tenant admin through making it the publisher's own. Most of the screens involved are in the sidebar's **Administration** group. The site's pages and announcements are under **Site**, and the tenant's own mail server is under **Integrations** › **Email**.
+
+![The sidebar from the Site group down: Pages and Announcements, the Readers, Reports, and Integrations groups, and the Administration group with Members, Branding, Audit logs, and Settings.](./index-sidebar.png)
 
 The site is served on its domain from the moment the operator creates the tenant, and the console has no switch that hides it while you work. Readers who find the domain early see whatever is saved so far, so finish the steps below before you announce the site.
 
