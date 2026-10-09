@@ -264,7 +264,7 @@ Outage specs must run through `task e2e:test`, which sources `lib.sh`. Filtering
 
 Job: **Test / E2E** (`.github/workflows/ci.yml`)
 
-- Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, server, db, the documentation's PNG screenshots under `docs/`, and related build inputs.
+- Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, the locale catalogs, server, db, the documentation's PNG screenshots under `docs/`, and related build inputs.
 - **Test / E2E Build** runs `task e2e:build` once and uploads the server binaries, the apps' standalone output, email-renderer, and every workspace package's `dist/` as one tar, `e2e-build`.
 - **Test / E2E** is a matrix with one entry per [group](#groups), two for `main` (`--shard=1/2` and `--shard=2/2`), and three for `admin`. Every entry unpacks `e2e-build` and runs `task e2e:run-built` with `PUBLIRA_E2E_GROUP` set, so it seeds, starts, and tears down a stack of its own; one runner per entry is what keeps the default compose project, ports, run directory, database, bucket, and Redis of one entry away from every other.
 - Failure artifact: `e2e-artifacts-<entry>` (report, test results, and app logs of that entry), such as `e2e-artifacts-admin-2`.

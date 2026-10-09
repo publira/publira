@@ -258,6 +258,9 @@ jobs:
               # every mail it delivers through it.
               - 'apps/email-renderer/**'
               - 'packages/**'
+              # The apps' copy, which every screen the suite photographs or
+              # locates by name renders: @publira/i18n imports the catalogs.
+              - 'locales/**'
               - 'server/**'
               - 'db/**'
               - 'package.json'
