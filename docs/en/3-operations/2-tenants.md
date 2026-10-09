@@ -2,7 +2,7 @@
 title: Tenants
 description: Create a tenant, choose its domain and console host, change them later, and suspend a tenant.
 published: 2026-10-06
-updated: 2026-10-08
+updated: 2026-10-09
 ---
 
 Each publisher an install serves is a tenant, with a public site on its own domain and a console on a second host name. `publiractl setup` created the first one. This page adds the next, and covers what can be changed about a tenant afterwards.
