@@ -168,7 +168,9 @@ it("says where the site and the app use each ratio of a series", () => {
     )
   ).toBeTruthy();
   expect(
-    screen.getByText("One of the images the site offers search engines.")
+    screen.getByText(
+      "The small picture beside the series and its episodes in the site's lists, and one of the images the site offers search engines."
+    )
   ).toBeTruthy();
 });
 
@@ -181,7 +183,11 @@ it("says where each ratio of a label is used, not where a series' is", () => {
     variants: [variant("portrait", 1200, 1600)],
   });
 
-  expect(screen.getByText("The label's tile in the app.")).toBeTruthy();
+  expect(
+    screen.getByText(
+      "The label's tile in the app, and the small picture beside the label in the site's lists."
+    )
+  ).toBeTruthy();
   expect(
     screen.getAllByText("Not shown on the site or in the app yet.")
   ).toHaveLength(2);

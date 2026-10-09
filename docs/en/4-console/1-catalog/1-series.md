@@ -77,13 +77,13 @@ The site does not show the image as uploaded. Saving it cuts four images of fixe
 | Slot | At least | Where it is used |
 | --- | --- | --- |
 | **Portrait (3:4)** | 1200 × 1600 | The cover on shelves on the site and in the app, and on the series' page on the site |
-| **Square (1:1)** | 1200 × 1200 | One of the images the site offers search engines |
-| **Landscape (16:9)** | 1600 × 900 | Wide banners on the site and in the app, and the small picture beside the series and its episodes in the site's lists |
+| **Square (1:1)** | 1200 × 1200 | The small picture beside the series and its episodes in the site's lists, and one of the images the site offers search engines |
+| **Landscape (16:9)** | 1600 × 900 | Wide banners on the site and in the app, and the small picture beside each episode on the series' page and at the end of an episode on the site |
 | **Link preview (1200:630)** | 1200 × 630 | The preview shown when a link to the series or one of its episodes is shared |
 
 Each shape is cropped from the centre of the image. To frame one differently, choose **Adjust the frame** on its slot, or upload a separate image for that shape alone with **Replace**, which leaves the other three as they are. Uploading a new cover image above replaces all four.
 
-Labels and genres have the same tab, with the same sizes. Where each shape is used differs for them, and the line under each slot says where for the record being edited: a label's square image is its tile in the app and its portrait image is not shown anywhere yet, for example.
+Labels and genres have the same tab, with the same sizes. Where each shape is used differs for them, and the line under each slot says where for the record being edited: a label's square image is its tile in the app and the small picture beside it in the site's lists, and its portrait image is not shown anywhere yet, for example.
 
 ## Free if you wait
 

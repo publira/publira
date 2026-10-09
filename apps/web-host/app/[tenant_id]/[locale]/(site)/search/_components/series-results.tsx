@@ -18,7 +18,7 @@ import {
 } from "#components/age-rated-visibility";
 import { AgeRatingBadge } from "#components/age-rating-badge";
 import { CreatorCredits } from "#components/creator-credits";
-import { EyeCatchFrame } from "#components/eye-catch-frame";
+import { EyeCatchThumbnail } from "#components/eye-catch-thumbnail";
 import {
   ListPagination,
   ListPaginationSkeleton,
@@ -209,12 +209,10 @@ export const SeriesResults = async ({
                 className="group flex items-center gap-4 py-3"
                 href={`/series/${item.publicId}`}
               >
-                <EyeCatchFrame
+                <EyeCatchThumbnail
                   // The title is beside it in the row, so repeating it here
                   // would read every result out twice.
                   alt=""
-                  className="size-14 shrink-0 rounded-control"
-                  sizes="56px"
                   variants={item.eyeCatchImageVariants}
                 />
                 <span className="min-w-0 flex-1">

@@ -34,8 +34,7 @@ import {
 } from "#components/age-rating-gate";
 import { CHIP } from "#components/chip";
 import { CreatorCredits } from "#components/creator-credits";
-import { EyeCatchPicture } from "#components/eye-catch-picture";
-import type { EyeCatchVariant } from "#components/eye-catch-picture";
+import { EyeCatchThumbnail } from "#components/eye-catch-thumbnail";
 import {
   ListPagination,
   ListPaginationSkeleton,
@@ -149,30 +148,6 @@ export const generateMetadata = async ({
         : t("host.ranking.list_title_r15"),
   };
 };
-
-/**
- * The thumbnail beside a position. A series with no artwork keeps the frame,
- * so the numbers stay in one column whether or not the work has an image.
- */
-const RankingArtwork = ({
-  alt,
-  variants,
-}: {
-  alt: string;
-  variants: EyeCatchVariant[] | undefined;
-}) =>
-  variants && variants.length > 0 ? (
-    <span className="block size-14 shrink-0 overflow-hidden rounded-control bg-muted">
-      <EyeCatchPicture
-        alt={alt}
-        imgClassName="size-full object-cover"
-        sizes="56px"
-        variants={variants}
-      />
-    </span>
-  ) : (
-    <span className="block size-14 shrink-0 rounded-control bg-muted" />
-  );
 
 /**
  * What a position did since the period before it.
@@ -576,7 +551,7 @@ const RankingChart = async ({
                     />
                   </Suspense>
                 </span>
-                <RankingArtwork
+                <EyeCatchThumbnail
                   alt={series.title}
                   variants={series.eyeCatchImageVariants}
                 />
