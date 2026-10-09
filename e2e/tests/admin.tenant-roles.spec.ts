@@ -127,8 +127,14 @@ test.describe("tenant roles in the console", () => {
       exact: true,
       name: "Registered page images",
     });
-    await expect(episodePages.getByRole("listitem").first()).toBeVisible();
-    await expect(episodePages.getByRole("button")).toHaveCount(0);
+    await expect(
+      episodePages.getByRole("img", { exact: true, name: "Page 1" })
+    ).toBeVisible();
+    await expect(
+      episodePages.getByRole("button", {
+        name: /^(?:Reorder|Replace|Delete) page /u,
+      })
+    ).toHaveCount(0);
 
     // A screen whose whole purpose is to write is not there at all.
     await expectNotFound(page, "/series/new");

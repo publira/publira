@@ -10,6 +10,9 @@ import { noisePng } from "../src/page-archive";
 import { uniqueSuffix } from "../src/scenarios/admin-publish";
 import { WEB_ADMIN_BASE_URL } from "../src/urls";
 
+/** An image `src` naming the image at `path`, whatever media token follows. */
+const showing = (path: string) => new RegExp(`^${path}\\?`, "u");
+
 /**
  * What an editor changes on an episode after it was created: its title, and
  * one page at a time. The replacing image is larger than a Server Action body
@@ -66,6 +69,14 @@ test.describe("admin episode editing", () => {
     const pageImage = (position: number) =>
       pages.getByRole("img", { exact: true, name: `Page ${position}` });
     await expect(pages.getByRole("listitem")).toHaveCount(3);
+    /**
+     * The image a page shows, by its path: the query carries a media token
+     * that is signed again on every read.
+     */
+    const imagePath = async (position: number): Promise<string> => {
+      const src = (await pageImage(position).getAttribute("src")) ?? "";
+      return src.split("?")[0] ?? "";
+    };
 
     // The title.
     const renamed = `E2E Episode Editing Renamed ${suffix}`;
@@ -79,7 +90,7 @@ test.describe("admin episode editing", () => {
     // Replacing the second page leaves the first and the third where they
     // were. 2000x1900 RGB noise is about 11 MB, which no compression shrinks.
     const [firstBefore, secondBefore, thirdBefore] = await Promise.all(
-      [1, 2, 3].map((position) => pageImage(position).getAttribute("src"))
+      [1, 2, 3].map(imagePath)
     );
     await page.getByRole("button", { name: "Replace page 2" }).click();
     const replaceDialog = page.getByRole("dialog", { name: "Replace page 2" });
@@ -94,10 +105,13 @@ test.describe("admin episode editing", () => {
     });
     await expect(replaceDialog).toBeHidden();
     await expect(pages.getByRole("listitem")).toHaveCount(3);
-    await expect(pageImage(2)).not.toHaveAttribute("src", secondBefore ?? "");
-    await expect(pageImage(1)).toHaveAttribute("src", firstBefore ?? "");
-    await expect(pageImage(3)).toHaveAttribute("src", thirdBefore ?? "");
-    const secondAfter = await pageImage(2).getAttribute("src");
+    await expect(pageImage(2)).not.toHaveAttribute(
+      "src",
+      showing(secondBefore)
+    );
+    await expect(pageImage(1)).toHaveAttribute("src", showing(firstBefore));
+    await expect(pageImage(3)).toHaveAttribute("src", showing(thirdBefore));
+    const secondAfter = await imagePath(2);
 
     // Deleting the first page moves the others up one place.
     await page.getByRole("button", { name: "Delete page 1" }).click();
@@ -107,11 +121,13 @@ test.describe("admin episode editing", () => {
       .click();
     await expect(page.getByText("Page deleted.")).toBeVisible();
     await expect(pages.getByRole("listitem")).toHaveCount(2);
-    await expect(pageImage(1)).toHaveAttribute("src", secondAfter ?? "");
-    await expect(pageImage(2)).toHaveAttribute("src", thirdBefore ?? "");
+    await expect(pageImage(1)).toHaveAttribute("src", showing(secondAfter));
+    await expect(pageImage(2)).toHaveAttribute("src", showing(thirdBefore));
 
     // The episode list names the episode by its new title.
     await page.goto(`${WEB_ADMIN_BASE_URL}/series/${seriesId}/episodes`);
-    await expect(page.getByText(renamed)).toBeVisible();
+    await expect(
+      page.getByRole("checkbox", { exact: true, name: `Select ${renamed}` })
+    ).toBeVisible();
   });
 });
