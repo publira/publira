@@ -3,7 +3,7 @@ import * as http2 from "node:http2";
 import type { AddressInfo } from "node:net";
 
 import { Code, ConnectError } from "@connectrpc/connect";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 
 import { createAdminApiClient } from "./admin/client.js";
 
@@ -74,6 +74,9 @@ const codeOf = async (call: Promise<unknown>) => {
 describe("the gRPC transport the Next.js apps use", () => {
   it("serves another call while a large upload is still being sent", async () => {
     const { baseUrl, close, held, release } = await startServer();
+    // Also when the test fails or times out, so the held upload and the
+    // server do not outlive it.
+    onTestFinished(close);
     const client = createAdminApiClient({ baseUrl, transport: "grpc" });
 
     // As large as the console lets an episode upload be.
@@ -84,10 +87,13 @@ describe("the gRPC transport the Next.js apps use", () => {
     );
     await expect.poll(() => held.length).toBe(1);
 
-    expect(await codeOf(client.auth.getMe({}))).toBe(Code.Unauthenticated);
+    // A refused call is never answered, so the deadline turns it into a
+    // failed assertion rather than the test's timeout.
+    expect(await codeOf(client.auth.getMe({}, { timeoutMs: 2000 }))).toBe(
+      Code.Unauthenticated
+    );
 
     release();
     expect(await upload).toBe(Code.Unauthenticated);
-    close();
   });
 });
