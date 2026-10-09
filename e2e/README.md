@@ -215,7 +215,7 @@ The `docs-screenshots` project takes the screenshots the user documentation show
 It renders in the same pinned browser, on the same pinned dates, and before the same suites as the projects of the [screenshot baseline](#screenshot-baseline), at a 1280px viewport with `deviceScaleFactor: 2`. What differs is what a test takes and where it goes:
 
 - `setDocsLocale(page, baseUrl, locale)` stores the `publira_locale` cookie the console's language menu writes, so the screen renders in that tree's language.
-- `expectDocsScreenshot(page, { element, locale, page, subject })` takes `element` alone, never the full page, and compares it with `docs/<locale>/<page directory>/<page slug>-<subject>.png` — `index-<subject>.png` for an `index.md` — where `page` is the page's path under `docs/<locale>/`.
+- `expectDocsScreenshot(page, { element, locale, page, subject })` takes `element` alone, never the full page, and compares it with `docs/<locale>/<page directory>/<page slug>-<subject>.png` — `index-<subject>.png` for an `index.md` — where `page` is the path the website publishes the page at, without the numbers of its file names: `console` for `4-console/index.md`, `console/catalog/episodes` for `4-console/1-catalog/2-episodes.md`.
 
 Regenerate every image after an intended change, against a stack that has just been seeded:
 
