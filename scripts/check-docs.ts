@@ -385,39 +385,6 @@ const checkLink = async (
 };
 
 /**
- * The findings for the images whose names tie them to no page beside them.
- *
- * `<page slug>-<subject>`, and `index-<subject>` for an `index.md`: the number
- * is left out so reordering the pages renames no image, and the slug keeps the
- * images of sibling pages apart in one directory.
- */
-const checkImageNames = (
-  images: readonly string[],
-  pageSlugs: readonly string[]
-): Finding[] => {
-  const named = (image: string): boolean => {
-    const stem = path.posix.basename(image, path.posix.extname(image));
-
-    return pageSlugs.some(
-      (slug) =>
-        stem.startsWith(`${slug}-`) && SUBJECT.test(stem.slice(slug.length + 1))
-    );
-  };
-  const slugs =
-    pageSlugs
-      .toSorted((a, b) => a.localeCompare(b, "en"))
-      .map((slug) => `\`${slug}\``)
-      .join(", ") || "there is none";
-
-  return images
-    .filter((image) => !named(image))
-    .map((image) => ({
-      file: image,
-      message: `An image is named \`<page slug>-<subject>\` after a page beside it (${slugs}), with a subject of lowercase ASCII words joined by \`-\`.`,
-    }));
-};
-
-/**
  * The findings about the names in one directory and every directory below it,
  * and the pages and images they hold.
  */
@@ -432,7 +399,6 @@ const checkDirectory = async (
   const findings: Finding[] = [];
   const pages: string[] = [];
   const images: string[] = [];
-  const pageSlugs: string[] = [];
   const directories: string[] = [];
   const numbers = new Map<string, string>();
   const slugs = new Map<string, string>();
@@ -453,7 +419,6 @@ const checkDirectory = async (
     const extension = path.extname(entry.name);
     if (entry.isFile() && entry.name === INDEX) {
       pages.push(entryPath);
-      pageSlugs.push("index");
       continue;
     }
     if (entry.isFile() && IMAGE_EXTENSIONS.has(extension.toLowerCase())) {
@@ -493,15 +458,8 @@ const checkDirectory = async (
     }
     slugs.set(slug, entryPath);
 
-    if (entry.isDirectory()) {
-      directories.push(entryPath);
-    } else {
-      pages.push(entryPath);
-      pageSlugs.push(slug);
-    }
+    (entry.isDirectory() ? directories : pages).push(entryPath);
   }
-
-  findings.push(...checkImageNames(images, pageSlugs));
 
   const nested = await Promise.all(
     directories.map((child) => checkDirectory(repository, child))
@@ -546,25 +504,66 @@ const checkFile = async (
   };
 };
 
+/** A page's slug, the name its images start with: `index` for an `index.md`. */
+const pageSlug = (page: string): string => {
+  const name = path.posix.basename(page, PAGE_EXTENSION);
+
+  return name === path.posix.basename(INDEX, PAGE_EXTENSION)
+    ? name
+    : (ENTRY_NAME.exec(name)?.groups?.slug ?? name);
+};
+
 /**
- * The findings for images no page beside them shows.
+ * The findings for images that no page beside them shows, or that are not
+ * named after a page that does.
  *
  * Playwright never deletes a screenshot its spec stops taking, and nothing
  * else notices an image a page stops showing, so this is what catches what
  * either leaves behind. A page in another directory does not count: an image
  * sits beside the page that shows it.
+ *
+ * The name is `<page slug>-<subject>`, and `index-<subject>` for an
+ * `index.md`, after one of the pages that show the image rather than any page
+ * in the directory: the number is left out so reordering the pages renames no
+ * image, and the slug is what keeps the images of sibling pages apart, which
+ * an image named after a sibling it is not on would undo.
  */
-const checkUnreferenced = (
+const checkImages = (
   images: readonly string[],
-  shown: ReadonlySet<string>
+  shownBy: ReadonlyMap<string, readonly string[]>
 ): Finding[] =>
-  images
-    .filter((image) => !shown.has(image))
-    .map((image) => ({
-      file: image,
-      message:
-        "No page beside the image shows it. Reference it from the page it was made for, or delete it.",
-    }));
+  images.flatMap((image) => {
+    const slugs = shownBy.get(image) ?? [];
+    if (slugs.length === 0) {
+      return [
+        {
+          file: image,
+          message:
+            "No page beside the image shows it. Reference it from the page it was made for, or delete it.",
+        },
+      ];
+    }
+    const stem = path.posix.basename(image, path.posix.extname(image));
+    const named = slugs.some(
+      (slug) =>
+        stem.startsWith(`${slug}-`) && SUBJECT.test(stem.slice(slug.length + 1))
+    );
+
+    if (named) {
+      return [];
+    }
+    const listed = [...new Set(slugs)]
+      .toSorted((a, b) => a.localeCompare(b, "en"))
+      .map((slug) => `\`${slug}\``)
+      .join(", ");
+
+    return [
+      {
+        file: image,
+        message: `An image is named \`<page slug>-<subject>\` after a page that shows it (${listed}), with a subject of lowercase ASCII words joined by \`-\`.`,
+      },
+    ];
+  });
 
 /**
  * Every finding under `root`, relative to `repository`, as are the files the
@@ -582,12 +581,17 @@ export const scan = async (
   const inPages = await Promise.all(
     pages.map((page) => checkFile(repository, page))
   );
-  const shown = new Set(inPages.flatMap((page) => page.images));
+  const shownBy = new Map<string, string[]>();
+  for (const [index, page] of pages.entries()) {
+    for (const image of inPages[index]?.images ?? []) {
+      shownBy.set(image, [...(shownBy.get(image) ?? []), pageSlug(page)]);
+    }
+  }
 
   return [
     ...findings,
     ...inPages.flatMap((page) => page.findings),
-    ...checkUnreferenced(images, shown),
+    ...checkImages(images, shownBy),
   ].toSorted(
     (a, b) =>
       a.file.localeCompare(b.file, "en") || (a.line ?? 0) - (b.line ?? 0)

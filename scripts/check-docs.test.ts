@@ -329,7 +329,7 @@ describe("scan", () => {
     assert.match(reported[0]?.message ?? "", /No page beside the image/u);
   });
 
-  it("reports an image not named after a page beside it", async () => {
+  it("reports an image not named after a page that shows it", async () => {
     const names = [
       "diagram.png",
       "1-overview-diagram.png",
@@ -337,16 +337,29 @@ describe("scan", () => {
       "overview-Diagram.png",
       "upgrading-diagram.png",
       "deployments-diagram.png",
+      // Named after a sibling page that does not show it.
+      "index-overview.png",
     ];
     await Promise.all(
       names.map((name) => write(`docs/en/2-deployments/${name}`, ""))
     );
+    // Shown by both pages, and named after one of them.
+    await write("docs/en/2-deployments/index-shared.png", "");
     await write(
       "docs/en/2-deployments/1-overview.md",
       page(
         VALID,
-        names.flatMap((name) => [`![A diagram](./${name})`, ""])
+        [...names, "index-shared.png"].flatMap((name) => [
+          `![A diagram](./${name})`,
+          "",
+        ])
       )
+    );
+    await write(
+      "docs/en/2-deployments/index.md",
+      page(VALID, [
+        "![A diagram](./index-diagram.png) and ![the same diagram](./index-shared.png)",
+      ])
     );
 
     const reported = await scan(repository);
@@ -356,7 +369,11 @@ describe("scan", () => {
         .map((name) => `docs/en/2-deployments/${name}`)
         .toSorted((a, b) => a.localeCompare(b, "en"))
     );
-    assert.match(reported[0]?.message ?? "", /`index`, `overview`/u);
+    assert.match(
+      reported.find((finding) => finding.file.endsWith("/index-overview.png"))
+        ?.message ?? "",
+      /after a page that shows it \(`overview`\)/u
+    );
   });
 
   it("reports a link the website cannot rewrite", async () => {
