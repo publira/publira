@@ -74,6 +74,18 @@ export const platformOperatorsTag = "platform:operators";
 /** The tag web-platform holds every end-user read under. */
 export const platformEndUsersTag = "platform:users";
 
+/** The tag web-platform holds every tenant read under. */
+export const platformTenantsTag = "platform:tenants";
+
+/** The tag web-platform holds the dashboard's counts and recent events under. */
+export const platformDashboardTag = "platform:dashboard";
+
+/** The tag web-platform holds every audit log read under. */
+export const platformAuditLogsTag = "platform:audit-logs";
+
+/** The tag web-platform holds every operator's notifications under. */
+export const platformNotificationsTag = "platform:notifications";
+
 /**
  * The tag web-host holds the tenant's site chrome under. The comment mode
  * rides on that read, so a scenario seed that writes `tenant_config` directly

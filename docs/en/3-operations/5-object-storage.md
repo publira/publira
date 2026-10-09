@@ -2,6 +2,7 @@
 title: Object storage
 description: Choose the bucket every uploaded image is kept in, how Publira signs in to it, and how images are delivered and cached.
 published: 2026-10-06
+updated: 2026-10-09
 ---
 
 Every image the install keeps — covers, episode pages, author photos, each tenant's logo — is stored in one S3-compatible bucket shared by every tenant. `publiractl setup` saved that bucket. This page explains each of its settings, how to test them, and how to change them later, and how the stored images reach readers.
@@ -22,6 +23,8 @@ The settings name the bucket and how to reach it:
 | Addressing the bucket in the URL path rather than in the host name | `--force-path-style` | **Use path-style addressing** |
 | The URL stored objects are readable from | `--public-base-url` | **Public base URL (optional)** |
 
+![The Object storage form from Bucket to Use path-style addressing: Bucket, Region, Public base URL (optional), and, under Options for S3-compatible providers, Endpoint and Use path-style addressing.](./object-storage-bucket.png)
+
 For a bucket on Amazon S3, give the bucket and its region and leave the rest out.
 
 For another S3-compatible store — Cloudflare R2, MinIO, RustFS, or a provider's object storage — give its S3 API address as the endpoint, and turn on path-style addressing when the provider asks for it, as most self-hosted stores do. A store with no regions still needs a value for the region; enter the one its documentation recommends, and `us-east-1` when it recommends none.
@@ -38,6 +41,8 @@ Publira signs every request to the bucket in one of two ways.
 
 In the Platform Console, **Credentials** offers the two as **Use an access key** and **Use each server's own credentials**. With `publiractl storage set`, giving `--access-key-id` saves a key, with the secret read from a masked prompt, from `--secret-access-key-file`, or from stdin with `--secret-access-key-stdin`; leaving `--access-key-id` out signs with each process's own credential and removes a saved key.
 
+![Credentials: Use each server's own credentials, and Use an access key, each with what it means.](./object-storage-credentials.png)
+
 ## Testing the connection
 
 The test uploads a small object, reads it back, lists it, and deletes it, which is everything Publira does with the bucket, and reports each of the four steps.
@@ -47,11 +52,15 @@ The test uploads a small object, reads it back, lists it, and deletes it, which 
 
 A failure names the step and why: a credential the store refused, a permission the key lacks for one operation, a bucket that was not found under that name, region, and endpoint, or an endpoint that could not be reached. Since the console's test and the command run on different machines, a firewall that lets one reach the store and not the other shows up as a test that passes in one and fails in the other; it is `publira server` and `publira worker` that have to reach it.
 
+![A connection test that failed: Upload failed because the bucket wasn't found, and Read back, List, and Delete were not run.](./object-storage-connection-test.png)
+
 ## Changing the settings
 
 ### From the Platform Console
 
 Choose **Storage** under **Services** in the sidebar. The screen shows the saved settings, with a saved secret as **Saved (hidden)**. Change the values, choose **Test connection**, and save with **Save storage settings**. To use a different access key, choose **Replace access key** and enter the access key ID and the secret together; the saved secret only goes with the ID it was saved with.
+
+![Credentials with an access key saved: Use an access key, the Access key ID, the secret shown as Saved (hidden) with Replace access key, the connection test, and Save storage settings.](./object-storage-saved-access-key.png)
 
 An Operator or a Super admin can save. An Auditor sees the screen and cannot.
 

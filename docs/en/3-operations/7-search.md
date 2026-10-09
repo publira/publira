@@ -2,6 +2,7 @@
 title: Search
 description: Choose the engine the storefront search finds works, authors, and labels with, move from the database to OpenSearch or Elasticsearch, and rebuild the index.
 published: 2026-10-06
+updated: 2026-10-09
 ---
 
 The search on every tenant's site finds series, authors, and labels through one engine, shared by every tenant. An install starts on the database itself and needs nothing more; OpenSearch or Elasticsearch is an option for an install that wants results ranked by relevance. This page compares the engines, moves the search from one to another, and covers the index an engine keeps.
@@ -47,6 +48,8 @@ Saving an engine does not move the search onto it at once. The index on the new 
 3. Under **Authentication**, choose **No authentication**, or **Username and password** and enter both.
 4. Choose **Test connection**, and save with **Save search settings** once it passes.
 
+![Search engine with OpenSearch chosen: Engine, URL, Index alias (optional), Authentication, the connection test, and Save search settings.](./search-engine.png)
+
 **Search status** at the top of the screen shows the engine the storefront answers from, and while the index is being built, the engine it will move to. The screen checks again every few seconds, so it shows the move when it happens. An Operator or a Super admin can save; an Auditor only sees the screen.
 
 ### From publiractl
@@ -70,6 +73,8 @@ The worker looks for an index to build every 30 seconds, and filling it takes as
 
 A build that fails — an engine that went away, a missing plugin, a user that may not create the index — leaves the search where it was, and the error is shown by **Search status** and by `publiractl search show`. The worker tries again every 30 seconds, so once you fix the engine the build goes through without saving the settings again. To give up on the move instead, save the engine the search is still answering from.
 
+![Search status after a failed build: answering from PostgreSQL, the message that the OpenSearch index couldn't be built, when it last failed, and the engine's error. The time it last failed is greyed out here, since it changes with every attempt.](./search-build-failed.png)
+
 ### Going back to PostgreSQL
 
 Saving **PostgreSQL**, or `publiractl search set --engine sql`, moves the search back at once: the database needs no index. The index on the engine is left where it is; delete it yourself if you will not use it again.
@@ -86,6 +91,8 @@ A definition is the `settings.analysis` object of the index, as JSON of at most 
 
 - In the Platform Console, **Text analysis** under **Search** takes the definition in **Definition (settings.analysis, JSON)** and saves it with **Save text analysis**. **Reset to default** goes back to the default definition. On PostgreSQL there is no index, and so no text analysis to save.
 - With `publiractl`, `search set --analysis-file korean-analysis.json` saves a definition along with the engine, and `--default-analysis` goes back to the default. Without either, `search set` keeps the definition already saved.
+
+![Text analysis: which definition is saved, the three names a definition has to define, Definition (settings.analysis, JSON), and Save text analysis.](./search-text-analysis.png)
 
 Before a definition is saved, the engine is asked to create an empty index with it, and a definition it refuses is not saved, with the engine's reason. A saved definition is built into a new index the same way a new engine is, and the search moves onto it when the build is done.
 

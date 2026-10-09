@@ -109,6 +109,7 @@ export const quoteSqlLiteral = (value: string): string =>
  */
 export type PlatformSettingsTable =
   | "platform_search_config"
+  | "platform_smtp_config"
   | "platform_storage_config"
   | "platform_webpush_config";
 

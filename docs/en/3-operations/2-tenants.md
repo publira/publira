@@ -34,6 +34,8 @@ Choose **Create tenant** under **Tenants** in the sidebar, and fill in:
 - **Default language**.
 - **Initial admin emails (optional, multiple allowed)**: the addresses to invite as the tenant's administrators, separated by commas or line breaks. Each one is mailed an invitation as soon as the tenant is created.
 
+![The Create tenant form: Tenant name, Domain with the notes on domain settings, Admin domain with the line under it, Default language, Initial admin emails, and Create.](./tenants-create-tenant.png)
+
 **Create** creates the tenant and opens its page. Its time zone is the platform's default, which its administrators can change from the tenant console.
 
 ### From publiractl
@@ -62,6 +64,8 @@ A tenant's name, domain, and console host can be changed after it is created. It
 
 Open the tenant from **Tenants**. **Profile** changes its **Tenant name**, and **Domain settings** changes its **Domain** and **Admin domain**. Emptying **Admin domain** moves the console back to `admin.<domain>`.
 
+![A tenant's page: Profile with Tenant name, when it was created, its status, and Save, and Domain settings with its notes, Domain, Admin domain with the line under it, and Save.](./tenants-profile-domain.png)
+
 ### From publiractl
 
 ```bash
@@ -84,6 +88,12 @@ Moving the domain also moves everything built on it:
 ## Suspending a tenant
 
 **Suspend** on a tenant's page in the Platform Console, or `publiractl tenant suspend --tenant comics.example.com`, marks the tenant **Suspended**. **Resume**, or `publiractl tenant resume`, marks it active again. The Platform Console's button takes effect as soon as it is pressed, with no confirmation. Either way the change is recorded in **Audit logs**, and the dashboard counts the tenant among its **Suspended tenants**.
+
+![The top of an active tenant's page: Back to list, View audit logs, and Suspend.](./tenants-suspend.png)
+
+![A suspended tenant's page: Resume in place of Suspend, and Suspended as its status under Profile.](./tenants-suspended.png)
+
+![The dashboard's tenant counts: Total tenants, Active tenants, Suspended tenants, and Pending users.](./tenants-dashboard-counts.png)
 
 Suspension stops serving the tenant, and changes nothing else about it:
 

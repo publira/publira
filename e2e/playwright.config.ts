@@ -158,6 +158,15 @@ const screenshotSpecs = /\.screenshots\./u;
 const docsScreenshotSpecs = /\.docs-screenshots\./u;
 
 /**
+ * The documentation's screenshot of the Platform Console's initial setup,
+ * which only renders while the platform has no operator at all. It empties
+ * the operators every other console screen signs in as, so it runs at the end
+ * of the exclusive chain, beside `platform-setup`, rather than with the other
+ * documentation screenshots.
+ */
+const docsFirstOperatorSpecs = /platform\.first-operator\.docs-screenshots\./u;
+
+/**
  * Writes the scenario tenants those suites photograph, once, before any of
  * them runs.
  */
@@ -175,6 +184,16 @@ const tabletSpecs = /\.tablet\./u;
 const screenshotProjectUse = {
   ...desktopChrome,
   connectOptions: { wsEndpoint: BROWSER_WS_ENDPOINT },
+} as const;
+
+/**
+ * What the documentation's screenshot projects share: the pinned browser, at
+ * the width and the density `docs/README.md` gives for every image.
+ */
+const docsScreenshotProjectUse = {
+  ...screenshotProjectUse,
+  deviceScaleFactor: 2,
+  viewport: { height: 900, width: 1280 },
 } as const;
 
 /** Every project the screenshot suites have to precede. */
@@ -246,14 +265,10 @@ const screenshotProjects: PlaywrightTestProject[] = [
     dependencies: ["docs-screenshots-setup"],
     name: "docs-screenshots",
     snapshotPathTemplate: `${DOCS_ROOT}/{arg}{ext}`,
-    testIgnore: [docsScreenshotSetup],
+    testIgnore: [docsScreenshotSetup, docsFirstOperatorSpecs],
     testMatch: [docsScreenshotSpecs],
     timeout: 120_000,
-    use: {
-      ...screenshotProjectUse,
-      deviceScaleFactor: 2,
-      viewport: { height: 900, width: 1280 },
-    },
+    use: docsScreenshotProjectUse,
   },
 ];
 
@@ -580,13 +595,25 @@ const exclusiveProjects: PlaywrightTestProject[] = [
       baseURL: WEB_ADMIN_BASE_URL,
     },
   },
+  // Right before `platform-setup`, for the reason given below: the setup
+  // screen it photographs needs the platform's operators gone, and it puts
+  // them back before its test ends.
+  {
+    dependencies: ["admin-mfa-sign-in", "viewer-performance"],
+    fullyParallel: false,
+    name: "docs-screenshots-first-operator",
+    snapshotPathTemplate: `${DOCS_ROOT}/{arg}{ext}`,
+    testMatch: [docsFirstOperatorSpecs],
+    timeout: 120_000,
+    use: docsScreenshotProjectUse,
+  },
   // After everything, including the timing suite when that shares the
   // stack: it leaves the platform with no operator for as long as it takes
   // to create one through `/setup`, and every console screen in the suite
   // needs one to sign in as. It restores the development seed's platform
   // rows on teardown.
   {
-    dependencies: ["admin-mfa-sign-in", "viewer-performance"],
+    dependencies: ["docs-screenshots-first-operator"],
     fullyParallel: false,
     name: "platform-setup",
     testMatch: [platformSetupSpecs],
