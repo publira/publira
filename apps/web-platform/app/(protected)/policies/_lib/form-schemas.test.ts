@@ -9,6 +9,10 @@ import {
 } from "./form-schemas";
 
 const securityValues = {
+  login_attempts_per_account_per_day: "50",
+  login_attempts_per_account_per_minute: "5",
+  login_attempts_per_source_per_day: "300",
+  login_attempts_per_source_per_hour: "30",
   mail_requests_per_address_per_day: "20",
   mail_requests_per_address_per_hour: "5",
   mail_requests_per_source_per_day: "150",
@@ -92,6 +96,56 @@ describe("securityPolicyFormSchema", () => {
     const result = await parseSecurity({
       wait_free_ticket_use_per_minute: "0",
     });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("reads the sign-in attempt limits", async () => {
+    const result = await parseSecurity({
+      login_attempts_per_account_per_day: "70",
+      login_attempts_per_account_per_minute: "7",
+      login_attempts_per_source_per_day: "400",
+      login_attempts_per_source_per_hour: "40",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toMatchObject({
+      loginAttemptsPerAccountPerDay: 70,
+      loginAttemptsPerAccountPerMinute: 7,
+      loginAttemptsPerSourcePerDay: 400,
+      loginAttemptsPerSourcePerHour: 40,
+    });
+  });
+
+  it("refuses a daily sign-in attempt limit per address below the per-minute one", async () => {
+    const result = await parseSecurity({
+      login_attempts_per_account_per_day: "4",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.message)).toContain(
+      "The daily limit for Sign-in attempts per address must be at least its per-minute limit."
+    );
+  });
+
+  it("refuses a daily failed sign-in limit per source below the hourly one", async () => {
+    const result = await parseSecurity({
+      login_attempts_per_source_per_day: "29",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.message)).toContain(
+      "The daily limit for Failed sign-ins per source must be at least its per-hour limit."
+    );
+  });
+
+  it.each([
+    "login_attempts_per_account_per_minute",
+    "login_attempts_per_account_per_day",
+    "login_attempts_per_source_per_hour",
+    "login_attempts_per_source_per_day",
+  ])("refuses zero as %s", async (name) => {
+    const result = await parseSecurity({ [name]: "0" });
 
     expect(result.success).toBe(false);
   });

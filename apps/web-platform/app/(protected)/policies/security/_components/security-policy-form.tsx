@@ -151,6 +151,44 @@ export const SecurityPolicyForm = ({
             </Suspense>
           </PolicyLimitField>
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <PolicyLimitField
+            defaultValue={values.loginAttemptsPerAccount.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="login_attempts_per_account_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.login_attempts_per_account_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.loginAttemptsPerAccount.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="login_attempts_per_account_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.login_attempts_per_account_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.loginAttemptsPerSource.perHour}
+            disabled={Boolean(loadErrorMessage)}
+            name="login_attempts_per_source_per_hour"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.login_attempts_per_source_per_hour" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.loginAttemptsPerSource.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="login_attempts_per_source_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.login_attempts_per_source_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+        </div>
         <Field className="flex items-center gap-2">
           <Checkbox
             defaultChecked={values.mfaRequiredForTenantAdmin}

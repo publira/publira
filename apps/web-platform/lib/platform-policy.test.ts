@@ -151,6 +151,8 @@ const storedPolicy = {
     duplicateCommentWindowMinutes: 10,
   },
   disposableEmailDomainsUrl: listUrl,
+  loginAttemptsPerAccount: { perDay: 60, perMinute: 6 },
+  loginAttemptsPerSource: { perDay: 400, perHour: 40 },
   mfaRequiredForTenantAdmin: true,
   passwordVerification: { perDay: 50, perMinute: 5 },
 };
@@ -177,7 +179,7 @@ describe("savePlatformPolicy", () => {
 
   // `UpdatePlatformPolicy` writes the whole row, so a value this screen does
   // not edit has to be sent back as read, or the save would clear it.
-  it("keeps the stored list URL when the community limits are saved", async () => {
+  it("keeps the stored list URL and sign-in attempt limits when the community limits are saved", async () => {
     await expect(
       updatePlatformCommunityLimits(community, 4n, "en")
     ).resolves.toEqual({ ok: true });
@@ -187,6 +189,8 @@ describe("savePlatformPolicy", () => {
         expectedRevision: 4n,
         policy: expect.objectContaining({
           disposableEmailDomainsUrl: listUrl,
+          loginAttemptsPerAccount: { perDay: 60, perMinute: 6 },
+          loginAttemptsPerSource: { perDay: 400, perHour: 40 },
           mfaRequiredForTenantAdmin: true,
         }),
       }),
@@ -198,6 +202,8 @@ describe("savePlatformPolicy", () => {
     await updatePlatformSecurityPolicy(
       {
         disposableEmailDomainsUrl: "",
+        loginAttemptsPerAccount: { perDay: 50, perMinute: 5 },
+        loginAttemptsPerSource: { perDay: 300, perHour: 30 },
         mailRequestsPerAddress: { perDay: 20, perHour: 5 },
         mailRequestsPerSource: { perDay: 150, perHour: 30 },
         mfaRequiredForTenantAdmin: false,

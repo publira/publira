@@ -237,6 +237,23 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
+      test("the sign-in attempt limits on Security", async ({ page }) => {
+        await openScreen(page, locale, "/policies/security");
+
+        await expectDocsScreenshot(page, {
+          element: docsField(
+            page.getByLabel(
+              t(
+                "platform.policy.security.login_attempts_per_account_per_minute"
+              )
+            )
+          ),
+          locale,
+          page: "operations/platform-policies",
+          subject: "sign-in-attempts",
+        });
+      });
+
       test("the disposable email domain list", async ({ page }) => {
         await openScreen(page, locale, "/policies/security");
 

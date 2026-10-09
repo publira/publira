@@ -47,6 +47,14 @@ export const updatePlatformSecurityPolicyAction = async (
     updatePlatformSecurityPolicy(
       {
         disposableEmailDomainsUrl: data.disposableEmailDomainsUrl,
+        loginAttemptsPerAccount: {
+          perDay: data.loginAttemptsPerAccountPerDay,
+          perMinute: data.loginAttemptsPerAccountPerMinute,
+        },
+        loginAttemptsPerSource: {
+          perDay: data.loginAttemptsPerSourcePerDay,
+          perHour: data.loginAttemptsPerSourcePerHour,
+        },
         mailRequestsPerAddress: {
           perDay: data.mailPerAddressPerDay,
           perHour: data.mailPerAddressPerHour,
