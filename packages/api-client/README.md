@@ -167,6 +167,7 @@ import {
 | `rpcErrorDisposition(error)` | The handling category the `Code`s roll up into (`not-found` / `forbidden` / `unauthenticated` / `invalid-argument` / `conflict` / `precondition` / `unavailable` / `unexpected`) |
 | `isMissingResourceRpcError(error)` | `not_found` or `permission_denied`; "there is nothing to show", the equivalent of a 404 |
 | `isUnauthenticatedRpcError(error)` | `unauthenticated`; send the user to re-authenticate |
+| `isTenantSuspendedRpcError(error)` | `failed_precondition` with the reason `TENANT_SUSPENDED`; the tenant is not served until it is resumed, so never remember it the way a missing record is |
 | `isExpectedNullableRpcError(error)` | The union of the two above: where a read with a session may return `null` |
 | `isRejectedRequestRpcError(error)` | The range where the server rejected the request itself; a form may show it as a message |
 | `rethrowUnclassifiedRpcError(error)` | Rethrows only what cannot be classified. Call it first in a `catch` that turns errors into messages |

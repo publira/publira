@@ -22,6 +22,7 @@ The package that provides the shared frontend utilities.
 | `@publira/utils/cached-read` | `cachedReadFailure` / `dropFailedCacheEntry`, which return a failed `"use cache"` read as a value and keep that failure out of the cache |
 | `@publira/utils/image-loader` | `imageServerLoader`, the custom loader that lets `next/image` use the server's image routes (Manael) for conversion and resizing |
 | `@publira/utils/resolved-locale` | The helper a cookie console's `proxy.ts` publishes its server-resolved display locale to the browser with |
+| `@publira/utils/suspended-tenant` | The `503` page a `proxy.ts` answers a suspended tenant's every path with, and the language it is written in |
 | `@publira/utils/health` | The `/livez` and `/readyz` handlers. Node-only, so it is deliberately outside the barrel |
 | `@publira/utils/tenant-origin` | `tenantOrigin`, the absolute origin of a tenant host: the scheme from `PUBLIRA_TENANT_URL_SCHEME`, and the host, including any saved port, as given |
 
