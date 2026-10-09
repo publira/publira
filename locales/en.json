@@ -2827,7 +2827,8 @@
           "save_failed": "Could not save the retention periods. Please try again later.",
           "load_error_hint": "Saving now would overwrite the stored periods, so reload the page before changing them.",
           "validation": {
-            "days_invalid": "Enter a whole number of days from 1 through 36500 for {$setting}."
+            "days_invalid": "Enter a whole number of days from 1 through 36500 for {$setting}.",
+            "content_event_days_invalid": "Enter a whole number of days from 30 through 36500 for {$setting}. Recommendations and statistics are built from content events, so they are kept for at least 30 days."
           },
           "withdrawn_comment_legend": "Withdrawn comments",
           "content_event_legend": "Content events",
@@ -4631,6 +4632,7 @@
         "weekly_ranking_label": "Weekly ranking snapshots (days)",
         "withdrawn_comment_label": "Withdrawn comments (days)",
         "days_invalid": "Enter a whole number of days from 1 through 36500 for {$setting}.",
+        "content_event_days_invalid": "Enter a whole number of days from 30 through 36500 for {$setting}. Recommendations and statistics are built from content events, so they are kept for at least 30 days.",
         "save": "Save retention defaults",
         "saved": "Retention defaults saved."
       }

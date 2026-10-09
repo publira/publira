@@ -2,6 +2,8 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { describe, expect, it } from "vitest";
 
 import {
+  retentionDefaultsFormFields,
+  retentionDefaultsFormSchema,
   securityPolicyFormFields,
   securityPolicyFormSchema,
 } from "./form-schemas";
@@ -133,5 +135,49 @@ describe("securityPolicyFormSchema", () => {
     expect(result.error?.issues.map((issue) => issue.message)).toContain(
       "Enter an http or https URL for the disposable email domain list, or leave it empty."
     );
+  });
+});
+
+const retentionValues = {
+  content_event_days: "90",
+  daily_ranking_snapshot_days: "90",
+  revision: "3",
+  weekly_ranking_snapshot_days: "400",
+  withdrawn_comment_days: "180",
+};
+
+const parseRetention = async (fields: Record<string, string>) => {
+  const data = new FormData();
+  for (const [name, value] of Object.entries({
+    ...retentionValues,
+    ...fields,
+  })) {
+    data.set(name, value);
+  }
+  const schema = await retentionDefaultsFormSchema("en");
+  return schema.safeParse(toFormDataInput(data, retentionDefaultsFormFields));
+};
+
+describe("retentionDefaultsFormSchema", () => {
+  it("accepts a content-event period at the lower bound", async () => {
+    const result = await parseRetention({ content_event_days: "30" });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toMatchObject({ contentEventDays: 30 });
+  });
+
+  it("refuses a content-event period below the lower bound and names it", async () => {
+    const result = await parseRetention({ content_event_days: "29" });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.message)).toEqual([
+      "Enter a whole number of days from 30 through 36500 for Content events (days). Recommendations and statistics are built from content events, so they are kept for at least 30 days.",
+    ]);
+  });
+
+  it("keeps a lower bound of one day for the other periods", async () => {
+    const result = await parseRetention({ withdrawn_comment_days: "1" });
+
+    expect(result.success).toBe(true);
   });
 });

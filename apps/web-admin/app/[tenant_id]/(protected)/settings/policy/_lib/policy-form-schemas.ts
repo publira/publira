@@ -9,6 +9,7 @@ import {
   MAX_COMMUNITY_LIMIT,
   MAX_DUPLICATE_COMMENT_WINDOW_MINUTES,
   MAX_RETENTION_DAYS,
+  MIN_CONTENT_EVENT_DAYS,
   MIN_POLICY_VALUE,
 } from "#lib/tenant-policy-shared";
 import type { TenantRetentionOverrides } from "#lib/tenant-retention-settings";
@@ -297,8 +298,14 @@ export const retentionSettingsFormSchema = async (
 
   return z
     .object({
-      contentEventDays: days(
-        t("admin.settings.policy.retention.content_event_legend")
+      contentEventDays: optionalBoundedIntFormSchema(
+        t(
+          "admin.settings.policy.retention.validation.content_event_days_invalid",
+          {
+            setting: t("admin.settings.policy.retention.content_event_legend"),
+          }
+        ),
+        { max: MAX_RETENTION_DAYS, min: MIN_CONTENT_EVENT_DAYS }
       ),
       dailyRankingSnapshotDays: days(
         t("admin.settings.policy.retention.daily_ranking_legend")

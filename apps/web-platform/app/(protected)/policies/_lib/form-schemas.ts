@@ -48,6 +48,9 @@ const fitsListUrlBytes = (value: string): boolean =>
 /** Mirrors `retention.MaxDays`. */
 const MAX_RETENTION_DAYS = 36_500;
 
+/** Mirrors `retention.MinContentEventDays`. */
+export const MIN_CONTENT_EVENT_DAYS = 30;
+
 type Translate = Awaited<ReturnType<typeof getMessagesFor>>;
 
 const limitSchema = (t: Translate, setting: string) =>
@@ -339,7 +342,12 @@ export const retentionDefaultsFormSchema = async (locale: Locale) => {
     );
 
   return z.object({
-    contentEventDays: days(t("platform.policy.retention.content_event_label")),
+    contentEventDays: boundedIntFormSchema(
+      t("platform.policy.retention.content_event_days_invalid", {
+        setting: t("platform.policy.retention.content_event_label"),
+      }),
+      { max: MAX_RETENTION_DAYS, min: MIN_CONTENT_EVENT_DAYS }
+    ),
     dailyRankingSnapshotDays: days(
       t("platform.policy.retention.daily_ranking_label")
     ),

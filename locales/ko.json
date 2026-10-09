@@ -2827,7 +2827,8 @@
           "save_failed": "보존 기간을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
           "load_error_hint": "지금 저장하면 저장된 기간을 덮어쓰게 됩니다. 변경하기 전에 페이지를 새로 고쳐 주세요.",
           "validation": {
-            "days_invalid": "{$setting}에는 1부터 36500까지의 일수를 정수로 입력해 주세요."
+            "days_invalid": "{$setting}에는 1부터 36500까지의 일수를 정수로 입력해 주세요.",
+            "content_event_days_invalid": "{$setting}에는 30부터 36500까지의 일수를 정수로 입력해 주세요. 추천과 통계가 이 이벤트로 만들어지므로 30일 이상 보관합니다."
           },
           "withdrawn_comment_legend": "철회된 댓글",
           "content_event_legend": "콘텐츠 이벤트",
@@ -4631,6 +4632,7 @@
         "weekly_ranking_label": "주간 랭킹 스냅샷(일)",
         "withdrawn_comment_label": "철회된 댓글(일)",
         "days_invalid": "{$setting}에는 1부터 36500까지의 일수를 정수로 입력하세요.",
+        "content_event_days_invalid": "{$setting}에는 30부터 36500까지의 일수를 정수로 입력해 주세요. 추천과 통계가 이 이벤트로 만들어지므로 30일 이상 보관합니다.",
         "save": "보존 기간 기본값 저장",
         "saved": "보존 기간 기본값을 저장했습니다."
       }
