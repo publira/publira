@@ -24,6 +24,35 @@ export const EPISODE_PAGES_UPLOAD_PATH = "/api/v1/episode-pages";
 export const EPISODE_PAGES_UPLOAD_MAX_BYTES = 256 * 1024 * 1024;
 
 /**
+ * Where the episode edit screen sends the image that replaces one page. It
+ * sits under {@link EPISODE_PAGES_UPLOAD_PATH}, which `proxy.ts` leaves out
+ * with everything below it, for the same reason: one page may be twice what a
+ * Server Action body is allowed to carry.
+ */
+export const EPISODE_PAGE_REPLACE_PATH = `${EPISODE_PAGES_UPLOAD_PATH}/replace`;
+
+/**
+ * The largest image one page may be, which publira server holds every upload
+ * to (`imageproc.MaxUploadBytes`). The replacement refuses a larger one before
+ * it is sent, and the screen's help text states it as 20MB.
+ */
+export const EPISODE_PAGE_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
+
+/**
+ * The image formats a page may be in: what publira server decodes, and refuses
+ * any other image for.
+ */
+export const EPISODE_PAGE_IMAGE_ACCEPT =
+  "image/jpeg,image/png,image/gif,image/webp";
+
+/**
+ * The largest request body the replacement takes: one image, and room for the
+ * multipart framing and the two ids beside it.
+ */
+export const EPISODE_PAGE_REPLACE_MAX_BYTES =
+  EPISODE_PAGE_IMAGE_MAX_BYTES + 64 * 1024;
+
+/**
  * What the upload answers with. `location` is set when the session was
  * rejected and names the login page to go to, which a `fetch` cannot be
  * redirected to without posting the files there again.

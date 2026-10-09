@@ -1,69 +1,31 @@
 import type { Locale } from "@publira/i18n";
-import { getTenantDomainCandidates } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { revalidateTag } from "next/cache";
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getAdminCurrentUser, isTenantEditorRole } from "#lib/admin-auth";
-import { buildLoginPath, isUnauthenticatedError } from "#lib/admin-auth-shared";
-import { assertSameOrigin } from "#lib/csrf";
+import { isUnauthenticatedError } from "#lib/admin-auth-shared";
 import {
   episodeCacheTag,
   episodesCacheTag,
   uploadEpisodePages,
 } from "#lib/episode";
 import { EPISODE_PAGES_UPLOAD_MAX_BYTES } from "#lib/episode-pages-upload";
-import type { EpisodePagesUploadResponse } from "#lib/episode-pages-upload";
 import {
   fileListFormSchema,
   optionalFileFormSchema,
   optionalRecordId,
   requiredRecordId,
 } from "#lib/form-schemas";
-import { getLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
 import type { AdminMessageAccessor } from "#lib/messages";
-import { resolveTenantRouting } from "#lib/tenant";
 
-const respond = (body: EpisodePagesUploadResponse, status: number) =>
-  NextResponse.json(body, {
-    headers: { "Cache-Control": "private, no-store" },
-    status,
-  });
-
-const refuse = (message: string, status: number) =>
-  respond({ message, ok: false }, status);
-
-/**
- * The login page for a rejected session, coming back to the screen the upload
- * was sent from. The proxy records that path for a page, but this route is
- * outside the proxy, so it is read from the `Referer` the same-origin check has
- * already held to this host.
- */
-const signInAgain = (request: NextRequest, t: AdminMessageAccessor) => {
-  let returnTo: string | null = null;
-  const referer = request.headers.get("referer");
-  if (referer) {
-    try {
-      const url = new URL(referer);
-      returnTo = `${url.pathname}${url.search}`;
-    } catch {
-      returnTo = null;
-    }
-  }
-
-  return respond(
-    {
-      location: buildLoginPath(returnTo, { revoked: true }),
-      message: t("errors.rpc.unauthenticated"),
-      ok: false,
-    },
-    401
-  );
-};
+import {
+  readPageUploadForm,
+  refuse,
+  respond,
+  signInAgain,
+} from "./_lib/page-upload-request";
 
 const uploadFormSchema = (t: AdminMessageAccessor) =>
   z.object({
@@ -149,54 +111,14 @@ const readUpload = (
  * tags, and the screen refreshes itself.
  */
 export const POST = async (request: NextRequest) => {
-  await assertSameOrigin();
-
-  let tenantId: string | null;
-  try {
-    ({ tenantId } = await resolveTenantRouting(
-      getTenantDomainCandidates(request.headers)
-    ));
-  } catch {
-    return new NextResponse("Service Unavailable", {
-      headers: { "Retry-After": "30" },
-      status: 503,
-    });
+  const form = await readPageUploadForm(request, {
+    maxBytes: EPISODE_PAGES_UPLOAD_MAX_BYTES,
+    tooLarge: (t) => t("admin.series.episodes.validation.upload_too_large"),
+  });
+  if ("response" in form) {
+    return form.response;
   }
-  if (!tenantId) {
-    return new NextResponse("Not Found", { status: 404 });
-  }
-
-  const [locale, operator] = await Promise.all([
-    getLocale(tenantId),
-    getAdminCurrentUser(tenantId),
-  ]);
-  const t = await getMessagesFor(locale);
-
-  if (!operator.ok) {
-    return operator.requiresSignIn
-      ? signInAgain(request, t)
-      : refuse(t("errors.rpc.forbidden"), 403);
-  }
-  if (!isTenantEditorRole(operator.user.role)) {
-    return refuse(t("errors.rpc.forbidden"), 403);
-  }
-
-  // A browser always declares the length of a form it sends, and Node holds
-  // the body to it, so the length is the size of what would be read.
-  const contentLength = Number(request.headers.get("content-length") ?? "");
-  if (!Number.isSafeInteger(contentLength) || contentLength <= 0) {
-    return refuse(t("admin.series.episodes.upload_failed"), 411);
-  }
-  if (contentLength > EPISODE_PAGES_UPLOAD_MAX_BYTES) {
-    return refuse(t("admin.series.episodes.validation.upload_too_large"), 413);
-  }
-
-  let formData: FormData;
-  try {
-    formData = await request.formData();
-  } catch {
-    return refuse(t("admin.series.episodes.upload_failed"), 400);
-  }
+  const { formData, locale, t, tenantId } = form;
 
   const upload = readUpload(formData, tenantId, t, locale);
   if ("refusal" in upload) {

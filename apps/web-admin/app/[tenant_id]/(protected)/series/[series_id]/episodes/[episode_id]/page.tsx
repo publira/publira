@@ -63,15 +63,18 @@ import { EpisodePagesForm } from "./_components/episode-pages-form";
 import { EpisodePurchaseAvailabilityForm } from "./_components/episode-purchase-availability-form";
 import { EpisodeReadingLayoutForm } from "./_components/episode-reading-layout-form";
 import { EpisodeScheduleForm } from "./_components/episode-schedule-form";
+import { EpisodeTitleForm } from "./_components/episode-title-form";
 import {
   createEpisodeFreeWindowAction,
   deleteEpisodeFreeWindowAction,
+  deleteEpisodeImageAction,
   reorderEpisodeImagesAction,
   updateEpisodeAvailabilityAction,
   updateEpisodeLayoutAction,
   updateEpisodePurchaseAvailabilityAction,
   replaceEpisodeCreditsAction,
   updateEpisodeScheduleAction,
+  updateEpisodeTitleAction,
 } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -180,6 +183,32 @@ const EditEpisodeActions = async ({ params }: EditEpisodeSectionProps) => {
         </LinkButton>
       </TenantEditorOnly>
     </div>
+  );
+};
+
+const EpisodeTitleSection = async ({ params }: EditEpisodeSectionProps) => {
+  const context = await resolveEditEpisodeContext(params);
+  const episodeResult = await loadEpisode(context);
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={<Message message="admin.series.episodes.rename.error" />}
+      />
+    );
+  }
+
+  return (
+    <EpisodeTitleForm
+      action={updateEpisodeTitleAction}
+      episodeId={episodeResult.episode.id}
+      episodePublicId={context.episodeId}
+      initialTitle={episodeResult.episode.title}
+      key={`${context.episodeId}:title:${episodeResult.episode.title}`}
+      seriesPublicId={context.seriesId}
+      tenantId={context.tenantId}
+    />
   );
 };
 
@@ -472,6 +501,7 @@ const EpisodeImageList = async ({ params }: EditEpisodeSectionProps) => {
   return (
     <EpisodeImagesSortableGrid
       canEdit={canEdit}
+      deleteAction={deleteEpisodeImageAction}
       episodeId={episodeResult.episode.id}
       episodePublicId={context.episodeId}
       images={imagesResult.images}
@@ -565,6 +595,10 @@ const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
     <AdminPageContent>
       <FlashToast message="admin.series.episodes.created" />
       <FlashToast
+        keyName="title_updated"
+        message="admin.series.episodes.rename.updated"
+      />
+      <FlashToast
         keyName="schedule_updated"
         message="admin.series.episodes.schedule_updated"
       />
@@ -600,6 +634,9 @@ const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
       <Suspense fallback={<EditEpisodeSectionsSkeleton />}>
         <TenantEditorFieldset>
           <div className="grid gap-6">
+            <Suspense fallback={<Skeleton className="h-40" />}>
+              <EpisodeTitleSection params={params} />
+            </Suspense>
             <Suspense fallback={<Skeleton className="h-40" />}>
               <EpisodeScheduleSection params={params} />
             </Suspense>

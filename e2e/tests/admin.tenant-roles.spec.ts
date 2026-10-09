@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 import { signInAsAdmin, signInAsSeedAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
 import { SEED_ADMIN } from "../src/scenarios/admin-publish";
+import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import {
   TENANT_ROLES_AUDITOR,
   TENANT_ROLES_EDITOR,
@@ -112,6 +113,28 @@ test.describe("tenant roles in the console", () => {
     await expect(
       page.getByRole("button", { name: "Update series" })
     ).toBeDisabled();
+
+    // An episode shows its title closed with the rest of its fields, and its
+    // pages with nothing to move, replace, or delete one by.
+    await page.goto(
+      adminUrl(
+        `/series/${SEED_TENANT.series.publicId}/episodes/${SEED_TENANT.series.freeEpisodeId}`
+      )
+    );
+    await expect(page.getByText(EDITOR_ONLY_NOTICE)).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Title" })).toBeDisabled();
+    const episodePages = page.getByRole("list", {
+      exact: true,
+      name: "Registered page images",
+    });
+    await expect(
+      episodePages.getByRole("img", { exact: true, name: "Page 1" })
+    ).toBeVisible();
+    await expect(
+      episodePages.getByRole("button", {
+        name: /^(?:Reorder|Replace|Delete) page /u,
+      })
+    ).toHaveCount(0);
 
     // A screen whose whole purpose is to write is not there at all.
     await expectNotFound(page, "/series/new");

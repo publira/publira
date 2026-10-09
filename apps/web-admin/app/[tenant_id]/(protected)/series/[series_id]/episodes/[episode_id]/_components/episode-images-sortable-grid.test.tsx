@@ -57,6 +57,7 @@ const renderGrid = (canEdit: boolean) =>
     <AdminLocaleTestProvider locale="en">
       <EpisodeImagesSortableGrid
         canEdit={canEdit}
+        deleteAction={vi.fn()}
         episodeId="EPISODE001-ID"
         episodePublicId="EPISODE001"
         images={images}
@@ -71,10 +72,12 @@ afterEach(() => {
 });
 
 describe("EpisodeImagesSortableGrid", () => {
-  it("gives an editor a grip to move each page by", () => {
+  it("gives an editor a grip to move each page by, and a way to replace or delete it", () => {
     renderGrid(true);
 
     expect(screen.getByRole("button", { name: "Reorder page 1" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Replace page 1" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete page 1" })).toBeTruthy();
   });
 
   it("shows an auditor the pages with nothing to move them by", () => {

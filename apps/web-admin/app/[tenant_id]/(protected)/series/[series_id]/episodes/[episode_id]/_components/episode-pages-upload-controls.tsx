@@ -4,19 +4,19 @@ import {
   ActionForm,
   useActionFormSettled,
 } from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Input } from "@publira/ui-components/input";
-import { useRouter } from "next/navigation";
 import { createContext, use, useMemo, useRef, useState } from "react";
 import type { DragEvent, ReactNode, RefObject } from "react";
 
 import { useClientMessages } from "#components/client-message";
 import {
+  EPISODE_PAGE_IMAGE_ACCEPT,
   EPISODE_PAGES_UPLOAD_MAX_BYTES,
   EPISODE_PAGES_UPLOAD_PATH,
 } from "#lib/episode-pages-upload";
-import type { EpisodePagesUploadResponse } from "#lib/episode-pages-upload";
+
+import { usePageUploadAction } from "./use-page-upload-action";
 
 type EpisodePagesUploadMode = "epub" | "pages" | "zip";
 
@@ -30,9 +30,8 @@ const FILE_INPUT: Record<
     multiple: false,
     name: "archive",
   },
-  // The formats publira server decodes; any other image is refused there.
   pages: {
-    accept: "image/jpeg,image/png,image/gif,image/webp",
+    accept: EPISODE_PAGE_IMAGE_ACCEPT,
     multiple: true,
     name: "pages",
   },
@@ -63,44 +62,6 @@ const useEpisodePagesUpload = () => {
 const toFileNames = (files: FileList | null) =>
   files ? [...files].map((file) => file.name) : [];
 
-const readUploadResponse = async (
-  response: Response
-): Promise<EpisodePagesUploadResponse | null> => {
-  try {
-    return (await response.json()) as EpisodePagesUploadResponse;
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Settles once the browser is online: at once when it already says so, or on
- * its `online` event.
- *
- * An upload started offline waits here instead of failing, as
- * `experimental.useOffline` holds a Server Action — which a `fetch` of our own
- * is outside of. Only the wait before sending is ours to take: adding pages is
- * not idempotent, and a `fetch` that rejects after it was sent may have
- * reached the server all the same, so a send is never repeated.
- */
-const untilOnline = (): Promise<"online"> => {
-  const { promise, resolve } = Promise.withResolvers<"online">();
-  if (navigator.onLine) {
-    resolve("online");
-  } else {
-    window.addEventListener("online", () => resolve("online"), {
-      once: true,
-    });
-  }
-  return promise;
-};
-
-const submittedBytes = (formData: FormData) =>
-  [...formData.values()].reduce(
-    (total, value) => total + (value instanceof File ? value.size : 0),
-    0
-  );
-
 /**
  * The form the pages are added through. It posts to the upload route rather
  * than to a Server Action, whose body is capped well below a whole episode
@@ -113,58 +74,13 @@ export const EpisodePagesUploadForm = ({
   children: ReactNode;
 }) => {
   const t = useClientMessages();
-  const router = useRouter();
-
-  const upload = async (
-    _prevState: FormActionState,
-    formData: FormData
-  ): Promise<FormActionState> => {
-    const tooLarge = {
-      message: t("admin.series.episodes.validation.upload_too_large"),
-      ok: false,
-    };
-    // Refused here so a submission the route would refuse is not sent first.
-    if (submittedBytes(formData) > EPISODE_PAGES_UPLOAD_MAX_BYTES) {
-      return tooLarge;
-    }
-
-    await untilOnline();
-    let response: Response;
-    try {
-      response = await fetch(EPISODE_PAGES_UPLOAD_PATH, {
-        body: formData,
-        method: "POST",
-      });
-    } catch {
-      // The pages may have been added before the connection went, so the list
-      // is read again for the operator to check before sending them twice.
-      router.refresh();
-      return {
-        message: t("admin.series.episodes.upload_interrupted"),
-        ok: false,
-      };
-    }
-
-    // A proxy in front with a lower limit than the route answers this itself,
-    // in a body of its own.
-    if (response.status === 413) {
-      return tooLarge;
-    }
-    const result = await readUploadResponse(response);
-    if (!result) {
-      return {
-        message: t("admin.series.episodes.upload_failed"),
-        ok: false,
-      };
-    }
-    if (result.location) {
-      router.push(result.location);
-    } else if (result.ok) {
-      router.refresh();
-    }
-
-    return { message: result.message, ok: result.ok };
-  };
+  const upload = usePageUploadAction({
+    failed: t("admin.series.episodes.upload_failed"),
+    interrupted: t("admin.series.episodes.upload_interrupted"),
+    maxBytes: EPISODE_PAGES_UPLOAD_MAX_BYTES,
+    path: EPISODE_PAGES_UPLOAD_PATH,
+    tooLarge: t("admin.series.episodes.validation.upload_too_large"),
+  });
 
   return (
     <ActionForm action={upload} className="grid gap-4">

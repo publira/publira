@@ -1,6 +1,7 @@
 "use client";
 
 import type { DragEndEvent } from "@dnd-kit/react";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { useToastManager } from "@publira/ui-components/toast";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -16,12 +17,20 @@ import {
 import type { EpisodeImageItem } from "#lib/episode";
 import { useTenantId } from "#lib/use-tenant-id";
 
+import { EpisodeImageDeleteButton } from "./episode-image-delete-button";
+import { EpisodeImageReplaceDialog } from "./episode-image-replace-dialog";
+
 interface EpisodeImagesSortableGridProps {
   /**
-   * Whether the operator may reorder the pages. Without it the grid shows them
-   * in their order with no grip to move one by.
+   * Whether the operator may change the pages. Without it the grid shows them
+   * in their order with no grip to move one by, and nothing to replace or
+   * delete one with.
    */
   canEdit: boolean;
+  deleteAction: (
+    prevState: FormActionState,
+    formData: FormData
+  ) => Promise<FormActionState>;
   seriesPublicId: string;
   episodeId: string;
   episodePublicId: string;
@@ -35,6 +44,7 @@ const imageId = (image: EpisodeImageItem): string => image.id;
 
 export const EpisodeImagesSortableGrid = ({
   canEdit,
+  deleteAction,
   seriesPublicId,
   episodeId,
   episodePublicId,
@@ -159,6 +169,21 @@ export const EpisodeImagesSortableGrid = ({
               ) : null}
             </figcaption>
           </figure>
+          {canEdit ? (
+            <div className="flex flex-wrap gap-2">
+              <EpisodeImageReplaceDialog
+                episodeId={episodeId}
+                imageId={image.id}
+                position={index + 1}
+              />
+              <EpisodeImageDeleteButton
+                action={deleteAction}
+                episodeId={episodeId}
+                imageId={image.id}
+                position={index + 1}
+              />
+            </div>
+          ) : null}
         </SortableItem>
       ))}
     </SortableList>

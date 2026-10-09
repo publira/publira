@@ -1,0 +1,102 @@
+import {
+  ActionForm,
+  ActionFormFieldset,
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import type { FormActionState } from "@publira/ui-components/action-form";
+import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import { Input } from "@publira/ui-components/input";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
+import {
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
+} from "#components/admin-page";
+import { Message } from "#components/message";
+
+interface EpisodeTitleFormProps {
+  action: (
+    prevState: FormActionState,
+    formData: FormData
+  ) => Promise<FormActionState>;
+  episodeId: string;
+  episodePublicId: string;
+  /**
+   * The title the episode holds. Seeded once per mount: the page keys this
+   * form by it, so a saved change remounts it.
+   */
+  initialTitle: string;
+  seriesPublicId: string;
+  tenantId: string;
+}
+
+export const EpisodeTitleForm = ({
+  action,
+  episodeId,
+  episodePublicId,
+  initialTitle,
+  seriesPublicId,
+  tenantId,
+}: EpisodeTitleFormProps) => (
+  <AdminSection>
+    <AdminSectionHeader>
+      <AdminSectionHeading>
+        <AdminSectionTitle>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="admin.series.episodes.rename.title" />
+          </Suspense>
+        </AdminSectionTitle>
+        <AdminSectionDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+            <Message message="admin.series.episodes.rename.description" />
+          </Suspense>
+        </AdminSectionDescription>
+      </AdminSectionHeading>
+    </AdminSectionHeader>
+    <ActionForm action={action} className="grid gap-4">
+      <input name="tenant_id" type="hidden" value={tenantId} />
+      <input name="series_public_id" type="hidden" value={seriesPublicId} />
+      <input name="episode_id" type="hidden" value={episodeId} />
+      <input name="episode_public_id" type="hidden" value={episodePublicId} />
+
+      <ActionFormFieldset>
+        <Field>
+          <FieldLabel required>
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="admin.series.episodes.form.title" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialTitle}
+              name="title"
+              required
+              type="text"
+            />
+          </FieldContent>
+        </Field>
+      </ActionFormFieldset>
+
+      <div className="mt-2 flex justify-end gap-2">
+        <ActionFormSubmit>
+          <ActionFormIdle>
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.series.episodes.rename.update" />
+            </Suspense>
+          </ActionFormIdle>
+          <ActionFormPending>
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.series.episodes.updating" />
+            </Suspense>
+          </ActionFormPending>
+        </ActionFormSubmit>
+      </div>
+    </ActionForm>
+  </AdminSection>
+);
