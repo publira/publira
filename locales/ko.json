@@ -4842,9 +4842,7 @@
       "suspend": "정지",
       "tenant_status": {
         "active": "가동 중",
-        "inactive": "비활성",
-        "suspended": "정지됨",
-        "trial": "체험"
+        "suspended": "정지됨"
       },
       "try_later": "잠시 후 다시 시도해 주세요. 계속 반복되면 오류 ID와 함께 관리자에게 연락해 주세요.",
       "unset": "미설정"
@@ -4932,7 +4930,7 @@
       "detail_metadata": "운영자 상세",
       "detail_title": "운영자: {$name}",
       "email_taken": "이 이메일 주소는 이미 등록되어 있습니다.",
-      "empty": "아직 등록된 운영자가 없습니다.",
+      "empty": "아직 등록된 운영자가 없습니다. '운영자 추가'에서 추가하세요.",
       "get_failed": "운영자 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "heading": "운영자 관리",
       "info_description": "운영자의 계정 정보와 현재 상태를 확인합니다.",
@@ -5087,7 +5085,7 @@
     },
     "tenants": {
       "add_member": "멤버 추가",
-      "add_member_description": "이메일 주소와 역할을 지정해 새 멤버를 초대합니다.",
+      "add_member_description": "이 테넌트에 계정이 있는 사용자에게 역할을 부여합니다. 초대 메일은 발송되지 않으며, 계정이 없는 주소는 추가할 수 없습니다. 이 경우 '테넌트 관리자 초대'에서 초대하세요.",
       "add_member_email": "추가할 사용자의 이메일 주소",
       "add_member_pending": "추가 중...",
       "add_member_submit": "멤버 추가",
@@ -5120,8 +5118,7 @@
       "columns_created": "생성일시",
       "columns_status": "상태",
       "columns_tenant": "테넌트",
-      "create_description": "이름과 도메인은 필수이며, 필요하면 기존 사용자를 초기 관리자로 연결할 수 있습니다.",
-      "create_draft": "임시 저장",
+      "create_description": "이름과 도메인은 필수입니다. 초기 관리자 이메일에 입력한 각 주소로 관리자 초대가 발송됩니다.",
       "create_failed": "테넌트를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "create_heading": "테넌트 생성",
       "create_title": "테넌트 생성",

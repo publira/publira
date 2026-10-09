@@ -2,7 +2,6 @@ import {
   ActionForm,
   ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Button } from "@publira/ui-components/button";
 import {
   Field,
   FieldContent,
@@ -111,11 +110,6 @@ export const CreateTenantForm = () => (
           <Message message="platform.common.create" />
         </Suspense>
       </ActionFormSubmit>
-      <Button type="button" variant="outline">
-        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <Message message="platform.tenants.create_draft" />
-        </Suspense>
-      </Button>
     </div>
   </ActionForm>
 );

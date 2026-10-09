@@ -4842,9 +4842,7 @@
       "suspend": "Suspend",
       "tenant_status": {
         "active": "Active",
-        "inactive": "Inactive",
-        "suspended": "Suspended",
-        "trial": "Trial"
+        "suspended": "Suspended"
       },
       "try_later": "Please try again later. If it keeps happening, contact an administrator with the error ID.",
       "unset": "Not set"
@@ -4932,7 +4930,7 @@
       "detail_metadata": "Operator",
       "detail_title": "Operator: {$name}",
       "email_taken": "This email address is already registered.",
-      "empty": "No operators have been added yet. Add one with the form on this page.",
+      "empty": "No operators have been added yet. Add one with Add operator.",
       "get_failed": "Could not load the operator. Please try again later.",
       "heading": "Operators",
       "info_description": "Account details and current status.",
@@ -5087,7 +5085,7 @@
     },
     "tenants": {
       "add_member": "Add member",
-      "add_member_description": "Invite a new member with an email address and role.",
+      "add_member_description": "Give a role to someone who already has an account on this tenant. No invitation is sent, and an address without an account is refused: invite it with Invite a tenant admin instead.",
       "add_member_email": "Email address to add",
       "add_member_pending": "Adding...",
       "add_member_submit": "Add member",
@@ -5120,8 +5118,7 @@
       "columns_created": "Created",
       "columns_status": "Status",
       "columns_tenant": "Tenant",
-      "create_description": "Name and domain are required. You can optionally attach existing users as initial admins.",
-      "create_draft": "Save draft",
+      "create_description": "Name and domain are required. Each address in Initial admin emails is sent an invitation to administer the tenant.",
       "create_failed": "Could not create the tenant. Please try again later.",
       "create_heading": "Create tenant",
       "create_title": "Create tenant",

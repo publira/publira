@@ -4842,9 +4842,7 @@
       "suspend": "暂停",
       "tenant_status": {
         "active": "运行中",
-        "inactive": "未启用",
-        "suspended": "已暂停",
-        "trial": "试用中"
+        "suspended": "已暂停"
       },
       "try_later": "请稍后再试。如果问题持续出现，请携带错误ID联系管理员。",
       "unset": "未设置"
@@ -4932,7 +4930,7 @@
       "detail_metadata": "运营人员",
       "detail_title": "运营人员：{$name}",
       "email_taken": "该邮箱地址已被注册。",
-      "empty": "尚未添加任何运营人员。",
+      "empty": "尚未添加任何运营人员。请通过“添加运营人员”进行添加。",
       "get_failed": "无法加载该运营人员。请稍后再试。",
       "heading": "运营人员",
       "info_description": "账户信息与当前状态。",
@@ -5087,7 +5085,7 @@
     },
     "tenants": {
       "add_member": "添加成员",
-      "add_member_description": "输入邮箱地址和角色，邀请新成员。",
+      "add_member_description": "为已在此租户拥有账号的用户分配角色。不会发送邀请邮件，没有账号的地址无法添加；请改用“邀请租户管理员”发出邀请。",
       "add_member_email": "要添加的邮箱地址",
       "add_member_pending": "正在添加…",
       "add_member_submit": "添加成员",
@@ -5120,8 +5118,7 @@
       "columns_created": "创建时间",
       "columns_status": "状态",
       "columns_tenant": "租户",
-      "create_description": "名称和域名为必填项。也可以选择将已有用户设为初始管理员。",
-      "create_draft": "保存草稿",
+      "create_description": "名称和域名为必填项。初始管理员邮箱中填写的每个地址都会收到管理员邀请。",
       "create_failed": "无法创建该租户。请稍后再试。",
       "create_heading": "创建租户",
       "create_title": "创建租户",

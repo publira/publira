@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildTenantsPath, parseTenantFilters } from "./search-params";
 
-const allowedStatuses = new Set(["active", "trial", "suspended"]);
+const allowedStatuses = new Set(["active", "suspended"]);
 
 describe("parseTenantFilters", () => {
   it("normalizes the page token and filters", () => {

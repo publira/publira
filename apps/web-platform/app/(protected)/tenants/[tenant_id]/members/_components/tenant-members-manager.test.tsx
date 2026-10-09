@@ -14,7 +14,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MessageProps } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
 import type { PlatformMessageAccessor } from "#lib/messages";
-import type { PlatformTenantMemberSummary } from "#lib/tenants";
+import type {
+  PlatformTenantAdminInvitation,
+  PlatformTenantMemberSummary,
+} from "#lib/tenants";
 
 import { TenantMembersManager } from "./tenant-members-manager";
 
@@ -59,10 +62,25 @@ const member: PlatformTenantMemberSummary = {
   userId: "01a0deb5-0000-7000-8000-00000000000b",
 };
 
-const renderManager = async () =>
+const invitation = (
+  status: string,
+  email: string
+): PlatformTenantAdminInvitation => ({
+  acceptedAt: "",
+  canceledAt: "",
+  createdAt: "2026-06-01T00:00:00Z",
+  email,
+  expiresAt: "2026-06-08T00:00:00Z",
+  id: `invitation-${status}`,
+  status,
+});
+
+const renderManager = async (
+  invitations: PlatformTenantAdminInvitation[] = []
+) =>
   render(
     await TenantMembersManager({
-      invitations: [],
+      invitations,
       locale: "en",
       members: [member],
       tenantId,
@@ -82,6 +100,18 @@ afterEach(() => {
 });
 
 const membersRow = () => screen.getByRole("row", { name: /Avery Editor/u });
+
+const invitationButtons = (email: string) => {
+  const row = screen.getByRole("row", { name: new RegExp(email, "u") });
+  return {
+    cancel: within(row).getByRole("button", { name: "Cancel" }),
+    resend: within(row).getByRole("button", { name: "Resend" }),
+  };
+};
+
+const isDisabled = (element: HTMLElement) =>
+  element.matches(":disabled") ||
+  element.getAttribute("aria-disabled") === "true";
 
 describe("TenantMembersManager", () => {
   it("closes the role dialog once the role is saved", async () => {
@@ -170,5 +200,39 @@ describe("TenantMembersManager", () => {
     expect(
       await within(membersRow()).findByText("Could not remove the member.")
     ).toBeTruthy();
+  });
+
+  it("resends a pending or an expired invitation, and cancels only a pending one", async () => {
+    await renderManager([
+      invitation("pending", "pending@tenant.example"),
+      invitation("expired", "expired@tenant.example"),
+      invitation("accepted", "accepted@tenant.example"),
+      invitation("canceled", "canceled@tenant.example"),
+    ]);
+
+    expect(isDisabled(invitationButtons("pending@tenant.example").resend)).toBe(
+      false
+    );
+    expect(isDisabled(invitationButtons("pending@tenant.example").cancel)).toBe(
+      false
+    );
+    expect(isDisabled(invitationButtons("expired@tenant.example").resend)).toBe(
+      false
+    );
+    expect(isDisabled(invitationButtons("expired@tenant.example").cancel)).toBe(
+      true
+    );
+    expect(
+      isDisabled(invitationButtons("accepted@tenant.example").resend)
+    ).toBe(true);
+    expect(
+      isDisabled(invitationButtons("accepted@tenant.example").cancel)
+    ).toBe(true);
+    expect(
+      isDisabled(invitationButtons("canceled@tenant.example").resend)
+    ).toBe(true);
+    expect(
+      isDisabled(invitationButtons("canceled@tenant.example").cancel)
+    ).toBe(true);
   });
 });

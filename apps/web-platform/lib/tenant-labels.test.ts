@@ -13,20 +13,10 @@ describe("getTenantStatusLabel", () => {
     await expect(getTenantStatusLabel("active", en)).resolves.toBe("Active");
   });
 
-  it("returns the inactive label for inactive", async () => {
-    await expect(getTenantStatusLabel("inactive", en)).resolves.toBe(
-      "Inactive"
-    );
-  });
-
   it("returns the suspended label for suspended", async () => {
     await expect(getTenantStatusLabel("suspended", en)).resolves.toBe(
       "Suspended"
     );
-  });
-
-  it("returns the trial label for trial", async () => {
-    await expect(getTenantStatusLabel("trial", en)).resolves.toBe("Trial");
   });
 
   it("returns unknown values unchanged", async () => {
@@ -49,14 +39,6 @@ describe("getTenantStatusTone", () => {
 
   it("suspended → destructive", () => {
     expect(getTenantStatusTone("suspended")).toBe("destructive");
-  });
-
-  it("inactive → info", () => {
-    expect(getTenantStatusTone("inactive")).toBe("info");
-  });
-
-  it("trial → info", () => {
-    expect(getTenantStatusTone("trial")).toBe("info");
   });
 
   it("returns info for unknown values", () => {

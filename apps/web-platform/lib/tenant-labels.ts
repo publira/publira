@@ -20,14 +20,8 @@ export const getTenantStatusLabel = async (
     case "active": {
       return t("platform.common.tenant_status.active");
     }
-    case "inactive": {
-      return t("platform.common.tenant_status.inactive");
-    }
     case "suspended": {
       return t("platform.common.tenant_status.suspended");
-    }
-    case "trial": {
-      return t("platform.common.tenant_status.trial");
     }
     default: {
       return status;
