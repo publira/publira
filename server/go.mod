@@ -20,7 +20,7 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/kaptinlin/messageformat-go v0.8.6
 	github.com/lib/pq v1.12.3
-	github.com/opensearch-project/opensearch-go/v5 v5.0.0
+	github.com/opensearch-project/opensearch-go/v5 v5.0.1
 	github.com/payjp/payjpv2-go v0.0.0-20261002044959-fd8a29251806
 	github.com/pquerna/otp v1.5.0
 	github.com/publira/epub v0.8.0
