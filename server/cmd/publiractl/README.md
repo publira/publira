@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a group of commands, or a command of its own: `db` applies the database migrations, creates the login roles every process connects as, reports the schema version, and seals every stored secret again with the primary encryption key, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `search` rebuilds the OpenSearch catalog index from the database, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a group of commands, or a command of its own: `db` applies the database migrations, creates the login roles every process connects as, reports the schema version, and seals every stored secret again with the primary encryption key, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `operator` lets a Platform Console operator who lost their two-step verification sign in again, `platform` saves the platform's default locale and the time zone new tenants start on, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `search` rebuilds the OpenSearch catalog index from the database, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
 
 ```bash
 task server:build
@@ -110,6 +110,25 @@ Environment variables:
 - `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the SMTP password, the secret access key, and the search engine's password. Required: set the values the servers run with.
 - `PUBLIRA_TENANT_URL_SCHEME`: the scheme of the tenant site and console URLs the summary prints. A value no URL can be built on stops the run before anything is saved. Set the value the servers run with.
+
+## operator
+
+Recovers a Platform Console operator's account where no operator can sign in to do it. The Platform Console has no equivalent: `PlatformAuthService.DisableMfa` removes only the signed-in operator's own factor, and asks for a code from it.
+
+```bash
+eval "$(task --silent dev-env:env)"
+go -C server run ./cmd/publiractl operator reset-mfa --email operator@example.com
+```
+
+| Command | RPC | What it does |
+| --- | --- | --- |
+| `operator reset-mfa` | — | Removes the authenticator, confirmed or only started, and every recovery code of an operator named by `--user` (public ID) or `--email`, so they sign in with their password alone; refused for an operator with none set up. Any operator may be named, a suspended one too |
+
+`operator reset-mfa` files `operator_mfa_reset` in `platform_audit_logs` under the `system` actor. A refused value names its flag on stderr and exits `1` with nothing written.
+
+Environment variables:
+
+- `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
 
 ## platform
 

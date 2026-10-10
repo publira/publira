@@ -14,9 +14,11 @@ import (
 	"connectrpc.com/connect/v2/connectproto"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
+	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mfa"
+	"github.com/publira/publira/server/internal/platformoperators"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
@@ -375,6 +377,65 @@ func TestDBOperatorMfaDisableRemovesTheFactorAndItsRecoveryCodes(t *testing.T) {
 	}
 	if resp := env.login(t, env.operator); resp.MfaChallenge != nil || resp.AccessToken.GetToken() == "" {
 		t.Fatalf("Login after disable = %v, want a session on the password alone", resp)
+	}
+}
+
+// resetMfaAsCommandLine removes the operator's factor the way `publiractl
+// operator reset-mfa` does, as publira_platform and with no code.
+func resetMfaAsCommandLine(t *testing.T, env *operatorMfaEnv) {
+	t.Helper()
+
+	ctx := context.Background()
+	tx, err := env.pg.OpenPlatformDB(t).BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("BeginTx: %v", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if _, err := platformoperators.ResetMFA(ctx, tx, slog.Default(), auditlog.SystemPlatformActor, platformoperators.ResetMFAParams{
+		UserPublicID: env.operator.PublicID,
+	}); err != nil {
+		t.Fatalf("ResetMFA: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("Commit: %v", err)
+	}
+}
+
+// An operator that lost the authenticator and every recovery code signs in
+// with the password alone once the factor is removed from the command line.
+func TestDBOperatorLoginTakesThePasswordAloneOnceTheCommandLineResetsTheFactor(t *testing.T) {
+	env := newOperatorMfaEnv(t)
+	env.enroll(t)
+	if login := env.login(t, env.operator); login.MfaChallenge == nil {
+		t.Fatal("Login asks for no second factor before the reset")
+	}
+
+	resetMfaAsCommandLine(t, env)
+
+	login := env.login(t, env.operator)
+	if login.MfaChallenge != nil {
+		t.Fatalf("mfa_challenge = %v, want none after the reset", login.MfaChallenge)
+	}
+	if login.AccessToken.GetToken() == "" {
+		t.Fatal("Login returned no access token after the reset")
+	}
+}
+
+// Where the platform requires the factor of every operator, the operator the
+// command line reset is asked to enroll again rather than let in.
+func TestDBOperatorLoginAsksForAnEnrollmentOnceTheCommandLineResetsARequiredFactor(t *testing.T) {
+	env := newOperatorMfaEnv(t)
+	env.enroll(t)
+	requireOperatorMfa(t, env.pg)
+
+	resetMfaAsCommandLine(t, env)
+
+	login := env.login(t, env.operator)
+	if login.AccessToken != nil {
+		t.Fatal("Login issued an access token to an operator that owes an enrollment")
+	}
+	if login.MfaChallenge.GetKind() != publirasplatformv1.MfaChallengeKind_MFA_CHALLENGE_KIND_ENROLL {
+		t.Fatalf("mfa challenge = %v, want an ENROLL challenge", login.MfaChallenge)
 	}
 }
 

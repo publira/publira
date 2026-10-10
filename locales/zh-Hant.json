@@ -4711,6 +4711,7 @@
         "operator_mfa_enrolled": "設定了兩步驟驗證",
         "operator_mfa_recovery_code_used": "使用復原碼登入",
         "operator_mfa_recovery_codes_regenerated": "重新產生了復原碼",
+        "operator_mfa_reset": "移除了營運人員的兩步驟驗證",
         "operator_mfa_verified": "登入時的兩步驟驗證",
         "operator_resumed": "恢復了營運人員",
         "operator_suspended": "暫停了營運人員",

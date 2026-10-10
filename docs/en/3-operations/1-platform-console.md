@@ -1,8 +1,8 @@
 ---
 title: The Platform Console and publiractl
-description: Choose between publiractl and the Platform Console, create the first operator, and manage the operators who sign in.
+description: Choose between publiractl and the Platform Console, create the first operator, manage the operators who sign in, and remove a two-step verification an operator lost.
 published: 2026-10-06
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 An install is managed from one of two places, and most tasks can be done from either. This page says how they differ, how the Platform Console gets its first operator, and how operators are added and given roles after that.
@@ -21,6 +21,7 @@ Both write through the same code, so a tenant created from one is the same as a 
 | A tenant's members and administrator invitations | Yes | Yes |
 | Creating a console account with a password, sending no mail | Yes | No |
 | Platform operators | No | Yes |
+| Removing an operator's lost two-step verification | Yes | No |
 | The platform's defaults, policies, and retention periods | Yes | Yes |
 | The readers of every tenant | No | Yes |
 | Reading the audit log | No | Yes |
@@ -110,3 +111,19 @@ The platform can require it of every operator, as [Security](./12-security.md#pl
 There is no form that changes your password while you are signed in. Sign out, choose **Forgot your password?** on the sign-in screen, and set a new one from the link you are mailed; the link is valid for 24 hours.
 
 ![The Platform Console's sign-in screen: Email address, Password, Sign in, and Forgot your password?](./platform-console-sign-in.png)
+
+### Lost two-step verification
+
+An operator who turned on two-step verification and has since lost both the authenticator and every recovery code cannot sign in to the Platform Console, and no other operator can remove it from their account there. Remove it with `publiractl`:
+
+```bash
+publiractl operator reset-mfa --email operator@example.com
+```
+
+`--user <public ID>` names the account instead of `--email`. The command removes the account's authenticator and every recovery code, and nothing else: its password, its role, and its status stay as they were. The operator then signs in with their password alone and sets two-step verification up again from **Account settings**. If the platform requires it of every operator, the sign-in asks them to set it up before it finishes.
+
+This is also the way back in when the operator who lost it is the install's only **Super admin**, since `publiractl` needs no account to run.
+
+Removing it leaves the account behind its password alone, which is what someone holding a stolen password would ask for. Before you run the command, confirm that the request comes from the operator, through a channel you already know is theirs rather than the one the request arrived on.
+
+The removal is recorded in the Platform Console's **Audit logs**, with **Command line** as the actor.

@@ -30,6 +30,7 @@ describe("AuditActionName", () => {
   });
 
   it.each([
+    ["operator_mfa_reset", "Removed an operator's two-step verification"],
     ["operator_updated", "Updated an operator"],
     ["tenant_suspended", "Suspended a tenant"],
     ["platform_email_settings_updated", "Updated SMTP settings"],
