@@ -286,6 +286,74 @@ func TestDBAdminRoyaltyStatementCutsTheMonthInTheTenantZone(t *testing.T) {
 	}
 }
 
+// A sale late on 31 March in UTC is early on 1 April in Tokyo. Whichever way
+// the tenant's zone changes after March is closed, the open April starts
+// where March ended, says so, and counts the sale only if March did not.
+func TestDBAdminRoyaltyMonthStartsWhereTheClosedMonthEndedAfterAZoneChange(t *testing.T) {
+	env := newAdminDBEnv(t)
+	cases := []struct {
+		name       string
+		prefix     string
+		closedIn   string
+		changedTo  string
+		marchGross int64
+		aprilGross int64
+		aprilStart string
+		aprilEnd   string
+	}{
+		{
+			name:       "Asia/Tokyo to UTC",
+			prefix:     "RZU",
+			closedIn:   "Asia/Tokyo",
+			changedTo:  "UTC",
+			aprilGross: 500,
+			aprilStart: "2026-03-31T15:00:00Z",
+			aprilEnd:   "2026-05-01T00:00:00Z",
+		},
+		{
+			name:       "UTC to Asia/Tokyo",
+			prefix:     "RZJ",
+			closedIn:   "UTC",
+			changedTo:  "Asia/Tokyo",
+			marchGross: 500,
+			aprilStart: "2026-04-01T00:00:00Z",
+			aprilEnd:   "2026-04-30T15:00:00Z",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := env.seedRoyaltyFixture(t, tc.prefix)
+			setZone := func(zone string) {
+				t.Helper()
+				if _, err := env.PG.DB.ExecContext(context.Background(), "UPDATE tenants SET timezone = $2 WHERE id = $1", f.admin.Tenant.ID, zone); err != nil {
+					t.Fatalf("set tenant time zone to %s: %v", zone, err)
+				}
+			}
+			setZone(tc.closedIn)
+			env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: time.Date(2026, time.March, 31, 20, 0, 0, 0, time.UTC)})
+
+			march := env.closeRoyalties(t, f.admin, "2026-03")
+			if march.Totals.Gross != tc.marchGross {
+				t.Fatalf("March gross = %d, want %d", march.Totals.Gross, tc.marchGross)
+			}
+
+			setZone(tc.changedTo)
+			preview := env.previewRoyalties(t, f.admin, "2026-04")
+			if preview.StartsAt != tc.aprilStart || preview.EndsAt != tc.aprilEnd || preview.TimeZone != tc.changedTo {
+				t.Fatalf("April's preview runs from %s to %s in %s, want %s to %s in %s",
+					preview.StartsAt, preview.EndsAt, preview.TimeZone, tc.aprilStart, tc.aprilEnd, tc.changedTo)
+			}
+			if preview.Totals.Gross != tc.aprilGross {
+				t.Fatalf("April's preview gross = %d, want %d", preview.Totals.Gross, tc.aprilGross)
+			}
+			april := env.closeRoyalties(t, f.admin, "2026-04")
+			if april.Totals.Gross != tc.aprilGross {
+				t.Fatalf("April's statement gross = %d, want %d", april.Totals.Gross, tc.aprilGross)
+			}
+		})
+	}
+}
+
 func TestDBAdminRoyaltyStatementLinesFollowTheCredits(t *testing.T) {
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYL")

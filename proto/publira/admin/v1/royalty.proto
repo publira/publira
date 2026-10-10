@@ -99,9 +99,17 @@ message PreviewRoyaltyStatementRequest {
 
 message PreviewRoyaltyStatementResponse {
   string period = 1;
+  // The tenant's current zone, which the month's own midnights are in.
   string time_zone = 2;
   RoyaltyStatementTotals totals = 3;
   repeated RoyaltyStatementLine lines = 4;
+  // RFC 3339 instants of the half-open range the month counts sales in. Each
+  // is the month's own midnight in time_zone unless the month next to it is
+  // closed: the month then starts where the statement before it ended and ends
+  // where the statement after it started, so that a zone changed since that
+  // close leaves no hour counted twice and none left out.
+  string starts_at = 5;
+  string ends_at = 6;
 }
 
 message CloseRoyaltyStatementRequest {

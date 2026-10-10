@@ -47,22 +47,32 @@ func FormatPeriod(period time.Time) string {
 
 // Month is one tenant's calendar month. Period is the first day of the month
 // at midnight UTC, as ParsePeriod returns it, and TimeZone is the tenant's
-// resolved IANA zone the month is cut in.
+// resolved IANA zone, which the month's own midnights are in.
 type Month struct {
 	TenantID uuid.UUID
 	Period   time.Time
 	TimeZone string
 }
 
-// bounds is the half-open range of instants the month covers.
-func (m Month) bounds() (start, end time.Time, err error) {
-	location, err := time.LoadLocation(m.TimeZone)
+// Bounds is the half-open range of instants a month counts sales in.
+type Bounds struct {
+	Start time.Time
+	End   time.Time
+}
+
+// bounds reads the range the month covers as the tenant's statements stand in
+// the transaction: its own midnights in TimeZone, except where a closed month
+// next to it already fixed the instant between the two.
+func (m Month) bounds(ctx context.Context, queries *dbmodels.Queries) (Bounds, error) {
+	row, err := queries.GetRoyaltyMonthBounds(ctx, dbmodels.GetRoyaltyMonthBoundsParams{
+		TenantID: m.TenantID,
+		Period:   m.Period,
+		TimeZone: m.TimeZone,
+	})
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("load time zone %q: %w", m.TimeZone, err)
+		return Bounds{}, fmt.Errorf("read month bounds: %w", err)
 	}
-	year, month, _ := m.Period.Date()
-	start = time.Date(year, month, 1, 0, 0, 0, 0, location)
-	return start, start.AddDate(0, 1, 0), nil
+	return Bounds{Start: row.StartsAt, End: row.EndsAt}, nil
 }
 
 // TxBeginner is a *sql.DB for a caller that bypasses row-level security, or
@@ -80,6 +90,7 @@ type Totals struct {
 
 // Computation is a month computed from the sales as they stand.
 type Computation struct {
+	Bounds Bounds
 	Totals Totals
 	Lines  []dbmodels.ListRoyaltyLinesForPeriodRow
 }
@@ -87,14 +98,6 @@ type Computation struct {
 // PreviewStatement computes a month that is not closed, exactly as closing it
 // at now would.
 func PreviewStatement(ctx context.Context, db TxBeginner, month Month, now time.Time) (Computation, error) {
-	start, _, err := month.bounds()
-	if err != nil {
-		return Computation{}, err
-	}
-	if now.Before(start) {
-		return Computation{}, ErrNotStarted
-	}
-
 	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})
 	if err != nil {
 		return Computation{}, err
@@ -111,7 +114,15 @@ func PreviewStatement(ctx context.Context, db TxBeginner, month Month, now time.
 		return Computation{}, fmt.Errorf("read statement: %w", err)
 	}
 
-	computation, err := compute(ctx, queries, month)
+	bounds, err := month.bounds(ctx, queries)
+	if err != nil {
+		return Computation{}, err
+	}
+	if now.Before(bounds.Start) {
+		return Computation{}, ErrNotStarted
+	}
+
+	computation, err := compute(ctx, queries, month.TenantID, bounds)
 	if err != nil {
 		return Computation{}, err
 	}
@@ -127,6 +138,14 @@ func PreviewStatement(ctx context.Context, db TxBeginner, month Month, now time.
 // A month is closed once. A second close fails with ErrAlreadyClosed on the
 // unique constraint rather than recomputing, which is also what settles a
 // manual and an automatic close of the same month racing each other.
+//
+// Two adjacent months closed at once are settled by the transaction's
+// isolation instead. Each resolves its bounds before the other's statement is
+// visible, so each would fall back to its own midnight, and the two midnights
+// differ when the closes were made in different zones — an automatic close
+// still on the old zone beside a manual one on the new. Serializable
+// isolation makes PostgreSQL roll one of them back, and running it again
+// reads the other's statement and starts or ends where it does.
 func CloseStatement(
 	ctx context.Context,
 	db TxBeginner,
@@ -135,24 +154,45 @@ func CloseStatement(
 	now time.Time,
 	record func(ctx context.Context, queries *dbmodels.Queries, statement dbmodels.RoyaltyStatement) error,
 ) (dbmodels.RoyaltyStatement, error) {
-	_, end, err := month.bounds()
-	if err != nil {
-		return dbmodels.RoyaltyStatement{}, err
+	for attempt := 1; ; attempt++ {
+		statement, err := closeStatementOnce(ctx, db, month, closedBy, now, record)
+		if !dberr.IsSerializationFailure(err) || attempt == maxCloseAttempts {
+			return statement, err
+		}
 	}
-	if now.Before(end) {
-		return dbmodels.RoyaltyStatement{}, ErrNotOver
-	}
+}
 
-	// Repeatable read keeps the lines and the totals on one snapshot, so a
-	// refund landing between the two reads cannot make them disagree.
-	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+// maxCloseAttempts bounds how often a close that keeps conflicting is run
+// again. Only a close of an adjacent month, or of the same one, conflicts with
+// it, so a second attempt already sees what the first could not.
+const maxCloseAttempts = 3
+
+func closeStatementOnce(
+	ctx context.Context,
+	db TxBeginner,
+	month Month,
+	closedBy uuid.NullUUID,
+	now time.Time,
+	record func(ctx context.Context, queries *dbmodels.Queries, statement dbmodels.RoyaltyStatement) error,
+) (dbmodels.RoyaltyStatement, error) {
+	// One snapshot keeps the bounds, the lines and the totals together, so a
+	// refund landing between the reads cannot make them disagree.
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return dbmodels.RoyaltyStatement{}, err
 	}
 	defer tx.Rollback() //nolint:errcheck
 
 	queries := dbmodels.New(tx)
-	computation, err := compute(ctx, queries, month)
+	bounds, err := month.bounds(ctx, queries)
+	if err != nil {
+		return dbmodels.RoyaltyStatement{}, err
+	}
+	if now.Before(bounds.End) {
+		return dbmodels.RoyaltyStatement{}, ErrNotOver
+	}
+
+	computation, err := compute(ctx, queries, month.TenantID, bounds)
 	if err != nil {
 		return dbmodels.RoyaltyStatement{}, err
 	}
@@ -162,6 +202,8 @@ func CloseStatement(
 		TenantID:       month.TenantID,
 		Period:         month.Period,
 		TimeZone:       month.TimeZone,
+		StartsAt:       bounds.Start,
+		EndsAt:         bounds.End,
 		ClosedByUserID: closedBy,
 		TotalGross:     computation.Totals.Gross,
 		TotalRefunded:  computation.Totals.Refunded,
@@ -199,19 +241,19 @@ func CloseStatement(
 	return statement, nil
 }
 
-func compute(ctx context.Context, queries *dbmodels.Queries, month Month) (Computation, error) {
+func compute(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID, bounds Bounds) (Computation, error) {
 	lines, err := queries.ListRoyaltyLinesForPeriod(ctx, dbmodels.ListRoyaltyLinesForPeriodParams{
-		TenantID: month.TenantID,
-		Period:   month.Period,
-		TimeZone: month.TimeZone,
+		TenantID: tenantID,
+		StartsAt: bounds.Start,
+		EndsAt:   bounds.End,
 	})
 	if err != nil {
 		return Computation{}, fmt.Errorf("compute statement lines: %w", err)
 	}
 	sales, err := queries.GetRoyaltySalesTotalsForPeriod(ctx, dbmodels.GetRoyaltySalesTotalsForPeriodParams{
-		TenantID: month.TenantID,
-		Period:   month.Period,
-		TimeZone: month.TimeZone,
+		TenantID: tenantID,
+		StartsAt: bounds.Start,
+		EndsAt:   bounds.End,
 	})
 	if err != nil {
 		return Computation{}, fmt.Errorf("total sales: %w", err)
@@ -221,7 +263,7 @@ func compute(ctx context.Context, queries *dbmodels.Queries, month Month) (Compu
 	for _, line := range lines {
 		totals.Payout += line.PayoutAmount
 	}
-	return Computation{Totals: totals, Lines: lines}, nil
+	return Computation{Bounds: bounds, Totals: totals, Lines: lines}, nil
 }
 
 // statementLine is one element of the JSON array InsertRoyaltyStatementLines

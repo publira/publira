@@ -22,6 +22,11 @@ const foreignKeyViolationCode = "23503"
 // that overlap on the same episode.
 const exclusionViolationCode = "23P01"
 
+// serializationFailureCode is the SQLSTATE PostgreSQL reports when it rolls
+// back a serializable transaction that could not be ordered with a concurrent
+// one, which is the transaction's cue to run again from the start.
+const serializationFailureCode = "40001"
+
 // IsUniqueViolation reports whether err is a unique constraint violation.
 func IsUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
@@ -40,6 +45,13 @@ func IsForeignKeyViolation(err error) bool {
 func IsExclusionViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == exclusionViolationCode
+}
+
+// IsSerializationFailure reports whether err is a serializable transaction
+// PostgreSQL rolled back for conflicting with a concurrent one.
+func IsSerializationFailure(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == serializationFailureCode
 }
 
 // UniqueViolationConstraint returns the name of the constraint err violated, or

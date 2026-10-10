@@ -430,10 +430,11 @@ func TestDBConfirmStorePurchaseKeepsASandboxPurchaseOffTheRoyaltyStatement(t *te
 	}
 	gross := func() int64 {
 		t.Helper()
+		month := time.Date(time.Now().UTC().Year(), time.Now().UTC().Month(), 1, 0, 0, 0, 0, time.UTC)
 		totals, err := dbmodels.New(env.pg.DB).GetRoyaltySalesTotalsForPeriod(context.Background(), dbmodels.GetRoyaltySalesTotalsForPeriodParams{
 			TenantID: env.tenant.ID,
-			Period:   time.Date(time.Now().UTC().Year(), time.Now().UTC().Month(), 1, 0, 0, 0, 0, time.UTC),
-			TimeZone: "UTC",
+			StartsAt: month,
+			EndsAt:   month.AddDate(0, 1, 0),
 		})
 		if err != nil {
 			t.Fatalf("GetRoyaltySalesTotalsForPeriod: %v", err)

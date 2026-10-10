@@ -692,11 +692,19 @@ func (x *PreviewRoyaltyStatementRequest) GetPeriod() string {
 }
 
 type PreviewRoyaltyStatementResponse struct {
-	state         protoimpl.MessageState  `protogen:"open.v1"`
-	Period        string                  `protobuf:"bytes,1,opt,name=period,proto3" json:"period,omitempty"`
-	TimeZone      string                  `protobuf:"bytes,2,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
-	Totals        *RoyaltyStatementTotals `protobuf:"bytes,3,opt,name=totals,proto3" json:"totals,omitempty"`
-	Lines         []*RoyaltyStatementLine `protobuf:"bytes,4,rep,name=lines,proto3" json:"lines,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Period string                 `protobuf:"bytes,1,opt,name=period,proto3" json:"period,omitempty"`
+	// The tenant's current zone, which the month's own midnights are in.
+	TimeZone string                  `protobuf:"bytes,2,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	Totals   *RoyaltyStatementTotals `protobuf:"bytes,3,opt,name=totals,proto3" json:"totals,omitempty"`
+	Lines    []*RoyaltyStatementLine `protobuf:"bytes,4,rep,name=lines,proto3" json:"lines,omitempty"`
+	// RFC 3339 instants of the half-open range the month counts sales in. Each
+	// is the month's own midnight in time_zone unless the month next to it is
+	// closed: the month then starts where the statement before it ended and ends
+	// where the statement after it started, so that a zone changed since that
+	// close leaves no hour counted twice and none left out.
+	StartsAt      string `protobuf:"bytes,5,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
+	EndsAt        string `protobuf:"bytes,6,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -757,6 +765,20 @@ func (x *PreviewRoyaltyStatementResponse) GetLines() []*RoyaltyStatementLine {
 		return x.Lines
 	}
 	return nil
+}
+
+func (x *PreviewRoyaltyStatementResponse) GetStartsAt() string {
+	if x != nil {
+		return x.StartsAt
+	}
+	return ""
+}
+
+func (x *PreviewRoyaltyStatementResponse) GetEndsAt() string {
+	if x != nil {
+		return x.EndsAt
+	}
+	return ""
 }
 
 type CloseRoyaltyStatementRequest struct {
@@ -1293,12 +1315,14 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\rpayout_amount\x18\x0e \x01(\x03R\fpayoutAmount\"q\n" +
 	"\x1ePreviewRoyaltyStatementRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
-	"\x06period\x18\x02 \x01(\tR\x06period\"\xd6\x01\n" +
+	"\x06period\x18\x02 \x01(\tR\x06period\"\x8c\x02\n" +
 	"\x1fPreviewRoyaltyStatementResponse\x12\x16\n" +
 	"\x06period\x18\x01 \x01(\tR\x06period\x12\x1b\n" +
 	"\ttime_zone\x18\x02 \x01(\tR\btimeZone\x12@\n" +
 	"\x06totals\x18\x03 \x01(\v2(.publira.admin.v1.RoyaltyStatementTotalsR\x06totals\x12<\n" +
-	"\x05lines\x18\x04 \x03(\v2&.publira.admin.v1.RoyaltyStatementLineR\x05lines\"o\n" +
+	"\x05lines\x18\x04 \x03(\v2&.publira.admin.v1.RoyaltyStatementLineR\x05lines\x12\x1b\n" +
+	"\tstarts_at\x18\x05 \x01(\tR\bstartsAt\x12\x17\n" +
+	"\aends_at\x18\x06 \x01(\tR\x06endsAt\"o\n" +
 	"\x1cCloseRoyaltyStatementRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06period\x18\x02 \x01(\tR\x06period\"a\n" +

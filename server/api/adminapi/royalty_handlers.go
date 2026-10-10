@@ -134,7 +134,8 @@ func (s *adminServer) UpdateRoyaltyConfig(
 }
 
 // royaltyMonth resolves the requested period of the tenant in the tenant's
-// current zone.
+// current zone. Where the month starts and ends is settled inside the preview
+// or the close, against the statements of the months next to it.
 func (s *adminServer) royaltyMonth(ctx context.Context, tenant dbmodels.Tenant, rawPeriod string) (royalties.Month, error) {
 	period, err := royalties.ParsePeriod(rawPeriod)
 	if err != nil {
@@ -209,6 +210,8 @@ func (s *adminServer) PreviewRoyaltyStatement(
 	return &publiraadminv1.PreviewRoyaltyStatementResponse{
 		Period:   royalties.FormatPeriod(month.Period),
 		TimeZone: month.TimeZone,
+		StartsAt: computation.Bounds.Start.UTC().Format(time.RFC3339),
+		EndsAt:   computation.Bounds.End.UTC().Format(time.RFC3339),
 		Totals: &publiraadminv1.RoyaltyStatementTotals{
 			Gross:    computation.Totals.Gross,
 			Refunded: computation.Totals.Refunded,
@@ -550,6 +553,8 @@ func royaltyStatementOf(row dbmodels.ListRoyaltyStatementsDescRow) dbmodels.Roya
 		TenantID:       row.TenantID,
 		Period:         row.Period,
 		TimeZone:       row.TimeZone,
+		StartsAt:       row.StartsAt,
+		EndsAt:         row.EndsAt,
 		ClosedAt:       row.ClosedAt,
 		ClosedByUserID: row.ClosedByUserID,
 		TotalGross:     row.TotalGross,

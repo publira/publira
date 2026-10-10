@@ -2,7 +2,7 @@
 title: Reports and royalties
 description: Read the Dashboard and Read-through, close a month of royalties into a statement for each Author, and export it as CSV.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 Three screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands, **Read-through** under **Reports** shows how far members read, and **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
@@ -17,7 +17,7 @@ Every date these screens count by is a calendar day in the tenant's time zone, s
 - A read falls on the day the member opened or finished the episode.
 - A statement keeps the zone its month was cut in, and shows it under the month as **Cut in the tenant's time zone at close**.
 
-Set the time zone before the tenant's first sale, and leave it once a statement has been closed. The next open month is cut in the new zone, while the month before it stays as it was closed in the old one, so the hours between the two midnights belong to both months or to neither: a sale made in them is paid twice, or never ([#3788](https://github.com/publira/publira/issues/3788)). Days that **Read-through** has already counted are not recounted either; the change applies from the next day it counts.
+Changing the time zone after a statement has been closed leaves that statement as it was closed. The month after it starts where the statement ended, at midnight in the old zone, and ends at midnight in the new one, so a sale made in the hours between the two midnights is counted once, in whichever month the old zone put it in. Every month after that runs from midnight to midnight in the new zone. Days that **Read-through** has already counted are not recounted; the change applies from the next day it counts.
 
 ## Dashboard
 

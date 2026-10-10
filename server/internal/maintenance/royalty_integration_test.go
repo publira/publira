@@ -137,6 +137,55 @@ func TestRoyaltyStatementCloseCatchesUpMissedMonths(t *testing.T) {
 	}
 }
 
+// The automatic close resolves a month in the tenant's zone as it is on the
+// close day, so a tenant that moved from Tokyo to UTC after March was closed
+// has April closed from where March ended. A sale late on 31 March in UTC,
+// which Tokyo counted as April's, is then paid in April instead of in neither.
+func TestRoyaltyStatementCloseStartsWhereTheClosedMonthEnded(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	ctx := context.Background()
+	tokyo := mustLoadLocation("Asia/Tokyo")
+
+	tenant := seedRoyaltyTenant(t, pg, "ROYALTYZONE1")
+	setTenantTimeZone(t, pg.DB, tenant, tokyo.String())
+	setAutomaticClose(t, pg.DB, tenant, 5, time.Date(2026, time.March, 15, 9, 0, 0, 0, tokyo))
+	series := pg.SeedSeries(t, tenant, testutil.SeriesSeed{PublicID: "ROYALTYZSER1"})
+	episode := pg.SeedEpisode(t, tenant, series.ID, testutil.EpisodeSeed{
+		PublicID: "ROYALTYZEP01",
+		Price:    500,
+		Status:   testutil.EpisodeStatusPublished,
+	})
+	reader := pg.SeedEndUser(t, tenant, "ROYALTYZRD01", "reader@royaltyzone1.example.com", "Reader")
+	seedRoyaltySale(t, pg.DB, tenant, reader.ID, episode.ID, 500, time.Date(2026, time.March, 31, 20, 0, 0, 0, time.UTC))
+
+	job := RoyaltyStatementClose{}
+	deps := Deps{DB: pg.OpenContentStatsDB(t), Logger: discardLogger()}
+	if err := job.run(ctx, deps, time.Date(2026, time.April, 5, 9, 0, 0, 0, tokyo)); err != nil {
+		t.Fatalf("run on March's close day: %v", err)
+	}
+	setTenantTimeZone(t, pg.DB, tenant, "UTC")
+	if err := job.run(ctx, deps, time.Date(2026, time.May, 5, 9, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("run on April's close day: %v", err)
+	}
+	assertClosedPeriods(t, pg.DB, tenant, "2026-03", "2026-04")
+
+	for _, want := range []struct {
+		period string
+		gross  int64
+	}{{"2026-03-01", 0}, {"2026-04-01", 500}} {
+		var gross int64
+		if err := pg.DB.QueryRowContext(ctx,
+			"SELECT total_gross FROM royalty_statements WHERE tenant_id = $1 AND period = $2", tenant, want.period,
+		).Scan(&gross); err != nil {
+			t.Fatalf("read %s: %v", want.period, err)
+		}
+		if gross != want.gross {
+			t.Fatalf("%s gross = %d, want %d", want.period, gross, want.gross)
+		}
+	}
+}
+
 // Row-level security would hide every tenant's config from a role without
 // BYPASSRLS, and a pass that saw none would succeed having closed nothing.
 func TestRoyaltyStatementCloseRefusesARoleUnderRowLevelSecurity(t *testing.T) {
