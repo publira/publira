@@ -192,6 +192,27 @@ FROM (
         AND ef.episode_id = $2
         AND ef.user_id > $3
 ) AS followers
+WHERE EXISTS (
+    SELECT 1
+    FROM episodes e
+        JOIN series s ON s.tenant_id = e.tenant_id
+            AND s.id = e.series_id
+        JOIN episode_listings el ON el.tenant_id = e.tenant_id
+            AND el.episode_id = e.id
+    WHERE e.tenant_id = $1
+        AND e.id = $2
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+        )
+)
 ORDER BY user_id
 LIMIT $4
 `
@@ -212,6 +233,15 @@ type ListEpisodeFollowerIDsParams struct {
 // the episode is the unit that is credited: a guest who appears on this
 // episode alone reaches their followers, and someone who has since left the
 // series team is not announced with an episode they were not on.
+//
+// Nobody is told about an episode a reader cannot open at this moment: one in
+// a series without a publication date or with one still ahead, or one shown
+// on no surface because its own Shown on and its series' do not overlap. The
+// notification links to the episode, and a follower of a credited creator
+// would otherwise be sent to a page that answers 404. The gate names no
+// follower, so the planner checks it once rather than per row. Such an
+// episode is not announced when its series is published later either (#4044),
+// and one shown on a single surface is still announced on both (#4043).
 //
 // Keyset paging on user_id, because the result grows with the tenant's
 // readership and the caller writes one row per recipient. The cursor is

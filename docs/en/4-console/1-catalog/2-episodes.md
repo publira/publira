@@ -161,7 +161,7 @@ So an episode scheduled for 12:00 is readable by about 12:01, and the site's lis
 
 An episode that is still **Scheduled** well after its time means the worker is not running, or is failing to publish it. A Tenant admin then gets a notification titled "An episode could not be published". This is for the operator to fix, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#scheduled-publication) describes, and the episode goes out on its own once it is.
 
-Followers of an Author are told about a new episode even when its series is not public yet, or when the episode is not shown where the notification leads ([#3824](https://github.com/publira/publira/issues/3824)). Publish the series first, and set where an episode is shown before its time.
+An episode published while its series is not public, or while it is **Not shown anywhere**, is announced to nobody, so that no notification leads to a page that is not found. It is not announced later when the series is published either ([#4044](https://github.com/publira/publira/issues/4044)). An episode shown on only one of the site and the app is still announced on both, and the notification on the other one leads to a page that is not found ([#4043](https://github.com/publira/publira/issues/4043)). Publish the series first, and set where an episode is shown before its time.
 
 ### Taking an episode off the site
 
