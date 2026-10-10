@@ -1480,6 +1480,7 @@
       },
       "published": "公開中",
       "draft": "下書き",
+      "scheduled": "予約済み",
       "form": {
         "create": "シリーズを作成",
         "update": "シリーズを更新",
@@ -1529,7 +1530,7 @@
         "status_description": "新しいエピソードが続くかどうかです。作品ページに表示されます。",
         "schedule": "更新スケジュール",
         "schedule_description": "新しいエピソードを公開する曜日を選択してください。",
-        "schedule_irregular": "曜日が選択されていないため、不定期として表示されます。",
+        "schedule_empty": "曜日が選択されていないため、シリーズページには更新曜日が表示されず、「曜日から探す」のどの曜日にも並びません。",
         "age_rating": "年齢制限",
         "age_rating_all_hint": "全年齢: 誰でも閲覧できます。",
         "age_rating_r15_hint": "R15: 15歳以上であることを確認してから閲覧できます。",

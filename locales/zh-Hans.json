@@ -1480,6 +1480,7 @@
       },
       "published": "已发布",
       "draft": "草稿",
+      "scheduled": "已预约",
       "form": {
         "create": "创建系列",
         "update": "更新系列",
@@ -1529,7 +1530,7 @@
         "status_description": "表示是否仍会更新新话。会显示在作品页面上。",
         "schedule": "更新周期",
         "schedule_description": "请勾选发布新话的星期。",
-        "schedule_irregular": "未勾选任何星期，将显示为不定期更新。",
+        "schedule_empty": "未勾选任何星期，系列页面不会显示更新日，系列也不会出现在“按更新日浏览”的任何一天中。",
         "age_rating": "年龄分级",
         "age_rating_all_hint": "全年龄：任何人都可以阅读。",
         "age_rating_r15_hint": "R15：读者确认已满15岁后才能阅读。",

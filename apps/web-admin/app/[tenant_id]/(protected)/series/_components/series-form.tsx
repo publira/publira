@@ -401,14 +401,14 @@ export const SeriesForm = ({
                 </Suspense>
               </p>
             }
-            initialValue={values.scheduleWeekdays}
-            irregular={
+            empty={
               <p className="text-xs text-muted-foreground">
                 <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
-                  <Message message="admin.series.form.schedule_irregular" />
+                  <Message message="admin.series.form.schedule_empty" />
                 </Suspense>
               </p>
             }
+            initialValue={values.scheduleWeekdays}
             legend={
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.series.form.schedule" />

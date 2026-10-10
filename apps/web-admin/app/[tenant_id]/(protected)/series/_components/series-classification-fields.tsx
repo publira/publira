@@ -140,16 +140,16 @@ export const SeriesAgeRatingField = ({
   );
 };
 
-/** `irregular` is shown while no weekday is chosen. */
+/** `empty` is shown while no weekday is chosen. */
 export const SeriesScheduleField = ({
   description,
+  empty,
   initialValue,
-  irregular,
   legend,
 }: {
   description: ReactNode;
+  empty: ReactNode;
   initialValue: number[];
-  irregular: ReactNode;
   legend: ReactNode;
 }) => {
   const locale = useAdminLocale();
@@ -202,7 +202,7 @@ export const SeriesScheduleField = ({
         />
       ))}
       {description}
-      {value.length === 0 ? irregular : null}
+      {value.length === 0 ? empty : null}
     </fieldset>
   );
 };

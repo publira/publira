@@ -74,6 +74,7 @@ const SeriesManagerData = async ({
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       locale={locale}
       nextHref={pageHref(listResult.nextToken)}
+      now={Temporal.Now.instant()}
       pageSize={DEFAULT_PAGE_SIZE}
       previousHref={pageHref(listResult.previousToken)}
       series={listResult.series}

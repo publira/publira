@@ -454,9 +454,9 @@ it("leaves where the tenant sells unnamed when it could not be read", async () =
   expect(soldOn.textContent).toBe("Follow the tenant setting");
 });
 
-// A series with no weekly schedule says so, rather than showing seven empty
-// checkboxes and leaving an editor to guess what that means.
-it("names the empty schedule as irregular", async () => {
+// A series with no weekly schedule says what readers then see, rather than
+// showing seven empty checkboxes and leaving an editor to guess what that means.
+it("says what readers see when no weekday is checked", async () => {
   render(
     <SeriesForm
       action={action}
@@ -473,7 +473,9 @@ it("names the empty schedule as irregular", async () => {
     />
   );
 
-  expect(await screen.findByText(/presented as irregular/u)).toBeDefined();
+  expect(
+    await screen.findByText(/series page shows no update schedule/u)
+  ).toBeDefined();
 });
 
 // Editing the credit list is editing the template the next episode is baked

@@ -1480,6 +1480,7 @@
       },
       "published": "Published",
       "draft": "Draft",
+      "scheduled": "Scheduled",
       "form": {
         "create": "Create series",
         "update": "Update series",
@@ -1529,7 +1530,7 @@
         "status_description": "Whether new episodes are still coming. Readers see this on the series page.",
         "schedule": "Update schedule",
         "schedule_description": "Check the weekdays a new episode is expected on.",
-        "schedule_irregular": "No weekday is checked, so this series is presented as irregular.",
+        "schedule_empty": "No weekday is checked, so the series page shows no update schedule and the series is not listed under any day of Browse by weekday.",
         "age_rating": "Age rating",
         "age_rating_all_hint": "All ages: anyone can open the series.",
         "age_rating_r15_hint": "R15: readers confirm they are 15 or over before the pages open.",
