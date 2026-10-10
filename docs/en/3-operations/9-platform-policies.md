@@ -56,7 +56,15 @@ publiractl platform set --default-locale en --default-timezone America/New_York
 
 It applies to every tenant at once and only to the **Admin** role; editors and auditors are never asked. It takes effect at each administrator's next sign-in, not on sessions already open. An administrator can still turn their authenticator off from their account settings, and is asked to set one up again the next time they sign in.
 
-The Platform Console's own operators are not covered by this setting.
+The Platform Console's own operators are not covered by this setting; the next one is theirs.
+
+### Two-step verification for platform operators
+
+**Require two-step verification for every Platform Console operator** (`--mfa-required-for-platform-operator`) stops an operator from signing in to the Platform Console with a password alone. An operator who has not set up an authenticator app is not turned away: after the password, the console shows **Set up two-step verification**, and signing in finishes only once they have registered one and been shown their recovery codes.
+
+![The Require two-step verification for every Platform Console operator checkbox on Security.](./platform-policies-operator-mfa-required.png)
+
+It covers every role, **Auditor** included, since every operator can read every tenant's data. It takes effect at each operator's next sign-in, not on sessions already open. An operator can still turn their authenticator off from **Account settings**, and is asked to set one up again the next time they sign in. It is off until someone turns it on.
 
 ### Rate limits
 

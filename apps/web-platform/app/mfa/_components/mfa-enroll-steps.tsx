@@ -1,0 +1,99 @@
+"use client";
+
+import { useActionFormSettled } from "@publira/ui-components/action-form";
+import { LinkButton } from "@publira/ui-components/button";
+import { redirect } from "next/navigation";
+import { createContext, use, useState } from "react";
+import type { Dispatch, ReactNode } from "react";
+
+import { IssuedMfaRecoveryCodes } from "#components/mfa-recovery-code-list";
+import type { MfaEnrollmentConfirmState } from "#lib/mfa-action-state";
+
+interface ConfirmedMfaEnrollment {
+  recoveryCodes: string[];
+  signedIn: boolean;
+}
+
+const ConfirmMfaEnrollmentContext =
+  createContext<Dispatch<ConfirmedMfaEnrollment> | null>(null);
+
+const SignedInContext = createContext(false);
+
+/**
+ * The enrollment until its confirm form succeeds, then `done`. That answer
+ * replaces the confirm form along with everything around it, so it is held
+ * here rather than in the form. A challenge spent with no answer held here
+ * belongs to an earlier visit, so the login goes on to `nextPath`.
+ */
+export const MfaEnrollSteps = ({
+  done,
+  enroll,
+  finished,
+  nextPath,
+}: {
+  done: ReactNode;
+  enroll: ReactNode;
+  finished: boolean;
+  nextPath: string;
+}) => {
+  const [confirmed, setConfirmed] = useState<ConfirmedMfaEnrollment | null>(
+    null
+  );
+  if (finished && !confirmed) {
+    redirect(nextPath);
+  }
+
+  return confirmed ? (
+    <SignedInContext value={confirmed.signedIn}>
+      <IssuedMfaRecoveryCodes value={confirmed.recoveryCodes}>
+        {done}
+      </IssuedMfaRecoveryCodes>
+    </SignedInContext>
+  ) : (
+    <ConfirmMfaEnrollmentContext value={setConfirmed}>
+      {enroll}
+    </ConfirmMfaEnrollmentContext>
+  );
+};
+
+/** Moves `MfaEnrollSteps` on to `done` once the confirm form succeeds. */
+export const MfaEnrollmentConfirmed = () => {
+  const confirm = use(ConfirmMfaEnrollmentContext);
+  useActionFormSettled<NonNullable<MfaEnrollmentConfirmState>>((state) => {
+    if (state?.ok) {
+      confirm?.({
+        recoveryCodes: state.recoveryCodes,
+        signedIn: state.signedIn,
+      });
+    }
+  });
+
+  return null;
+};
+
+/**
+ * An enrollment that signed the operator in goes on to the console; one that
+ * did not sends them back to the password step. Each ending names itself, and
+ * leaves by a document navigation so the router does not keep this page, and
+ * the recovery codes in its state, to show again on Back.
+ */
+export const MfaEnrollDoneLink = ({
+  nextPath,
+  signedIn,
+  signedOut,
+}: {
+  nextPath: string;
+  signedIn: ReactNode;
+  signedOut: ReactNode;
+}) => {
+  const isSignedIn = use(SignedInContext);
+
+  return (
+    <LinkButton
+      className="justify-self-start"
+      href={isSignedIn ? nextPath : "/login"}
+    >
+      {isSignedIn ? signedIn : signedOut}
+    </LinkButton>
+  );
+};

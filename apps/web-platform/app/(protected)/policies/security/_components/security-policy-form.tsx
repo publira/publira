@@ -191,6 +191,18 @@ export const SecurityPolicyForm = ({
         </div>
         <Field className="flex items-center gap-2">
           <Checkbox
+            defaultChecked={values.mfaRequiredForPlatformOperator}
+            disabled={Boolean(loadErrorMessage)}
+            name="mfa_required_for_platform_operator"
+          />
+          <FieldLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+              <Message message="platform.policy.security.mfa_required_for_platform_operator" />
+            </Suspense>
+          </FieldLabel>
+        </Field>
+        <Field className="flex items-center gap-2">
+          <Checkbox
             defaultChecked={values.mfaRequiredForTenantAdmin}
             disabled={Boolean(loadErrorMessage)}
             name="mfa_required_for_tenant_admin"

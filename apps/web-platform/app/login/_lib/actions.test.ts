@@ -7,8 +7,8 @@ const {
   mockGetPlatformLocale,
   mockLoginPlatform,
   mockRedirect,
-  mockSetCookie,
-  mockUpdateTag,
+  mockWriteMfaChallenge,
+  mockWritePlatformSessionCookie,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockGetPlatformLocale: vi.fn(),
@@ -16,29 +16,23 @@ const {
   mockRedirect: vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
-  mockSetCookie: vi.fn(),
-  mockUpdateTag: vi.fn(),
-}));
-
-vi.mock("@publira/web-session", () => ({
-  encryptSessionPayload: () => Promise.resolve("sealed-session"),
-  resolveAuthSecret: () => "auth-secret",
-  sessionCookieOptions: () => ({ httpOnly: true }),
-}));
-
-vi.mock("next/cache", () => ({ updateTag: mockUpdateTag }));
-
-vi.mock("next/headers", () => ({
-  cookies: () => Promise.resolve({ set: mockSetCookie }),
+  mockWriteMfaChallenge: vi.fn(),
+  mockWritePlatformSessionCookie: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
-vi.mock("#lib/auth", () => ({
-  PLATFORM_SESSION_COOKIE_NAME: "publira_web_platform_auth",
-  loginPlatform: mockLoginPlatform,
+vi.mock("#lib/auth", () => ({ loginPlatform: mockLoginPlatform }));
+
+vi.mock("#lib/mfa-challenge", () => ({
+  MFA_PATH: "/mfa",
+  writeMfaChallenge: mockWriteMfaChallenge,
+}));
+
+vi.mock("#lib/platform-session-cookie", () => ({
+  writePlatformSessionCookie: mockWritePlatformSessionCookie,
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
@@ -61,13 +55,15 @@ describe("loginAction", () => {
     mockGetPlatformLocale.mockResolvedValue("en");
   });
 
-  it("writes the session cookie and clears the session read's tag before redirecting", async () => {
+  it("writes the session cookie before redirecting", async () => {
+    const session = {
+      accessToken: "session-token",
+      expiresAt: Temporal.Instant.from("2026-10-01T00:00:00Z"),
+    };
     mockLoginPlatform.mockResolvedValueOnce({
+      kind: "session",
       ok: true,
-      session: {
-        accessToken: "session-token",
-        expiresAt: { toISOString: () => "2026-10-01T00:00:00Z" },
-      },
+      session,
     });
 
     const { loginAction } = await import("./actions");
@@ -75,16 +71,51 @@ describe("loginAction", () => {
     await expect(loginAction(null, loginFormData())).rejects.toThrow(
       "NEXT_REDIRECT:/tenants"
     );
-    expect(mockSetCookie).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: "publira_web_platform_auth",
-        value: "sealed-session",
-      })
-    );
-    expect(mockUpdateTag).toHaveBeenCalledWith("platform-session-cookie");
+    expect(mockWritePlatformSessionCookie).toHaveBeenCalledWith(session);
+    expect(mockWriteMfaChallenge).not.toHaveBeenCalled();
   });
 
-  it("leaves the cookie and the tag alone when the credentials are rejected", async () => {
+  // The password alone earns no session here, so nothing is written but the
+  // challenge `/mfa` spends, and the destination travels with it.
+  it("holds a sign-in that owes a second factor at /mfa", async () => {
+    mockLoginPlatform.mockResolvedValueOnce({
+      challengeKind: "enroll",
+      challengeToken: "challenge-token",
+      expiresAt: Temporal.Instant.from("2026-10-01T00:05:00Z"),
+      kind: "challenge",
+      ok: true,
+    });
+
+    const { loginAction } = await import("./actions");
+
+    await expect(loginAction(null, loginFormData())).rejects.toThrow(
+      "NEXT_REDIRECT:/mfa"
+    );
+    expect(mockWriteMfaChallenge).toHaveBeenCalledWith({
+      challengeToken: "challenge-token",
+      expiresAt: "2026-10-01T00:05:00Z",
+      kind: "enroll",
+      nextPath: "/tenants",
+    });
+    expect(mockWritePlatformSessionCookie).not.toHaveBeenCalled();
+  });
+
+  it("does not blame the password for a response the console cannot hold", async () => {
+    mockLoginPlatform.mockResolvedValueOnce({
+      ok: false,
+      refusal: "processing",
+    });
+    const t = await getMessagesFor("en");
+
+    const { loginAction } = await import("./actions");
+
+    await expect(loginAction(null, loginFormData())).resolves.toEqual({
+      message: t("platform.auth.login.processing_failed"),
+      ok: false,
+    });
+  });
+
+  it("writes nothing when the credentials are rejected", async () => {
     mockLoginPlatform.mockResolvedValueOnce({
       ok: false,
       refusal: "credentials",
@@ -97,8 +128,8 @@ describe("loginAction", () => {
       message: t("platform.auth.login.failed"),
       ok: false,
     });
-    expect(mockSetCookie).not.toHaveBeenCalled();
-    expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockWritePlatformSessionCookie).not.toHaveBeenCalled();
+    expect(mockWriteMfaChallenge).not.toHaveBeenCalled();
   });
 
   it("asks the operator to wait, not to check their password, after too many attempts", async () => {
@@ -114,6 +145,6 @@ describe("loginAction", () => {
       message: t("errors.rpc.rate-limited"),
       ok: false,
     });
-    expect(mockSetCookie).not.toHaveBeenCalled();
+    expect(mockWritePlatformSessionCookie).not.toHaveBeenCalled();
   });
 });

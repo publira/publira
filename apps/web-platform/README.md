@@ -6,7 +6,7 @@ The cross-tenant operations console for platform operators. Its responsibilities
 
 ### Authentication and authorization
 
-- `proxy.ts` protects every path that is not in `PUBLIC_PATHS` (`/login`, `/livez`, `/readyz`, `/confirm-email`, `/confirm-password`, `/reset-password`, `/reset-password/requested`, `/setup`)
+- `proxy.ts` protects every path that is not in `PUBLIC_PATHS` (`/login`, `/mfa`, `/livez`, `/readyz`, `/confirm-email`, `/confirm-password`, `/reset-password`, `/reset-password/requested`, `/setup`)
 - There is no `/logout` route. Signing out goes through the header's Server Action only
 - Session cookie: `publira_web_platform_auth`
 - Roles: `platform_super_admin`, `platform_operator`, `platform_auditor` (`server/internal/auth/roles.go`; their permissions are in `server/cmd/publira/README.md`)
@@ -73,3 +73,16 @@ For the environment variables and how `NEXT_OTEL_VERBOSE` is handled, see [`pack
 Required environment variables:
 
 - `PUBLIRA_AUTH_SECRET` (32 bytes or more) — the key that seals the platform console's session cookie. There is no fallback: an unset or too short value raises. For the details and how to issue one, see the [repository README](../../README.md#session-cookie-encryption-key-publira_auth_secret)
+
+### Second factor (MFA)
+
+A password that is accepted but still owes a second factor earns a short-lived challenge instead of a session. `/mfa` is the screen that spends it — a public path in `proxy.ts`, because it is reached without a session — and an operator manages their own factor from the Two-step verification card on `/account`.
+
+| Part | Where it lives |
+| --- | --- |
+| The challenge and its `publira_web_platform_mfa` cookie | `lib/mfa-challenge.ts` |
+| The session cookie both sign-in steps write | `lib/platform-session-cookie.ts` |
+| The console's MFA RPCs | `lib/platform-mfa.ts` |
+| The `verify` and `enroll` screens | `app/mfa/` |
+| The operator's own factor | `app/(protected)/account/_components/mfa-settings-card.tsx` |
+| The enrollment QR code | `components/mfa-enrollment-secret.tsx`, drawn by `@publira/ui-components/qr-code` |

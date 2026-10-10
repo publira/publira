@@ -24,11 +24,18 @@ const decodeBase32 = (encoded: string): Buffer => {
  * The code an authenticator app shows for `secret` right now, with the
  * parameters `server/internal/mfa/totp.go` enrolls: RFC 6238 over HMAC-SHA1,
  * six digits, a 30-second step.
+ *
+ * `stepsAhead` asks for the code of a later step instead. The server accepts
+ * each step once and one step either side of the current one, so a suite that
+ * presents a second code within the step it has already spent reaches for the
+ * next one rather than waiting for the clock.
  */
-export const totpCode = (secret: string): string => {
+export const totpCode = (secret: string, stepsAhead = 0): string => {
   const counter = Buffer.alloc(8);
   counter.writeBigUInt64BE(
-    BigInt(Math.floor(Temporal.Now.instant().epochMilliseconds / 30_000))
+    BigInt(
+      Math.floor(Temporal.Now.instant().epochMilliseconds / 30_000) + stepsAhead
+    )
   );
   const digest = createHmac("sha1", decodeBase32(secret))
     .update(counter)

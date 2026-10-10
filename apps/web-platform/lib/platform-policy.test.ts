@@ -153,6 +153,7 @@ const storedPolicy = {
   disposableEmailDomainsUrl: listUrl,
   loginAttemptsPerAccount: { perDay: 60, perMinute: 6 },
   loginAttemptsPerSource: { perDay: 400, perHour: 40 },
+  mfaRequiredForPlatformOperator: true,
   mfaRequiredForTenantAdmin: true,
   passwordVerification: { perDay: 50, perMinute: 5 },
 };
@@ -179,7 +180,7 @@ describe("savePlatformPolicy", () => {
 
   // `UpdatePlatformPolicy` writes the whole row, so a value this screen does
   // not edit has to be sent back as read, or the save would clear it.
-  it("keeps the stored list URL and sign-in attempt limits when the community limits are saved", async () => {
+  it("keeps the stored list URL, sign-in attempt limits, and MFA requirements when the community limits are saved", async () => {
     await expect(
       updatePlatformCommunityLimits(community, 4n, "en")
     ).resolves.toEqual({ ok: true });
@@ -191,6 +192,7 @@ describe("savePlatformPolicy", () => {
           disposableEmailDomainsUrl: listUrl,
           loginAttemptsPerAccount: { perDay: 60, perMinute: 6 },
           loginAttemptsPerSource: { perDay: 400, perHour: 40 },
+          mfaRequiredForPlatformOperator: true,
           mfaRequiredForTenantAdmin: true,
         }),
       }),
@@ -198,7 +200,7 @@ describe("savePlatformPolicy", () => {
     );
   });
 
-  it("sends the list URL the security screen saves", async () => {
+  it("sends the list URL and the operator MFA requirement the security screen saves", async () => {
     await updatePlatformSecurityPolicy(
       {
         disposableEmailDomainsUrl: "",
@@ -206,6 +208,7 @@ describe("savePlatformPolicy", () => {
         loginAttemptsPerSource: { perDay: 300, perHour: 30 },
         mailRequestsPerAddress: { perDay: 20, perHour: 5 },
         mailRequestsPerSource: { perDay: 150, perHour: 30 },
+        mfaRequiredForPlatformOperator: true,
         mfaRequiredForTenantAdmin: false,
         passwordVerification: { perDay: 50, perMinute: 5 },
         storePurchaseConfirmation: { perDay: 100, perMinute: 10 },
@@ -217,7 +220,10 @@ describe("savePlatformPolicy", () => {
 
     expect(mockUpdatePlatformPolicy).toHaveBeenCalledWith(
       expect.objectContaining({
-        policy: expect.objectContaining({ disposableEmailDomainsUrl: "" }),
+        policy: expect.objectContaining({
+          disposableEmailDomainsUrl: "",
+          mfaRequiredForPlatformOperator: true,
+        }),
       }),
       expect.anything()
     );

@@ -40,6 +40,7 @@ export interface PlatformSecurityPolicy {
   loginAttemptsPerSource: HourDay;
   mailRequestsPerAddress: HourDay;
   mailRequestsPerSource: HourDay;
+  mfaRequiredForPlatformOperator: boolean;
   mfaRequiredForTenantAdmin: boolean;
   passwordVerification: MinuteDay;
   storePurchaseConfirmation: MinuteDay;
@@ -109,6 +110,7 @@ type RawPlatformPolicy = Pick<
   | "loginAttemptsPerSource"
   | "mailRequestsPerAddress"
   | "mailRequestsPerSource"
+  | "mfaRequiredForPlatformOperator"
   | "mfaRequiredForTenantAdmin"
   | "passwordVerification"
   | "storePurchaseConfirmation"
@@ -154,6 +156,8 @@ export const toPlatformPolicy = (
     loginAttemptsPerSource: toHourDay(policy?.loginAttemptsPerSource),
     mailRequestsPerAddress: toHourDay(policy?.mailRequestsPerAddress),
     mailRequestsPerSource: toHourDay(policy?.mailRequestsPerSource),
+    mfaRequiredForPlatformOperator:
+      policy?.mfaRequiredForPlatformOperator ?? false,
     mfaRequiredForTenantAdmin: policy?.mfaRequiredForTenantAdmin ?? false,
     passwordVerification: toMinuteDay(policy?.passwordVerification),
     storePurchaseConfirmation: toMinuteDay(policy?.storePurchaseConfirmation),

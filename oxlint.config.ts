@@ -58,6 +58,9 @@ export default defineConfig({
         // nowhere else: its API timestamps are parsed with `parseInstant`, and
         // both cookie writers reach the boundary through this one function.
         "apps/web-admin/lib/cookie-expiry.ts",
+        // The same boundary in web-platform, for the session cookie the second
+        // factor earns and the MFA challenge cookie.
+        "apps/web-platform/lib/cookie-expiry.ts",
       ],
       rules: {
         "no-restricted-globals": "off",

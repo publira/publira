@@ -18,6 +18,8 @@ const PUBLIC_PATHS = new Set([
   "/confirm-password",
   "/livez",
   "/login",
+  // Reached between the password and the session, so it has neither yet.
+  "/mfa",
   "/readyz",
   "/reset-password",
   "/reset-password/requested",

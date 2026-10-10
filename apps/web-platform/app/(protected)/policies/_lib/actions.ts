@@ -63,6 +63,7 @@ export const updatePlatformSecurityPolicyAction = async (
           perDay: data.mailPerSourcePerDay,
           perHour: data.mailPerSourcePerHour,
         },
+        mfaRequiredForPlatformOperator: data.mfaRequiredForPlatformOperator,
         mfaRequiredForTenantAdmin: data.mfaRequiredForTenantAdmin,
         passwordVerification: {
           perDay: data.passwordVerificationPerDay,
