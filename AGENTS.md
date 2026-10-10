@@ -90,6 +90,12 @@ Format: `Assisted-by: <AGENT_NAME>:<MODEL_VERSION>`
 - When the model identifier is genuinely unknown, write the agent name alone (`Assisted-by: Claude Code`) rather than guessing a version.
 - Add the trailer when the commit is first created. Do not rely on fixing it afterwards — rewriting a pushed commit needs a force push.
 
+### The `ai-assisted` label: applied by the author
+
+A pull request whose commits carry an `Assisted-by:` trailer carries the `ai-assisted` label too, and whoever opens it applies the label: `gh pr create --label ai-assisted`, or `gh pr edit --add-label ai-assisted` when an agent's commit is pushed onto a pull request opened without one. The trailer remains the disclosure; the label carries it to the pull request list and the notification, where a reviewer decides how to read the diff — an agent's diff is fluent everywhere, including the places it did not understand. The label follows the trailers and nothing else, so it is never set on a pull request whose commits carry none.
+
+The maintenance bot in publira/agents also keeps the label in step with the trailers, adding it and removing it to match, but it is the backstop for a forgotten label and for a contributor without permission to label, not the way the label is meant to arrive. The author already knows what the commits say when the pull request is opened, so the label goes on in that same request instead of spending a bot run on writing it afterwards.
+
 ## Skill packages
 
 Entries in `.agents/skills/*` listed in `skills-lock.json` are vendored (overwritten by `npx skills` and similar).
