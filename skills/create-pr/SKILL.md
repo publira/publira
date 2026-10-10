@@ -110,8 +110,8 @@ Then run each layer's verification on that layer's branch, and push every layer 
 Open each pull request with `gh pr create`, as described under **Create the PR**, not with `gh stack submit --auto`: that opens drafts whose titles and bodies come from a commit or a branch name rather than from the template.
 
 ```bash
-gh pr create --title "<backend title>" --base main --head <backend-branch> --body-file <backend-body> --label size/m
-gh pr create --title "<frontend title>" --base <backend-branch> --head <frontend-branch> --body-file <frontend-body> --label size/s
+gh pr create --title "<backend title>" --base main --head <backend-branch> --body-file <backend-body> --label size/m --label ai-assisted
+gh pr create --title "<frontend title>" --base <backend-branch> --head <frontend-branch> --body-file <frontend-body> --label size/s --label ai-assisted
 gh stack link <backend-pr> <frontend-pr>      # bottom to top
 ```
 
