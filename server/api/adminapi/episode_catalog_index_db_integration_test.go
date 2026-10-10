@@ -78,6 +78,15 @@ func TestDBEpisodeWritesQueueTheirSeriesSearchSync(t *testing.T) {
 		})
 		return err
 	})
+	// An episode at no price is a free one.
+	step("UpdateEpisodePricing", 1, func() error {
+		_, err := client.UpdateEpisodePricing(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateEpisodePricingRequest{
+			Tenant:    tenant.tenantContext(),
+			EpisodeId: episodeID,
+			Price:     0,
+		})
+		return err
+	})
 	step("UpdateEpisodeAvailability", 1, func() error {
 		_, err := client.UpdateEpisodeAvailability(testutil.WithBearer(ctx, tenant.token()), &publiraadminv1.UpdateEpisodeAvailabilityRequest{
 			Tenant:       tenant.tenantContext(),

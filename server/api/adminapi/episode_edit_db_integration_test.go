@@ -4,8 +4,10 @@ import (
 	"context"
 	"slices"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect/v2"
+	"github.com/google/uuid"
 
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -96,6 +98,111 @@ func TestDBUpdateEpisodeTitleRenamesTheEpisode(t *testing.T) {
 	}
 	if got := getDBEpisode(t, env, tenant, seriesPublicID, episodePublicID).Episode.Title; got != "Chapter One" {
 		t.Fatalf("title after the refused renames = %q, want %q", got, "Chapter One")
+	}
+}
+
+// A pricing change sets the terms the episode is sold on from then on: the
+// store product the app buys it as follows the new price, while a purchase
+// already made and a store purchase intent already opened keep the terms they
+// were made on.
+func TestDBUpdateEpisodePricingChangesTheTermsOfTheNextSaleOnly(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
+	client := env.seriesClient()
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+	series := env.PG.SeedSeries(t, tenant.Tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA1", Title: "Priced Series"})
+	episode := env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODE1", Title: "Chapter One", Price: 300, Status: testutil.EpisodeStatusPublished})
+	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "READER01", "reader@tenant-a.example.com", "Reader")
+	expiresAt := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Microsecond)
+	if _, err := env.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, expires_at)
+		VALUES ($1, $2, $3, $4, 300, $5)
+	`, uuid.Must(uuid.NewV7()), tenant.Tenant.ID, reader.ID, episode.ID, expiresAt); err != nil {
+		t.Fatalf("insert purchase: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO store_purchase_intents (id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours)
+		VALUES ($1, $2, $3, $4, 300, 'episode_300', 24)
+	`, uuid.Must(uuid.NewV7()), tenant.Tenant.ID, reader.ID, episode.ID); err != nil {
+		t.Fatalf("insert store purchase intent: %v", err)
+	}
+	before := getDBEpisode(t, env, tenant, series.PublicID, episode.PublicID).Episode
+
+	repriced, err := client.UpdateEpisodePricing(ctx, &publiraadminv1.UpdateEpisodePricingRequest{
+		Tenant:             tenant.tenantContext(),
+		EpisodeId:          episode.ID.String(),
+		Price:              500,
+		ReadingPeriodHours: 48,
+	})
+	if err != nil {
+		t.Fatalf("UpdateEpisodePricing: %v", err)
+	}
+	if repriced.Episode.Price != 500 || repriced.Episode.ReadingPeriodHours != 48 {
+		t.Fatalf("answered price %d and reading period %d, want 500 and 48", repriced.Episode.Price, repriced.Episode.ReadingPeriodHours)
+	}
+	after := getDBEpisode(t, env, tenant, series.PublicID, episode.PublicID).Episode
+	if after.Price != 500 || after.ReadingPeriodHours != 48 {
+		t.Fatalf("stored price %d and reading period %d, want 500 and 48", after.Price, after.ReadingPeriodHours)
+	}
+	if after.Title != before.Title || after.Status != before.Status || after.PublishedAt != before.PublishedAt {
+		t.Fatalf("pricing changed more than the price and reading period: before %v, after %v", before, after)
+	}
+	if got := listDBStoreProducts(t, env, tenant); len(got) != 1 || got[0].ProductId != "episode_500" || got[0].Price != 500 {
+		t.Fatalf("store products = %v, want episode_500 alone", got)
+	}
+	var paid int32
+	var expiry time.Time
+	if err := env.PG.DB.QueryRowContext(context.Background(), "SELECT price_at_purchase, expires_at FROM purchases WHERE episode_id = $1", episode.ID).Scan(&paid, &expiry); err != nil {
+		t.Fatalf("read the purchase: %v", err)
+	}
+	if paid != 300 || !expiry.Equal(expiresAt) {
+		t.Fatalf("purchase holds %d until %v, want 300 until %v", paid, expiry, expiresAt)
+	}
+	var intentPrice, intentPeriod int32
+	var intentProduct string
+	if err := env.PG.DB.QueryRowContext(context.Background(), "SELECT price, product_id, reading_period_hours FROM store_purchase_intents WHERE episode_id = $1", episode.ID).Scan(&intentPrice, &intentProduct, &intentPeriod); err != nil {
+		t.Fatalf("read the store purchase intent: %v", err)
+	}
+	if intentPrice != 300 || intentProduct != "episode_300" || intentPeriod != 24 {
+		t.Fatalf("store purchase intent holds %d as %s for %d hours, want 300 as episode_300 for 24", intentPrice, intentProduct, intentPeriod)
+	}
+	if got := env.episodeUpdatedEntries(t, tenant, episode.PublicID); got != 1 {
+		t.Fatalf("episode_updated entries = %d, want 1", got)
+	}
+
+	for name, req := range map[string]*publiraadminv1.UpdateEpisodePricingRequest{
+		"a negative price":          {Tenant: tenant.tenantContext(), EpisodeId: episode.ID.String(), Price: -1, ReadingPeriodHours: 48},
+		"a negative reading period": {Tenant: tenant.tenantContext(), EpisodeId: episode.ID.String(), Price: 500, ReadingPeriodHours: -1},
+	} {
+		if _, err := client.UpdateEpisodePricing(ctx, req); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("UpdateEpisodePricing with %s error = %v, want invalid_argument", name, err)
+		}
+	}
+	if _, err := client.UpdateEpisodePricing(testutil.WithBearer(context.Background(), other.token()), &publiraadminv1.UpdateEpisodePricingRequest{
+		Tenant:    other.tenantContext(),
+		EpisodeId: episode.ID.String(),
+		Price:     1,
+	}); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("UpdateEpisodePricing of another tenant's episode error = %v, want not_found", err)
+	}
+	if got := getDBEpisode(t, env, tenant, series.PublicID, episode.PublicID).Episode; got.Price != 500 || got.ReadingPeriodHours != 48 {
+		t.Fatalf("price %d and reading period %d after the refused changes, want 500 and 48", got.Price, got.ReadingPeriodHours)
+	}
+
+	// No price makes the episode free, and no period gives a purchase no
+	// expiry, which is no reading period stored.
+	if _, err := client.UpdateEpisodePricing(ctx, &publiraadminv1.UpdateEpisodePricingRequest{
+		Tenant:    tenant.tenantContext(),
+		EpisodeId: episode.ID.String(),
+	}); err != nil {
+		t.Fatalf("UpdateEpisodePricing to free: %v", err)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM episode_listings WHERE episode_id = $1 AND price = 0 AND reading_period_hours IS NULL", episode.ID); got != 1 {
+		t.Fatalf("free listings with no reading period = %d, want 1", got)
+	}
+	if got := listDBStoreProducts(t, env, tenant); len(got) != 0 {
+		t.Fatalf("store products of a free episode = %v, want none", got)
 	}
 }
 

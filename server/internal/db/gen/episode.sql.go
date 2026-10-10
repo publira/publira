@@ -1712,6 +1712,35 @@ func (q *Queries) UpdateEpisodeOrderIndexByIDForTenantAndSeries(ctx context.Cont
 	return err
 }
 
+const UpdateEpisodePricingByIDForTenant = `-- name: UpdateEpisodePricingByIDForTenant :execrows
+UPDATE episode_listings
+SET price = $1,
+    reading_period_hours = $2
+WHERE tenant_id = $3
+    AND episode_id = $4
+`
+
+type UpdateEpisodePricingByIDForTenantParams struct {
+	Price              int32         `json:"price"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	EpisodeID          uuid.UUID     `json:"episode_id"`
+}
+
+// NULL gives a purchase of the episode no expiry.
+func (q *Queries) UpdateEpisodePricingByIDForTenant(ctx context.Context, arg UpdateEpisodePricingByIDForTenantParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, UpdateEpisodePricingByIDForTenant,
+		arg.Price,
+		arg.ReadingPeriodHours,
+		arg.TenantID,
+		arg.EpisodeID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const UpdateEpisodePurchaseAvailabilityByIDForTenant = `-- name: UpdateEpisodePurchaseAvailabilityByIDForTenant :exec
 UPDATE episodes
 SET purchase_availability = $1

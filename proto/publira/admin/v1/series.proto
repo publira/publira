@@ -292,6 +292,26 @@ message UpdateEpisodeTitleResponse {
   publira.types.v1.Episode episode = 1;
 }
 
+// Sets what one episode is sold on: its price and the reading period a
+// purchase of it gives. Both are written on every call. Neither reaches back:
+// a purchase keeps the price it was paid and the expiry it was given, and a
+// checkout or a store purchase already started keeps the terms it carries.
+message UpdateEpisodePricingRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  // A negative price is invalid_argument, as it is to CreateEpisode. Zero
+  // makes the episode free.
+  int32 price = 3;
+  // A negative period is invalid_argument, as it is to CreateEpisode. Zero
+  // gives a purchase no expiry.
+  int32 reading_period_hours = 4;
+}
+
+message UpdateEpisodePricingResponse {
+  // Carries the resolved values, as GetEpisode does.
+  publira.types.v1.Episode episode = 1;
+}
+
 // Sets how one episode is laid out, overriding its series. Both overrides are
 // written on every call, so a field left empty returns that value to following
 // the series.
@@ -822,6 +842,8 @@ service AdminSeriesService {
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
   // Minimum role: tenant_editor.
   rpc UpdateEpisodeTitle(UpdateEpisodeTitleRequest) returns (UpdateEpisodeTitleResponse) {}
+  // Minimum role: tenant_editor.
+  rpc UpdateEpisodePricing(UpdateEpisodePricingRequest) returns (UpdateEpisodePricingResponse) {}
   // Minimum role: tenant_editor.
   rpc UpdateEpisodeLayout(UpdateEpisodeLayoutRequest) returns (UpdateEpisodeLayoutResponse) {}
   // Minimum role: tenant_editor.

@@ -338,6 +338,66 @@ func TestUpdateEpisodeTitleOfNoEpisodeIsNotFound(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+// The series page and the viewer show the price, and a price moved to or from
+// zero makes the episode free or not, which the series lists answer with, so a
+// pricing change drops both and queues its series' search sync.
+func TestUpdateEpisodePricingRevalidatesTheSeriesDetailAndLists(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePricingByIDForTenant)).
+		WithArgs(int32(500), sql.NullInt32{Int32: 48, Valid: true}, tenantID, testEpisodeID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectPublishedEpisodeLookup(mock, tenantID, nil)
+	expectCatalogIndexSync(mock, tenantID, "series", testSeriesID)
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+
+	req := &publiraadminv1.UpdateEpisodePricingRequest{
+		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId:          testEpisodeID.String(),
+		Price:              500,
+		ReadingPeriodHours: 48,
+	}
+
+	if _, err := client.UpdateEpisodePricing(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
+		t.Fatalf("UpdateEpisodePricing: %v", err)
+	}
+	revalidations.waitForTags(t, wantEpisodePublicationRevalidateTags(tenantID))
+	assertExpectations(t, mock)
+}
+
+// A pricing change that reaches no row is not_found, and rolls back before any
+// drop or sync is recorded.
+func TestUpdateEpisodePricingOfNoEpisodeIsNotFound(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePricingByIDForTenant)).
+		WithArgs(int32(500), sql.NullInt32{}, tenantID, testEpisodeID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectRollback()
+
+	req := &publiraadminv1.UpdateEpisodePricingRequest{
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId: testEpisodeID.String(),
+		Price:     500,
+	}
+
+	if _, err := client.UpdateEpisodePricing(testutil.WithBearer(context.Background(), sessionToken), req); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("UpdateEpisodePricing error = %v, want not_found", err)
+	}
+	assertExpectations(t, mock)
+}
+
 // The viewer shows the pages that are left, so a delete drops it in the
 // transaction that takes the page out.
 func TestDeleteEpisodeImageRevalidatesTheSeriesDetail(t *testing.T) {

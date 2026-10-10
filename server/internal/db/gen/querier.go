@@ -2594,6 +2594,8 @@ type Querier interface {
 	// the series.
 	UpdateEpisodeLayoutByIDForTenant(ctx context.Context, arg UpdateEpisodeLayoutByIDForTenantParams) error
 	UpdateEpisodeOrderIndexByIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByIDForTenantAndSeriesParams) error
+	// NULL gives a purchase of the episode no expiry.
+	UpdateEpisodePricingByIDForTenant(ctx context.Context, arg UpdateEpisodePricingByIDForTenantParams) (int64, error)
 	UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error
 	// NULL returns the episode to following its series.
 	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error

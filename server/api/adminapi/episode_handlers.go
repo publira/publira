@@ -1280,6 +1280,72 @@ func (s *adminServer) UpdateEpisodeTitle(
 	return &publiraadminv1.UpdateEpisodeTitleResponse{Episode: mapped}, nil
 }
 
+func (s *adminServer) UpdateEpisodePricing(
+	ctx context.Context,
+	req *publiraadminv1.UpdateEpisodePricingRequest,
+) (*publiraadminv1.UpdateEpisodePricingResponse, error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	episodeID, err := parseRecordID(req.EpisodeId, "episode_id")
+	if err != nil {
+		return nil, err
+	}
+	if req.Price < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "price must be greater than or equal to 0")
+	}
+	if req.ReadingPeriodHours < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "reading_period_hours must be greater than or equal to 0")
+	}
+
+	// Purchases, and the checkouts and store purchase intents already started,
+	// carry the terms they were made on, so only the listing is written. The
+	// store products follow from the listings' prices and need nothing here.
+	var updated dbmodels.GetEpisodeByIDForTenantRow
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		q := s.queriesFor(txCtx)
+		rows, err := q.UpdateEpisodePricingByIDForTenant(txCtx, dbmodels.UpdateEpisodePricingByIDForTenantParams{
+			TenantID:           tenant.ID,
+			EpisodeID:          episodeID,
+			Price:              req.Price,
+			ReadingPeriodHours: sql.NullInt32{Int32: req.ReadingPeriodHours, Valid: req.ReadingPeriodHours > 0},
+		})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to update episode pricing", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+		}
+		if rows == 0 {
+			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
+		}
+		row, err := q.GetEpisodeByIDForTenant(txCtx, dbmodels.GetEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to get episode after pricing update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+		}
+		updated = row
+		// A published episode at no price is a free one, which the series
+		// lists filter on and the search document records, so a price moved to
+		// or from zero changes its series there as well as on its own page.
+		if err := catalogindex.Queue(txCtx, q, tenant.ID, catalogindex.SeriesRef(row.SeriesID)); err != nil {
+			return nil, s.internalDBError(ctx, "failed to queue the search index sync for the episode's series", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+		}
+		return publishepisodes.RevalidateTags(tenant.ID), nil
+	}); err != nil {
+		return nil, err
+	}
+	mapped := protomapper.EpisodeFromGetEpisodeByIDForTenantRow(updated)
+	if err := setEpisodeAvailability(mapped, updated.Availability); err != nil {
+		return nil, s.internalError(ctx, "episode holds an availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
+	}
+	if _, err := episodePurchaseAvailability(mapped, updated.PurchaseAvailability, updated.ResolvedPurchaseAvailability); err != nil {
+		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
+	}
+	s.recordEpisodeUpdated(ctx, tenant.ID, updated.PublicID)
+	return &publiraadminv1.UpdateEpisodePricingResponse{Episode: mapped}, nil
+}
+
 func (s *adminServer) UpdateEpisodeLayout(
 	ctx context.Context,
 	req *publiraadminv1.UpdateEpisodeLayoutRequest,
