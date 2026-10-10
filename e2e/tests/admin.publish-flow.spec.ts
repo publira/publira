@@ -375,9 +375,16 @@ test.describe("admin publish flow", () => {
     // Nothing nudges the schedule here: the save itself publishes, so the
     // worker's publication pass has no part in what the host shows.
     await page.goto(editUrl);
-    await episodeFormFields(page).publishAt.fill(
-      toSeedTenantDateTimeLocal(publishedAtOneHourAgo())
-    );
+    // The form posts the instant in a hidden field React writes from the wall
+    // clock, so a wall clock typed before hydration shows in the field and is
+    // never posted, and the save keeps the episode a draft.
+    const instant = page.locator('input[name="publish_at"]');
+    await expect(async () => {
+      await episodeFormFields(page).publishAt.fill(
+        toSeedTenantDateTimeLocal(publishedAtOneHourAgo())
+      );
+      await expect(instant).not.toHaveValue("", { timeout: 2000 });
+    }).toPass({ timeout: 30_000 });
     await save.click();
     await expect(saved).toBeVisible();
 

@@ -157,7 +157,7 @@ Until an episode is published, its page answers as if it did not exist, it is in
 
 A published episode is taken off the site by the last two, as [Taking an episode off the site](#taking-an-episode-off-the-site) describes.
 
-![The Publishing settings section: the Publication date and time field and Update publication date and time.](./episodes-publishing-settings.png)
+![The Publishing settings section: its note on what a time that has passed, a time ahead, and a blank field each do, the Publication date and time field, and Update publication date and time.](./episodes-publishing-settings.png)
 
 The usual way to publish a new episode of a public series is therefore:
 
