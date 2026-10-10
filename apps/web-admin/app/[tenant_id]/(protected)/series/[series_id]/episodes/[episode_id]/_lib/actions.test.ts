@@ -565,6 +565,35 @@ describe("episode actions", () => {
     expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
   });
 
+  // The API publishes a draft at once with a time that has passed, and leaves
+  // a published episode as it is, so the time a published episode was opened
+  // with saves rather than failing.
+  it("updating the publish schedule sends a time that has passed to the API", async () => {
+    mockUpdateEpisodePublishSchedule.mockResolvedValueOnce({ ok: true });
+
+    const { updateEpisodeScheduleAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_public_id", "SERIES001");
+    formData.set("episode_public_id", "EP001");
+    formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
+    formData.set("publish_at", "2020-06-01T10:00:00Z");
+
+    await updateEpisodeScheduleAction(null, formData);
+
+    expect(mockUpdateEpisodePublishSchedule).toHaveBeenCalledWith(
+      {
+        episodeId: "018f0e6a-4000-7000-8000-000000000001",
+        publishAt: "2020-06-01T10:00:00Z",
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/series/SERIES001/episodes/EP001?schedule_updated=1"
+    );
+  });
+
   it("updating the publish schedule rejects a date-only publish_at as malformed", async () => {
     const { updateEpisodeScheduleAction } = await import("./actions");
     const formData = new FormData();

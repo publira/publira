@@ -72,9 +72,9 @@ describe("EpisodeScheduleForm", () => {
     ).toBe("2030-01-01T01:00:00Z");
   });
 
-  // Rescheduling keeps its future-only rule, so the field does not promise
-  // what the create form's does.
-  it("names the tenant time zone without promising to publish a past time", () => {
+  // Clearing the field or setting a time ahead takes a published episode off
+  // the site, which nothing else on the screen says.
+  it("says what each kind of time does, to a published episode as well", () => {
     render(
       <EpisodeScheduleForm
         action={action}
@@ -89,10 +89,14 @@ describe("EpisodeScheduleForm", () => {
 
     expect(
       screen.getByText(
+        "A time that has passed publishes the episode now, a time ahead schedules it, and leaving the field blank makes it a draft. A published episode stays published with a time that has passed, but a blank field takes it off the site, and a time ahead takes it off until then."
+      )
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
         "The date and time are interpreted as wall-clock time in the tenant time zone (Asia/Seoul)."
       )
     ).toBeTruthy();
-    expect(screen.queryByText(/as soon as it is created/u)).toBeNull();
   });
 
   it("leaves the input empty when nothing is scheduled", () => {
