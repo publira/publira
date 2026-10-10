@@ -21,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/imageproc"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -723,7 +724,9 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create series listing", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
-	err = s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
+	// A series created public has no episode yet, so there is nothing for its
+	// publication to announce.
+	_, err = s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          base.ID,
 		PublishedAt: publishedAt,
 	})
@@ -946,12 +949,22 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update series listing", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
-	err = s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
+	appliesPublication, err := s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          current.ID,
 		PublishedAt: publishedAt,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update series publication", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+	}
+	// The save that makes the series public announces the episodes published
+	// while it was not, in place of the apply-series-publications job that
+	// would have once a scheduled instant passed: the save marks the
+	// publication applied, so the job no longer lists the series. The new
+	// dates ride this transaction, ahead of the cache drop it records.
+	if appliesPublication {
+		if _, err := outbox.QueueSeriesPublicationAnnouncements(txCtx, s.queriesFor(txCtx), tenant.ID, current.ID); err != nil {
+			return nil, s.internalDBError(ctx, "failed to queue the announcements of the series publication", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+		}
 	}
 	eyeCatchImageID := current.EyeCatchImageID
 	if req.ClearEyeCatchImage {

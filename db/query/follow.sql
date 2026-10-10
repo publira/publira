@@ -382,9 +382,10 @@ ORDER BY surface;
 -- because its own Shown on and its series' do not overlap. The
 -- notification links to the episode, and a follower of a credited creator
 -- would otherwise be sent to a page that answers 404. The gate names no
--- follower, so the planner checks it once rather than per row. Such an
--- episode is not announced when its series is published later either (#4044).
--- The surfaces it is announced on are ListPublishedEpisodeSurfaces's to say.
+-- follower, so the planner checks it once rather than per row. An episode
+-- held back because its series was not public is announced once the series
+-- is, through RedateEpisodesForSeriesPublication. The surfaces it is
+-- announced on are ListPublishedEpisodeSurfaces's to say.
 --
 -- Keyset paging on user_id, because the result grows with the tenant's
 -- readership and the caller writes one row per recipient. The cursor is

@@ -94,6 +94,9 @@ func TestPublishSuccessNotifiesEachFollowerOnce(t *testing.T) {
 		t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
 	}
 	assertFollowerPublishedNotifications(t, pg, env, env.follower.ID, episodeFollower.ID, env.admin.ID)
+	if !episodeAnnounced(t, pg, env.episode.ID) {
+		t.Fatal("the published episode is not marked announced")
+	}
 
 	r.RunOnce(ctx)
 	if err := r.notifyFollowersOfPublish(ctx, dbmodels.New(pg.DB), env.readyRow()); err != nil {
@@ -232,6 +235,9 @@ func TestPublishNotifiesNoFollowerOfAnEpisodeReadersCannotOpen(t *testing.T) {
 			assertPublishedUsers(t, pg, env.admin.ID)
 			if events := listMemberPushEvents(t, pg); len(events) != 0 {
 				t.Fatalf("member push events = %d, want 0", len(events))
+			}
+			if episodeAnnounced(t, pg, env.episode.ID) {
+				t.Fatal("an episode no reader can open is marked announced, want it still owed")
 			}
 		})
 	}
@@ -728,6 +734,17 @@ func listingStatus(t *testing.T, pg *testutil.PostgresEnv, episodeID uuid.UUID) 
 		t.Fatalf("listing status: %v", err)
 	}
 	return status
+}
+
+func episodeAnnounced(t *testing.T, pg *testutil.PostgresEnv, episodeID uuid.UUID) bool {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var announced bool
+	if err := pg.DB.QueryRowContext(ctx, `SELECT announced_at IS NOT NULL FROM episode_listings WHERE episode_id = $1`, episodeID).Scan(&announced); err != nil {
+		t.Fatalf("listing announced_at: %v", err)
+	}
+	return announced
 }
 
 func assertFollowerPublishedNotifications(t *testing.T, pg *testutil.PostgresEnv, env publishTestEnv, recipientIDs ...uuid.UUID) {
