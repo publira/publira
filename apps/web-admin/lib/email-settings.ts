@@ -223,7 +223,11 @@ const getTenantEmailSenderForSession = async (
   }
 
   // The sender follows the tenant's SMTP settings, so a save on the email
-  // screen has to reach this read as well.
+  // screen has to reach this read as well. The platform's sender is saved in
+  // the platform console, which no tag of this app hears; a private entry is
+  // kept only in the browser that filled it, for the route's five-minute
+  // stale time, so that change shows within five minutes, at once on a reload.
+  // A shorter stale time would take the route out of its App Shell.
   cacheTag(tenantEmailSettingsCacheTag(normalizedTenantId));
 
   try {
