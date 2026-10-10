@@ -591,6 +591,7 @@ type PlatformPolicyConfig struct {
 	LoginAccountLimitPerDay              int32     `json:"login_account_limit_per_day"`
 	LoginSourceLimitPerHour              int32     `json:"login_source_limit_per_hour"`
 	LoginSourceLimitPerDay               int32     `json:"login_source_limit_per_day"`
+	MfaRequiredForPlatformOperator       bool      `json:"mfa_required_for_platform_operator"`
 }
 
 type PlatformRetentionConfig struct {
@@ -679,6 +680,32 @@ type PlatformUserEmailChangeToken struct {
 	ExpiresAt               time.Time    `json:"expires_at"`
 	CompletedAt             sql.NullTime `json:"completed_at"`
 	CreatedAt               time.Time    `json:"created_at"`
+}
+
+type PlatformUserMfaRecoveryCode struct {
+	ID             uuid.UUID    `json:"id"`
+	PlatformUserID uuid.UUID    `json:"platform_user_id"`
+	CodeHash       string       `json:"code_hash"`
+	UsedAt         sql.NullTime `json:"used_at"`
+	CreatedAt      time.Time    `json:"created_at"`
+}
+
+type PlatformUserMfaTotp struct {
+	PlatformUserID   uuid.UUID     `json:"platform_user_id"`
+	SecretEncrypted  string        `json:"secret_encrypted"`
+	EnabledAt        sql.NullTime  `json:"enabled_at"`
+	LastVerifiedStep sql.NullInt64 `json:"last_verified_step"`
+	FailedAttempts   int32         `json:"failed_attempts"`
+	LockedUntil      sql.NullTime  `json:"locked_until"`
+	CreatedAt        time.Time     `json:"created_at"`
+	UpdatedAt        time.Time     `json:"updated_at"`
+}
+
+type PlatformUserMfaUsedChallenge struct {
+	Jti            uuid.UUID `json:"jti"`
+	PlatformUserID uuid.UUID `json:"platform_user_id"`
+	ExpiresAt      time.Time `json:"expires_at"`
+	UsedAt         time.Time `json:"used_at"`
 }
 
 type PlatformUserPasswordResetToken struct {

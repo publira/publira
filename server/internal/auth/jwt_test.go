@@ -469,4 +469,29 @@ func TestIssueMFAChallengeToken(t *testing.T) {
 			t.Fatal("IssueMFAChallengeToken() error = nil, want an audience error")
 		}
 	})
+
+	// An operator belongs to no tenant, and an admin account to exactly one,
+	// so a challenge that names the wrong one of those is a caller's mistake.
+	t.Run("an admin challenge names a tenant and a platform one none", func(t *testing.T) {
+		if _, _, err := manager.IssueMFAChallengeToken("user-public-id", AudienceAdminMFAVerify, "", 0, now); err == nil {
+			t.Error("admin challenge without a tenant: error = nil, want one")
+		}
+		if _, _, err := manager.IssueMFAChallengeToken("user-public-id", AudiencePlatformMFAVerify, "tenant-id", 0, now); err == nil {
+			t.Error("platform challenge with a tenant: error = nil, want one")
+		}
+		token, _, err := manager.IssueMFAChallengeToken("operator-public-id", AudiencePlatformMFAEnroll, "", 2, now)
+		if err != nil {
+			t.Fatalf("IssueMFAChallengeToken() error = %v", err)
+		}
+		claims, err := manager.Verify(token, AudiencePlatformMFAEnroll)
+		if err != nil {
+			t.Fatalf("Verify() error = %v", err)
+		}
+		if claims.TenantID != "" || claims.Subject != "operator-public-id" || claims.CredentialsVersion != 2 {
+			t.Errorf("claims = %+v, want operator-public-id at version 2 with no tenant", claims)
+		}
+		if _, err := manager.Verify(token, AudienceAdminMFAEnroll); err == nil {
+			t.Error("platform challenge verified as an admin one, want it refused")
+		}
+	})
 }

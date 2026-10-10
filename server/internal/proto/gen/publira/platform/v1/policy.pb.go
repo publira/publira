@@ -284,8 +284,17 @@ type PlatformPolicy struct {
 	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
 	// when a request leaves it unset.
 	LoginAttemptsPerSource *HourDayLimit `protobuf:"bytes,10,opt,name=login_attempts_per_source,json=loginAttemptsPerSource,proto3" json:"login_attempts_per_source,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// Whether an operator that has not enrolled a TOTP authenticator is refused
+	// a session on a password alone and held at enrollment instead. A server
+	// without a secret manager cannot seal an authenticator secret, so no
+	// operator could enroll there, and switching it on there is refused with
+	// FAILED_PRECONDITION naming this field.
+	//
+	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+	// when a request leaves it unset.
+	MfaRequiredForPlatformOperator *bool `protobuf:"varint,11,opt,name=mfa_required_for_platform_operator,json=mfaRequiredForPlatformOperator,proto3,oneof" json:"mfa_required_for_platform_operator,omitempty"`
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *PlatformPolicy) Reset() {
@@ -386,6 +395,13 @@ func (x *PlatformPolicy) GetLoginAttemptsPerSource() *HourDayLimit {
 		return x.LoginAttemptsPerSource
 	}
 	return nil
+}
+
+func (x *PlatformPolicy) GetMfaRequiredForPlatformOperator() bool {
+	if x != nil && x.MfaRequiredForPlatformOperator != nil {
+		return *x.MfaRequiredForPlatformOperator
+	}
+	return false
 }
 
 type GetPlatformPolicyRequest struct {
@@ -811,7 +827,7 @@ const file_publira_platform_v1_policy_proto_rawDesc = "" +
 	"\x0eepisode_rating\x18\x04 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\repisodeRating\x12`\n" +
 	"\x1bcontact_message_per_account\x18\x05 \x01(\v2!.publira.platform.v1.HourDayLimitR\x18contactMessagePerAccount\x12^\n" +
 	"\x1acontact_message_per_client\x18\x06 \x01(\v2!.publira.platform.v1.HourDayLimitR\x17contactMessagePerClient\x12R\n" +
-	"\x12viewer_preferences\x18\a \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x11viewerPreferences\"\x89\a\n" +
+	"\x12viewer_preferences\x18\a \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x11viewerPreferences\"\x81\b\n" +
 	"\x0ePlatformPolicy\x12@\n" +
 	"\x1dmfa_required_for_tenant_admin\x18\x01 \x01(\bR\x19mfaRequiredForTenantAdmin\x12X\n" +
 	"\x15password_verification\x18\x02 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14passwordVerification\x12\\\n" +
@@ -823,7 +839,9 @@ const file_publira_platform_v1_policy_proto_rawDesc = "" +
 	"\x14wait_free_ticket_use\x18\b \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x11waitFreeTicketUse\x12`\n" +
 	"\x1alogin_attempts_per_account\x18\t \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x17loginAttemptsPerAccount\x12\\\n" +
 	"\x19login_attempts_per_source\x18\n" +
-	" \x01(\v2!.publira.platform.v1.HourDayLimitR\x16loginAttemptsPerSource\"\x1a\n" +
+	" \x01(\v2!.publira.platform.v1.HourDayLimitR\x16loginAttemptsPerSource\x12O\n" +
+	"\"mfa_required_for_platform_operator\x18\v \x01(\bH\x00R\x1emfaRequiredForPlatformOperator\x88\x01\x01B%\n" +
+	"#_mfa_required_for_platform_operator\"\x1a\n" +
 	"\x18GetPlatformPolicyRequest\"t\n" +
 	"\x19GetPlatformPolicyResponse\x12;\n" +
 	"\x06policy\x18\x01 \x01(\v2#.publira.platform.v1.PlatformPolicyR\x06policy\x12\x1a\n" +
@@ -919,6 +937,7 @@ func file_publira_platform_v1_policy_proto_init() {
 	if File_publira_platform_v1_policy_proto != nil {
 		return
 	}
+	file_publira_platform_v1_policy_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

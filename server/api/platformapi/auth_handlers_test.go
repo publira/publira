@@ -55,12 +55,22 @@ func TestPlatformAuthLoginSuccess(t *testing.T) {
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(rolePlatformOperator))
 
+	// No authenticator and no saved policy: nothing is owed past the password.
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserMfaTotp)).
+		WithArgs(userID).
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformPolicyConfig)).
+		WillReturnError(sql.ErrNoRows)
+
 	resp, err := server.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    "platform@example.com",
 		Password: password,
 	})
 	if err != nil {
 		t.Fatalf("Login: %v", err)
+	}
+	if resp.MfaChallenge != nil {
+		t.Fatalf("mfa_challenge = %v, want none", resp.MfaChallenge)
 	}
 	if resp.User == nil || resp.User.Role != rolePlatformOperator {
 		t.Fatalf("user.role = %v, want %s", resp.User, rolePlatformOperator)

@@ -264,6 +264,14 @@ GRANT SELECT ON platform_retention_config TO publira_admin, publira_content_stat
 -- keys the database never holds, and neither role may write the row.
 GRANT SELECT ON platform_storage_config TO publira_admin, publira_content_stats;
 
+-- The spent MFA challenge purge runs on the maintenance pool and drains the
+-- platform console's spent challenges along with the tenant consoles'. A row
+-- names only a token identifier, an operator's internal id, and two times, so
+-- it is the one operator table that role may reach. The FOR UPDATE SKIP LOCKED
+-- that keeps two runs off each other's rows needs UPDATE on at least one
+-- column, so the grant names one and no more.
+GRANT SELECT, DELETE, UPDATE (used_at) ON platform_user_mfa_used_challenges TO publira_content_stats;
+
 -- The catalog search engine is read by the worker, which writes every
 -- catalog_index_sync event into the index the search answers from and into the
 -- one being built, and by the maintenance role, which builds that index and

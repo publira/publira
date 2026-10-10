@@ -51,10 +51,13 @@ type CommunityLimits struct {
 // Policy is the platform's security and abuse-control policy.
 type Policy struct {
 	MFARequiredForTenantAdmin bool
-	PasswordVerification      MinuteDay
-	MailRequestsPerAddress    HourDay
-	MailRequestsPerSource     HourDay
-	Community                 CommunityLimits
+	// MFARequiredForPlatformOperator holds every operator of the platform
+	// console with no authenticator at enrollment before it gets a session.
+	MFARequiredForPlatformOperator bool
+	PasswordVerification           MinuteDay
+	MailRequestsPerAddress         HourDay
+	MailRequestsPerSource          HourDay
+	Community                      CommunityLimits
 	// StorePurchaseConfirmation bounds the store transactions one reader may
 	// hand the server, each of which it verifies with the store.
 	StorePurchaseConfirmation MinuteDay
@@ -82,6 +85,10 @@ const FieldDuplicateCommentWindow = "community_limit_defaults.duplicate_comment_
 // that names where the disposable email domain list is read from.
 const FieldDisposableEmailDomainsURL = "disposable_email_domains_url"
 
+// FieldMFARequiredForPlatformOperator is the field of the PlatformPolicy
+// message that requires the second factor of every platform operator.
+const FieldMFARequiredForPlatformOperator = "mfa_required_for_platform_operator"
+
 // MaxDisposableEmailDomainsURLLength bounds the URL of the disposable email
 // domain list, as the column's check constraint does.
 const MaxDisposableEmailDomainsURLLength = 2048
@@ -94,10 +101,11 @@ const MaxDuplicateCommentWindow = 7 * 24 * time.Hour
 // deployment got from the environment before the policy became a setting.
 func Defaults() Policy {
 	return Policy{
-		MFARequiredForTenantAdmin: false,
-		PasswordVerification:      MinuteDay{PerMinute: 5, PerDay: 50},
-		MailRequestsPerAddress:    HourDay{PerHour: 5, PerDay: 20},
-		MailRequestsPerSource:     HourDay{PerHour: 30, PerDay: 150},
+		MFARequiredForTenantAdmin:      false,
+		MFARequiredForPlatformOperator: false,
+		PasswordVerification:           MinuteDay{PerMinute: 5, PerDay: 50},
+		MailRequestsPerAddress:         HourDay{PerHour: 5, PerDay: 20},
+		MailRequestsPerSource:          HourDay{PerHour: 30, PerDay: 150},
 		Community: CommunityLimits{
 			CommentPost:              MinuteDay{PerMinute: 10, PerDay: 100},
 			CommentReport:            MinuteDay{PerMinute: 10, PerDay: 50},
@@ -179,10 +187,11 @@ func validateListURL(raw string) error {
 // FromConfig reads a saved row.
 func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 	return Policy{
-		MFARequiredForTenantAdmin: config.MfaRequiredForTenantAdmin,
-		PasswordVerification:      MinuteDay{PerMinute: int(config.PasswordVerifyLimitPerMinute), PerDay: int(config.PasswordVerifyLimitPerDay)},
-		MailRequestsPerAddress:    HourDay{PerHour: int(config.MailRequestLimitPerAddressPerHour), PerDay: int(config.MailRequestLimitPerAddressPerDay)},
-		MailRequestsPerSource:     HourDay{PerHour: int(config.MailRequestLimitPerSourcePerHour), PerDay: int(config.MailRequestLimitPerSourcePerDay)},
+		MFARequiredForTenantAdmin:      config.MfaRequiredForTenantAdmin,
+		MFARequiredForPlatformOperator: config.MfaRequiredForPlatformOperator,
+		PasswordVerification:           MinuteDay{PerMinute: int(config.PasswordVerifyLimitPerMinute), PerDay: int(config.PasswordVerifyLimitPerDay)},
+		MailRequestsPerAddress:         HourDay{PerHour: int(config.MailRequestLimitPerAddressPerHour), PerDay: int(config.MailRequestLimitPerAddressPerDay)},
+		MailRequestsPerSource:          HourDay{PerHour: int(config.MailRequestLimitPerSourcePerHour), PerDay: int(config.MailRequestLimitPerSourcePerDay)},
 		Community: CommunityLimits{
 			CommentPost:              MinuteDay{PerMinute: int(config.CommentPostLimitPerMinute), PerDay: int(config.CommentPostLimitPerDay)},
 			CommentReport:            MinuteDay{PerMinute: int(config.CommentReportLimitPerMinute), PerDay: int(config.CommentReportLimitPerDay)},
@@ -207,6 +216,7 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 	community := policy.Community
 	return dbmodels.UpdatePlatformPolicyConfigParams{
 		MfaRequiredForTenantAdmin:            policy.MFARequiredForTenantAdmin,
+		MfaRequiredForPlatformOperator:       policy.MFARequiredForPlatformOperator,
 		PasswordVerifyLimitPerMinute:         int32(policy.PasswordVerification.PerMinute),
 		PasswordVerifyLimitPerDay:            int32(policy.PasswordVerification.PerDay),
 		MailRequestLimitPerAddressPerHour:    int32(policy.MailRequestsPerAddress.PerHour),

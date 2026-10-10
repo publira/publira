@@ -208,6 +208,25 @@ func (s *platformServer) Login(
 	if s.tokens == nil {
 		return nil, connect.NewError(connect.CodeInternal, "token manager is not configured")
 	}
+
+	// The password is right, but it is only half of what this operator owes.
+	// A challenge is handed out instead of a session, so nothing signed by
+	// this request can act on the platform until the factor is settled.
+	challengeKind, err := s.operatorMfaChallengeKindFor(ctx, platformUser)
+	if err != nil {
+		auth.AuditEvent(ctx, "platform_login", "failure", "", platformUser.PublicID, "mfa_state_lookup_failed")
+		return nil, err
+	}
+	if challengeKind != publirasplatformv1.MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED {
+		challenge, err := s.operatorMfaChallengeFor(platformUser, challengeKind)
+		if err != nil {
+			auth.AuditEvent(ctx, "platform_login", "failure", "", platformUser.PublicID, "mfa_challenge_issue_failed")
+			return nil, err
+		}
+		auth.AuditEvent(ctx, "platform_login", "success", "", platformUser.PublicID, "mfa_challenge_issued")
+		return &publirasplatformv1.PlatformAuthServiceLoginResponse{MfaChallenge: challenge}, nil
+	}
+
 	token, expiresAt, err := s.tokens.Issue(platformUser.PublicID, auth.AudiencePlatform, "", resolvedRole, platformUser.CredentialsVersion, time.Now())
 	if err != nil {
 		auth.AuditEvent(ctx, "platform_login", "failure", "", platformUser.PublicID, "token_issue_failed")

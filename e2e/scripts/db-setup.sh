@@ -37,7 +37,7 @@ psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
 e2e_log "widening the mail-request and failed sign-in limits of the platform policy"
 psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
   INSERT INTO platform_policy_config (
-    singleton, mfa_required_for_tenant_admin,
+    singleton, mfa_required_for_tenant_admin, mfa_required_for_platform_operator,
     password_verify_limit_per_minute, password_verify_limit_per_day,
     mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day,
     mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day,
@@ -54,7 +54,7 @@ psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -c "
     login_source_limit_per_hour, login_source_limit_per_day,
     disposable_email_domains_url
   )
-  VALUES (TRUE, FALSE, 5, 50, 1000, 1000, 1000, 1000, 10, 100, 10, 50, 10, 30, 300, 3, 10, 10, 30, 30, 300, 10, 100, 10, 100, 5, 50, 1000, 1000, '')
+  VALUES (TRUE, FALSE, FALSE, 5, 50, 1000, 1000, 1000, 1000, 10, 100, 10, 50, 10, 30, 300, 3, 10, 10, 30, 30, 300, 10, 100, 10, 100, 5, 50, 1000, 1000, '')
   ON CONFLICT (singleton) DO UPDATE
   SET mail_request_limit_per_address_per_hour = EXCLUDED.mail_request_limit_per_address_per_hour,
       mail_request_limit_per_address_per_day = EXCLUDED.mail_request_limit_per_address_per_day,

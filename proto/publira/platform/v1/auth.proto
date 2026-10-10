@@ -12,8 +12,100 @@ message PlatformAuthServiceLoginRequest {
 }
 
 message PlatformAuthServiceLoginResponse {
+  // Empty while mfa_challenge is set: the password was right, but the session
+  // is not issued until the second factor is settled.
   publira.types.v1.User user = 1;
   publira.types.v1.AccessToken access_token = 2;
+  PlatformAuthServiceMfaChallenge mfa_challenge = 3;
+}
+
+// What the operator still owes before the sign-in can finish.
+enum MfaChallengeKind {
+  MFA_CHALLENGE_KIND_UNSPECIFIED = 0;
+  // The operator has a confirmed authenticator and owes a code from it.
+  MFA_CHALLENGE_KIND_VERIFY = 1;
+  // The operator has no authenticator and the platform policy requires one of
+  // every operator, so the only thing this challenge can complete is an
+  // enrollment.
+  MFA_CHALLENGE_KIND_ENROLL = 2;
+}
+
+// The half-finished session a password alone earns. The token is signed and
+// short-lived, and no RPC other than the MFA ones accepts it.
+message PlatformAuthServiceMfaChallenge {
+  string token = 1;
+  string expires_at = 2;
+  MfaChallengeKind kind = 3;
+}
+
+message PlatformAuthServiceVerifyMfaRequest {
+  string challenge_token = 1;
+  // A code from the authenticator, or one of the recovery codes handed out at
+  // enrollment. Which one it was is reported back in the response.
+  string code = 2;
+}
+
+message PlatformAuthServiceVerifyMfaResponse {
+  publira.types.v1.User user = 1;
+  publira.types.v1.AccessToken access_token = 2;
+  bool recovery_code_used = 3;
+  int32 remaining_recovery_codes = 4;
+}
+
+message PlatformAuthServiceGetMfaStatusRequest {}
+
+message PlatformAuthServiceGetMfaStatusResponse {
+  bool enabled = 1;
+  string enabled_at = 2;
+  int32 remaining_recovery_codes = 3;
+  // The platform policy requires MFA of every operator. With enabled false,
+  // the console has to send the operator to enrollment before anything else.
+  bool required = 4;
+}
+
+message PlatformAuthServiceStartMfaEnrollmentRequest {
+  // Sent instead of an Authorization header when the sign-in stopped at an
+  // enroll challenge. A signed-in operator enrolling voluntarily leaves it
+  // empty and is identified by its session.
+  string challenge_token = 1;
+}
+
+message PlatformAuthServiceStartMfaEnrollmentResponse {
+  // Base32 secret, for an authenticator that is typed into rather than
+  // scanned. It is readable only here and only until the next start.
+  string secret = 1;
+  // otpauth:// URI (RFC 6238 parameters) the console renders as a QR code.
+  string otpauth_uri = 2;
+}
+
+message PlatformAuthServiceConfirmMfaEnrollmentRequest {
+  string challenge_token = 1;
+  string code = 2;
+}
+
+message PlatformAuthServiceConfirmMfaEnrollmentResponse {
+  // Plaintext exactly once; only hashes are kept.
+  repeated string recovery_codes = 1;
+  // Set when a challenge token finished the sign-in rather than a session.
+  publira.types.v1.User user = 2;
+  publira.types.v1.AccessToken access_token = 3;
+}
+
+message PlatformAuthServiceDisableMfaRequest {
+  string code = 1;
+}
+
+message PlatformAuthServiceDisableMfaResponse {
+  bool disabled = 1;
+}
+
+message PlatformAuthServiceRegenerateMfaRecoveryCodesRequest {
+  string code = 1;
+}
+
+message PlatformAuthServiceRegenerateMfaRecoveryCodesResponse {
+  // Replaces every code the operator held, used or not.
+  repeated string recovery_codes = 1;
 }
 
 message PlatformAuthServiceLogoutRequest {}
@@ -82,6 +174,12 @@ message PlatformAuthServiceGetMeResponse {
 service PlatformAuthService {
   rpc Login(PlatformAuthServiceLoginRequest) returns (PlatformAuthServiceLoginResponse) {}
   rpc Logout(PlatformAuthServiceLogoutRequest) returns (PlatformAuthServiceLogoutResponse) {}
+  rpc VerifyMfa(PlatformAuthServiceVerifyMfaRequest) returns (PlatformAuthServiceVerifyMfaResponse) {}
+  rpc GetMfaStatus(PlatformAuthServiceGetMfaStatusRequest) returns (PlatformAuthServiceGetMfaStatusResponse) {}
+  rpc StartMfaEnrollment(PlatformAuthServiceStartMfaEnrollmentRequest) returns (PlatformAuthServiceStartMfaEnrollmentResponse) {}
+  rpc ConfirmMfaEnrollment(PlatformAuthServiceConfirmMfaEnrollmentRequest) returns (PlatformAuthServiceConfirmMfaEnrollmentResponse) {}
+  rpc DisableMfa(PlatformAuthServiceDisableMfaRequest) returns (PlatformAuthServiceDisableMfaResponse) {}
+  rpc RegenerateMfaRecoveryCodes(PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) returns (PlatformAuthServiceRegenerateMfaRecoveryCodesResponse) {}
   rpc RequestPasswordReset(PlatformAuthServiceRequestPasswordResetRequest) returns (PlatformAuthServiceRequestPasswordResetResponse) {}
   rpc VerifyPasswordResetToken(PlatformAuthServiceVerifyPasswordResetTokenRequest) returns (PlatformAuthServiceVerifyPasswordResetTokenResponse) {}
   rpc ConfirmPasswordReset(PlatformAuthServiceConfirmPasswordResetRequest) returns (PlatformAuthServiceConfirmPasswordResetResponse) {}

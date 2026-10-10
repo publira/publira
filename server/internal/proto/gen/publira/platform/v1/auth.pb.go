@@ -22,6 +22,60 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// What the operator still owes before the sign-in can finish.
+type MfaChallengeKind int32
+
+const (
+	MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED MfaChallengeKind = 0
+	// The operator has a confirmed authenticator and owes a code from it.
+	MfaChallengeKind_MFA_CHALLENGE_KIND_VERIFY MfaChallengeKind = 1
+	// The operator has no authenticator and the platform policy requires one of
+	// every operator, so the only thing this challenge can complete is an
+	// enrollment.
+	MfaChallengeKind_MFA_CHALLENGE_KIND_ENROLL MfaChallengeKind = 2
+)
+
+// Enum value maps for MfaChallengeKind.
+var (
+	MfaChallengeKind_name = map[int32]string{
+		0: "MFA_CHALLENGE_KIND_UNSPECIFIED",
+		1: "MFA_CHALLENGE_KIND_VERIFY",
+		2: "MFA_CHALLENGE_KIND_ENROLL",
+	}
+	MfaChallengeKind_value = map[string]int32{
+		"MFA_CHALLENGE_KIND_UNSPECIFIED": 0,
+		"MFA_CHALLENGE_KIND_VERIFY":      1,
+		"MFA_CHALLENGE_KIND_ENROLL":      2,
+	}
+)
+
+func (x MfaChallengeKind) Enum() *MfaChallengeKind {
+	p := new(MfaChallengeKind)
+	*p = x
+	return p
+}
+
+func (x MfaChallengeKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MfaChallengeKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_platform_v1_auth_proto_enumTypes[0].Descriptor()
+}
+
+func (MfaChallengeKind) Type() protoreflect.EnumType {
+	return &file_publira_platform_v1_auth_proto_enumTypes[0]
+}
+
+func (x MfaChallengeKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MfaChallengeKind.Descriptor instead.
+func (MfaChallengeKind) EnumDescriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{0}
+}
+
 type PlatformAuthServiceLoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
@@ -75,9 +129,12 @@ func (x *PlatformAuthServiceLoginRequest) GetPassword() string {
 }
 
 type PlatformAuthServiceLoginResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	User          *v1.User               `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
-	AccessToken   *v1.AccessToken        `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty while mfa_challenge is set: the password was right, but the session
+	// is not issued until the second factor is settled.
+	User          *v1.User                         `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	AccessToken   *v1.AccessToken                  `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	MfaChallenge  *PlatformAuthServiceMfaChallenge `protobuf:"bytes,3,opt,name=mfa_challenge,json=mfaChallenge,proto3" json:"mfa_challenge,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -126,6 +183,696 @@ func (x *PlatformAuthServiceLoginResponse) GetAccessToken() *v1.AccessToken {
 	return nil
 }
 
+func (x *PlatformAuthServiceLoginResponse) GetMfaChallenge() *PlatformAuthServiceMfaChallenge {
+	if x != nil {
+		return x.MfaChallenge
+	}
+	return nil
+}
+
+// The half-finished session a password alone earns. The token is signed and
+// short-lived, and no RPC other than the MFA ones accepts it.
+type PlatformAuthServiceMfaChallenge struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	ExpiresAt     string                 `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	Kind          MfaChallengeKind       `protobuf:"varint,3,opt,name=kind,proto3,enum=publira.platform.v1.MfaChallengeKind" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceMfaChallenge) Reset() {
+	*x = PlatformAuthServiceMfaChallenge{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceMfaChallenge) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceMfaChallenge) ProtoMessage() {}
+
+func (x *PlatformAuthServiceMfaChallenge) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceMfaChallenge.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceMfaChallenge) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PlatformAuthServiceMfaChallenge) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *PlatformAuthServiceMfaChallenge) GetExpiresAt() string {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return ""
+}
+
+func (x *PlatformAuthServiceMfaChallenge) GetKind() MfaChallengeKind {
+	if x != nil {
+		return x.Kind
+	}
+	return MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED
+}
+
+type PlatformAuthServiceVerifyMfaRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ChallengeToken string                 `protobuf:"bytes,1,opt,name=challenge_token,json=challengeToken,proto3" json:"challenge_token,omitempty"`
+	// A code from the authenticator, or one of the recovery codes handed out at
+	// enrollment. Which one it was is reported back in the response.
+	Code          string `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceVerifyMfaRequest) Reset() {
+	*x = PlatformAuthServiceVerifyMfaRequest{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceVerifyMfaRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceVerifyMfaRequest) ProtoMessage() {}
+
+func (x *PlatformAuthServiceVerifyMfaRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceVerifyMfaRequest.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceVerifyMfaRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *PlatformAuthServiceVerifyMfaRequest) GetChallengeToken() string {
+	if x != nil {
+		return x.ChallengeToken
+	}
+	return ""
+}
+
+func (x *PlatformAuthServiceVerifyMfaRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+type PlatformAuthServiceVerifyMfaResponse struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	User                   *v1.User               `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	AccessToken            *v1.AccessToken        `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RecoveryCodeUsed       bool                   `protobuf:"varint,3,opt,name=recovery_code_used,json=recoveryCodeUsed,proto3" json:"recovery_code_used,omitempty"`
+	RemainingRecoveryCodes int32                  `protobuf:"varint,4,opt,name=remaining_recovery_codes,json=remainingRecoveryCodes,proto3" json:"remaining_recovery_codes,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceVerifyMfaResponse) Reset() {
+	*x = PlatformAuthServiceVerifyMfaResponse{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceVerifyMfaResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceVerifyMfaResponse) ProtoMessage() {}
+
+func (x *PlatformAuthServiceVerifyMfaResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceVerifyMfaResponse.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceVerifyMfaResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *PlatformAuthServiceVerifyMfaResponse) GetUser() *v1.User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *PlatformAuthServiceVerifyMfaResponse) GetAccessToken() *v1.AccessToken {
+	if x != nil {
+		return x.AccessToken
+	}
+	return nil
+}
+
+func (x *PlatformAuthServiceVerifyMfaResponse) GetRecoveryCodeUsed() bool {
+	if x != nil {
+		return x.RecoveryCodeUsed
+	}
+	return false
+}
+
+func (x *PlatformAuthServiceVerifyMfaResponse) GetRemainingRecoveryCodes() int32 {
+	if x != nil {
+		return x.RemainingRecoveryCodes
+	}
+	return 0
+}
+
+type PlatformAuthServiceGetMfaStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceGetMfaStatusRequest) Reset() {
+	*x = PlatformAuthServiceGetMfaStatusRequest{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceGetMfaStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceGetMfaStatusRequest) ProtoMessage() {}
+
+func (x *PlatformAuthServiceGetMfaStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceGetMfaStatusRequest.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceGetMfaStatusRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{5}
+}
+
+type PlatformAuthServiceGetMfaStatusResponse struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	Enabled                bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	EnabledAt              string                 `protobuf:"bytes,2,opt,name=enabled_at,json=enabledAt,proto3" json:"enabled_at,omitempty"`
+	RemainingRecoveryCodes int32                  `protobuf:"varint,3,opt,name=remaining_recovery_codes,json=remainingRecoveryCodes,proto3" json:"remaining_recovery_codes,omitempty"`
+	// The platform policy requires MFA of every operator. With enabled false,
+	// the console has to send the operator to enrollment before anything else.
+	Required      bool `protobuf:"varint,4,opt,name=required,proto3" json:"required,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceGetMfaStatusResponse) Reset() {
+	*x = PlatformAuthServiceGetMfaStatusResponse{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceGetMfaStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceGetMfaStatusResponse) ProtoMessage() {}
+
+func (x *PlatformAuthServiceGetMfaStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceGetMfaStatusResponse.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceGetMfaStatusResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *PlatformAuthServiceGetMfaStatusResponse) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *PlatformAuthServiceGetMfaStatusResponse) GetEnabledAt() string {
+	if x != nil {
+		return x.EnabledAt
+	}
+	return ""
+}
+
+func (x *PlatformAuthServiceGetMfaStatusResponse) GetRemainingRecoveryCodes() int32 {
+	if x != nil {
+		return x.RemainingRecoveryCodes
+	}
+	return 0
+}
+
+func (x *PlatformAuthServiceGetMfaStatusResponse) GetRequired() bool {
+	if x != nil {
+		return x.Required
+	}
+	return false
+}
+
+type PlatformAuthServiceStartMfaEnrollmentRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Sent instead of an Authorization header when the sign-in stopped at an
+	// enroll challenge. A signed-in operator enrolling voluntarily leaves it
+	// empty and is identified by its session.
+	ChallengeToken string `protobuf:"bytes,1,opt,name=challenge_token,json=challengeToken,proto3" json:"challenge_token,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceStartMfaEnrollmentRequest) Reset() {
+	*x = PlatformAuthServiceStartMfaEnrollmentRequest{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceStartMfaEnrollmentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceStartMfaEnrollmentRequest) ProtoMessage() {}
+
+func (x *PlatformAuthServiceStartMfaEnrollmentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceStartMfaEnrollmentRequest.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceStartMfaEnrollmentRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *PlatformAuthServiceStartMfaEnrollmentRequest) GetChallengeToken() string {
+	if x != nil {
+		return x.ChallengeToken
+	}
+	return ""
+}
+
+type PlatformAuthServiceStartMfaEnrollmentResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Base32 secret, for an authenticator that is typed into rather than
+	// scanned. It is readable only here and only until the next start.
+	Secret string `protobuf:"bytes,1,opt,name=secret,proto3" json:"secret,omitempty"`
+	// otpauth:// URI (RFC 6238 parameters) the console renders as a QR code.
+	OtpauthUri    string `protobuf:"bytes,2,opt,name=otpauth_uri,json=otpauthUri,proto3" json:"otpauth_uri,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceStartMfaEnrollmentResponse) Reset() {
+	*x = PlatformAuthServiceStartMfaEnrollmentResponse{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceStartMfaEnrollmentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceStartMfaEnrollmentResponse) ProtoMessage() {}
+
+func (x *PlatformAuthServiceStartMfaEnrollmentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceStartMfaEnrollmentResponse.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceStartMfaEnrollmentResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *PlatformAuthServiceStartMfaEnrollmentResponse) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
+func (x *PlatformAuthServiceStartMfaEnrollmentResponse) GetOtpauthUri() string {
+	if x != nil {
+		return x.OtpauthUri
+	}
+	return ""
+}
+
+type PlatformAuthServiceConfirmMfaEnrollmentRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ChallengeToken string                 `protobuf:"bytes,1,opt,name=challenge_token,json=challengeToken,proto3" json:"challenge_token,omitempty"`
+	Code           string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceConfirmMfaEnrollmentRequest) Reset() {
+	*x = PlatformAuthServiceConfirmMfaEnrollmentRequest{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceConfirmMfaEnrollmentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceConfirmMfaEnrollmentRequest) ProtoMessage() {}
+
+func (x *PlatformAuthServiceConfirmMfaEnrollmentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceConfirmMfaEnrollmentRequest.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceConfirmMfaEnrollmentRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *PlatformAuthServiceConfirmMfaEnrollmentRequest) GetChallengeToken() string {
+	if x != nil {
+		return x.ChallengeToken
+	}
+	return ""
+}
+
+func (x *PlatformAuthServiceConfirmMfaEnrollmentRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+type PlatformAuthServiceConfirmMfaEnrollmentResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Plaintext exactly once; only hashes are kept.
+	RecoveryCodes []string `protobuf:"bytes,1,rep,name=recovery_codes,json=recoveryCodes,proto3" json:"recovery_codes,omitempty"`
+	// Set when a challenge token finished the sign-in rather than a session.
+	User          *v1.User        `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
+	AccessToken   *v1.AccessToken `protobuf:"bytes,3,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceConfirmMfaEnrollmentResponse) Reset() {
+	*x = PlatformAuthServiceConfirmMfaEnrollmentResponse{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceConfirmMfaEnrollmentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceConfirmMfaEnrollmentResponse) ProtoMessage() {}
+
+func (x *PlatformAuthServiceConfirmMfaEnrollmentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceConfirmMfaEnrollmentResponse.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceConfirmMfaEnrollmentResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *PlatformAuthServiceConfirmMfaEnrollmentResponse) GetRecoveryCodes() []string {
+	if x != nil {
+		return x.RecoveryCodes
+	}
+	return nil
+}
+
+func (x *PlatformAuthServiceConfirmMfaEnrollmentResponse) GetUser() *v1.User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *PlatformAuthServiceConfirmMfaEnrollmentResponse) GetAccessToken() *v1.AccessToken {
+	if x != nil {
+		return x.AccessToken
+	}
+	return nil
+}
+
+type PlatformAuthServiceDisableMfaRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceDisableMfaRequest) Reset() {
+	*x = PlatformAuthServiceDisableMfaRequest{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceDisableMfaRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceDisableMfaRequest) ProtoMessage() {}
+
+func (x *PlatformAuthServiceDisableMfaRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceDisableMfaRequest.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceDisableMfaRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *PlatformAuthServiceDisableMfaRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+type PlatformAuthServiceDisableMfaResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Disabled      bool                   `protobuf:"varint,1,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceDisableMfaResponse) Reset() {
+	*x = PlatformAuthServiceDisableMfaResponse{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceDisableMfaResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceDisableMfaResponse) ProtoMessage() {}
+
+func (x *PlatformAuthServiceDisableMfaResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceDisableMfaResponse.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceDisableMfaResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *PlatformAuthServiceDisableMfaResponse) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
+type PlatformAuthServiceRegenerateMfaRecoveryCodesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) Reset() {
+	*x = PlatformAuthServiceRegenerateMfaRecoveryCodesRequest{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) ProtoMessage() {}
+
+func (x *PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceRegenerateMfaRecoveryCodesRequest.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+type PlatformAuthServiceRegenerateMfaRecoveryCodesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Replaces every code the operator held, used or not.
+	RecoveryCodes []string `protobuf:"bytes,1,rep,name=recovery_codes,json=recoveryCodes,proto3" json:"recovery_codes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlatformAuthServiceRegenerateMfaRecoveryCodesResponse) Reset() {
+	*x = PlatformAuthServiceRegenerateMfaRecoveryCodesResponse{}
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformAuthServiceRegenerateMfaRecoveryCodesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformAuthServiceRegenerateMfaRecoveryCodesResponse) ProtoMessage() {}
+
+func (x *PlatformAuthServiceRegenerateMfaRecoveryCodesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformAuthServiceRegenerateMfaRecoveryCodesResponse.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceRegenerateMfaRecoveryCodesResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *PlatformAuthServiceRegenerateMfaRecoveryCodesResponse) GetRecoveryCodes() []string {
+	if x != nil {
+		return x.RecoveryCodes
+	}
+	return nil
+}
+
 type PlatformAuthServiceLogoutRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -134,7 +881,7 @@ type PlatformAuthServiceLogoutRequest struct {
 
 func (x *PlatformAuthServiceLogoutRequest) Reset() {
 	*x = PlatformAuthServiceLogoutRequest{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[2]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -146,7 +893,7 @@ func (x *PlatformAuthServiceLogoutRequest) String() string {
 func (*PlatformAuthServiceLogoutRequest) ProtoMessage() {}
 
 func (x *PlatformAuthServiceLogoutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[2]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -159,7 +906,7 @@ func (x *PlatformAuthServiceLogoutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlatformAuthServiceLogoutRequest.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceLogoutRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{2}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{15}
 }
 
 type PlatformAuthServiceLogoutResponse struct {
@@ -170,7 +917,7 @@ type PlatformAuthServiceLogoutResponse struct {
 
 func (x *PlatformAuthServiceLogoutResponse) Reset() {
 	*x = PlatformAuthServiceLogoutResponse{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[3]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -182,7 +929,7 @@ func (x *PlatformAuthServiceLogoutResponse) String() string {
 func (*PlatformAuthServiceLogoutResponse) ProtoMessage() {}
 
 func (x *PlatformAuthServiceLogoutResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[3]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -195,7 +942,7 @@ func (x *PlatformAuthServiceLogoutResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use PlatformAuthServiceLogoutResponse.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceLogoutResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{3}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{16}
 }
 
 type PlatformAuthServiceRequestPasswordResetRequest struct {
@@ -207,7 +954,7 @@ type PlatformAuthServiceRequestPasswordResetRequest struct {
 
 func (x *PlatformAuthServiceRequestPasswordResetRequest) Reset() {
 	*x = PlatformAuthServiceRequestPasswordResetRequest{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[4]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -219,7 +966,7 @@ func (x *PlatformAuthServiceRequestPasswordResetRequest) String() string {
 func (*PlatformAuthServiceRequestPasswordResetRequest) ProtoMessage() {}
 
 func (x *PlatformAuthServiceRequestPasswordResetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[4]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -232,7 +979,7 @@ func (x *PlatformAuthServiceRequestPasswordResetRequest) ProtoReflect() protoref
 
 // Deprecated: Use PlatformAuthServiceRequestPasswordResetRequest.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceRequestPasswordResetRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{4}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PlatformAuthServiceRequestPasswordResetRequest) GetEmail() string {
@@ -251,7 +998,7 @@ type PlatformAuthServiceRequestPasswordResetResponse struct {
 
 func (x *PlatformAuthServiceRequestPasswordResetResponse) Reset() {
 	*x = PlatformAuthServiceRequestPasswordResetResponse{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[5]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -263,7 +1010,7 @@ func (x *PlatformAuthServiceRequestPasswordResetResponse) String() string {
 func (*PlatformAuthServiceRequestPasswordResetResponse) ProtoMessage() {}
 
 func (x *PlatformAuthServiceRequestPasswordResetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[5]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -276,7 +1023,7 @@ func (x *PlatformAuthServiceRequestPasswordResetResponse) ProtoReflect() protore
 
 // Deprecated: Use PlatformAuthServiceRequestPasswordResetResponse.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceRequestPasswordResetResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{5}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *PlatformAuthServiceRequestPasswordResetResponse) GetRequested() bool {
@@ -295,7 +1042,7 @@ type PlatformAuthServiceVerifyPasswordResetTokenRequest struct {
 
 func (x *PlatformAuthServiceVerifyPasswordResetTokenRequest) Reset() {
 	*x = PlatformAuthServiceVerifyPasswordResetTokenRequest{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[6]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -307,7 +1054,7 @@ func (x *PlatformAuthServiceVerifyPasswordResetTokenRequest) String() string {
 func (*PlatformAuthServiceVerifyPasswordResetTokenRequest) ProtoMessage() {}
 
 func (x *PlatformAuthServiceVerifyPasswordResetTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[6]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -320,7 +1067,7 @@ func (x *PlatformAuthServiceVerifyPasswordResetTokenRequest) ProtoReflect() prot
 
 // Deprecated: Use PlatformAuthServiceVerifyPasswordResetTokenRequest.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceVerifyPasswordResetTokenRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{6}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *PlatformAuthServiceVerifyPasswordResetTokenRequest) GetToken() string {
@@ -339,7 +1086,7 @@ type PlatformAuthServiceVerifyPasswordResetTokenResponse struct {
 
 func (x *PlatformAuthServiceVerifyPasswordResetTokenResponse) Reset() {
 	*x = PlatformAuthServiceVerifyPasswordResetTokenResponse{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[7]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -351,7 +1098,7 @@ func (x *PlatformAuthServiceVerifyPasswordResetTokenResponse) String() string {
 func (*PlatformAuthServiceVerifyPasswordResetTokenResponse) ProtoMessage() {}
 
 func (x *PlatformAuthServiceVerifyPasswordResetTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[7]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -364,7 +1111,7 @@ func (x *PlatformAuthServiceVerifyPasswordResetTokenResponse) ProtoReflect() pro
 
 // Deprecated: Use PlatformAuthServiceVerifyPasswordResetTokenResponse.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceVerifyPasswordResetTokenResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{7}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *PlatformAuthServiceVerifyPasswordResetTokenResponse) GetValid() bool {
@@ -384,7 +1131,7 @@ type PlatformAuthServiceConfirmPasswordResetRequest struct {
 
 func (x *PlatformAuthServiceConfirmPasswordResetRequest) Reset() {
 	*x = PlatformAuthServiceConfirmPasswordResetRequest{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[8]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -396,7 +1143,7 @@ func (x *PlatformAuthServiceConfirmPasswordResetRequest) String() string {
 func (*PlatformAuthServiceConfirmPasswordResetRequest) ProtoMessage() {}
 
 func (x *PlatformAuthServiceConfirmPasswordResetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[8]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -409,7 +1156,7 @@ func (x *PlatformAuthServiceConfirmPasswordResetRequest) ProtoReflect() protoref
 
 // Deprecated: Use PlatformAuthServiceConfirmPasswordResetRequest.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceConfirmPasswordResetRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{8}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *PlatformAuthServiceConfirmPasswordResetRequest) GetToken() string {
@@ -435,7 +1182,7 @@ type PlatformAuthServiceConfirmPasswordResetResponse struct {
 
 func (x *PlatformAuthServiceConfirmPasswordResetResponse) Reset() {
 	*x = PlatformAuthServiceConfirmPasswordResetResponse{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[9]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -447,7 +1194,7 @@ func (x *PlatformAuthServiceConfirmPasswordResetResponse) String() string {
 func (*PlatformAuthServiceConfirmPasswordResetResponse) ProtoMessage() {}
 
 func (x *PlatformAuthServiceConfirmPasswordResetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[9]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -460,7 +1207,7 @@ func (x *PlatformAuthServiceConfirmPasswordResetResponse) ProtoReflect() protore
 
 // Deprecated: Use PlatformAuthServiceConfirmPasswordResetResponse.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceConfirmPasswordResetResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{9}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *PlatformAuthServiceConfirmPasswordResetResponse) GetConfirmed() bool {
@@ -481,7 +1228,7 @@ type PlatformAuthServiceRequestEmailChangeRequest struct {
 
 func (x *PlatformAuthServiceRequestEmailChangeRequest) Reset() {
 	*x = PlatformAuthServiceRequestEmailChangeRequest{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[10]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -493,7 +1240,7 @@ func (x *PlatformAuthServiceRequestEmailChangeRequest) String() string {
 func (*PlatformAuthServiceRequestEmailChangeRequest) ProtoMessage() {}
 
 func (x *PlatformAuthServiceRequestEmailChangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[10]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -506,7 +1253,7 @@ func (x *PlatformAuthServiceRequestEmailChangeRequest) ProtoReflect() protorefle
 
 // Deprecated: Use PlatformAuthServiceRequestEmailChangeRequest.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceRequestEmailChangeRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{10}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *PlatformAuthServiceRequestEmailChangeRequest) GetCurrentEmail() string {
@@ -539,7 +1286,7 @@ type PlatformAuthServiceRequestEmailChangeResponse struct {
 
 func (x *PlatformAuthServiceRequestEmailChangeResponse) Reset() {
 	*x = PlatformAuthServiceRequestEmailChangeResponse{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[11]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -551,7 +1298,7 @@ func (x *PlatformAuthServiceRequestEmailChangeResponse) String() string {
 func (*PlatformAuthServiceRequestEmailChangeResponse) ProtoMessage() {}
 
 func (x *PlatformAuthServiceRequestEmailChangeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[11]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -564,7 +1311,7 @@ func (x *PlatformAuthServiceRequestEmailChangeResponse) ProtoReflect() protorefl
 
 // Deprecated: Use PlatformAuthServiceRequestEmailChangeResponse.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceRequestEmailChangeResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{11}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *PlatformAuthServiceRequestEmailChangeResponse) GetRequested() bool {
@@ -583,7 +1330,7 @@ type PlatformAuthServiceVerifyEmailChangeTokenRequest struct {
 
 func (x *PlatformAuthServiceVerifyEmailChangeTokenRequest) Reset() {
 	*x = PlatformAuthServiceVerifyEmailChangeTokenRequest{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[12]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -595,7 +1342,7 @@ func (x *PlatformAuthServiceVerifyEmailChangeTokenRequest) String() string {
 func (*PlatformAuthServiceVerifyEmailChangeTokenRequest) ProtoMessage() {}
 
 func (x *PlatformAuthServiceVerifyEmailChangeTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[12]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -608,7 +1355,7 @@ func (x *PlatformAuthServiceVerifyEmailChangeTokenRequest) ProtoReflect() protor
 
 // Deprecated: Use PlatformAuthServiceVerifyEmailChangeTokenRequest.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceVerifyEmailChangeTokenRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{12}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *PlatformAuthServiceVerifyEmailChangeTokenRequest) GetToken() string {
@@ -627,7 +1374,7 @@ type PlatformAuthServiceVerifyEmailChangeTokenResponse struct {
 
 func (x *PlatformAuthServiceVerifyEmailChangeTokenResponse) Reset() {
 	*x = PlatformAuthServiceVerifyEmailChangeTokenResponse{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[13]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -639,7 +1386,7 @@ func (x *PlatformAuthServiceVerifyEmailChangeTokenResponse) String() string {
 func (*PlatformAuthServiceVerifyEmailChangeTokenResponse) ProtoMessage() {}
 
 func (x *PlatformAuthServiceVerifyEmailChangeTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[13]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -652,7 +1399,7 @@ func (x *PlatformAuthServiceVerifyEmailChangeTokenResponse) ProtoReflect() proto
 
 // Deprecated: Use PlatformAuthServiceVerifyEmailChangeTokenResponse.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceVerifyEmailChangeTokenResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{13}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *PlatformAuthServiceVerifyEmailChangeTokenResponse) GetValid() bool {
@@ -671,7 +1418,7 @@ type PlatformAuthServiceConfirmEmailChangeRequest struct {
 
 func (x *PlatformAuthServiceConfirmEmailChangeRequest) Reset() {
 	*x = PlatformAuthServiceConfirmEmailChangeRequest{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[14]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -683,7 +1430,7 @@ func (x *PlatformAuthServiceConfirmEmailChangeRequest) String() string {
 func (*PlatformAuthServiceConfirmEmailChangeRequest) ProtoMessage() {}
 
 func (x *PlatformAuthServiceConfirmEmailChangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[14]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -696,7 +1443,7 @@ func (x *PlatformAuthServiceConfirmEmailChangeRequest) ProtoReflect() protorefle
 
 // Deprecated: Use PlatformAuthServiceConfirmEmailChangeRequest.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceConfirmEmailChangeRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{14}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *PlatformAuthServiceConfirmEmailChangeRequest) GetToken() string {
@@ -717,7 +1464,7 @@ type PlatformAuthServiceConfirmEmailChangeResponse struct {
 
 func (x *PlatformAuthServiceConfirmEmailChangeResponse) Reset() {
 	*x = PlatformAuthServiceConfirmEmailChangeResponse{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[15]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -729,7 +1476,7 @@ func (x *PlatformAuthServiceConfirmEmailChangeResponse) String() string {
 func (*PlatformAuthServiceConfirmEmailChangeResponse) ProtoMessage() {}
 
 func (x *PlatformAuthServiceConfirmEmailChangeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[15]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -742,7 +1489,7 @@ func (x *PlatformAuthServiceConfirmEmailChangeResponse) ProtoReflect() protorefl
 
 // Deprecated: Use PlatformAuthServiceConfirmEmailChangeResponse.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceConfirmEmailChangeResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{15}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *PlatformAuthServiceConfirmEmailChangeResponse) GetConfirmed() bool {
@@ -774,7 +1521,7 @@ type PlatformAuthServiceGetMeRequest struct {
 
 func (x *PlatformAuthServiceGetMeRequest) Reset() {
 	*x = PlatformAuthServiceGetMeRequest{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[16]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -786,7 +1533,7 @@ func (x *PlatformAuthServiceGetMeRequest) String() string {
 func (*PlatformAuthServiceGetMeRequest) ProtoMessage() {}
 
 func (x *PlatformAuthServiceGetMeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[16]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -799,7 +1546,7 @@ func (x *PlatformAuthServiceGetMeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlatformAuthServiceGetMeRequest.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceGetMeRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{16}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{29}
 }
 
 type PlatformAuthServiceGetMeResponse struct {
@@ -811,7 +1558,7 @@ type PlatformAuthServiceGetMeResponse struct {
 
 func (x *PlatformAuthServiceGetMeResponse) Reset() {
 	*x = PlatformAuthServiceGetMeResponse{}
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[17]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -823,7 +1570,7 @@ func (x *PlatformAuthServiceGetMeResponse) String() string {
 func (*PlatformAuthServiceGetMeResponse) ProtoMessage() {}
 
 func (x *PlatformAuthServiceGetMeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_auth_proto_msgTypes[17]
+	mi := &file_publira_platform_v1_auth_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -836,7 +1583,7 @@ func (x *PlatformAuthServiceGetMeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlatformAuthServiceGetMeResponse.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceGetMeResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{17}
+	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *PlatformAuthServiceGetMeResponse) GetUser() *v1.User {
@@ -853,10 +1600,52 @@ const file_publira_platform_v1_auth_proto_rawDesc = "" +
 	"\x1epublira/platform/v1/auth.proto\x12\x13publira.platform.v1\x1a\x1cpublira/types/v1/types.proto\"S\n" +
 	"\x1fPlatformAuthServiceLoginRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x90\x01\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"\xeb\x01\n" +
 	" PlatformAuthServiceLoginResponse\x12*\n" +
 	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x12@\n" +
-	"\faccess_token\x18\x02 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\"\"\n" +
+	"\faccess_token\x18\x02 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\x12Y\n" +
+	"\rmfa_challenge\x18\x03 \x01(\v24.publira.platform.v1.PlatformAuthServiceMfaChallengeR\fmfaChallenge\"\x91\x01\n" +
+	"\x1fPlatformAuthServiceMfaChallenge\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1d\n" +
+	"\n" +
+	"expires_at\x18\x02 \x01(\tR\texpiresAt\x129\n" +
+	"\x04kind\x18\x03 \x01(\x0e2%.publira.platform.v1.MfaChallengeKindR\x04kind\"b\n" +
+	"#PlatformAuthServiceVerifyMfaRequest\x12'\n" +
+	"\x0fchallenge_token\x18\x01 \x01(\tR\x0echallengeToken\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\"\xfc\x01\n" +
+	"$PlatformAuthServiceVerifyMfaResponse\x12*\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x12@\n" +
+	"\faccess_token\x18\x02 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\x12,\n" +
+	"\x12recovery_code_used\x18\x03 \x01(\bR\x10recoveryCodeUsed\x128\n" +
+	"\x18remaining_recovery_codes\x18\x04 \x01(\x05R\x16remainingRecoveryCodes\"(\n" +
+	"&PlatformAuthServiceGetMfaStatusRequest\"\xb8\x01\n" +
+	"'PlatformAuthServiceGetMfaStatusResponse\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1d\n" +
+	"\n" +
+	"enabled_at\x18\x02 \x01(\tR\tenabledAt\x128\n" +
+	"\x18remaining_recovery_codes\x18\x03 \x01(\x05R\x16remainingRecoveryCodes\x12\x1a\n" +
+	"\brequired\x18\x04 \x01(\bR\brequired\"W\n" +
+	",PlatformAuthServiceStartMfaEnrollmentRequest\x12'\n" +
+	"\x0fchallenge_token\x18\x01 \x01(\tR\x0echallengeToken\"h\n" +
+	"-PlatformAuthServiceStartMfaEnrollmentResponse\x12\x16\n" +
+	"\x06secret\x18\x01 \x01(\tR\x06secret\x12\x1f\n" +
+	"\votpauth_uri\x18\x02 \x01(\tR\n" +
+	"otpauthUri\"m\n" +
+	".PlatformAuthServiceConfirmMfaEnrollmentRequest\x12'\n" +
+	"\x0fchallenge_token\x18\x01 \x01(\tR\x0echallengeToken\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\"\xc6\x01\n" +
+	"/PlatformAuthServiceConfirmMfaEnrollmentResponse\x12%\n" +
+	"\x0erecovery_codes\x18\x01 \x03(\tR\rrecoveryCodes\x12*\n" +
+	"\x04user\x18\x02 \x01(\v2\x16.publira.types.v1.UserR\x04user\x12@\n" +
+	"\faccess_token\x18\x03 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\":\n" +
+	"$PlatformAuthServiceDisableMfaRequest\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\"C\n" +
+	"%PlatformAuthServiceDisableMfaResponse\x12\x1a\n" +
+	"\bdisabled\x18\x01 \x01(\bR\bdisabled\"J\n" +
+	"4PlatformAuthServiceRegenerateMfaRecoveryCodesRequest\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\"^\n" +
+	"5PlatformAuthServiceRegenerateMfaRecoveryCodesResponse\x12%\n" +
+	"\x0erecovery_codes\x18\x01 \x03(\tR\rrecoveryCodes\"\"\n" +
 	" PlatformAuthServiceLogoutRequest\"#\n" +
 	"!PlatformAuthServiceLogoutResponse\"F\n" +
 	".PlatformAuthServiceRequestPasswordResetRequest\x12\x14\n" +
@@ -890,11 +1679,21 @@ const file_publira_platform_v1_auth_proto_rawDesc = "" +
 	"\x18pending_confirmation_for\x18\x03 \x01(\tR\x16pendingConfirmationFor\"!\n" +
 	"\x1fPlatformAuthServiceGetMeRequest\"N\n" +
 	" PlatformAuthServiceGetMeResponse\x12*\n" +
-	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user2\xea\n" +
-	"\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user*t\n" +
+	"\x10MfaChallengeKind\x12\"\n" +
+	"\x1eMFA_CHALLENGE_KIND_UNSPECIFIED\x10\x00\x12\x1d\n" +
+	"\x19MFA_CHALLENGE_KIND_VERIFY\x10\x01\x12\x1d\n" +
+	"\x19MFA_CHALLENGE_KIND_ENROLL\x10\x022\x83\x12\n" +
 	"\x13PlatformAuthService\x12v\n" +
 	"\x05Login\x124.publira.platform.v1.PlatformAuthServiceLoginRequest\x1a5.publira.platform.v1.PlatformAuthServiceLoginResponse\"\x00\x12y\n" +
-	"\x06Logout\x125.publira.platform.v1.PlatformAuthServiceLogoutRequest\x1a6.publira.platform.v1.PlatformAuthServiceLogoutResponse\"\x00\x12\xa3\x01\n" +
+	"\x06Logout\x125.publira.platform.v1.PlatformAuthServiceLogoutRequest\x1a6.publira.platform.v1.PlatformAuthServiceLogoutResponse\"\x00\x12\x82\x01\n" +
+	"\tVerifyMfa\x128.publira.platform.v1.PlatformAuthServiceVerifyMfaRequest\x1a9.publira.platform.v1.PlatformAuthServiceVerifyMfaResponse\"\x00\x12\x8b\x01\n" +
+	"\fGetMfaStatus\x12;.publira.platform.v1.PlatformAuthServiceGetMfaStatusRequest\x1a<.publira.platform.v1.PlatformAuthServiceGetMfaStatusResponse\"\x00\x12\x9d\x01\n" +
+	"\x12StartMfaEnrollment\x12A.publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentRequest\x1aB.publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentResponse\"\x00\x12\xa3\x01\n" +
+	"\x14ConfirmMfaEnrollment\x12C.publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentRequest\x1aD.publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse\"\x00\x12\x85\x01\n" +
+	"\n" +
+	"DisableMfa\x129.publira.platform.v1.PlatformAuthServiceDisableMfaRequest\x1a:.publira.platform.v1.PlatformAuthServiceDisableMfaResponse\"\x00\x12\xb5\x01\n" +
+	"\x1aRegenerateMfaRecoveryCodes\x12I.publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest\x1aJ.publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse\"\x00\x12\xa3\x01\n" +
 	"\x14RequestPasswordReset\x12C.publira.platform.v1.PlatformAuthServiceRequestPasswordResetRequest\x1aD.publira.platform.v1.PlatformAuthServiceRequestPasswordResetResponse\"\x00\x12\xaf\x01\n" +
 	"\x18VerifyPasswordResetToken\x12G.publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenRequest\x1aH.publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenResponse\"\x00\x12\xa3\x01\n" +
 	"\x14ConfirmPasswordReset\x12C.publira.platform.v1.PlatformAuthServiceConfirmPasswordResetRequest\x1aD.publira.platform.v1.PlatformAuthServiceConfirmPasswordResetResponse\"\x00\x12\x9d\x01\n" +
@@ -915,56 +1714,89 @@ func file_publira_platform_v1_auth_proto_rawDescGZIP() []byte {
 	return file_publira_platform_v1_auth_proto_rawDescData
 }
 
-var file_publira_platform_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_publira_platform_v1_auth_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_publira_platform_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
 var file_publira_platform_v1_auth_proto_goTypes = []any{
-	(*PlatformAuthServiceLoginRequest)(nil),                     // 0: publira.platform.v1.PlatformAuthServiceLoginRequest
-	(*PlatformAuthServiceLoginResponse)(nil),                    // 1: publira.platform.v1.PlatformAuthServiceLoginResponse
-	(*PlatformAuthServiceLogoutRequest)(nil),                    // 2: publira.platform.v1.PlatformAuthServiceLogoutRequest
-	(*PlatformAuthServiceLogoutResponse)(nil),                   // 3: publira.platform.v1.PlatformAuthServiceLogoutResponse
-	(*PlatformAuthServiceRequestPasswordResetRequest)(nil),      // 4: publira.platform.v1.PlatformAuthServiceRequestPasswordResetRequest
-	(*PlatformAuthServiceRequestPasswordResetResponse)(nil),     // 5: publira.platform.v1.PlatformAuthServiceRequestPasswordResetResponse
-	(*PlatformAuthServiceVerifyPasswordResetTokenRequest)(nil),  // 6: publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenRequest
-	(*PlatformAuthServiceVerifyPasswordResetTokenResponse)(nil), // 7: publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenResponse
-	(*PlatformAuthServiceConfirmPasswordResetRequest)(nil),      // 8: publira.platform.v1.PlatformAuthServiceConfirmPasswordResetRequest
-	(*PlatformAuthServiceConfirmPasswordResetResponse)(nil),     // 9: publira.platform.v1.PlatformAuthServiceConfirmPasswordResetResponse
-	(*PlatformAuthServiceRequestEmailChangeRequest)(nil),        // 10: publira.platform.v1.PlatformAuthServiceRequestEmailChangeRequest
-	(*PlatformAuthServiceRequestEmailChangeResponse)(nil),       // 11: publira.platform.v1.PlatformAuthServiceRequestEmailChangeResponse
-	(*PlatformAuthServiceVerifyEmailChangeTokenRequest)(nil),    // 12: publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenRequest
-	(*PlatformAuthServiceVerifyEmailChangeTokenResponse)(nil),   // 13: publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenResponse
-	(*PlatformAuthServiceConfirmEmailChangeRequest)(nil),        // 14: publira.platform.v1.PlatformAuthServiceConfirmEmailChangeRequest
-	(*PlatformAuthServiceConfirmEmailChangeResponse)(nil),       // 15: publira.platform.v1.PlatformAuthServiceConfirmEmailChangeResponse
-	(*PlatformAuthServiceGetMeRequest)(nil),                     // 16: publira.platform.v1.PlatformAuthServiceGetMeRequest
-	(*PlatformAuthServiceGetMeResponse)(nil),                    // 17: publira.platform.v1.PlatformAuthServiceGetMeResponse
-	(*v1.User)(nil),                                             // 18: publira.types.v1.User
-	(*v1.AccessToken)(nil),                                      // 19: publira.types.v1.AccessToken
+	(MfaChallengeKind)(0),                                         // 0: publira.platform.v1.MfaChallengeKind
+	(*PlatformAuthServiceLoginRequest)(nil),                       // 1: publira.platform.v1.PlatformAuthServiceLoginRequest
+	(*PlatformAuthServiceLoginResponse)(nil),                      // 2: publira.platform.v1.PlatformAuthServiceLoginResponse
+	(*PlatformAuthServiceMfaChallenge)(nil),                       // 3: publira.platform.v1.PlatformAuthServiceMfaChallenge
+	(*PlatformAuthServiceVerifyMfaRequest)(nil),                   // 4: publira.platform.v1.PlatformAuthServiceVerifyMfaRequest
+	(*PlatformAuthServiceVerifyMfaResponse)(nil),                  // 5: publira.platform.v1.PlatformAuthServiceVerifyMfaResponse
+	(*PlatformAuthServiceGetMfaStatusRequest)(nil),                // 6: publira.platform.v1.PlatformAuthServiceGetMfaStatusRequest
+	(*PlatformAuthServiceGetMfaStatusResponse)(nil),               // 7: publira.platform.v1.PlatformAuthServiceGetMfaStatusResponse
+	(*PlatformAuthServiceStartMfaEnrollmentRequest)(nil),          // 8: publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentRequest
+	(*PlatformAuthServiceStartMfaEnrollmentResponse)(nil),         // 9: publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentResponse
+	(*PlatformAuthServiceConfirmMfaEnrollmentRequest)(nil),        // 10: publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentRequest
+	(*PlatformAuthServiceConfirmMfaEnrollmentResponse)(nil),       // 11: publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse
+	(*PlatformAuthServiceDisableMfaRequest)(nil),                  // 12: publira.platform.v1.PlatformAuthServiceDisableMfaRequest
+	(*PlatformAuthServiceDisableMfaResponse)(nil),                 // 13: publira.platform.v1.PlatformAuthServiceDisableMfaResponse
+	(*PlatformAuthServiceRegenerateMfaRecoveryCodesRequest)(nil),  // 14: publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest
+	(*PlatformAuthServiceRegenerateMfaRecoveryCodesResponse)(nil), // 15: publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse
+	(*PlatformAuthServiceLogoutRequest)(nil),                      // 16: publira.platform.v1.PlatformAuthServiceLogoutRequest
+	(*PlatformAuthServiceLogoutResponse)(nil),                     // 17: publira.platform.v1.PlatformAuthServiceLogoutResponse
+	(*PlatformAuthServiceRequestPasswordResetRequest)(nil),        // 18: publira.platform.v1.PlatformAuthServiceRequestPasswordResetRequest
+	(*PlatformAuthServiceRequestPasswordResetResponse)(nil),       // 19: publira.platform.v1.PlatformAuthServiceRequestPasswordResetResponse
+	(*PlatformAuthServiceVerifyPasswordResetTokenRequest)(nil),    // 20: publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenRequest
+	(*PlatformAuthServiceVerifyPasswordResetTokenResponse)(nil),   // 21: publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenResponse
+	(*PlatformAuthServiceConfirmPasswordResetRequest)(nil),        // 22: publira.platform.v1.PlatformAuthServiceConfirmPasswordResetRequest
+	(*PlatformAuthServiceConfirmPasswordResetResponse)(nil),       // 23: publira.platform.v1.PlatformAuthServiceConfirmPasswordResetResponse
+	(*PlatformAuthServiceRequestEmailChangeRequest)(nil),          // 24: publira.platform.v1.PlatformAuthServiceRequestEmailChangeRequest
+	(*PlatformAuthServiceRequestEmailChangeResponse)(nil),         // 25: publira.platform.v1.PlatformAuthServiceRequestEmailChangeResponse
+	(*PlatformAuthServiceVerifyEmailChangeTokenRequest)(nil),      // 26: publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenRequest
+	(*PlatformAuthServiceVerifyEmailChangeTokenResponse)(nil),     // 27: publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenResponse
+	(*PlatformAuthServiceConfirmEmailChangeRequest)(nil),          // 28: publira.platform.v1.PlatformAuthServiceConfirmEmailChangeRequest
+	(*PlatformAuthServiceConfirmEmailChangeResponse)(nil),         // 29: publira.platform.v1.PlatformAuthServiceConfirmEmailChangeResponse
+	(*PlatformAuthServiceGetMeRequest)(nil),                       // 30: publira.platform.v1.PlatformAuthServiceGetMeRequest
+	(*PlatformAuthServiceGetMeResponse)(nil),                      // 31: publira.platform.v1.PlatformAuthServiceGetMeResponse
+	(*v1.User)(nil),                                               // 32: publira.types.v1.User
+	(*v1.AccessToken)(nil),                                        // 33: publira.types.v1.AccessToken
 }
 var file_publira_platform_v1_auth_proto_depIdxs = []int32{
-	18, // 0: publira.platform.v1.PlatformAuthServiceLoginResponse.user:type_name -> publira.types.v1.User
-	19, // 1: publira.platform.v1.PlatformAuthServiceLoginResponse.access_token:type_name -> publira.types.v1.AccessToken
-	18, // 2: publira.platform.v1.PlatformAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
-	0,  // 3: publira.platform.v1.PlatformAuthService.Login:input_type -> publira.platform.v1.PlatformAuthServiceLoginRequest
-	2,  // 4: publira.platform.v1.PlatformAuthService.Logout:input_type -> publira.platform.v1.PlatformAuthServiceLogoutRequest
-	4,  // 5: publira.platform.v1.PlatformAuthService.RequestPasswordReset:input_type -> publira.platform.v1.PlatformAuthServiceRequestPasswordResetRequest
-	6,  // 6: publira.platform.v1.PlatformAuthService.VerifyPasswordResetToken:input_type -> publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenRequest
-	8,  // 7: publira.platform.v1.PlatformAuthService.ConfirmPasswordReset:input_type -> publira.platform.v1.PlatformAuthServiceConfirmPasswordResetRequest
-	10, // 8: publira.platform.v1.PlatformAuthService.RequestEmailChange:input_type -> publira.platform.v1.PlatformAuthServiceRequestEmailChangeRequest
-	12, // 9: publira.platform.v1.PlatformAuthService.VerifyEmailChangeToken:input_type -> publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenRequest
-	14, // 10: publira.platform.v1.PlatformAuthService.ConfirmEmailChange:input_type -> publira.platform.v1.PlatformAuthServiceConfirmEmailChangeRequest
-	16, // 11: publira.platform.v1.PlatformAuthService.GetMe:input_type -> publira.platform.v1.PlatformAuthServiceGetMeRequest
-	1,  // 12: publira.platform.v1.PlatformAuthService.Login:output_type -> publira.platform.v1.PlatformAuthServiceLoginResponse
-	3,  // 13: publira.platform.v1.PlatformAuthService.Logout:output_type -> publira.platform.v1.PlatformAuthServiceLogoutResponse
-	5,  // 14: publira.platform.v1.PlatformAuthService.RequestPasswordReset:output_type -> publira.platform.v1.PlatformAuthServiceRequestPasswordResetResponse
-	7,  // 15: publira.platform.v1.PlatformAuthService.VerifyPasswordResetToken:output_type -> publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenResponse
-	9,  // 16: publira.platform.v1.PlatformAuthService.ConfirmPasswordReset:output_type -> publira.platform.v1.PlatformAuthServiceConfirmPasswordResetResponse
-	11, // 17: publira.platform.v1.PlatformAuthService.RequestEmailChange:output_type -> publira.platform.v1.PlatformAuthServiceRequestEmailChangeResponse
-	13, // 18: publira.platform.v1.PlatformAuthService.VerifyEmailChangeToken:output_type -> publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenResponse
-	15, // 19: publira.platform.v1.PlatformAuthService.ConfirmEmailChange:output_type -> publira.platform.v1.PlatformAuthServiceConfirmEmailChangeResponse
-	17, // 20: publira.platform.v1.PlatformAuthService.GetMe:output_type -> publira.platform.v1.PlatformAuthServiceGetMeResponse
-	12, // [12:21] is the sub-list for method output_type
-	3,  // [3:12] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	32, // 0: publira.platform.v1.PlatformAuthServiceLoginResponse.user:type_name -> publira.types.v1.User
+	33, // 1: publira.platform.v1.PlatformAuthServiceLoginResponse.access_token:type_name -> publira.types.v1.AccessToken
+	3,  // 2: publira.platform.v1.PlatformAuthServiceLoginResponse.mfa_challenge:type_name -> publira.platform.v1.PlatformAuthServiceMfaChallenge
+	0,  // 3: publira.platform.v1.PlatformAuthServiceMfaChallenge.kind:type_name -> publira.platform.v1.MfaChallengeKind
+	32, // 4: publira.platform.v1.PlatformAuthServiceVerifyMfaResponse.user:type_name -> publira.types.v1.User
+	33, // 5: publira.platform.v1.PlatformAuthServiceVerifyMfaResponse.access_token:type_name -> publira.types.v1.AccessToken
+	32, // 6: publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse.user:type_name -> publira.types.v1.User
+	33, // 7: publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse.access_token:type_name -> publira.types.v1.AccessToken
+	32, // 8: publira.platform.v1.PlatformAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
+	1,  // 9: publira.platform.v1.PlatformAuthService.Login:input_type -> publira.platform.v1.PlatformAuthServiceLoginRequest
+	16, // 10: publira.platform.v1.PlatformAuthService.Logout:input_type -> publira.platform.v1.PlatformAuthServiceLogoutRequest
+	4,  // 11: publira.platform.v1.PlatformAuthService.VerifyMfa:input_type -> publira.platform.v1.PlatformAuthServiceVerifyMfaRequest
+	6,  // 12: publira.platform.v1.PlatformAuthService.GetMfaStatus:input_type -> publira.platform.v1.PlatformAuthServiceGetMfaStatusRequest
+	8,  // 13: publira.platform.v1.PlatformAuthService.StartMfaEnrollment:input_type -> publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentRequest
+	10, // 14: publira.platform.v1.PlatformAuthService.ConfirmMfaEnrollment:input_type -> publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentRequest
+	12, // 15: publira.platform.v1.PlatformAuthService.DisableMfa:input_type -> publira.platform.v1.PlatformAuthServiceDisableMfaRequest
+	14, // 16: publira.platform.v1.PlatformAuthService.RegenerateMfaRecoveryCodes:input_type -> publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest
+	18, // 17: publira.platform.v1.PlatformAuthService.RequestPasswordReset:input_type -> publira.platform.v1.PlatformAuthServiceRequestPasswordResetRequest
+	20, // 18: publira.platform.v1.PlatformAuthService.VerifyPasswordResetToken:input_type -> publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenRequest
+	22, // 19: publira.platform.v1.PlatformAuthService.ConfirmPasswordReset:input_type -> publira.platform.v1.PlatformAuthServiceConfirmPasswordResetRequest
+	24, // 20: publira.platform.v1.PlatformAuthService.RequestEmailChange:input_type -> publira.platform.v1.PlatformAuthServiceRequestEmailChangeRequest
+	26, // 21: publira.platform.v1.PlatformAuthService.VerifyEmailChangeToken:input_type -> publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenRequest
+	28, // 22: publira.platform.v1.PlatformAuthService.ConfirmEmailChange:input_type -> publira.platform.v1.PlatformAuthServiceConfirmEmailChangeRequest
+	30, // 23: publira.platform.v1.PlatformAuthService.GetMe:input_type -> publira.platform.v1.PlatformAuthServiceGetMeRequest
+	2,  // 24: publira.platform.v1.PlatformAuthService.Login:output_type -> publira.platform.v1.PlatformAuthServiceLoginResponse
+	17, // 25: publira.platform.v1.PlatformAuthService.Logout:output_type -> publira.platform.v1.PlatformAuthServiceLogoutResponse
+	5,  // 26: publira.platform.v1.PlatformAuthService.VerifyMfa:output_type -> publira.platform.v1.PlatformAuthServiceVerifyMfaResponse
+	7,  // 27: publira.platform.v1.PlatformAuthService.GetMfaStatus:output_type -> publira.platform.v1.PlatformAuthServiceGetMfaStatusResponse
+	9,  // 28: publira.platform.v1.PlatformAuthService.StartMfaEnrollment:output_type -> publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentResponse
+	11, // 29: publira.platform.v1.PlatformAuthService.ConfirmMfaEnrollment:output_type -> publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse
+	13, // 30: publira.platform.v1.PlatformAuthService.DisableMfa:output_type -> publira.platform.v1.PlatformAuthServiceDisableMfaResponse
+	15, // 31: publira.platform.v1.PlatformAuthService.RegenerateMfaRecoveryCodes:output_type -> publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse
+	19, // 32: publira.platform.v1.PlatformAuthService.RequestPasswordReset:output_type -> publira.platform.v1.PlatformAuthServiceRequestPasswordResetResponse
+	21, // 33: publira.platform.v1.PlatformAuthService.VerifyPasswordResetToken:output_type -> publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenResponse
+	23, // 34: publira.platform.v1.PlatformAuthService.ConfirmPasswordReset:output_type -> publira.platform.v1.PlatformAuthServiceConfirmPasswordResetResponse
+	25, // 35: publira.platform.v1.PlatformAuthService.RequestEmailChange:output_type -> publira.platform.v1.PlatformAuthServiceRequestEmailChangeResponse
+	27, // 36: publira.platform.v1.PlatformAuthService.VerifyEmailChangeToken:output_type -> publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenResponse
+	29, // 37: publira.platform.v1.PlatformAuthService.ConfirmEmailChange:output_type -> publira.platform.v1.PlatformAuthServiceConfirmEmailChangeResponse
+	31, // 38: publira.platform.v1.PlatformAuthService.GetMe:output_type -> publira.platform.v1.PlatformAuthServiceGetMeResponse
+	24, // [24:39] is the sub-list for method output_type
+	9,  // [9:24] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_publira_platform_v1_auth_proto_init() }
@@ -977,13 +1809,14 @@ func file_publira_platform_v1_auth_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_platform_v1_auth_proto_rawDesc), len(file_publira_platform_v1_auth_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   18,
+			NumEnums:      1,
+			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_publira_platform_v1_auth_proto_goTypes,
 		DependencyIndexes: file_publira_platform_v1_auth_proto_depIdxs,
+		EnumInfos:         file_publira_platform_v1_auth_proto_enumTypes,
 		MessageInfos:      file_publira_platform_v1_auth_proto_msgTypes,
 	}.Build()
 	File_publira_platform_v1_auth_proto = out.File

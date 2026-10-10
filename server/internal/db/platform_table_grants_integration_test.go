@@ -79,8 +79,9 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 // policy the storefront's and the tenant console's rate limits and the
 // tenant-admin MFA requirement come from, the retention defaults the tenant
 // console and the purge batches resolve a tenant's periods from, the object
-// store the image server and the orphan image sweep resolve, and the search
-// engine the maintenance role builds the catalog index on. The last two hold
+// store the image server and the orphan image sweep resolve, the search
+// engine the maintenance role builds the catalog index on, and the spent
+// operator MFA challenges it purges. The object store and the search engine hold
 // their secret encrypted under keys the database does not have. The storefront also
 // reads the Web Push settings, but only the columns that publish the public
 // key, which TestPublicRoleReadsOnlyThePublishedWebPushColumns holds it to, and
@@ -89,7 +90,15 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 var readablePlatformTables = map[string][]string{
 	"publira_public":        {"platform_policy_config", "platform_webpush_config"},
 	"publira_admin":         {"platform_policy_config", "platform_retention_config", "platform_smtp_config", "platform_storage_config"},
-	"publira_content_stats": {"platform_retention_config", "platform_search_config", "platform_storage_config"},
+	"publira_content_stats": {"platform_retention_config", "platform_search_config", "platform_storage_config", "platform_user_mfa_used_challenges"},
+}
+
+// purgeablePlatformTables are, per role, the platform tables it deletes from:
+// the spent MFA challenge purge drains the platform console's spent challenges
+// on the maintenance pool. A row there names a token identifier and an
+// operator's internal id and nothing an attacker could sign in with.
+var purgeablePlatformTables = map[string][]string{
+	"publira_content_stats": {"platform_user_mfa_used_challenges"},
 }
 
 // The storefront and the tenant console reach the database as publira_public and
@@ -122,7 +131,14 @@ func TestPlatformTablesAreOutOfReachOfTheTenantRoles(t *testing.T) {
 				assertRefused(t, ctx, conn, role, query)
 			}
 			assertRefused(t, ctx, conn, role, fmt.Sprintf("INSERT INTO %s DEFAULT VALUES", table))
-			assertRefused(t, ctx, conn, role, fmt.Sprintf("DELETE FROM %s", table))
+			deletion := fmt.Sprintf("DELETE FROM %s", table)
+			if slices.Contains(purgeablePlatformTables[role], table) {
+				if _, err := conn.ExecContext(ctx, deletion); err != nil {
+					t.Fatalf("delete from %s as %s: %v", table, role, err)
+				}
+			} else {
+				assertRefused(t, ctx, conn, role, deletion)
+			}
 		}
 	}
 }

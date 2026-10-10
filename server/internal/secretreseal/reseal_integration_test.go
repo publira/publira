@@ -103,6 +103,9 @@ func seedEveryColumn(t *testing.T, pg *testutil.PostgresEnv, sealer *secretcrypt
 
 	exec(t, db, `INSERT INTO user_mfa_totp (user_id, tenant_id, secret_encrypted) VALUES ($1, $2, $3)`,
 		admin.ID, tenant.ID, seal(t, sealer, "TOTPSECRET"))
+	operator := pg.SeedPlatformOperator(t, "OPERATOR0001", "operator@example.com", "Operator")
+	exec(t, db, `INSERT INTO platform_user_mfa_totp (platform_user_id, secret_encrypted) VALUES ($1, $2)`,
+		operator.ID, seal(t, sealer, "OPERATORTOTPSECRET"))
 	exec(t, db, `INSERT INTO user_identities (id, tenant_id, user_id, provider, subject, email_at_link,
 			refresh_token_encrypted, refresh_token_client_id)
 		VALUES ($1, $2, $3, 'apple', 'apple-subject', 'reader@example.com', $4, 'com.example.web')`,

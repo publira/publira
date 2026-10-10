@@ -20,6 +20,7 @@ FOR UPDATE;
 INSERT INTO platform_policy_config (
         singleton,
         mfa_required_for_tenant_admin,
+        mfa_required_for_platform_operator,
         password_verify_limit_per_minute,
         password_verify_limit_per_day,
         mail_request_limit_per_address_per_hour,
@@ -53,6 +54,7 @@ INSERT INTO platform_policy_config (
 VALUES (
         TRUE,
         sqlc.arg('mfa_required_for_tenant_admin'),
+        sqlc.arg('mfa_required_for_platform_operator'),
         sqlc.arg('password_verify_limit_per_minute'),
         sqlc.arg('password_verify_limit_per_day'),
         sqlc.arg('mail_request_limit_per_address_per_hour'),
@@ -90,6 +92,7 @@ RETURNING *;
 -- write, which is what makes a save based on an earlier read detectable.
 UPDATE platform_policy_config
 SET mfa_required_for_tenant_admin = sqlc.arg('mfa_required_for_tenant_admin'),
+    mfa_required_for_platform_operator = sqlc.arg('mfa_required_for_platform_operator'),
     password_verify_limit_per_minute = sqlc.arg('password_verify_limit_per_minute'),
     password_verify_limit_per_day = sqlc.arg('password_verify_limit_per_day'),
     mail_request_limit_per_address_per_hour = sqlc.arg('mail_request_limit_per_address_per_hour'),
