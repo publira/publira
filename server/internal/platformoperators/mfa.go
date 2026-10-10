@@ -47,11 +47,13 @@ func (p ResetMFAParams) Validate() error {
 	return err
 }
 
-// normalize answers the public ID trimmed and the address lowercased, the
-// form CreateOperator stores it in.
+// normalize answers the public ID and the address trimmed. The address keeps
+// its case: initial setup and an email change store it as it was typed, and
+// Login looks it up exactly, so the address an operator signs in with is the
+// one that names them here.
 func (p ResetMFAParams) normalize() (publicID, email string, err error) {
 	publicID = strings.TrimSpace(p.UserPublicID)
-	email = strings.ToLower(strings.TrimSpace(p.Email))
+	email = strings.TrimSpace(p.Email)
 	switch {
 	case publicID == "" && email == "":
 		return "", "", ErrUserOrEmailRequired

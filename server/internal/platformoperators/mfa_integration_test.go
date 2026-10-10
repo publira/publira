@@ -69,7 +69,9 @@ func resetMFA(t *testing.T, pg *testutil.PostgresEnv, p ResetMFAParams) (dbmodel
 func TestResetMFARemovesTheAuthenticatorAndEveryRecoveryCode(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
-	operator := pg.SeedPlatformSuperAdmin(t, "PLATRESET01", "operator@example.com", "Operator")
+	// Initial setup and an email change store an address as it was typed, so
+	// one with capitals is named exactly as the operator signs in with it.
+	operator := pg.SeedPlatformSuperAdmin(t, "PLATRESET01", "Operator@Example.com", "Operator")
 	other := pg.SeedPlatformOperator(t, "PLATRESET02", "other@example.com", "Other")
 	seedMFA(t, pg, operator.ID, true)
 	seedMFA(t, pg, other.ID, true)
