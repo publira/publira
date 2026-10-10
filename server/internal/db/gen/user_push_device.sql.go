@@ -68,6 +68,10 @@ WHERE n.tenant_id = $1
     AND n.subject_key = $3
     AND n.user_id >= $4::uuid
     AND (n.user_id, d.token) > ($4::uuid, $5::text)
+    AND n.availability = ANY (ARRAY[
+        'all'::text,
+        CASE WHEN d.platform = 'web' THEN 'web'::text ELSE 'app'::text END
+    ])
 ORDER BY n.user_id, d.token
 LIMIT $6
 `
@@ -97,6 +101,10 @@ type ListPushDevicesForNotificationRow struct {
 // in idx_notifications_tenant_subject_user, so a page costs the recipients it
 // passes rather than every device the tenant has. The separate user_id bound is
 // what the index can start from, since the pair spans both tables.
+//
+// A device is left out where the notification may not be shown on its
+// surface: a Web Push subscription is the site, and an FCM token on Android
+// or iOS is the app.
 func (q *Queries) ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPushDevicesForNotification,
 		arg.TenantID,

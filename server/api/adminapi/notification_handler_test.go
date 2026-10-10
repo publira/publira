@@ -73,7 +73,7 @@ func TestListNotificationsSuccess(t *testing.T) {
 	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListNotificationsForUserDesc)).
-		WithArgs(actorID, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WithArgs(actorID, tenantID, sql.NullString{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addNotificationRow(notificationColumns(), notificationID, tenantID, actorID, "episode_published", now))
 
 	resp, err := client.ListNotifications(testutil.WithBearer(context.Background(), sessionToken), newNotificationRequest(tenantID))
@@ -113,7 +113,7 @@ func TestCountUnreadNotificationsSuccess(t *testing.T) {
 	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountUnreadNotificationsForUser)).
-		WithArgs(tenantID, actorID).
+		WithArgs(tenantID, actorID, sql.NullString{}).
 		WillReturnRows(sqlmock.NewRows([]string{"unread_count"}).AddRow(int32(2)))
 
 	req := &publiraadminv1.CountUnreadNotificationsRequest{

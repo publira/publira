@@ -226,8 +226,8 @@ type ListEpisodeFollowerIDsParams struct {
 // notification links to the episode, and a follower of a credited creator
 // would otherwise be sent to a page that answers 404. The gate names no
 // follower, so the planner checks it once rather than per row. Such an
-// episode is not announced when its series is published later either (#4044),
-// and one shown on a single surface is still announced on both (#4043).
+// episode is not announced when its series is published later either (#4044).
+// The surfaces it is announced on are ListPublishedEpisodeSurfaces's to say.
 //
 // Keyset paging on user_id, because the result grows with the tenant's
 // readership and the caller writes one row per recipient. The cursor is
@@ -682,6 +682,47 @@ func (q *Queries) ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx context.Con
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListPublishedEpisodeSurfaces = `-- name: ListPublishedEpisodeSurfaces :many
+SELECT surface
+FROM published_episode_surfaces
+WHERE tenant_id = $1
+    AND episode_id = $2
+ORDER BY surface
+`
+
+type ListPublishedEpisodeSurfacesParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// The surfaces a reader can open an episode on at this moment, which are the
+// surfaces the fan-out lets its notification be shown on. The notification
+// links to the episode, so one shown on the app alone is not listed in the
+// site's inbox or pushed to a browser, where it would lead to a page that
+// answers 404.
+func (q *Queries) ListPublishedEpisodeSurfaces(ctx context.Context, arg ListPublishedEpisodeSurfacesParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeSurfaces, arg.TenantID, arg.EpisodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var surface string
+		if err := rows.Scan(&surface); err != nil {
+			return nil, err
+		}
+		items = append(items, surface)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

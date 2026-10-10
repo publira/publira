@@ -1,3 +1,4 @@
+import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/tenant_resolver.dart';
@@ -40,6 +41,7 @@ class HttpNotificationRepository implements NotificationRepository {
     final body = await _call(_listProcedure, accessToken, {
       'limit': pageSize,
       if (token.isNotEmpty) 'token': token,
+      'surface': appClientSurface,
     });
     return InboxNotificationPage(
       notifications: _notifications(body['notifications']),
@@ -53,7 +55,9 @@ class HttpNotificationRepository implements NotificationRepository {
     if (accessToken.isEmpty) {
       return 0;
     }
-    final body = await _call(_countProcedure, accessToken, const {});
+    final body = await _call(_countProcedure, accessToken, const {
+      'surface': appClientSurface,
+    });
     // protojson omits a zero.
     final count = body['unreadCount'];
     return count is num ? count.toInt() : 0;
@@ -68,7 +72,9 @@ class HttpNotificationRepository implements NotificationRepository {
 
   @override
   Future<void> markAllRead() async {
-    await _call(_markAllProcedure, _requireSession(), const {});
+    await _call(_markAllProcedure, _requireSession(), const {
+      'surface': appClientSurface,
+    });
   }
 
   Future<Map<String, Object?>> _call(

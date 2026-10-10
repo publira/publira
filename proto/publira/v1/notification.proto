@@ -23,6 +23,10 @@ message ListNotificationsRequest {
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
   string token = 3;
+  // The client making the read. Unspecified is answered as the web storefront.
+  // A notification about an episode is listed only on the surfaces the episode
+  // was shown on when it was published.
+  publira.types.v1.ClientSurface surface = 4;
 }
 
 message ListNotificationsResponse {
@@ -75,6 +79,9 @@ message UnregisterPushDeviceResponse {
 
 message CountUnreadNotificationsRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // The client making the read. Unspecified is answered as the web storefront,
+  // and the count is of what ListNotifications lists on the same surface.
+  publira.types.v1.ClientSurface surface = 2;
 }
 
 message CountUnreadNotificationsResponse {
@@ -92,6 +99,9 @@ message MarkNotificationAsReadResponse {
 
 message MarkAllNotificationsAsReadRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // The client making the call. Unspecified is answered as the web storefront,
+  // and what is marked is what ListNotifications lists on the same surface.
+  publira.types.v1.ClientSurface surface = 2;
 }
 
 message MarkAllNotificationsAsReadResponse {

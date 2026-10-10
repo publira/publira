@@ -170,14 +170,14 @@ The usual way to publish a new episode of a public series is therefore:
 The episode is published by `publira worker`, which looks for episodes whose time has passed once a minute. At that pass, the episode:
 
 - Opens on its own page and in its series' episode list on the site, and in the app.
-- Is announced to every reader following the episode, its series, or an Author credited on it, with a notification on the site and a push notification in the app.
+- Is announced to every reader following the episode, its series, or an Author credited on it, with a notification and a push notification on each of the site and the app it is shown on.
 - Is sent to the search index.
 
 So an episode scheduled for 12:00 is readable by about 12:01, and the site's lists, such as the series list ordered by **Recently updated**, show it from the same moment.
 
 An episode that is still **Scheduled** well after its time means the worker is not running, or is failing to publish it. A Tenant admin then gets a notification titled "An episode could not be published". This is for the operator to fix, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#scheduled-publication) describes, and the episode goes out on its own once it is. To publish it without waiting, enter the current time under **Publishing settings** and save.
 
-An episode published while its series is not public, or while it is **Not shown anywhere**, is announced to nobody, so that no notification leads to a page that is not found. It is not announced later when the series is published either ([#4044](https://github.com/publira/publira/issues/4044)). An episode shown on only one of the site and the app is still announced on both, and the notification on the other one leads to a page that is not found ([#4043](https://github.com/publira/publira/issues/4043)). Publish the series first, and set where an episode is shown before its time.
+An episode published while its series is not public, or while it is **Not shown anywhere**, is announced to nobody, so that no notification leads to a page that is not found. It is not announced later when the series is published either ([#4044](https://github.com/publira/publira/issues/4044)). An episode shown on only one of the site and the app is announced there alone: readers see its notification in that one's notifications, and its push notification reaches only their browsers or only their phones. Where an episode is announced is decided when it is published, and changing its **Shown on** later does not move a notification already sent. Publish the series first, and set where an episode is shown before its time.
 
 ### Taking an episode off the site
 
