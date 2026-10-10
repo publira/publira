@@ -107,8 +107,10 @@ type CheckoutRequest struct {
 	// SuccessURL and CancelURL are where the reader returns to afterwards.
 	SuccessURL string
 	CancelURL  string
-	// IdempotencyKey is the same for every attempt of the same reader to buy
-	// the same episode, so a retried request reuses the provider's checkout.
+	// IdempotencyKey is the same for every attempt that sends the same request,
+	// so a retried request reuses the provider's checkout, and differs between
+	// requests whose other fields differ, which the provider would refuse or
+	// answer with the checkout of the earlier one.
 	IdempotencyKey string
 }
 

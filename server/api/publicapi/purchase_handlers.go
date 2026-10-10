@@ -2,7 +2,9 @@ package publicapi
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -127,20 +129,23 @@ func (s *apiServer) StartEpisodeCheckout(
 		successURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "success")
 		cancelURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "cancelled")
 	}
-	purchase := paymentprovider.Purchase{
-		TenantID:           tenant.ID,
-		ReaderID:           user.ID,
-		EpisodeID:          episode.ID,
-		Price:              episode.Price,
-		ReadingPeriodHours: episode.ReadingPeriodHours.Int32,
+	checkout := paymentprovider.CheckoutRequest{
+		Purchase: paymentprovider.Purchase{
+			TenantID:           tenant.ID,
+			ReaderID:           user.ID,
+			EpisodeID:          episode.ID,
+			Price:              episode.Price,
+			ReadingPeriodHours: episode.ReadingPeriodHours.Int32,
+		},
+		EpisodeTitle: episode.Title,
+		SuccessURL:   successURL,
+		CancelURL:    cancelURL,
 	}
-	checkoutURL, err := provider.StartCheckout(ctx, credentials, paymentprovider.CheckoutRequest{
-		Purchase:       purchase,
-		EpisodeTitle:   episode.Title,
-		SuccessURL:     successURL,
-		CancelURL:      cancelURL,
-		IdempotencyKey: checkoutIdempotencyKey(purchase),
-	})
+	checkout.IdempotencyKey, err = checkoutIdempotencyKey(checkout)
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to build the checkout idempotency key", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	checkoutURL, err := provider.StartCheckout(ctx, credentials, checkout)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to start a checkout with the payment provider", "error", err, "tenant_id", tenant.ID, "provider", provider.Declaration().ID, "episode_id", episode.ID.String())
 		return nil, connect.NewError(connect.CodeUnavailable, "failed to start checkout")
@@ -148,14 +153,24 @@ func (s *apiServer) StartEpisodeCheckout(
 	return &publirav1.StartEpisodeCheckoutResponse{CheckoutUrl: checkoutURL}, nil
 }
 
-// checkoutIdempotencyKey names one reader's checkout of one episode on the
-// terms it is sold on, so a retried request reuses the provider's checkout.
-// The price and the reading period are part of the key because an editor can
-// change them: a provider refuses a key it has seen sent with other amounts,
-// or answers with the checkout it made for them, either of which would keep a
-// reader who started a checkout before the change from buying at the new terms.
-func checkoutIdempotencyKey(purchase paymentprovider.Purchase) string {
-	return fmt.Sprintf("episode-checkout:%s:%s:%s:%d:%d", purchase.TenantID, purchase.ReaderID, purchase.EpisodeID, purchase.Price, purchase.ReadingPeriodHours)
+// checkoutIdempotencyKey names one reader's checkout of one episode by
+// everything the request sends, so a retried request reuses the provider's
+// checkout. A provider refuses a key it has seen sent with other parameters, or
+// answers with the checkout it made for them, and any of those parameters can
+// change between two attempts of the same reader: an editor can change the
+// episode's price, reading period, or title, and the return URLs differ
+// between the storefront and the app. The key therefore covers the whole
+// request rather than a list of its fields, which a field added later would
+// not be on.
+func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest) (string, error) {
+	req.IdempotencyKey = ""
+	encoded, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("encode checkout request: %w", err)
+	}
+	sum := sha256.Sum256(encoded)
+	purchase := req.Purchase
+	return fmt.Sprintf("episode-checkout:%s:%s:%s:%x", purchase.TenantID, purchase.ReaderID, purchase.EpisodeID, sum[:16]), nil
 }
 
 // refuseCheckoutForStoreRoute answers failed_precondition for a tenant whose

@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -39,15 +40,25 @@ const (
 )
 
 // capturingCheckoutProvider is the Stripe provider with its checkout captured
-// instead of created.
+// instead of created. It refuses an idempotency key it has seen sent with
+// other parameters, as Stripe does.
 type capturingCheckoutProvider struct {
 	*stripe.Provider
 	secretKey string
 	input     paymentprovider.CheckoutRequest
 	url       string
+	// sent is every request started so far, by its idempotency key.
+	sent map[string]paymentprovider.CheckoutRequest
 }
 
 func (p *capturingCheckoutProvider) StartCheckout(_ context.Context, credentials paymentprovider.Credentials, input paymentprovider.CheckoutRequest) (string, error) {
+	if earlier, ok := p.sent[input.IdempotencyKey]; ok && earlier != input {
+		return "", errors.New("keys for idempotent requests can only be used with the same parameters they were first used with")
+	}
+	if p.sent == nil {
+		p.sent = make(map[string]paymentprovider.CheckoutRequest)
+	}
+	p.sent[input.IdempotencyKey] = input
 	p.secretKey = credentials[stripe.FieldSecretKey]
 	p.input = input
 	return p.url, nil
@@ -228,8 +239,6 @@ func TestStartEpisodeCheckoutRefusesWhenTenantDomainMissing(t *testing.T) {
 	assertPublicExpectations(t, env.mock)
 }
 
-// expectPurchasableEpisode stands in for the checkout's read of a paid episode
-// the named surface may show, sold where purchaseAvailability says.
 // expectAppPurchaseRoute stands in for the route read a checkout from the app
 // makes before anything else about the purchase.
 func expectAppPurchaseRoute(mock sqlmock.Sqlmock, tenantID uuid.UUID, route string) {
@@ -238,11 +247,19 @@ func expectAppPurchaseRoute(mock sqlmock.Sqlmock, tenantID uuid.UUID, route stri
 		WillReturnRows(sqlmock.NewRows([]string{"app_purchase_route"}).AddRow(route))
 }
 
+// expectPurchasableEpisode stands in for the checkout's read of a paid episode
+// the named surface may show, sold where purchaseAvailability says.
 func expectPurchasableEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability string) {
+	expectPurchasableEpisodeTitled(mock, tenantID, episodeID, surface, purchaseAvailability, "Paid episode")
+}
+
+// expectPurchasableEpisodeTitled is [expectPurchasableEpisode] for an episode
+// of the given title.
+func expectPurchasableEpisodeTitled(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability, title string) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPurchasableEpisodeForTenant)).
 		WithArgs(episodeID, tenantID, surface).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours", "purchase_availability"}).
-			AddRow(episodeID, "EPISODE001", "Paid episode", "SERIES001", int32(500), sql.NullInt32{}, purchaseAvailability))
+			AddRow(episodeID, "EPISODE001", title, "SERIES001", int32(500), sql.NullInt32{}, purchaseAvailability))
 }
 
 // expectNoEpisodeGrant answers that the reader holds no grant on the episode,
@@ -463,6 +480,79 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 	}
 	assertNoSecretLeak(t, env.logs.String())
 	assertPublicExpectations(t, env.mock)
+}
+
+// startCheckoutOn has the reader start a checkout of the episode from client,
+// reading the episode under the given title, and answers the checkout URL.
+func startCheckoutOn(t *testing.T, env publicPaymentServer, encryptor *secretcrypto.Manager, tenantID, userID, episodeID uuid.UUID, client publirav1.StartEpisodeCheckoutRequest_Client, title string) string {
+	t.Helper()
+	now := time.Now()
+	surface := "web"
+	expectTenantLookupWithDefaultLocale(env.mock, tenantID, "TENANT", now, "en")
+	expectAuthSession(env.mock, tenantID, userID, now)
+	if client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
+		surface = "app"
+		expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteExternalCheckout)
+	}
+	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	expectPurchasableEpisodeTitled(env.mock, tenantID, episodeID, surface, "all", title)
+	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
+	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
+		WithArgs(tenantID, userID, episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
+
+	purchases := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	resp, err := purchases.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
+		EpisodeId: episodeID.String(),
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Client:    client,
+	})
+	if err != nil {
+		t.Fatalf("StartEpisodeCheckout: %v", err)
+	}
+	return resp.CheckoutUrl
+}
+
+// A provider refuses an idempotency key it has seen sent with other
+// parameters, so a second attempt that differs from the first in what the
+// request sends must not reuse the first one's key, and a retry of the same
+// request must.
+func TestStartEpisodeCheckoutStartsAnotherCheckoutForADifferentRequest(t *testing.T) {
+	const (
+		web = publirav1.StartEpisodeCheckoutRequest_CLIENT_WEB
+		app = publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE
+	)
+	cases := []struct {
+		name                      string
+		firstClient, secondClient publirav1.StartEpisodeCheckoutRequest_Client
+		firstTitle, secondTitle   string
+		wantCheckouts             int
+	}{
+		{name: "on the web and then in the app", firstClient: web, secondClient: app, firstTitle: "Paid episode", secondTitle: "Paid episode", wantCheckouts: 2},
+		{name: "in the app and then on the web", firstClient: app, secondClient: web, firstTitle: "Paid episode", secondTitle: "Paid episode", wantCheckouts: 2},
+		{name: "before and after the episode is renamed", firstClient: web, secondClient: web, firstTitle: "Paid episode", secondTitle: "Renamed episode", wantCheckouts: 2},
+		{name: "twice on the same terms", firstClient: web, secondClient: web, firstTitle: "Paid episode", secondTitle: "Paid episode", wantCheckouts: 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			encryptor := newPublicTestEncryptor(t)
+			env := newPublicPaymentServer(t, encryptor)
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			episodeID := uuid.Must(uuid.NewV7())
+
+			if got := startCheckoutOn(t, env, encryptor, tenantID, userID, episodeID, tc.firstClient, tc.firstTitle); got == "" {
+				t.Fatal("first checkout_url is empty")
+			}
+			if got := startCheckoutOn(t, env, encryptor, tenantID, userID, episodeID, tc.secondClient, tc.secondTitle); got == "" {
+				t.Fatal("second checkout_url is empty")
+			}
+			if len(env.checkout.sent) != tc.wantCheckouts {
+				t.Fatalf("provider received %d idempotency keys, want %d", len(env.checkout.sent), tc.wantCheckouts)
+			}
+			assertPublicExpectations(t, env.mock)
+		})
+	}
 }
 
 func TestProcessPaymentWebhookRefusesWhenTenantSettingsMissing(t *testing.T) {
