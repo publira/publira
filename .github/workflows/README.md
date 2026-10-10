@@ -6,7 +6,6 @@
 | `Skills Update` | [`skills-update.yml`](./skills-update.yml) | Weekly pull requests that update agent skills. |
 | `Organize issues` | [`organize-issues.yml`](./organize-issues.yml) | Issue-maintenance automation. |
 | `Review` | [`review.yml`](./review.yml) | Review-support automation. |
-| `Regenerate` | [`regenerate.yml`](./regenerate.yml) | Stacked pull requests that regenerate output for a generator version bump. |
 
 ## Organize issues
 
@@ -78,16 +77,6 @@ Coefficients and thresholds live in `scripts/pr-size.ts`; its classification and
 The job holds `contents: read` and `pull-requests: write`, and it never checks out the head branch — `pull_request_target` resolves to the base commit, so the scorer that runs is the one that was reviewed and merged. A job's `permissions` block replaces the workflow's `permissions: {}` rather than adding to it, so the read the checkout needs has to be spelled out in the job. It reads per-file patches from `GET /repos/{owner}/{repo}/pulls/{number}/files` and pipes them to that scorer; where the API omits a patch (a binary or oversized file), it stands in one significant line for each addition and deletion the API counted.
 
 A pull request that already carries a `size/*` label is left alone and the run log says so. A label the author set — an agent following `skills/create-pr`, or a human who has judged the review load — wins over the mechanical score. The job asks `GET /repos/{owner}/{repo}/pulls/{number}` for the pull request's current labels rather than reading the list the event payload carries: `gh pr create --label` applies its label in a request of its own once the pull request exists, so the payload can still describe it as unlabelled and the label would be scored over.
-
-## Regenerate
-
-[`regenerate.yml`](./regenerate.yml), named `Regenerate`, keeps generated output in step with the generators that produce it. Renovate raises the pinned remote plugin versions in `buf.gen.yaml` and the `SQLC_VERSION` / `BUF_VERSION` values in the `env` block of [`ci.yml`](./ci.yml), and the custom managers in [`renovate.json5`](../renovate.json5) rewrite the version stamp each generator leaves in its output alongside the matching pin, so a release that changes nothing but that stamp is complete in one pull request. A release that changes the generated code itself is not, because the rest of the committed output is still the previous version's. This workflow runs `task gen` on such a pull request and, when the result differs from the committed tree, opens a **stacked pull request** whose base is the original branch and whose only content is the regenerated files.
-
-It is triggered by `pull_request` on `buf.gen.yaml`, `ci.yml`, and itself, and it skips forks (their `GITHUB_TOKEN` is read-only) and branches that start with `regen/` (a stacked branch must not stack on itself). Tool setup uses the same actions and the same pinned versions as the `Check` job, so the regenerated files match what that job then verifies.
-
-This workflow never writes to the original branch. Renovate force-pushes when it rebases, which would discard a commit placed there. The stacked branch is a separate `regen/<original branch>` ref, rebuilt by [`peter-evans/create-pull-request`](https://github.com/peter-evans/create-pull-request) on every run: a second run updates the existing pull request instead of opening another one, and a run that produces no diff opens nothing and closes a pull request left over from an earlier run.
-
-The stacked pull request is opened by `github-actions[bot]`, so its checks start only after a user with write permission approves the run. `CI` needs no trigger change to see it: GitHub treats a pull request whose base is another open pull request's branch as part of a stack and starts workflows as if it targeted the stack's base, which is `main`. Merge the stacked pull request into the original branch first, then the original pull request into `main`. Merging into a Renovate branch marks that branch as modified, and Renovate then stops updating it until someone ticks its rebase checkbox — which regenerates the branch and drops the regenerated commit with it.
 
 # CI workflow
 
