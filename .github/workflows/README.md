@@ -85,9 +85,11 @@ A pull request that already carries a `size/*` label is left alone and the run l
 
 It is triggered by `pull_request` on `buf.gen.yaml`, `ci.yml`, and itself, and it skips forks (their `GITHUB_TOKEN` is read-only) and branches that start with `regen/` (a stacked branch must not stack on itself). Tool setup uses the same actions and the same pinned versions as the `Check` job, so the regenerated files match what that job then verifies.
 
-The original branch is never written to. Renovate force-pushes when it rebases, which would discard a commit placed there. The stacked branch is a separate `regen/<original branch>` ref, rebuilt by [`peter-evans/create-pull-request`](https://github.com/peter-evans/create-pull-request) on every run: a second run updates the existing pull request instead of opening another one, and a run that produces no diff opens nothing and closes a pull request left over from an earlier run.
+This workflow never writes to the original branch. Renovate force-pushes when it rebases, which would discard a commit placed there. The stacked branch is a separate `regen/<original branch>` ref, rebuilt by [`peter-evans/create-pull-request`](https://github.com/peter-evans/create-pull-request) on every run: a second run updates the existing pull request instead of opening another one, and a run that produces no diff opens nothing and closes a pull request left over from an earlier run.
 
 The stacked pull request is opened by `github-actions[bot]`, so its checks start only after a user with write permission approves the run. `CI` needs no trigger change to see it: GitHub treats a pull request whose base is another open pull request's branch as part of a stack and starts workflows as if it targeted the stack's base, which is `main`. Merge the stacked pull request into the original branch first, then the original pull request into `main`. Merging into a Renovate branch marks that branch as modified, and Renovate then stops updating it until someone ticks its rebase checkbox — which regenerates the branch and drops the regenerated commit with it.
+
+The maintenance bot of [publira/agents](https://github.com/publira/agents) is taking this over: as declared in [`.github/maintenance-bot/regenerate.yml`](../maintenance-bot/regenerate.yml), it commits the regenerated output to the Renovate branch itself. Until this workflow is removed, both run, and a run after the bot's commit finds no diff.
 
 # CI workflow
 
