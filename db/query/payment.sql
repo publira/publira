@@ -175,20 +175,10 @@ ORDER BY p.purchased_at ASC,
 LIMIT sqlc.arg('limit');
 
 -- name: CreatePurchaseFromProviderCheckout :one
--- The advisory lock serializes different checkouts for the same buyer and
--- episode. The provider's request idempotency prevents duplicate checkouts in
--- the ordinary case; this also keeps an exceptional concurrent pair from
--- producing two entitlements.
-WITH locked AS (
-    SELECT pg_advisory_xact_lock(
-        hashtextextended(
-            sqlc.arg('tenant_id')::uuid::text || ':' ||
-                sqlc.arg('user_id')::uuid::text || ':' ||
-                sqlc.arg('episode_id')::uuid::text,
-            0
-        )
-    )
-)
+-- Every checkout the provider reports paid is a purchase of its own, even for a
+-- reader who already holds one for the episode: the payment was taken, so it is
+-- a sale to report and to match a refund against. A redelivery of the same
+-- checkout is no row.
 INSERT INTO purchases (
     id,
     tenant_id,
@@ -201,7 +191,7 @@ INSERT INTO purchases (
     provider_payment_id,
     is_test
 )
-SELECT
+VALUES (
     sqlc.arg('id')::uuid,
     sqlc.arg('tenant_id')::uuid,
     sqlc.arg('user_id')::uuid,
@@ -212,14 +202,6 @@ SELECT
     sqlc.arg('provider_checkout_id')::text,
     sqlc.narg('provider_payment_id')::text,
     sqlc.arg('is_test')::boolean
-FROM locked
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM episode_content_grants g
-    WHERE g.tenant_id = sqlc.arg('tenant_id')::uuid
-        AND g.user_id = sqlc.arg('user_id')::uuid
-        AND g.episode_id = sqlc.arg('episode_id')::uuid
-        AND g.kind = 'purchase'
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
 RETURNING *;

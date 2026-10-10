@@ -522,38 +522,30 @@ func (s *apiServer) createPurchase(
 	if event.PaymentID != "" {
 		paymentID = sql.NullString{String: event.PaymentID, Valid: true}
 	}
-	hasPurchase, err := queries.UserHasValidPurchaseForEpisode(ctx, dbmodels.UserHasValidPurchaseForEpisodeParams{
-		TenantID:  tenantID,
-		UserID:    purchase.ReaderID,
-		EpisodeID: purchase.EpisodeID,
-	})
-	if err != nil {
-		return fmt.Errorf("check existing purchase: %w", err)
+	// A reader can pay two checkouts of the same episode: one started before an
+	// editor changed its price or reading period, and one started after. Both
+	// are recorded, because each took a payment. A prior delivery of this
+	// checkout that committed the purchase but failed the projection inserts
+	// nothing here, and the provider's retry carries on to repair that event.
+	var expiresAt sql.NullTime
+	if hours := purchase.ReadingPeriodHours; hours > 0 {
+		now := time.Now().UTC()
+		expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
 	}
-	if hasPurchase {
-		// A prior delivery may have committed purchases before the projection
-		// failed. Continue so the provider's retry repairs that derived event.
-	} else {
-		var expiresAt sql.NullTime
-		if hours := purchase.ReadingPeriodHours; hours > 0 {
-			now := time.Now().UTC()
-			expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
-		}
-		_, err = queries.CreatePurchaseFromProviderCheckout(ctx, dbmodels.CreatePurchaseFromProviderCheckoutParams{
-			ID:                 uuid.New(),
-			TenantID:           tenantID,
-			UserID:             purchase.ReaderID,
-			EpisodeID:          purchase.EpisodeID,
-			PriceAtPurchase:    purchase.Price,
-			ExpiresAt:          expiresAt,
-			Provider:           providerID,
-			ProviderCheckoutID: event.CheckoutID,
-			ProviderPaymentID:  paymentID,
-			IsTest:             event.Test,
-		})
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("create purchase: %w", err)
-		}
+	_, err := queries.CreatePurchaseFromProviderCheckout(ctx, dbmodels.CreatePurchaseFromProviderCheckoutParams{
+		ID:                 uuid.New(),
+		TenantID:           tenantID,
+		UserID:             purchase.ReaderID,
+		EpisodeID:          purchase.EpisodeID,
+		PriceAtPurchase:    purchase.Price,
+		ExpiresAt:          expiresAt,
+		Provider:           providerID,
+		ProviderCheckoutID: event.CheckoutID,
+		ProviderPaymentID:  paymentID,
+		IsTest:             event.Test,
+	})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("create purchase: %w", err)
 	}
 
 	if paymentID.Valid {

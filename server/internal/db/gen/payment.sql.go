@@ -84,16 +84,6 @@ func (q *Queries) ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyU
 }
 
 const CreatePurchaseFromProviderCheckout = `-- name: CreatePurchaseFromProviderCheckout :one
-WITH locked AS (
-    SELECT pg_advisory_xact_lock(
-        hashtextextended(
-            $2::uuid::text || ':' ||
-                $3::uuid::text || ':' ||
-                $4::uuid::text,
-            0
-        )
-    )
-)
 INSERT INTO purchases (
     id,
     tenant_id,
@@ -106,7 +96,7 @@ INSERT INTO purchases (
     provider_payment_id,
     is_test
 )
-SELECT
+VALUES (
     $1::uuid,
     $2::uuid,
     $3::uuid,
@@ -117,14 +107,6 @@ SELECT
     $8::text,
     $9::text,
     $10::boolean
-FROM locked
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM episode_content_grants g
-    WHERE g.tenant_id = $2::uuid
-        AND g.user_id = $3::uuid
-        AND g.episode_id = $4::uuid
-        AND g.kind = 'purchase'
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
 RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider
@@ -143,10 +125,10 @@ type CreatePurchaseFromProviderCheckoutParams struct {
 	IsTest             bool           `json:"is_test"`
 }
 
-// The advisory lock serializes different checkouts for the same buyer and
-// episode. The provider's request idempotency prevents duplicate checkouts in
-// the ordinary case; this also keeps an exceptional concurrent pair from
-// producing two entitlements.
+// Every checkout the provider reports paid is a purchase of its own, even for a
+// reader who already holds one for the episode: the payment was taken, so it is
+// a sale to report and to match a refund against. A redelivery of the same
+// checkout is no row.
 func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg CreatePurchaseFromProviderCheckoutParams) (Purchase, error) {
 	row := q.db.QueryRowContext(ctx, CreatePurchaseFromProviderCheckout,
 		arg.ID,
