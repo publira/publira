@@ -89,7 +89,7 @@ This workflow never writes to the original branch. Renovate force-pushes when it
 
 The stacked pull request is opened by `github-actions[bot]`, so its checks start only after a user with write permission approves the run. `CI` needs no trigger change to see it: GitHub treats a pull request whose base is another open pull request's branch as part of a stack and starts workflows as if it targeted the stack's base, which is `main`. Merge the stacked pull request into the original branch first, then the original pull request into `main`. Merging into a Renovate branch marks that branch as modified, and Renovate then stops updating it until someone ticks its rebase checkbox — which regenerates the branch and drops the regenerated commit with it.
 
-The maintenance bot of [publira/agents](https://github.com/publira/agents) is taking this over: as declared in [`.github/maintenance-bot/regenerate.yml`](../maintenance-bot/regenerate.yml), it commits the regenerated output to the Renovate branch itself. Until this workflow is removed, both run, and a run after the bot's commit finds no diff.
+The maintenance bot of [publira/agents](https://github.com/publira/agents) is taking this over: as declared in [`.chachamaru/regenerate.yml`](../../.chachamaru/regenerate.yml), it commits the regenerated output to the Renovate branch itself. Until this workflow is removed, both run, and a run after the bot's commit finds no diff.
 
 # CI workflow
 
