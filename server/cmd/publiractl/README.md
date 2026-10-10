@@ -136,7 +136,7 @@ Environment variables:
 
 ## policy
 
-Changes the platform policy: the tenant-admin MFA requirement, the step-up password limit, the sign-in limits, the in-app purchase confirmation limit, the mail limits, the community limits every tenant starts from and may loosen up to, and where the list of disposable email domains is read from. It does what `PlatformPolicyService` does from the Platform Console, through the same implementation, `internal/platformpolicy`. An install that saves no policy runs on the built-in defaults, so this is for an install that wants a value other than one of them.
+Changes the platform policy: the tenant-admin and platform-operator MFA requirements, the step-up password limit, the sign-in limits, the in-app purchase confirmation limit, the mail limits, the community limits every tenant starts from and may loosen up to, and where the list of disposable email domains is read from. It does what `PlatformPolicyService` does from the Platform Console, through the same implementation, `internal/platformpolicy`. An install that saves no policy runs on the built-in defaults, so this is for an install that wants a value other than one of them.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -154,6 +154,7 @@ go -C server run ./cmd/publiractl policy show
 | Flag | What it sets | Built-in default |
 | --- | --- | --- |
 | `--mfa-required-for-tenant-admin` | Refuses a tenant administrator with no authenticator a session on a password alone. `=false` stops refusing | Off |
+| `--mfa-required-for-platform-operator` | Holds a Platform Console operator with no authenticator at enrollment instead of giving it a session on a password alone, whatever its role. `=false` stops holding | Off |
 | `--password-verification-per-minute`, `--password-verification-per-day` | How often one account's password may be verified by the RPCs that ask for it on top of the session | 5, 50 |
 | `--store-purchase-confirmation-per-minute`, `--store-purchase-confirmation-per-day` | How many store transactions one reader may hand the server to verify | 10, 100 |
 | `--wait-free-ticket-use-per-minute`, `--wait-free-ticket-use-per-day` | How many times one reader may ask to spend a wait-for-free ticket | 10, 100 |
@@ -420,7 +421,7 @@ The worker's ticker jobs — publishing due episodes, applying free window bound
 | `aggregate-rankings` | Rebuilds the daily and weekly `content_ranking_snapshots`, tenant-wide and per genre, with the series ones per surface and the tenant-wide series ones per age rating |
 | `purge-content-events` | Deletes `content_events` rows past their retention window |
 | `purge-ranking-snapshots` | Deletes `content_ranking_snapshots` rows past their retention window |
-| `purge-mfa-challenges` | Deletes the spent admin MFA challenges whose tokens have expired |
+| `purge-mfa-challenges` | Deletes the spent MFA challenges of tenant staff and platform operators whose tokens have expired |
 | `purge-withdrawn-comments` | Deletes the comments their authors withdrew past the retention window |
 | `purge-orphan-images` | Deletes the image rows and storage objects nothing references |
 | `build-recommend-features` | Rebuilds the daily user and item recommend feature snapshots |
@@ -594,7 +595,7 @@ The first run against a table that has accumulated since before this job existed
 
 ## purge-mfa-challenges
 
-Deletes `user_mfa_used_challenges` rows whose challenge token has expired, across every tenant, in chunked `DELETE`s.
+Deletes `user_mfa_used_challenges` and `platform_user_mfa_used_challenges` rows whose challenge token has expired, across every tenant, in chunked `DELETE`s.
 
 A row there refuses the second exchange of an MFA challenge token, so it stops meaning anything once that token expires — five minutes after login. There is no retention setting: the cutoff is the run's UTC timestamp, compared against the row's own `expires_at` exclusively (`expires_at < cutoff`).
 

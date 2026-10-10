@@ -91,6 +91,12 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   HourDayLimit login_attempts_per_source = 10;
+  // Whether an operator that has not enrolled a TOTP authenticator is refused
+  // a session on a password alone and held at enrollment instead.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  optional bool mfa_required_for_platform_operator = 11;
 }
 
 message GetPlatformPolicyRequest {}

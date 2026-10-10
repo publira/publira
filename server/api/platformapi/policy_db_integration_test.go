@@ -31,6 +31,7 @@ func newPolicyClient(t *testing.T) (publirasplatformv1connect.PlatformPolicyServ
 func tightenedPolicy() platformpolicy.Policy {
 	policy := platformpolicy.Defaults()
 	policy.MFARequiredForTenantAdmin = true
+	policy.MFARequiredForPlatformOperator = true
 	policy.PasswordVerification = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 30}
 	policy.MailRequestsPerAddress = platformpolicy.HourDay{PerHour: 2, PerDay: 8}
 	policy.MailRequestsPerSource = platformpolicy.HourDay{PerHour: 20, PerDay: 100}
@@ -203,6 +204,45 @@ func TestDBUpdatePlatformPolicyKeepsOmittedLoginLimits(t *testing.T) {
 	third := saveWithout(t, want, second.Revision)
 	if got := platformPolicyFromProto(third.Policy); got != want {
 		t.Fatalf("save without the login limits = %+v, want %+v keeping the stored ones", got, want)
+	}
+}
+
+// The operator MFA requirement reached the policy after the console screens
+// that save it, so a save that leaves it out keeps what is stored rather than
+// switching the requirement off behind the back of the operator who set it.
+func TestDBUpdatePlatformPolicyKeepsAnOmittedOperatorMfaRequirement(t *testing.T) {
+	client, _, operator := newPolicyClient(t)
+	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
+		t.Helper()
+		message := platformPolicyToProto(policy)
+		message.MfaRequiredForPlatformOperator = nil
+		resp, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
+			Policy:           message,
+			ExpectedRevision: revision,
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlatformPolicy without the operator MFA requirement: %v", err)
+		}
+		return resp
+	}
+
+	want := tightenedPolicy()
+	first := saveWithout(t, want, 0)
+	want.MFARequiredForPlatformOperator = false
+	if got := platformPolicyFromProto(first.Policy); got != want {
+		t.Fatalf("first save = %+v, want %+v with the requirement off by default", got, want)
+	}
+
+	want.MFARequiredForPlatformOperator = true
+	second, err := updatePolicy(t, client, operator, want, first.Revision)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy with the operator MFA requirement: %v", err)
+	}
+
+	want.MFARequiredForTenantAdmin = false
+	third := saveWithout(t, want, second.Revision)
+	if got := platformPolicyFromProto(third.Policy); got != want {
+		t.Fatalf("save without the requirement = %+v, want %+v keeping the stored one", got, want)
 	}
 }
 

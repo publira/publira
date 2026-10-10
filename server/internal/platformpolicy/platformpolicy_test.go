@@ -109,6 +109,7 @@ func TestValidateAcceptsAListURL(t *testing.T) {
 func TestConfigParamsRoundTripThroughTheRow(t *testing.T) {
 	policy := Defaults()
 	policy.MFARequiredForTenantAdmin = true
+	policy.MFARequiredForPlatformOperator = true
 	policy.Community.DuplicateCommentWindow = 45 * time.Minute
 	policy.Community.ContactMessagePerClient = HourDay{PerHour: 7, PerDay: 70}
 	policy.DisposableEmailDomainsURL = "https://lists.example.com/disposable.conf"
@@ -135,6 +136,7 @@ func (q *fakeQuerier) GetPlatformPolicyConfig(context.Context) (dbmodels.Platfor
 func rowFromParams(params dbmodels.UpdatePlatformPolicyConfigParams) dbmodels.PlatformPolicyConfig {
 	return dbmodels.PlatformPolicyConfig{
 		MfaRequiredForTenantAdmin:            params.MfaRequiredForTenantAdmin,
+		MfaRequiredForPlatformOperator:       params.MfaRequiredForPlatformOperator,
 		PasswordVerifyLimitPerMinute:         params.PasswordVerifyLimitPerMinute,
 		PasswordVerifyLimitPerDay:            params.PasswordVerifyLimitPerDay,
 		MailRequestLimitPerAddressPerHour:    params.MailRequestLimitPerAddressPerHour,

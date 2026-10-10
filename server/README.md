@@ -526,7 +526,7 @@ Browser cookies are managed on the Next.js side as JWE with `jose`, and only `Au
 | --- | --- |
 | Environment variable | `PUBLIRA_AUTH_JWT_SECRET` (**required**, at least 32 bytes. There is no fallback: if it is unset or too short, `publira server` fails to start) |
 | TTL | 24h |
-| Audience | `public` / `admin` / `platform` / `media` / `admin-media` / `admin-mfa-verify` / `admin-mfa-enroll` |
+| Audience | `public` / `admin` / `platform` / `media` / `admin-media` / `admin-mfa-verify` / `admin-mfa-enroll` / `platform-mfa-verify` / `platform-mfa-enroll` |
 | Revocation | `users.credentials_version` / `platform_users.credentials_version` (incremented on a password change and the like) |
 | Next cookie | `PUBLIRA_AUTH_SECRET` (**required**, at least 32 bytes. It is for JWE and is separate from the API's JWT secret. There is no fallback: if it is unset or too short, an exception is raised) / cookie names such as `publira_web_host_auth` |
 
@@ -602,6 +602,20 @@ A verify challenge buys one session, claimed by its `jti` in `user_mfa_used_chal
 `mfa_required_for_tenant_admin` in the platform policy (`PlatformPolicyService` or `publiractl policy set`, off when nothing is saved) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having.
 
 Taking the factor off needs the authenticator or a recovery code. Minting a new batch of recovery codes needs the authenticator.
+
+## Platform operator MFA (TOTP)
+
+An operator of the Platform Console holds the same second factor, through the same RPCs on `PlatformAuthService`, with the same algorithm, acceptance window, replay checks, recovery codes, and failure limit as the table above. What differs is where it is kept and what requires it:
+
+| Item | Value |
+| --- | --- |
+| Tables | `platform_user_mfa_totp`, `platform_user_mfa_recovery_codes`, `platform_user_mfa_used_challenges`, keyed to `platform_users` and reachable by `publira_platform` alone, apart from the purge below |
+| Challenge audiences | `platform-mfa-verify` / `platform-mfa-enroll`. A platform challenge names no tenant, and neither console accepts the other's |
+| Authenticator entry | Issuer `Publira Platform Console`, account the operator's email address |
+| Requirement | `mfa_required_for_platform_operator` in the platform policy (`PlatformPolicyService` or `publiractl policy set --mfa-required-for-platform-operator`, off when nothing is saved). It covers every operator role, `platform_auditor` included. `UpdatePlatformPolicy` keeps the saved value when a request leaves it unset |
+| Audit | `operator_mfa_enrolled`, `operator_mfa_verified` (success and failure), `operator_mfa_recovery_code_used`, `operator_mfa_disabled`, `operator_mfa_recovery_codes_regenerated` in `platform_audit_logs`, filed under the operator with the operator as the target |
+
+`publiractl job purge-mfa-challenges` drains `platform_user_mfa_used_challenges` along with `user_mfa_used_challenges`, which is why `publira_content_stats` may read and delete that one table.
 
 ## View events (soft PV) and anonymous actors
 

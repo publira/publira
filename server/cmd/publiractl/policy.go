@@ -49,9 +49,9 @@ func hourDayFlags(field, flag, what string, community bool, limit func(*policySe
 	}
 }
 
-// policyFlags are the numeric fields of the PlatformPolicy message. The two
-// others are --mfa-required-for-tenant-admin, a boolean, and
-// --disposable-email-domains-url, a URL.
+// policyFlags are the numeric fields of the PlatformPolicy message. The others
+// are --mfa-required-for-tenant-admin and --mfa-required-for-platform-operator,
+// booleans, and --disposable-email-domains-url, a URL.
 var policyFlags = slices.Concat(
 	minuteDayFlags("password_verification", "password-verification", "password verifications of one account", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.PasswordVerification }),
@@ -98,6 +98,16 @@ func setupPolicySet(f *commandFlags) func(context.Context, *commandEnv) error {
 				return err
 			}
 			flags.edit(func(p *policySettings) { p.MFARequiredForTenantAdmin = required })
+			return nil
+		})
+	f.BoolFunc("mfa-required-for-platform-operator",
+		"hold a platform operator with no authenticator at enrollment instead of giving it a session on a password alone; =false stops holding",
+		func(v string) error {
+			required, err := strconv.ParseBool(v)
+			if err != nil {
+				return err
+			}
+			flags.edit(func(p *policySettings) { p.MFARequiredForPlatformOperator = required })
 			return nil
 		})
 	flags.flags[platformpolicy.FieldDisposableEmailDomainsURL] = "--disposable-email-domains-url"
@@ -150,13 +160,10 @@ func setupPolicyShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		} else if _, err := fmt.Fprintln(env.stdout, "No platform policy is saved, so these built-in defaults apply"); err != nil {
 			return err
 		}
-		mfa := "no"
-		if p.MFARequiredForTenantAdmin {
-			mfa = "yes"
-		}
 		community := p.Community
 		var b strings.Builder
-		fmt.Fprintf(&b, "MFA required for tenant administrators:\t%s\n", mfa)
+		fmt.Fprintf(&b, "MFA required for tenant administrators:\t%s\n", yesNo(p.MFARequiredForTenantAdmin))
+		fmt.Fprintf(&b, "MFA required for platform operators:\t%s\n", yesNo(p.MFARequiredForPlatformOperator))
 		fmt.Fprintf(&b, "Password verifications:\t%s\n", perMinute(p.PasswordVerification))
 		fmt.Fprintf(&b, "In-app purchase confirmations per reader:\t%s\n", perMinute(p.StorePurchaseConfirmation))
 		fmt.Fprintf(&b, "Wait-for-free ticket uses per reader:\t%s\n", perMinute(p.WaitFreeTicketUse))
@@ -191,4 +198,11 @@ func perMinute(limit platformpolicy.MinuteDay) string {
 
 func perHour(limit platformpolicy.HourDay) string {
 	return fmt.Sprintf("%d per hour, %d per day", limit.PerHour, limit.PerDay)
+}
+
+func yesNo(value bool) string {
+	if value {
+		return "yes"
+	}
+	return "no"
 }

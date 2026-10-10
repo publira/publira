@@ -23,14 +23,15 @@ func hourDayToProto(limit platformpolicy.HourDay) *publirasplatformv1.HourDayLim
 func platformPolicyToProto(policy platformpolicy.Policy) *publirasplatformv1.PlatformPolicy {
 	community := policy.Community
 	return &publirasplatformv1.PlatformPolicy{
-		MfaRequiredForTenantAdmin: policy.MFARequiredForTenantAdmin,
-		PasswordVerification:      minuteDayToProto(policy.PasswordVerification),
-		StorePurchaseConfirmation: minuteDayToProto(policy.StorePurchaseConfirmation),
-		WaitFreeTicketUse:         minuteDayToProto(policy.WaitFreeTicketUse),
-		LoginAttemptsPerAccount:   minuteDayToProto(policy.LoginAttemptsPerAccount),
-		LoginAttemptsPerSource:    hourDayToProto(policy.LoginAttemptsPerSource),
-		MailRequestsPerAddress:    hourDayToProto(policy.MailRequestsPerAddress),
-		MailRequestsPerSource:     hourDayToProto(policy.MailRequestsPerSource),
+		MfaRequiredForTenantAdmin:      policy.MFARequiredForTenantAdmin,
+		MfaRequiredForPlatformOperator: &policy.MFARequiredForPlatformOperator,
+		PasswordVerification:           minuteDayToProto(policy.PasswordVerification),
+		StorePurchaseConfirmation:      minuteDayToProto(policy.StorePurchaseConfirmation),
+		WaitFreeTicketUse:              minuteDayToProto(policy.WaitFreeTicketUse),
+		LoginAttemptsPerAccount:        minuteDayToProto(policy.LoginAttemptsPerAccount),
+		LoginAttemptsPerSource:         hourDayToProto(policy.LoginAttemptsPerSource),
+		MailRequestsPerAddress:         hourDayToProto(policy.MailRequestsPerAddress),
+		MailRequestsPerSource:          hourDayToProto(policy.MailRequestsPerSource),
 		CommunityLimitDefaults: &publirasplatformv1.CommunityLimitDefaults{
 			CommentPost:                   minuteDayToProto(community.CommentPost),
 			CommentReport:                 minuteDayToProto(community.CommentReport),
@@ -57,14 +58,15 @@ func hourDayFromProto(limit *publirasplatformv1.HourDayLimit) platformpolicy.Hou
 func platformPolicyFromProto(policy *publirasplatformv1.PlatformPolicy) platformpolicy.Policy {
 	community := policy.GetCommunityLimitDefaults()
 	return platformpolicy.Policy{
-		MFARequiredForTenantAdmin: policy.GetMfaRequiredForTenantAdmin(),
-		PasswordVerification:      minuteDayFromProto(policy.GetPasswordVerification()),
-		StorePurchaseConfirmation: minuteDayFromProto(policy.GetStorePurchaseConfirmation()),
-		WaitFreeTicketUse:         minuteDayFromProto(policy.GetWaitFreeTicketUse()),
-		LoginAttemptsPerAccount:   minuteDayFromProto(policy.GetLoginAttemptsPerAccount()),
-		LoginAttemptsPerSource:    hourDayFromProto(policy.GetLoginAttemptsPerSource()),
-		MailRequestsPerAddress:    hourDayFromProto(policy.GetMailRequestsPerAddress()),
-		MailRequestsPerSource:     hourDayFromProto(policy.GetMailRequestsPerSource()),
+		MFARequiredForTenantAdmin:      policy.GetMfaRequiredForTenantAdmin(),
+		MFARequiredForPlatformOperator: policy.GetMfaRequiredForPlatformOperator(),
+		PasswordVerification:           minuteDayFromProto(policy.GetPasswordVerification()),
+		StorePurchaseConfirmation:      minuteDayFromProto(policy.GetStorePurchaseConfirmation()),
+		WaitFreeTicketUse:              minuteDayFromProto(policy.GetWaitFreeTicketUse()),
+		LoginAttemptsPerAccount:        minuteDayFromProto(policy.GetLoginAttemptsPerAccount()),
+		LoginAttemptsPerSource:         hourDayFromProto(policy.GetLoginAttemptsPerSource()),
+		MailRequestsPerAddress:         hourDayFromProto(policy.GetMailRequestsPerAddress()),
+		MailRequestsPerSource:          hourDayFromProto(policy.GetMailRequestsPerSource()),
 		Community: platformpolicy.CommunityLimits{
 			CommentPost:              minuteDayFromProto(community.GetCommentPost()),
 			CommentReport:            minuteDayFromProto(community.GetCommentReport()),
@@ -116,15 +118,16 @@ func (s *platformServer) UpdatePlatformPolicy(
 		Policy:           platformPolicyFromProto(req.GetPolicy()),
 		ExpectedRevision: &expectedRevision,
 	}
-	// wait_free_ticket_use and the login limits reached the policy after the
-	// console screens that save it, and those are deployed apart from this
-	// server, so a request that leaves one out keeps what is stored rather than
-	// being refused. The stored value is read here and the save is held to
+	// wait_free_ticket_use, the login limits and the operator MFA requirement
+	// reached the policy after the console screens that save it, and those are
+	// deployed apart from this server, so a request that leaves one out keeps
+	// what is stored rather than being refused or switching the requirement
+	// off. The stored value is read here and the save is held to
 	// expected_revision, so a value another operator saved since the caller's
 	// read is refused with the rest of the stale request rather than written
 	// back over.
 	requested := req.GetPolicy()
-	if requested.GetWaitFreeTicketUse() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil {
+	if requested.GetWaitFreeTicketUse() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.MfaRequiredForPlatformOperator == nil {
 		stored, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read platform policy", err)
@@ -137,6 +140,9 @@ func (s *platformServer) UpdatePlatformPolicy(
 		}
 		if requested.GetLoginAttemptsPerSource() == nil {
 			params.Policy.LoginAttemptsPerSource = stored.LoginAttemptsPerSource
+		}
+		if requested.MfaRequiredForPlatformOperator == nil {
+			params.Policy.MFARequiredForPlatformOperator = stored.MFARequiredForPlatformOperator
 		}
 	}
 	if err := params.Validate(); err != nil {

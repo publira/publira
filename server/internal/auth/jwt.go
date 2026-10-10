@@ -81,6 +81,11 @@ const (
 	// answer a verification challenge for an account that already has one.
 	AudienceAdminMFAVerify = "admin-mfa-verify"
 	AudienceAdminMFAEnroll = "admin-mfa-enroll"
+	// AudiencePlatformMFAVerify and AudiencePlatformMFAEnroll are the platform
+	// console's counterparts, kept apart from the admin ones so a challenge
+	// one console earned cannot be completed at the other.
+	AudiencePlatformMFAVerify = "platform-mfa-verify"
+	AudiencePlatformMFAEnroll = "platform-mfa-enroll"
 )
 
 // AccessTokenClaims are the claims embedded in API access tokens.
@@ -217,9 +222,12 @@ func (m *TokenManager) IssueFreeEpisodeMediaToken(
 // IssueMFAChallengeToken creates the short-lived token that stands in for the
 // session between a correct password and the second factor. audience picks
 // what the challenge may complete: AudienceAdminMFAVerify for an account that
-// owes a code, AudienceAdminMFAEnroll for one that owes an enrollment. It
-// carries no role, so nothing that authorizes on one can act on it, and it
-// carries the credentials version, so a password change ends it.
+// owes a code, AudienceAdminMFAEnroll for one that owes an enrollment, and
+// AudiencePlatformMFAVerify and AudiencePlatformMFAEnroll for an operator of
+// the platform console. An admin challenge names its tenant and a platform one
+// names none, because an operator belongs to no tenant. It carries no role,
+// so nothing that authorizes on one can act on it, and it carries the
+// credentials version, so a password change ends it.
 //
 // Every challenge gets a `jti`. Nothing about a signed token changes when it
 // is exchanged, so a single-use challenge needs a name the server can record
@@ -235,14 +243,18 @@ func (m *TokenManager) IssueMFAChallengeToken(
 	if subjectPublicID == "" {
 		return "", time.Time{}, errors.New("subject is required")
 	}
+	tenantID = strings.TrimSpace(tenantID)
 	switch strings.TrimSpace(audience) {
 	case AudienceAdminMFAVerify, AudienceAdminMFAEnroll:
+		if tenantID == "" {
+			return "", time.Time{}, errors.New("tenant is required")
+		}
+	case AudiencePlatformMFAVerify, AudiencePlatformMFAEnroll:
+		if tenantID != "" {
+			return "", time.Time{}, errors.New("a platform challenge names no tenant")
+		}
 	default:
 		return "", time.Time{}, errors.New("audience is not an mfa challenge audience")
-	}
-	tenantID = strings.TrimSpace(tenantID)
-	if tenantID == "" {
-		return "", time.Time{}, errors.New("tenant is required")
 	}
 	tokenID, err := uuid.NewV7()
 	if err != nil {

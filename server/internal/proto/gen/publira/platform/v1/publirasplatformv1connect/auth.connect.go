@@ -28,6 +28,24 @@ const (
 	PlatformAuthServiceLoginProcedure = "/publira.platform.v1.PlatformAuthService/Login"
 	// PlatformAuthServiceLogoutProcedure is the procedure name of the PlatformAuthService's Logout RPC.
 	PlatformAuthServiceLogoutProcedure = "/publira.platform.v1.PlatformAuthService/Logout"
+	// PlatformAuthServiceVerifyMfaProcedure is the procedure name of the PlatformAuthService's
+	// VerifyMfa RPC.
+	PlatformAuthServiceVerifyMfaProcedure = "/publira.platform.v1.PlatformAuthService/VerifyMfa"
+	// PlatformAuthServiceGetMfaStatusProcedure is the procedure name of the PlatformAuthService's
+	// GetMfaStatus RPC.
+	PlatformAuthServiceGetMfaStatusProcedure = "/publira.platform.v1.PlatformAuthService/GetMfaStatus"
+	// PlatformAuthServiceStartMfaEnrollmentProcedure is the procedure name of the PlatformAuthService's
+	// StartMfaEnrollment RPC.
+	PlatformAuthServiceStartMfaEnrollmentProcedure = "/publira.platform.v1.PlatformAuthService/StartMfaEnrollment"
+	// PlatformAuthServiceConfirmMfaEnrollmentProcedure is the procedure name of the
+	// PlatformAuthService's ConfirmMfaEnrollment RPC.
+	PlatformAuthServiceConfirmMfaEnrollmentProcedure = "/publira.platform.v1.PlatformAuthService/ConfirmMfaEnrollment"
+	// PlatformAuthServiceDisableMfaProcedure is the procedure name of the PlatformAuthService's
+	// DisableMfa RPC.
+	PlatformAuthServiceDisableMfaProcedure = "/publira.platform.v1.PlatformAuthService/DisableMfa"
+	// PlatformAuthServiceRegenerateMfaRecoveryCodesProcedure is the procedure name of the
+	// PlatformAuthService's RegenerateMfaRecoveryCodes RPC.
+	PlatformAuthServiceRegenerateMfaRecoveryCodesProcedure = "/publira.platform.v1.PlatformAuthService/RegenerateMfaRecoveryCodes"
 	// PlatformAuthServiceRequestPasswordResetProcedure is the procedure name of the
 	// PlatformAuthService's RequestPasswordReset RPC.
 	PlatformAuthServiceRequestPasswordResetProcedure = "/publira.platform.v1.PlatformAuthService/RequestPasswordReset"
@@ -63,6 +81,48 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_platform_v1_auth_proto.Services().ByName("PlatformAuthService").Methods().ByName("Logout"),
 			Procedure:  PlatformAuthServiceLogoutProcedure,
+		}
+	})
+	platformAuthServiceVerifyMfaSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_auth_proto.Services().ByName("PlatformAuthService").Methods().ByName("VerifyMfa"),
+			Procedure:  PlatformAuthServiceVerifyMfaProcedure,
+		}
+	})
+	platformAuthServiceGetMfaStatusSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_auth_proto.Services().ByName("PlatformAuthService").Methods().ByName("GetMfaStatus"),
+			Procedure:  PlatformAuthServiceGetMfaStatusProcedure,
+		}
+	})
+	platformAuthServiceStartMfaEnrollmentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_auth_proto.Services().ByName("PlatformAuthService").Methods().ByName("StartMfaEnrollment"),
+			Procedure:  PlatformAuthServiceStartMfaEnrollmentProcedure,
+		}
+	})
+	platformAuthServiceConfirmMfaEnrollmentSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_auth_proto.Services().ByName("PlatformAuthService").Methods().ByName("ConfirmMfaEnrollment"),
+			Procedure:  PlatformAuthServiceConfirmMfaEnrollmentProcedure,
+		}
+	})
+	platformAuthServiceDisableMfaSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_auth_proto.Services().ByName("PlatformAuthService").Methods().ByName("DisableMfa"),
+			Procedure:  PlatformAuthServiceDisableMfaProcedure,
+		}
+	})
+	platformAuthServiceRegenerateMfaRecoveryCodesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_platform_v1_auth_proto.Services().ByName("PlatformAuthService").Methods().ByName("RegenerateMfaRecoveryCodes"),
+			Procedure:  PlatformAuthServiceRegenerateMfaRecoveryCodesProcedure,
 		}
 	})
 	platformAuthServiceRequestPasswordResetSpec = sync.OnceValue(func() connect.Spec {
@@ -120,6 +180,12 @@ var (
 type PlatformAuthServiceClient interface {
 	Login(context.Context, *v1.PlatformAuthServiceLoginRequest) (*v1.PlatformAuthServiceLoginResponse, error)
 	Logout(context.Context, *v1.PlatformAuthServiceLogoutRequest) (*v1.PlatformAuthServiceLogoutResponse, error)
+	VerifyMfa(context.Context, *v1.PlatformAuthServiceVerifyMfaRequest) (*v1.PlatformAuthServiceVerifyMfaResponse, error)
+	GetMfaStatus(context.Context, *v1.PlatformAuthServiceGetMfaStatusRequest) (*v1.PlatformAuthServiceGetMfaStatusResponse, error)
+	StartMfaEnrollment(context.Context, *v1.PlatformAuthServiceStartMfaEnrollmentRequest) (*v1.PlatformAuthServiceStartMfaEnrollmentResponse, error)
+	ConfirmMfaEnrollment(context.Context, *v1.PlatformAuthServiceConfirmMfaEnrollmentRequest) (*v1.PlatformAuthServiceConfirmMfaEnrollmentResponse, error)
+	DisableMfa(context.Context, *v1.PlatformAuthServiceDisableMfaRequest) (*v1.PlatformAuthServiceDisableMfaResponse, error)
+	RegenerateMfaRecoveryCodes(context.Context, *v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) (*v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse, error)
 	RequestPasswordReset(context.Context, *v1.PlatformAuthServiceRequestPasswordResetRequest) (*v1.PlatformAuthServiceRequestPasswordResetResponse, error)
 	VerifyPasswordResetToken(context.Context, *v1.PlatformAuthServiceVerifyPasswordResetTokenRequest) (*v1.PlatformAuthServiceVerifyPasswordResetTokenResponse, error)
 	ConfirmPasswordReset(context.Context, *v1.PlatformAuthServiceConfirmPasswordResetRequest) (*v1.PlatformAuthServiceConfirmPasswordResetResponse, error)
@@ -140,6 +206,12 @@ func NewPlatformAuthServiceClient(client *connect.Client) PlatformAuthServiceCli
 type PlatformAuthServiceHandler interface {
 	Login(context.Context, *v1.PlatformAuthServiceLoginRequest) (*v1.PlatformAuthServiceLoginResponse, error)
 	Logout(context.Context, *v1.PlatformAuthServiceLogoutRequest) (*v1.PlatformAuthServiceLogoutResponse, error)
+	VerifyMfa(context.Context, *v1.PlatformAuthServiceVerifyMfaRequest) (*v1.PlatformAuthServiceVerifyMfaResponse, error)
+	GetMfaStatus(context.Context, *v1.PlatformAuthServiceGetMfaStatusRequest) (*v1.PlatformAuthServiceGetMfaStatusResponse, error)
+	StartMfaEnrollment(context.Context, *v1.PlatformAuthServiceStartMfaEnrollmentRequest) (*v1.PlatformAuthServiceStartMfaEnrollmentResponse, error)
+	ConfirmMfaEnrollment(context.Context, *v1.PlatformAuthServiceConfirmMfaEnrollmentRequest) (*v1.PlatformAuthServiceConfirmMfaEnrollmentResponse, error)
+	DisableMfa(context.Context, *v1.PlatformAuthServiceDisableMfaRequest) (*v1.PlatformAuthServiceDisableMfaResponse, error)
+	RegenerateMfaRecoveryCodes(context.Context, *v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) (*v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse, error)
 	RequestPasswordReset(context.Context, *v1.PlatformAuthServiceRequestPasswordResetRequest) (*v1.PlatformAuthServiceRequestPasswordResetResponse, error)
 	VerifyPasswordResetToken(context.Context, *v1.PlatformAuthServiceVerifyPasswordResetTokenRequest) (*v1.PlatformAuthServiceVerifyPasswordResetTokenResponse, error)
 	ConfirmPasswordReset(context.Context, *v1.PlatformAuthServiceConfirmPasswordResetRequest) (*v1.PlatformAuthServiceConfirmPasswordResetResponse, error)
@@ -156,6 +228,12 @@ func RegisterPlatformAuthServiceHandler(server *connect.Server, svc PlatformAuth
 	server.Register(
 		connect.Method{Spec: platformAuthServiceLoginSpec(), Handler: adapter.login},
 		connect.Method{Spec: platformAuthServiceLogoutSpec(), Handler: adapter.logout},
+		connect.Method{Spec: platformAuthServiceVerifyMfaSpec(), Handler: adapter.verifyMfa},
+		connect.Method{Spec: platformAuthServiceGetMfaStatusSpec(), Handler: adapter.getMfaStatus},
+		connect.Method{Spec: platformAuthServiceStartMfaEnrollmentSpec(), Handler: adapter.startMfaEnrollment},
+		connect.Method{Spec: platformAuthServiceConfirmMfaEnrollmentSpec(), Handler: adapter.confirmMfaEnrollment},
+		connect.Method{Spec: platformAuthServiceDisableMfaSpec(), Handler: adapter.disableMfa},
+		connect.Method{Spec: platformAuthServiceRegenerateMfaRecoveryCodesSpec(), Handler: adapter.regenerateMfaRecoveryCodes},
 		connect.Method{Spec: platformAuthServiceRequestPasswordResetSpec(), Handler: adapter.requestPasswordReset},
 		connect.Method{Spec: platformAuthServiceVerifyPasswordResetTokenSpec(), Handler: adapter.verifyPasswordResetToken},
 		connect.Method{Spec: platformAuthServiceConfirmPasswordResetSpec(), Handler: adapter.confirmPasswordReset},
@@ -175,6 +253,30 @@ func (UnimplementedPlatformAuthServiceHandler) Login(context.Context, *v1.Platfo
 
 func (UnimplementedPlatformAuthServiceHandler) Logout(context.Context, *v1.PlatformAuthServiceLogoutRequest) (*v1.PlatformAuthServiceLogoutResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformAuthService.Logout is not implemented")
+}
+
+func (UnimplementedPlatformAuthServiceHandler) VerifyMfa(context.Context, *v1.PlatformAuthServiceVerifyMfaRequest) (*v1.PlatformAuthServiceVerifyMfaResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformAuthService.VerifyMfa is not implemented")
+}
+
+func (UnimplementedPlatformAuthServiceHandler) GetMfaStatus(context.Context, *v1.PlatformAuthServiceGetMfaStatusRequest) (*v1.PlatformAuthServiceGetMfaStatusResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformAuthService.GetMfaStatus is not implemented")
+}
+
+func (UnimplementedPlatformAuthServiceHandler) StartMfaEnrollment(context.Context, *v1.PlatformAuthServiceStartMfaEnrollmentRequest) (*v1.PlatformAuthServiceStartMfaEnrollmentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformAuthService.StartMfaEnrollment is not implemented")
+}
+
+func (UnimplementedPlatformAuthServiceHandler) ConfirmMfaEnrollment(context.Context, *v1.PlatformAuthServiceConfirmMfaEnrollmentRequest) (*v1.PlatformAuthServiceConfirmMfaEnrollmentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformAuthService.ConfirmMfaEnrollment is not implemented")
+}
+
+func (UnimplementedPlatformAuthServiceHandler) DisableMfa(context.Context, *v1.PlatformAuthServiceDisableMfaRequest) (*v1.PlatformAuthServiceDisableMfaResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformAuthService.DisableMfa is not implemented")
+}
+
+func (UnimplementedPlatformAuthServiceHandler) RegenerateMfaRecoveryCodes(context.Context, *v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) (*v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.platform.v1.PlatformAuthService.RegenerateMfaRecoveryCodes is not implemented")
 }
 
 func (UnimplementedPlatformAuthServiceHandler) RequestPasswordReset(context.Context, *v1.PlatformAuthServiceRequestPasswordResetRequest) (*v1.PlatformAuthServiceRequestPasswordResetResponse, error) {
@@ -220,6 +322,54 @@ func (c *platformAuthServiceClient) Login(ctx context.Context, req *v1.PlatformA
 func (c *platformAuthServiceClient) Logout(ctx context.Context, req *v1.PlatformAuthServiceLogoutRequest) (*v1.PlatformAuthServiceLogoutResponse, error) {
 	var res v1.PlatformAuthServiceLogoutResponse
 	if err := c.client.CallUnary(ctx, platformAuthServiceLogoutSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformAuthServiceClient) VerifyMfa(ctx context.Context, req *v1.PlatformAuthServiceVerifyMfaRequest) (*v1.PlatformAuthServiceVerifyMfaResponse, error) {
+	var res v1.PlatformAuthServiceVerifyMfaResponse
+	if err := c.client.CallUnary(ctx, platformAuthServiceVerifyMfaSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformAuthServiceClient) GetMfaStatus(ctx context.Context, req *v1.PlatformAuthServiceGetMfaStatusRequest) (*v1.PlatformAuthServiceGetMfaStatusResponse, error) {
+	var res v1.PlatformAuthServiceGetMfaStatusResponse
+	if err := c.client.CallUnary(ctx, platformAuthServiceGetMfaStatusSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformAuthServiceClient) StartMfaEnrollment(ctx context.Context, req *v1.PlatformAuthServiceStartMfaEnrollmentRequest) (*v1.PlatformAuthServiceStartMfaEnrollmentResponse, error) {
+	var res v1.PlatformAuthServiceStartMfaEnrollmentResponse
+	if err := c.client.CallUnary(ctx, platformAuthServiceStartMfaEnrollmentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformAuthServiceClient) ConfirmMfaEnrollment(ctx context.Context, req *v1.PlatformAuthServiceConfirmMfaEnrollmentRequest) (*v1.PlatformAuthServiceConfirmMfaEnrollmentResponse, error) {
+	var res v1.PlatformAuthServiceConfirmMfaEnrollmentResponse
+	if err := c.client.CallUnary(ctx, platformAuthServiceConfirmMfaEnrollmentSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformAuthServiceClient) DisableMfa(ctx context.Context, req *v1.PlatformAuthServiceDisableMfaRequest) (*v1.PlatformAuthServiceDisableMfaResponse, error) {
+	var res v1.PlatformAuthServiceDisableMfaResponse
+	if err := c.client.CallUnary(ctx, platformAuthServiceDisableMfaSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *platformAuthServiceClient) RegenerateMfaRecoveryCodes(ctx context.Context, req *v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) (*v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse, error) {
+	var res v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse
+	if err := c.client.CallUnary(ctx, platformAuthServiceRegenerateMfaRecoveryCodesSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -301,6 +451,78 @@ func (h platformAuthServiceHandler) logout(ctx context.Context, _ connect.Spec, 
 		return err
 	}
 	res, err := h.svc.Logout(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformAuthServiceHandler) verifyMfa(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.PlatformAuthServiceVerifyMfaRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.VerifyMfa(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformAuthServiceHandler) getMfaStatus(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.PlatformAuthServiceGetMfaStatusRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetMfaStatus(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformAuthServiceHandler) startMfaEnrollment(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.PlatformAuthServiceStartMfaEnrollmentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.StartMfaEnrollment(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformAuthServiceHandler) confirmMfaEnrollment(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.PlatformAuthServiceConfirmMfaEnrollmentRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ConfirmMfaEnrollment(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformAuthServiceHandler) disableMfa(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.PlatformAuthServiceDisableMfaRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DisableMfa(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h platformAuthServiceHandler) regenerateMfaRecoveryCodes(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RegenerateMfaRecoveryCodes(ctx, &req)
 	if err != nil {
 		return err
 	}

@@ -2,8 +2,8 @@
 // @generated from file publira/platform/v1/auth.proto (package publira.platform.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { AccessToken, User } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/auth.proto.
  */
 export const file_publira_platform_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL3BsYXRmb3JtL3YxL2F1dGgucHJvdG8SE3B1YmxpcmEucGxhdGZvcm0udjEiQgofUGxhdGZvcm1BdXRoU2VydmljZUxvZ2luUmVxdWVzdBINCgVlbWFpbBgBIAEoCRIQCghwYXNzd29yZBgCIAEoCSJ9CiBQbGF0Zm9ybUF1dGhTZXJ2aWNlTG9naW5SZXNwb25zZRIkCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5Vc2VyEjMKDGFjY2Vzc190b2tlbhgCIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuQWNjZXNzVG9rZW4iIgogUGxhdGZvcm1BdXRoU2VydmljZUxvZ291dFJlcXVlc3QiIwohUGxhdGZvcm1BdXRoU2VydmljZUxvZ291dFJlc3BvbnNlIj8KLlBsYXRmb3JtQXV0aFNlcnZpY2VSZXF1ZXN0UGFzc3dvcmRSZXNldFJlcXVlc3QSDQoFZW1haWwYASABKAkiRAovUGxhdGZvcm1BdXRoU2VydmljZVJlcXVlc3RQYXNzd29yZFJlc2V0UmVzcG9uc2USEQoJcmVxdWVzdGVkGAEgASgIIkMKMlBsYXRmb3JtQXV0aFNlcnZpY2VWZXJpZnlQYXNzd29yZFJlc2V0VG9rZW5SZXF1ZXN0Eg0KBXRva2VuGAEgASgJIkQKM1BsYXRmb3JtQXV0aFNlcnZpY2VWZXJpZnlQYXNzd29yZFJlc2V0VG9rZW5SZXNwb25zZRINCgV2YWxpZBgBIAEoCCJVCi5QbGF0Zm9ybUF1dGhTZXJ2aWNlQ29uZmlybVBhc3N3b3JkUmVzZXRSZXF1ZXN0Eg0KBXRva2VuGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSJECi9QbGF0Zm9ybUF1dGhTZXJ2aWNlQ29uZmlybVBhc3N3b3JkUmVzZXRSZXNwb25zZRIRCgljb25maXJtZWQYASABKAgicgosUGxhdGZvcm1BdXRoU2VydmljZVJlcXVlc3RFbWFpbENoYW5nZVJlcXVlc3QSFQoNY3VycmVudF9lbWFpbBgBIAEoCRIRCgluZXdfZW1haWwYAiABKAkSGAoQY3VycmVudF9wYXNzd29yZBgDIAEoCSJCCi1QbGF0Zm9ybUF1dGhTZXJ2aWNlUmVxdWVzdEVtYWlsQ2hhbmdlUmVzcG9uc2USEQoJcmVxdWVzdGVkGAEgASgIIkEKMFBsYXRmb3JtQXV0aFNlcnZpY2VWZXJpZnlFbWFpbENoYW5nZVRva2VuUmVxdWVzdBINCgV0b2tlbhgBIAEoCSJCCjFQbGF0Zm9ybUF1dGhTZXJ2aWNlVmVyaWZ5RW1haWxDaGFuZ2VUb2tlblJlc3BvbnNlEg0KBXZhbGlkGAEgASgIIj0KLFBsYXRmb3JtQXV0aFNlcnZpY2VDb25maXJtRW1haWxDaGFuZ2VSZXF1ZXN0Eg0KBXRva2VuGAEgASgJInUKLVBsYXRmb3JtQXV0aFNlcnZpY2VDb25maXJtRW1haWxDaGFuZ2VSZXNwb25zZRIRCgljb25maXJtZWQYASABKAgSDwoHY2hhbmdlZBgCIAEoCBIgChhwZW5kaW5nX2NvbmZpcm1hdGlvbl9mb3IYAyABKAkiIQofUGxhdGZvcm1BdXRoU2VydmljZUdldE1lUmVxdWVzdCJICiBQbGF0Zm9ybUF1dGhTZXJ2aWNlR2V0TWVSZXNwb25zZRIkCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5Vc2VyMuoKChNQbGF0Zm9ybUF1dGhTZXJ2aWNlEnYKBUxvZ2luEjQucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlTG9naW5SZXF1ZXN0GjUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlTG9naW5SZXNwb25zZSIAEnkKBkxvZ291dBI1LnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdXRoU2VydmljZUxvZ291dFJlcXVlc3QaNi5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VMb2dvdXRSZXNwb25zZSIAEqMBChRSZXF1ZXN0UGFzc3dvcmRSZXNldBJDLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdXRoU2VydmljZVJlcXVlc3RQYXNzd29yZFJlc2V0UmVxdWVzdBpELnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdXRoU2VydmljZVJlcXVlc3RQYXNzd29yZFJlc2V0UmVzcG9uc2UiABKvAQoYVmVyaWZ5UGFzc3dvcmRSZXNldFRva2VuEkcucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlVmVyaWZ5UGFzc3dvcmRSZXNldFRva2VuUmVxdWVzdBpILnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdXRoU2VydmljZVZlcmlmeVBhc3N3b3JkUmVzZXRUb2tlblJlc3BvbnNlIgASowEKFENvbmZpcm1QYXNzd29yZFJlc2V0EkMucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlQ29uZmlybVBhc3N3b3JkUmVzZXRSZXF1ZXN0GkQucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlQ29uZmlybVBhc3N3b3JkUmVzZXRSZXNwb25zZSIAEp0BChJSZXF1ZXN0RW1haWxDaGFuZ2USQS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VSZXF1ZXN0RW1haWxDaGFuZ2VSZXF1ZXN0GkIucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlUmVxdWVzdEVtYWlsQ2hhbmdlUmVzcG9uc2UiABKpAQoWVmVyaWZ5RW1haWxDaGFuZ2VUb2tlbhJFLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdXRoU2VydmljZVZlcmlmeUVtYWlsQ2hhbmdlVG9rZW5SZXF1ZXN0GkYucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlVmVyaWZ5RW1haWxDaGFuZ2VUb2tlblJlc3BvbnNlIgASnQEKEkNvbmZpcm1FbWFpbENoYW5nZRJBLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdXRoU2VydmljZUNvbmZpcm1FbWFpbENoYW5nZVJlcXVlc3QaQi5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VDb25maXJtRW1haWxDaGFuZ2VSZXNwb25zZSIAEnYKBUdldE1lEjQucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlR2V0TWVSZXF1ZXN0GjUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlR2V0TWVSZXNwb25zZSIAQl1aW2dpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL3BsYXRmb3JtL3YxL2F1dGgucHJvdG8SE3B1YmxpcmEucGxhdGZvcm0udjEiQgofUGxhdGZvcm1BdXRoU2VydmljZUxvZ2luUmVxdWVzdBINCgVlbWFpbBgBIAEoCRIQCghwYXNzd29yZBgCIAEoCSLKAQogUGxhdGZvcm1BdXRoU2VydmljZUxvZ2luUmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuVXNlchIzCgxhY2Nlc3NfdG9rZW4YAiABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLkFjY2Vzc1Rva2VuEksKDW1mYV9jaGFsbGVuZ2UYAyABKAsyNC5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VNZmFDaGFsbGVuZ2UieQofUGxhdGZvcm1BdXRoU2VydmljZU1mYUNoYWxsZW5nZRINCgV0b2tlbhgBIAEoCRISCgpleHBpcmVzX2F0GAIgASgJEjMKBGtpbmQYAyABKA4yJS5wdWJsaXJhLnBsYXRmb3JtLnYxLk1mYUNoYWxsZW5nZUtpbmQiTAojUGxhdGZvcm1BdXRoU2VydmljZVZlcmlmeU1mYVJlcXVlc3QSFwoPY2hhbGxlbmdlX3Rva2VuGAEgASgJEgwKBGNvZGUYAiABKAkivwEKJFBsYXRmb3JtQXV0aFNlcnZpY2VWZXJpZnlNZmFSZXNwb25zZRIkCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5Vc2VyEjMKDGFjY2Vzc190b2tlbhgCIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuQWNjZXNzVG9rZW4SGgoScmVjb3ZlcnlfY29kZV91c2VkGAMgASgIEiAKGHJlbWFpbmluZ19yZWNvdmVyeV9jb2RlcxgEIAEoBSIoCiZQbGF0Zm9ybUF1dGhTZXJ2aWNlR2V0TWZhU3RhdHVzUmVxdWVzdCKCAQonUGxhdGZvcm1BdXRoU2VydmljZUdldE1mYVN0YXR1c1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSEgoKZW5hYmxlZF9hdBgCIAEoCRIgChhyZW1haW5pbmdfcmVjb3ZlcnlfY29kZXMYAyABKAUSEAoIcmVxdWlyZWQYBCABKAgiRwosUGxhdGZvcm1BdXRoU2VydmljZVN0YXJ0TWZhRW5yb2xsbWVudFJlcXVlc3QSFwoPY2hhbGxlbmdlX3Rva2VuGAEgASgJIlQKLVBsYXRmb3JtQXV0aFNlcnZpY2VTdGFydE1mYUVucm9sbG1lbnRSZXNwb25zZRIOCgZzZWNyZXQYASABKAkSEwoLb3RwYXV0aF91cmkYAiABKAkiVwouUGxhdGZvcm1BdXRoU2VydmljZUNvbmZpcm1NZmFFbnJvbGxtZW50UmVxdWVzdBIXCg9jaGFsbGVuZ2VfdG9rZW4YASABKAkSDAoEY29kZRgCIAEoCSKkAQovUGxhdGZvcm1BdXRoU2VydmljZUNvbmZpcm1NZmFFbnJvbGxtZW50UmVzcG9uc2USFgoOcmVjb3ZlcnlfY29kZXMYASADKAkSJAoEdXNlchgCIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuVXNlchIzCgxhY2Nlc3NfdG9rZW4YAyABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLkFjY2Vzc1Rva2VuIjQKJFBsYXRmb3JtQXV0aFNlcnZpY2VEaXNhYmxlTWZhUmVxdWVzdBIMCgRjb2RlGAEgASgJIjkKJVBsYXRmb3JtQXV0aFNlcnZpY2VEaXNhYmxlTWZhUmVzcG9uc2USEAoIZGlzYWJsZWQYASABKAgiRAo0UGxhdGZvcm1BdXRoU2VydmljZVJlZ2VuZXJhdGVNZmFSZWNvdmVyeUNvZGVzUmVxdWVzdBIMCgRjb2RlGAEgASgJIk8KNVBsYXRmb3JtQXV0aFNlcnZpY2VSZWdlbmVyYXRlTWZhUmVjb3ZlcnlDb2Rlc1Jlc3BvbnNlEhYKDnJlY292ZXJ5X2NvZGVzGAEgAygJIiIKIFBsYXRmb3JtQXV0aFNlcnZpY2VMb2dvdXRSZXF1ZXN0IiMKIVBsYXRmb3JtQXV0aFNlcnZpY2VMb2dvdXRSZXNwb25zZSI/Ci5QbGF0Zm9ybUF1dGhTZXJ2aWNlUmVxdWVzdFBhc3N3b3JkUmVzZXRSZXF1ZXN0Eg0KBWVtYWlsGAEgASgJIkQKL1BsYXRmb3JtQXV0aFNlcnZpY2VSZXF1ZXN0UGFzc3dvcmRSZXNldFJlc3BvbnNlEhEKCXJlcXVlc3RlZBgBIAEoCCJDCjJQbGF0Zm9ybUF1dGhTZXJ2aWNlVmVyaWZ5UGFzc3dvcmRSZXNldFRva2VuUmVxdWVzdBINCgV0b2tlbhgBIAEoCSJECjNQbGF0Zm9ybUF1dGhTZXJ2aWNlVmVyaWZ5UGFzc3dvcmRSZXNldFRva2VuUmVzcG9uc2USDQoFdmFsaWQYASABKAgiVQouUGxhdGZvcm1BdXRoU2VydmljZUNvbmZpcm1QYXNzd29yZFJlc2V0UmVxdWVzdBINCgV0b2tlbhgBIAEoCRIUCgxuZXdfcGFzc3dvcmQYAiABKAkiRAovUGxhdGZvcm1BdXRoU2VydmljZUNvbmZpcm1QYXNzd29yZFJlc2V0UmVzcG9uc2USEQoJY29uZmlybWVkGAEgASgIInIKLFBsYXRmb3JtQXV0aFNlcnZpY2VSZXF1ZXN0RW1haWxDaGFuZ2VSZXF1ZXN0EhUKDWN1cnJlbnRfZW1haWwYASABKAkSEQoJbmV3X2VtYWlsGAIgASgJEhgKEGN1cnJlbnRfcGFzc3dvcmQYAyABKAkiQgotUGxhdGZvcm1BdXRoU2VydmljZVJlcXVlc3RFbWFpbENoYW5nZVJlc3BvbnNlEhEKCXJlcXVlc3RlZBgBIAEoCCJBCjBQbGF0Zm9ybUF1dGhTZXJ2aWNlVmVyaWZ5RW1haWxDaGFuZ2VUb2tlblJlcXVlc3QSDQoFdG9rZW4YASABKAkiQgoxUGxhdGZvcm1BdXRoU2VydmljZVZlcmlmeUVtYWlsQ2hhbmdlVG9rZW5SZXNwb25zZRINCgV2YWxpZBgBIAEoCCI9CixQbGF0Zm9ybUF1dGhTZXJ2aWNlQ29uZmlybUVtYWlsQ2hhbmdlUmVxdWVzdBINCgV0b2tlbhgBIAEoCSJ1Ci1QbGF0Zm9ybUF1dGhTZXJ2aWNlQ29uZmlybUVtYWlsQ2hhbmdlUmVzcG9uc2USEQoJY29uZmlybWVkGAEgASgIEg8KB2NoYW5nZWQYAiABKAgSIAoYcGVuZGluZ19jb25maXJtYXRpb25fZm9yGAMgASgJIiEKH1BsYXRmb3JtQXV0aFNlcnZpY2VHZXRNZVJlcXVlc3QiSAogUGxhdGZvcm1BdXRoU2VydmljZUdldE1lUmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuVXNlcip0ChBNZmFDaGFsbGVuZ2VLaW5kEiIKHk1GQV9DSEFMTEVOR0VfS0lORF9VTlNQRUNJRklFRBAAEh0KGU1GQV9DSEFMTEVOR0VfS0lORF9WRVJJRlkQARIdChlNRkFfQ0hBTExFTkdFX0tJTkRfRU5ST0xMEAIygxIKE1BsYXRmb3JtQXV0aFNlcnZpY2USdgoFTG9naW4SNC5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VMb2dpblJlcXVlc3QaNS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VMb2dpblJlc3BvbnNlIgASeQoGTG9nb3V0EjUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlTG9nb3V0UmVxdWVzdBo2LnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdXRoU2VydmljZUxvZ291dFJlc3BvbnNlIgASggEKCVZlcmlmeU1mYRI4LnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdXRoU2VydmljZVZlcmlmeU1mYVJlcXVlc3QaOS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VWZXJpZnlNZmFSZXNwb25zZSIAEosBCgxHZXRNZmFTdGF0dXMSOy5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VHZXRNZmFTdGF0dXNSZXF1ZXN0GjwucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlR2V0TWZhU3RhdHVzUmVzcG9uc2UiABKdAQoSU3RhcnRNZmFFbnJvbGxtZW50EkEucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlU3RhcnRNZmFFbnJvbGxtZW50UmVxdWVzdBpCLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdXRoU2VydmljZVN0YXJ0TWZhRW5yb2xsbWVudFJlc3BvbnNlIgASowEKFENvbmZpcm1NZmFFbnJvbGxtZW50EkMucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlQ29uZmlybU1mYUVucm9sbG1lbnRSZXF1ZXN0GkQucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlQ29uZmlybU1mYUVucm9sbG1lbnRSZXNwb25zZSIAEoUBCgpEaXNhYmxlTWZhEjkucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlRGlzYWJsZU1mYVJlcXVlc3QaOi5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VEaXNhYmxlTWZhUmVzcG9uc2UiABK1AQoaUmVnZW5lcmF0ZU1mYVJlY292ZXJ5Q29kZXMSSS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VSZWdlbmVyYXRlTWZhUmVjb3ZlcnlDb2Rlc1JlcXVlc3QaSi5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VSZWdlbmVyYXRlTWZhUmVjb3ZlcnlDb2Rlc1Jlc3BvbnNlIgASowEKFFJlcXVlc3RQYXNzd29yZFJlc2V0EkMucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlUmVxdWVzdFBhc3N3b3JkUmVzZXRSZXF1ZXN0GkQucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlUmVxdWVzdFBhc3N3b3JkUmVzZXRSZXNwb25zZSIAEq8BChhWZXJpZnlQYXNzd29yZFJlc2V0VG9rZW4SRy5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VWZXJpZnlQYXNzd29yZFJlc2V0VG9rZW5SZXF1ZXN0GkgucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlVmVyaWZ5UGFzc3dvcmRSZXNldFRva2VuUmVzcG9uc2UiABKjAQoUQ29uZmlybVBhc3N3b3JkUmVzZXQSQy5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VDb25maXJtUGFzc3dvcmRSZXNldFJlcXVlc3QaRC5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VDb25maXJtUGFzc3dvcmRSZXNldFJlc3BvbnNlIgASnQEKElJlcXVlc3RFbWFpbENoYW5nZRJBLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdXRoU2VydmljZVJlcXVlc3RFbWFpbENoYW5nZVJlcXVlc3QaQi5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VSZXF1ZXN0RW1haWxDaGFuZ2VSZXNwb25zZSIAEqkBChZWZXJpZnlFbWFpbENoYW5nZVRva2VuEkUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlVmVyaWZ5RW1haWxDaGFuZ2VUb2tlblJlcXVlc3QaRi5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VWZXJpZnlFbWFpbENoYW5nZVRva2VuUmVzcG9uc2UiABKdAQoSQ29uZmlybUVtYWlsQ2hhbmdlEkEucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1dGhTZXJ2aWNlQ29uZmlybUVtYWlsQ2hhbmdlUmVxdWVzdBpCLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdXRoU2VydmljZUNvbmZpcm1FbWFpbENoYW5nZVJlc3BvbnNlIgASdgoFR2V0TWUSNC5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VHZXRNZVJlcXVlc3QaNS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXV0aFNlcnZpY2VHZXRNZVJlc3BvbnNlIgBCXVpbZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3BsYXRmb3JtL3YxO3B1YmxpcmFzcGxhdGZvcm12MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceLoginRequest
@@ -41,6 +41,9 @@ export const PlatformAuthServiceLoginRequestSchema: GenMessage<PlatformAuthServi
  */
 export type PlatformAuthServiceLoginResponse = Message<"publira.platform.v1.PlatformAuthServiceLoginResponse"> & {
   /**
+   * Empty while mfa_challenge is set: the password was right, but the session
+   * is not issued until the second factor is settled.
+   *
    * @generated from field: publira.types.v1.User user = 1;
    */
   user?: User | undefined;
@@ -49,6 +52,11 @@ export type PlatformAuthServiceLoginResponse = Message<"publira.platform.v1.Plat
    * @generated from field: publira.types.v1.AccessToken access_token = 2;
    */
   accessToken?: AccessToken | undefined;
+
+  /**
+   * @generated from field: publira.platform.v1.PlatformAuthServiceMfaChallenge mfa_challenge = 3;
+   */
+  mfaChallenge?: PlatformAuthServiceMfaChallenge | undefined;
 };
 
 /**
@@ -57,6 +65,312 @@ export type PlatformAuthServiceLoginResponse = Message<"publira.platform.v1.Plat
  */
 export const PlatformAuthServiceLoginResponseSchema: GenMessage<PlatformAuthServiceLoginResponse> = /*@__PURE__*/
   messageDesc(file_publira_platform_v1_auth, 1);
+
+/**
+ * The half-finished session a password alone earns. The token is signed and
+ * short-lived, and no RPC other than the MFA ones accepts it.
+ *
+ * @generated from message publira.platform.v1.PlatformAuthServiceMfaChallenge
+ */
+export type PlatformAuthServiceMfaChallenge = Message<"publira.platform.v1.PlatformAuthServiceMfaChallenge"> & {
+  /**
+   * @generated from field: string token = 1;
+   */
+  token: string;
+
+  /**
+   * @generated from field: string expires_at = 2;
+   */
+  expiresAt: string;
+
+  /**
+   * @generated from field: publira.platform.v1.MfaChallengeKind kind = 3;
+   */
+  kind: MfaChallengeKind;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceMfaChallenge.
+ * Use `create(PlatformAuthServiceMfaChallengeSchema)` to create a new message.
+ */
+export const PlatformAuthServiceMfaChallengeSchema: GenMessage<PlatformAuthServiceMfaChallenge> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 2);
+
+/**
+ * @generated from message publira.platform.v1.PlatformAuthServiceVerifyMfaRequest
+ */
+export type PlatformAuthServiceVerifyMfaRequest = Message<"publira.platform.v1.PlatformAuthServiceVerifyMfaRequest"> & {
+  /**
+   * @generated from field: string challenge_token = 1;
+   */
+  challengeToken: string;
+
+  /**
+   * A code from the authenticator, or one of the recovery codes handed out at
+   * enrollment. Which one it was is reported back in the response.
+   *
+   * @generated from field: string code = 2;
+   */
+  code: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceVerifyMfaRequest.
+ * Use `create(PlatformAuthServiceVerifyMfaRequestSchema)` to create a new message.
+ */
+export const PlatformAuthServiceVerifyMfaRequestSchema: GenMessage<PlatformAuthServiceVerifyMfaRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 3);
+
+/**
+ * @generated from message publira.platform.v1.PlatformAuthServiceVerifyMfaResponse
+ */
+export type PlatformAuthServiceVerifyMfaResponse = Message<"publira.platform.v1.PlatformAuthServiceVerifyMfaResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.User user = 1;
+   */
+  user?: User | undefined;
+
+  /**
+   * @generated from field: publira.types.v1.AccessToken access_token = 2;
+   */
+  accessToken?: AccessToken | undefined;
+
+  /**
+   * @generated from field: bool recovery_code_used = 3;
+   */
+  recoveryCodeUsed: boolean;
+
+  /**
+   * @generated from field: int32 remaining_recovery_codes = 4;
+   */
+  remainingRecoveryCodes: number;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceVerifyMfaResponse.
+ * Use `create(PlatformAuthServiceVerifyMfaResponseSchema)` to create a new message.
+ */
+export const PlatformAuthServiceVerifyMfaResponseSchema: GenMessage<PlatformAuthServiceVerifyMfaResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 4);
+
+/**
+ * @generated from message publira.platform.v1.PlatformAuthServiceGetMfaStatusRequest
+ */
+export type PlatformAuthServiceGetMfaStatusRequest = Message<"publira.platform.v1.PlatformAuthServiceGetMfaStatusRequest"> & {
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceGetMfaStatusRequest.
+ * Use `create(PlatformAuthServiceGetMfaStatusRequestSchema)` to create a new message.
+ */
+export const PlatformAuthServiceGetMfaStatusRequestSchema: GenMessage<PlatformAuthServiceGetMfaStatusRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 5);
+
+/**
+ * @generated from message publira.platform.v1.PlatformAuthServiceGetMfaStatusResponse
+ */
+export type PlatformAuthServiceGetMfaStatusResponse = Message<"publira.platform.v1.PlatformAuthServiceGetMfaStatusResponse"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: string enabled_at = 2;
+   */
+  enabledAt: string;
+
+  /**
+   * @generated from field: int32 remaining_recovery_codes = 3;
+   */
+  remainingRecoveryCodes: number;
+
+  /**
+   * The platform policy requires MFA of every operator. With enabled false,
+   * the console has to send the operator to enrollment before anything else.
+   *
+   * @generated from field: bool required = 4;
+   */
+  required: boolean;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceGetMfaStatusResponse.
+ * Use `create(PlatformAuthServiceGetMfaStatusResponseSchema)` to create a new message.
+ */
+export const PlatformAuthServiceGetMfaStatusResponseSchema: GenMessage<PlatformAuthServiceGetMfaStatusResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 6);
+
+/**
+ * @generated from message publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentRequest
+ */
+export type PlatformAuthServiceStartMfaEnrollmentRequest = Message<"publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentRequest"> & {
+  /**
+   * Sent instead of an Authorization header when the sign-in stopped at an
+   * enroll challenge. A signed-in operator enrolling voluntarily leaves it
+   * empty and is identified by its session.
+   *
+   * @generated from field: string challenge_token = 1;
+   */
+  challengeToken: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentRequest.
+ * Use `create(PlatformAuthServiceStartMfaEnrollmentRequestSchema)` to create a new message.
+ */
+export const PlatformAuthServiceStartMfaEnrollmentRequestSchema: GenMessage<PlatformAuthServiceStartMfaEnrollmentRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 7);
+
+/**
+ * @generated from message publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentResponse
+ */
+export type PlatformAuthServiceStartMfaEnrollmentResponse = Message<"publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentResponse"> & {
+  /**
+   * Base32 secret, for an authenticator that is typed into rather than
+   * scanned. It is readable only here and only until the next start.
+   *
+   * @generated from field: string secret = 1;
+   */
+  secret: string;
+
+  /**
+   * otpauth:// URI (RFC 6238 parameters) the console renders as a QR code.
+   *
+   * @generated from field: string otpauth_uri = 2;
+   */
+  otpauthUri: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentResponse.
+ * Use `create(PlatformAuthServiceStartMfaEnrollmentResponseSchema)` to create a new message.
+ */
+export const PlatformAuthServiceStartMfaEnrollmentResponseSchema: GenMessage<PlatformAuthServiceStartMfaEnrollmentResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 8);
+
+/**
+ * @generated from message publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentRequest
+ */
+export type PlatformAuthServiceConfirmMfaEnrollmentRequest = Message<"publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentRequest"> & {
+  /**
+   * @generated from field: string challenge_token = 1;
+   */
+  challengeToken: string;
+
+  /**
+   * @generated from field: string code = 2;
+   */
+  code: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentRequest.
+ * Use `create(PlatformAuthServiceConfirmMfaEnrollmentRequestSchema)` to create a new message.
+ */
+export const PlatformAuthServiceConfirmMfaEnrollmentRequestSchema: GenMessage<PlatformAuthServiceConfirmMfaEnrollmentRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 9);
+
+/**
+ * @generated from message publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse
+ */
+export type PlatformAuthServiceConfirmMfaEnrollmentResponse = Message<"publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse"> & {
+  /**
+   * Plaintext exactly once; only hashes are kept.
+   *
+   * @generated from field: repeated string recovery_codes = 1;
+   */
+  recoveryCodes: string[];
+
+  /**
+   * Set when a challenge token finished the sign-in rather than a session.
+   *
+   * @generated from field: publira.types.v1.User user = 2;
+   */
+  user?: User | undefined;
+
+  /**
+   * @generated from field: publira.types.v1.AccessToken access_token = 3;
+   */
+  accessToken?: AccessToken | undefined;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse.
+ * Use `create(PlatformAuthServiceConfirmMfaEnrollmentResponseSchema)` to create a new message.
+ */
+export const PlatformAuthServiceConfirmMfaEnrollmentResponseSchema: GenMessage<PlatformAuthServiceConfirmMfaEnrollmentResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 10);
+
+/**
+ * @generated from message publira.platform.v1.PlatformAuthServiceDisableMfaRequest
+ */
+export type PlatformAuthServiceDisableMfaRequest = Message<"publira.platform.v1.PlatformAuthServiceDisableMfaRequest"> & {
+  /**
+   * @generated from field: string code = 1;
+   */
+  code: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceDisableMfaRequest.
+ * Use `create(PlatformAuthServiceDisableMfaRequestSchema)` to create a new message.
+ */
+export const PlatformAuthServiceDisableMfaRequestSchema: GenMessage<PlatformAuthServiceDisableMfaRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 11);
+
+/**
+ * @generated from message publira.platform.v1.PlatformAuthServiceDisableMfaResponse
+ */
+export type PlatformAuthServiceDisableMfaResponse = Message<"publira.platform.v1.PlatformAuthServiceDisableMfaResponse"> & {
+  /**
+   * @generated from field: bool disabled = 1;
+   */
+  disabled: boolean;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceDisableMfaResponse.
+ * Use `create(PlatformAuthServiceDisableMfaResponseSchema)` to create a new message.
+ */
+export const PlatformAuthServiceDisableMfaResponseSchema: GenMessage<PlatformAuthServiceDisableMfaResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 12);
+
+/**
+ * @generated from message publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest
+ */
+export type PlatformAuthServiceRegenerateMfaRecoveryCodesRequest = Message<"publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest"> & {
+  /**
+   * @generated from field: string code = 1;
+   */
+  code: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest.
+ * Use `create(PlatformAuthServiceRegenerateMfaRecoveryCodesRequestSchema)` to create a new message.
+ */
+export const PlatformAuthServiceRegenerateMfaRecoveryCodesRequestSchema: GenMessage<PlatformAuthServiceRegenerateMfaRecoveryCodesRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 13);
+
+/**
+ * @generated from message publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse
+ */
+export type PlatformAuthServiceRegenerateMfaRecoveryCodesResponse = Message<"publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse"> & {
+  /**
+   * Replaces every code the operator held, used or not.
+   *
+   * @generated from field: repeated string recovery_codes = 1;
+   */
+  recoveryCodes: string[];
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse.
+ * Use `create(PlatformAuthServiceRegenerateMfaRecoveryCodesResponseSchema)` to create a new message.
+ */
+export const PlatformAuthServiceRegenerateMfaRecoveryCodesResponseSchema: GenMessage<PlatformAuthServiceRegenerateMfaRecoveryCodesResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_auth, 14);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceLogoutRequest
@@ -69,7 +383,7 @@ export type PlatformAuthServiceLogoutRequest = Message<"publira.platform.v1.Plat
  * Use `create(PlatformAuthServiceLogoutRequestSchema)` to create a new message.
  */
 export const PlatformAuthServiceLogoutRequestSchema: GenMessage<PlatformAuthServiceLogoutRequest> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 2);
+  messageDesc(file_publira_platform_v1_auth, 15);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceLogoutResponse
@@ -82,7 +396,7 @@ export type PlatformAuthServiceLogoutResponse = Message<"publira.platform.v1.Pla
  * Use `create(PlatformAuthServiceLogoutResponseSchema)` to create a new message.
  */
 export const PlatformAuthServiceLogoutResponseSchema: GenMessage<PlatformAuthServiceLogoutResponse> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 3);
+  messageDesc(file_publira_platform_v1_auth, 16);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceRequestPasswordResetRequest
@@ -99,7 +413,7 @@ export type PlatformAuthServiceRequestPasswordResetRequest = Message<"publira.pl
  * Use `create(PlatformAuthServiceRequestPasswordResetRequestSchema)` to create a new message.
  */
 export const PlatformAuthServiceRequestPasswordResetRequestSchema: GenMessage<PlatformAuthServiceRequestPasswordResetRequest> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 4);
+  messageDesc(file_publira_platform_v1_auth, 17);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceRequestPasswordResetResponse
@@ -116,7 +430,7 @@ export type PlatformAuthServiceRequestPasswordResetResponse = Message<"publira.p
  * Use `create(PlatformAuthServiceRequestPasswordResetResponseSchema)` to create a new message.
  */
 export const PlatformAuthServiceRequestPasswordResetResponseSchema: GenMessage<PlatformAuthServiceRequestPasswordResetResponse> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 5);
+  messageDesc(file_publira_platform_v1_auth, 18);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenRequest
@@ -133,7 +447,7 @@ export type PlatformAuthServiceVerifyPasswordResetTokenRequest = Message<"publir
  * Use `create(PlatformAuthServiceVerifyPasswordResetTokenRequestSchema)` to create a new message.
  */
 export const PlatformAuthServiceVerifyPasswordResetTokenRequestSchema: GenMessage<PlatformAuthServiceVerifyPasswordResetTokenRequest> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 6);
+  messageDesc(file_publira_platform_v1_auth, 19);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenResponse
@@ -150,7 +464,7 @@ export type PlatformAuthServiceVerifyPasswordResetTokenResponse = Message<"publi
  * Use `create(PlatformAuthServiceVerifyPasswordResetTokenResponseSchema)` to create a new message.
  */
 export const PlatformAuthServiceVerifyPasswordResetTokenResponseSchema: GenMessage<PlatformAuthServiceVerifyPasswordResetTokenResponse> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 7);
+  messageDesc(file_publira_platform_v1_auth, 20);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceConfirmPasswordResetRequest
@@ -172,7 +486,7 @@ export type PlatformAuthServiceConfirmPasswordResetRequest = Message<"publira.pl
  * Use `create(PlatformAuthServiceConfirmPasswordResetRequestSchema)` to create a new message.
  */
 export const PlatformAuthServiceConfirmPasswordResetRequestSchema: GenMessage<PlatformAuthServiceConfirmPasswordResetRequest> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 8);
+  messageDesc(file_publira_platform_v1_auth, 21);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceConfirmPasswordResetResponse
@@ -189,7 +503,7 @@ export type PlatformAuthServiceConfirmPasswordResetResponse = Message<"publira.p
  * Use `create(PlatformAuthServiceConfirmPasswordResetResponseSchema)` to create a new message.
  */
 export const PlatformAuthServiceConfirmPasswordResetResponseSchema: GenMessage<PlatformAuthServiceConfirmPasswordResetResponse> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 9);
+  messageDesc(file_publira_platform_v1_auth, 22);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceRequestEmailChangeRequest
@@ -216,7 +530,7 @@ export type PlatformAuthServiceRequestEmailChangeRequest = Message<"publira.plat
  * Use `create(PlatformAuthServiceRequestEmailChangeRequestSchema)` to create a new message.
  */
 export const PlatformAuthServiceRequestEmailChangeRequestSchema: GenMessage<PlatformAuthServiceRequestEmailChangeRequest> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 10);
+  messageDesc(file_publira_platform_v1_auth, 23);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceRequestEmailChangeResponse
@@ -233,7 +547,7 @@ export type PlatformAuthServiceRequestEmailChangeResponse = Message<"publira.pla
  * Use `create(PlatformAuthServiceRequestEmailChangeResponseSchema)` to create a new message.
  */
 export const PlatformAuthServiceRequestEmailChangeResponseSchema: GenMessage<PlatformAuthServiceRequestEmailChangeResponse> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 11);
+  messageDesc(file_publira_platform_v1_auth, 24);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenRequest
@@ -250,7 +564,7 @@ export type PlatformAuthServiceVerifyEmailChangeTokenRequest = Message<"publira.
  * Use `create(PlatformAuthServiceVerifyEmailChangeTokenRequestSchema)` to create a new message.
  */
 export const PlatformAuthServiceVerifyEmailChangeTokenRequestSchema: GenMessage<PlatformAuthServiceVerifyEmailChangeTokenRequest> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 12);
+  messageDesc(file_publira_platform_v1_auth, 25);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenResponse
@@ -267,7 +581,7 @@ export type PlatformAuthServiceVerifyEmailChangeTokenResponse = Message<"publira
  * Use `create(PlatformAuthServiceVerifyEmailChangeTokenResponseSchema)` to create a new message.
  */
 export const PlatformAuthServiceVerifyEmailChangeTokenResponseSchema: GenMessage<PlatformAuthServiceVerifyEmailChangeTokenResponse> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 13);
+  messageDesc(file_publira_platform_v1_auth, 26);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceConfirmEmailChangeRequest
@@ -284,7 +598,7 @@ export type PlatformAuthServiceConfirmEmailChangeRequest = Message<"publira.plat
  * Use `create(PlatformAuthServiceConfirmEmailChangeRequestSchema)` to create a new message.
  */
 export const PlatformAuthServiceConfirmEmailChangeRequestSchema: GenMessage<PlatformAuthServiceConfirmEmailChangeRequest> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 14);
+  messageDesc(file_publira_platform_v1_auth, 27);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceConfirmEmailChangeResponse
@@ -311,7 +625,7 @@ export type PlatformAuthServiceConfirmEmailChangeResponse = Message<"publira.pla
  * Use `create(PlatformAuthServiceConfirmEmailChangeResponseSchema)` to create a new message.
  */
 export const PlatformAuthServiceConfirmEmailChangeResponseSchema: GenMessage<PlatformAuthServiceConfirmEmailChangeResponse> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 15);
+  messageDesc(file_publira_platform_v1_auth, 28);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceGetMeRequest
@@ -324,7 +638,7 @@ export type PlatformAuthServiceGetMeRequest = Message<"publira.platform.v1.Platf
  * Use `create(PlatformAuthServiceGetMeRequestSchema)` to create a new message.
  */
 export const PlatformAuthServiceGetMeRequestSchema: GenMessage<PlatformAuthServiceGetMeRequest> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 16);
+  messageDesc(file_publira_platform_v1_auth, 29);
 
 /**
  * @generated from message publira.platform.v1.PlatformAuthServiceGetMeResponse
@@ -341,7 +655,41 @@ export type PlatformAuthServiceGetMeResponse = Message<"publira.platform.v1.Plat
  * Use `create(PlatformAuthServiceGetMeResponseSchema)` to create a new message.
  */
 export const PlatformAuthServiceGetMeResponseSchema: GenMessage<PlatformAuthServiceGetMeResponse> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_auth, 17);
+  messageDesc(file_publira_platform_v1_auth, 30);
+
+/**
+ * What the operator still owes before the sign-in can finish.
+ *
+ * @generated from enum publira.platform.v1.MfaChallengeKind
+ */
+export enum MfaChallengeKind {
+  /**
+   * @generated from enum value: MFA_CHALLENGE_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The operator has a confirmed authenticator and owes a code from it.
+   *
+   * @generated from enum value: MFA_CHALLENGE_KIND_VERIFY = 1;
+   */
+  VERIFY = 1,
+
+  /**
+   * The operator has no authenticator and the platform policy requires one of
+   * every operator, so the only thing this challenge can complete is an
+   * enrollment.
+   *
+   * @generated from enum value: MFA_CHALLENGE_KIND_ENROLL = 2;
+   */
+  ENROLL = 2,
+}
+
+/**
+ * Describes the enum publira.platform.v1.MfaChallengeKind.
+ */
+export const MfaChallengeKindSchema: GenEnum<MfaChallengeKind> = /*@__PURE__*/
+  enumDesc(file_publira_platform_v1_auth, 0);
 
 /**
  * @generated from service publira.platform.v1.PlatformAuthService
@@ -362,6 +710,54 @@ export const PlatformAuthService: GenService<{
     methodKind: "unary";
     input: typeof PlatformAuthServiceLogoutRequestSchema;
     output: typeof PlatformAuthServiceLogoutResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformAuthService.VerifyMfa
+   */
+  verifyMfa: {
+    methodKind: "unary";
+    input: typeof PlatformAuthServiceVerifyMfaRequestSchema;
+    output: typeof PlatformAuthServiceVerifyMfaResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformAuthService.GetMfaStatus
+   */
+  getMfaStatus: {
+    methodKind: "unary";
+    input: typeof PlatformAuthServiceGetMfaStatusRequestSchema;
+    output: typeof PlatformAuthServiceGetMfaStatusResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformAuthService.StartMfaEnrollment
+   */
+  startMfaEnrollment: {
+    methodKind: "unary";
+    input: typeof PlatformAuthServiceStartMfaEnrollmentRequestSchema;
+    output: typeof PlatformAuthServiceStartMfaEnrollmentResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformAuthService.ConfirmMfaEnrollment
+   */
+  confirmMfaEnrollment: {
+    methodKind: "unary";
+    input: typeof PlatformAuthServiceConfirmMfaEnrollmentRequestSchema;
+    output: typeof PlatformAuthServiceConfirmMfaEnrollmentResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformAuthService.DisableMfa
+   */
+  disableMfa: {
+    methodKind: "unary";
+    input: typeof PlatformAuthServiceDisableMfaRequestSchema;
+    output: typeof PlatformAuthServiceDisableMfaResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformAuthService.RegenerateMfaRecoveryCodes
+   */
+  regenerateMfaRecoveryCodes: {
+    methodKind: "unary";
+    input: typeof PlatformAuthServiceRegenerateMfaRecoveryCodesRequestSchema;
+    output: typeof PlatformAuthServiceRegenerateMfaRecoveryCodesResponseSchema;
   },
   /**
    * @generated from rpc publira.platform.v1.PlatformAuthService.RequestPasswordReset

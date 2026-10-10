@@ -21,39 +21,48 @@ func TestRunDeletesOnlyExpiredChallenges(t *testing.T) {
 	otherTenant := pg.SeedTenant(t, "MFAPURGETEN2", "other-mfa-purge.example.com", "Other MFA Purge Tenant")
 	admin := pg.SeedTenantAdmin(t, tenant.ID, "MFAPURGEADM1", "admin@mfa-purge.example.com", "MFA Purge Admin")
 	otherAdmin := pg.SeedTenantAdmin(t, otherTenant.ID, "MFAPURGEADM2", "admin@other-mfa-purge.example.com", "Other MFA Purge Admin")
+	operator := pg.SeedPlatformOperator(t, "MFAPURGEOPR1", "operator@mfa-purge.example.com", "MFA Purge Operator")
 
-	// Three expired rows across two tenants, plus two that must survive: one
-	// expiring exactly at the cutoff (the window is exclusive) and one after.
+	// Three expired tenant rows across two tenants and two expired operator
+	// rows, plus three that must survive: one of each kind expiring exactly at
+	// the cutoff (the window is exclusive) and one after.
 	expired := []uuid.UUID{
 		insertUsedChallenge(t, pg.DB, tenant.ID, admin.ID, cutoff.Add(-time.Hour)),
 		insertUsedChallenge(t, pg.DB, tenant.ID, admin.ID, cutoff.Add(-time.Second)),
 		insertUsedChallenge(t, pg.DB, otherTenant.ID, otherAdmin.ID, cutoff.Add(-5*time.Minute)),
+		insertOperatorUsedChallenge(t, pg.DB, operator.ID, cutoff.Add(-time.Hour)),
+		insertOperatorUsedChallenge(t, pg.DB, operator.ID, cutoff.Add(-time.Second)),
 	}
 	retained := []uuid.UUID{
 		insertUsedChallenge(t, pg.DB, tenant.ID, admin.ID, cutoff),
 		insertUsedChallenge(t, pg.DB, otherTenant.ID, otherAdmin.ID, cutoff.Add(time.Minute)),
+		insertOperatorUsedChallenge(t, pg.DB, operator.ID, cutoff),
 	}
 
-	purger := New(pg.OpenPlatformDB(t))
+	// The worker runs the purge as publira_content_stats, which reaches no
+	// other platform_ table.
+	purger := New(pg.OpenContentStatsDB(t))
 
 	// A dry run reports the candidates and leaves every row in place.
 	dry, err := purger.Run(context.Background(), Options{Cutoff: cutoff, DryRun: true})
 	if err != nil {
 		t.Fatalf("dry run: %v", err)
 	}
-	if want := (Result{RowCount: 3, DryRun: true}); dry != want {
+	if want := (Result{RowCount: 5, DryRun: true}); dry != want {
 		t.Fatalf("dry run result = %+v, want %+v", dry, want)
 	}
-	if got := countUsedChallenges(t, pg.DB); got != 5 {
-		t.Fatalf("rows after dry run = %d, want 5", got)
+	if got := countUsedChallenges(t, pg.DB); got != 8 {
+		t.Fatalf("rows after dry run = %d, want 8", got)
 	}
 
-	// ChunkSize below the candidate count forces the loop to iterate.
+	// ChunkSize below the candidate count forces the loop to iterate: two
+	// chunks drain the tenant table's three rows, and two more the operator
+	// table's two, the second of which finds the end.
 	result, err := purger.Run(context.Background(), Options{Cutoff: cutoff, ChunkSize: 2})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if want := (Result{RowCount: 3, ChunkCount: 2}); result != want {
+	if want := (Result{RowCount: 5, ChunkCount: 4}); result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 	for _, jti := range expired {
@@ -67,12 +76,13 @@ func TestRunDeletesOnlyExpiredChallenges(t *testing.T) {
 		}
 	}
 
-	// Re-running finds nothing left to delete but still probes once.
+	// Re-running finds nothing left to delete but still probes each table
+	// once.
 	again, err := purger.Run(context.Background(), Options{Cutoff: cutoff, ChunkSize: 2})
 	if err != nil {
 		t.Fatalf("second Run: %v", err)
 	}
-	if want := (Result{ChunkCount: 1}); again != want {
+	if want := (Result{ChunkCount: 2}); again != want {
 		t.Fatalf("second result = %+v, want %+v", again, want)
 	}
 }
@@ -104,7 +114,17 @@ func TestChunkQueryHasEligibleIndex(t *testing.T) {
 	if _, err := tx.ExecContext(ctx, "SET LOCAL enable_seqscan = off"); err != nil {
 		t.Fatalf("disable sequential scans: %v", err)
 	}
-	rows, err := tx.QueryContext(ctx, "EXPLAIN (COSTS OFF) "+deleteChunkSQL, time.Now().UTC(), 10)
+	for _, table := range usedChallengeTables {
+		plan := explain(ctx, t, tx, deleteChunkSQL(table.name))
+		if !strings.Contains(plan, table.index) {
+			t.Fatalf("plan for %s does not use %s:\n%s", table.name, table.index, plan)
+		}
+	}
+}
+
+func explain(ctx context.Context, t *testing.T, tx *sql.Tx, query string) string {
+	t.Helper()
+	rows, err := tx.QueryContext(ctx, "EXPLAIN (COSTS OFF) "+query, time.Now().UTC(), 10)
 	if err != nil {
 		t.Fatalf("explain chunk query: %v", err)
 	}
@@ -122,9 +142,7 @@ func TestChunkQueryHasEligibleIndex(t *testing.T) {
 	if err := rows.Err(); err != nil {
 		t.Fatalf("iterate plan: %v", err)
 	}
-	if !strings.Contains(plan.String(), "idx_user_mfa_used_challenges_expires_at") {
-		t.Fatalf("plan does not use idx_user_mfa_used_challenges_expires_at:\n%s", plan.String())
-	}
+	return plan.String()
 }
 
 func insertUsedChallenge(t *testing.T, db *sql.DB, tenantID, userID uuid.UUID, expiresAt time.Time) uuid.UUID {
@@ -142,12 +160,30 @@ func insertUsedChallenge(t *testing.T, db *sql.DB, tenantID, userID uuid.UUID, e
 	return jti
 }
 
+func insertOperatorUsedChallenge(t *testing.T, db *sql.DB, platformUserID uuid.UUID, expiresAt time.Time) uuid.UUID {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	jti := uuid.Must(uuid.NewV7())
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO platform_user_mfa_used_challenges (jti, platform_user_id, expires_at)
+		VALUES ($1, $2, $3)
+	`, jti, platformUserID, expiresAt); err != nil {
+		t.Fatalf("insert operator used challenge: %v", err)
+	}
+	return jti
+}
+
 func countUsedChallenges(t *testing.T, db *sql.DB) int64 {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	var count int64
-	if err := db.QueryRowContext(ctx, "SELECT count(*) FROM user_mfa_used_challenges").Scan(&count); err != nil {
+	if err := db.QueryRowContext(ctx, `
+		SELECT (SELECT count(*) FROM user_mfa_used_challenges)
+			+ (SELECT count(*) FROM platform_user_mfa_used_challenges)
+	`).Scan(&count); err != nil {
 		t.Fatalf("count used challenges: %v", err)
 	}
 	return count
@@ -158,7 +194,10 @@ func usedChallengeExists(t *testing.T, db *sql.DB, jti uuid.UUID) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	var exists bool
-	if err := db.QueryRowContext(ctx, "SELECT EXISTS (SELECT 1 FROM user_mfa_used_challenges WHERE jti = $1)", jti).Scan(&exists); err != nil {
+	if err := db.QueryRowContext(ctx, `
+		SELECT EXISTS (SELECT 1 FROM user_mfa_used_challenges WHERE jti = $1)
+			OR EXISTS (SELECT 1 FROM platform_user_mfa_used_challenges WHERE jti = $1)
+	`, jti).Scan(&exists); err != nil {
 		t.Fatalf("look up used challenge: %v", err)
 	}
 	return exists

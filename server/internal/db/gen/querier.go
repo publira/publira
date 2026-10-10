@@ -147,6 +147,7 @@ type Querier interface {
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
+	CountUnusedPlatformUserMfaRecoveryCodes(ctx context.Context, platformUserID uuid.UUID) (int64, error)
 	CountUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) (int64, error)
 	// How much of one tenant's backlog the retention purge is about to take. It
 	// answers that batch's dry run, which reports the total and deletes nothing.
@@ -266,6 +267,7 @@ type Querier interface {
 	CreatePlatformNotification(ctx context.Context, arg CreatePlatformNotificationParams) (PlatformNotification, error)
 	CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (PlatformUser, error)
 	CreatePlatformUserEmailChangeToken(ctx context.Context, arg CreatePlatformUserEmailChangeTokenParams) (PlatformUserEmailChangeToken, error)
+	CreatePlatformUserMfaRecoveryCode(ctx context.Context, arg CreatePlatformUserMfaRecoveryCodeParams) error
 	CreatePlatformUserPasswordResetToken(ctx context.Context, arg CreatePlatformUserPasswordResetTokenParams) (PlatformUserPasswordResetToken, error)
 	CreatePlatformUserRole(ctx context.Context, arg CreatePlatformUserRoleParams) (PlatformUserRole, error)
 	// Every checkout the provider reports paid is a purchase of its own, even for a
@@ -345,6 +347,8 @@ type Querier interface {
 	// The translation's versions go with it (page_versions_tenant_page_translation_id_fkey).
 	DeletePageTranslation(ctx context.Context, arg DeletePageTranslationParams) (PageTranslation, error)
 	DeletePlatformUserEmailChangeTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
+	DeletePlatformUserMfaRecoveryCodes(ctx context.Context, platformUserID uuid.UUID) error
+	DeletePlatformUserMfaTotp(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserPasswordResetTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
 	// Returns the creators the series credited, whose search documents the save
@@ -392,6 +396,9 @@ type Querier interface {
 	// Sign-out and the account switch both unregister, and both name the reader
 	// who holds the session, so a token cannot be dropped from another account.
 	DeleteUserPushDeviceForUser(ctx context.Context, arg DeleteUserPushDeviceForUserParams) (int64, error)
+	// last_verified_step is left alone: the code that confirmed the enrollment
+	// was accepted through the same path a sign-in code is, which stored it.
+	EnablePlatformUserMfaTotp(ctx context.Context, platformUserID uuid.UUID) (PlatformUserMfaTotp, error)
 	// last_verified_step is left alone: the code that confirmed the enrollment
 	// was accepted through the same path a login code is, which stored it.
 	EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)
@@ -632,6 +639,9 @@ type Querier interface {
 	GetPlatformUserByPublicID(ctx context.Context, publicID string) (PlatformUser, error)
 	GetPlatformUserEmailChangeTokenByHash(ctx context.Context, currentEmailTokenHash string) (GetPlatformUserEmailChangeTokenByHashRow, error)
 	GetPlatformUserEmailChangeTokenByID(ctx context.Context, id uuid.UUID) (PlatformUserEmailChangeToken, error)
+	// Platform operator MFA. The statements mirror the tenant staff's in mfa.sql,
+	// keyed by platform_user_id instead of a tenant's user_id.
+	GetPlatformUserMfaTotp(ctx context.Context, platformUserID uuid.UUID) (PlatformUserMfaTotp, error)
 	GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error)
 	// Returns no rows until the server has generated a key pair.
 	GetPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error)
@@ -2053,6 +2063,7 @@ type Querier interface {
 	// the ones whose voided purchases the worker reads. Read across tenants, so
 	// only a role that bypasses row-level security sees them all.
 	ListTenantsSellingOnGooglePlay(ctx context.Context) ([]uuid.UUID, error)
+	ListUnusedPlatformUserMfaRecoveryCodes(ctx context.Context, platformUserID uuid.UUID) ([]ListUnusedPlatformUserMfaRecoveryCodesRow, error)
 	ListUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) ([]ListUnusedUserMfaRecoveryCodesRow, error)
 	// The previous-page half of ListUserFollowsByCreatedAtDesc. The handler reverses
 	// the returned rows to preserve the public newest-first display order.
@@ -2290,6 +2301,17 @@ type Querier interface {
 	MarkPlatformUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error
 	MarkPlatformUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkPlatformUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error
+	// The INSERT is the claim on the challenge rather than a lookup followed by
+	// one: two requests presenting the same token both find it unspent, and only
+	// the one whose row lands may exchange it. Affecting no row is therefore a
+	// challenge that has already bought a session.
+	MarkPlatformUserMfaChallengeUsed(ctx context.Context, arg MarkPlatformUserMfaChallengeUsedParams) (int64, error)
+	MarkPlatformUserMfaRecoveryCodeUsed(ctx context.Context, id uuid.UUID) (int64, error)
+	// The step predicate is the replay check: two requests carrying the same code
+	// can both read the old step before either writes, and Postgres re-evaluates
+	// this WHERE against the row the first one committed, so the second updates
+	// nothing. Affecting no row is therefore a reused code, not a missing operator.
+	MarkPlatformUserMfaTotpVerified(ctx context.Context, arg MarkPlatformUserMfaTotpVerifiedParams) (int64, error)
 	MarkPlatformUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
 	// Inserts the first completed read only after checking publication and body
 	// access in the same statement. A duplicate returns the preserved read_at.
@@ -2425,6 +2447,9 @@ type Querier interface {
 	// Records why the build of a revision failed, unless a save has moved the
 	// revision on since, which leaves the failure about nothing.
 	RecordPlatformSearchBuildFailure(ctx context.Context, arg RecordPlatformSearchBuildFailureParams) (int64, error)
+	// Reaching the threshold starts the lock and puts the counter back to zero,
+	// so the attempt after a lock expires is not immediately the fifth again.
+	RecordPlatformUserMfaTotpFailure(ctx context.Context, arg RecordPlatformUserMfaTotpFailureParams) (PlatformUserMfaTotp, error)
 	// Records what the provider has refunded against one purchase, matched by the
 	// payment the refund notification names. Nothing matches when the payment
 	// belongs to another tenant, another provider, or no purchase here, and the
@@ -2477,6 +2502,7 @@ type Querier interface {
 	RejectOpenEpisodeCommentReportsForComment(ctx context.Context, arg RejectOpenEpisodeCommentReportsForCommentParams) (int64, error)
 	ReleaseUnappliedRefund(ctx context.Context, arg ReleaseUnappliedRefundParams) error
 	ReleaseUnappliedStoreRefund(ctx context.Context, arg ReleaseUnappliedStoreRefundParams) error
+	ResetPlatformUserMfaTotpFailures(ctx context.Context, platformUserID uuid.UUID) error
 	ResetUserMfaTotpFailures(ctx context.Context, userID uuid.UUID) error
 	// Staff deciding one report, either way. It names 'open' as the state it moves
 	// from, so a report a second moderator decided in between returns no row and
@@ -2684,6 +2710,9 @@ type Querier interface {
 	// setup finish on a platform whose settings row outlived its operators;
 	// LockPlatformInitialSetup, not this statement, keeps two setups apart.
 	UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error)
+	// Starting enrollment replaces whatever unconfirmed secret was there and
+	// clears the lock, so a stalled attempt never blocks the next one.
+	UpsertPlatformUserMfaTotpSecret(ctx context.Context, arg UpsertPlatformUserMfaTotpSecretParams) (PlatformUserMfaTotp, error)
 	UpsertSeriesWaitFreeSettings(ctx context.Context, arg UpsertSeriesWaitFreeSettingsParams) (UpsertSeriesWaitFreeSettingsRow, error)
 	// Resolves one tag name the series form carried, creating the tag when this is
 	// its first use.
