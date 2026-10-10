@@ -346,12 +346,15 @@ GRANT CREATE ON SCHEMA public TO publira_outbox;
 -- was never granted fails in its integration test rather than in production.
 --
 -- Reads: the due listings, series, windows and pinned banners, the catalog
--- rows the log lines name, and the recipients each notification fans out to.
+-- rows the log lines name, the recipients each notification fans out to, and
+-- the surfaces that decide whether a published episode is announced at all.
 GRANT SELECT ON
     episode_listings,
     announcements,
     episodes,
     series,
+    series_surfaces,
+    episode_surfaces,
     tenants,
     platform_config,
     episode_free_windows,
