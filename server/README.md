@@ -583,7 +583,7 @@ A tenant member signing in to the admin console can hold a second factor: a TOTP
 | --- | --- |
 | Algorithm | TOTP, 30-second period, SHA-1, 6 digits, a 160-bit secret — what every mainstream authenticator app assumes when the otpauth URI omits it |
 | Acceptance window | The current step and one on either side |
-| Replay | A step is accepted once. `user_mfa_totp.last_verified_step` is what refuses a code that is still inside the window but was already spent, and `user_mfa_used_challenges` refuses a verify challenge token that already bought a session |
+| Replay | A step is accepted once. `user_mfa_totp.last_verified_step` is what refuses a code that is still inside the window but was already spent, and `user_mfa_used_challenges` refuses a challenge token that already bought a session |
 | Secret at rest | Encrypted with `secretcrypto` (`PUBLIRA_SECRET_ENCRYPTION_KEYS`). `StartMfaEnrollment` is the only response the plaintext appears in |
 | Recovery codes | Ten per batch, shown once at enrollment or regeneration, stored as bcrypt hashes. Spending one leaves the row with `used_at` set |
 | Failure limit | Five refused codes lock the account for 15 minutes. The counter is per account and covers login, disabling, and regeneration alike |
@@ -595,7 +595,7 @@ A tenant member signing in to the admin console can hold a second factor: a TOTP
 
 `VerifyMfa` exchanges a verify challenge and a code for the access token. `ConfirmMfaEnrollment` does the same for an enroll challenge: it returns the recovery codes and the session in one response, which is what finishes a login that was stopped at enrollment.
 
-A verify challenge buys one session, claimed by its `jti` in `user_mfa_used_challenges`; `publiractl job purge-mfa-challenges` deletes those rows once their token has expired. An enroll challenge is presented twice by design and is not recorded — once it enables the factor, the same token is refused with `mfa is already enabled`.
+A challenge buys one session, claimed by its `jti` in `user_mfa_used_challenges`; `publiractl job purge-mfa-challenges` deletes those rows once their token has expired. An enroll challenge is presented twice by design, to `StartMfaEnrollment` and then to `ConfirmMfaEnrollment`, and is claimed by the confirmation in the transaction that enables the factor: a second confirmation with the same token is refused as an invalid session, even after the factor has been turned off. Two confirmations racing on one enrollment enable it once, and the one that loses is refused with `mfa is already enabled` and writes no recovery codes.
 
 ### Requiring the factor
 

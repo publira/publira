@@ -407,7 +407,13 @@ type Querier interface {
 	EnablePlatformUserMfaTotp(ctx context.Context, platformUserID uuid.UUID) (int64, error)
 	// last_verified_step is left alone: the code that confirmed the enrollment
 	// was accepted through the same path a login code is, which stored it.
-	EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)
+	//
+	// The enabled_at predicate is the claim on the enrollment: two confirmations
+	// accepting different codes of the window both read the row unconfirmed, and
+	// Postgres re-evaluates this WHERE against the row the first one committed, so
+	// the second updates nothing. Affecting no row is therefore an enrollment
+	// another request has already confirmed.
+	EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (int64, error)
 	GetAccessTicketForTenant(ctx context.Context, arg GetAccessTicketForTenantParams) (GetAccessTicketForTenantRow, error)
 	// Return the first tenant that matches admin_domain, or the admin.{domain}
 	// fallback, keeping the order of the candidate host names.
