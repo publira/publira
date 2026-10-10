@@ -23,12 +23,13 @@ const listPageSize = 100
 
 var tenantMemberGroup = commandGroup{
 	name:    "member",
-	summary: "List and change who holds a console role in a tenant",
+	summary: "List and manage who holds a console role in a tenant",
 	commands: []command{
 		{name: "list", summary: "Print every member of a tenant's console", setup: setupMemberList},
 		{name: "add", summary: "Give a user of the tenant a console role", setup: setupMemberAdd},
 		{name: "update-role", summary: "Change a member's console role", setup: setupMemberUpdateRole},
 		{name: "remove", summary: "Take every console role from a member", setup: setupMemberRemove},
+		{name: "reset-mfa", summary: "Remove a user's two-step verification, for one who lost the authenticator and every recovery code", setup: setupMemberResetMFA},
 	},
 }
 
@@ -139,6 +140,27 @@ func setupMemberRemove(f *commandFlags) func(context.Context, *commandEnv) error
 				return err
 			}
 			_, err = fmt.Fprintf(env.stdout, "Took every console role from %s (%s)\n", member.Email, member.PublicID)
+			return err
+		})
+	}
+}
+
+func setupMemberResetMFA(f *commandFlags) func(context.Context, *commandEnv) error {
+	ref := tenantFlag(f)
+	var params tenantmembers.ResetMFAParams
+	f.StringVar(&params.UserPublicID, "user", "", "the user, by public ID")
+	f.StringVar(&params.Email, "email", "", "the user, by email address")
+	return func(ctx context.Context, env *commandEnv) error {
+		if err := params.Validate(); err != nil {
+			return tenantError(err)
+		}
+		return env.inTenant(ctx, *ref, func(tx *sql.Tx, tenant dbmodels.Tenant) error {
+			params.TenantID = tenant.ID
+			member, err := platformtenants.ResetMemberMFA(ctx, tx, env.logger, auditlog.SystemPlatformActor, params)
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(env.stdout, "Removed two-step verification from %s (%s)\n", member.Email, member.PublicID)
 			return err
 		})
 	}

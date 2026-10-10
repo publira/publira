@@ -2,7 +2,7 @@
 title: Your account
 description: Change the email address you sign in to the console with, and protect your account with two-step verification and recovery codes.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 Every member of staff, whatever their role, manages their own console account from **Account settings**, in the account menu at the top of the console. It has two cards: **Change the email address** and **Two-step verification**.
@@ -60,6 +60,6 @@ Before you replace your phone, sign in on the new one with a code from the old o
 
 If you have lost the phone, sign in with a recovery code, turn two-step verification off, and set it up again with the new phone.
 
-If you have lost both the phone and every recovery code, you cannot sign in to the console any more. Neither your password nor anyone on the staff can remove two-step verification from your account, and the operator cannot yet either ([#3796](https://github.com/publira/publira/issues/3796)). Another Tenant admin, or the operator, can give your role to a different account in the meantime.
+If you have lost both the phone and every recovery code, you cannot sign in to the console any more, and neither your password nor anyone on the staff can remove two-step verification from your account. Ask the operator of the install: they can remove it, as [A tenant's staff](../../3-operations/3-tenant-staff.md#lost-two-step-verification) describes, and you then sign in with your password and set it up again.
 
 Setting it up, turning it off, regenerating recovery codes, and each sign-in with a code or a recovery code are recorded in the tenant's [audit log](./7-audit-log.md).

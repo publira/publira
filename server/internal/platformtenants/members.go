@@ -105,6 +105,18 @@ func RemoveMember(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor au
 	return member, nil
 }
 
+// ResetMemberMFA is [tenantmembers.ResetMFA] with its entry filed under actor.
+func ResetMemberMFA(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, p tenantmembers.ResetMFAParams) (tenantmembers.Member, error) {
+	member, err := tenantmembers.ResetMFA(ctx, tx, p)
+	if err != nil {
+		return tenantmembers.Member{}, err
+	}
+	if err := writeUserEntry(ctx, tx, logger, actor, "tenant_member_mfa_reset", p.TenantID, member.UserID); err != nil {
+		return tenantmembers.Member{}, err
+	}
+	return member, nil
+}
+
 // writeUserEntry names the user, filed under the tenant whose role it is.
 func writeUserEntry(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, action string, tenantID, userID uuid.UUID) error {
 	if err := auditlog.WritePlatform(ctx, dbmodels.New(tx), logger, actor.Entry(auditlog.PlatformEntry{
