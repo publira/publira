@@ -1309,9 +1309,10 @@ type Querier interface {
 	// episode alone reaches their followers, and someone who has since left the
 	// series team is not announced with an episode they were not on.
 	//
-	// Nobody is told about an episode a reader cannot open at this moment: one in
-	// a series without a publication date or with one still ahead, or one shown
-	// on no surface because its own Shown on and its series' do not overlap. The
+	// Nobody is told about an episode a reader cannot open at this moment, which
+	// is what published_episode_surfaces answers: one in a series without a
+	// publication date or with one still ahead, or one shown on no surface
+	// because its own Shown on and its series' do not overlap. The
 	// notification links to the episode, and a follower of a credited creator
 	// would otherwise be sent to a page that answers 404. The gate names no
 	// follower, so the planner checks it once rather than per row. Such an
