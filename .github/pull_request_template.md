@@ -20,6 +20,23 @@ Use bullet points for easy review.
 
 -
 
+## Upgrade notes
+
+<!--
+What an operator upgrading to the release that carries this PR has to do,
+written for them: this section is copied into that release's notes.
+Name every change of these kinds:
+- an environment variable added, renamed, or no longer read
+- a new database role, which `publiractl db roles` needs a password for
+- a change to the routing in infra/proxy/
+- a process or a service an install has to run that it did not run before
+- a migration that runs long or locks a busy table
+Write "None." when nothing in this PR asks anything of an operator.
+The "Check upgrade notes" job fails while this section is empty in a PR that
+adds a migration, changes infra/proxy/, the database roles, or the services
+of infra/deploy/compose.yaml, or starts or stops reading a PUBLIRA_* variable.
+-->
+
 ## How to Test
 
 <!--

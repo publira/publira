@@ -6,6 +6,7 @@
 | `Skills Update` | [`skills-update.yml`](./skills-update.yml) | Weekly pull requests that update agent skills. |
 | `Organize issues` | [`organize-issues.yml`](./organize-issues.yml) | Issue-maintenance automation. |
 | `Review` | [`review.yml`](./review.yml) | Review-support automation. |
+| `Release notes` | [`release-notes.yml`](./release-notes.yml) | The Upgrade notes of every pull request, checked, and collected into the release a tag publishes. |
 
 ## Organize issues
 
@@ -77,6 +78,38 @@ Coefficients and thresholds live in `scripts/pr-size.ts`; its classification and
 The job holds `contents: read` and `pull-requests: write`, and it never checks out the head branch — `pull_request_target` resolves to the base commit, so the scorer that runs is the one that was reviewed and merged. A job's `permissions` block replaces the workflow's `permissions: {}` rather than adding to it, so the read the checkout needs has to be spelled out in the job. It reads per-file patches from `GET /repos/{owner}/{repo}/pulls/{number}/files` and pipes them to that scorer; where the API omits a patch (a binary or oversized file), it stands in one significant line for each addition and deletion the API counted.
 
 A pull request that already carries a `size/*` label is left alone and the run log says so. A label the author set — an agent following `skills/create-pr`, or a human who has judged the review load — wins over the mechanical score. The job asks `GET /repos/{owner}/{repo}/pulls/{number}` for the pull request's current labels rather than reading the list the event payload carries: `gh pr create --label` applies its label in a request of its own once the pull request exists, so the payload can still describe it as unlabelled and the label would be scored over.
+
+## Release notes
+
+[`release-notes.yml`](./release-notes.yml), named `Release notes`, carries what an operator has to act on from the pull request that makes the change to the notes of the release that ships it. The pull request template's **Upgrade notes** section is where that is written, and [`scripts/upgrade-notes.ts`](../../scripts/upgrade-notes.ts) both reads it and writes the release's section; its behaviour is covered by `scripts/upgrade-notes.test.ts`.
+
+| Displayed job | Trigger | Purpose |
+| --- | --- | --- |
+| `Check upgrade notes` | `pull_request_target`: `opened`, `edited`, `reopened`, `synchronize` | Fail a pull request whose diff makes a change an operator may have to act on while its Upgrade notes section is empty or missing. |
+| `Publish release` | A pushed tag of the form `1.2.3` or `1.2.3-rc.1` | Publish the GitHub Release of the tag, its notes opening with the Upgrade notes section. |
+
+### The check
+
+The check fails while the section is empty when the diff:
+
+- adds a migration under `db/migrations/`,
+- changes a file under `infra/proxy/` other than its Markdown,
+- changes `server/internal/dbroles/dbroles.go`, which lists the roles `publiractl db roles` asks a password for,
+- adds or removes a service, a secret, or a volume in `infra/deploy/compose.yaml`, or
+- starts or stops reading a `PUBLIRA_*` variable in `server/`, `apps/`, `packages/`, or `infra/`, outside tests and Markdown, judged against the base branch it runs from.
+
+`None.` answers it as well as a note does: the check makes sure the question was asked, and the author answers it. A diff that touches none of those passes with the section empty. `CI / Summary` stays the only required check, so a red `Check upgrade notes` holds a pull request through review rather than through the merge queue.
+
+### Cutting a release
+
+Push the tag; the job creates the release. Do not create the release by hand first: a release that already exists has its notes replaced.
+
+```bash
+git tag -a 1.1.0 -m 1.1.0 origin/main
+git push origin 1.1.0
+```
+
+The notes cover the commits since the nearest earlier release tag the new one descends from, skipping prereleases unless the new tag is one. They open with **Upgrade notes**, holding the section of every pull request in that range that says more than `None.`, under the pull request's title, or a sentence saying no change asks anything. The list GitHub generates of every pull request in the range follows, and gives way to a comparison link when the two together would not fit in a release. The first release has no earlier one to upgrade from, so its Upgrade notes say so, and it has no list.
 
 # CI workflow
 

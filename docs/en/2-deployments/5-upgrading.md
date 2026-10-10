@@ -14,7 +14,7 @@ The steps are written for an install you run yourself, as [Installing](./2-insta
 
 Each release is a tag of the repository, published with its release notes on the repository's [Releases](https://github.com/publira/publira/releases) page. Read the notes of every release after the one you run, up to and including the one you upgrade to. Skipping releases is fine as far as the schema goes, since `db migrate` applies the migrations of every release in between in one run, but nothing applies what the notes ask of you.
 
-These are the changes that ask something of you, and the notes name each one:
+The notes of a release open with **Upgrade notes**, which names every change in it that asks something of you, under the pull request that made it, and says so when there is none. These are the changes it names:
 
 - **An environment variable added, renamed, or no longer read.** Set it before the processes of the new release start.
 - **A new database role.** `db roles` needs a password for a role that does not exist yet: generate one as you did at install, and pass it with that role's flag.

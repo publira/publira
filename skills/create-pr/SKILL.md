@@ -206,6 +206,7 @@ Depending on the repository's merge settings, GitHub uses the pull request title
 - **Title**: short English Conventional Commits, matching the primary commit. Keep it readable in a terminal.
 - **Summary**: normal sentences, not bullets, saying what the PR does and why.
 - **Changes**: bullets for the main code or behavior changes.
+- **Upgrade notes**: what an operator upgrading to the release that carries the PR has to do, written for them, because the `Release notes` workflow copies the section into that release's notes. Name every change of the kinds the template lists — an environment variable added, renamed, or no longer read; a new database role; a routing change in `infra/proxy/`; a process or service an install has to run; a migration that runs long or locks a busy table. Write `None.` when nothing asks anything of an operator, and leave the section empty only when the diff touches none of those areas: the `Check upgrade notes` job fails on an empty section in a PR that does.
 - **How to Test**: reproducible steps with the commands you actually ran.
 - **Checklist**: check only what is true. An unchecked box is honest; a checked one you did not do is not.
 
