@@ -133,14 +133,16 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("the admin invitations", async ({ page }) => {
+      test("the invitations, with the role each one grants", async ({
+        page,
+      }) => {
         await openScreen(page, locale, MEMBERS_PATH);
 
         await expectDocsScreenshot(page, {
           element: docsSection(page, t("platform.tenants.invitations_title")),
           locale,
           page: "operations/tenant-staff",
-          subject: "admin-invitations",
+          subject: "invitations",
         });
       });
 

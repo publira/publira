@@ -93,6 +93,11 @@ export interface PlatformTenantAdminInvitation {
   email: string;
   expiresAt: string;
   id: string;
+  /**
+   * The role accepting the invitation grants. The list holds the invitations
+   * the tenant console sent as well, so it is not always `tenant_admin`.
+   */
+  role: string;
   status: string;
 }
 
@@ -337,7 +342,7 @@ export type ListPlatformTenantMembersResult =
       previousToken: string;
     };
 
-/** What a page of a tenant's members or admin invitations is keyed on. */
+/** What a page of a tenant's members or invitations is keyed on. */
 interface TenantPageQuery {
   limit: number;
   tenantId: string;
@@ -582,6 +587,7 @@ type RawTenantAdminInvitation = Pick<
   | "email"
   | "expiresAt"
   | "id"
+  | "role"
   | "status"
 >;
 
@@ -594,6 +600,7 @@ const mapInvitation = (
   email: invitation.email,
   expiresAt: invitation.expiresAt,
   id: invitation.id,
+  role: invitation.role,
   status: invitation.status,
 });
 
@@ -639,8 +646,9 @@ const listPlatformTenantAdminInvitationsForLocale = async (
 };
 
 /**
- * One page of a tenant's admin invitations, read with the service credential
- * like {@link listPlatformTenantMembers}.
+ * One page of a tenant's invitations, whichever console sent them and whichever
+ * role they grant, read with the service credential like
+ * {@link listPlatformTenantMembers}.
  */
 export const listPlatformTenantAdminInvitations = async (
   input: ListPlatformTenantAdminInvitationsInput

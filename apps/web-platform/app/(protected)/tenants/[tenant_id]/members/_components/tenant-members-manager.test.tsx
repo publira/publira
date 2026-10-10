@@ -64,7 +64,8 @@ const member: PlatformTenantMemberSummary = {
 
 const invitation = (
   status: string,
-  email: string
+  email: string,
+  role = "tenant_admin"
 ): PlatformTenantAdminInvitation => ({
   acceptedAt: "",
   canceledAt: "",
@@ -72,6 +73,7 @@ const invitation = (
   email,
   expiresAt: "2026-06-08T00:00:00Z",
   id: `invitation-${status}`,
+  role,
   status,
 });
 
@@ -200,6 +202,28 @@ describe("TenantMembersManager", () => {
     expect(
       await within(membersRow()).findByText("Could not remove the member.")
     ).toBeTruthy();
+  });
+
+  it("names the role each invitation grants, in a list not titled for admins", async () => {
+    await renderManager([
+      invitation("pending", "new-editor@tenant.example", "tenant_editor"),
+      invitation("expired", "new-auditor@tenant.example", "tenant_auditor"),
+    ]);
+
+    const editorRow = screen.getByRole("row", {
+      name: /new-editor@tenant\.example/u,
+    });
+    const auditorRow = screen.getByRole("row", {
+      name: /new-auditor@tenant\.example/u,
+    });
+    expect(
+      within(editorRow).getByRole("cell", { name: "Editor" })
+    ).toBeTruthy();
+    expect(
+      within(auditorRow).getByRole("cell", { name: "Auditor" })
+    ).toBeTruthy();
+    expect(screen.getByText("Invitations")).toBeTruthy();
+    expect(screen.queryByText(/admin invitation/iu)).toBeNull();
   });
 
   it("resends a pending or an expired invitation, and cancels only a pending one", async () => {
