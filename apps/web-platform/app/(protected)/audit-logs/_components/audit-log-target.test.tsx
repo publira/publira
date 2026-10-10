@@ -79,7 +79,7 @@ describe("AuditLogTarget", () => {
     const { container } = await renderTarget(invitation);
 
     expect(container.textContent).toBe(
-      "Admin invitation for invitee@example.comAcme Comics"
+      "Invitation for invitee@example.comAcme Comics"
     );
     expect(
       screen.getByRole("link", { name: "Acme Comics" }).getAttribute("href")
@@ -101,9 +101,7 @@ describe("AuditLogTarget", () => {
       targetType: "tenant_admin_invitation",
     });
 
-    expect(container.textContent).toBe(
-      "Admin invitation for member@example.com"
-    );
+    expect(container.textContent).toBe("Invitation for member@example.com");
     expect(screen.queryByRole("link")).toBeNull();
   });
 

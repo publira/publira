@@ -51,8 +51,9 @@ const settingsTargetName = (targetType: string) => {
 };
 
 /**
- * A tenant admin invitation. The API names the invited address as the target
- * name, or leaves it as the target ID when the entry names no invitation row.
+ * An invitation to a tenant's console, whichever role it grants. The API names
+ * the invited address as the target name, or leaves it as the target ID when
+ * the entry names no invitation row.
  */
 const InvitationTarget = ({ log }: { log: PlatformAuditLogSummary }) => (
   <>
