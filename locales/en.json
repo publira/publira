@@ -3095,7 +3095,7 @@
       "open": {
         "section_error": "Could not display the open month",
         "title": "Open month: {$period}",
-        "period_note": "Sales from {$start} to {$end}, cut in the tenant's time zone ({$time_zone}). The figures keep changing until the month is closed.",
+        "period_note": "Sales from {$start} up to {$end}, in the tenant's time zone ({$time_zone}). The figures keep changing until the month is closed.",
         "in_progress": "This month is still in progress. It can be closed after {$date}.",
         "auto_scheduled": "This month closes automatically on {$date}.",
         "ready": "This month is over and ready to close.",

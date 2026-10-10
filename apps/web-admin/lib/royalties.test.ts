@@ -161,10 +161,12 @@ describe("royalties", () => {
     );
   });
 
-  it("maps a preview's lines and totals", async () => {
+  it("maps a preview's bounds, lines and totals", async () => {
     mockApi.previewRoyaltyStatement.mockResolvedValueOnce({
+      endsAt: "2026-08-31T15:00:00Z",
       lines: [wireLine],
       period: "2026-08",
+      startsAt: "2026-07-31T15:00:00Z",
       timeZone: "Asia/Tokyo",
       totals: wireTotals,
     });
@@ -172,9 +174,11 @@ describe("royalties", () => {
 
     expect(await previewRoyaltyStatement("TENANT001", "en", "2026-08")).toEqual(
       {
+        endsAt: "2026-08-31T15:00:00Z",
         lines: [mappedLine],
         ok: true,
         period: "2026-08",
+        startsAt: "2026-07-31T15:00:00Z",
         timeZone: "Asia/Tokyo",
         totals: { gross: 5000, payout: 1500, refunded: 0 },
       }

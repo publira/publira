@@ -83,13 +83,15 @@ afterEach(() => {
 });
 
 describe("OpenMonth", () => {
-  it("states the month, the zone it is cut in, and its totals", () => {
+  it("states the month, the instants it counts sales between, and its totals", () => {
     render(
       <OpenMonth
         closeState={{ kind: "ready" }}
+        endsAt="2026-08-31T15:00:00Z"
         lines={lines}
         locale="en"
         period="2026-08"
+        startsAt="2026-07-31T15:00:00Z"
         tenantId="TENANT001"
         timeZone="Asia/Tokyo"
         totals={totals}
@@ -99,7 +101,7 @@ describe("OpenMonth", () => {
     expect(screen.getByText("Open month: August 2026")).toBeDefined();
     expect(
       screen.getByText(
-        "Sales from Aug 1, 2026 to Aug 31, 2026, cut in the tenant's time zone (Asia/Tokyo). The figures keep changing until the month is closed."
+        "Sales from Aug 1, 2026, 12:00 AM up to Sep 1, 2026, 12:00 AM, in the tenant's time zone (Asia/Tokyo). The figures keep changing until the month is closed."
       )
     ).toBeDefined();
     expect(screen.getByText("¥7,000")).toBeDefined();
@@ -107,13 +109,39 @@ describe("OpenMonth", () => {
     expect(screen.getByText("¥2,950")).toBeDefined();
   });
 
+  it("states a start the closed month before it set in another zone", () => {
+    // March was closed in Asia/Tokyo and the zone then changed to UTC, so
+    // April starts where March ended rather than at its own UTC midnight.
+    render(
+      <OpenMonth
+        closeState={{ kind: "ready" }}
+        endsAt="2026-05-01T00:00:00Z"
+        lines={lines}
+        locale="en"
+        period="2026-04"
+        startsAt="2026-03-31T15:00:00Z"
+        tenantId="TENANT001"
+        timeZone="UTC"
+        totals={totals}
+      />
+    );
+
+    expect(
+      screen.getByText(
+        "Sales from Mar 31, 2026, 3:00 PM up to May 1, 2026, 12:00 AM, in the tenant's time zone (UTC). The figures keep changing until the month is closed."
+      )
+    ).toBeDefined();
+  });
+
   it("offers no download until the month is closed, and says why", () => {
     render(
       <OpenMonth
         closeState={{ kind: "ready" }}
+        endsAt="2026-08-31T15:00:00Z"
         lines={lines}
         locale="en"
         period="2026-08"
+        startsAt="2026-07-31T15:00:00Z"
         tenantId="TENANT001"
         timeZone="Asia/Tokyo"
         totals={totals}
@@ -134,9 +162,11 @@ describe("OpenMonth", () => {
     render(
       <OpenMonth
         closeState={{ kind: "ready" }}
+        endsAt="2026-08-31T15:00:00Z"
         lines={lines}
         locale="en"
         period="2026-08"
+        startsAt="2026-07-31T15:00:00Z"
         tenantId="TENANT001"
         timeZone="UTC"
         totals={totals}
@@ -161,9 +191,11 @@ describe("OpenMonth", () => {
     render(
       <OpenMonth
         closeState={{ kind: "ready" }}
+        endsAt="2026-08-31T15:00:00Z"
         lines={lines}
         locale="en"
         period="2026-08"
+        startsAt="2026-07-31T15:00:00Z"
         tenantId="TENANT001"
         timeZone="UTC"
         totals={totals}
@@ -184,9 +216,11 @@ describe("OpenMonth", () => {
     render(
       <OpenMonth
         closeState={{ closeDate: "2026-09-05", kind: "automatic" }}
+        endsAt="2026-08-31T15:00:00Z"
         lines={lines}
         locale="en"
         period="2026-08"
+        startsAt="2026-07-31T15:00:00Z"
         tenantId="TENANT001"
         timeZone="UTC"
         totals={totals}
@@ -203,9 +237,11 @@ describe("OpenMonth", () => {
     render(
       <OpenMonth
         closeState={{ kind: "in-progress", lastDay: "2026-09-30" }}
+        endsAt="2026-08-31T15:00:00Z"
         lines={[]}
         locale="en"
         period="2026-09"
+        startsAt="2026-07-31T15:00:00Z"
         tenantId="TENANT001"
         timeZone="UTC"
         totals={{ gross: 0, payout: 0, refunded: 0 }}
