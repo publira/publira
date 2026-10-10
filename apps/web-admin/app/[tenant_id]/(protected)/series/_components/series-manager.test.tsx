@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -71,6 +71,8 @@ const series: SeriesListItem = {
   title: "Existing Series",
 };
 
+const now = Temporal.Instant.from("2026-10-10T00:00:00Z");
+
 describe("SeriesManager", () => {
   it("says nothing is registered yet when the first page is empty", async () => {
     await renderServerComponent(
@@ -78,6 +80,7 @@ describe("SeriesManager", () => {
         canEdit: true,
         filters: { ageRating: "", status: "", token: "" },
         locale: "en",
+        now,
         pageSize: 20,
         series: [],
         timeZone: "UTC",
@@ -96,6 +99,7 @@ describe("SeriesManager", () => {
         canEdit: true,
         filters: { ageRating: "", status: "", token: "" },
         locale: "en",
+        now,
         pageSize: 20,
         previousHref: "?token=previous",
         series: [],
@@ -116,6 +120,7 @@ describe("SeriesManager", () => {
         listErrorMessage: "Could not load the series.",
         locale: "en",
         nextHref: "?token=next",
+        now,
         pageSize: 20,
         previousHref: "?token=previous",
         series: [],
@@ -142,6 +147,7 @@ describe("SeriesManager", () => {
         canEdit: true,
         filters: { ageRating: "r15", status: "completed", token: "" },
         locale: "en",
+        now,
         pageSize: 20,
         series: [],
         timeZone: "UTC",
@@ -163,6 +169,7 @@ describe("SeriesManager", () => {
         canEdit: true,
         filters: { ageRating: "", status: "", token: "" },
         locale: "en",
+        now,
         pageSize: 20,
         series: [series],
         timeZone: "UTC",
@@ -181,6 +188,7 @@ describe("SeriesManager", () => {
         canEdit: false,
         filters: { ageRating: "", status: "", token: "" },
         locale: "en",
+        now,
         pageSize: 20,
         series: [series],
         timeZone: "UTC",
@@ -192,4 +200,38 @@ describe("SeriesManager", () => {
     ).toBe("/series/SERIES001");
     expect(screen.queryByRole("link", { name: "Edit" })).toBeNull();
   });
+
+  // The site hides a series until its publication time passes, so a time still
+  // ahead must not read as live on the list.
+  it.each([
+    { expected: "Draft", isPublished: false, publishedAt: "" },
+    {
+      expected: "Scheduled",
+      isPublished: true,
+      publishedAt: "2026-11-01T01:00:00Z",
+    },
+    {
+      expected: "Published",
+      isPublished: true,
+      publishedAt: "2026-10-01T01:00:00Z",
+    },
+  ])(
+    "shows a series published at $publishedAt as $expected",
+    async ({ expected, isPublished, publishedAt }) => {
+      await renderServerComponent(
+        await SeriesManager({
+          canEdit: true,
+          filters: { ageRating: "", status: "", token: "" },
+          locale: "en",
+          now,
+          pageSize: 20,
+          series: [{ ...series, isPublished, publishedAt }],
+          timeZone: "UTC",
+        })
+      );
+
+      const row = screen.getByRole("row", { name: /Existing Series/u });
+      expect(within(row).getByText(expected)).toBeDefined();
+    }
+  );
 });

@@ -55,6 +55,11 @@ type SeriesManagerProps = CursorPageHrefs & {
   series: SeriesListItem[];
   listErrorMessage?: string;
   locale: Locale;
+  /**
+   * The instant the list is read at, which tells a series already live from
+   * one whose publication time is still ahead.
+   */
+  now: Temporal.Instant;
   pageSize: number;
   timeZone: string;
 };
@@ -151,23 +156,69 @@ const SeriesFiltersForm = ({
   </form>
 );
 
-const getStatusTone = (isPublished: boolean) =>
-  isPublished ? ("info" as const) : ("muted" as const);
+type SeriesPublicationState = "draft" | "published" | "scheduled";
 
 /**
- * The published / draft badge, as its own async component: the label is a
- * string the catalog resolves, and a row rendered inside `.map()` cannot await.
+ * `isPublished` holds as soon as a publication time is stored, while the site
+ * keeps the series hidden until that time passes, so a time still ahead is
+ * told apart here rather than read as live.
  */
-const SeriesStatusLabel = async ({
-  isPublished,
+const getPublicationState = (
+  {
+    isPublished,
+    publishedAt,
+  }: Pick<SeriesListItem, "isPublished" | "publishedAt">,
+  now: Temporal.Instant
+): SeriesPublicationState => {
+  if (!isPublished) {
+    return "draft";
+  }
+  if (
+    publishedAt &&
+    Temporal.Instant.compare(Temporal.Instant.from(publishedAt), now) > 0
+  ) {
+    return "scheduled";
+  }
+  return "published";
+};
+
+const STATUS_TONES = {
+  draft: "muted",
+  published: "info",
+  scheduled: "warning",
+} as const satisfies Record<SeriesPublicationState, string>;
+
+/**
+ * The published / scheduled / draft badge, as its own async component: the
+ * label is a string the catalog resolves, and a row rendered inside `.map()`
+ * cannot await.
+ */
+const SeriesStatusBadge = async ({
   locale,
+  now,
+  series,
 }: {
-  isPublished: boolean;
   locale: Locale;
+  now: Temporal.Instant;
+  series: Pick<SeriesListItem, "isPublished" | "publishedAt">;
 }) => {
   const t = await getMessagesFor(locale);
+  const state = getPublicationState(series, now);
 
-  return isPublished ? t("admin.series.published") : t("admin.series.draft");
+  // Each branch names its key literally, so the strings the list uses stay
+  // findable in this file.
+  let label = t("admin.series.draft");
+  if (state === "published") {
+    label = t("admin.series.published");
+  } else if (state === "scheduled") {
+    label = t("admin.series.scheduled");
+  }
+
+  return (
+    <Badge tone={STATUS_TONES[state]} variant="outline">
+      {label}
+    </Badge>
+  );
 };
 
 /**
@@ -218,6 +269,7 @@ const SeriesListBody = ({
   itemLabel,
   listErrorMessage,
   locale,
+  now,
   series,
   timeZone,
 }: {
@@ -230,6 +282,7 @@ const SeriesListBody = ({
   itemLabel: string;
   listErrorMessage?: string;
   locale: Locale;
+  now: Temporal.Instant;
   series: SeriesListItem[];
   timeZone: string;
 }) => {
@@ -350,12 +403,7 @@ const SeriesListBody = ({
               </Suspense>
             </TableCell>
             <TableCell>
-              <Badge tone={getStatusTone(item.isPublished)} variant="outline">
-                <SeriesStatusLabel
-                  isPublished={item.isPublished}
-                  locale={locale}
-                />
-              </Badge>
+              <SeriesStatusBadge locale={locale} now={now} series={item} />
             </TableCell>
             <TableCell>
               <div className="flex flex-wrap gap-2">
@@ -391,6 +439,7 @@ export const SeriesManager = async ({
   series,
   listErrorMessage,
   nextHref,
+  now,
   pageSize,
   previousHref,
   timeZone,
@@ -412,6 +461,7 @@ export const SeriesManager = async ({
         itemLabel={t("admin.series.title")}
         listErrorMessage={listErrorMessage}
         locale={locale}
+        now={now}
         series={series}
         timeZone={timeZone}
       />

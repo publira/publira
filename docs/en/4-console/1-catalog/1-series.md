@@ -7,7 +7,7 @@ updated: 2026-10-10
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
 
-Each row opens the series with **Edit**, or **View** for an Auditor, and its episodes with **Episodes**. A row's **Status** is **Published** once the series has a **Publication date and time**, even one still ahead ([#3827](https://github.com/publira/publira/issues/3827)), and **Draft** without one. A series not shown on both the site and the app carries **Web only** or **App only** beside its title.
+Each row opens the series with **Edit**, or **View** for an Auditor, and its episodes with **Episodes**. A row's **Status** is **Published** once the series' **Publication date and time** has passed, **Scheduled** while that time is still ahead, and **Draft** without one. A series not shown on both the site and the app carries **Web only** or **App only** beside its title.
 
 ![The Series list: Create series at the top, the Serialization status and Age rating filters with Apply and Reset, and rows giving each series' title, label, publication time, reading period, synopsis, serialization status, age rating, and status, with Edit and Episodes.](./series-list.png)
 
@@ -55,7 +55,7 @@ Clearing the field later takes a public series off the site again, with its epis
 
 **Serialization status** is **Ongoing**, **Completed**, or **On hiatus**. Readers see it on the series page and can filter the series list by it. It changes nothing else: a **Completed** series can still be given episodes.
 
-**Update schedule** marks the weekdays a new episode is expected on. The series page then reads "Updates on" followed by those days, and the series is listed under each of them in **Browse by weekday** on the site's top page. With no day checked, the series page says nothing about a schedule, and the series is under no day ([#3827](https://github.com/publira/publira/issues/3827)). Nothing publishes an episode on those days: that is still each episode's own **Publication date and time**.
+**Update schedule** marks the weekdays a new episode is expected on. The series page then reads "Updates on" followed by those days, and the series is listed under each of them in **Browse by weekday** on the site's top page. With no day checked, the series page says nothing about a schedule, and the series is under no day. Nothing publishes an episode on those days: that is still each episode's own **Publication date and time**.
 
 ![The Serialization status field set to Ongoing, and the Update schedule with a checkbox for each weekday, none of them checked.](./series-serialization.png)
 

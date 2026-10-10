@@ -1480,6 +1480,7 @@
       },
       "published": "已發布",
       "draft": "草稿",
+      "scheduled": "已預約",
       "form": {
         "create": "建立系列",
         "update": "更新系列",
@@ -1529,7 +1530,7 @@
         "status_description": "表示是否仍會更新新話。會顯示在作品頁面上。",
         "schedule": "更新週期",
         "schedule_description": "請勾選發布新話的星期。",
-        "schedule_irregular": "未勾選任何星期，將顯示為不定期更新。",
+        "schedule_empty": "未勾選任何星期，系列頁面不會顯示更新日，系列也不會出現在「依更新日瀏覽」的任何一天中。",
         "age_rating": "年齡分級",
         "age_rating_all_hint": "全年齡：任何人都可以閱讀。",
         "age_rating_r15_hint": "R15：讀者確認已滿15歲後才能閱讀。",
