@@ -9,7 +9,7 @@ on:
   # nothing here checks out or executes the head branch. The types are the
   # union of what the jobs need; each one narrows from there.
   pull_request_target:
-    types: [opened, ready_for_review, synchronize]
+    types: [opened, ready_for_review]
 
 permissions: {}
 
@@ -18,9 +18,9 @@ jobs:
     name: Label review size
     # An `opened` event for a draft is skipped, so a pull request opened as a
     # draft is labelled when it is marked ready and one opened ready is
-    # labelled immediately. A `synchronize` is skipped too: the score is a
+    # labelled immediately. A push does not trigger it: the score is a
     # snapshot of the moment review was requested, not of the latest push.
-    if: github.event.pull_request.draft == false && github.event.action != 'synchronize'
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -131,73 +131,3 @@ jobs:
               issue_number: context.payload.pull_request.number,
               labels: [label],
             });
-
-  ai-assisted-label:
-    name: Label AI assistance
-    if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      pull-requests: write
-    steps:
-      - name: Apply the label to match the commit trailers
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const LABEL = 'ai-assisted';
-            const { owner, repo } = context.repo;
-            const pull = context.payload.pull_request;
-
-            const commits = await github.paginate(
-              'GET /repos/{owner}/{repo}/pulls/{pull_number}/commits',
-              { owner, repo, pull_number: pull.number, per_page: 100 },
-            );
-            // Git matches a trailer token case-insensitively, so the label has
-            // to as well: `assisted-by:` is the same disclosure.
-            const trailer = /^assisted-by:[ \t]*\S/im;
-            const assisted = commits.some(({ commit }) => trailer.test(commit.message));
-
-            // Not `pull.labels`, for the reason `Label review size` re-reads
-            // them too: a list captured when the event fired can disagree with
-            // the pull request by the time the job runs, and here the
-            // disagreement asks the API to remove a label that is not there.
-            const { data: latest } = await github.rest.pulls.get({
-              owner,
-              repo,
-              pull_number: pull.number,
-            });
-            const labelled = latest.labels.some((label) => label.name === LABEL);
-
-            if (assisted === labelled) {
-              core.info(`#${pull.number} already reads as ${assisted ? '' : 'not '}AI-assisted`);
-              return;
-            }
-
-            if (assisted) {
-              await github.rest.issues.addLabels({
-                ...context.repo,
-                issue_number: pull.number,
-                labels: [LABEL],
-              });
-              core.info(`Added ${LABEL} to #${pull.number}`);
-              return;
-            }
-
-            // The trailer is the only source of truth: a branch that lost its
-            // agent commits to a force-push loses the label with them.
-            try {
-              await github.rest.issues.removeLabel({
-                ...context.repo,
-                issue_number: pull.number,
-                name: LABEL,
-              });
-            } catch (error) {
-              // Someone taking the label off between the read above and this
-              // call has produced the state being asked for.
-              if (error.status !== 404) {
-                throw error;
-              }
-              core.info(`${LABEL} was already gone from #${pull.number}`);
-              return;
-            }
-            core.info(`Removed ${LABEL} from #${pull.number}`);

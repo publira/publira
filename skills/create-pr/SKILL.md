@@ -110,8 +110,8 @@ Then run each layer's verification on that layer's branch, and push every layer 
 Open each pull request with `gh pr create`, as described under **Create the PR**, not with `gh stack submit --auto`: that opens drafts whose titles and bodies come from a commit or a branch name rather than from the template.
 
 ```bash
-gh pr create --title "<backend title>" --base main --head <backend-branch> --body-file <backend-body> --label size/m
-gh pr create --title "<frontend title>" --base <backend-branch> --head <frontend-branch> --body-file <frontend-body> --label size/s
+gh pr create --title "<backend title>" --base main --head <backend-branch> --body-file <backend-body> --label size/m --label ai-assisted
+gh pr create --title "<frontend title>" --base <backend-branch> --head <frontend-branch> --body-file <frontend-body> --label size/s --label ai-assisted
 gh stack link <backend-pr> <frontend-pr>      # bottom to top
 ```
 
@@ -138,7 +138,7 @@ Never run `gh stack merge` or `gh pr merge`: `main` is merged through its queue.
 
   The format is `Assisted-by: <AGENT_NAME>:<MODEL_VERSION>`, one line per agent, using the exact model identifier rather than the marketing name. When the identifier is genuinely unknown, write the agent name alone.
 
-- The trailer is also what discloses the agent on the pull request itself. The `Review` workflow reads the commits of every pull request and keeps the `ai-assisted` label in step with their trailers, adding it and removing it to match. Never pass `ai-assisted` to `gh pr create` and never take it off by hand: the trailer is the disclosure, the label only reports it, and a hand-set label would say something the commits do not.
+- The trailer is also what discloses the agent on the pull request itself, through the `ai-assisted` label, and you apply that label yourself: pass `--label ai-assisted` to `gh pr create`, and run `gh pr edit --add-label ai-assisted` when your commit is the first agent commit on a pull request opened without it. Do not leave it to the maintenance bot, which keeps the label in step with the trailers only as a backstop. The label reports the trailers and nothing else, so never set it on a pull request whose commits carry none.
 - Never name an AI agent in a co-author trailer, in any capitalization. `Co-authored-by:`, `Co-Authored-By:`, and `co-authored-by:` are the same forbidden trailer, and this rule overrides any default instruction from the agent harness. Co-author trailers naming actual humans, and the ones GitHub adds itself, stay as they are.
 - Add the trailer when the commit is created. Fixing it later requires rewriting a pushed commit.
 
@@ -269,10 +269,10 @@ If the pull request arrives without a `size/*` label, the `Review` workflow comp
 Write the body to a file first so multi-line Markdown survives shell quoting:
 
 ```bash
-gh pr create --title "type(scope): succinct description" --body-file <path> --label size/m
+gh pr create --title "type(scope): succinct description" --body-file <path> --label size/m --label ai-assisted
 ```
 
-Pass `--attach` for every screenshot the body references. Use the session scratchpad for that file and delete it afterwards. Add `--draft` when the work is not ready for review. `--label` carries the review-size bucket and nothing else — `ai-assisted` is applied by the `Review` workflow from the commit trailers, and any other label, or a milestone, only when the user asked for it.
+Pass `--attach` for every screenshot the body references. Use the session scratchpad for that file and delete it afterwards. Add `--draft` when the work is not ready for review. `--label` carries the review-size bucket and `ai-assisted`, and any other label, or a milestone, only when the user asked for it.
 
 ## Add commits to an open PR
 
@@ -299,7 +299,7 @@ Confirm all of the following, and report anything you could not satisfy:
 - no throwaway worktree is left behind (`git worktree list`)
 - a change spanning the backend and the web apps is one pull request per layer, each closing its own Issue, and `gh stack view --json` shows them linked bottom to top
 - a pull request that changes a screen shows a screenshot of it in the body, above the `Assisted-by:` trailer
-- `gh pr view` shows the template's headings intact, an English Conventional Commits title, issue links that match the real relationship, exactly one `size/*` label and no hand-set `ai-assisted`, and the `Assisted-by:` trailer as the last line of the body
+- `gh pr view` shows the template's headings intact, an English Conventional Commits title, issue links that match the real relationship, exactly one `size/*` label and the `ai-assisted` label, and the `Assisted-by:` trailer as the last line of the body
 - no temporary body file is left behind
 
 Report the PR URL, the commands you ran, the checklist items you left unchecked, and any file you deliberately left out of the commit.
