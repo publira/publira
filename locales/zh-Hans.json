@@ -4640,6 +4640,7 @@
         "login_attempts_per_source_per_day": "每个来源每天登录失败数",
         "mfa_required": "要求租户管理员使用多因素认证",
         "mfa_required_for_platform_operator": "要求Platform Console的所有运营人员使用两步验证",
+        "mfa_required_for_platform_operator_unavailable": "在服务器能够加密身份验证器的密钥之前，无法要求运营人员使用两步验证。请先为publira server设置PUBLIRA_SECRET_ENCRYPTION_KEYS。",
         "disposable_email_domains_url": "一次性邮件域名列表URL",
         "disposable_email_domains_url_help": "每行一个域名的列表，每小时重新读取一次。留空则不使用列表。",
         "disposable_email_domains_url_invalid": "请为一次性邮件域名列表输入http或https URL，或留空。",

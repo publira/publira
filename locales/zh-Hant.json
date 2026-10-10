@@ -4640,6 +4640,7 @@
         "login_attempts_per_source_per_day": "每個來源每天登入失敗數",
         "mfa_required": "要求租戶管理員使用多重要素驗證",
         "mfa_required_for_platform_operator": "要求Platform Console的所有營運人員使用兩步驟驗證",
+        "mfa_required_for_platform_operator_unavailable": "在伺服器能夠加密驗證器的金鑰之前，無法要求營運人員使用兩步驟驗證。請先為publira server設定PUBLIRA_SECRET_ENCRYPTION_KEYS。",
         "disposable_email_domains_url": "一次性郵件網域清單URL",
         "disposable_email_domains_url_help": "每行一個網域的清單，每小時重新讀取一次。留空則不使用清單。",
         "disposable_email_domains_url_invalid": "請為一次性郵件網域清單輸入http或https URL，或留空。",

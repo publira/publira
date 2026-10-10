@@ -4640,6 +4640,7 @@
         "login_attempts_per_source_per_day": "요청 출처당 1일 로그인 실패 수",
         "mfa_required": "테넌트 관리자에게 다단계 인증 필수",
         "mfa_required_for_platform_operator": "Platform Console의 모든 운영자에게 2단계 인증 필수",
+        "mfa_required_for_platform_operator_unavailable": "서버가 인증 앱의 비밀 키를 암호화할 수 있을 때까지 운영자에게 2단계 인증을 필수로 할 수 없습니다. 먼저 publira server에 PUBLIRA_SECRET_ENCRYPTION_KEYS를 설정해 주세요.",
         "disposable_email_domains_url": "일회용 메일 도메인 목록 URL",
         "disposable_email_domains_url_help": "한 줄에 도메인 하나씩 적힌 목록이며, 1시간마다 다시 읽습니다. 비워 두면 목록을 사용하지 않습니다.",
         "disposable_email_domains_url_invalid": "일회용 메일 도메인 목록에는 http 또는 https URL을 입력하거나 비워 두세요.",

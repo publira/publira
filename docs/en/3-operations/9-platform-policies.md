@@ -64,7 +64,7 @@ The Platform Console's own operators are not covered by this setting; the next o
 
 ![The Require two-step verification for every Platform Console operator checkbox on Security.](./platform-policies-operator-mfa-required.png)
 
-It covers every role, **Auditor** included, since every operator can read every tenant's data. It takes effect at each operator's next sign-in, not on sessions already open. An operator can still turn their authenticator off from **Account settings**, and is asked to set one up again the next time they sign in. It is off until someone turns it on.
+It covers every role, **Auditor** included, since every operator can read every tenant's data. It takes effect at each operator's next sign-in, not on sessions already open. An operator can still turn their authenticator off from **Account settings**, and is asked to set one up again the next time they sign in. It is off until someone turns it on. An install whose `publira server` has no `PUBLIRA_SECRET_ENCRYPTION_KEYS` refuses to turn it on, since no operator could set up an authenticator there and nobody could sign in to turn it off again.
 
 ### Rate limits
 
