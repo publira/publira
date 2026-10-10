@@ -76,6 +76,28 @@ func TestIsExclusionViolation(t *testing.T) {
 	}
 }
 
+func TestIsSerializationFailure(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"serialization_failure", &pgconn.PgError{Code: "40001"}, true},
+		{"wrapped", fmt.Errorf("commit: %w", &pgconn.PgError{Code: "40001"}), true},
+		{"deadlock_detected", &pgconn.PgError{Code: "40P01"}, false},
+		{"plain_error", errors.New("boom"), false},
+		{"nil", nil, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := dberr.IsSerializationFailure(tc.err); got != tc.want {
+				t.Fatalf("IsSerializationFailure(%v) = %t, want %t", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestUniqueViolationConstraint(t *testing.T) {
 	cases := []struct {
 		name string

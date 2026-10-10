@@ -138,6 +138,14 @@ func PreviewStatement(ctx context.Context, db TxBeginner, month Month, now time.
 // A month is closed once. A second close fails with ErrAlreadyClosed on the
 // unique constraint rather than recomputing, which is also what settles a
 // manual and an automatic close of the same month racing each other.
+//
+// Two adjacent months closed at once are settled by the transaction's
+// isolation instead. Each resolves its bounds before the other's statement is
+// visible, so each would fall back to its own midnight, and the two midnights
+// differ when the closes were made in different zones — an automatic close
+// still on the old zone beside a manual one on the new. Serializable
+// isolation makes PostgreSQL roll one of them back, and running it again
+// reads the other's statement and starts or ends where it does.
 func CloseStatement(
 	ctx context.Context,
 	db TxBeginner,
@@ -146,10 +154,30 @@ func CloseStatement(
 	now time.Time,
 	record func(ctx context.Context, queries *dbmodels.Queries, statement dbmodels.RoyaltyStatement) error,
 ) (dbmodels.RoyaltyStatement, error) {
-	// Repeatable read keeps the bounds, the lines and the totals on one
-	// snapshot, so a refund landing between the reads cannot make them
-	// disagree.
-	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+	for attempt := 1; ; attempt++ {
+		statement, err := closeStatementOnce(ctx, db, month, closedBy, now, record)
+		if !dberr.IsSerializationFailure(err) || attempt == maxCloseAttempts {
+			return statement, err
+		}
+	}
+}
+
+// maxCloseAttempts bounds how often a close that keeps conflicting is run
+// again. Only a close of an adjacent month, or of the same one, conflicts with
+// it, so a second attempt already sees what the first could not.
+const maxCloseAttempts = 3
+
+func closeStatementOnce(
+	ctx context.Context,
+	db TxBeginner,
+	month Month,
+	closedBy uuid.NullUUID,
+	now time.Time,
+	record func(ctx context.Context, queries *dbmodels.Queries, statement dbmodels.RoyaltyStatement) error,
+) (dbmodels.RoyaltyStatement, error) {
+	// One snapshot keeps the bounds, the lines and the totals together, so a
+	// refund landing between the reads cannot make them disagree.
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return dbmodels.RoyaltyStatement{}, err
 	}

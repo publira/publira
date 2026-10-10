@@ -209,3 +209,38 @@ func TestDBMonthBeforeAClosedStatementEndsWhereItStarted(t *testing.T) {
 		t.Fatalf("March gross = %d, want 0: the sale is April's", statement.TotalGross)
 	}
 }
+
+// Two adjacent months closed at once each resolve their bounds before the
+// other's statement is visible. Here April is closed in UTC while March, cut
+// in Tokyo, is about to commit: March is rolled back, runs again, and ends
+// where April starts, so the sale late on 31 March in UTC is counted once.
+func TestDBAdjacentMonthsClosedAtOnceShareTheirBoundary(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	f := seedRoyaltyTenant(t, pg, "ROYALRACE1", "Asia/Tokyo")
+	f.sell(t, utc(2026, time.March, 31, 20))
+	now := utc(2026, time.May, 2, 0)
+
+	var april dbmodels.RoyaltyStatement
+	attempts := 0
+	march, err := CloseStatement(context.Background(), pg.DB, f.month("2026-03", "Asia/Tokyo"), uuid.NullUUID{}, now,
+		func(context.Context, *dbmodels.Queries, dbmodels.RoyaltyStatement) error {
+			attempts++
+			if attempts == 1 {
+				april = f.close(t, f.month("2026-04", "UTC"), now)
+			}
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("close March beside April: %v", err)
+	}
+	if attempts != 2 {
+		t.Fatalf("March was written %d times, want twice: once beside an April it could not see, once after", attempts)
+	}
+
+	assertBounds(t, "April", Bounds{Start: april.StartsAt, End: april.EndsAt}, utc(2026, time.April, 1, 0), utc(2026, time.May, 1, 0))
+	assertBounds(t, "March", Bounds{Start: march.StartsAt, End: march.EndsAt}, utc(2026, time.February, 28, 15), april.StartsAt)
+	if march.TotalGross+april.TotalGross != 500 || march.TotalGross != 500 {
+		t.Fatalf("March gross = %d and April gross = %d, want the sale in March alone", march.TotalGross, april.TotalGross)
+	}
+}
