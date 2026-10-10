@@ -1,8 +1,8 @@
 ---
 title: Episodes
-description: Create an episode, add, replace, and delete its pages, change its title, set its layout, credits, and where it is shown and sold, give it free reading periods, and publish it on time.
+description: Create an episode, add, replace, and delete its pages, change its title, price, and reading period, set its layout, credits, and where it is shown and sold, give it free reading periods, and publish it on time.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
@@ -33,7 +33,7 @@ Choose **Create** on the episode list and fill in:
 
 ![The Create episode form: Title, Price, Reading period, Publication date and time, Shown on, Sold on, and Create episode.](./episodes-create-form.png)
 
-**Price** and **Reading period** cannot be changed after the episode is created either ([#3771](https://github.com/publira/publira/issues/3771)). [Selling episodes](../4-selling-episodes.md#how-a-reader-buys-an-episode) explains both.
+**Price** and **Reading period** can be [changed later](#changing-the-price-and-reading-period). [Selling episodes](../4-selling-episodes.md#how-a-reader-buys-an-episode) explains both.
 
 Choose **Create episode**. The episode is created with the Authors credited on the series, and its edit screen opens to add its pages.
 
@@ -42,6 +42,16 @@ Choose **Create episode**. The episode is created with the Authors credited on t
 **Title**, at the top of the episode's edit screen, holds the episode's title. Change it and choose **Update title**. The site and the app show the new title as soon as it is saved. A title cannot be left empty.
 
 ![The Title section of an episode: the Title field holding the episode's title, and Update title.](./episodes-title.png)
+
+## Changing the price and reading period
+
+**Price and reading period**, on the episode's edit screen, holds the two values the episode is sold on, with the same rules as when it was created: **Price** is a whole number of yen, `0` making the episode free, and **Reading period** is a number of hours, `0` keeping a purchase open with no end. Change either and choose **Update price and reading period**. The site and the app sell the episode on the new values as soon as they are saved.
+
+![The Price and reading period section of an episode: the Price and Reading period fields holding the episode's values, and Update price and reading period.](./episodes-price-and-reading-period.png)
+
+A change applies to purchases made after it is saved. A purchase already made keeps the price it was paid and the time it expires, and a reader who opened the payment provider's checkout page before the change pays what that page shows. Changing the series' **Reading period** does not change this one.
+
+An app that sells through the stores buys an episode as the store product of its price, so a new price may need a new product: see [Store products](../4-selling-episodes.md#selling-in-the-app).
 
 ## Adding the pages
 

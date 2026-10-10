@@ -344,6 +344,7 @@ for (const locale of DOCS_LOCALES) {
 
       for (const [subject, title] of [
         ["title", "admin.series.episodes.rename.title"],
+        ["price-and-reading-period", "admin.series.episodes.pricing.title"],
         ["add-pages", "admin.series.episodes.pages.title"],
         ["registered-pages", "admin.series.episodes.image_list_title"],
         ["page-layout", "admin.series.episodes.layout.title"],

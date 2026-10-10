@@ -22,6 +22,7 @@ import {
   reorderEpisodeImages,
   updateEpisodeAvailability,
   updateEpisodeLayout,
+  updateEpisodePricing,
   updateEpisodePurchaseAvailability,
   replaceEpisodeCredits,
   updateEpisodePublishSchedule,
@@ -35,6 +36,7 @@ import {
 import {
   creditShareBpsSchema,
   jsonStringArrayFormSchema,
+  nonNegativeIntFormSchema,
   optionalTrimmedString,
   requiredRecordId,
   requiredTrimmedString,
@@ -321,6 +323,70 @@ export const updateEpisodeTitleAction = async (
 
   redirect(
     `/series/${seriesPublicId}/episodes/${episodePublicId}?title_updated=1`
+  );
+};
+
+const pricingFormSchema = async (locale: Locale) => {
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    hiddenParamsSchema(locale),
+  ]);
+
+  return base.extend({
+    price: nonNegativeIntFormSchema(
+      t("admin.series.episodes.validation.price_invalid")
+    ),
+    readingPeriodHours: nonNegativeIntFormSchema(
+      t("admin.series.episodes.validation.reading_period_invalid")
+    ),
+  });
+};
+
+export const updateEpisodePricingAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await pricingFormSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      price: "value",
+      readingPeriodHours: { kind: "value", name: "reading_period_hours" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const {
+    episodeId,
+    episodePublicId,
+    price,
+    readingPeriodHours,
+    seriesPublicId,
+    tenantId,
+  } = parsed.data;
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return { message: mismatch, ok: false };
+  }
+  const result = await withAdminSessionReauth(() =>
+    updateEpisodePricing(
+      { episodeId, price, readingPeriodHours, tenantId },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(episodesCacheTag(tenantId));
+  updateTag(episodeCacheTag(tenantId, episodeId));
+
+  redirect(
+    `/series/${seriesPublicId}/episodes/${episodePublicId}?pricing_updated=1`
   );
 };
 

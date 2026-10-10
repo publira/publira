@@ -9,6 +9,7 @@ import { z } from "zod";
 import { MAX_CREDIT_SHARE_BPS } from "./credit-share";
 import type { CropRect } from "./crop-rect";
 import { isCropRectField, parseCropRect } from "./crop-rect";
+import { MAX_INT32 } from "./int32";
 
 /**
  * Decimal integers and fractions only. `Number()` alone would also accept
@@ -62,7 +63,9 @@ export const optionalTrimmedString = (
 
 /**
  * Empty / missing becomes `0`. Existing number inputs treat a blank field
- * as zero rather than as an error.
+ * as zero rather than as an error. Every value read this way is sent in an
+ * `int32` field, so one past {@link MAX_INT32} is refused here: the client
+ * cannot encode it, and the Action would fail instead of saying why.
  */
 export const nonNegativeIntFormSchema = (
   message: string
@@ -80,7 +83,11 @@ export const nonNegativeIntFormSchema = (
       const parsed = Math.trunc(Number(raw));
       return Number.isFinite(parsed) ? parsed : undefined;
     },
-    z.number({ error: message }).int(message).min(0, message)
+    z
+      .number({ error: message })
+      .int(message)
+      .min(0, message)
+      .max(MAX_INT32, message)
   );
 
 /** Signed decimal integers only, for the bounded schemas below. */

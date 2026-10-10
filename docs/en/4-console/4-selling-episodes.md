@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -15,14 +15,14 @@ Everything here under **Integrations** › **Payments** is for a **Tenant admin*
 
 ### Price and reading period
 
-An episode's **Price** and **Reading period** are entered on the form that creates it:
+An episode's **Price** and **Reading period** are first entered on the form that creates it:
 
 - **Price** is a whole number of yen. `0` makes the episode free; any other value makes it a paid episode.
 - **Reading period** is how many hours a purchase keeps the episode open. `0` keeps it open with no end.
 
 ![The Price and Reading period fields of the Create episode form.](./selling-episodes-price-and-reading-period.png)
 
-Both are fixed when the episode is created: the console has no way yet to change them on an existing episode ([#3771](https://github.com/publira/publira/issues/3771)). A new episode's **Reading period** starts at the series' **Reading period**, so setting it on the series once gives every episode created afterwards the same period unless it is changed on the form. Changing the series' period does not reach the episodes already created.
+Both can be changed later under **Price and reading period** on the episode's edit screen, as [Episodes](./1-catalog/2-episodes.md#changing-the-price-and-reading-period) describes. A change applies to purchases made after it is saved; a purchase already made keeps the price it was paid and the time it expires. A new episode's **Reading period** starts at the series' **Reading period**, so setting it on the series once gives every episode created afterwards the same period unless it is changed on the form. Changing the series' period does not reach the episodes already created.
 
 ### Buying and reading
 

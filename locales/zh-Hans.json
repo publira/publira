@@ -1603,7 +1603,7 @@
         "list_description": "管理该系列中的章节。",
         "new_title": "创建章节",
         "edit_title": "编辑章节",
-        "edit_description": "编辑该章节的标题、发布设置和页面图片。",
+        "edit_description": "编辑该章节的标题、价格、发布设置和页面图片。",
         "new_description": "在该系列中登记一个新章节。",
         "new_action": "创建",
         "credits_action": "署名",
@@ -1672,6 +1672,15 @@
           "updated": "标题已更新。",
           "failed": "无法更新标题。请稍后再试。",
           "error": "无法显示标题"
+        },
+        "pricing": {
+          "title": "价格与阅读期限",
+          "description": "读者为该章节支付的价格，以及购买后可阅读的期限。更改适用于保存之后的购买，已完成的购买仍保留当时支付的价格和到期时间。",
+          "reading_period_description": "请填写小时数。设为0表示不限期阅读。修改系列的阅读期限不会改变此值。",
+          "update": "更新价格与阅读期限",
+          "updated": "价格与阅读期限已更新。",
+          "failed": "无法更新价格与阅读期限。请稍后再试。",
+          "error": "无法显示价格与阅读期限"
         },
         "pages_error": "无法显示页面上传",
         "schedule_error": "无法显示发布设置",

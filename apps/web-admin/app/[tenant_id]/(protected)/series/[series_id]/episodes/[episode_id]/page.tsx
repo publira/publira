@@ -60,6 +60,7 @@ import { EpisodeCreatorCreditsForm } from "./_components/episode-creator-credits
 import { EpisodeFreeWindowsSection } from "./_components/episode-free-windows-section";
 import { EpisodeImagesSortableGrid } from "./_components/episode-images-sortable-grid";
 import { EpisodePagesForm } from "./_components/episode-pages-form";
+import { EpisodePricingForm } from "./_components/episode-pricing-form";
 import { EpisodePurchaseAvailabilityForm } from "./_components/episode-purchase-availability-form";
 import { EpisodeReadingLayoutForm } from "./_components/episode-reading-layout-form";
 import { EpisodeScheduleForm } from "./_components/episode-schedule-form";
@@ -71,6 +72,7 @@ import {
   reorderEpisodeImagesAction,
   updateEpisodeAvailabilityAction,
   updateEpisodeLayoutAction,
+  updateEpisodePricingAction,
   updateEpisodePurchaseAvailabilityAction,
   replaceEpisodeCreditsAction,
   updateEpisodeScheduleAction,
@@ -206,6 +208,35 @@ const EpisodeTitleSection = async ({ params }: EditEpisodeSectionProps) => {
       episodePublicId={context.episodeId}
       initialTitle={episodeResult.episode.title}
       key={`${context.episodeId}:title:${episodeResult.episode.title}`}
+      seriesPublicId={context.seriesId}
+      tenantId={context.tenantId}
+    />
+  );
+};
+
+const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
+  const context = await resolveEditEpisodeContext(params);
+  const episodeResult = await loadEpisode(context);
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={<Message message="admin.series.episodes.pricing.error" />}
+      />
+    );
+  }
+
+  const { price, readingPeriodHours } = episodeResult.episode;
+
+  return (
+    <EpisodePricingForm
+      action={updateEpisodePricingAction}
+      episodeId={episodeResult.episode.id}
+      episodePublicId={context.episodeId}
+      initialPrice={price}
+      initialReadingPeriodHours={readingPeriodHours}
+      key={`${context.episodeId}:pricing:${price}:${readingPeriodHours}`}
       seriesPublicId={context.seriesId}
       tenantId={context.tenantId}
     />
@@ -599,6 +630,10 @@ const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
         message="admin.series.episodes.rename.updated"
       />
       <FlashToast
+        keyName="pricing_updated"
+        message="admin.series.episodes.pricing.updated"
+      />
+      <FlashToast
         keyName="schedule_updated"
         message="admin.series.episodes.schedule_updated"
       />
@@ -636,6 +671,9 @@ const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
           <div className="grid gap-6">
             <Suspense fallback={<Skeleton className="h-40" />}>
               <EpisodeTitleSection params={params} />
+            </Suspense>
+            <Suspense fallback={<Skeleton className="h-40" />}>
+              <EpisodePricingSection params={params} />
             </Suspense>
             <Suspense fallback={<Skeleton className="h-40" />}>
               <EpisodeScheduleSection params={params} />

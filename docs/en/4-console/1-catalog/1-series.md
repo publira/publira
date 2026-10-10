@@ -2,7 +2,7 @@
 title: Series
 description: Create a series, decide when and where it is shown, and set its age rating, reading direction, comments, cover image, and Free if you wait.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
@@ -87,7 +87,7 @@ An episode can set its own of either, as [Page layout](./2-episodes.md#page-layo
 
 ### Reading period
 
-**Reading period**, in hours, is where the **Reading period** of each new episode in the series starts. A purchase keeps an episode open for the episode's own period, not the series': an episode can be given a different one when it is created, and changing the series' period later leaves the episodes already created as they are. A new series starts at `0`, which keeps a purchase open with no end. [Selling episodes](../4-selling-episodes.md#price-and-reading-period) describes how the period is used.
+**Reading period**, in hours, is where the **Reading period** of each new episode in the series starts. A purchase keeps an episode open for the episode's own period, not the series': an episode can be given a different one when it is created or [changed later](./2-episodes.md#changing-the-price-and-reading-period), and changing the series' period later leaves the episodes already created as they are. A new series starts at `0`, which keeps a purchase open with no end. [Selling episodes](../4-selling-episodes.md#price-and-reading-period) describes how the period is used.
 
 ![The Reading period field set to 0, with the note that new episodes start with this period.](./series-reading-period.png)
 

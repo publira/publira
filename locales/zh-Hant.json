@@ -1603,7 +1603,7 @@
         "list_description": "管理該系列中的章節。",
         "new_title": "建立章節",
         "edit_title": "編輯章節",
-        "edit_description": "編輯該章節的標題、發布設定與頁面圖片。",
+        "edit_description": "編輯該章節的標題、價格、發布設定與頁面圖片。",
         "new_description": "在該系列中新增一個章節。",
         "new_action": "建立",
         "credits_action": "署名",
@@ -1672,6 +1672,15 @@
           "updated": "標題已更新。",
           "failed": "無法更新標題。請稍後再試。",
           "error": "無法顯示標題"
+        },
+        "pricing": {
+          "title": "價格與閱讀期限",
+          "description": "讀者為該章節支付的價格，以及購買後可閱讀的期限。變更適用於儲存之後的購買，已完成的購買仍保留當時支付的價格與到期時間。",
+          "reading_period_description": "請填寫小時數。設為0表示不限期閱讀。修改系列的閱讀期限不會改變此值。",
+          "update": "更新價格與閱讀期限",
+          "updated": "價格與閱讀期限已更新。",
+          "failed": "無法更新價格與閱讀期限。請稍後再試。",
+          "error": "無法顯示價格與閱讀期限"
         },
         "pages_error": "無法顯示頁面上傳",
         "schedule_error": "無法顯示發布設定",

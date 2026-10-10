@@ -2,7 +2,7 @@
 title: Publishing works
 description: Take an empty catalog to a first episode a reader can open, through the console's labels, Authors, series, and episodes.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 Everything a reader can open on the site is an episode of a series, and a series is filed under a label and credits its Authors. The sidebar's **Catalog** group holds the five screens these are made on:
@@ -38,7 +38,7 @@ The episodes that follow are added to a series that is already public, so they a
 ## In this section
 
 - [Series](./1-series.md): creating a series, where and when it is shown, its age rating, reading direction, comments, cover image, and **Free if you wait**.
-- [Episodes](./2-episodes.md): creating an episode, adding its pages, its page layout, credits, where it is shown and sold, free reading periods, and scheduled publication.
+- [Episodes](./2-episodes.md): creating an episode, adding its pages, its price and reading period, its page layout, credits, where it is shown and sold, free reading periods, and scheduled publication.
 - [Labels](./3-labels.md): the imprints series are published under, and the label pages readers see.
 - [Authors and Author roles](./4-authors.md): the people credited on a work, what they are credited as, how the credits read on the site, and linking an Author to their reader account.
 - [Genres](./5-genres.md): the categories readers browse by, and their order.

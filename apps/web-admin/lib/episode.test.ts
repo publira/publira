@@ -42,6 +42,7 @@ const {
   mockReplaceEpisodeImage,
   mockUpdateEpisodeAvailability,
   mockUpdateEpisodeLayout,
+  mockUpdateEpisodePricing,
   mockUpdateEpisodePurchaseAvailability,
   mockUpdateEpisodeTitle,
 } = vi.hoisted(() => ({
@@ -59,6 +60,7 @@ const {
   mockReplaceEpisodeImage: vi.fn(),
   mockUpdateEpisodeAvailability: vi.fn(),
   mockUpdateEpisodeLayout: vi.fn(),
+  mockUpdateEpisodePricing: vi.fn(),
   mockUpdateEpisodePurchaseAvailability: vi.fn(),
   mockUpdateEpisodeTitle: vi.fn(),
 }));
@@ -86,6 +88,7 @@ vi.mock("./api", () => ({
       replaceEpisodeImage: mockReplaceEpisodeImage,
       updateEpisodeAvailability: mockUpdateEpisodeAvailability,
       updateEpisodeLayout: mockUpdateEpisodeLayout,
+      updateEpisodePricing: mockUpdateEpisodePricing,
       updateEpisodePurchaseAvailability: mockUpdateEpisodePurchaseAvailability,
       updateEpisodeTitle: mockUpdateEpisodeTitle,
     },
@@ -932,6 +935,64 @@ describe("updateEpisodeTitle", () => {
 
     expect(result).toEqual({
       message: "Could not update the title. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
+describe("updateEpisodePricing", () => {
+  it("sends the price and reading period and reads back the episode", async () => {
+    mockUpdateEpisodePricing.mockResolvedValue({
+      episode: {
+        ...episode("EPISODE001", 1),
+        price: 120,
+        readingPeriodHours: 72,
+      },
+    });
+
+    const { updateEpisodePricing } = await import("./episode");
+    const result = await updateEpisodePricing(
+      {
+        episodeId: "EPISODE001-ID",
+        price: 120,
+        readingPeriodHours: 72,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockUpdateEpisodePricing).toHaveBeenCalledWith(
+      {
+        episodeId: "EPISODE001-ID",
+        price: 120,
+        readingPeriodHours: 72,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toMatchObject({
+      episode: { price: 120, publicId: "EPISODE001", readingPeriodHours: 72 },
+      ok: true,
+    });
+  });
+
+  it("reports the failure when the API answers no episode", async () => {
+    mockUpdateEpisodePricing.mockResolvedValue({});
+
+    const { updateEpisodePricing } = await import("./episode");
+    const result = await updateEpisodePricing(
+      {
+        episodeId: "EPISODE001-ID",
+        price: 0,
+        readingPeriodHours: 0,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "Could not update the price and reading period. Please try again later.",
       ok: false,
     });
   });

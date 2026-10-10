@@ -19,6 +19,7 @@ import { Suspense } from "react";
 import { InstantInput } from "#components/instant-input";
 import { Message } from "#components/message";
 import { SubmitGate, SubmitGateSubmit } from "#components/submit-gate";
+import { MAX_INT32 } from "#lib/int32";
 import type { PurchaseAvailabilityOverride } from "#lib/purchase-availability";
 import {
   DEFAULT_READING_DIRECTION,
@@ -214,6 +215,7 @@ export const SeriesForm = ({
             <FieldContent>
               <Input
                 defaultValue={values.readingPeriodHours}
+                max={MAX_INT32}
                 min={0}
                 name="reading_period_hours"
                 required

@@ -207,6 +207,11 @@ describe("nonNegativeIntFormSchema", () => {
     expect(schema.safeParse("-1").success).toBe(false);
     expect(schema.safeParse("0x10").success).toBe(false);
   });
+
+  it("accepts up to the largest value an int32 field carries", () => {
+    expect(schema.parse("2147483647")).toBe(2_147_483_647);
+    expect(schema.safeParse("2147483648").success).toBe(false);
+  });
 });
 
 describe("checkbox and flag schemas", () => {
