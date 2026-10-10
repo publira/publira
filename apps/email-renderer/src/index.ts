@@ -1,20 +1,24 @@
 import "temporal-polyfill/global";
+import { once } from "node:events";
+
 import { createEmailRendererServer, parsePort } from "./server.ts";
 
-const server = createEmailRendererServer();
 const port = parsePort(process.env.PORT);
 const host = process.env.HOST ?? "0.0.0.0";
 
-const shutdown = async (): Promise<void> => {
-  try {
-    await server[Symbol.asyncDispose]();
-  } catch (error) {
-    console.error("email-renderer shutdown failed", error);
-    process.exitCode = 1;
-  }
+const serveUntilSignal = async (): Promise<void> => {
+  const signalled = Promise.race([
+    once(process, "SIGINT"),
+    once(process, "SIGTERM"),
+  ]);
+  await using server = createEmailRendererServer();
+  server.listen({ host, port });
+  await signalled;
 };
 
-process.once("SIGINT", shutdown);
-process.once("SIGTERM", shutdown);
-
-server.listen({ host, port });
+try {
+  await serveUntilSignal();
+} catch (error) {
+  console.error("email-renderer shutdown failed", error);
+  process.exitCode = 1;
+}
