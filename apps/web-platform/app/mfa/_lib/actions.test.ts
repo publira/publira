@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { platformAuditLogsCacheTag } from "#lib/audit-logs";
 import { getMessagesFor } from "#lib/messages";
 
 const {
@@ -11,6 +12,7 @@ const {
   mockRedirect,
   mockStartPlatformMfaEnrollment,
   mockToQrCodePath,
+  mockUpdateTag,
   mockVerifyPlatformMfa,
   mockWritePlatformSessionCookie,
 } = vi.hoisted(() => ({
@@ -22,9 +24,12 @@ const {
   mockRedirect: vi.fn(),
   mockStartPlatformMfaEnrollment: vi.fn(),
   mockToQrCodePath: vi.fn(),
+  mockUpdateTag: vi.fn(),
   mockVerifyPlatformMfa: vi.fn(),
   mockWritePlatformSessionCookie: vi.fn(),
 }));
+
+vi.mock("next/cache", () => ({ updateTag: mockUpdateTag }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
@@ -114,6 +119,7 @@ describe("verifyMfaAction", () => {
     );
     expect(mockWritePlatformSessionCookie).toHaveBeenCalledWith(session);
     expect(mockClearMfaChallenge).toHaveBeenCalledOnce();
+    expect(mockUpdateTag).toHaveBeenCalledWith(platformAuditLogsCacheTag);
   });
 
   // A spent recovery code is one the operator can never use again, so the
@@ -158,6 +164,8 @@ describe("verifyMfaAction", () => {
       ok: false,
     });
     expect(mockClearMfaChallenge).not.toHaveBeenCalled();
+    // A refused code is recorded in the audit log as well.
+    expect(mockUpdateTag).toHaveBeenCalledWith(platformAuditLogsCacheTag);
   });
 
   it("asks for the password again once the challenge has run out", async () => {
@@ -253,6 +261,7 @@ describe("enrollment Actions", () => {
       signedIn: true,
     });
     expect(mockWritePlatformSessionCookie).toHaveBeenCalledWith(session);
+    expect(mockUpdateTag).toHaveBeenCalledWith(platformAuditLogsCacheTag);
     expect(mockFinishMfaChallenge).toHaveBeenCalledWith(
       expect.objectContaining({
         challengeToken: "challenge-token",

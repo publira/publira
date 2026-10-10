@@ -10,6 +10,7 @@ import { withPlatformSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { PLATFORM_MFA_STATUS_CACHE_TAG } from "#lib/platform-mfa";
 import {
   platformPolicyCacheTag,
   platformRetentionDefaultsCacheTag,
@@ -88,6 +89,9 @@ export const updatePlatformSecurityPolicyAction = async (
 
   updateTag(platformPolicyCacheTag);
   updateTag(platformAuditLogsCacheTag);
+  // The operator requirement is part of what the account screen's status read
+  // answers, so a save that may have switched it clears that read too.
+  updateTag(PLATFORM_MFA_STATUS_CACHE_TAG);
 
   const t = await getMessagesFor(locale);
   return { message: t("platform.policy.security.saved"), ok: true };

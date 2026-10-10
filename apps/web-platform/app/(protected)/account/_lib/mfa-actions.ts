@@ -5,6 +5,7 @@ import type { FormActionState } from "@publira/ui-components/action-form";
 import { toQrCodePath } from "@publira/ui-components/qr-code";
 import { updateTag } from "next/cache";
 
+import { platformAuditLogsCacheTag } from "#lib/audit-logs";
 import { mfaCodeFormSchema } from "#lib/auth-input";
 import { withPlatformSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
@@ -32,7 +33,17 @@ import {
  * API has since rejected into the sign-in redirect — a refused *code* never
  * reaches it, because `lib/platform-mfa.ts` classifies that as a form message
  * first.
+ *
+ * Every call that presents a code is recorded in the audit log, a refused
+ * code included, so the audit log's tag is cleared whatever the call came
+ * to, as the other audited Actions do.
  */
+
+/** Clear the reads an MFA call that presented a code may have changed. */
+const clearMfaReads = (): void => {
+  updateTag(PLATFORM_MFA_STATUS_CACHE_TAG);
+  updateTag(platformAuditLogsCacheTag);
+};
 
 const parseCode = async (
   formData: FormData,
@@ -85,11 +96,10 @@ export const confirmAccountMfaEnrollmentAction = async (
   const result = await withPlatformSessionReauth(() =>
     confirmPlatformMfaEnrollment("", input.code, locale)
   );
+  clearMfaReads();
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
-
-  updateTag(PLATFORM_MFA_STATUS_CACHE_TAG);
 
   // The session that authorized this call is the session it keeps; only a
   // challenge enrollment issues one, so nothing here changes who is signed in.
@@ -118,11 +128,10 @@ export const regenerateAccountMfaRecoveryCodesAction = async (
   const result = await withPlatformSessionReauth(() =>
     regeneratePlatformMfaRecoveryCodes(input.code, locale)
   );
+  clearMfaReads();
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
-
-  updateTag(PLATFORM_MFA_STATUS_CACHE_TAG);
 
   return {
     message: t("platform.settings.mfa.regenerate_done"),
@@ -148,11 +157,10 @@ export const disableAccountMfaAction = async (
   const result = await withPlatformSessionReauth(() =>
     disablePlatformMfa(input.code, locale)
   );
+  clearMfaReads();
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
-
-  updateTag(PLATFORM_MFA_STATUS_CACHE_TAG);
 
   return {
     message: t("platform.settings.mfa.disable_done"),

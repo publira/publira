@@ -2,8 +2,10 @@
 
 import type { Locale } from "@publira/i18n";
 import { toQrCodePath } from "@publira/ui-components/qr-code";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { platformAuditLogsCacheTag } from "#lib/audit-logs";
 import { mfaCodeFormSchema } from "#lib/auth-input";
 import { buildLoginPath } from "#lib/auth-shared";
 import { assertSameOrigin } from "#lib/csrf";
@@ -98,6 +100,8 @@ export const verifyMfaAction = async (
     parsed.code,
     locale
   );
+  // The audit log records the attempt whatever it came to.
+  updateTag(platformAuditLogsCacheTag);
   if (!result.ok) {
     if (result.challengeExpired) {
       await abandonChallenge(challenge);
@@ -172,6 +176,8 @@ export const confirmMfaEnrollmentAction = async (
     parsed.code,
     locale
   );
+  // The audit log records the attempt whatever it came to.
+  updateTag(platformAuditLogsCacheTag);
   if (!result.ok) {
     if (result.challengeExpired) {
       await abandonChallenge(challenge);
