@@ -112,7 +112,10 @@ const invitationStatusTone = (status: string) => {
   return "destructive" as const;
 };
 
-/** A member's role, worded for the operator; an unknown role shows as stored. */
+/**
+ * A member's role, or the one an invitation grants, worded for the operator; an
+ * unknown role shows as stored.
+ */
 const TenantRoleLabel = ({ role }: { role: string }) => {
   switch (role) {
     case "tenant_admin": {
@@ -531,6 +534,11 @@ const TenantInvitationsTable = ({
         </TableHead>
         <TableHead>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="platform.tenants.members_columns_role" />
+          </Suspense>
+        </TableHead>
+        <TableHead>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="platform.tenants.members_columns_status" />
           </Suspense>
         </TableHead>
@@ -554,7 +562,7 @@ const TenantInvitationsTable = ({
     <TableBody>
       {invitations.length === 0 ? (
         <TableRow>
-          <TableCell className="text-muted-foreground" colSpan={5}>
+          <TableCell className="text-muted-foreground" colSpan={6}>
             <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
               <Message message="platform.tenants.invitations_empty" />
             </Suspense>
@@ -565,6 +573,9 @@ const TenantInvitationsTable = ({
       {invitations.map((invitation) => (
         <TableRow key={invitation.id}>
           <TableCell>{invitation.email}</TableCell>
+          <TableCell>
+            <TenantRoleLabel role={invitation.role} />
+          </TableCell>
           <TableCell>
             <Badge tone={invitationStatusTone(invitation.status)}>
               <InvitationStatusLabel status={invitation.status} />

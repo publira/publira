@@ -686,16 +686,17 @@ describe("createPlatformTenant", () => {
 });
 
 describe("tenant admin invitations", () => {
-  it("fetches invitations", async () => {
+  it("fetches invitations with the role each one grants", async () => {
     mockListTenantAdminInvitations.mockResolvedValueOnce({
       invitations: [
         {
           acceptedAt: "",
           canceledAt: "",
           createdAt: "2026-03-30T00:00:00Z",
-          email: "admin@example.com",
+          email: "editor@example.com",
           expiresAt: "2026-03-31T00:00:00Z",
           id: "inv_001",
+          role: "tenant_editor",
           status: "pending",
         },
       ],
@@ -711,9 +712,10 @@ describe("tenant admin invitations", () => {
           acceptedAt: "",
           canceledAt: "",
           createdAt: "2026-03-30T00:00:00Z",
-          email: "admin@example.com",
+          email: "editor@example.com",
           expiresAt: "2026-03-31T00:00:00Z",
           id: "inv_001",
+          role: "tenant_editor",
           status: "pending",
         },
       ],
@@ -808,6 +810,7 @@ describe("tenant admin invitations", () => {
         email: "admin@example.com",
         expiresAt: "2026-03-31T00:00:00Z",
         id: "inv_001",
+        role: "tenant_admin",
         status: "pending",
       },
       roleGrantedImmediately: false,
@@ -823,6 +826,7 @@ describe("tenant admin invitations", () => {
         email: "admin@example.com",
         expiresAt: "2026-03-31T00:00:00Z",
         id: "inv_001",
+        role: "tenant_admin",
         status: "pending",
       },
       ok: true,
@@ -839,6 +843,7 @@ describe("tenant admin invitations", () => {
         email: "admin@example.com",
         expiresAt: "2026-03-31T00:00:00Z",
         id: "inv_001",
+        role: "tenant_admin",
         status: "pending",
       },
     });
@@ -853,6 +858,7 @@ describe("tenant admin invitations", () => {
         email: "admin@example.com",
         expiresAt: "2026-03-31T00:00:00Z",
         id: "inv_001",
+        role: "tenant_admin",
         status: "pending",
       },
       ok: true,
@@ -868,6 +874,7 @@ describe("tenant admin invitations", () => {
         email: "admin@example.com",
         expiresAt: "2026-03-31T00:00:00Z",
         id: "inv_001",
+        role: "tenant_admin",
         status: "canceled",
       },
     });
@@ -882,6 +889,7 @@ describe("tenant admin invitations", () => {
         email: "admin@example.com",
         expiresAt: "2026-03-31T00:00:00Z",
         id: "inv_001",
+        role: "tenant_admin",
         status: "canceled",
       },
       ok: true,

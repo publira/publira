@@ -116,6 +116,9 @@ test.describe("platform tenant members", () => {
 
     await expect(statusMessage(page, "Invitation email sent.")).toBeVisible();
     await expect(
+      rowFor(page, email).getByText("Tenant admin", { exact: true })
+    ).toBeVisible();
+    await expect(
       rowFor(page, email).getByText("Pending", { exact: true })
     ).toBeVisible();
 

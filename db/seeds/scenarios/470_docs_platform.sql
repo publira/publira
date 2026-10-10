@@ -3,7 +3,7 @@
 --
 -- The pages under docs/<locale>/3-operations/ explain screens whose rows the
 -- development seed either does not hold or dates from the moment it runs: a
--- tenant's staff in every role and its admin invitations, readers in each
+-- tenant's staff in every role and its invitations, readers in each
 -- status, a suspended tenant, operators in each role and status, the audit log
 -- narrowed to one tenant, and a notification that an episode could not be
 -- published. Every row here carries its dates as literals, for the reason
@@ -169,9 +169,10 @@ FROM (
 ) AS r (id, public_id, role)
 JOIN users u ON u.public_id = r.public_id;
 
--- An invitation that expired unanswered and one an operator canceled. A
--- pending one is left out: whether an invitation is still pending is decided
--- against the current time.
+-- Two Tenant admin invitations, one that expired unanswered and one an
+-- operator canceled, and an Editor's that expired, as the tenant console sends
+-- them. A pending one is left out: whether an invitation is still pending is
+-- decided against the current time.
 DELETE FROM platform_audit_logs
 WHERE id IN (
         '018f1090-0007-7000-8000-000000000051'::uuid,
@@ -185,7 +186,8 @@ WHERE id IN (
 DELETE FROM tenant_admin_invitations
 WHERE id IN (
         '018f1090-0007-7000-8000-000000000031'::uuid,
-        '018f1090-0007-7000-8000-000000000032'::uuid
+        '018f1090-0007-7000-8000-000000000032'::uuid,
+        '018f1090-0007-7000-8000-000000000033'::uuid
     );
 
 INSERT INTO tenant_admin_invitations (
@@ -204,7 +206,7 @@ SELECT
     t.id,
     i.email,
     i.token_hash,
-    'tenant_admin',
+    i.role,
     i.created_at + INTERVAL '24 hours',
     i.canceled_at,
     i.created_at,
@@ -215,6 +217,7 @@ FROM (
             '018f1090-0007-7000-8000-000000000031'::uuid,
             'docs-new-admin@example.com',
             'docs-screenshots-platform-invitation-1',
+            'tenant_admin',
             TIMESTAMPTZ '2026-02-04 10:00:00+00',
             NULL::timestamptz
         ),
@@ -222,10 +225,19 @@ FROM (
             '018f1090-0007-7000-8000-000000000032'::uuid,
             'docs-former-admin@example.com',
             'docs-screenshots-platform-invitation-2',
+            'tenant_admin',
             TIMESTAMPTZ '2026-02-05 10:00:00+00',
             TIMESTAMPTZ '2026-02-05 15:30:00+00'
+        ),
+        (
+            '018f1090-0007-7000-8000-000000000033'::uuid,
+            'docs-new-editor@example.com',
+            'docs-screenshots-platform-invitation-3',
+            'tenant_editor',
+            TIMESTAMPTZ '2026-02-06 10:00:00+00',
+            NULL::timestamptz
         )
-) AS i (id, email, token_hash, created_at, canceled_at)
+) AS i (id, email, token_hash, role, created_at, canceled_at)
 JOIN tenants t ON t.public_id = 'PdocTNNTAAA1';
 
 -- Operators in the two roles the seeded super admin does not hold, and one

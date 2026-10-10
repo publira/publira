@@ -53,12 +53,12 @@ An invitation sent from the Platform Console or `publiractl` can only make a Ten
 
 ### Following an invitation up
 
-**Admin invitations**, on the same **Members** screen, lists each invitation as **Pending**, **Accepted**, **Canceled**, or **Expired**.
+**Invitations**, on the same **Members** screen, lists every invitation of the tenant, the ones its own administrators sent from the tenant console included, with the **Role** accepting it grants and its status: **Pending**, **Accepted**, **Canceled**, or **Expired**.
 
 - **Resend**, on a pending or an expired invitation, mails it again with a new link, valid for another 24 hours. The previous link stops working.
 - **Cancel**, on a pending invitation, withdraws it, and its link stops working.
 
-![Admin invitations: one that was canceled and one that expired, each with when it was created and when it expires, Resend, and Cancel.](./tenant-staff-admin-invitations.png)
+![Invitations: an Editor's that expired, a Tenant admin's that was canceled, and a Tenant admin's that expired, each with its role, when it was created and when it expires, Resend, and Cancel.](./tenant-staff-invitations.png)
 
 From the command line, `publiractl tenant invite list --tenant comics.example.com` prints each invitation with its ID, and `tenant invite resend --id <ID>` and `tenant invite cancel --id <ID>` act on one, an expired one included.
 
