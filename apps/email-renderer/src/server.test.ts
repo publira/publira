@@ -1,36 +1,30 @@
 import { once } from "node:events";
+import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
 import { Code, createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
 import { EmailRendererService } from "@publira/api-client/email/renderer";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { createEmailRendererServer, parsePort } from "./server.ts";
 
-const servers: ReturnType<typeof createEmailRendererServer>[] = [];
-
-const startServer = async (): Promise<{
-  baseUrl: string;
-  server: ReturnType<typeof createEmailRendererServer>;
-}> => {
+const startServer = async (): Promise<Server> => {
   const server = createEmailRendererServer();
-  servers.push(server);
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
-  const address = server.address() as AddressInfo;
-  return { baseUrl: `http://127.0.0.1:${address.port}`, server };
+  return server;
 };
 
-afterEach(async () => {
-  await Promise.all(
-    servers.splice(0).map((server) => server[Symbol.asyncDispose]())
-  );
-});
+const baseUrlOf = (server: Server): string => {
+  const address = server.address() as AddressInfo;
+  return `http://127.0.0.1:${address.port}`;
+};
 
 describe("email renderer server", () => {
   it("renders a template into HTML", async () => {
-    const { baseUrl } = await startServer();
+    await using server = await startServer();
+    const baseUrl = baseUrlOf(server);
     const client = createClient(
       EmailRendererService,
       createConnectTransport({ baseUrl, httpVersion: "1.1" })
@@ -54,7 +48,8 @@ describe("email renderer server", () => {
   });
 
   it("invalid template input comes back as invalid_argument", async () => {
-    const { baseUrl } = await startServer();
+    await using server = await startServer();
+    const baseUrl = baseUrlOf(server);
     const client = createClient(
       EmailRendererService,
       createConnectTransport({ baseUrl, httpVersion: "1.1" })
@@ -71,7 +66,8 @@ describe("email renderer server", () => {
   });
 
   it("serves liveness and readiness", async () => {
-    const { baseUrl } = await startServer();
+    await using server = await startServer();
+    const baseUrl = baseUrlOf(server);
 
     const livez = await fetch(`${baseUrl}/livez`);
     const readyz = await fetch(`${baseUrl}/readyz`);
