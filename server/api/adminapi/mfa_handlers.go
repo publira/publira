@@ -516,7 +516,14 @@ func (s *adminServer) ConfirmMfaEnrollment(
 	}
 
 	codes, err := s.enableMfa(ctx, actor)
-	if err != nil {
+	switch {
+	case errors.Is(err, errMfaChallengeSpent):
+		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "challenge_spent")
+		return nil, invalidSessionError()
+	case errors.Is(err, errMfaAlreadyEnabled):
+		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "already_enabled")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "mfa is already enabled")
+	case err != nil:
 		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "enable_failed")
 		return nil, err
 	}
@@ -540,9 +547,24 @@ func (s *adminServer) ConfirmMfaEnrollment(
 	return resp, nil
 }
 
+// The two refusals enableMfa reaches only by losing a race with a concurrent
+// confirmation, which ConfirmMfaEnrollment answers apart from a database
+// failure.
+var (
+	errMfaChallengeSpent = errors.New("mfa challenge already spent")
+	errMfaAlreadyEnabled = errors.New("mfa already enabled")
+)
+
 // enableMfa marks the authenticator confirmed and issues the recovery codes
 // that go with it, in one transaction: an account left enabled without codes
 // would have no way back in if it lost the authenticator.
+//
+// An enrollment that finishes a login claims its challenge in the same
+// transaction, so the token buys one session however many codes of the window
+// are confirmed with it at once, and is left unspent if the enable rolls back.
+// The enable itself is claimed too: two confirmations that both read the row
+// unconfirmed would otherwise each replace the other's recovery codes, and
+// only the last to commit would hand out codes that still work.
 func (s *adminServer) enableMfa(ctx context.Context, actor mfaActor) ([]string, error) {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -551,8 +573,26 @@ func (s *adminServer) enableMfa(ctx context.Context, actor mfaActor) ([]string, 
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
-	if _, err := q.EnableUserMfaTotp(ctx, actor.User.ID); err != nil {
+	if actor.FromChallenge {
+		claimed, err := q.MarkUserMfaChallengeUsed(ctx, dbmodels.MarkUserMfaChallengeUsedParams{
+			Jti:       actor.ChallengeID,
+			TenantID:  actor.Tenant.ID,
+			UserID:    actor.User.ID,
+			ExpiresAt: actor.ChallengeExpiresAt,
+		})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to mark mfa challenge used", err, "user_id", actor.User.ID.String())
+		}
+		if claimed == 0 {
+			return nil, errMfaChallengeSpent
+		}
+	}
+	enabled, err := q.EnableUserMfaTotp(ctx, actor.User.ID)
+	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to enable mfa totp", err, "user_id", actor.User.ID.String())
+	}
+	if enabled == 0 {
+		return nil, errMfaAlreadyEnabled
 	}
 	codes, err := replaceRecoveryCodes(ctx, q, actor.Tenant.ID, actor.User.ID)
 	if err != nil {

@@ -649,6 +649,142 @@ func TestAdminLoginForcesEnrollmentWhenTheFactorIsRequired(t *testing.T) {
 	}
 }
 
+// An enroll challenge buys one session. Two confirmations racing with
+// different codes of the window would otherwise both enable the factor and
+// both sign in, and a challenge kept after its enrollment could enroll an
+// authenticator of its holder's own once the factor is taken off.
+func TestAdminMfaEnrollChallengeBuysOneSession(t *testing.T) {
+	env := newAdminDBEnv(t)
+	requireTenantAdminMFA(t, env)
+	tenant := seedMfaTenant(t, env)
+
+	login := mfaLogin(t, env, tenant)
+	started, err := env.authClient().StartMfaEnrollment(context.Background(), &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: login.MfaChallenge.Token,
+	})
+	if err != nil {
+		t.Fatalf("StartMfaEnrollment with an enroll challenge: %v", err)
+	}
+
+	codes := []string{mfaCode(t, started.Secret), mfaNextCode(t, started.Secret)}
+	var wg sync.WaitGroup
+	responses := make([]*publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentResponse, len(codes))
+	errs := make([]error, len(codes))
+	for i, code := range codes {
+		wg.Go(func() {
+			responses[i], errs[i] = env.authClient().ConfirmMfaEnrollment(context.Background(), &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest{
+				Tenant:         tenant.tenantContext(),
+				ChallengeToken: login.MfaChallenge.Token,
+				Code:           code,
+			})
+		})
+	}
+	wg.Wait()
+
+	var session *publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentResponse
+	for i, err := range errs {
+		if err != nil {
+			continue
+		}
+		if session != nil {
+			t.Fatalf("two concurrent confirmations of one enroll challenge both succeeded (errors: %v)", errs)
+		}
+		session = responses[i]
+	}
+	if session.GetAccessToken().GetToken() == "" {
+		t.Fatalf("no concurrent confirmation of the enroll challenge issued a session (errors: %v)", errs)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_recovery_codes WHERE user_id = $1", tenant.User.ID); got != mfa.RecoveryCodeCount {
+		t.Fatalf("recovery code rows = %d, want the %d of the one confirmation that went through", got, mfa.RecoveryCodeCount)
+	}
+
+	signedIn := testutil.WithBearer(context.Background(), session.AccessToken.Token)
+	if _, err := env.authClient().DisableMfa(signedIn, &publiraadminv1.AdminAuthServiceDisableMfaRequest{
+		Tenant: tenant.tenantContext(),
+		Code:   session.RecoveryCodes[0],
+	}); err != nil {
+		t.Fatalf("DisableMfa: %v", err)
+	}
+	restarted, err := env.authClient().StartMfaEnrollment(context.Background(), &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: login.MfaChallenge.Token,
+	})
+	if err != nil {
+		t.Fatalf("StartMfaEnrollment with the spent enroll challenge: %v", err)
+	}
+	_, err = env.authClient().ConfirmMfaEnrollment(context.Background(), &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: login.MfaChallenge.Token,
+		Code:           mfaCode(t, restarted.Secret),
+	})
+	if connect.CodeOf(err) != connect.CodeUnauthenticated || errorInfoReason(t, err) != "" {
+		t.Fatalf("ConfirmMfaEnrollment with the spent enroll challenge = %v, want an unauthenticated session error", err)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_totp WHERE user_id = $1 AND enabled_at IS NOT NULL", tenant.User.ID); got != 0 {
+		t.Fatalf("confirmed totp rows = %d, want the spent challenge to have enabled nothing", got)
+	}
+}
+
+// A signed-in account confirming twice at once gets one batch of recovery
+// codes. Were both let through, the later commit would replace the codes the
+// earlier response handed out, and the account would hold ten that no longer
+// work.
+func TestAdminMfaConfirmsAConcurrentEnrollmentOnce(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	signedIn := testutil.WithBearer(context.Background(), tenant.token())
+
+	started, err := env.authClient().StartMfaEnrollment(signedIn, &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
+		Tenant: tenant.tenantContext(),
+	})
+	if err != nil {
+		t.Fatalf("StartMfaEnrollment: %v", err)
+	}
+
+	codes := []string{mfaCode(t, started.Secret), mfaNextCode(t, started.Secret)}
+	var wg sync.WaitGroup
+	responses := make([]*publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentResponse, len(codes))
+	errs := make([]error, len(codes))
+	for i, code := range codes {
+		wg.Go(func() {
+			responses[i], errs[i] = env.authClient().ConfirmMfaEnrollment(signedIn, &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest{
+				Tenant: tenant.tenantContext(),
+				Code:   code,
+			})
+		})
+	}
+	wg.Wait()
+
+	var confirmed *publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentResponse
+	for i, err := range errs {
+		if err != nil {
+			// The loser is refused for the enrollment the winner confirmed, or,
+			// when the later code's step landed first, for the earlier code.
+			if connect.CodeOf(err) != connect.CodeFailedPrecondition && errorInfoReason(t, err) != rpcerrors.ReasonMfaInvalidCode {
+				t.Fatalf("ConfirmMfaEnrollment error = %v, want failed_precondition or an invalid code for the losing request", err)
+			}
+			continue
+		}
+		if confirmed != nil {
+			t.Fatalf("two concurrent confirmations of one enrollment both succeeded (errors: %v)", errs)
+		}
+		confirmed = responses[i]
+	}
+	if confirmed == nil {
+		t.Fatalf("no concurrent confirmation of the enrollment succeeded (errors: %v)", errs)
+	}
+
+	login := mfaLogin(t, env, tenant)
+	if _, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: login.MfaChallenge.Token,
+		Code:           confirmed.RecoveryCodes[0],
+	}); err != nil {
+		t.Fatalf("VerifyMfa with a recovery code the confirmation handed out: %v", err)
+	}
+}
+
 // Only tenant_admin is held back. An editor may enroll, and is never stopped
 // from signing in for not having.
 func TestAdminLoginDoesNotForceEnrollmentOnAnEditor(t *testing.T) {
