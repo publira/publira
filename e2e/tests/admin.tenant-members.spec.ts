@@ -348,9 +348,9 @@ test.describe("tenant members", () => {
     const actions = page.getByRole("table");
     await Promise.all(
       [
-        "Tenant admin invited",
-        "Admin invitation resent",
-        "Admin invitation canceled",
+        "Member invited",
+        "Invitation resent",
+        "Invitation canceled",
         "Member role changed",
         "Member removed",
       ].map((label) =>

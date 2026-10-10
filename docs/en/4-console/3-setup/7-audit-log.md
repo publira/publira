@@ -31,7 +31,7 @@ The log cannot be exported, and its entries are never deleted. An entry keeps th
 | Comments | Comments approved, removed, restored, and purged, removals made automatically after reports, and reports upheld or dismissed |
 | Readers | Readers suspended, restored, and deleted, their dates of birth changed or cleared, and access tickets issued and revoked. Contact messages handled, reopened, assigned, annotated, and answered |
 | Royalties | Closing settings changed, months closed, and statements downloaded as CSV |
-| Staff | Tenant admins invited, invitations resent, canceled, and accepted, roles changed, and members removed |
+| Staff | Members invited, invitations resent, canceled, and accepted, roles changed, and members removed |
 | Settings and integrations | The mail settings and their tests, the payment provider's settings, the mobile push credentials, the sign-in providers, community limits, retention periods, and refused email addresses |
 | Two-step verification | Staff setting it up, turning it off, regenerating recovery codes, and signing in with it or with a recovery code |
 
