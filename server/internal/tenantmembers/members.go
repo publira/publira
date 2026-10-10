@@ -360,24 +360,55 @@ func (p AddParams) Validate() error {
 }
 
 func (p AddParams) normalize() (publicID, email, role string, err error) {
-	publicID = strings.TrimSpace(p.UserPublicID)
-	email = strings.TrimSpace(p.Email)
-	namesUser := p.UserID != uuid.Nil || publicID != ""
-	switch {
-	case !namesUser && email == "":
-		return "", "", "", ErrUserOrEmailRequired
-	case namesUser && email != "":
-		return "", "", "", ErrUserAndEmailBothSet
-	}
-	if email != "" {
-		if email, err = normalizeEmail(email); err != nil {
-			return "", "", "", err
-		}
+	if publicID, email, err = normalizeUserRef(p.UserID, p.UserPublicID, p.Email); err != nil {
+		return "", "", "", err
 	}
 	if role, err = normalizeRole(p.Role); err != nil {
 		return "", "", "", err
 	}
 	return publicID, email, role, nil
+}
+
+// normalizeUserRef refuses a user named by none of userID, a public ID, and an
+// address, or by an address beside one of the others, and answers the public
+// ID trimmed and the address normalized.
+func normalizeUserRef(userID uuid.UUID, rawPublicID, rawEmail string) (publicID, email string, err error) {
+	publicID = strings.TrimSpace(rawPublicID)
+	email = strings.TrimSpace(rawEmail)
+	namesUser := userID != uuid.Nil || publicID != ""
+	switch {
+	case !namesUser && email == "":
+		return "", "", ErrUserOrEmailRequired
+	case namesUser && email != "":
+		return "", "", ErrUserAndEmailBothSet
+	}
+	if email != "" {
+		if email, err = normalizeEmail(email); err != nil {
+			return "", "", err
+		}
+	}
+	return publicID, email, nil
+}
+
+// userByRef reads the tenant's user named by email, or by userID or publicID
+// as [tenantUser] does when email is empty, as a [Member] without a role. A
+// user the tenant does not have answers [ErrMemberNotFound].
+func userByRef(ctx context.Context, q *dbmodels.Queries, tenantID, userID uuid.UUID, publicID, email string) (Member, error) {
+	if email == "" {
+		member, err := tenantUser(ctx, q, tenantID, userID, publicID)
+		if err != nil {
+			return Member{}, lookupError(err)
+		}
+		return member, nil
+	}
+	user, err := q.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+		Email:    email,
+	})
+	if err != nil {
+		return Member{}, lookupError(err)
+	}
+	return Member{UserID: user.ID, PublicID: user.PublicID, Name: user.Name, Email: user.Email, Status: user.Status, CreatedAt: user.CreatedAt}, nil
 }
 
 // Add gives the user p names the role inside tx. A user who already holds a
@@ -389,21 +420,9 @@ func Add(ctx context.Context, tx *sql.Tx, p AddParams) (Member, error) {
 		return Member{}, err
 	}
 	q := dbmodels.New(tx)
-
-	var member Member
-	if email == "" {
-		if member, err = tenantUser(ctx, q, p.TenantID, p.UserID, publicID); err != nil {
-			return Member{}, lookupError(err)
-		}
-	} else {
-		user, err := q.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
-			TenantID: uuid.NullUUID{UUID: p.TenantID, Valid: true},
-			Email:    email,
-		})
-		if err != nil {
-			return Member{}, lookupError(err)
-		}
-		member = Member{UserID: user.ID, PublicID: user.PublicID, Name: user.Name, Email: user.Email, Status: user.Status, CreatedAt: user.CreatedAt}
+	member, err := userByRef(ctx, q, p.TenantID, p.UserID, publicID, email)
+	if err != nil {
+		return Member{}, err
 	}
 
 	roles, err := q.ListTenantUserRoles(ctx, member.UserID)

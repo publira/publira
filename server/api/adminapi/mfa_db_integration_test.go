@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -15,9 +16,11 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/mfa"
 	"github.com/publira/publira/server/internal/platformpolicy"
+	"github.com/publira/publira/server/internal/platformtenants"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -709,6 +712,68 @@ func TestAdminMfaWritesTheAuditTrail(t *testing.T) {
 		if got == 0 {
 			t.Fatalf("no audit_logs row for action %q outcome %q", want.action, want.outcome)
 		}
+	}
+}
+
+// resetMfaAsOperator removes the account's factor the way `publiractl tenant
+// member reset-mfa` does, as publira_platform and with no code.
+func resetMfaAsOperator(t *testing.T, env *adminDBEnv, tenant adminDBTenant) {
+	t.Helper()
+
+	ctx := context.Background()
+	tx, err := env.PG.OpenPlatformDB(t).BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("BeginTx: %v", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if _, err := platformtenants.ResetMemberMFA(ctx, tx, slog.Default(), auditlog.SystemPlatformActor, tenantmembers.ResetMFAParams{
+		TenantID:     tenant.Tenant.ID,
+		UserPublicID: tenant.User.PublicID,
+	}); err != nil {
+		t.Fatalf("ResetMemberMFA: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("Commit: %v", err)
+	}
+}
+
+// An account that lost its authenticator and every recovery code signs in with
+// its password alone once the operator has removed the factor.
+func TestAdminLoginTakesThePasswordAloneOnceAnOperatorResetsTheFactor(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	enrollMfa(t, env, tenant)
+	if login := mfaLogin(t, env, tenant); login.MfaChallenge == nil {
+		t.Fatal("Login asks for no second factor before the reset")
+	}
+
+	resetMfaAsOperator(t, env, tenant)
+
+	login := mfaLogin(t, env, tenant)
+	if login.MfaChallenge != nil {
+		t.Fatalf("mfa_challenge = %v, want none after the reset", login.MfaChallenge)
+	}
+	if login.AccessToken == nil || login.AccessToken.Token == "" {
+		t.Fatal("Login returned no access token after the reset")
+	}
+}
+
+// Where the platform requires the factor of a tenant admin, the account the
+// operator reset is asked to enroll again rather than let in.
+func TestAdminLoginAsksForAnEnrollmentOnceAnOperatorResetsARequiredFactor(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	enrollMfa(t, env, tenant)
+	requireTenantAdminMFA(t, env)
+
+	resetMfaAsOperator(t, env, tenant)
+
+	login := mfaLogin(t, env, tenant)
+	if login.AccessToken != nil {
+		t.Fatal("Login issued an access token to an account that owes an enrollment")
+	}
+	if login.MfaChallenge == nil || login.MfaChallenge.Kind != publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_ENROLL {
+		t.Fatalf("mfa challenge = %v, want an ENROLL challenge", login.MfaChallenge)
 	}
 }
 

@@ -114,6 +114,44 @@ func TestTenantMemberCommands(t *testing.T) {
 	}
 }
 
+func TestTenantMemberResetMFA(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	tenant := pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
+	admin := pg.SeedTenantAdmin(t, tenant.ID, "ADMIN0000001", "admin@tenant-a.example.com", "Admin")
+	ctx := context.Background()
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO user_mfa_totp (user_id, tenant_id, secret_encrypted, enabled_at)
+		VALUES ($1, $2, 'enc:v1:k1:nonce:ciphertext', now())
+	`, admin.ID, tenant.ID); err != nil {
+		t.Fatalf("insert user_mfa_totp: %v", err)
+	}
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO user_mfa_recovery_codes (id, tenant_id, user_id, code_hash)
+		VALUES (gen_random_uuid(), $1, $2, '$2a$10$notarealhash')
+	`, tenant.ID, admin.ID); err != nil {
+		t.Fatalf("insert user_mfa_recovery_codes: %v", err)
+	}
+
+	if got := tenantCommand(t, "", "member", "reset-mfa", "--tenant", "tenant-a.example.com", "--email", "admin@tenant-a.example.com"); got != "Removed two-step verification from admin@tenant-a.example.com (ADMIN0000001)\n" {
+		t.Fatalf("member reset-mfa = %q", got)
+	}
+
+	var rows int
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT (SELECT count(*) FROM user_mfa_totp WHERE user_id = $1) + (SELECT count(*) FROM user_mfa_recovery_codes WHERE user_id = $1)
+	`, admin.ID).Scan(&rows); err != nil {
+		t.Fatalf("count mfa rows: %v", err)
+	}
+	if rows != 0 {
+		t.Fatalf("mfa rows after reset-mfa = %d, want 0", rows)
+	}
+	if got := platformActions(t, pg); got != "tenant_member_mfa_reset" {
+		t.Fatalf("audit actions = %s", got)
+	}
+}
+
 func TestTenantInviteCommands(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -214,8 +252,9 @@ func TestTenantCommandsNameTheRefusedFlag(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
-	pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
+	tenantA := pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
 	pg.SeedTenant(t, "TENANTBBBBBB", "tenant-b.example.com", "Tenant B")
+	pg.SeedTenantAdmin(t, tenantA.ID, "ADMIN0000001", "admin@tenant-a.example.com", "Admin")
 	tenant := []string{"--tenant", "tenant-a.example.com"}
 
 	for _, tc := range []struct {
@@ -233,6 +272,8 @@ func TestTenantCommandsNameTheRefusedFlag(t *testing.T) {
 		{name: "add a member named twice", args: append([]string{"member", "add", "--user", "USER1", "--email", "a@example.com", "--role", "tenant_admin"}, tenant...), want: "--user or --email: user_public_id and email cannot both be set"},
 		{name: "change the role of no user", args: append([]string{"member", "update-role", "--role", "tenant_admin"}, tenant...), want: "--user: user_public_id is required"},
 		{name: "remove no user", args: append([]string{"member", "remove"}, tenant...), want: "--user: user_public_id is required"},
+		{name: "reset the two-step verification of no user", args: append([]string{"member", "reset-mfa"}, tenant...), want: "--user or --email: user_public_id or email is required"},
+		{name: "reset two-step verification nobody set up", args: append([]string{"member", "reset-mfa", "--user", "ADMIN0000001"}, tenant...), want: "user has no two-step verification set up"},
 		{name: "invite a malformed email", args: append([]string{"invite", "create", "--email", "nobody"}, tenant...), want: "--email: invalid email"},
 		{name: "resend a malformed invitation ID", args: append([]string{"invite", "resend", "--id", "42"}, tenant...), want: "--id: invalid invitation_id"},
 		{name: "create an account with a malformed email", args: append([]string{"admin", "create", "--email", "nobody", "--name", "A", "--generate-password"}, tenant...), want: "--email: invalid email"},

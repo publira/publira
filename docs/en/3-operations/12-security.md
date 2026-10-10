@@ -2,7 +2,7 @@
 title: Securing an install
 description: How an install keeps tenants and credentials apart, how to rotate its encryption keys, database passwords, signing keys, and tokens, and what two-step verification and the audit logs cover.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 An install holds the credentials of every tenant's payment provider and mail server, the personal data of every reader, and the keys that seal them. This page is for the operator who keeps them safe: what the install relies on to keep them apart, where each secret may go, how to replace each one, and what two-step verification and the audit logs give you. Read it before you need it — each procedure below is easier to run on a quiet day than during an incident.
@@ -198,7 +198,7 @@ publiractl policy set --mfa-required-for-tenant-admin
 
 `--mfa-required-for-tenant-admin=false` stops requiring it. The requirement is checked when a Tenant admin signs in, so it applies from each one's next sign-in rather than to sessions already open; what it does, and whom it covers, is in [Platform defaults and policies](./9-platform-policies.md#two-step-verification-for-tenant-administrators).
 
-A member of staff who has lost both the authenticator and every recovery code cannot sign in again, and neither the tenant's other administrators nor you can remove it from their account yet ([#3796](https://github.com/publira/publira/issues/3796)). In the meantime, give their role to another account of theirs, as [A tenant's staff](./3-tenant-staff.md) describes.
+A member of staff who has lost both the authenticator and every recovery code cannot sign in again, and the tenant's other administrators cannot remove it from their account. You can, with `publiractl tenant member reset-mfa`, as [A tenant's staff](./3-tenant-staff.md#lost-two-step-verification) describes.
 
 Each authenticator's secret is sealed with the encryption keys, which is why [removing an old key](#4-remove-the-old-key-only-when-nothing-uses-it) can lock staff out.
 

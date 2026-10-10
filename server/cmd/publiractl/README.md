@@ -354,6 +354,7 @@ go -C server run ./cmd/publiractl tenant admin create \
 | `tenant member add` | `AddTenantMember` | Gives a user of the tenant, named by `--user` (public ID) or `--email`, the `--role` |
 | `tenant member update-role` | `UpdateTenantMemberRole` | Replaces the `--user`'s console role with `--role` |
 | `tenant member remove` | `RemoveTenantMember` | Takes every console role from the `--user`, who stays a user of the tenant |
+| `tenant member reset-mfa` | — | Removes the authenticator and every recovery code of a user of the tenant, named by `--user` (public ID) or `--email`, so they sign in with their password alone; refused for a user with none set up |
 | `tenant invite create` | `CreateTenantAdminInvitation` | Invites `--email` to administer the tenant; an address that already has an account is given `tenant_admin` at once |
 | `tenant invite list` | `ListTenantAdminInvitations` | Prints every invitation with its ID and status |
 | `tenant invite resend`, `tenant invite cancel` | `ResendTenantAdminInvitation`, `CancelTenantAdminInvitation` | Mails the invitation `--id` again with a new link, or withdraws it |
