@@ -69,6 +69,9 @@ const (
 	// AdminSeriesServiceUpdateEpisodeTitleProcedure is the procedure name of the AdminSeriesService's
 	// UpdateEpisodeTitle RPC.
 	AdminSeriesServiceUpdateEpisodeTitleProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodeTitle"
+	// AdminSeriesServiceUpdateEpisodePricingProcedure is the procedure name of the AdminSeriesService's
+	// UpdateEpisodePricing RPC.
+	AdminSeriesServiceUpdateEpisodePricingProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodePricing"
 	// AdminSeriesServiceUpdateEpisodeLayoutProcedure is the procedure name of the AdminSeriesService's
 	// UpdateEpisodeLayout RPC.
 	AdminSeriesServiceUpdateEpisodeLayoutProcedure = "/publira.admin.v1.AdminSeriesService/UpdateEpisodeLayout"
@@ -216,6 +219,13 @@ var (
 			Procedure:  AdminSeriesServiceUpdateEpisodeTitleProcedure,
 		}
 	})
+	adminSeriesServiceUpdateEpisodePricingSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateEpisodePricing"),
+			Procedure:  AdminSeriesServiceUpdateEpisodePricingProcedure,
+		}
+	})
 	adminSeriesServiceUpdateEpisodeLayoutSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -354,6 +364,8 @@ type AdminSeriesServiceClient interface {
 	// Minimum role: tenant_editor.
 	UpdateEpisodeTitle(context.Context, *v1.UpdateEpisodeTitleRequest) (*v1.UpdateEpisodeTitleResponse, error)
 	// Minimum role: tenant_editor.
+	UpdateEpisodePricing(context.Context, *v1.UpdateEpisodePricingRequest) (*v1.UpdateEpisodePricingResponse, error)
+	// Minimum role: tenant_editor.
 	UpdateEpisodeLayout(context.Context, *v1.UpdateEpisodeLayoutRequest) (*v1.UpdateEpisodeLayoutResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateEpisodeAvailability(context.Context, *v1.UpdateEpisodeAvailabilityRequest) (*v1.UpdateEpisodeAvailabilityResponse, error)
@@ -433,6 +445,8 @@ type AdminSeriesServiceHandler interface {
 	// Minimum role: tenant_editor.
 	UpdateEpisodeTitle(context.Context, *v1.UpdateEpisodeTitleRequest) (*v1.UpdateEpisodeTitleResponse, error)
 	// Minimum role: tenant_editor.
+	UpdateEpisodePricing(context.Context, *v1.UpdateEpisodePricingRequest) (*v1.UpdateEpisodePricingResponse, error)
+	// Minimum role: tenant_editor.
 	UpdateEpisodeLayout(context.Context, *v1.UpdateEpisodeLayoutRequest) (*v1.UpdateEpisodeLayoutResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateEpisodeAvailability(context.Context, *v1.UpdateEpisodeAvailabilityRequest) (*v1.UpdateEpisodeAvailabilityResponse, error)
@@ -480,6 +494,7 @@ func RegisterAdminSeriesServiceHandler(server *connect.Server, svc AdminSeriesSe
 		connect.Method{Spec: adminSeriesServiceReplaceEpisodeImageSpec(), Handler: adapter.replaceEpisodeImage},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodePublishScheduleSpec(), Handler: adapter.updateEpisodePublishSchedule},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodeTitleSpec(), Handler: adapter.updateEpisodeTitle},
+		connect.Method{Spec: adminSeriesServiceUpdateEpisodePricingSpec(), Handler: adapter.updateEpisodePricing},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodeLayoutSpec(), Handler: adapter.updateEpisodeLayout},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodeAvailabilitySpec(), Handler: adapter.updateEpisodeAvailability},
 		connect.Method{Spec: adminSeriesServiceUpdateEpisodePurchaseAvailabilitySpec(), Handler: adapter.updateEpisodePurchaseAvailability},
@@ -557,6 +572,10 @@ func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePublishSchedule(conte
 
 func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodeTitle(context.Context, *v1.UpdateEpisodeTitleRequest) (*v1.UpdateEpisodeTitleResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateEpisodeTitle is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePricing(context.Context, *v1.UpdateEpisodePricingRequest) (*v1.UpdateEpisodePricingResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateEpisodePricing is not implemented")
 }
 
 func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodeLayout(context.Context, *v1.UpdateEpisodeLayoutRequest) (*v1.UpdateEpisodeLayoutResponse, error) {
@@ -730,6 +749,14 @@ func (c *adminSeriesServiceClient) UpdateEpisodePublishSchedule(ctx context.Cont
 func (c *adminSeriesServiceClient) UpdateEpisodeTitle(ctx context.Context, req *v1.UpdateEpisodeTitleRequest) (*v1.UpdateEpisodeTitleResponse, error) {
 	var res v1.UpdateEpisodeTitleResponse
 	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateEpisodeTitleSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UpdateEpisodePricing(ctx context.Context, req *v1.UpdateEpisodePricingRequest) (*v1.UpdateEpisodePricingResponse, error) {
+	var res v1.UpdateEpisodePricingResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateEpisodePricingSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1015,6 +1042,18 @@ func (h adminSeriesServiceHandler) updateEpisodeTitle(ctx context.Context, _ con
 		return err
 	}
 	res, err := h.svc.UpdateEpisodeTitle(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) updateEpisodePricing(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateEpisodePricingRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateEpisodePricing(ctx, &req)
 	if err != nil {
 		return err
 	}

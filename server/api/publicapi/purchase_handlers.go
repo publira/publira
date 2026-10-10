@@ -127,24 +127,35 @@ func (s *apiServer) StartEpisodeCheckout(
 		successURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "success")
 		cancelURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "cancelled")
 	}
+	purchase := paymentprovider.Purchase{
+		TenantID:           tenant.ID,
+		ReaderID:           user.ID,
+		EpisodeID:          episode.ID,
+		Price:              episode.Price,
+		ReadingPeriodHours: episode.ReadingPeriodHours.Int32,
+	}
 	checkoutURL, err := provider.StartCheckout(ctx, credentials, paymentprovider.CheckoutRequest{
-		Purchase: paymentprovider.Purchase{
-			TenantID:           tenant.ID,
-			ReaderID:           user.ID,
-			EpisodeID:          episode.ID,
-			Price:              episode.Price,
-			ReadingPeriodHours: episode.ReadingPeriodHours.Int32,
-		},
+		Purchase:       purchase,
 		EpisodeTitle:   episode.Title,
 		SuccessURL:     successURL,
 		CancelURL:      cancelURL,
-		IdempotencyKey: fmt.Sprintf("episode-checkout:%s:%s:%s", tenant.ID, user.ID, episode.ID),
+		IdempotencyKey: checkoutIdempotencyKey(purchase),
 	})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to start a checkout with the payment provider", "error", err, "tenant_id", tenant.ID, "provider", provider.Declaration().ID, "episode_id", episode.ID.String())
 		return nil, connect.NewError(connect.CodeUnavailable, "failed to start checkout")
 	}
 	return &publirav1.StartEpisodeCheckoutResponse{CheckoutUrl: checkoutURL}, nil
+}
+
+// checkoutIdempotencyKey names one reader's checkout of one episode on the
+// terms it is sold on, so a retried request reuses the provider's checkout.
+// The price and the reading period are part of the key because an editor can
+// change them: a provider refuses a key it has seen sent with other amounts,
+// or answers with the checkout it made for them, either of which would keep a
+// reader who started a checkout before the change from buying at the new terms.
+func checkoutIdempotencyKey(purchase paymentprovider.Purchase) string {
+	return fmt.Sprintf("episode-checkout:%s:%s:%s:%d:%d", purchase.TenantID, purchase.ReaderID, purchase.EpisodeID, purchase.Price, purchase.ReadingPeriodHours)
 }
 
 // refuseCheckoutForStoreRoute answers failed_precondition for a tenant whose
@@ -511,38 +522,30 @@ func (s *apiServer) createPurchase(
 	if event.PaymentID != "" {
 		paymentID = sql.NullString{String: event.PaymentID, Valid: true}
 	}
-	hasPurchase, err := queries.UserHasValidPurchaseForEpisode(ctx, dbmodels.UserHasValidPurchaseForEpisodeParams{
-		TenantID:  tenantID,
-		UserID:    purchase.ReaderID,
-		EpisodeID: purchase.EpisodeID,
-	})
-	if err != nil {
-		return fmt.Errorf("check existing purchase: %w", err)
+	// A reader can pay two checkouts of the same episode: one started before an
+	// editor changed its price or reading period, and one started after. Both
+	// are recorded, because each took a payment. A prior delivery of this
+	// checkout that committed the purchase but failed the projection inserts
+	// nothing here, and the provider's retry carries on to repair that event.
+	var expiresAt sql.NullTime
+	if hours := purchase.ReadingPeriodHours; hours > 0 {
+		now := time.Now().UTC()
+		expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
 	}
-	if hasPurchase {
-		// A prior delivery may have committed purchases before the projection
-		// failed. Continue so the provider's retry repairs that derived event.
-	} else {
-		var expiresAt sql.NullTime
-		if hours := purchase.ReadingPeriodHours; hours > 0 {
-			now := time.Now().UTC()
-			expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
-		}
-		_, err = queries.CreatePurchaseFromProviderCheckout(ctx, dbmodels.CreatePurchaseFromProviderCheckoutParams{
-			ID:                 uuid.New(),
-			TenantID:           tenantID,
-			UserID:             purchase.ReaderID,
-			EpisodeID:          purchase.EpisodeID,
-			PriceAtPurchase:    purchase.Price,
-			ExpiresAt:          expiresAt,
-			Provider:           providerID,
-			ProviderCheckoutID: event.CheckoutID,
-			ProviderPaymentID:  paymentID,
-			IsTest:             event.Test,
-		})
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("create purchase: %w", err)
-		}
+	_, err := queries.CreatePurchaseFromProviderCheckout(ctx, dbmodels.CreatePurchaseFromProviderCheckoutParams{
+		ID:                 uuid.New(),
+		TenantID:           tenantID,
+		UserID:             purchase.ReaderID,
+		EpisodeID:          purchase.EpisodeID,
+		PriceAtPurchase:    purchase.Price,
+		ExpiresAt:          expiresAt,
+		Provider:           providerID,
+		ProviderCheckoutID: event.CheckoutID,
+		ProviderPaymentID:  paymentID,
+		IsTest:             event.Test,
+	})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("create purchase: %w", err)
 	}
 
 	if paymentID.Valid {

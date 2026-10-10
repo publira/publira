@@ -268,10 +268,10 @@ type Querier interface {
 	CreatePlatformUserEmailChangeToken(ctx context.Context, arg CreatePlatformUserEmailChangeTokenParams) (PlatformUserEmailChangeToken, error)
 	CreatePlatformUserPasswordResetToken(ctx context.Context, arg CreatePlatformUserPasswordResetTokenParams) (PlatformUserPasswordResetToken, error)
 	CreatePlatformUserRole(ctx context.Context, arg CreatePlatformUserRoleParams) (PlatformUserRole, error)
-	// The advisory lock serializes different checkouts for the same buyer and
-	// episode. The provider's request idempotency prevents duplicate checkouts in
-	// the ordinary case; this also keeps an exceptional concurrent pair from
-	// producing two entitlements.
+	// Every checkout the provider reports paid is a purchase of its own, even for a
+	// reader who already holds one for the episode: the payment was taken, so it is
+	// a sale to report and to match a refund against. A redelivery of the same
+	// checkout is no row.
 	CreatePurchaseFromProviderCheckout(ctx context.Context, arg CreatePurchaseFromProviderCheckoutParams) (Purchase, error)
 	// A reply the reader mailed back, as the inbound webhook stores it. A provider
 	// delivers a mail again whenever it is not sure the first delivery landed, so
@@ -2594,6 +2594,8 @@ type Querier interface {
 	// the series.
 	UpdateEpisodeLayoutByIDForTenant(ctx context.Context, arg UpdateEpisodeLayoutByIDForTenantParams) error
 	UpdateEpisodeOrderIndexByIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByIDForTenantAndSeriesParams) error
+	// NULL gives a purchase of the episode no expiry.
+	UpdateEpisodePricingByIDForTenant(ctx context.Context, arg UpdateEpisodePricingByIDForTenantParams) (int64, error)
 	UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error
 	// NULL returns the episode to following its series.
 	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error

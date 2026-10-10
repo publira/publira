@@ -670,6 +670,14 @@ SET title = sqlc.arg('title')
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id');
 
+-- name: UpdateEpisodePricingByIDForTenant :execrows
+-- NULL gives a purchase of the episode no expiry.
+UPDATE episode_listings
+SET price = sqlc.arg('price'),
+    reading_period_hours = sqlc.narg('reading_period_hours')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND episode_id = sqlc.arg('episode_id');
+
 -- name: UpdateEpisodeLayoutByIDForTenant :exec
 -- Both overrides are written together, and NULL returns a value to following
 -- the series.

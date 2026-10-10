@@ -3,8 +3,10 @@ package publicapi
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -204,6 +206,95 @@ func TestDBProcessPaymentWebhookProjectsPurchaseEventIdempotently(t *testing.T) 
 	}
 	if eventCount != 1 {
 		t.Fatalf("projected purchase events = %d, want 1", eventCount)
+	}
+}
+
+// A reader who pays two checkouts of one episode — one started before an
+// editor changed its price, and one after — paid twice, so both payments are
+// purchases: each is a sale, and each can have a refund matched against it.
+func TestDBProcessPaymentWebhookRecordsEveryPaidCheckoutOfAnEpisode(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	encryptor := newPublicTestEncryptor(t)
+	tenant := pg.SeedTenant(t, "PAYTWICE", "pay-twice.example.com", "Pay Twice")
+	user := pg.SeedEndUser(t, tenant.ID, "PAYTWICEUSER", "twice@example.com", "Twice buyer")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{Published: true})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		Price:       500,
+		Status:      testutil.EpisodeStatusPublished,
+		PublishedAt: time.Now().Add(-time.Hour),
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, providers.Registry(), nil, slog.Default())
+	if _, err := store.Upsert(ctx, tenant.ID, stripeSettings(testCheckoutSecretKey, testCheckoutWebhookSecret), paymentsettings.AuditMeta{}); err != nil {
+		t.Fatalf("upsert payment settings: %v", err)
+	}
+
+	db := pg.OpenPublicDB(t)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil, nil)
+	ts := httptest.NewServer(handlerFromServer(server))
+	t.Cleanup(ts.Close)
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+
+	for _, paid := range []struct {
+		session, paymentIntent string
+		price                  int
+	}{
+		{session: "cs_before_the_change", paymentIntent: "pi_before_the_change", price: 500},
+		{session: "cs_after_the_change", paymentIntent: "pi_after_the_change", price: 300},
+	} {
+		payload, signature := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "checkout.session.completed", map[string]any{
+			"id":             paid.session,
+			"object":         "checkout.session",
+			"amount_total":   paid.price,
+			"currency":       "jpy",
+			"payment_status": "paid",
+			"payment_intent": paid.paymentIntent,
+			"metadata": map[string]string{
+				stripe.MetadataTenantID:  tenant.ID.String(),
+				stripe.MetadataUserID:    user.ID.String(),
+				stripe.MetadataEpisodeID: episode.ID.String(),
+				stripe.MetadataPrice:     fmt.Sprint(paid.price),
+			},
+		})
+		if _, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenant.ID.String(), payload, signature)); err != nil {
+			t.Fatalf("ProcessPaymentWebhook of %s: %v", paid.session, err)
+		}
+	}
+
+	rows, err := pg.DB.QueryContext(ctx, `
+		SELECT p.provider_checkout_id, p.price_at_purchase, count(ce.id)
+		FROM purchases p
+		LEFT JOIN content_events ce
+			ON ce.tenant_id = p.tenant_id
+			AND ce.source_table = 'purchases'
+			AND ce.source_id = p.id
+		WHERE p.tenant_id = $1 AND p.user_id = $2 AND p.episode_id = $3
+		GROUP BY p.provider_checkout_id, p.price_at_purchase
+		ORDER BY p.provider_checkout_id
+	`, tenant.ID, user.ID, episode.ID)
+	if err != nil {
+		t.Fatalf("read purchases: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	var got []string
+	for rows.Next() {
+		var checkout string
+		var price, events int
+		if err := rows.Scan(&checkout, &price, &events); err != nil {
+			t.Fatalf("scan purchase: %v", err)
+		}
+		got = append(got, fmt.Sprintf("%s:%d:%d", checkout, price, events))
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read purchases: %v", err)
+	}
+	want := []string{"cs_after_the_change:300:1", "cs_before_the_change:500:1"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("purchases (checkout:price:events) = %v, want %v", got, want)
 	}
 }
 
