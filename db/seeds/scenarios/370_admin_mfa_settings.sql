@@ -7,6 +7,12 @@
 -- The password hash matches the dev seed's `adminpass`.
 -- public_id is hard-coded in e2e/src/scenarios/admin-mfa-settings.ts.
 --   admin MfasADMNAAA1
+--
+-- The tenant console's reader and member lists print when an account signed
+-- up, and the documentation photographs both with this admin in them, so the
+-- account is dated the way 160_screenshot_baseline.sql dates the seed tenant's
+-- own users rather than from the moment the file runs. It is half an hour
+-- after the newest of those, which keeps it the first row of either list.
 
 WITH admin_user_seed AS (
     SELECT '018f0e8a-3700-7000-8000-000000000001'::uuid AS id
@@ -19,7 +25,8 @@ INSERT INTO users (
     password_hash,
     name,
     status,
-    email_verified_at
+    email_verified_at,
+    created_at
 )
 SELECT
     aus.id,
@@ -29,7 +36,8 @@ SELECT
     '$2a$10$IWG04mPtZmFUnCi7UTCT6uMdMwgBorh/EYQDZdmReiMcqdSpcNT9.',
     'MFA Settings E2E Admin',
     'active',
-    NOW()
+    TIMESTAMPTZ '2026-01-05 10:35:00+00',
+    TIMESTAMPTZ '2026-01-05 10:30:00+00'
 FROM admin_user_seed aus
 JOIN tenants t ON t.public_id = 'SeedTNNTAAA1'
 ON CONFLICT (public_id) DO UPDATE
@@ -37,7 +45,9 @@ SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,
     password_hash = EXCLUDED.password_hash,
     name = EXCLUDED.name,
-    status = EXCLUDED.status;
+    status = EXCLUDED.status,
+    email_verified_at = EXCLUDED.email_verified_at,
+    created_at = EXCLUDED.created_at;
 
 INSERT INTO tenant_user_roles (id, user_id, role, tenant_id)
 SELECT
