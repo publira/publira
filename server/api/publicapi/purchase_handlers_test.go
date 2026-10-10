@@ -49,27 +49,54 @@ func TestMobilePurchaseReturnURL(t *testing.T) {
 	}
 }
 
-// A retry on the same terms reuses the provider's checkout, and a change of
-// price or reading period starts another one.
-func TestCheckoutIdempotencyKeyFollowsTheTerms(t *testing.T) {
-	purchase := paymentprovider.Purchase{
-		TenantID:           uuid.Must(uuid.NewV7()),
-		ReaderID:           uuid.Must(uuid.NewV7()),
-		EpisodeID:          uuid.Must(uuid.NewV7()),
-		Price:              300,
-		ReadingPeriodHours: 24,
+// A retry of the same request reuses the provider's checkout, and a request
+// that differs in anything it sends starts another one.
+func TestCheckoutIdempotencyKeyFollowsTheRequest(t *testing.T) {
+	request := paymentprovider.CheckoutRequest{
+		Purchase: paymentprovider.Purchase{
+			TenantID:           uuid.Must(uuid.NewV7()),
+			ReaderID:           uuid.Must(uuid.NewV7()),
+			EpisodeID:          uuid.Must(uuid.NewV7()),
+			Price:              300,
+			ReadingPeriodHours: 24,
+		},
+		EpisodeTitle: "Episode 1",
+		SuccessURL:   "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success",
+		CancelURL:    "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=cancelled",
 	}
-	key := checkoutIdempotencyKey(purchase)
-	if again := checkoutIdempotencyKey(purchase); again != key {
-		t.Fatalf("key of the same terms = %q, want %q", again, key)
+	key, err := checkoutIdempotencyKey(request)
+	if err != nil {
+		t.Fatalf("checkoutIdempotencyKey: %v", err)
 	}
-	repriced := purchase
-	repriced.Price = 500
-	extended := purchase
-	extended.ReadingPeriodHours = 48
-	for name, changed := range map[string]paymentprovider.Purchase{"price": repriced, "reading period": extended} {
-		if got := checkoutIdempotencyKey(changed); got == key {
-			t.Fatalf("key after a change of %s = %q, the key of the old terms", name, got)
+	if len(key) > 255 {
+		t.Fatalf("key is %d bytes, longer than the 255 Stripe accepts", len(key))
+	}
+	retried := request
+	retried.IdempotencyKey = "a key from an earlier attempt"
+	if again, err := checkoutIdempotencyKey(retried); err != nil || again != key {
+		t.Fatalf("key of the same request = (%q, %v), want %q", again, err, key)
+	}
+
+	changes := map[string]func(*paymentprovider.CheckoutRequest){
+		"price":          func(r *paymentprovider.CheckoutRequest) { r.Purchase.Price = 500 },
+		"reading period": func(r *paymentprovider.CheckoutRequest) { r.Purchase.ReadingPeriodHours = 48 },
+		"episode title":  func(r *paymentprovider.CheckoutRequest) { r.EpisodeTitle = "Episode 1: The Beginning" },
+		"success URL": func(r *paymentprovider.CheckoutRequest) {
+			r.SuccessURL = "https://tenant.example/en/checkout/return?episode=EPISODE001&status=success"
+		},
+		"cancel URL": func(r *paymentprovider.CheckoutRequest) {
+			r.CancelURL = "https://tenant.example/en/checkout/return?episode=EPISODE001&status=cancelled"
+		},
+	}
+	for name, change := range changes {
+		changed := request
+		change(&changed)
+		got, err := checkoutIdempotencyKey(changed)
+		if err != nil {
+			t.Fatalf("checkoutIdempotencyKey after a change of %s: %v", name, err)
+		}
+		if got == key {
+			t.Fatalf("key after a change of %s = %q, the key of the earlier request", name, got)
 		}
 	}
 }
