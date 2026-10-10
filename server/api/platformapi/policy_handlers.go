@@ -126,11 +126,27 @@ func (s *platformServer) UpdatePlatformPolicy(
 	// expected_revision, so a value another operator saved since the caller's
 	// read is refused with the rest of the stale request rather than written
 	// back over.
+	//
+	// Requiring the operator factor of an install that cannot seal an
+	// authenticator secret would stop every operator who has not enrolled at
+	// an enrollment StartMfaEnrollment always refuses, the operator saving it
+	// included, so the Platform Console could no longer be signed in to and
+	// switch it back off. Switching it on is refused there instead. A
+	// requirement already stored is kept, so the rest of the policy can still
+	// be saved while it is being switched off.
 	requested := req.GetPolicy()
-	if requested.GetWaitFreeTicketUse() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.MfaRequiredForPlatformOperator == nil {
+	enablesOperatorMfaWithoutSecrets := requested.GetMfaRequiredForPlatformOperator() && s.encryptor == nil
+	if requested.GetWaitFreeTicketUse() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.MfaRequiredForPlatformOperator == nil || enablesOperatorMfaWithoutSecrets {
 		stored, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read platform policy", err)
+		}
+		if enablesOperatorMfaWithoutSecrets && !stored.MFARequiredForPlatformOperator {
+			return nil, rpcerrors.NewFieldViolationError(
+				connect.CodeFailedPrecondition,
+				errors.New("mfa_required_for_platform_operator cannot be switched on while the secret manager is not configured"),
+				platformpolicy.FieldPolicy+"."+platformpolicy.FieldMFARequiredForPlatformOperator,
+			)
 		}
 		if requested.GetWaitFreeTicketUse() == nil {
 			params.Policy.WaitFreeTicketUse = stored.WaitFreeTicketUse

@@ -13,15 +13,29 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
+// newPolicyClient serves the policy over a server holding a secret manager,
+// since the operator factor can be required only where an authenticator
+// secret can be sealed.
 func newPolicyClient(t *testing.T) (publirasplatformv1connect.PlatformPolicyServiceClient, *testutil.PostgresEnv, testutil.PlatformOperator) {
 	t.Helper()
-	ts, pg := newDBIntegrationEnv(t)
+	return newPolicyClientWith(t, newTestEncryptor(t))
+}
+
+func newPolicyClientWith(t *testing.T, encryptor emailsettings.SecretManager) (publirasplatformv1connect.PlatformPolicyServiceClient, *testutil.PostgresEnv, testutil.PlatformOperator) {
+	t.Helper()
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	db := pg.OpenPlatformDB(t)
+	api := newAPI(db, dbmodels.New(db), slog.Default(), encryptor, nil, testutil.TokenManager(), nil, openMailGuard(), nil)
+	ts := httptest.NewServer(handlerFromServer(api.server))
+	t.Cleanup(ts.Close)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	return publirasplatformv1connect.NewPlatformPolicyServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))), pg, operator
 }
@@ -246,6 +260,41 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedOperatorMfaRequirement(t *testing.T
 	}
 }
 
+// Without a secret manager no operator could enroll, so requiring the factor
+// would leave nobody able to sign in to the Platform Console and switch it back
+// off. A requirement stored already, from publiractl, is kept rather than
+// blocking every other save.
+func TestDBUpdatePlatformPolicyRefusesTheOperatorMfaRequirementWithoutSecrets(t *testing.T) {
+	client, pg, operator := newPolicyClientWith(t, nil)
+
+	_, err := updatePolicy(t, client, operator, tightenedPolicy(), 0)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("switching the requirement on without a secret manager = %v, want failed_precondition", err)
+	}
+	assertFieldViolation(t, err, "policy.mfa_required_for_platform_operator")
+	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_policy_config`); got != 0 {
+		t.Fatalf("platform_policy_config rows = %d, want the refused save to write nothing", got)
+	}
+
+	stored := platformpolicy.Defaults()
+	stored.MFARequiredForPlatformOperator = true
+	pg.SavePlatformPolicy(t, stored)
+	_, revision := getPolicy(t, client, operator)
+	want := tightenedPolicy()
+	resp, err := updatePolicy(t, client, operator, want, revision)
+	if err != nil {
+		t.Fatalf("saving the policy over a stored requirement without a secret manager: %v", err)
+	}
+	if got := platformPolicyFromProto(resp.Policy); got != want {
+		t.Fatalf("saved policy = %+v, want %+v", got, want)
+	}
+
+	want.MFARequiredForPlatformOperator = false
+	if _, err := updatePolicy(t, client, operator, want, resp.Revision); err != nil {
+		t.Fatalf("switching the requirement off without a secret manager: %v", err)
+	}
+}
+
 // A save based on a read another save has since moved past is refused, so it
 // cannot roll that other save back.
 func TestDBUpdatePlatformPolicyRejectsAStaleRevision(t *testing.T) {
@@ -459,7 +508,7 @@ func TestDBUpdatePlatformPolicyAuditsInTheSameTransaction(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	db := pg.OpenPlatformDB(t)
-	api := newAPI(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager(), droppingRecorder{}, openMailGuard(), nil)
+	api := newAPI(db, dbmodels.New(db), slog.Default(), newTestEncryptor(t), nil, testutil.TokenManager(), droppingRecorder{}, openMailGuard(), nil)
 	ts := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(ts.Close)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")

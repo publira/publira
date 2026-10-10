@@ -85,6 +85,10 @@ const FieldDuplicateCommentWindow = "community_limit_defaults.duplicate_comment_
 // that names where the disposable email domain list is read from.
 const FieldDisposableEmailDomainsURL = "disposable_email_domains_url"
 
+// FieldMFARequiredForPlatformOperator is the field of the PlatformPolicy
+// message that requires the second factor of every platform operator.
+const FieldMFARequiredForPlatformOperator = "mfa_required_for_platform_operator"
+
 // MaxDisposableEmailDomainsURLLength bounds the URL of the disposable email
 // domain list, as the column's check constraint does.
 const MaxDisposableEmailDomainsURLLength = 2048

@@ -285,7 +285,10 @@ type PlatformPolicy struct {
 	// when a request leaves it unset.
 	LoginAttemptsPerSource *HourDayLimit `protobuf:"bytes,10,opt,name=login_attempts_per_source,json=loginAttemptsPerSource,proto3" json:"login_attempts_per_source,omitempty"`
 	// Whether an operator that has not enrolled a TOTP authenticator is refused
-	// a session on a password alone and held at enrollment instead.
+	// a session on a password alone and held at enrollment instead. A server
+	// without a secret manager cannot seal an authenticator secret, so no
+	// operator could enroll there, and switching it on there is refused with
+	// FAILED_PRECONDITION naming this field.
 	//
 	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
 	// when a request leaves it unset.

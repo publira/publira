@@ -235,7 +235,10 @@ export type PlatformPolicy = Message<"publira.platform.v1.PlatformPolicy"> & {
 
   /**
    * Whether an operator that has not enrolled a TOTP authenticator is refused
-   * a session on a password alone and held at enrollment instead.
+   * a session on a password alone and held at enrollment instead. A server
+   * without a secret manager cannot seal an authenticator secret, so no
+   * operator could enroll there, and switching it on there is refused with
+   * FAILED_PRECONDITION naming this field.
    *
    * Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
    * when a request leaves it unset.
