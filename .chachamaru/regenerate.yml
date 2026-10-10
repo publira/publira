@@ -1,4 +1,4 @@
-# How the maintenance bot regenerates generated output on Renovate pull requests.
+# How Chachamaru, the maintenance bot, regenerates generated output on Renovate pull requests.
 triggers:
   - buf.gen.yaml
   - .github/workflows/ci.yml
