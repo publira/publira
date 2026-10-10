@@ -1,18 +1,27 @@
 // Package seriespublications applies the publication of scheduled series to
-// what holds a copy of the catalog: the public site caches.
+// what holds a copy of the catalog, and to the episodes published while the
+// series was not public.
 //
 // A series saved with a publication instant in the future needs nothing in the
-// database to change when that instant passes: the catalog reads compare it
-// against NOW(), so the API lists the series from that moment. What does not
-// change on its own is what was copied out of it — a series list, a creator's
-// page, or the series' own page cached while the series was still hidden keeps
-// leaving it out until something drops the tags they are cached under. Asking
-// for that drop is this runner's whole job, and it is why each publication is
-// recorded as applied: a run that was down over one still catches up on its
-// next pass.
+// database to change for the series itself when that instant passes: the
+// catalog reads compare it against NOW(), so the API lists the series from
+// that moment. What does not change on its own is what was copied out of it —
+// a series list, a creator's page, or the series' own page cached while the
+// series was still hidden keeps leaving it out until something drops the tags
+// they are cached under.
 //
-// The search index needs no such pass: a series' document carries its
-// published_at, and the search filters on it at the moment it is asked.
+// Nor does an episode published while the series was hidden: it still carries
+// the date of a publication no reader could open, and its followers were not
+// told about it then. The runner dates it from the series' instant and queues
+// its announcement, the way the console does when it publishes a series at
+// once, before it asks for the drop that carries the new dates to the site.
+// Each publication is recorded as applied once both are done, so a run that
+// was down over one still catches up on its next pass.
+//
+// The search index needs no pass for the series: its document carries its
+// published_at, and the search filters on it at the moment it is asked. The
+// latest episode a document carries is another matter, so the runner queues
+// the series' sync for the new dates.
 package seriespublications
 
 import (
@@ -24,7 +33,9 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 
+	"github.com/publira/publira/server/internal/catalogindex"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 )
 
 var tracer = otel.Tracer("github.com/publira/publira/server/internal/seriespublications")
@@ -32,6 +43,7 @@ var tracer = otel.Tracer("github.com/publira/publira/server/internal/seriespubli
 // Queries is the part of the generated querier this runner uses. The
 // connection behind it must bypass RLS: the listing spans every tenant.
 type Queries interface {
+	outbox.SeriesPublicationQuerier
 	ListSeriesPublicationsDue(ctx context.Context) ([]dbmodels.ListSeriesPublicationsDueRow, error)
 	MarkSeriesPublicationRevalidated(ctx context.Context, id uuid.UUID) error
 }
@@ -114,10 +126,32 @@ func (r *Runner) RunOnce(ctx context.Context) {
 	}
 }
 
-// applyTenant records one tenant's drop and then marks the publications it
-// answers for. The order matters: a publication marked before its drop is owed
-// would never be retried, and the site would keep leaving the series out.
+// applyTenant announces the episodes each publication owes, records one
+// tenant's drop, and then marks the publications it answers for. The order
+// matters: a publication marked before its drop is owed would never be
+// retried, and the site would keep leaving the series out; a drop recorded
+// before the new dates are written could be sent while the old ones still
+// stand.
 func (r *Runner) applyTenant(ctx context.Context, tenantID uuid.UUID, rows []dbmodels.ListSeriesPublicationsDueRow) {
+	announced := make([]dbmodels.ListSeriesPublicationsDueRow, 0, len(rows))
+	for _, row := range rows {
+		if err := r.announceEpisodes(ctx, tenantID, row); err != nil {
+			// Left unmarked, so the next pass dates and queues what this one
+			// could not.
+			r.logger.ErrorContext(ctx, "failed to announce the episodes of a series publication",
+				"tenant_id", tenantID.String(),
+				"series_id", row.PublicID,
+				"error", err,
+			)
+			continue
+		}
+		announced = append(announced, row)
+	}
+	rows = announced
+	if len(rows) == 0 {
+		return
+	}
+
 	if r.reval != nil {
 		publicIDs := make([]string, 0, len(rows))
 		for _, row := range rows {
@@ -148,4 +182,20 @@ func (r *Runner) applyTenant(ctx context.Context, tenantID uuid.UUID, rows []dbm
 			"series_title", row.Title,
 		)
 	}
+}
+
+// announceEpisodes dates the episodes published while the series was not
+// public from its instant and queues their announcements, then the sync of the
+// series' search document that reads the new dates. The sync is queued every
+// time rather than only when an episode was dated: a pass that fails between
+// the two leaves nothing for its retry to date once the announcements have
+// drained, and the sync it owed would be lost with them.
+func (r *Runner) announceEpisodes(ctx context.Context, tenantID uuid.UUID, row dbmodels.ListSeriesPublicationsDueRow) error {
+	if _, err := outbox.QueueSeriesPublicationAnnouncements(ctx, r.queries, tenantID, row.ID); err != nil {
+		return err
+	}
+	if err := catalogindex.Queue(ctx, r.queries, tenantID, catalogindex.SeriesRef(row.ID)); err != nil {
+		return err
+	}
+	return nil
 }

@@ -309,11 +309,18 @@ SET synopsis = CASE
     END
 RETURNING *;
 
--- name: UpdateSeriesPublication :exec
+-- name: UpdateSeriesPublication :one
 -- The save drops the site caches itself when the instant it stores has already
 -- passed, so it marks that drop done here; an instant still ahead is left for
 -- the apply-series-publications batch to drop once it passes.
-UPDATE series
+--
+-- applies_publication answers whether this save is the one that makes the
+-- series public: it was not public, or its instant had passed without the
+-- batch applying it yet, and the instant stored now has passed. The caller
+-- then does what the batch would have done, since the batch will not list the
+-- series any more. The old row is read through the self-join, which sees it as
+-- it was before this statement.
+UPDATE series s
 SET published_at = sqlc.narg(published_at)::timestamptz,
     is_published = CASE
         WHEN sqlc.narg(published_at)::timestamptz IS NULL THEN false
@@ -324,7 +331,13 @@ SET published_at = sqlc.narg(published_at)::timestamptz,
         ELSE NULL
     END,
     updated_at = NOW()
-WHERE id = $1;
+FROM series old
+WHERE s.id = $1
+    AND old.id = s.id
+RETURNING (
+    old.publication_revalidated_at IS NULL
+    AND s.publication_revalidated_at IS NOT NULL
+)::boolean AS applies_publication;
 
 -- name: ListSeriesPublicationsDue :many
 -- Every published series whose publication instant has passed and whose drop
