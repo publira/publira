@@ -1,5 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorHasFieldViolation,
+} from "@publira/api-client/errors";
 import type {
   CommunityLimitDefaults,
   HourDayLimit,
@@ -40,6 +43,7 @@ export interface PlatformSecurityPolicy {
   loginAttemptsPerSource: HourDay;
   mailRequestsPerAddress: HourDay;
   mailRequestsPerSource: HourDay;
+  mfaRequiredForPlatformOperator: boolean;
   mfaRequiredForTenantAdmin: boolean;
   passwordVerification: MinuteDay;
   storePurchaseConfirmation: MinuteDay;
@@ -109,6 +113,7 @@ type RawPlatformPolicy = Pick<
   | "loginAttemptsPerSource"
   | "mailRequestsPerAddress"
   | "mailRequestsPerSource"
+  | "mfaRequiredForPlatformOperator"
   | "mfaRequiredForTenantAdmin"
   | "passwordVerification"
   | "storePurchaseConfirmation"
@@ -154,6 +159,8 @@ export const toPlatformPolicy = (
     loginAttemptsPerSource: toHourDay(policy?.loginAttemptsPerSource),
     mailRequestsPerAddress: toHourDay(policy?.mailRequestsPerAddress),
     mailRequestsPerSource: toHourDay(policy?.mailRequestsPerSource),
+    mfaRequiredForPlatformOperator:
+      policy?.mfaRequiredForPlatformOperator ?? false,
     mfaRequiredForTenantAdmin: policy?.mfaRequiredForTenantAdmin ?? false,
     passwordVerification: toMinuteDay(policy?.passwordVerification),
     storePurchaseConfirmation: toMinuteDay(policy?.storePurchaseConfirmation),
@@ -257,6 +264,10 @@ export const getPlatformRetentionDefaults = async (): Promise<
   return getPlatformRetentionDefaultsForLocale(await getPlatformLocale());
 };
 
+/** The request field `UpdatePlatformPolicy` names when it refuses the requirement. */
+const OPERATOR_MFA_REQUIREMENT_FIELD =
+  "policy.mfa_required_for_platform_operator";
+
 /**
  * The screens mirror every rule the server enforces, so an `invalid-argument`
  * is a forged or outdated form; its message names proto fields rather than
@@ -269,6 +280,17 @@ const saveFailure = async (
   rethrowUnauthenticatedRpcError(error);
   rethrowUnclassifiedRpcError(error);
   const t = await getMessagesFor(locale);
+  // The same failed precondition as a stale revision, but about the install:
+  // a server that cannot seal an authenticator secret refuses to require one
+  // of every operator, since nobody could then finish signing in.
+  if (rpcErrorHasFieldViolation(error, OPERATOR_MFA_REQUIREMENT_FIELD)) {
+    return {
+      message: t(
+        "platform.policy.security.mfa_required_for_platform_operator_unavailable"
+      ),
+      ok: false,
+    };
+  }
   return {
     message: rpcErrorMessage(error, t("platform.policy.save_failed"), {
       locale,

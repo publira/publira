@@ -103,3 +103,9 @@ export const passwordFormSchema = async (locale: Locale) => {
 
   return z.string({ error: required }).min(1, required).max(1024);
 };
+
+/**
+ * A code from an authenticator, or one of the recovery codes. The API decides
+ * which it is, so the only rule here is that something short was typed.
+ */
+export const mfaCodeFormSchema = z.string().trim().min(1).max(64);

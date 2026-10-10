@@ -28,6 +28,7 @@ export default defineConfig({
     "src/admin/theme.ts",
     "src/admin/types.ts",
     "src/email/renderer.ts",
+    "src/platform/auth.ts",
     "src/platform/client.ts",
     "src/platform/types.ts",
   ],

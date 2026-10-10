@@ -4,26 +4,20 @@ import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
-import {
-  encryptSessionPayload,
-  resolveAuthSecret,
-  sessionCookieOptions,
-} from "@publira/web-session";
-import { updateTag } from "next/cache";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { PLATFORM_SESSION_COOKIE_NAME, loginPlatform } from "#lib/auth";
+import { loginPlatform } from "#lib/auth";
 import {
   emailFormSchema,
   nextPathFormSchema,
   passwordFormSchema,
 } from "#lib/auth-input";
-import { PLATFORM_SESSION_CACHE_TAG } from "#lib/auth-shared";
 import { assertSameOrigin } from "#lib/csrf";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { MFA_PATH, writeMfaChallenge } from "#lib/mfa-challenge";
+import { writePlatformSessionCookie } from "#lib/platform-session-cookie";
 
 const loginFormSchema = async (locale: Locale) =>
   z.object({
@@ -61,31 +55,34 @@ export const loginAction = async (
   const result = await loginPlatform(email, password);
   if (!result.ok) {
     // A refusal for too many attempts came before the password was checked,
-    // so it says nothing about whether the password was right.
-    return {
-      message:
-        result.refusal === "rate-limited"
-          ? t("errors.rpc.rate-limited")
-          : t("platform.auth.login.failed"),
-      ok: false,
-    };
+    // so it says nothing about whether the password was right, and neither
+    // does a response the console could not hold.
+    switch (result.refusal) {
+      case "rate-limited": {
+        return { message: t("errors.rpc.rate-limited"), ok: false };
+      }
+      case "processing": {
+        return {
+          message: t("platform.auth.login.processing_failed"),
+          ok: false,
+        };
+      }
+      default: {
+        return { message: t("platform.auth.login.failed"), ok: false };
+      }
+    }
   }
 
-  const { session } = result;
-  const sealed = await encryptSessionPayload(
-    {
-      accessToken: session.accessToken,
-      expiresAt: session.expiresAt.toISOString(),
-    },
-    resolveAuthSecret()
-  );
-  const cookieStore = await cookies();
-  cookieStore.set({
-    ...sessionCookieOptions(session.expiresAt),
-    name: PLATFORM_SESSION_COOKIE_NAME,
-    value: sealed,
-  });
-  updateTag(PLATFORM_SESSION_CACHE_TAG);
+  if (result.kind === "challenge") {
+    await writeMfaChallenge({
+      challengeToken: result.challengeToken,
+      expiresAt: result.expiresAt.toString(),
+      kind: result.challengeKind,
+      nextPath,
+    });
+    redirect(MFA_PATH);
+  }
 
+  await writePlatformSessionCookie(result.session);
   redirect(nextPath);
 };

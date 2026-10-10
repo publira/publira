@@ -103,6 +103,10 @@
       "types": "./dist/admin/types.d.mts",
       "default": "./dist/admin/types.mjs"
     },
+    "./platform/auth": {
+      "types": "./dist/platform/auth.d.mts",
+      "default": "./dist/platform/auth.mjs"
+    },
     "./platform/client": {
       "types": "./dist/platform/client.d.mts",
       "default": "./dist/platform/client.mjs"

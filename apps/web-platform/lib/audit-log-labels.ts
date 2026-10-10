@@ -20,6 +20,28 @@ export const getAuditActionOptions = async (
       value: "operator_deleted",
     },
     {
+      label: t("platform.audit.actions.operator_mfa_disabled"),
+      value: "operator_mfa_disabled",
+    },
+    {
+      label: t("platform.audit.actions.operator_mfa_enrolled"),
+      value: "operator_mfa_enrolled",
+    },
+    {
+      label: t("platform.audit.actions.operator_mfa_recovery_code_used"),
+      value: "operator_mfa_recovery_code_used",
+    },
+    {
+      label: t(
+        "platform.audit.actions.operator_mfa_recovery_codes_regenerated"
+      ),
+      value: "operator_mfa_recovery_codes_regenerated",
+    },
+    {
+      label: t("platform.audit.actions.operator_mfa_verified"),
+      value: "operator_mfa_verified",
+    },
+    {
       label: t("platform.audit.actions.operator_resumed"),
       value: "operator_resumed",
     },

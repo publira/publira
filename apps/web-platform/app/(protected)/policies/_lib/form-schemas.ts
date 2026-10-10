@@ -118,6 +118,10 @@ export const securityPolicyFormFields = {
     kind: "value",
     name: "mail_requests_per_source_per_hour",
   },
+  mfaRequiredForPlatformOperator: {
+    kind: "value",
+    name: "mfa_required_for_platform_operator",
+  },
   mfaRequiredForTenantAdmin: {
     kind: "value",
     name: "mfa_required_for_tenant_admin",
@@ -185,6 +189,10 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
       mailPerAddressPerHour: limitSchema(t, perAddress),
       mailPerSourcePerDay: limitSchema(t, perSource),
       mailPerSourcePerHour: limitSchema(t, perSource),
+      mfaRequiredForPlatformOperator: z.preprocess(
+        (value) => value === "on",
+        z.boolean()
+      ),
       mfaRequiredForTenantAdmin: z.preprocess(
         (value) => value === "on",
         z.boolean()

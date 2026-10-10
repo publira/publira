@@ -166,6 +166,17 @@ for (const locale of DOCS_LOCALES) {
           subject: "account-settings",
         });
       });
+
+      test("an operator's own two-step verification", async ({ page }) => {
+        await openScreen(page, locale, "/account");
+
+        await expectDocsScreenshot(page, {
+          element: docsSection(page, t("platform.settings.mfa.title")),
+          locale,
+          page: "operations/platform-console",
+          subject: "account-two-step-verification",
+        });
+      });
     });
 
     test.describe("platform defaults and policies", () => {
@@ -214,6 +225,25 @@ for (const locale of DOCS_LOCALES) {
           locale,
           page: "operations/platform-policies",
           subject: "mfa-required",
+        });
+      });
+
+      test("requiring two-step verification of platform operators", async ({
+        page,
+      }) => {
+        await openScreen(page, locale, "/policies/security");
+
+        await expectDocsScreenshot(page, {
+          element: docsField(
+            page.getByRole("checkbox", {
+              name: t(
+                "platform.policy.security.mfa_required_for_platform_operator"
+              ),
+            })
+          ),
+          locale,
+          page: "operations/platform-policies",
+          subject: "operator-mfa-required",
         });
       });
 

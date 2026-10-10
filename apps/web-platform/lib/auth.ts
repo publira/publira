@@ -4,6 +4,8 @@ import {
   isUnauthenticatedRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
+import { MfaChallengeKind } from "@publira/api-client/platform/auth";
+import { parseInstant } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheLife, cacheTag } from "next/cache";
 
@@ -14,6 +16,9 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { PLATFORM_SESSION_CACHE_TAG } from "./auth-shared";
+import type { MfaChallengeKindName } from "./mfa-challenge";
+import { toPlatformSession } from "./platform-session-cookie";
+import type { PlatformSession } from "./platform-session-cookie";
 import { normalizePlatformRole } from "./roles";
 
 export {
@@ -42,10 +47,38 @@ export type GetPlatformCurrentOperatorResult =
  * What a password sign-in came to. A refused one says whether the credentials
  * were wrong or too many attempts had been made for the password to be checked
  * at all: the second is no reason to tell the operator their password is wrong.
+ *
+ * A right password that still owes a second factor earns a challenge rather
+ * than a session, and `processing` is a response the console cannot hold: the
+ * password was right, so it is no reason to say the credentials were not.
  */
 export type PlatformLoginResult =
-  | { ok: true; session: { accessToken: string; expiresAt: Date } }
-  | { ok: false; refusal: "credentials" | "rate-limited" };
+  | { ok: true; kind: "session"; session: PlatformSession }
+  | {
+      ok: true;
+      kind: "challenge";
+      challengeKind: MfaChallengeKindName;
+      challengeToken: string;
+      expiresAt: Temporal.Instant;
+    }
+  | { ok: false; refusal: "credentials" | "processing" | "rate-limited" };
+
+/**
+ * The challenge kind as the console names it, or `null` for a kind this build
+ * has no screen for — which is a sign-in it cannot finish, not one to wave
+ * through on the password alone.
+ */
+const toChallengeKindName = (
+  kind: MfaChallengeKind
+): MfaChallengeKindName | null => {
+  if (kind === MfaChallengeKind.VERIFY) {
+    return "verify";
+  }
+  if (kind === MfaChallengeKind.ENROLL) {
+    return "enroll";
+  }
+  return null;
+};
 
 export const loginPlatform = async (
   email: string,
@@ -59,14 +92,31 @@ export const loginPlatform = async (
       },
       await buildClientAddressHeaders()
     );
-    const { token: accessToken, expiresAt } = response.accessToken ?? {};
-    if (!accessToken || !expiresAt) {
+    const challenge = response.mfaChallenge;
+    if (challenge) {
+      const challengeKind = toChallengeKindName(challenge.kind);
+      const challengeToken = challenge.token.trim();
+      const expiresAt = parseInstant(challenge.expiresAt);
+      if (!(challengeKind && challengeToken && expiresAt)) {
+        return { ok: false, refusal: "processing" };
+      }
+      return {
+        challengeKind,
+        challengeToken,
+        expiresAt,
+        kind: "challenge",
+        ok: true,
+      };
+    }
+
+    const session = toPlatformSession(
+      response.accessToken?.token,
+      response.accessToken?.expiresAt
+    );
+    if (!session) {
       return { ok: false, refusal: "credentials" };
     }
-    return {
-      ok: true,
-      session: { accessToken, expiresAt: new Date(expiresAt) },
-    };
+    return { kind: "session", ok: true, session };
   } catch (error) {
     if (isRejectedRequestRpcError(error)) {
       return {

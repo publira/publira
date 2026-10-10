@@ -94,6 +94,19 @@ Neither can be done to your own account.
 
 ![Change email address on Account settings: Current email address, New email address, Current password, and Send confirmation email.](./platform-console-account-settings.png)
 
+### Two-step verification
+
+**Two-step verification**, on the same page, asks for a code from an authenticator app each time you sign in, after your password. **Set up** shows a QR code to scan with the app, and the same key as text for an app that cannot scan; enter the six-digit code the app then shows, and choose **Turn on two-step verification**. The page then shows ten recovery codes, once: keep them somewhere safe, apart from the phone. Each one signs you in a single time while the authenticator is out of reach, wherever the sign-in asks for a code.
+
+![Two-step verification on Account settings while it is off: the status and Set up.](./platform-console-account-two-step-verification.png)
+
+From then on, signing in stops after the password at **Two-step verification** and asks for the code. A sign-in with a recovery code says how many are left. While it is on, the same card has two forms:
+
+- **Regenerate recovery codes** replaces every code you hold, used or not, with ten new ones. It takes a code from the authenticator, not a recovery code.
+- **Turn off two-step verification** takes a code from the authenticator or a recovery code. You can set it up again at any time, with a new authenticator if you have one.
+
+The platform can require it of every operator, as [Security](./12-security.md#platform-operators) describes. You are then asked to set it up the next time you sign in, and signing in finishes once you have.
+
 There is no form that changes your password while you are signed in. Sign out, choose **Forgot your password?** on the sign-in screen, and set a new one from the link you are mailed; the link is valid for 24 hours.
 
 ![The Platform Console's sign-in screen: Email address, Password, Sign in, and Forgot your password?](./platform-console-sign-in.png)

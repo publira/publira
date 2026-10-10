@@ -204,7 +204,21 @@ Each authenticator's secret is sealed with the encryption keys, which is why [re
 
 ### Platform operators
 
-Operators sign in to the Platform Console with a password alone: it offers no two-step verification yet ([#3834](https://github.com/publira/publira/issues/3834)). How often a password may be tried is limited, as [Sign-in attempts](./9-platform-policies.md#sign-in-attempts) describes, but a limit only slows guessing down. Until two-step verification is offered:
+Every operator can protect their Platform Console account the same way, with an authenticator app and ten recovery codes, from **Two-step verification** on **Account settings**, as [An operator's own account](./1-platform-console.md#an-operators-own-account) describes.
+
+You can require it of every operator, whatever their role: tick **Require two-step verification for every Platform Console operator** on **Security**, under **Policies**, and choose **Save security policy**, or run:
+
+```bash
+publiractl policy set --mfa-required-for-platform-operator
+```
+
+`--mfa-required-for-platform-operator=false` stops requiring it. It is checked when an operator signs in, so it applies from each one's next sign-in rather than to sessions already open, yours included; what an operator who has not set one up sees is in [Platform defaults and policies](./9-platform-policies.md#two-step-verification-for-platform-operators). Set up your own authenticator before you require it, so you are not the first to find out what the sign-in asks for.
+
+An operator who has lost both the authenticator and every recovery code cannot sign in again, and no other operator can remove it from their account yet ([#4027](https://github.com/publira/publira/issues/4027)). A **Super admin** can deactivate that account and add a new one for them, as [Operators](./1-platform-console.md#operators) describes. Keep more than one **Super admin**, so that losing one authenticator never leaves the install without anyone who can do that.
+
+Each authenticator's secret is sealed with the encryption keys, as the tenant staff's are, so [removing an old key](#4-remove-the-old-key-only-when-nothing-uses-it) can lock operators out too.
+
+Whether or not you require two-step verification:
 
 - Give each operator a long password of their own, kept in a password manager.
 - Give the **Super admin** role to as few operators as you can, and **Auditor** to anyone who only needs to look.
@@ -223,7 +237,7 @@ An install keeps two audit logs that never share entries: the Platform Console's
 
 It records:
 
-- **Operators**: added, changed, suspended, reactivated, and deactivated.
+- **Operators**: added, changed, suspended, reactivated, and deactivated; and each operator's own two-step verification: set up, a code asked for at sign-in, whether right or wrong, a sign-in with a recovery code, new recovery codes, and turning it off.
 - **Platform settings and services**: each save of the general settings, the security and community policy, the retention defaults, the email, storage, and search settings, and the Web Push contact, and each test of the email, storage, and search connections, with its outcome.
 - **Tenants and their staff**: tenants created, changed, suspended, and resumed; administrators invited, and invitations resent and canceled; members added, created with a password, given a new role, and removed.
 - **Readers**: accounts suspended, restored, and deleted by an operator.

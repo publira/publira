@@ -9,6 +9,25 @@ const operatorActionName = (action: string) => {
     case "operator_deleted": {
       return <Message message="platform.audit.actions.operator_deleted" />;
     }
+    case "operator_mfa_disabled": {
+      return <Message message="platform.audit.actions.operator_mfa_disabled" />;
+    }
+    case "operator_mfa_enrolled": {
+      return <Message message="platform.audit.actions.operator_mfa_enrolled" />;
+    }
+    case "operator_mfa_recovery_code_used": {
+      return (
+        <Message message="platform.audit.actions.operator_mfa_recovery_code_used" />
+      );
+    }
+    case "operator_mfa_recovery_codes_regenerated": {
+      return (
+        <Message message="platform.audit.actions.operator_mfa_recovery_codes_regenerated" />
+      );
+    }
+    case "operator_mfa_verified": {
+      return <Message message="platform.audit.actions.operator_mfa_verified" />;
+    }
     case "operator_resumed": {
       return <Message message="platform.audit.actions.operator_resumed" />;
     }

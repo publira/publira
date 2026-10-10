@@ -100,6 +100,13 @@ const ageVerificationSpecs = /admin\.age-verification\./u;
 const adminMfaSignInSpecs = /admin\.mfa-sign-in\./u;
 
 /**
+ * The spec that makes the platform require two-step verification of every
+ * operator, which every Platform Console sign-in reads. It runs after the
+ * admin one, so no other suite's operator is held for an enrollment.
+ */
+const platformMfaSignInSpecs = /platform\.mfa-sign-in\./u;
+
+/**
  * The spec that drives initial setup. `/setup` renders only while the platform
  * has no operator at all, so it empties `platform_users` — the table every
  * console sign-in in the suite reads — and runs last of everything.
@@ -330,6 +337,7 @@ const mainProjects: PlaywrightTestProject[] = [
       platformWebPushSettingsSpecs,
       platformConfigurationStatusSpecs,
       platformSetupSpecs,
+      platformMfaSignInSpecs,
       performanceSpecs,
       screenshotSpecs,
       docsScreenshotSpecs,
@@ -595,11 +603,25 @@ const exclusiveProjects: PlaywrightTestProject[] = [
       baseURL: WEB_ADMIN_BASE_URL,
     },
   },
+  // Requires two-step verification of every platform operator for as long as
+  // it runs, so it follows the admin one rather than running beside a suite
+  // that signs in to the Platform Console.
+  {
+    dependencies: ["admin-mfa-sign-in"],
+    fullyParallel: false,
+    name: "platform-mfa-sign-in",
+    testMatch: [platformMfaSignInSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_PLATFORM_BASE_URL,
+    },
+  },
   // Right before `platform-setup`, for the reason given below: the setup
   // screen it photographs needs the platform's operators gone, and it puts
   // them back before its test ends.
   {
-    dependencies: ["admin-mfa-sign-in", "viewer-performance"],
+    dependencies: ["platform-mfa-sign-in", "viewer-performance"],
     fullyParallel: false,
     name: "docs-screenshots-first-operator",
     snapshotPathTemplate: `${DOCS_ROOT}/{arg}{ext}`,
@@ -634,7 +656,7 @@ const performanceProjects: PlaywrightTestProject[] = [
       "catalog-error-boundary",
       "admin-error-boundary",
       "platform-configuration-status",
-      "admin-mfa-sign-in",
+      "platform-mfa-sign-in",
     ],
     fullyParallel: false,
     name: "viewer-performance",

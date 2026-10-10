@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { MfaChallengeKind } from "@publira/api-client/platform/auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -60,13 +61,58 @@ describe("loginPlatform", () => {
 
     const result = await loginPlatform("admin@example.com", "secret");
     expect(result).toEqual({
+      kind: "session",
       ok: true,
-      session: { accessToken: "tok_abc", expiresAt: new Date(expiresAt) },
+      session: {
+        accessToken: "tok_abc",
+        expiresAt: Temporal.Instant.from(expiresAt),
+      },
     });
     expect(mockLogin).toHaveBeenCalledWith(
       { email: "admin@example.com", password: "secret" },
       { headers: { "X-Forwarded-For": "203.0.113.7" } }
     );
+  });
+
+  it.each([
+    [MfaChallengeKind.VERIFY, "verify"],
+    [MfaChallengeKind.ENROLL, "enroll"],
+  ] as const)(
+    "hands back the challenge a password earns when a second factor is owed (%s)",
+    async (kind, challengeKind) => {
+      mockLogin.mockResolvedValueOnce({
+        mfaChallenge: {
+          expiresAt: "2026-03-22T00:05:00Z",
+          kind,
+          token: " challenge-token ",
+        },
+      });
+
+      await expect(loginPlatform("a@b.com", "secret")).resolves.toEqual({
+        challengeKind,
+        challengeToken: "challenge-token",
+        expiresAt: Temporal.Instant.from("2026-03-22T00:05:00Z"),
+        kind: "challenge",
+        ok: true,
+      });
+    }
+  );
+
+  // A kind this build has no screen for is a sign-in it cannot finish, and
+  // the password was right, so the credentials are not what to blame.
+  it("reports a challenge it cannot finish as a processing failure", async () => {
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: {
+        expiresAt: "2026-03-22T00:05:00Z",
+        kind: MfaChallengeKind.UNSPECIFIED,
+        token: "challenge-token",
+      },
+    });
+
+    await expect(loginPlatform("a@b.com", "secret")).resolves.toEqual({
+      ok: false,
+      refusal: "processing",
+    });
   });
 
   it("refuses the credentials when the API returns no session", async () => {

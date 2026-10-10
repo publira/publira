@@ -31,6 +31,7 @@ const emptyValues: PlatformSecurityPolicy = {
   loginAttemptsPerSource: { perDay: 1, perHour: 1 },
   mailRequestsPerAddress: { perDay: 1, perHour: 1 },
   mailRequestsPerSource: { perDay: 1, perHour: 1 },
+  mfaRequiredForPlatformOperator: false,
   mfaRequiredForTenantAdmin: false,
   passwordVerification: { perDay: 1, perMinute: 1 },
   storePurchaseConfirmation: { perDay: 1, perMinute: 1 },

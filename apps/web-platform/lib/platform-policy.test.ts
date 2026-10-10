@@ -1,6 +1,11 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getMessagesFor } from "./messages";
 import {
   getPlatformPolicy,
   getPlatformRetentionDefaults,
@@ -9,7 +14,10 @@ import {
   updatePlatformCommunityLimits,
   updatePlatformSecurityPolicy,
 } from "./platform-policy";
-import type { PlatformCommunityLimits } from "./platform-policy";
+import type {
+  PlatformCommunityLimits,
+  PlatformSecurityPolicy,
+} from "./platform-policy";
 
 const {
   mockCacheLife,
@@ -144,6 +152,20 @@ describe("getPlatformPolicy", () => {
 
 const listUrl = "https://lists.example.com/disposable.conf";
 
+/** What the security screen submits, requiring two-step verification of operators. */
+const securityValues: PlatformSecurityPolicy = {
+  disposableEmailDomainsUrl: "",
+  loginAttemptsPerAccount: { perDay: 50, perMinute: 5 },
+  loginAttemptsPerSource: { perDay: 300, perHour: 30 },
+  mailRequestsPerAddress: { perDay: 20, perHour: 5 },
+  mailRequestsPerSource: { perDay: 150, perHour: 30 },
+  mfaRequiredForPlatformOperator: true,
+  mfaRequiredForTenantAdmin: false,
+  passwordVerification: { perDay: 50, perMinute: 5 },
+  storePurchaseConfirmation: { perDay: 100, perMinute: 10 },
+  waitFreeTicketUse: { perDay: 100, perMinute: 10 },
+};
+
 /** A stored policy that names a list, as `GetPlatformPolicy` answers it. */
 const storedPolicy = {
   communityLimitDefaults: {
@@ -153,6 +175,7 @@ const storedPolicy = {
   disposableEmailDomainsUrl: listUrl,
   loginAttemptsPerAccount: { perDay: 60, perMinute: 6 },
   loginAttemptsPerSource: { perDay: 400, perHour: 40 },
+  mfaRequiredForPlatformOperator: true,
   mfaRequiredForTenantAdmin: true,
   passwordVerification: { perDay: 50, perMinute: 5 },
 };
@@ -179,7 +202,7 @@ describe("savePlatformPolicy", () => {
 
   // `UpdatePlatformPolicy` writes the whole row, so a value this screen does
   // not edit has to be sent back as read, or the save would clear it.
-  it("keeps the stored list URL and sign-in attempt limits when the community limits are saved", async () => {
+  it("keeps the stored list URL, sign-in attempt limits, and MFA requirements when the community limits are saved", async () => {
     await expect(
       updatePlatformCommunityLimits(community, 4n, "en")
     ).resolves.toEqual({ ok: true });
@@ -191,6 +214,7 @@ describe("savePlatformPolicy", () => {
           disposableEmailDomainsUrl: listUrl,
           loginAttemptsPerAccount: { perDay: 60, perMinute: 6 },
           loginAttemptsPerSource: { perDay: 400, perHour: 40 },
+          mfaRequiredForPlatformOperator: true,
           mfaRequiredForTenantAdmin: true,
         }),
       }),
@@ -198,7 +222,49 @@ describe("savePlatformPolicy", () => {
     );
   });
 
-  it("sends the list URL the security screen saves", async () => {
+  // A stale revision and an install that cannot seal an authenticator share
+  // failed_precondition; only the field names which one it was.
+  it("says why the operator requirement cannot be switched on rather than reporting a conflict", async () => {
+    mockUpdatePlatformPolicy.mockRejectedValueOnce(
+      new ConnectError(
+        "secret manager is not configured",
+        Code.FailedPrecondition,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: {
+              fieldViolations: [
+                { field: "policy.mfa_required_for_platform_operator" },
+              ],
+            },
+          },
+        ]
+      )
+    );
+    const t = await getMessagesFor("en");
+
+    await expect(
+      updatePlatformSecurityPolicy(securityValues, 4n, "en")
+    ).resolves.toEqual({
+      message: t(
+        "platform.policy.security.mfa_required_for_platform_operator_unavailable"
+      ),
+      ok: false,
+    });
+
+    mockUpdatePlatformPolicy.mockRejectedValueOnce(
+      new ConnectError("revision moved", Code.FailedPrecondition)
+    );
+    await expect(
+      updatePlatformSecurityPolicy(securityValues, 4n, "en")
+    ).resolves.toEqual({
+      message: t("platform.policy.save_conflict"),
+      ok: false,
+    });
+  });
+
+  it("sends the list URL and the operator MFA requirement the security screen saves", async () => {
     await updatePlatformSecurityPolicy(
       {
         disposableEmailDomainsUrl: "",
@@ -206,6 +272,7 @@ describe("savePlatformPolicy", () => {
         loginAttemptsPerSource: { perDay: 300, perHour: 30 },
         mailRequestsPerAddress: { perDay: 20, perHour: 5 },
         mailRequestsPerSource: { perDay: 150, perHour: 30 },
+        mfaRequiredForPlatformOperator: true,
         mfaRequiredForTenantAdmin: false,
         passwordVerification: { perDay: 50, perMinute: 5 },
         storePurchaseConfirmation: { perDay: 100, perMinute: 10 },
@@ -217,7 +284,10 @@ describe("savePlatformPolicy", () => {
 
     expect(mockUpdatePlatformPolicy).toHaveBeenCalledWith(
       expect.objectContaining({
-        policy: expect.objectContaining({ disposableEmailDomainsUrl: "" }),
+        policy: expect.objectContaining({
+          disposableEmailDomainsUrl: "",
+          mfaRequiredForPlatformOperator: true,
+        }),
       }),
       expect.anything()
     );
