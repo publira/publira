@@ -346,12 +346,18 @@ GRANT CREATE ON SCHEMA public TO publira_outbox;
 -- was never granted fails in its integration test rather than in production.
 --
 -- Reads: the due listings, series, windows and pinned banners, the catalog
--- rows the log lines name, and the recipients each notification fans out to.
+-- rows the log lines name, the recipients each notification fans out to, and
+-- the views that decide whether a published episode is announced at all. A
+-- security_invoker view reads its tables with this role's own rights, so the
+-- views it is built on are granted alongside it.
 GRANT SELECT ON
     episode_listings,
     announcements,
     episodes,
     series,
+    series_surfaces,
+    episode_surfaces,
+    published_episode_surfaces,
     tenants,
     platform_config,
     episode_free_windows,

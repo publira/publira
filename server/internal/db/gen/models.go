@@ -734,6 +734,13 @@ type PlatformWebpushConfig struct {
 	UpdatedAt                time.Time      `json:"updated_at"`
 }
 
+type PublishedEpisodeSurface struct {
+	EpisodeID uuid.UUID `json:"episode_id"`
+	SeriesID  uuid.UUID `json:"series_id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	Surface   string    `json:"surface"`
+}
+
 type PublishedFreeEpisode struct {
 	EpisodeID uuid.UUID    `json:"episode_id"`
 	SeriesID  uuid.UUID    `json:"series_id"`

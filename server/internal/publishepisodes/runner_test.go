@@ -179,6 +179,64 @@ func TestPublishSuccessSkipsFollowersOfACreatorNotCreditedOnTheEpisode(t *testin
 	assertPublishedUsers(t, pg, env.admin.ID)
 }
 
+// The job publishes an episode whether or not readers can open it yet, and the
+// tenant's admins hear that it ran. A follower is told only about an episode
+// the notification can lead to, so none of them is, through any of the three
+// follows, while the series is not public or the episode is shown nowhere.
+func TestPublishNotifiesNoFollowerOfAnEpisodeReadersCannotOpen(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		series string
+		// episode runs after series; empty leaves the episode as seeded.
+		episode string
+	}{
+		{
+			name:   "series without a publication date",
+			series: "UPDATE series SET is_published = false, published_at = NULL WHERE id = $1",
+		},
+		{
+			name:   "series publication still ahead",
+			series: "UPDATE series SET published_at = NOW() + interval '1 day' WHERE id = $1",
+		},
+		{
+			// The episode's own Shown on narrows its series' and never widens
+			// it, so an app-only episode in a web-only series is shown nowhere.
+			name:    "episode shown nowhere",
+			series:  "UPDATE series SET availability = 'web' WHERE id = $1",
+			episode: "UPDATE episodes SET availability = 'app' WHERE id = $1",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pg, env := newPublishTestEnv(t)
+			creatorFollower := env.seedReader(t, "MEMBERFAIL03", "member3@fail.example.com", "Member Three")
+			env.followCreator(t, creatorFollower.ID, env.creator.ID)
+			episodeFollower := env.seedReader(t, "MEMBERFAIL04", "member4@fail.example.com", "Member Four")
+			env.followEpisode(t, episodeFollower.ID, env.episode.ID)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if _, err := pg.DB.ExecContext(ctx, tc.series, env.series.ID); err != nil {
+				t.Fatalf("change the series: %v", err)
+			}
+			if tc.episode != "" {
+				if _, err := pg.DB.ExecContext(ctx, tc.episode, env.episode.ID); err != nil {
+					t.Fatalf("change the episode: %v", err)
+				}
+			}
+
+			env.runner().RunOnce(ctx)
+
+			if got := listingStatus(t, pg, env.episode.ID); got != testutil.EpisodeStatusPublished {
+				t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
+			}
+			assertPublishedUsers(t, pg, env.admin.ID)
+			if events := listMemberPushEvents(t, pg); len(events) != 0 {
+				t.Fatalf("member push events = %d, want 0", len(events))
+			}
+		})
+	}
+}
+
 func TestPublishRetriesFollowerNotificationsAfterInsertFailure(t *testing.T) {
 	pg, env := newPublishTestEnv(t)
 	otherFollower := env.seedReader(t, "MEMBERFAIL02", "member2@fail.example.com", "Member Two")

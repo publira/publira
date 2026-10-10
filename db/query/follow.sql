@@ -404,6 +404,16 @@ SELECT EXISTS (
 -- episode alone reaches their followers, and someone who has since left the
 -- series team is not announced with an episode they were not on.
 --
+-- Nobody is told about an episode a reader cannot open at this moment, which
+-- is what published_episode_surfaces answers: one in a series without a
+-- publication date or with one still ahead, or one shown on no surface
+-- because its own Shown on and its series' do not overlap. The
+-- notification links to the episode, and a follower of a credited creator
+-- would otherwise be sent to a page that answers 404. The gate names no
+-- follower, so the planner checks it once rather than per row. Such an
+-- episode is not announced when its series is published later either (#4044),
+-- and one shown on a single surface is still announced on both (#4043).
+--
 -- Keyset paging on user_id, because the result grows with the tenant's
 -- readership and the caller writes one row per recipient. The cursor is
 -- pushed into each branch rather than applied to the union, so every branch
@@ -433,6 +443,12 @@ FROM (
         AND ef.episode_id = sqlc.arg('episode_id')
         AND ef.user_id > sqlc.arg('after_user_id')
 ) AS followers
+WHERE EXISTS (
+    SELECT 1
+    FROM published_episode_surfaces pes
+    WHERE pes.tenant_id = sqlc.arg('tenant_id')
+        AND pes.episode_id = sqlc.arg('episode_id')
+)
 ORDER BY user_id
 LIMIT sqlc.arg('limit');
 

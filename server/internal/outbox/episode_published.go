@@ -80,7 +80,9 @@ type EpisodeFollowerQuerier interface {
 // about this episode — a follower of the episode, of its series, or of a
 // creator credited on it — and queues the push that mirrors them. A tenant
 // whose readers follow nothing publishes silently, which is the point: a
-// follow is the request to be told.
+// follow is the request to be told. So does an episode no reader can open yet,
+// because its series is not public or it is shown on no surface:
+// ListEpisodeFollowerIDs answers nobody for it.
 //
 // The recipients arrive a page at a time and the rows are written as each page
 // lands. The notification and the push both key on the episode, so a second
