@@ -164,6 +164,10 @@ export type UpdateEpisodeTitleResult =
   | { ok: true; episode: EpisodeItem }
   | { ok: false; message: string };
 
+export type UpdateEpisodePricingResult =
+  | { ok: true; episode: EpisodeItem }
+  | { ok: false; message: string };
+
 export interface EpisodeCreditPair {
   creatorId: string;
   roleId: string;
@@ -1708,6 +1712,67 @@ export const updateEpisodeTitle = async (
       message: await mapErrorToMessage(
         error,
         t("admin.series.episodes.rename.failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Sets the episode's price and reading period, both on every call. Neither
+ * reaches back: a purchase already made keeps the price it was paid and the
+ * expiry it was given.
+ */
+export const updateEpisodePricing = async (
+  input: {
+    tenantId: string;
+    episodeId: string;
+    price: number;
+    readingPeriodHours: number;
+  },
+  locale: Locale
+): Promise<UpdateEpisodePricingResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.updateEpisodePricing(
+      {
+        episodeId: input.episodeId,
+        price: input.price,
+        readingPeriodHours: input.readingPeriodHours,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.episode?.publicId?.trim()) {
+      return {
+        message: t("admin.series.episodes.pricing.failed"),
+        ok: false,
+      };
+    }
+
+    return {
+      episode: mapEpisode(response.episode),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.series.episodes.pricing.failed"),
         locale
       ),
       ok: false,

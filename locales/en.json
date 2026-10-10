@@ -1603,7 +1603,7 @@
         "list_description": "Manage episodes in this series.",
         "new_title": "Create episode",
         "edit_title": "Edit episode",
-        "edit_description": "Edit the episode's title, publication settings, and page images.",
+        "edit_description": "Edit the episode's title, price, publication settings, and page images.",
         "new_description": "Register a new episode in this series.",
         "new_action": "Create",
         "credits_action": "Credits",
@@ -1672,6 +1672,15 @@
           "updated": "Title updated.",
           "failed": "Could not update the title. Please try again later.",
           "error": "Could not display the title"
+        },
+        "pricing": {
+          "title": "Price and reading period",
+          "description": "What readers pay for this episode and how long a purchase keeps it open. A change applies to purchases made after it is saved: a purchase already made keeps the price it was paid and the time it expires.",
+          "reading_period_description": "Enter hours. Set 0 for unlimited reading. Changing the series' reading period does not change this.",
+          "update": "Update price and reading period",
+          "updated": "Price and reading period updated.",
+          "failed": "Could not update the price and reading period. Please try again later.",
+          "error": "Could not display the price and reading period"
         },
         "pages_error": "Could not display the page upload",
         "schedule_error": "Could not display publishing settings",

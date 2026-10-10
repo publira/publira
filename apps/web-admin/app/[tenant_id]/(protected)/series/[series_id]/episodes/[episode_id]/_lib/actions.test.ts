@@ -13,6 +13,7 @@ const {
   mockReplaceEpisodeCredits,
   mockUpdateEpisodeAvailability,
   mockUpdateEpisodeLayout,
+  mockUpdateEpisodePricing,
   mockUpdateEpisodePublishSchedule,
   mockUpdateEpisodePurchaseAvailability,
   mockUpdateEpisodeTitle,
@@ -31,6 +32,7 @@ const {
   mockReplaceEpisodeCredits: vi.fn(),
   mockUpdateEpisodeAvailability: vi.fn(),
   mockUpdateEpisodeLayout: vi.fn(),
+  mockUpdateEpisodePricing: vi.fn(),
   mockUpdateEpisodePublishSchedule: vi.fn(),
   mockUpdateEpisodePurchaseAvailability: vi.fn(),
   mockUpdateEpisodeTitle: vi.fn(),
@@ -85,6 +87,7 @@ vi.mock("#lib/episode", () => ({
   replaceEpisodeCredits: mockReplaceEpisodeCredits,
   updateEpisodeAvailability: mockUpdateEpisodeAvailability,
   updateEpisodeLayout: mockUpdateEpisodeLayout,
+  updateEpisodePricing: mockUpdateEpisodePricing,
   updateEpisodePublishSchedule: mockUpdateEpisodePublishSchedule,
   updateEpisodePurchaseAvailability: mockUpdateEpisodePurchaseAvailability,
   updateEpisodeTitle: mockUpdateEpisodeTitle,
@@ -774,6 +777,88 @@ describe("episode actions", () => {
 
       expect(result).toEqual({
         message: "Could not update the title. Please try again later.",
+        ok: false,
+      });
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("changing the price and reading period", () => {
+    it("sends both values and clears the reads that show them", async () => {
+      mockUpdateEpisodePricing.mockResolvedValueOnce({
+        episode: { price: 120, readingPeriodHours: 72 },
+        ok: true,
+      });
+
+      const { updateEpisodePricingAction } = await import("./actions");
+      await updateEpisodePricingAction(
+        null,
+        layoutFormData({ price: "120", reading_period_hours: "72" })
+      );
+
+      expect(mockUpdateEpisodePricing).toHaveBeenCalledWith(
+        {
+          episodeId: "018f0e6a-4000-7000-8000-000000000001",
+          price: 120,
+          readingPeriodHours: 72,
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+      expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
+      );
+      expect(mockRedirect).toHaveBeenCalledWith(
+        "/series/SERIES001/episodes/EP001?pricing_updated=1"
+      );
+    });
+
+    it("refuses a negative price as the new-episode form does", async () => {
+      const { updateEpisodePricingAction } = await import("./actions");
+      const result = await updateEpisodePricingAction(
+        null,
+        layoutFormData({ price: "-1", reading_period_hours: "72" })
+      );
+
+      expect(result).toEqual({
+        message: "Price must be a non-negative integer.",
+        ok: false,
+      });
+      expect(mockUpdateEpisodePricing).not.toHaveBeenCalled();
+    });
+
+    it("refuses a reading period that is not a whole number", async () => {
+      const { updateEpisodePricingAction } = await import("./actions");
+      const result = await updateEpisodePricingAction(
+        null,
+        layoutFormData({ price: "100", reading_period_hours: "a day" })
+      );
+
+      expect(result).toEqual({
+        message: "Reading period must be a non-negative integer.",
+        ok: false,
+      });
+      expect(mockUpdateEpisodePricing).not.toHaveBeenCalled();
+    });
+
+    it("shows the failure the API reported and stays on the form", async () => {
+      mockUpdateEpisodePricing.mockResolvedValueOnce({
+        message:
+          "Could not update the price and reading period. Please try again later.",
+        ok: false,
+      });
+
+      const { updateEpisodePricingAction } = await import("./actions");
+      const result = await updateEpisodePricingAction(
+        null,
+        layoutFormData({ price: "100", reading_period_hours: "0" })
+      );
+
+      expect(result).toEqual({
+        message:
+          "Could not update the price and reading period. Please try again later.",
         ok: false,
       });
       expect(mockUpdateTag).not.toHaveBeenCalled();

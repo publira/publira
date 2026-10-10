@@ -114,8 +114,9 @@ test.describe("tenant roles in the console", () => {
       page.getByRole("button", { name: "Update series" })
     ).toBeDisabled();
 
-    // An episode shows its title closed with the rest of its fields, and its
-    // pages with nothing to move, replace, or delete one by.
+    // An episode shows its title, price, and reading period closed with the
+    // rest of its fields, and its pages with nothing to move, replace, or
+    // delete one by.
     await page.goto(
       adminUrl(
         `/series/${SEED_TENANT.series.publicId}/episodes/${SEED_TENANT.series.freeEpisodeId}`
@@ -123,6 +124,12 @@ test.describe("tenant roles in the console", () => {
     );
     await expect(page.getByText(EDITOR_ONLY_NOTICE)).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Title" })).toBeDisabled();
+    await expect(
+      page.getByRole("spinbutton", { name: /^Price/u })
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("spinbutton", { name: /^Reading period/u })
+    ).toBeDisabled();
     const episodePages = page.getByRole("list", {
       exact: true,
       name: "Registered page images",
