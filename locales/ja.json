@@ -2376,7 +2376,8 @@
         "test_sent": "接続テストメールを送信しました（送信先: {$recipient}）。",
         "close": "閉じる",
         "saved": "メール設定を保存しました。",
-        "failed": "処理に失敗しました。時間をおいて再試行してください。"
+        "failed": "処理に失敗しました。時間をおいて再試行してください。",
+        "sender_load_failed": "メールの送信元の取得に失敗しました。時間をおいて再試行してください。"
       },
       "inbound_email": {
         "title": "受信メール",
@@ -2727,6 +2728,10 @@
           "callback_url_description": "Services IDでAppleでサインインを設定するときに、このアドレスを「Return URLs」に、そのドメインを「Domains and Subdomains」に登録してください。Appleは登録されたアドレスにしか読者を戻しません。",
           "android_callback_url": "AndroidアプリのコールバックURL",
           "android_callback_url_description": "同じServices IDの「Return URLs」にこのアドレスも登録してください。AndroidアプリはこのアドレスでAppleでサインインし、サイトがその結果を「アプリリンク」で指定したアプリに渡します。",
+          "email_sender": "メールの送信元",
+          "email_sender_description": "このアドレスをApple Developerアカウントの「Certificates, Identifiers & Profiles」›「Services」›「Sign in with Apple for Email Communication」に登録してください。Appleは「メールを非公開」を選んだ読者へのメールを、そこに登録された送信元からしか転送しないため、登録がないとパスワード再設定を含むサイトのメールが届きません。「メール情報」で送信元を変えたときは、新しいアドレスも登録してください。",
+          "email_sender_unset": "未設定です。メールの送信元がまだ設定されていません。",
+          "copy_email_sender": "送信元アドレスをコピー",
           "services_id": "Services ID",
           "services_id_description": "サイトとAndroidアプリがログインに使うServices IDの識別子です。Apple Developerアカウントの「Certificates, Identifiers & Profiles」で登録します。iOSアプリだけでAppleでサインインを提供する場合は空欄にしてください。",
           "team_id": "Team ID",

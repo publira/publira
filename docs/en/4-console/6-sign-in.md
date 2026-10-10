@@ -2,7 +2,7 @@
 title: Sign-in with Apple and Google
 description: Let readers sign in to the site and the app with an Apple or Google account, and create what Apple and Google need for it.
 published: 2026-10-06
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 Readers sign in to a tenant's site with an email address and a password. **Integrations** › **Sign-in** adds two buttons beside that form, **Continue with Apple** and **Continue with Google**, so a reader can sign up and sign in with an account they already have. This page takes a Tenant admin through both providers for the site, and says what readers see once they are on. The app shares the same setup; what only the app needs is on [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#sign-in-with-apple-and-google).
@@ -52,7 +52,7 @@ In the **Apple** section of **Integrations** › **Sign-in**:
 
 Turn on **Offer Sign in with Apple** and choose **Save the sign-in providers**.
 
-![The Apple section once saved: Offered, Where readers see its button for the site, the iOS app, and the Android app, the Callback URL and the Android app callback URL with buttons to copy them, Offer Sign in with Apple, Services ID, Team ID, Key ID, the stored private key, covered over in this picture, with Replace and Remove, and the iOS bundle ID named under App links.](./sign-in-apple.png)
+![The Apple section once saved: Offered, Where readers see its button for the site, the iOS app, and the Android app, the Callback URL and the Android app callback URL with buttons to copy them, the Email sender with a button to copy it, Offer Sign in with Apple, Services ID, Team ID, Key ID, the stored private key, covered over in this picture, with Replace and Remove, and the iOS bundle ID named under App links.](./sign-in-apple.png)
 
 The key cannot be read back: on a later visit the console shows only that one is stored. **Replace** swaps it for a new one, and **Remove** deletes it when you save.
 
@@ -132,7 +132,7 @@ An account created through Apple or Google has no password. The same screen offe
 
 Apple forwards mail sent to a `privaterelay.appleid.com` address only from senders the publisher has registered with it. Mail from any other sender, the site's own password reset mail included, never reaches the reader.
 
-Register the address the tenant's mail is sent from in the Apple Developer account, under **Certificates, Identifiers & Profiles** › **Services** › **Sign in with Apple for Email Communication**: the **Sender email address** under **Integrations** › **Email** if the tenant sends through its own server, or the platform's sending address, which the operator knows, if it does not. Apple also checks that the sending domain passes SPF, as described there.
+The **Apple** section of **Integrations** › **Sign-in** shows the address the tenant's mail is sent from as **Email sender**, with a button to copy it: the **Sender email address** under **Integrations** › **Email** while the tenant sends through its own server, and the platform's sending address otherwise. Register it in the Apple Developer account, under **Certificates, Identifiers & Profiles** › **Services** › **Sign in with Apple for Email Communication**. Apple also checks that the sending domain passes SPF, as described there. If the sender changes later, because the tenant starts or stops sending through its own server or changes its address, register the new one as well.
 
 ## Turning a provider off
 

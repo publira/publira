@@ -395,6 +395,74 @@ describe("TenantSignInSettingsForm", () => {
     ).toBeNull();
   });
 
+  it("shows the sender to register with Apple's private email relay, copyable without edit access", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    await renderForm(
+      <TenantSignInSettingsForm
+        canEdit={false}
+        emailSender="noreply@mail.example.com"
+        initialSettings={savedSettings}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(screen.getByText("Email sender")).toBeDefined();
+    expect(screen.getByText("noreply@mail.example.com")).toBeDefined();
+    expect(
+      screen.getByText(/Sign in with Apple for Email Communication/u)
+    ).toBeDefined();
+
+    const copy = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Copy the sender address",
+    });
+    expect(copy.matches(":disabled")).toBe(false);
+    await act(() => {
+      fireEvent.click(copy);
+    });
+    expect(writeText).toHaveBeenCalledWith("noreply@mail.example.com");
+  });
+
+  it("says no sender is set where the tenant's mail names none", async () => {
+    await renderForm(
+      <TenantSignInSettingsForm
+        canEdit
+        emailSender=""
+        initialSettings={savedSettings}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(
+      screen.getByText("Not set. No sender is set for the tenant's mail yet.")
+    ).toBeDefined();
+    expect(
+      screen.queryByRole("button", { name: "Copy the sender address" })
+    ).toBeNull();
+  });
+
+  it("says why the sender could not be read and keeps the settings editable", async () => {
+    await renderForm(
+      <TenantSignInSettingsForm
+        canEdit
+        emailSenderErrorMessage="Could not load the email sender. Please try again later."
+        initialSettings={savedSettings}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(
+      screen.getByText(
+        "Could not load the email sender. Please try again later."
+      )
+    ).toBeDefined();
+    expect(
+      screen.queryByRole("button", { name: "Copy the sender address" })
+    ).toBeNull();
+    expect(textbox("Services ID").matches(":disabled")).toBe(false);
+    expect(submitButton().disabled).toBe(false);
+  });
+
   it("keeps saving closed when the settings could not be read", async () => {
     await renderForm(
       <TenantSignInSettingsForm

@@ -2376,7 +2376,8 @@
         "test_sent": "测试邮件已发送至{$recipient}。",
         "close": "关闭",
         "saved": "邮件设置已保存。",
-        "failed": "请求失败。请稍后再试。"
+        "failed": "请求失败。请稍后再试。",
+        "sender_load_failed": "无法加载邮件发件人。请稍后再试。"
       },
       "inbound_email": {
         "title": "收件",
@@ -2727,6 +2728,10 @@
           "callback_url_description": "在Services ID中配置通过Apple登录时，请将此地址注册到“Return URLs”，并将其域名注册到“Domains and Subdomains”。Apple只会将读者送回已注册的地址。",
           "android_callback_url": "Android应用回调URL",
           "android_callback_url_description": "请将此地址也注册到同一Services ID的“Return URLs”。Android应用通过此地址使用Apple登录，网站会将结果交给“应用链接”中指定的应用。",
+          "email_sender": "邮件发件人",
+          "email_sender_description": "请在Apple Developer账户的“Certificates, Identifiers & Profiles”›“Services”›“Sign in with Apple for Email Communication”中注册此地址。对于选择了“隐藏邮件地址”的读者，Apple只转发来自在那里注册的发件人的邮件，未注册时，网站的邮件（包括密码重置邮件）都无法送达。在“邮件”中更改发件人后，也请注册新的地址。",
+          "email_sender_unset": "未设置。尚未设置邮件发件人。",
+          "copy_email_sender": "复制发件人地址",
           "services_id": "Services ID",
           "services_id_description": "网站和Android应用登录所用的Services ID标识符，在Apple Developer账号的“Certificates, Identifiers & Profiles”中注册。如果只有iOS应用提供通过Apple登录，请留空。",
           "team_id": "Team ID",

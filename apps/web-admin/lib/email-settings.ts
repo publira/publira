@@ -195,6 +195,74 @@ export const getTenantEmailSettings = async (
 ): Promise<TenantSmtpSettingsResult> =>
   getTenantEmailSettingsForSession(tenantId, locale, await getAccessToken());
 
+export type TenantEmailSenderResult =
+  | {
+      ok: true;
+      /** Empty when the settings in force name no sender. */
+      fromAddress: string;
+    }
+  | { ok: false; message: string; requiresSignIn?: boolean };
+
+const getTenantEmailSenderForSession = async (
+  tenantId: string,
+  locale: Locale,
+  sessionId: string
+): Promise<TenantEmailSenderResult> => {
+  "use cache: private";
+
+  const t = await getMessagesFor(locale);
+  const normalizedTenantId = tenantId.trim();
+
+  if (!normalizedTenantId || !sessionId) {
+    dropFailedCacheEntry();
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: !sessionId,
+    };
+  }
+
+  // The sender follows the tenant's SMTP settings, so a save on the email
+  // screen has to reach this read as well. The platform's sender is saved in
+  // the platform console, which no tag of this app hears; a private entry is
+  // kept only in the browser that filled it, for the route's five-minute
+  // stale time, so that change shows within five minutes, at once on a reload.
+  // A shorter stale time would take the route out of its App Shell.
+  cacheTag(tenantEmailSettingsCacheTag(normalizedTenantId));
+
+  try {
+    const response = await apiClient.emailSettings.getTenantEmailSender(
+      { tenant: { tenantId: normalizedTenantId } },
+      withSessionHeaders(sessionId)
+    );
+
+    return { fromAddress: response.fromAddress, ok: true };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
+    return {
+      message: rpcErrorMessage(
+        error,
+        t("admin.settings.email.sender_load_failed"),
+        { locale }
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+/**
+ * The address the tenant's mail is sent from: its own sender while its SMTP
+ * override is on, the platform's otherwise, which no other read shows a
+ * tenant.
+ */
+export const getTenantEmailSender = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantEmailSenderResult> =>
+  getTenantEmailSenderForSession(tenantId, locale, await getAccessToken());
+
 export const updateTenantEmailSettings = async (
   input: UpdateTenantSmtpSettingsInput,
   locale: Locale
