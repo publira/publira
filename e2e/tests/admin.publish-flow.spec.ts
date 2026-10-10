@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import {
   createEpisodeViaUi,
   createSeriesViaUi,
+  episodeFormFields,
   formMessage,
   selectOption,
   seriesFormFields,
@@ -17,6 +18,7 @@ import {
 import {
   publishedAtOneHourAgo,
   scheduleAtFiveMinutesFromNow,
+  toSeedTenantDateTimeLocal,
   uniqueSuffix,
 } from "../src/scenarios/admin-publish";
 import {
@@ -344,6 +346,61 @@ test.describe("admin publish flow", () => {
       await page.goto(hostUrl(`/series/${seriesId}`));
       await expect(page.getByText(episodeTitle)).toBeVisible({ timeout: 5000 });
     }).toPass({ timeout: 30_000 });
+  });
+
+  test("publishes a draft from its edit screen with a time that has passed, and saves that time again without failing", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const seriesTitle = `E2E Publish From Edit Parent ${suffix}`;
+    const episodeTitle = `E2E Publish From Edit ${suffix}`;
+
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        publishedAt: publishedAtOneHourAgo(),
+        synopsis: `Parent series ${suffix}`,
+        title: seriesTitle,
+      })
+    );
+    const episodeId = await createEpisodeViaUi(page, {
+      seriesPublicId: seriesId,
+      title: episodeTitle,
+    });
+    const editUrl = adminUrl(`/series/${seriesId}/episodes/${episodeId}`);
+    const save = page.getByRole("button", {
+      name: "Update publication date and time",
+    });
+    const saved = page.getByText("Publication date and time updated.");
+
+    // Nothing nudges the schedule here: the save itself publishes, so the
+    // worker's publication pass has no part in what the host shows.
+    await page.goto(editUrl);
+    await episodeFormFields(page).publishAt.fill(
+      toSeedTenantDateTimeLocal(publishedAtOneHourAgo())
+    );
+    await save.click();
+    await expect(saved).toBeVisible();
+
+    await page.goto(adminUrl(`/series/${seriesId}/episodes`));
+    await expect(page.getByText(/Status: Published/u)).toBeVisible();
+
+    const episodeResponse = await page.goto(
+      hostUrl(`/series/${seriesId}/episodes/${episodeId}`)
+    );
+    expect(episodeResponse?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: episodeTitle })
+    ).toBeVisible();
+
+    // The section opens on the time the episode went out, which has passed by
+    // now; saving it as it is leaves the episode published.
+    await page.goto(editUrl);
+    await expect(episodeFormFields(page).publishAt).not.toHaveValue("");
+    await save.click();
+    await expect(saved).toBeVisible();
+
+    await page.goto(adminUrl(`/series/${seriesId}/episodes`));
+    await expect(page.getByText(/Status: Published/u)).toBeVisible();
   });
 
   test("a missing required field shows an error", async ({ page }) => {

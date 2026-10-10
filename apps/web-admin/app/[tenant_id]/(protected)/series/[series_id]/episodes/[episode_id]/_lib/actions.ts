@@ -212,10 +212,9 @@ const parsePublishAtToRFC3339 = async (
     return toFailure(t("admin.series.episodes.validation.publish_at_invalid"));
   }
 
-  if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
-    return toFailure(t("admin.series.episodes.validation.publish_at_future"));
-  }
-
+  // A time that has passed is sent as it is: the API publishes a draft or a
+  // scheduled episode at once and leaves a published one as it is, so saving
+  // the time a published episode went out with changes nothing.
   return { iso, ok: true };
 };
 

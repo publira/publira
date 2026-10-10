@@ -2,7 +2,7 @@
 title: Scheduled and maintenance jobs
 description: What publira worker does on its own schedule, how it catches up after downtime, how it retries outgoing mail, push, and cache revalidation, and when to run a job by hand with publiractl job.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 Everything an install does without a request is done by `publira worker`: it publishes the episodes scheduled for now, tells the web apps which cached pages a change made stale, sends mail and push notifications, rebuilds the statistics and rankings, and deletes what has passed its retention period. Nothing else has to run on a timer, and no host cron or Kubernetes CronJob is needed. This page says what runs when, how to tell which job is behind a symptom, and how to run one by hand with `publiractl job`.
@@ -50,7 +50,7 @@ LIMIT 20;
 
 An episode staff scheduled is published by the worker once its time has passed, together with the notifications to the series' followers and the drop of the cached pages that listed it as scheduled. The worker looks for due episodes every minute, so an episode goes live within about a minute of its time.
 
-A publication that fails is tried again a few times within the same pass. When every attempt fails, the episode stays **Scheduled**, and the worker writes a notification titled "An episode could not be published" for the tenant's administrators, in the tenant console, and for every operator, under **Notifications** in the Platform Console. Each such notification is written once per episode. The worker tries the episode again on every later pass, so once the cause is fixed — a database that was failing, a migration that had not run — the episode goes out on its own. Setting a new time on the episode's page in the tenant console does not get around it, since that time is published by the same worker ([#3830](https://github.com/publira/publira/issues/3830)).
+A publication that fails is tried again a few times within the same pass. When every attempt fails, the episode stays **Scheduled**, and the worker writes a notification titled "An episode could not be published" for the tenant's administrators, in the tenant console, and for every operator, under **Notifications** in the Platform Console. Each such notification is written once per episode. The worker tries the episode again on every later pass, so once the cause is fixed — a database that was failing, a migration that had not run — the episode goes out on its own. Staff do not have to wait for that: entering the current time under **Publishing settings** on the episode's page in the tenant console publishes the episode in that request, without the worker. Its followers are still told by the worker, through [the outbox](#the-outbox-mail-push-and-cache-revalidation).
 
 ![Notifications in the Platform Console: an unread notification titled An episode could not be published, naming the episode, its series, and its tenant, with Mark as read and Mark all as read.](./scheduled-jobs-notifications.png)
 

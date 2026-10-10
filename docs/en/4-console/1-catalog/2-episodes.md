@@ -1,6 +1,6 @@
 ---
 title: Episodes
-description: Create an episode, add, replace, and delete its pages, change its title, price, and reading period, set its layout, credits, and where it is shown and sold, give it free reading periods, and publish it on time.
+description: Create an episode, add, replace, and delete its pages, change its title, price, and reading period, set its layout, credits, and where it is shown and sold, give it free reading periods, and publish it now or on time.
 published: 2026-10-07
 updated: 2026-10-10
 ---
@@ -149,7 +149,13 @@ Until an episode is published, its page answers as if it did not exist, it is in
 
 ### Setting the time
 
-**Publishing settings**, on the episode's edit screen, sets or changes the time of an episode that already exists. Enter a time in the future, in the tenant's time zone, and choose **Update publication date and time**. The field does not take a time that has passed, so a draft cannot be published at once from here ([#3830](https://github.com/publira/publira/issues/3830)): set it a minute or two ahead.
+**Publishing settings**, on the episode's edit screen, sets or changes the time of an episode that already exists. Enter a time in the tenant's time zone, or empty the field, and choose **Update publication date and time**:
+
+- **A time that has passed**, such as the current time, publishes a draft or a scheduled episode at once. It is announced to its followers and sent to the search index, just as a scheduled episode is when its time comes. A published episode stays as it is, so saving the section with the time it already shows changes nothing.
+- **A time in the future** schedules the episode for that time.
+- **An empty field** makes the episode a draft.
+
+A published episode is taken off the site by the last two, as [Taking an episode off the site](#taking-an-episode-off-the-site) describes.
 
 ![The Publishing settings section: the Publication date and time field and Update publication date and time.](./episodes-publishing-settings.png)
 
@@ -157,7 +163,7 @@ The usual way to publish a new episode of a public series is therefore:
 
 1. Create the episode with **Publication date and time** empty, as a draft.
 2. Add its pages, and check them and its layout.
-3. Under **Publishing settings**, enter the time it should go out, and save.
+3. Under **Publishing settings**, enter the current time to publish it now, or the time it should go out, and save.
 
 ### When a scheduled episode appears
 
@@ -169,7 +175,7 @@ The episode is published by `publira worker`, which looks for episodes whose tim
 
 So an episode scheduled for 12:00 is readable by about 12:01, and the site's lists, such as the series list ordered by **Recently updated**, show it from the same moment.
 
-An episode that is still **Scheduled** well after its time means the worker is not running, or is failing to publish it. A Tenant admin then gets a notification titled "An episode could not be published". This is for the operator to fix, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#scheduled-publication) describes, and the episode goes out on its own once it is.
+An episode that is still **Scheduled** well after its time means the worker is not running, or is failing to publish it. A Tenant admin then gets a notification titled "An episode could not be published". This is for the operator to fix, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#scheduled-publication) describes, and the episode goes out on its own once it is. To publish it without waiting, enter the current time under **Publishing settings** and save.
 
 An episode published while its series is not public, or while it is **Not shown anywhere**, is announced to nobody, so that no notification leads to a page that is not found. It is not announced later when the series is published either ([#4044](https://github.com/publira/publira/issues/4044)). An episode shown on only one of the site and the app is still announced on both, and the notification on the other one leads to a page that is not found ([#4043](https://github.com/publira/publira/issues/4043)). Publish the series first, and set where an episode is shown before its time.
 
@@ -177,7 +183,7 @@ An episode published while its series is not public, or while it is **Not shown 
 
 A published episode cannot be deleted. To take it off the site:
 
-- **Empty the field** under **Publishing settings** and save. The episode goes back to **Draft**. The card's own text says only that this clears the schedule ([#3830](https://github.com/publira/publira/issues/3830)).
+- **Empty the field** under **Publishing settings** and save. The episode goes back to **Draft**.
 - **Enter a time in the future** and save. The episode is off the site until then, and is published again at that time without announcing it to followers a second time.
 - **Set Shown on** so it is shown nowhere. The episode stays published, and comes back as soon as the setting is changed.
 
