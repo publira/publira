@@ -258,6 +258,9 @@ type Querier interface {
 	// one needs SELECT on the row, which puts it through the member policy and
 	// refuses a row filed for somebody else. The ids are fresh UUIDv7s, so the
 	// recipient / type / subject key is the only one an insert can conflict on.
+	//
+	// availability is the surface the notification may be shown on, and a writer
+	// that names none files it for every surface, the column's default.
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) error
 	// The caller creates the page's default-locale translation in the same
 	// transaction, so no page is ever stored without one.
@@ -1322,8 +1325,8 @@ type Querier interface {
 	// notification links to the episode, and a follower of a credited creator
 	// would otherwise be sent to a page that answers 404. The gate names no
 	// follower, so the planner checks it once rather than per row. Such an
-	// episode is not announced when its series is published later either (#4044),
-	// and one shown on a single surface is still announced on both (#4043).
+	// episode is not announced when its series is published later either (#4044).
+	// The surfaces it is announced on are ListPublishedEpisodeSurfaces's to say.
 	//
 	// Keyset paging on user_id, because the result grows with the tenant's
 	// readership and the caller writes one row per recipient. The cursor is
@@ -1608,6 +1611,12 @@ type Querier interface {
 	// backward uses ASC so the index can be scanned in reverse. The handler
 	// flips ASC rows back into display order. Do not parameterize ORDER BY.
 	// cursor rules: proto/README.md.
+	//
+	// surface is the reader's surface, 'web' or 'app', and keeps the rows that
+	// may be shown on it; the unread count and "mark all as read" take the same
+	// one, so a surface counts and marks only what it lists. The tenant console,
+	// which is neither surface and lists what is addressed to an admin, passes
+	// NULL and reads every row.
 	ListNotificationsForUserDesc(ctx context.Context, arg ListNotificationsForUserDescParams) ([]ListNotificationsForUserDescRow, error)
 	// The reader's wait-for-free tickets on the series that still open their
 	// episode, soonest to close first. A ticket on an episode that has since been
@@ -1729,6 +1738,12 @@ type Querier interface {
 	// moment the reader would follow it. `purchase_availability` is resolved
 	// through the series and the tenant as the episode read resolves it.
 	ListPublishedEpisodeNeighborsForTenant(ctx context.Context, arg ListPublishedEpisodeNeighborsForTenantParams) ([]ListPublishedEpisodeNeighborsForTenantRow, error)
+	// The surfaces a reader can open an episode on at this moment, which are the
+	// surfaces the fan-out lets its notification be shown on. The notification
+	// links to the episode, so one shown on the app alone is not listed in the
+	// site's inbox or pushed to a browser, where it would lead to a page that
+	// answers 404.
+	ListPublishedEpisodeSurfaces(ctx context.Context, arg ListPublishedEpisodeSurfacesParams) ([]string, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	// The public genre list: the tenant's whole genre list, in the order the
 	// console put it in, each genre carrying how many of its series are published
@@ -1829,6 +1844,10 @@ type Querier interface {
 	// in idx_notifications_tenant_subject_user, so a page costs the recipients it
 	// passes rather than every device the tenant has. The separate user_id bound is
 	// what the index can start from, since the pair spans both tables.
+	//
+	// A device is left out where the notification may not be shown on its
+	// surface: a Web Push subscription is the site, and an FCM token on Android
+	// or iOS is the app.
 	ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error)
 	// The keyset scan behind the ranking screen: one snapshot's items, in the
 	// positions it recorded, restricted to the series that are still published on

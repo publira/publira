@@ -393,6 +393,18 @@ SELECT EXISTS (
         )
 ) AS follows_published_series;
 
+-- name: ListPublishedEpisodeSurfaces :many
+-- The surfaces a reader can open an episode on at this moment, which are the
+-- surfaces the fan-out lets its notification be shown on. The notification
+-- links to the episode, so one shown on the app alone is not listed in the
+-- site's inbox or pushed to a browser, where it would lead to a page that
+-- answers 404.
+SELECT surface
+FROM published_episode_surfaces
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND episode_id = sqlc.arg('episode_id')
+ORDER BY surface;
+
 -- name: ListEpisodeFollowerIDs :many
 -- Worker fan-out: who is told about a new episode. The union of the follows
 -- that point at the episode, at the series it belongs to, and at a creator
@@ -411,8 +423,8 @@ SELECT EXISTS (
 -- notification links to the episode, and a follower of a credited creator
 -- would otherwise be sent to a page that answers 404. The gate names no
 -- follower, so the planner checks it once rather than per row. Such an
--- episode is not announced when its series is published later either (#4044),
--- and one shown on a single surface is still announced on both (#4043).
+-- episode is not announced when its series is published later either (#4044).
+-- The surfaces it is announced on are ListPublishedEpisodeSurfaces's to say.
 --
 -- Keyset paging on user_id, because the result grows with the tenant's
 -- readership and the caller writes one row per recipient. The cursor is

@@ -2,6 +2,7 @@ package dbtest
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"slices"
 	"strings"
@@ -153,5 +154,79 @@ func TestListPushDevicesForNotificationWalksTheRecipientIndex(t *testing.T) {
 	}
 	if !strings.Contains(plan.String(), "idx_notifications_tenant_subject_user") {
 		t.Fatalf("plan did not use idx_notifications_tenant_subject_user:\n%s", plan.String())
+	}
+}
+
+// A notification shown on one surface is pushed to that surface's devices
+// alone: the site's to a Web Push subscription, the app's to an Android or iOS
+// token. One shown everywhere reaches all three.
+func TestListPushDevicesForNotificationReachesTheSurfacesItIsShownOn(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "PUSHSURF0001", "push-surface.example.com", "Push Surface Tenant")
+	reader := pg.SeedEndUser(t, tenant.ID, "PUSHSURFUSR1", "reader@push-surface.example.com", "Reader")
+	queries := dbmodels.New(pg.DB)
+
+	const endpoint = "https://push.example.com/subscription"
+	for _, device := range []dbmodels.UpsertUserPushDeviceParams{
+		{Token: "android-token", Platform: "android"},
+		{Token: "ios-token", Platform: "ios"},
+		{
+			Token:    endpoint,
+			Platform: "web",
+			Endpoint: sql.NullString{String: endpoint, Valid: true},
+			P256dh:   sql.NullString{String: "p256dh", Valid: true},
+			Auth:     sql.NullString{String: "auth", Valid: true},
+		},
+	} {
+		device.TenantID = tenant.ID
+		device.UserID = reader.ID
+		if _, err := queries.UpsertUserPushDevice(ctx, device); err != nil {
+			t.Fatalf("UpsertUserPushDevice %s: %v", device.Platform, err)
+		}
+	}
+
+	for _, tc := range []struct {
+		availability sql.NullString
+		want         []string
+	}{
+		{sql.NullString{}, []string{"android-token", endpoint, "ios-token"}},
+		{sql.NullString{String: "web", Valid: true}, []string{endpoint}},
+		{sql.NullString{String: "app", Valid: true}, []string{"android-token", "ios-token"}},
+	} {
+		subjectKey := "episode:" + tc.availability.String
+		if err := queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+			ID:               uuid.Must(uuid.NewV7()),
+			TenantID:         tenant.ID,
+			UserID:           reader.ID,
+			NotificationType: "episode_published",
+			SubjectKey:       subjectKey,
+			Payload:          json.RawMessage(`{}`),
+			Availability:     tc.availability,
+		}); err != nil {
+			t.Fatalf("CreateNotification %s: %v", subjectKey, err)
+		}
+
+		rows, err := queries.ListPushDevicesForNotification(ctx, dbmodels.ListPushDevicesForNotificationParams{
+			TenantID:         tenant.ID,
+			NotificationType: "episode_published",
+			SubjectKey:       subjectKey,
+			AfterUserID:      uuid.Nil,
+			PageSize:         10,
+		})
+		if err != nil {
+			t.Fatalf("ListPushDevicesForNotification %s: %v", subjectKey, err)
+		}
+		got := make([]string, 0, len(rows))
+		for _, row := range rows {
+			got = append(got, row.Token)
+		}
+		if !slices.Equal(got, tc.want) {
+			t.Fatalf("devices for %q = %v, want %v", tc.availability.String, got, tc.want)
+		}
 	}
 }

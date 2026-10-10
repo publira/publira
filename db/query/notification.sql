@@ -3,6 +3,9 @@
 -- one needs SELECT on the row, which puts it through the member policy and
 -- refuses a row filed for somebody else. The ids are fresh UUIDv7s, so the
 -- recipient / type / subject key is the only one an insert can conflict on.
+--
+-- availability is the surface the notification may be shown on, and a writer
+-- that names none files it for every surface, the column's default.
 -- name: CreateNotification :exec
 INSERT INTO notifications (
     id,
@@ -10,7 +13,8 @@ INSERT INTO notifications (
     user_id,
     notification_type,
     subject_key,
-    payload
+    payload,
+    availability
 )
 VALUES (
     sqlc.arg('id'),
@@ -18,7 +22,8 @@ VALUES (
     sqlc.arg('user_id'),
     sqlc.arg('notification_type'),
     sqlc.arg('subject_key'),
-    sqlc.arg('payload')
+    sqlc.arg('payload'),
+    COALESCE(sqlc.narg('availability')::text, 'all')
 )
 ON CONFLICT DO NOTHING;
 
@@ -44,6 +49,12 @@ RETURNING *;
 -- backward uses ASC so the index can be scanned in reverse. The handler
 -- flips ASC rows back into display order. Do not parameterize ORDER BY.
 -- cursor rules: proto/README.md.
+--
+-- surface is the reader's surface, 'web' or 'app', and keeps the rows that
+-- may be shown on it; the unread count and "mark all as read" take the same
+-- one, so a surface counts and marks only what it lists. The tenant console,
+-- which is neither surface and lists what is addressed to an admin, passes
+-- NULL and reads every row.
 -- name: ListNotificationsForUserDesc :many
 SELECT
     n.id,
@@ -60,6 +71,10 @@ FROM notifications n
     AND nr.user_id = sqlc.arg('user_id')
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND n.user_id = sqlc.arg('user_id')
+    AND (
+        sqlc.narg('surface')::text IS NULL
+        OR n.availability = ANY (ARRAY['all'::text, sqlc.narg('surface')::text])
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -90,6 +105,10 @@ FROM notifications n
     AND nr.user_id = sqlc.arg('user_id')
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND n.user_id = sqlc.arg('user_id')
+    AND (
+        sqlc.narg('surface')::text IS NULL
+        OR n.availability = ANY (ARRAY['all'::text, sqlc.narg('surface')::text])
+    )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -165,6 +184,10 @@ SELECT COUNT(*)::int AS unread_count
 FROM notifications n
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND n.user_id = sqlc.arg('user_id')
+    AND (
+        sqlc.narg('surface')::text IS NULL
+        OR n.availability = ANY (ARRAY['all'::text, sqlc.narg('surface')::text])
+    )
     AND NOT EXISTS (
         SELECT 1
         FROM notification_reads nr
@@ -210,6 +233,10 @@ SELECT n.id, sqlc.arg('user_id'), n.tenant_id, NOW()
 FROM notifications n
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND n.user_id = sqlc.arg('user_id')
+    AND (
+        sqlc.narg('surface')::text IS NULL
+        OR n.availability = ANY (ARRAY['all'::text, sqlc.narg('surface')::text])
+    )
     AND NOT EXISTS (
         SELECT 1
         FROM notification_reads nr

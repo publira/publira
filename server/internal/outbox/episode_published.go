@@ -71,6 +71,7 @@ type EpisodePublication struct {
 
 // EpisodeFollowerQuerier is the statements [NotifyEpisodeFollowers] runs.
 type EpisodeFollowerQuerier interface {
+	ListPublishedEpisodeSurfaces(ctx context.Context, arg dbmodels.ListPublishedEpisodeSurfacesParams) ([]string, error)
 	ListEpisodeFollowerIDs(ctx context.Context, arg dbmodels.ListEpisodeFollowerIDsParams) ([]uuid.UUID, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
@@ -83,6 +84,10 @@ type EpisodeFollowerQuerier interface {
 // follow is the request to be told. So does an episode no reader can open yet,
 // because its series is not public or it is shown on no surface:
 // ListEpisodeFollowerIDs answers nobody for it.
+//
+// Each notification is filed for the surfaces the episode is shown on, so one
+// shown on the app alone is listed in the app's inbox and pushed to the app,
+// and neither listed on the site nor sent as a Web Push.
 //
 // The recipients arrive a page at a time and the rows are written as each page
 // lands. The notification and the push both key on the episode, so a second
@@ -97,6 +102,19 @@ func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publi
 	if err != nil {
 		return fmt.Errorf("encode payload: %w", err)
 	}
+
+	surfaces, err := q.ListPublishedEpisodeSurfaces(ctx, dbmodels.ListPublishedEpisodeSurfacesParams{
+		TenantID:  publication.TenantID,
+		EpisodeID: publication.EpisodeID,
+	})
+	if err != nil {
+		return fmt.Errorf("list episode surfaces: %w", err)
+	}
+	if len(surfaces) == 0 {
+		// No reader can open it, so ListEpisodeFollowerIDs would answer nobody.
+		return nil
+	}
+	availability := sql.NullString{String: notificationAvailability(surfaces), Valid: true}
 
 	subjectKey := "episode:" + publication.EpisodePublicID
 	notified := 0
@@ -128,6 +146,7 @@ func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publi
 				NotificationType: NotificationTypeEpisodePublished,
 				SubjectKey:       subjectKey,
 				Payload:          payload,
+				Availability:     availability,
 			})
 			if err != nil {
 				return fmt.Errorf("insert notification for %s: %w", followerID, err)
@@ -143,6 +162,16 @@ func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publi
 		return nil
 	}
 	return enqueueEpisodePublishedPush(ctx, q, publication, subjectKey)
+}
+
+// notificationAvailability is the notifications.availability that shows a
+// notification on surfaces, a list naming at least one. 'all' is both the site
+// and the app, so a list naming more than one surface is all of them.
+func notificationAvailability(surfaces []string) string {
+	if len(surfaces) == 1 {
+		return surfaces[0]
+	}
+	return "all"
 }
 
 // enqueueEpisodePublishedPush schedules the mobile push for the notification

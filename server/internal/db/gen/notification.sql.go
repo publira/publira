@@ -19,6 +19,10 @@ SELECT COUNT(*)::int AS unread_count
 FROM notifications n
 WHERE n.tenant_id = $1
     AND n.user_id = $2
+    AND (
+        $3::text IS NULL
+        OR n.availability = ANY (ARRAY['all'::text, $3::text])
+    )
     AND NOT EXISTS (
         SELECT 1
         FROM notification_reads nr
@@ -28,12 +32,13 @@ WHERE n.tenant_id = $1
 `
 
 type CountUnreadNotificationsForUserParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	UserID   uuid.UUID `json:"user_id"`
+	TenantID uuid.UUID      `json:"tenant_id"`
+	UserID   uuid.UUID      `json:"user_id"`
+	Surface  sql.NullString `json:"surface"`
 }
 
 func (q *Queries) CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, CountUnreadNotificationsForUser, arg.TenantID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, CountUnreadNotificationsForUser, arg.TenantID, arg.UserID, arg.Surface)
 	var unread_count int32
 	err := row.Scan(&unread_count)
 	return unread_count, err
@@ -65,7 +70,8 @@ INSERT INTO notifications (
     user_id,
     notification_type,
     subject_key,
-    payload
+    payload,
+    availability
 )
 VALUES (
     $1,
@@ -73,7 +79,8 @@ VALUES (
     $3,
     $4,
     $5,
-    $6
+    $6,
+    COALESCE($7::text, 'all')
 )
 ON CONFLICT DO NOTHING
 `
@@ -85,6 +92,7 @@ type CreateNotificationParams struct {
 	NotificationType string          `json:"notification_type"`
 	SubjectKey       string          `json:"subject_key"`
 	Payload          json.RawMessage `json:"payload"`
+	Availability     sql.NullString  `json:"availability"`
 }
 
 // Worker insert. Same recipient / type / subject is a no-op so retries
@@ -92,6 +100,9 @@ type CreateNotificationParams struct {
 // one needs SELECT on the row, which puts it through the member policy and
 // refuses a row filed for somebody else. The ids are fresh UUIDv7s, so the
 // recipient / type / subject key is the only one an insert can conflict on.
+//
+// availability is the surface the notification may be shown on, and a writer
+// that names none files it for every surface, the column's default.
 func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) error {
 	_, err := q.db.ExecContext(ctx, CreateNotification,
 		arg.ID,
@@ -100,6 +111,7 @@ func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotification
 		arg.NotificationType,
 		arg.SubjectKey,
 		arg.Payload,
+		arg.Availability,
 	)
 	return err
 }
@@ -168,27 +180,32 @@ FROM notifications n
 WHERE n.tenant_id = $2
     AND n.user_id = $1
     AND (
-        $3::uuid IS NULL
+        $3::text IS NULL
+        OR n.availability = ANY (ARRAY['all'::text, $3::text])
+    )
+    AND (
+        $4::uuid IS NULL
         OR (
-            $4::boolean
-            AND (n.created_at, n.id) >= ($5::timestamptz, $3::uuid)
+            $5::boolean
+            AND (n.created_at, n.id) >= ($6::timestamptz, $4::uuid)
         )
         OR (
-            NOT $4::boolean
-            AND (n.created_at, n.id) > ($5::timestamptz, $3::uuid)
+            NOT $5::boolean
+            AND (n.created_at, n.id) > ($6::timestamptz, $4::uuid)
         )
     )
 ORDER BY n.created_at ASC, n.id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListNotificationsForUserAscParams struct {
-	UserID          uuid.UUID     `json:"user_id"`
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	CursorID        uuid.NullUUID `json:"cursor_id"`
-	CursorInclusive bool          `json:"cursor_inclusive"`
-	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
-	Limit           int32         `json:"limit"`
+	UserID          uuid.UUID      `json:"user_id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         sql.NullString `json:"surface"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
+	Limit           int32          `json:"limit"`
 }
 
 type ListNotificationsForUserAscRow struct {
@@ -207,6 +224,7 @@ func (q *Queries) ListNotificationsForUserAsc(ctx context.Context, arg ListNotif
 	rows, err := q.db.QueryContext(ctx, ListNotificationsForUserAsc,
 		arg.UserID,
 		arg.TenantID,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,
@@ -260,27 +278,32 @@ FROM notifications n
 WHERE n.tenant_id = $2
     AND n.user_id = $1
     AND (
-        $3::uuid IS NULL
+        $3::text IS NULL
+        OR n.availability = ANY (ARRAY['all'::text, $3::text])
+    )
+    AND (
+        $4::uuid IS NULL
         OR (
-            $4::boolean
-            AND (n.created_at, n.id) <= ($5::timestamptz, $3::uuid)
+            $5::boolean
+            AND (n.created_at, n.id) <= ($6::timestamptz, $4::uuid)
         )
         OR (
-            NOT $4::boolean
-            AND (n.created_at, n.id) < ($5::timestamptz, $3::uuid)
+            NOT $5::boolean
+            AND (n.created_at, n.id) < ($6::timestamptz, $4::uuid)
         )
     )
 ORDER BY n.created_at DESC, n.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListNotificationsForUserDescParams struct {
-	UserID          uuid.UUID     `json:"user_id"`
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	CursorID        uuid.NullUUID `json:"cursor_id"`
-	CursorInclusive bool          `json:"cursor_inclusive"`
-	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
-	Limit           int32         `json:"limit"`
+	UserID          uuid.UUID      `json:"user_id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	Surface         sql.NullString `json:"surface"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
+	Limit           int32          `json:"limit"`
 }
 
 type ListNotificationsForUserDescRow struct {
@@ -299,10 +322,17 @@ type ListNotificationsForUserDescRow struct {
 // backward uses ASC so the index can be scanned in reverse. The handler
 // flips ASC rows back into display order. Do not parameterize ORDER BY.
 // cursor rules: proto/README.md.
+//
+// surface is the reader's surface, 'web' or 'app', and keeps the rows that
+// may be shown on it; the unread count and "mark all as read" take the same
+// one, so a surface counts and marks only what it lists. The tenant console,
+// which is neither surface and lists what is addressed to an admin, passes
+// NULL and reads every row.
 func (q *Queries) ListNotificationsForUserDesc(ctx context.Context, arg ListNotificationsForUserDescParams) ([]ListNotificationsForUserDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListNotificationsForUserDesc,
 		arg.UserID,
 		arg.TenantID,
+		arg.Surface,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,
@@ -517,6 +547,10 @@ SELECT n.id, $1, n.tenant_id, NOW()
 FROM notifications n
 WHERE n.tenant_id = $2
     AND n.user_id = $1
+    AND (
+        $3::text IS NULL
+        OR n.availability = ANY (ARRAY['all'::text, $3::text])
+    )
     AND NOT EXISTS (
         SELECT 1
         FROM notification_reads nr
@@ -527,12 +561,13 @@ ON CONFLICT (notification_id, user_id) DO NOTHING
 `
 
 type MarkAllNotificationsAsReadParams struct {
-	UserID   uuid.UUID `json:"user_id"`
-	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID      `json:"user_id"`
+	TenantID uuid.UUID      `json:"tenant_id"`
+	Surface  sql.NullString `json:"surface"`
 }
 
 func (q *Queries) MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, MarkAllNotificationsAsRead, arg.UserID, arg.TenantID)
+	result, err := q.db.ExecContext(ctx, MarkAllNotificationsAsRead, arg.UserID, arg.TenantID, arg.Surface)
 	if err != nil {
 		return 0, err
 	}

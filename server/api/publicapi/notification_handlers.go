@@ -73,6 +73,7 @@ func mapNotificationAscRows(rows []dbmodels.ListNotificationsForUserAscRow) []no
 func (s *apiServer) notificationPage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
+	surface string,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -82,6 +83,7 @@ func (s *apiServer) notificationPage(
 		rows, err := queries.ListNotificationsForUserAsc(ctx, dbmodels.ListNotificationsForUserAscParams{
 			TenantID:        tenantID,
 			UserID:          userID,
+			Surface:         sql.NullString{String: surface, Valid: true},
 			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 			CursorInclusive: keys.Inclusive,
@@ -96,6 +98,7 @@ func (s *apiServer) notificationPage(
 	rows, err := queries.ListNotificationsForUserDesc(ctx, dbmodels.ListNotificationsForUserDescParams{
 		TenantID:        tenantID,
 		UserID:          userID,
+		Surface:         sql.NullString{String: surface, Valid: true},
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
@@ -130,12 +133,16 @@ func (s *apiServer) ListNotifications(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
 
 	limit := pagination.NormalizeLimit(req.Limit, defaultNotificationPageSize, maxNotificationPageSize)
-	cursor, err := pagination.Decode(req.Token)
+	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
@@ -147,7 +154,7 @@ func (s *apiServer) ListNotifications(
 		}
 	}
 
-	rows, err := s.notificationPage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.notificationPage(ctx, tenant.ID, user.ID, surface, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list notifications", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
@@ -174,6 +181,7 @@ func (s *apiServer) ListNotifications(
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
 		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
+	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 
 	return res, nil
 }
@@ -186,6 +194,10 @@ func (s *apiServer) CountUnreadNotifications(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
@@ -193,6 +205,7 @@ func (s *apiServer) CountUnreadNotifications(
 	unread, err := s.queriesFor(ctx).CountUnreadNotificationsForUser(ctx, dbmodels.CountUnreadNotificationsForUserParams{
 		TenantID: tenant.ID,
 		UserID:   user.ID,
+		Surface:  sql.NullString{String: surface, Valid: true},
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to count unread notifications", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -241,6 +254,10 @@ func (s *apiServer) MarkAllNotificationsAsRead(
 	if err != nil {
 		return nil, err
 	}
+	surface, err := callingSurface(req.Surface)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
@@ -248,6 +265,7 @@ func (s *apiServer) MarkAllNotificationsAsRead(
 	marked, err := s.queriesFor(ctx).MarkAllNotificationsAsRead(ctx, dbmodels.MarkAllNotificationsAsReadParams{
 		TenantID: tenant.ID,
 		UserID:   user.ID,
+		Surface:  sql.NullString{String: surface, Valid: true},
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to mark all notifications as read", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())

@@ -168,7 +168,11 @@ type ListNotificationsRequest struct {
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
-	Token         string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	// The client making the read. Unspecified is answered as the web storefront.
+	// A notification about an episode is listed only on the surfaces the episode
+	// was shown on when it was published.
+	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -222,6 +226,13 @@ func (x *ListNotificationsRequest) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *ListNotificationsRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type ListNotificationsResponse struct {
@@ -527,8 +538,11 @@ func (x *UnregisterPushDeviceResponse) GetUnregistered() bool {
 }
 
 type CountUnreadNotificationsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The client making the read. Unspecified is answered as the web storefront,
+	// and the count is of what ListNotifications lists on the same surface.
+	Surface       v1.ClientSurface `protobuf:"varint,2,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -568,6 +582,13 @@ func (x *CountUnreadNotificationsRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
+}
+
+func (x *CountUnreadNotificationsRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type CountUnreadNotificationsResponse struct {
@@ -711,8 +732,11 @@ func (x *MarkNotificationAsReadResponse) GetMarked() bool {
 }
 
 type MarkAllNotificationsAsReadRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The client making the call. Unspecified is answered as the web storefront,
+	// and what is marked is what ListNotifications lists on the same surface.
+	Surface       v1.ClientSurface `protobuf:"varint,2,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -752,6 +776,13 @@ func (x *MarkAllNotificationsAsReadRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
+}
+
+func (x *MarkAllNotificationsAsReadRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
 }
 
 type MarkAllNotificationsAsReadResponse struct {
@@ -811,11 +842,12 @@ const file_publira_v1_notification_proto_rawDesc = "" +
 	"\ais_read\x18\x04 \x01(\bR\x06isRead\x12\x17\n" +
 	"\aread_at\x18\x05 \x01(\tR\x06readAt\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\tR\tcreatedAt\"\x7f\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\"\xba\x01\n" +
 	"\x18ListNotificationsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x03 \x01(\tR\x05token\"\xa5\x01\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\xa5\x01\n" +
 	"\x19ListNotificationsResponse\x12B\n" +
 	"\rnotifications\x18\x01 \x03(\v2\x1c.publira.v1.NotificationItemR\rnotifications\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -837,18 +869,20 @@ const file_publira_v1_notification_proto_rawDesc = "" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x12\x1a\n" +
 	"\bendpoint\x18\x03 \x01(\tR\bendpoint\"B\n" +
 	"\x1cUnregisterPushDeviceResponse\x12\"\n" +
-	"\funregistered\x18\x01 \x01(\bR\funregistered\"Z\n" +
+	"\funregistered\x18\x01 \x01(\bR\funregistered\"\x95\x01\n" +
 	"\x1fCountUnreadNotificationsRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"E\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x129\n" +
+	"\asurface\x18\x02 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"E\n" +
 	" CountUnreadNotificationsResponse\x12!\n" +
 	"\funread_count\x18\x01 \x01(\x05R\vunreadCount\"\x81\x01\n" +
 	"\x1dMarkNotificationAsReadRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12'\n" +
 	"\x0fnotification_id\x18\x02 \x01(\tR\x0enotificationId\"8\n" +
 	"\x1eMarkNotificationAsReadResponse\x12\x16\n" +
-	"\x06marked\x18\x01 \x01(\bR\x06marked\"\\\n" +
+	"\x06marked\x18\x01 \x01(\bR\x06marked\"\x97\x01\n" +
 	"!MarkAllNotificationsAsReadRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"G\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x129\n" +
+	"\asurface\x18\x02 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"G\n" +
 	"\"MarkAllNotificationsAsReadResponse\x12!\n" +
 	"\fmarked_count\x18\x01 \x01(\x05R\vmarkedCount*v\n" +
 	"\fPushPlatform\x12\x1d\n" +
@@ -894,33 +928,37 @@ var file_publira_v1_notification_proto_goTypes = []any{
 	(*MarkAllNotificationsAsReadRequest)(nil),  // 12: publira.v1.MarkAllNotificationsAsReadRequest
 	(*MarkAllNotificationsAsReadResponse)(nil), // 13: publira.v1.MarkAllNotificationsAsReadResponse
 	(*v1.TenantContext)(nil),                   // 14: publira.types.v1.TenantContext
+	(v1.ClientSurface)(0),                      // 15: publira.types.v1.ClientSurface
 }
 var file_publira_v1_notification_proto_depIdxs = []int32{
 	14, // 0: publira.v1.ListNotificationsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 1: publira.v1.ListNotificationsResponse.notifications:type_name -> publira.v1.NotificationItem
-	14, // 2: publira.v1.RegisterPushDeviceRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 3: publira.v1.RegisterPushDeviceRequest.platform:type_name -> publira.v1.PushPlatform
-	14, // 4: publira.v1.UnregisterPushDeviceRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 5: publira.v1.CountUnreadNotificationsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 6: publira.v1.MarkNotificationAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 7: publira.v1.MarkAllNotificationsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	2,  // 8: publira.v1.NotificationService.ListNotifications:input_type -> publira.v1.ListNotificationsRequest
-	8,  // 9: publira.v1.NotificationService.CountUnreadNotifications:input_type -> publira.v1.CountUnreadNotificationsRequest
-	10, // 10: publira.v1.NotificationService.MarkNotificationAsRead:input_type -> publira.v1.MarkNotificationAsReadRequest
-	12, // 11: publira.v1.NotificationService.MarkAllNotificationsAsRead:input_type -> publira.v1.MarkAllNotificationsAsReadRequest
-	4,  // 12: publira.v1.NotificationService.RegisterPushDevice:input_type -> publira.v1.RegisterPushDeviceRequest
-	6,  // 13: publira.v1.NotificationService.UnregisterPushDevice:input_type -> publira.v1.UnregisterPushDeviceRequest
-	3,  // 14: publira.v1.NotificationService.ListNotifications:output_type -> publira.v1.ListNotificationsResponse
-	9,  // 15: publira.v1.NotificationService.CountUnreadNotifications:output_type -> publira.v1.CountUnreadNotificationsResponse
-	11, // 16: publira.v1.NotificationService.MarkNotificationAsRead:output_type -> publira.v1.MarkNotificationAsReadResponse
-	13, // 17: publira.v1.NotificationService.MarkAllNotificationsAsRead:output_type -> publira.v1.MarkAllNotificationsAsReadResponse
-	5,  // 18: publira.v1.NotificationService.RegisterPushDevice:output_type -> publira.v1.RegisterPushDeviceResponse
-	7,  // 19: publira.v1.NotificationService.UnregisterPushDevice:output_type -> publira.v1.UnregisterPushDeviceResponse
-	14, // [14:20] is the sub-list for method output_type
-	8,  // [8:14] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	15, // 1: publira.v1.ListNotificationsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	1,  // 2: publira.v1.ListNotificationsResponse.notifications:type_name -> publira.v1.NotificationItem
+	14, // 3: publira.v1.RegisterPushDeviceRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 4: publira.v1.RegisterPushDeviceRequest.platform:type_name -> publira.v1.PushPlatform
+	14, // 5: publira.v1.UnregisterPushDeviceRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 6: publira.v1.CountUnreadNotificationsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 7: publira.v1.CountUnreadNotificationsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	14, // 8: publira.v1.MarkNotificationAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 9: publira.v1.MarkAllNotificationsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 10: publira.v1.MarkAllNotificationsAsReadRequest.surface:type_name -> publira.types.v1.ClientSurface
+	2,  // 11: publira.v1.NotificationService.ListNotifications:input_type -> publira.v1.ListNotificationsRequest
+	8,  // 12: publira.v1.NotificationService.CountUnreadNotifications:input_type -> publira.v1.CountUnreadNotificationsRequest
+	10, // 13: publira.v1.NotificationService.MarkNotificationAsRead:input_type -> publira.v1.MarkNotificationAsReadRequest
+	12, // 14: publira.v1.NotificationService.MarkAllNotificationsAsRead:input_type -> publira.v1.MarkAllNotificationsAsReadRequest
+	4,  // 15: publira.v1.NotificationService.RegisterPushDevice:input_type -> publira.v1.RegisterPushDeviceRequest
+	6,  // 16: publira.v1.NotificationService.UnregisterPushDevice:input_type -> publira.v1.UnregisterPushDeviceRequest
+	3,  // 17: publira.v1.NotificationService.ListNotifications:output_type -> publira.v1.ListNotificationsResponse
+	9,  // 18: publira.v1.NotificationService.CountUnreadNotifications:output_type -> publira.v1.CountUnreadNotificationsResponse
+	11, // 19: publira.v1.NotificationService.MarkNotificationAsRead:output_type -> publira.v1.MarkNotificationAsReadResponse
+	13, // 20: publira.v1.NotificationService.MarkAllNotificationsAsRead:output_type -> publira.v1.MarkAllNotificationsAsReadResponse
+	5,  // 21: publira.v1.NotificationService.RegisterPushDevice:output_type -> publira.v1.RegisterPushDeviceResponse
+	7,  // 22: publira.v1.NotificationService.UnregisterPushDevice:output_type -> publira.v1.UnregisterPushDeviceResponse
+	17, // [17:23] is the sub-list for method output_type
+	11, // [11:17] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_notification_proto_init() }
