@@ -23,15 +23,16 @@
 
 -- name: GetReportableEpisodeCommentForTenant :one
 -- The comment a reader is allowed to report: one that is published, on an
--- episode that is itself public right now. The publication predicate is the one
--- GetPublishedEpisodeForTenant applies, surface included, so a comment
--- on an episode that has been unpublished since, or that the calling surface may
--- not show, is as absent here as one that never existed.
+-- episode that is itself public right now. Whether it is comes from
+-- published_episode_surfaces for the calling surface, as it does for
+-- GetPublishedEpisodeForTenant, so a comment on an episode that has been
+-- unpublished since, or that the calling surface may not show, is as absent
+-- here as one that never existed.
 --
 -- Every join carries the tenant because the catalog's foreign keys are
--- single-column: episodes.series_id names a series without naming its tenant,
--- and so does episode_listings.episode_id. Only the tenant on each side keeps
--- the publication that is being read the same tenant's as the comment.
+-- single-column: episodes.series_id names a series without naming its tenant.
+-- Only the tenant on each side keeps the episode that is being read the same
+-- tenant's as the comment.
 --
 -- The author is returned because a reader may not report their own comment, and
 -- that is a decision the caller makes rather than a row this query hides: the
@@ -53,22 +54,15 @@ FROM episode_comments c
         AND e.id = c.episode_id
     JOIN series s ON s.tenant_id = c.tenant_id
         AND s.id = e.series_id
-    JOIN episode_listings el ON el.tenant_id = c.tenant_id
-        AND el.episode_id = e.id
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.id = sqlc.arg('id')
     AND c.status = 'published'
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
     AND EXISTS (
         SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = sqlc.arg('surface')::text
+        FROM published_episode_surfaces pes
+        WHERE pes.tenant_id = c.tenant_id
+            AND pes.episode_id = e.id
+            AND pes.surface = sqlc.arg('surface')::text
     )
 LIMIT 1;
 

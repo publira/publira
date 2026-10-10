@@ -715,15 +715,16 @@ type Querier interface {
 	//   RejectOpenEpisodeCommentReportsForComment
 	//     -> episode_comment_reports_tenant_comment_reporter_key
 	// The comment a reader is allowed to report: one that is published, on an
-	// episode that is itself public right now. The publication predicate is the one
-	// GetPublishedEpisodeForTenant applies, surface included, so a comment
-	// on an episode that has been unpublished since, or that the calling surface may
-	// not show, is as absent here as one that never existed.
+	// episode that is itself public right now. Whether it is comes from
+	// published_episode_surfaces for the calling surface, as it does for
+	// GetPublishedEpisodeForTenant, so a comment on an episode that has been
+	// unpublished since, or that the calling surface may not show, is as absent
+	// here as one that never existed.
 	//
 	// Every join carries the tenant because the catalog's foreign keys are
-	// single-column: episodes.series_id names a series without naming its tenant,
-	// and so does episode_listings.episode_id. Only the tenant on each side keeps
-	// the publication that is being read the same tenant's as the comment.
+	// single-column: episodes.series_id names a series without naming its tenant.
+	// Only the tenant on each side keeps the episode that is being read the same
+	// tenant's as the comment.
 	//
 	// The author is returned because a reader may not report their own comment, and
 	// that is a decision the caller makes rather than a row this query hides: the
@@ -1476,11 +1477,13 @@ type Querier interface {
 	ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeReadsAscParams) ([]ListMyEpisodeReadsAscRow, error)
 	// The episodes this reader has finished, most recently finished first.
 	//
-	// Publication and the calling surface are re-checked here, so a history entry
-	// never names an episode the storefront has taken down or the surface may not
-	// show; that is the same rule ListMyRecentSeries applies to a series. Body access is not re-checked: the reader did finish
-	// the episode, and a rental that has since expired is still part of what they
-	// read, which is also how ListMyPurchases keeps an expired purchase.
+	// Publication and the calling surface are re-checked here through
+	// published_episode_surfaces, so a history entry never names an episode the
+	// storefront has taken down or the surface may not show; that is the same rule
+	// ListMyRecentSeries applies to a series. Body access is not re-checked: the
+	// reader did finish the episode, and a rental that has since expired is still
+	// part of what they read, which is also how ListMyPurchases keeps an expired
+	// purchase.
 	//
 	// The scan starts from the (tenant_id, user_id) prefix of
 	// idx_episode_reads_tenant_user_read_at, so it is bounded by one reader's
@@ -1511,8 +1514,8 @@ type Querier interface {
 	// so a member who follows both a series and one of its creators sees the
 	// episode once.
 	//
-	// Publication is re-checked on both the series and the listing, and the
-	// calling surface on the episode, so the list never names something the
+	// Publication and the calling surface are re-checked through
+	// published_episode_surfaces, so the list never names something the
 	// storefront has taken down or the surface may not show; that is the same rule
 	// ListMyEpisodeReads applies to a history entry.
 	//
@@ -1695,8 +1698,9 @@ type Querier interface {
 	// Every published episode of one series with the two facts its access state is
 	// decided from: whether published_free_episodes counts it free to everyone
 	// right now, and whether episode_content_grants holds a grant for the reader.
-	// A guest passes a NULL user_id, which no grant matches. The order is the one
-	// GetSeriesDetail lists the episodes in.
+	// A guest passes a NULL user_id, which no grant matches. The episodes are the
+	// ones published_episode_surfaces opens on the calling surface, and the order
+	// is the one GetSeriesDetail lists them in.
 	ListPublishedEpisodeAccessInSeries(ctx context.Context, arg ListPublishedEpisodeAccessInSeriesParams) ([]ListPublishedEpisodeAccessInSeriesRow, error)
 	// The previous-page half of ListPublishedEpisodeCommentsByCreatedAtDesc. The
 	// handler reverses the returned rows to preserve the newest-first display order.
@@ -1719,7 +1723,7 @@ type Querier interface {
 	// missing row rather than a null column, so an episode at an end of the series
 	// returns one row and the only episode of a series returns none.
 	//
-	// The series predicate is repeated on both branches so the query answers for
+	// Both branches read published_episode_surfaces so the query answers for
 	// itself which episodes count as published: an episode of a series that has
 	// been taken down is not a link the storefront may offer, whichever episode
 	// was asked about.

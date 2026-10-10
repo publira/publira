@@ -1327,12 +1327,8 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 
 func TestGetPublishedEpisodeQueryHasPublicationGuards(t *testing.T) {
 	requiredSnippets := []string{
-		"s.is_published = true",
-		"s.published_at IS NOT NULL",
-		"s.published_at <= NOW()",
-		"el.status = 'published'",
-		"el.published_at IS NOT NULL",
-		"el.published_at <= NOW()",
+		"FROM published_episode_surfaces pes",
+		"pes.surface = ",
 	}
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(dbmodels.GetPublishedEpisodeForTenant, snippet) {
@@ -1490,12 +1486,8 @@ func TestCatalogGetEpisodeDetailLeavesAMissingNeighborUnset(t *testing.T) {
 // a link on a published one, on both sides of the episode being read.
 func TestListPublishedEpisodeNeighborsQueryHasPublicationGuards(t *testing.T) {
 	requiredSnippets := []string{
-		"s.is_published = true",
-		"s.published_at IS NOT NULL",
-		"s.published_at <= NOW()",
-		"el.status = 'published'",
-		"el.published_at IS NOT NULL",
-		"el.published_at <= NOW()",
+		"FROM published_episode_surfaces pes",
+		"pes.surface = ",
 		// is_free follows the same rule as the body access it describes.
 		"FROM published_free_episodes fe",
 	}

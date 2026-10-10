@@ -53,24 +53,15 @@ SELECT e.id,
     EXISTS (
         SELECT 1
         FROM episode_content_grants g
-        WHERE g.tenant_id = s.tenant_id
+        WHERE g.tenant_id = e.tenant_id
             AND g.user_id = $1::uuid
             AND g.episode_id = e.id
     ) AS has_grant
 FROM episodes e
-    JOIN series s ON s.id = e.series_id
-    JOIN episode_listings el ON el.episode_id = e.id
-WHERE s.tenant_id = $2
-    AND s.id = $3
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
-    AND EXISTS (
-        SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = $4::text
-    )
+    JOIN published_episode_surfaces pes ON pes.episode_id = e.id
+WHERE e.tenant_id = $2
+    AND e.series_id = $3
+    AND pes.surface = $4::text
 ORDER BY e.order_index ASC,
     e.id ASC
 `
@@ -92,8 +83,9 @@ type ListPublishedEpisodeAccessInSeriesRow struct {
 // Every published episode of one series with the two facts its access state is
 // decided from: whether published_free_episodes counts it free to everyone
 // right now, and whether episode_content_grants holds a grant for the reader.
-// A guest passes a NULL user_id, which no grant matches. The order is the one
-// GetSeriesDetail lists the episodes in.
+// A guest passes a NULL user_id, which no grant matches. The episodes are the
+// ones published_episode_surfaces opens on the calling surface, and the order
+// is the one GetSeriesDetail lists them in.
 func (q *Queries) ListPublishedEpisodeAccessInSeries(ctx context.Context, arg ListPublishedEpisodeAccessInSeriesParams) ([]ListPublishedEpisodeAccessInSeriesRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeAccessInSeries,
 		arg.UserID,
