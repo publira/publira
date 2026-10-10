@@ -18,6 +18,7 @@ describe("getAuditActionOptions", () => {
     ["tenant_admin_invited", "Invited a tenant admin"],
     ["tenant_member_added", "Added a tenant member"],
     ["tenant_member_created", "Created a tenant member account"],
+    ["tenant_member_mfa_reset", "Removed a member's two-step verification"],
     ["tenant_member_removed", "Removed a tenant member"],
     ["tenant_member_role_updated", "Changed a tenant member's role"],
   ])("offers %s in the action filter", async (value, label) => {

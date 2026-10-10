@@ -100,6 +100,10 @@ export const getAuditActionOptions = async (
       value: "tenant_member_created",
     },
     {
+      label: t("platform.audit.actions.tenant_member_mfa_reset"),
+      value: "tenant_member_mfa_reset",
+    },
+    {
       label: t("platform.audit.actions.tenant_member_removed"),
       value: "tenant_member_removed",
     },
