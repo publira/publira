@@ -815,31 +815,29 @@ describe("episode actions", () => {
       );
     });
 
-    it("refuses a negative price as the new-episode form does", async () => {
+    // The new-episode form's rules, which stop at what an int32 field carries.
+    it.each([
+      ["a negative price", "-1", "72", "Price must be a non-negative integer."],
+      [
+        "a price past an int32",
+        "2147483648",
+        "72",
+        "Price must be a non-negative integer.",
+      ],
+      [
+        "a reading period that is not a whole number",
+        "100",
+        "a day",
+        "Reading period must be a non-negative integer.",
+      ],
+    ])("refuses %s", async (_case, price, readingPeriodHours, message) => {
       const { updateEpisodePricingAction } = await import("./actions");
       const result = await updateEpisodePricingAction(
         null,
-        layoutFormData({ price: "-1", reading_period_hours: "72" })
+        layoutFormData({ price, reading_period_hours: readingPeriodHours })
       );
 
-      expect(result).toEqual({
-        message: "Price must be a non-negative integer.",
-        ok: false,
-      });
-      expect(mockUpdateEpisodePricing).not.toHaveBeenCalled();
-    });
-
-    it("refuses a reading period that is not a whole number", async () => {
-      const { updateEpisodePricingAction } = await import("./actions");
-      const result = await updateEpisodePricingAction(
-        null,
-        layoutFormData({ price: "100", reading_period_hours: "a day" })
-      );
-
-      expect(result).toEqual({
-        message: "Reading period must be a non-negative integer.",
-        ok: false,
-      });
+      expect(result).toEqual({ message, ok: false });
       expect(mockUpdateEpisodePricing).not.toHaveBeenCalled();
     });
 

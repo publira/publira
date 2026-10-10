@@ -17,6 +17,7 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
+import { MAX_INT32 } from "#lib/int32";
 import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
 
 import type { EpisodeActionState } from "../episode-types";
@@ -96,6 +97,7 @@ export const EpisodeForm = async ({
           <FieldContent>
             <Input
               defaultValue={0}
+              max={MAX_INT32}
               min={0}
               name="price"
               required
@@ -118,6 +120,7 @@ export const EpisodeForm = async ({
           <FieldContent>
             <Input
               defaultValue={seriesReadingPeriodHours}
+              max={MAX_INT32}
               min={0}
               name="reading_period_hours"
               required

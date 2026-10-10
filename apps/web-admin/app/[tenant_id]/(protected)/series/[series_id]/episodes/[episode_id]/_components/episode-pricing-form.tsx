@@ -24,6 +24,7 @@ import {
   AdminSectionTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import { MAX_INT32 } from "#lib/int32";
 
 interface EpisodePricingFormProps {
   action: (
@@ -83,6 +84,7 @@ export const EpisodePricingForm = ({
           <FieldContent>
             <Input
               defaultValue={initialPrice}
+              max={MAX_INT32}
               min={0}
               name="price"
               required
@@ -105,6 +107,7 @@ export const EpisodePricingForm = ({
           <FieldContent>
             <Input
               defaultValue={initialReadingPeriodHours}
+              max={MAX_INT32}
               min={0}
               name="reading_period_hours"
               required
