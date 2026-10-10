@@ -73,7 +73,7 @@ func TestNotificationListSuccess(t *testing.T) {
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListNotificationsForUserDesc)).
-		WithArgs(userID, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WithArgs(userID, tenantID, sql.NullString{String: "web", Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addNotificationRow(notificationColumns(), notificationID, tenantID, userID, "episode_published", now, false))
 
 	resp, err := client.ListNotifications(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListNotificationsRequest{
@@ -105,7 +105,7 @@ func TestNotificationListDatabaseErrorIsHidden(t *testing.T) {
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListNotificationsForUserDesc)).
-		WithArgs(userID, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WithArgs(userID, tenantID, sql.NullString{String: "web", Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnError(errors.New(`pq: relation "notifications" does not exist`))
 
 	_, err := client.ListNotifications(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListNotificationsRequest{
@@ -145,7 +145,7 @@ func TestNotificationCountUnread(t *testing.T) {
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountUnreadNotificationsForUser)).
-		WithArgs(tenantID, userID).
+		WithArgs(tenantID, userID, sql.NullString{String: "web", Valid: true}).
 		WillReturnRows(sqlmock.NewRows([]string{"unread_count"}).AddRow(int32(3)))
 
 	resp, err := client.CountUnreadNotifications(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.CountUnreadNotificationsRequest{
@@ -207,7 +207,7 @@ func TestNotificationMarkAllAsRead(t *testing.T) {
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.MarkAllNotificationsAsRead)).
-		WithArgs(userID, tenantID).
+		WithArgs(userID, tenantID, sql.NullString{String: "web", Valid: true}).
 		WillReturnResult(sqlmock.NewResult(0, 4))
 
 	resp, err := client.MarkAllNotificationsAsRead(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.MarkAllNotificationsAsReadRequest{
@@ -230,7 +230,7 @@ func TestNotificationMarkAllAsReadRejectsOverflow(t *testing.T) {
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.MarkAllNotificationsAsRead)).
-		WithArgs(userID, tenantID).
+		WithArgs(userID, tenantID, sql.NullString{String: "web", Valid: true}).
 		WillReturnResult(sqlmock.NewResult(0, int64(math.MaxInt32)+1))
 
 	_, err := client.MarkAllNotificationsAsRead(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.MarkAllNotificationsAsReadRequest{
@@ -258,7 +258,7 @@ func TestNotificationListFirstPageReportsNextToken(t *testing.T) {
 		addNotificationRow(rows, id, tenantID, userID, "episode_published", now.Add(-time.Duration(index)*time.Minute), false)
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListNotificationsForUserDesc)).
-		WithArgs(userID, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WithArgs(userID, tenantID, sql.NullString{String: "web", Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(rows)
 
 	resp, err := client.ListNotifications(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListNotificationsRequest{
@@ -276,6 +276,77 @@ func TestNotificationListFirstPageReportsNextToken(t *testing.T) {
 	}
 	if _, err := pagination.Decode(resp.NextToken); err != nil {
 		t.Fatalf("next_token decode: %v", err)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+// The app reads the app's inbox, and the token it is handed names the app, so
+// the site cannot page through it with that token.
+func TestNotificationListNamesTheCallingSurface(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock := newNotificationClient(t, tenantID, userID, now)
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+
+	rows := notificationColumns()
+	for index, id := range ids {
+		addNotificationRow(rows, id, tenantID, userID, "episode_published", now.Add(-time.Duration(index)*time.Minute), false)
+	}
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListNotificationsForUserDesc)).
+		WithArgs(userID, tenantID, sql.NullString{String: "app", Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(2)).
+		WillReturnRows(rows)
+
+	resp, err := client.ListNotifications(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListNotificationsRequest{
+		Tenant:  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Limit:   1,
+		Surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_APP,
+	})
+	if err != nil {
+		t.Fatalf("ListNotifications: %v", err)
+	}
+	next, err := pagination.Decode(resp.NextToken)
+	if err != nil {
+		t.Fatalf("next_token decode: %v", err)
+	}
+	if len(next.Keys) == 0 || next.Keys[0] != "surface:app" {
+		t.Fatalf("next_token keys = %v, want the app surface first", next.Keys)
+	}
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectAuthSession(mock, tenantID, userID, now)
+	_, err = client.ListNotifications(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListNotificationsRequest{
+		Tenant:  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Token:   resp.NextToken,
+		Surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB,
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListNotifications with the app's token on the site code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestNotificationCountUnreadOnTheApp(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock := newNotificationClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CountUnreadNotificationsForUser)).
+		WithArgs(tenantID, userID, sql.NullString{String: "app", Valid: true}).
+		WillReturnRows(sqlmock.NewRows([]string{"unread_count"}).AddRow(int32(1)))
+
+	resp, err := client.CountUnreadNotifications(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.CountUnreadNotificationsRequest{
+		Tenant:  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Surface: publirattypesv1.ClientSurface_CLIENT_SURFACE_APP,
+	})
+	if err != nil {
+		t.Fatalf("CountUnreadNotifications: %v", err)
+	}
+	if resp.UnreadCount != 1 {
+		t.Fatalf("unread = %d, want 1", resp.UnreadCount)
 	}
 
 	assertPublicExpectations(t, mock)

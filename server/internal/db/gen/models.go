@@ -461,6 +461,7 @@ type Notification struct {
 	SubjectKey       string          `json:"subject_key"`
 	Payload          json.RawMessage `json:"payload"`
 	CreatedAt        time.Time       `json:"created_at"`
+	Availability     string          `json:"availability"`
 }
 
 type NotificationRead struct {

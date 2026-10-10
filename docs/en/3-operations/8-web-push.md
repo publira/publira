@@ -43,7 +43,7 @@ If the screen says it cannot set Web Push up because the API server has no secre
 
 The API and the worker read the settings again every ten seconds, so the saved subject reaches them without a restart. The first save also has the worker drop the cached copy of every tenant's site information about twenty seconds later, once the API is answering with the subject, so each site offers browser notifications from its next request on. That drop is a cache revalidation in the outbox, sent like every other one: a worker without `PUBLIRA_REVALIDATE_TOKEN` cannot send it, as [The outbox](./10-scheduled-jobs.md#the-outbox-mail-push-and-cache-revalidation) describes.
 
-To see it work, sign in to a tenant's site as a reader, turn on **New episode notifications** under **Browser notifications** in the reader's notification settings, and follow a series: the next episode published in it arrives as a browser notification.
+To see it work, sign in to a tenant's site as a reader, turn on **New episode notifications** under **Browser notifications** in the reader's notification settings, and follow a series: the next episode published in it and shown on the site arrives as a browser notification.
 
 Each save is recorded in **Audit logs**.
 

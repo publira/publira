@@ -248,6 +248,111 @@ func TestCountAndMarkNotificationsForUser(t *testing.T) {
 	}
 }
 
+// A surface lists, counts, and marks the notifications shown on it — those
+// filed for every surface and those filed for it alone — and the tenant
+// console, which names no surface, reads every one.
+func TestNotificationsAreListedCountedAndMarkedOnTheirSurface(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "NOTIFTENANT1", "notif.example.com", "admin-notif.example.com", "Notification Tenant")
+	userID := mustInsertUser(t, ctx, pg.DB, tenantID, "NOTIFUSER001", "notif-user@example.com", "Notification User")
+	queries := dbmodels.New(pg.DB)
+
+	idOf := map[string]uuid.UUID{}
+	for _, availability := range []string{"", "web", "app"} {
+		id := uuid.Must(uuid.NewV7())
+		if err := queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+			ID:               id,
+			TenantID:         tenantID,
+			UserID:           userID,
+			NotificationType: "episode_published",
+			SubjectKey:       "episode:" + availability,
+			Payload:          json.RawMessage(`{}`),
+			Availability:     sql.NullString{String: availability, Valid: availability != ""},
+		}); err != nil {
+			t.Fatalf("CreateNotification %q: %v", availability, err)
+		}
+		idOf[availability] = id
+	}
+
+	web := sql.NullString{String: "web", Valid: true}
+	app := sql.NullString{String: "app", Valid: true}
+	for _, tc := range []struct {
+		surface sql.NullString
+		want    []uuid.UUID
+	}{
+		{web, []uuid.UUID{idOf["web"], idOf[""]}},
+		{app, []uuid.UUID{idOf["app"], idOf[""]}},
+		{sql.NullString{}, []uuid.UUID{idOf["app"], idOf["web"], idOf[""]}},
+	} {
+		desc, err := queries.ListNotificationsForUserDesc(ctx, dbmodels.ListNotificationsForUserDescParams{
+			TenantID: tenantID,
+			UserID:   userID,
+			Surface:  tc.surface,
+			Limit:    10,
+		})
+		if err != nil {
+			t.Fatalf("ListNotificationsForUserDesc %q: %v", tc.surface.String, err)
+		}
+		if got := notificationDescIDs(desc); !slices.Equal(got, tc.want) {
+			t.Fatalf("listed on %q = %v, want %v", tc.surface.String, got, tc.want)
+		}
+		asc, err := queries.ListNotificationsForUserAsc(ctx, dbmodels.ListNotificationsForUserAscParams{
+			TenantID: tenantID,
+			UserID:   userID,
+			Surface:  tc.surface,
+			Limit:    10,
+		})
+		if err != nil {
+			t.Fatalf("ListNotificationsForUserAsc %q: %v", tc.surface.String, err)
+		}
+		backward := slices.Clone(tc.want)
+		slices.Reverse(backward)
+		if got := notificationAscIDs(asc); !slices.Equal(got, backward) {
+			t.Fatalf("listed backward on %q = %v, want %v", tc.surface.String, got, backward)
+		}
+
+		unread, err := queries.CountUnreadNotificationsForUser(ctx, dbmodels.CountUnreadNotificationsForUserParams{
+			TenantID: tenantID,
+			UserID:   userID,
+			Surface:  tc.surface,
+		})
+		if err != nil {
+			t.Fatalf("CountUnreadNotificationsForUser %q: %v", tc.surface.String, err)
+		}
+		if int(unread) != len(tc.want) {
+			t.Fatalf("unread on %q = %d, want %d", tc.surface.String, unread, len(tc.want))
+		}
+	}
+
+	marked, err := queries.MarkAllNotificationsAsRead(ctx, dbmodels.MarkAllNotificationsAsReadParams{
+		TenantID: tenantID,
+		UserID:   userID,
+		Surface:  app,
+	})
+	if err != nil {
+		t.Fatalf("MarkAllNotificationsAsRead on the app: %v", err)
+	}
+	if marked != 2 {
+		t.Fatalf("marked on the app = %d, want 2", marked)
+	}
+	unread, err := queries.CountUnreadNotificationsForUser(ctx, dbmodels.CountUnreadNotificationsForUserParams{
+		TenantID: tenantID,
+		UserID:   userID,
+		Surface:  web,
+	})
+	if err != nil {
+		t.Fatalf("CountUnreadNotificationsForUser on the site: %v", err)
+	}
+	if unread != 1 {
+		t.Fatalf("unread on the site after the app marked all = %d, want 1, the site's own", unread)
+	}
+}
+
 func TestMarkNotificationAsReadKeepsFirstReadAt(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
