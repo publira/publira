@@ -8,6 +8,7 @@ import {
 } from "@publira/ui-components/empty-state";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
+  formatDateTime,
   formatPlainDate,
   formatPlainYearMonth,
   formatYen,
@@ -26,7 +27,6 @@ import {
 import { Message } from "#components/message";
 import type { RoyaltyTotals } from "#lib/royalties";
 import type { RoyaltyLine } from "#lib/royalty-lines";
-import { royaltyPeriodLastDay } from "#lib/royalty-period";
 import type { RoyaltyCloseState } from "#lib/royalty-period";
 
 import { CloseStatementButton } from "./close-statement-button";
@@ -35,9 +35,13 @@ import { RoyaltyLinesTable } from "./royalty-lines-table";
 
 interface OpenMonthProps {
   closeState: RoyaltyCloseState;
+  /** RFC 3339 instant the month stops counting sales at, exclusive. */
+  endsAt: string;
   lines: RoyaltyLine[];
   locale: Locale;
   period: string;
+  /** RFC 3339 instant the month starts counting sales at. */
+  startsAt: string;
   tenantId: string;
   timeZone: string;
   totals: RoyaltyTotals;
@@ -120,14 +124,19 @@ const CloseStatus = ({
 };
 
 /**
- * A month that is not closed, as closing it now would record it: its totals,
- * its lines grouped by author, and what happens to it next.
+ * A month that is not closed, as closing it now would record it: the instants
+ * it counts sales between, its totals, its lines grouped by author, and what
+ * happens to it next. The instants are stated rather than derived from the
+ * period: a month beside a closed one starts or ends where that statement
+ * does, which is not its own midnight once the tenant's zone has changed.
  */
 export const OpenMonth = ({
   closeState,
+  endsAt,
   lines,
   locale,
   period,
+  startsAt,
   tenantId,
   timeZone,
   totals,
@@ -149,10 +158,8 @@ export const OpenMonth = ({
               <Message
                 message="admin.royalties.open.period_note"
                 values={{
-                  end: formatPlainDate(royaltyPeriodLastDay(period), {
-                    locale,
-                  }),
-                  start: formatPlainDate(`${period}-01`, { locale }),
+                  end: formatDateTime(endsAt, { locale, timeZone }),
+                  start: formatDateTime(startsAt, { locale, timeZone }),
                   time_zone: timeZone,
                 }}
               />

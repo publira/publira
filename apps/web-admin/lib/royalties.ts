@@ -58,6 +58,13 @@ export type PreviewRoyaltyStatementResult =
       ok: true;
       period: string;
       timeZone: string;
+      /**
+       * RFC 3339 instants of the half-open range the month counts sales in:
+       * its own midnights, except where a closed month beside it already
+       * fixed the instant between the two.
+       */
+      startsAt: string;
+      endsAt: string;
       totals: RoyaltyTotals;
       lines: RoyaltyLine[];
     }
@@ -277,9 +284,11 @@ export const previewRoyaltyStatement = async (
       withSessionHeaders(sessionId)
     );
     return {
+      endsAt: response.endsAt ?? "",
       lines: (response.lines ?? []).map((line) => mapLine(line)),
       ok: true,
       period: response.period ?? period,
+      startsAt: response.startsAt ?? "",
       timeZone: response.timeZone ?? "",
       totals: mapTotals(response.totals),
     };

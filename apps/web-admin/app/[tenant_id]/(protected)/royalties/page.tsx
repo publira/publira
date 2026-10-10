@@ -124,9 +124,11 @@ const PreviewContent = ({
     return (
       <OpenMonth
         closeState={royaltyCloseState(period, policy, zone)}
+        endsAt={preview.endsAt}
         lines={preview.lines}
         locale={locale}
         period={period}
+        startsAt={preview.startsAt}
         tenantId={tenantId}
         timeZone={zone}
         totals={preview.totals}

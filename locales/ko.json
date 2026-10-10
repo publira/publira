@@ -3095,7 +3095,7 @@
       "open": {
         "section_error": "마감 전 월을 표시하지 못했습니다",
         "title": "마감 전 월: {$period}",
-        "period_note": "{$start}부터 {$end}까지의 매출입니다(테넌트 시간대 {$time_zone} 기준). 월을 마감하기 전까지 수치는 계속 바뀝니다.",
+        "period_note": "{$start}부터 {$end} 전까지의 매출입니다(테넌트 시간대 {$time_zone} 기준). 월을 마감하기 전까지 수치는 계속 바뀝니다.",
         "in_progress": "이 달은 아직 진행 중입니다. {$date} 이후에 마감할 수 있습니다.",
         "auto_scheduled": "이 달은 {$date}에 자동으로 마감됩니다.",
         "ready": "이 달은 끝났으며 마감할 수 있습니다.",

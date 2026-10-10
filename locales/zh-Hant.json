@@ -3095,7 +3095,7 @@
       "open": {
         "section_error": "無法顯示未結算月份",
         "title": "未結算月份：{$period}",
-        "period_note": "{$start}至{$end}的銷售額，依租戶時區（{$time_zone}）劃分。結算前數字會持續變動。",
+        "period_note": "{$start}起至{$end}前的銷售額，依租戶時區（{$time_zone}）顯示。結算前數字會持續變動。",
         "in_progress": "該月仍在進行中。{$date}之後即可結算。",
         "auto_scheduled": "該月將於{$date}自動結算。",
         "ready": "該月已結束，可以結算。",

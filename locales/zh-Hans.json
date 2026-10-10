@@ -3095,7 +3095,7 @@
       "open": {
         "section_error": "无法显示未结算月份",
         "title": "未结算月份：{$period}",
-        "period_note": "{$start}至{$end}的销售额，按租户时区（{$time_zone}）划分。结算前数字会持续变化。",
+        "period_note": "{$start}起至{$end}前的销售额，按租户时区（{$time_zone}）显示。结算前数字会持续变化。",
         "in_progress": "该月仍在进行中。{$date}之后即可结算。",
         "auto_scheduled": "该月将于{$date}自动结算。",
         "ready": "该月已结束，可以结算。",
