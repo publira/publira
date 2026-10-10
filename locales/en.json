@@ -4711,6 +4711,7 @@
         "operator_mfa_enrolled": "Set up two-step verification",
         "operator_mfa_recovery_code_used": "Signed in with a recovery code",
         "operator_mfa_recovery_codes_regenerated": "Regenerated recovery codes",
+        "operator_mfa_reset": "Removed an operator's two-step verification",
         "operator_mfa_verified": "Verified a sign-in with two-step verification",
         "operator_resumed": "Resumed an operator",
         "operator_suspended": "Suspended an operator",

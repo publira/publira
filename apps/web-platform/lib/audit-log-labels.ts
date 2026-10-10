@@ -38,6 +38,10 @@ export const getAuditActionOptions = async (
       value: "operator_mfa_recovery_codes_regenerated",
     },
     {
+      label: t("platform.audit.actions.operator_mfa_reset"),
+      value: "operator_mfa_reset",
+    },
+    {
       label: t("platform.audit.actions.operator_mfa_verified"),
       value: "operator_mfa_verified",
     },

@@ -4711,6 +4711,7 @@
         "operator_mfa_enrolled": "2단계 인증 설정",
         "operator_mfa_recovery_code_used": "복구 코드로 로그인",
         "operator_mfa_recovery_codes_regenerated": "복구 코드 재발급",
+        "operator_mfa_reset": "운영자의 2단계 인증 해제",
         "operator_mfa_verified": "로그인 시 2단계 인증",
         "operator_resumed": "운영자 재개",
         "operator_suspended": "운영자 정지",

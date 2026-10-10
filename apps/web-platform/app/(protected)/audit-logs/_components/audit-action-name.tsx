@@ -25,6 +25,9 @@ const operatorActionName = (action: string) => {
         <Message message="platform.audit.actions.operator_mfa_recovery_codes_regenerated" />
       );
     }
+    case "operator_mfa_reset": {
+      return <Message message="platform.audit.actions.operator_mfa_reset" />;
+    }
     case "operator_mfa_verified": {
       return <Message message="platform.audit.actions.operator_mfa_verified" />;
     }

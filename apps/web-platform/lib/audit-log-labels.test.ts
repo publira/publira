@@ -26,6 +26,7 @@ describe("getAuditActionOptions", () => {
     ["operator_mfa_recovery_code_used", "Signed in with a recovery code"],
     ["operator_mfa_recovery_codes_regenerated", "Regenerated recovery codes"],
     ["operator_mfa_disabled", "Turned off two-step verification"],
+    ["operator_mfa_reset", "Removed an operator's two-step verification"],
   ])("offers %s in the action filter", async (value, label) => {
     const options = await getAuditActionOptions(en);
 

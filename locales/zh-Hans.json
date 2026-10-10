@@ -4711,6 +4711,7 @@
         "operator_mfa_enrolled": "设置了两步验证",
         "operator_mfa_recovery_code_used": "使用恢复码登录",
         "operator_mfa_recovery_codes_regenerated": "重新生成了恢复码",
+        "operator_mfa_reset": "移除了运营人员的两步验证",
         "operator_mfa_verified": "登录时的两步验证",
         "operator_resumed": "恢复了运营人员",
         "operator_suspended": "暂停了运营人员",
