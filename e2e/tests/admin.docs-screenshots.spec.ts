@@ -6,6 +6,7 @@ import {
   signInAsAnnouncementBannerAdmin,
   signInAsSeedAdmin,
 } from "../src/admin";
+import { applyScenarioSql } from "../src/db";
 import {
   DOCS_LOCALES,
   docsScreenHeader,
@@ -15,7 +16,10 @@ import {
   expectDocsScreenshot,
   setDocsLocale,
 } from "../src/docs-screenshots";
-import { ADMIN_MFA_SETTINGS_ADMIN } from "../src/scenarios/admin-mfa-settings";
+import {
+  ADMIN_MFA_SETTINGS_ADMIN,
+  ADMIN_MFA_SETTINGS_SCENARIO,
+} from "../src/scenarios/admin-mfa-settings";
 import { CONTACT_WORKFLOW_EDITOR } from "../src/scenarios/contact-workflow";
 import { totpCode } from "../src/totp";
 import {
@@ -452,6 +456,12 @@ for (const locale of DOCS_LOCALES) {
       test("turning two-step verification on, and signing in with it", async ({
         page,
       }) => {
+        // Every attempt starts with two-step verification off: one that got
+        // as far as turning it on leaves the account stopping at the code,
+        // and its retry would never reach the settings. Applying the file
+        // again changes nothing another shot shows, only this account's
+        // enrollment.
+        applyScenarioSql(ADMIN_MFA_SETTINGS_SCENARIO);
         await signInAsAdmin(
           page,
           ADMIN_MFA_SETTINGS_ADMIN,
@@ -502,6 +512,15 @@ for (const locale of DOCS_LOCALES) {
           .click();
         const recoveryCodes = page.getByRole("listitem").getByRole("code");
         await expect(recoveryCodes).toHaveCount(10);
+        // The codes arrive with the submission's answer, ahead of the
+        // refreshed card that swaps the setup form for the two forms of a
+        // factor that is on, which is the card the image shows.
+        await expect(
+          card.getByRole("button", {
+            exact: true,
+            name: t("admin.settings.mfa.disable_submit"),
+          })
+        ).toBeVisible();
 
         await expectDocsScreenshot(page, {
           element: card,

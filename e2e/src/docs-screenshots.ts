@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 
 import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
@@ -259,6 +260,14 @@ const MASK_COLOR = "#d4d4d4";
 /** Room left around a region, so its edges do not touch the image's. */
 const REGION_MARGIN = 16;
 
+/** A rectangle of the page, in CSS pixels from the document's top left. */
+interface Region {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+}
+
 /**
  * Where on the page `element` is, in CSS pixels from the document's top left,
  * with {@link REGION_MARGIN} around it.
@@ -268,9 +277,7 @@ const REGION_MARGIN = 16;
  * of the console's bar or sidebar with it. A dialog is outside `<main>`, and
  * keeps its margin of the dimmed screen behind it.
  */
-const regionOf = async (
-  element: DocsShot["element"]
-): Promise<{ height: number; width: number; x: number; y: number }> => {
+const regionOf = async (element: DocsShot["element"]): Promise<Region> => {
   const ends: readonly Locator[] = Array.isArray(element)
     ? element
     : [element as Locator];
@@ -323,6 +330,42 @@ const regionOf = async (
   return { height: bottom - top, width: right - left, x: left, y: top };
 };
 
+/** How long the region has to keep its place and size to count as settled. */
+const REGION_SETTLE_INTERVAL = 250;
+
+/**
+ * {@link regionOf} once two measurements {@link REGION_SETTLE_INTERVAL} apart
+ * agree.
+ *
+ * The clip is measured once and the screenshot is then compared until two
+ * captures match, so a region still changing size when it is measured is cut
+ * at the size it had at that moment: a card whose submission has revealed one
+ * part while the rest is still being swapped in measures taller than the card
+ * Playwright then photographs, and the shot fails on its height alone.
+ */
+const settledRegionOf = async (
+  element: DocsShot["element"]
+): Promise<Region> => {
+  // The poll's first call is immediate, so it only takes the first
+  // measurement: no earlier one is there to agree with it.
+  const measurements: Region[] = [];
+  await expect
+    .poll(
+      async () => {
+        measurements.push(await regionOf(element));
+        const [previous, latest] = measurements.slice(-2);
+        return previous !== undefined && isDeepStrictEqual(previous, latest);
+      },
+      { intervals: [REGION_SETTLE_INTERVAL] }
+    )
+    .toBe(true);
+  const region = measurements.at(-1);
+  if (region === undefined) {
+    throw new Error("The region was never measured.");
+  }
+  return region;
+};
+
 /**
  * Compare one region of a screen with the image beside the documentation page
  * that shows it, or write that image under `--update-snapshots`.
@@ -371,7 +414,7 @@ export const expectDocsScreenshot = async (
   });
 
   await expect(page).toHaveScreenshot(name, {
-    clip: await regionOf(shot.element),
+    clip: await settledRegionOf(shot.element),
     fullPage: true,
     mask: shot.mask ? [...shot.mask] : undefined,
     // A neutral grey reads as "left out" in the documentation, where
