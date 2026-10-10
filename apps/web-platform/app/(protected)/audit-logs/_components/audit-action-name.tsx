@@ -111,6 +111,11 @@ const tenantActionName = (action: string) => {
     case "tenant_member_created": {
       return <Message message="platform.audit.actions.tenant_member_created" />;
     }
+    case "tenant_member_mfa_reset": {
+      return (
+        <Message message="platform.audit.actions.tenant_member_mfa_reset" />
+      );
+    }
     case "tenant_member_removed": {
       return <Message message="platform.audit.actions.tenant_member_removed" />;
     }

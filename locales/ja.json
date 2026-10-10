@@ -4716,6 +4716,7 @@
         "tenant_info_updated": "テナント情報を更新",
         "tenant_member_added": "テナントメンバーを追加",
         "tenant_member_created": "テナントメンバーのアカウントを作成",
+        "tenant_member_mfa_reset": "メンバーの2段階認証を解除",
         "tenant_member_removed": "テナントメンバーを削除",
         "tenant_member_role_updated": "テナントメンバーのロールを変更",
         "tenant_resumed": "テナントを再開",

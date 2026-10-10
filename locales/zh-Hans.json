@@ -4716,6 +4716,7 @@
         "tenant_info_updated": "更新了租户信息",
         "tenant_member_added": "添加了租户成员",
         "tenant_member_created": "创建了租户成员账户",
+        "tenant_member_mfa_reset": "移除了成员的两步验证",
         "tenant_member_removed": "移除了租户成员",
         "tenant_member_role_updated": "变更了租户成员角色",
         "tenant_resumed": "恢复了租户",

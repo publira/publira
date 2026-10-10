@@ -4716,6 +4716,7 @@
         "tenant_info_updated": "테넌트 정보 변경",
         "tenant_member_added": "테넌트 멤버 추가",
         "tenant_member_created": "테넌트 멤버 계정 생성",
+        "tenant_member_mfa_reset": "멤버의 2단계 인증 해제",
         "tenant_member_removed": "테넌트 멤버 삭제",
         "tenant_member_role_updated": "테넌트 멤버 역할 변경",
         "tenant_resumed": "테넌트 재개",
