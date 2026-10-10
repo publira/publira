@@ -413,17 +413,11 @@ FROM episodes e
 WHERE s.tenant_id = $1
     AND e.series_id = $2
     AND (e.order_index, e.id) > ($3::int4, $4::uuid)
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
     AND EXISTS (
         SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = $5::text
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = $5::text
     )
 ORDER BY e.order_index ASC,
     e.id ASC
@@ -529,17 +523,11 @@ WHERE s.tenant_id = $1
         e.id = $2::uuid
         OR e.public_id = $3::text
     )
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
     AND EXISTS (
         SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = $4::text
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = $4::text
     )
 LIMIT 1
 `
@@ -924,20 +912,13 @@ SELECT r.id,
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
     JOIN series s ON s.id = e.series_id
-    JOIN episode_listings el ON el.episode_id = e.id
 WHERE r.tenant_id = $1
     AND r.user_id = $2
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
     AND EXISTS (
         SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = $3::text
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = $3::text
     )
     AND (
         $4::timestamptz IS NULL
@@ -1038,20 +1019,13 @@ SELECT r.id,
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
     JOIN series s ON s.id = e.series_id
-    JOIN episode_listings el ON el.episode_id = e.id
 WHERE r.tenant_id = $1
     AND r.user_id = $2
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
     AND EXISTS (
         SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = $3::text
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = $3::text
     )
     AND (
         $4::timestamptz IS NULL
@@ -1099,11 +1073,13 @@ type ListMyEpisodeReadsDescRow struct {
 
 // The episodes this reader has finished, most recently finished first.
 //
-// Publication and the calling surface are re-checked here, so a history entry
-// never names an episode the storefront has taken down or the surface may not
-// show; that is the same rule ListMyRecentSeries applies to a series. Body access is not re-checked: the reader did finish
-// the episode, and a rental that has since expired is still part of what they
-// read, which is also how ListMyPurchases keeps an expired purchase.
+// Publication and the calling surface are re-checked here through
+// published_episode_surfaces, so a history entry never names an episode the
+// storefront has taken down or the surface may not show; that is the same rule
+// ListMyRecentSeries applies to a series. Body access is not re-checked: the
+// reader did finish the episode, and a rental that has since expired is still
+// part of what they read, which is also how ListMyPurchases keeps an expired
+// purchase.
 //
 // The scan starts from the (tenant_id, user_id) prefix of
 // idx_episode_reads_tenant_user_read_at, so it is bounded by one reader's
@@ -1221,17 +1197,11 @@ const ListPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNei
     WHERE s.tenant_id = $1
         AND e.series_id = $2
         AND (e.order_index, e.id) < ($3::int4, $4::uuid)
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = $5::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = $5::text
         )
     ORDER BY e.order_index DESC,
         e.id DESC
@@ -1258,17 +1228,11 @@ UNION ALL
     WHERE s.tenant_id = $1
         AND e.series_id = $2
         AND (e.order_index, e.id) > ($3::int4, $4::uuid)
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = $5::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = $5::text
         )
     ORDER BY e.order_index ASC,
         e.id ASC
@@ -1301,7 +1265,7 @@ type ListPublishedEpisodeNeighborsForTenantRow struct {
 // missing row rather than a null column, so an episode at an end of the series
 // returns one row and the only episode of a series returns none.
 //
-// The series predicate is repeated on both branches so the query answers for
+// Both branches read published_episode_surfaces so the query answers for
 // itself which episodes count as published: an episode of a series that has
 // been taken down is not a link the storefront may offer, whichever episode
 // was asked about.
@@ -1586,21 +1550,13 @@ const MarkPublishedEpisodeAsRead = `-- name: MarkPublishedEpisodeAsRead :one
 INSERT INTO episode_reads (id, tenant_id, user_id, episode_id)
 SELECT $1, $2, $3, e.id
 FROM episodes e
-    JOIN series s ON s.id = e.series_id
-    JOIN episode_listings el ON el.episode_id = e.id
-WHERE s.tenant_id = $2
+WHERE e.tenant_id = $2
     AND e.id = $4
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
     AND EXISTS (
         SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = $5::text
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = $5::text
     )
     AND reader_may_open_episode($2, $3, e.id)
 ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE

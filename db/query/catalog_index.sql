@@ -72,6 +72,15 @@ SELECT s.id,
     -- The list's latest_episode_at on each surface the series is shown on: the
     -- newest episode published there, or the series' own published_at where
     -- none is.
+    --
+    -- The episodes are read from episode_surfaces and their listing rather
+    -- than from published_episode_surfaces, which would also require the
+    -- series' published_at to have passed. A series is indexed ahead of that
+    -- instant and the search filters on it, while nothing reads the document
+    -- again when the instant passes: gated on it, a series scheduled with its
+    -- episodes already out would be sorted by its own published_at for good.
+    -- Whether the series is published at all is checked by the outer
+    -- subquery, as it is for surfaces.
     COALESCE(
         (
             SELECT jsonb_object_agg(

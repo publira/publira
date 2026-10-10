@@ -147,13 +147,13 @@ SELECT ei.id,
     ei.episode_id,
     eiv.object_key,
     eiv.content_type,
-    (
-        s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
+    -- Whether a reader can open the episode on any surface. image-server
+    -- serves both and is told neither, so a page is withheld only from an
+    -- episode that published_episode_surfaces opens nowhere.
+    EXISTS (
+        SELECT 1
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
     ) AS is_published,
     reader_may_open_episode(s.tenant_id, $1::uuid, e.id) AS has_access,
     -- The two halves of the tenant's age rule, handed back rather than decided
@@ -173,7 +173,6 @@ JOIN LATERAL (
 ) eiv ON true
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
-    JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN tenant_config tc ON tc.tenant_id = s.tenant_id
 WHERE ei.id = $2
@@ -192,7 +191,7 @@ type GetEpisodeImageAccessByIDForUserRow struct {
 	EpisodeID       uuid.UUID      `json:"episode_id"`
 	ObjectKey       string         `json:"object_key"`
 	ContentType     string         `json:"content_type"`
-	IsPublished     sql.NullBool   `json:"is_published"`
+	IsPublished     bool           `json:"is_published"`
 	HasAccess       bool           `json:"has_access"`
 	AgeRating       sql.NullString `json:"age_rating"`
 	AgeVerification sql.NullString `json:"age_verification"`
@@ -266,13 +265,11 @@ SELECT ei.id,
     ei.episode_id,
     eiv.object_key,
     eiv.content_type,
-    (
-        s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
+    -- On any surface, for the reason GetEpisodeImageAccessByIDForUser gives.
+    EXISTS (
+        SELECT 1
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
     ) AS is_published,
     (fe.episode_id IS NOT NULL)::boolean AS has_public_access,
     -- When the body is public only because a window is open, this is the
@@ -294,7 +291,6 @@ JOIN LATERAL (
 ) eiv ON true
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
-    JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN tenant_config tc ON tc.tenant_id = s.tenant_id
     LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
@@ -313,7 +309,7 @@ type GetEpisodeImagePublicAccessByIDForTenantRow struct {
 	EpisodeID       uuid.UUID      `json:"episode_id"`
 	ObjectKey       string         `json:"object_key"`
 	ContentType     string         `json:"content_type"`
-	IsPublished     sql.NullBool   `json:"is_published"`
+	IsPublished     bool           `json:"is_published"`
 	HasPublicAccess bool           `json:"has_public_access"`
 	FreeUntil       sql.NullTime   `json:"free_until"`
 	AgeRating       sql.NullString `json:"age_rating"`
@@ -342,13 +338,11 @@ SELECT ei.id,
     ei.episode_id,
     eiv.object_key,
     eiv.content_type,
-    (
-        s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
+    -- On any surface, for the reason GetEpisodeImageAccessByIDForUser gives.
+    EXISTS (
+        SELECT 1
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
     ) AS is_published
 FROM episode_images ei
 JOIN LATERAL (
@@ -360,7 +354,6 @@ JOIN LATERAL (
 ) eiv ON true
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
-    JOIN episode_listings el ON el.episode_id = e.id
 WHERE ei.id = $1
     AND s.tenant_id = $2
     AND ei.id IN (
@@ -387,11 +380,11 @@ type GetEpisodePreviewImageByIDForTenantParams struct {
 }
 
 type GetEpisodePreviewImageByIDForTenantRow struct {
-	ID          uuid.UUID    `json:"id"`
-	EpisodeID   uuid.UUID    `json:"episode_id"`
-	ObjectKey   string       `json:"object_key"`
-	ContentType string       `json:"content_type"`
-	IsPublished sql.NullBool `json:"is_published"`
+	ID          uuid.UUID `json:"id"`
+	EpisodeID   uuid.UUID `json:"episode_id"`
+	ObjectKey   string    `json:"object_key"`
+	ContentType string    `json:"content_type"`
+	IsPublished bool      `json:"is_published"`
 }
 
 // One page's preview source: the smallest stored rendition of a page that is

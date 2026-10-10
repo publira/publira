@@ -44,7 +44,7 @@ func withheldPageQueries(mediaID, episodeID uuid.UUID, rating, rule string) stub
 		EpisodeID:       episodeID,
 		ObjectKey:       "episodes/page.jpg",
 		ContentType:     "image/jpeg",
-		IsPublished:     sql.NullBool{Bool: true, Valid: true},
+		IsPublished:     true,
 		HasPublicAccess: rating != "",
 	}
 	if rating != "" {
@@ -58,7 +58,7 @@ func withheldPageQueries(mediaID, episodeID uuid.UUID, rating, rule string) stub
 			EpisodeID:   episodeID,
 			ObjectKey:   "episodes/page.jpg",
 			ContentType: "image/jpeg",
-			IsPublished: sql.NullBool{Bool: true, Valid: true},
+			IsPublished: true,
 		},
 	}
 }
@@ -183,7 +183,7 @@ func TestEpisodePreviewRefusesWhatIsNotAnOpeningPageOfAPublishedEpisode(t *testi
 	episodeID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 
 	unpublished := withheldPageQueries(mediaID, episodeID, "", "")
-	unpublished.preview.IsPublished = sql.NullBool{Bool: false, Valid: true}
+	unpublished.preview.IsPublished = false
 
 	cases := []struct {
 		name       string

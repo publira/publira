@@ -481,12 +481,9 @@ WITH candidate AS (
                 SELECT max(el.published_at)
                 FROM episodes e
                     JOIN episode_listings el ON el.episode_id = e.id
-                    JOIN episode_surfaces es ON es.episode_id = e.id
+                    JOIN published_episode_surfaces pes ON pes.episode_id = e.id
                 WHERE e.series_id = s.id
-                    AND es.surface = sqlc.arg('surface')::text
-                    AND el.status = 'published'
-                    AND el.published_at IS NOT NULL
-                    AND el.published_at <= NOW()
+                    AND pes.surface = sqlc.arg('surface')::text
             ),
             s.published_at
         )::timestamptz AS latest_episode_at
@@ -601,12 +598,9 @@ WITH candidate AS (
                 SELECT max(el.published_at)
                 FROM episodes e
                     JOIN episode_listings el ON el.episode_id = e.id
-                    JOIN episode_surfaces es ON es.episode_id = e.id
+                    JOIN published_episode_surfaces pes ON pes.episode_id = e.id
                 WHERE e.series_id = s.id
-                    AND es.surface = sqlc.arg('surface')::text
-                    AND el.status = 'published'
-                    AND el.published_at IS NOT NULL
-                    AND el.published_at <= NOW()
+                    AND pes.surface = sqlc.arg('surface')::text
             ),
             s.published_at
         )::timestamptz AS latest_episode_at

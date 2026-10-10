@@ -203,19 +203,13 @@ FROM episodes e
 WHERE e.id = $1
     AND e.tenant_id = $2
     AND s.tenant_id = $2
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
     -- An episode the calling surface may not show is no row, as it is in the
     -- catalog: a surface cannot sell what it cannot show.
     AND EXISTS (
         SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = $3::text
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = $3::text
     )
 LIMIT 1
 `

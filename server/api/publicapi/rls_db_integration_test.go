@@ -90,6 +90,9 @@ var publicDataTables = []struct {
 	{name: "series_surfaces", count: "SELECT count(*) FROM series_surfaces"},
 	{name: "episode_surfaces", count: "SELECT count(*) FROM episode_surfaces"},
 	{name: "label_surfaces", count: "SELECT count(*) FROM label_surfaces"},
+	// The surfaces on which a reader can open an episode now, which every
+	// storefront read of an episode filters through.
+	{name: "published_episode_surfaces", count: "SELECT count(*) FROM published_episode_surfaces"},
 	// Every page the sitemap lists, a view over the catalogue and the pages.
 	{name: "sitemap_entries", count: "SELECT count(*) FROM sitemap_entries"},
 	// Where an episode may be bought, which the episode reads and the checkout
