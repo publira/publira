@@ -1,13 +1,40 @@
+-- name: GetRoyaltyMonthBounds :one
+-- The instants a tenant month runs between. A month starts where the statement
+-- of the month before it ended, and ends where the statement of the month
+-- after it started; a neighbour not closed yet leaves that bound at the
+-- month's own midnight in the given zone, the tenant's current one. A closed
+-- month's bounds never move, so a tenant that changes its zone between two
+-- closes leaves no hour in neither month and none in both.
+SELECT
+    COALESCE(
+        (
+            SELECT rs.ends_at
+            FROM royalty_statements rs
+            WHERE rs.tenant_id = sqlc.arg('tenant_id')
+                AND rs.period = (sqlc.arg('period')::date - interval '1 month')::date
+        ),
+        sqlc.arg('period')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text
+    )::timestamptz AS starts_at,
+    COALESCE(
+        (
+            SELECT rs.starts_at
+            FROM royalty_statements rs
+            WHERE rs.tenant_id = sqlc.arg('tenant_id')
+                AND rs.period = (sqlc.arg('period')::date + interval '1 month')::date
+        ),
+        (sqlc.arg('period')::date + interval '1 month')::timestamp AT TIME ZONE sqlc.arg('time_zone')::text
+    )::timestamptz AS ends_at;
+
 -- name: ListRoyaltyLinesForPeriod :many
 -- Computes the lines of one tenant month: every credit on an episode sold in
 -- the month, with the month's sales of that episode. It is what a close
 -- writes and what a preview shows, so the two cannot disagree.
 --
--- The month runs from the first day's midnight to the next month's in the
--- given zone. A fully refunded sale is not a sale; a partial refund stays a
--- sale and is carried as refunded_amount. A test purchase, from a store's
--- sandbox or a payment provider's test mode, paid the tenant nothing and is not
--- a sale either. The payout is floored per line over the month's sum, which
+-- The month runs between the bounds GetRoyaltyMonthBounds answers for it. A
+-- fully refunded sale is not a sale; a partial refund stays a sale and is
+-- carried as refunded_amount. A test purchase, from a store's sandbox or a
+-- payment provider's test mode, paid the tenant nothing and is not a sale
+-- either. The payout is floored per line over the month's sum, which
 -- keeps the rounding loss to one yen per line.
 SELECT
     ec.creator_id,
@@ -36,8 +63,8 @@ LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.refunded_at IS NULL
     AND NOT p.is_test
-    AND p.purchased_at >= (sqlc.arg('period')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
-    AND p.purchased_at < ((sqlc.arg('period')::date + interval '1 month')::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
+    AND p.purchased_at >= sqlc.arg('starts_at')::timestamptz
+    AND p.purchased_at < sqlc.arg('ends_at')::timestamptz
 GROUP BY
     s.id, s.public_id, s.title,
     e.id, e.public_id, e.title, e.order_index,
@@ -57,8 +84,8 @@ FROM purchases p
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.refunded_at IS NULL
     AND NOT p.is_test
-    AND p.purchased_at >= (sqlc.arg('period')::date::timestamp AT TIME ZONE sqlc.arg('time_zone')::text)
-    AND p.purchased_at < ((sqlc.arg('period')::date + interval '1 month')::timestamp AT TIME ZONE sqlc.arg('time_zone')::text);
+    AND p.purchased_at >= sqlc.arg('starts_at')::timestamptz
+    AND p.purchased_at < sqlc.arg('ends_at')::timestamptz;
 
 -- name: InsertRoyaltyStatement :one
 -- A second close of the same month fails on royalty_statements_tenant_id_period_key.
@@ -67,6 +94,8 @@ INSERT INTO royalty_statements (
     tenant_id,
     period,
     time_zone,
+    starts_at,
+    ends_at,
     closed_by_user_id,
     total_gross,
     total_refunded,
@@ -76,6 +105,8 @@ INSERT INTO royalty_statements (
     sqlc.arg('tenant_id'),
     sqlc.arg('period'),
     sqlc.arg('time_zone'),
+    sqlc.arg('starts_at'),
+    sqlc.arg('ends_at'),
     sqlc.narg('closed_by_user_id'),
     sqlc.arg('total_gross'),
     sqlc.arg('total_refunded'),

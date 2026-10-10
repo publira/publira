@@ -14,6 +14,52 @@ import (
 	"github.com/google/uuid"
 )
 
+const GetRoyaltyMonthBounds = `-- name: GetRoyaltyMonthBounds :one
+SELECT
+    COALESCE(
+        (
+            SELECT rs.ends_at
+            FROM royalty_statements rs
+            WHERE rs.tenant_id = $1
+                AND rs.period = ($2::date - interval '1 month')::date
+        ),
+        $2::date::timestamp AT TIME ZONE $3::text
+    )::timestamptz AS starts_at,
+    COALESCE(
+        (
+            SELECT rs.starts_at
+            FROM royalty_statements rs
+            WHERE rs.tenant_id = $1
+                AND rs.period = ($2::date + interval '1 month')::date
+        ),
+        ($2::date + interval '1 month')::timestamp AT TIME ZONE $3::text
+    )::timestamptz AS ends_at
+`
+
+type GetRoyaltyMonthBoundsParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Period   time.Time `json:"period"`
+	TimeZone string    `json:"time_zone"`
+}
+
+type GetRoyaltyMonthBoundsRow struct {
+	StartsAt time.Time `json:"starts_at"`
+	EndsAt   time.Time `json:"ends_at"`
+}
+
+// The instants a tenant month runs between. A month starts where the statement
+// of the month before it ended, and ends where the statement of the month
+// after it started; a neighbour not closed yet leaves that bound at the
+// month's own midnight in the given zone, the tenant's current one. A closed
+// month's bounds never move, so a tenant that changes its zone between two
+// closes leaves no hour in neither month and none in both.
+func (q *Queries) GetRoyaltyMonthBounds(ctx context.Context, arg GetRoyaltyMonthBoundsParams) (GetRoyaltyMonthBoundsRow, error) {
+	row := q.db.QueryRowContext(ctx, GetRoyaltyMonthBounds, arg.TenantID, arg.Period, arg.TimeZone)
+	var i GetRoyaltyMonthBoundsRow
+	err := row.Scan(&i.StartsAt, &i.EndsAt)
+	return i, err
+}
+
 const GetRoyaltySalesTotalsForPeriod = `-- name: GetRoyaltySalesTotalsForPeriod :one
 SELECT
     COALESCE(sum(p.price_at_purchase), 0)::bigint AS total_gross,
@@ -22,14 +68,14 @@ FROM purchases p
 WHERE p.tenant_id = $1
     AND p.refunded_at IS NULL
     AND NOT p.is_test
-    AND p.purchased_at >= ($3::date::timestamp AT TIME ZONE $2::text)
-    AND p.purchased_at < (($3::date + interval '1 month')::timestamp AT TIME ZONE $2::text)
+    AND p.purchased_at >= $2::timestamptz
+    AND p.purchased_at < $3::timestamptz
 `
 
 type GetRoyaltySalesTotalsForPeriodParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
-	TimeZone string    `json:"time_zone"`
-	Period   time.Time `json:"period"`
+	StartsAt time.Time `json:"starts_at"`
+	EndsAt   time.Time `json:"ends_at"`
 }
 
 type GetRoyaltySalesTotalsForPeriodRow struct {
@@ -41,7 +87,7 @@ type GetRoyaltySalesTotalsForPeriodRow struct {
 // credited to. The month and the refund rule are those of
 // ListRoyaltyLinesForPeriod.
 func (q *Queries) GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoyaltySalesTotalsForPeriodParams) (GetRoyaltySalesTotalsForPeriodRow, error) {
-	row := q.db.QueryRowContext(ctx, GetRoyaltySalesTotalsForPeriod, arg.TenantID, arg.TimeZone, arg.Period)
+	row := q.db.QueryRowContext(ctx, GetRoyaltySalesTotalsForPeriod, arg.TenantID, arg.StartsAt, arg.EndsAt)
 	var i GetRoyaltySalesTotalsForPeriodRow
 	err := row.Scan(&i.TotalGross, &i.TotalRefunded)
 	return i, err
@@ -49,7 +95,7 @@ func (q *Queries) GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoy
 
 const GetRoyaltyStatementByPeriod = `-- name: GetRoyaltyStatementByPeriod :one
 SELECT
-    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout,
+    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at,
     u.public_id AS closed_by_user_public_id,
     u.name AS closed_by_user_name
 FROM royalty_statements rs
@@ -73,6 +119,8 @@ type GetRoyaltyStatementByPeriodRow struct {
 	TotalGross           int64          `json:"total_gross"`
 	TotalRefunded        int64          `json:"total_refunded"`
 	TotalPayout          int64          `json:"total_payout"`
+	StartsAt             time.Time      `json:"starts_at"`
+	EndsAt               time.Time      `json:"ends_at"`
 	ClosedByUserPublicID sql.NullString `json:"closed_by_user_public_id"`
 	ClosedByUserName     sql.NullString `json:"closed_by_user_name"`
 }
@@ -90,6 +138,8 @@ func (q *Queries) GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyalt
 		&i.TotalGross,
 		&i.TotalRefunded,
 		&i.TotalPayout,
+		&i.StartsAt,
+		&i.EndsAt,
 		&i.ClosedByUserPublicID,
 		&i.ClosedByUserName,
 	)
@@ -102,6 +152,8 @@ INSERT INTO royalty_statements (
     tenant_id,
     period,
     time_zone,
+    starts_at,
+    ends_at,
     closed_by_user_id,
     total_gross,
     total_refunded,
@@ -114,9 +166,11 @@ INSERT INTO royalty_statements (
     $5,
     $6,
     $7,
-    $8
+    $8,
+    $9,
+    $10
 )
-RETURNING id, tenant_id, period, time_zone, closed_at, closed_by_user_id, total_gross, total_refunded, total_payout
+RETURNING id, tenant_id, period, time_zone, closed_at, closed_by_user_id, total_gross, total_refunded, total_payout, starts_at, ends_at
 `
 
 type InsertRoyaltyStatementParams struct {
@@ -124,6 +178,8 @@ type InsertRoyaltyStatementParams struct {
 	TenantID       uuid.UUID     `json:"tenant_id"`
 	Period         time.Time     `json:"period"`
 	TimeZone       string        `json:"time_zone"`
+	StartsAt       time.Time     `json:"starts_at"`
+	EndsAt         time.Time     `json:"ends_at"`
 	ClosedByUserID uuid.NullUUID `json:"closed_by_user_id"`
 	TotalGross     int64         `json:"total_gross"`
 	TotalRefunded  int64         `json:"total_refunded"`
@@ -137,6 +193,8 @@ func (q *Queries) InsertRoyaltyStatement(ctx context.Context, arg InsertRoyaltyS
 		arg.TenantID,
 		arg.Period,
 		arg.TimeZone,
+		arg.StartsAt,
+		arg.EndsAt,
 		arg.ClosedByUserID,
 		arg.TotalGross,
 		arg.TotalRefunded,
@@ -153,6 +211,8 @@ func (q *Queries) InsertRoyaltyStatement(ctx context.Context, arg InsertRoyaltyS
 		&i.TotalGross,
 		&i.TotalRefunded,
 		&i.TotalPayout,
+		&i.StartsAt,
+		&i.EndsAt,
 	)
 	return i, err
 }
@@ -253,8 +313,8 @@ LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id
 WHERE p.tenant_id = $1
     AND p.refunded_at IS NULL
     AND NOT p.is_test
-    AND p.purchased_at >= ($3::date::timestamp AT TIME ZONE $2::text)
-    AND p.purchased_at < (($3::date + interval '1 month')::timestamp AT TIME ZONE $2::text)
+    AND p.purchased_at >= $2::timestamptz
+    AND p.purchased_at < $3::timestamptz
 GROUP BY
     s.id, s.public_id, s.title,
     e.id, e.public_id, e.title, e.order_index,
@@ -266,8 +326,8 @@ ORDER BY s.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec
 
 type ListRoyaltyLinesForPeriodParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
-	TimeZone string    `json:"time_zone"`
-	Period   time.Time `json:"period"`
+	StartsAt time.Time `json:"starts_at"`
+	EndsAt   time.Time `json:"ends_at"`
 }
 
 type ListRoyaltyLinesForPeriodRow struct {
@@ -294,14 +354,14 @@ type ListRoyaltyLinesForPeriodRow struct {
 // the month, with the month's sales of that episode. It is what a close
 // writes and what a preview shows, so the two cannot disagree.
 //
-// The month runs from the first day's midnight to the next month's in the
-// given zone. A fully refunded sale is not a sale; a partial refund stays a
-// sale and is carried as refunded_amount. A test purchase, from a store's
-// sandbox or a payment provider's test mode, paid the tenant nothing and is not
-// a sale either. The payout is floored per line over the month's sum, which
+// The month runs between the bounds GetRoyaltyMonthBounds answers for it. A
+// fully refunded sale is not a sale; a partial refund stays a sale and is
+// carried as refunded_amount. A test purchase, from a store's sandbox or a
+// payment provider's test mode, paid the tenant nothing and is not a sale
+// either. The payout is floored per line over the month's sum, which
 // keeps the rounding loss to one yen per line.
 func (q *Queries) ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListRoyaltyLinesForPeriod, arg.TenantID, arg.TimeZone, arg.Period)
+	rows, err := q.db.QueryContext(ctx, ListRoyaltyLinesForPeriod, arg.TenantID, arg.StartsAt, arg.EndsAt)
 	if err != nil {
 		return nil, err
 	}
@@ -635,7 +695,7 @@ func (q *Queries) ListRoyaltyStatementPeriodsFrom(ctx context.Context, arg ListR
 
 const ListRoyaltyStatementsAsc = `-- name: ListRoyaltyStatementsAsc :many
 SELECT
-    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout,
+    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at,
     u.public_id AS closed_by_user_public_id,
     u.name AS closed_by_user_name
 FROM royalty_statements rs
@@ -662,6 +722,8 @@ type ListRoyaltyStatementsAscRow struct {
 	TotalGross           int64          `json:"total_gross"`
 	TotalRefunded        int64          `json:"total_refunded"`
 	TotalPayout          int64          `json:"total_payout"`
+	StartsAt             time.Time      `json:"starts_at"`
+	EndsAt               time.Time      `json:"ends_at"`
 	ClosedByUserPublicID sql.NullString `json:"closed_by_user_public_id"`
 	ClosedByUserName     sql.NullString `json:"closed_by_user_name"`
 }
@@ -686,6 +748,8 @@ func (q *Queries) ListRoyaltyStatementsAsc(ctx context.Context, arg ListRoyaltyS
 			&i.TotalGross,
 			&i.TotalRefunded,
 			&i.TotalPayout,
+			&i.StartsAt,
+			&i.EndsAt,
 			&i.ClosedByUserPublicID,
 			&i.ClosedByUserName,
 		); err != nil {
@@ -704,7 +768,7 @@ func (q *Queries) ListRoyaltyStatementsAsc(ctx context.Context, arg ListRoyaltyS
 
 const ListRoyaltyStatementsDesc = `-- name: ListRoyaltyStatementsDesc :many
 SELECT
-    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout,
+    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at,
     u.public_id AS closed_by_user_public_id,
     u.name AS closed_by_user_name
 FROM royalty_statements rs
@@ -735,6 +799,8 @@ type ListRoyaltyStatementsDescRow struct {
 	TotalGross           int64          `json:"total_gross"`
 	TotalRefunded        int64          `json:"total_refunded"`
 	TotalPayout          int64          `json:"total_payout"`
+	StartsAt             time.Time      `json:"starts_at"`
+	EndsAt               time.Time      `json:"ends_at"`
 	ClosedByUserPublicID sql.NullString `json:"closed_by_user_public_id"`
 	ClosedByUserName     sql.NullString `json:"closed_by_user_name"`
 }
@@ -765,6 +831,8 @@ func (q *Queries) ListRoyaltyStatementsDesc(ctx context.Context, arg ListRoyalty
 			&i.TotalGross,
 			&i.TotalRefunded,
 			&i.TotalPayout,
+			&i.StartsAt,
+			&i.EndsAt,
 			&i.ClosedByUserPublicID,
 			&i.ClosedByUserName,
 		); err != nil {

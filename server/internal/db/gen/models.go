@@ -742,6 +742,8 @@ type RoyaltyStatement struct {
 	TotalGross     int64         `json:"total_gross"`
 	TotalRefunded  int64         `json:"total_refunded"`
 	TotalPayout    int64         `json:"total_payout"`
+	StartsAt       time.Time     `json:"starts_at"`
+	EndsAt         time.Time     `json:"ends_at"`
 }
 
 type RoyaltyStatementLine struct {

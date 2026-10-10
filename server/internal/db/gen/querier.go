@@ -713,6 +713,13 @@ type Querier interface {
 	GetReportableEpisodeCommentForTenant(ctx context.Context, arg GetReportableEpisodeCommentForTenantParams) (GetReportableEpisodeCommentForTenantRow, error)
 	// Where one episode may be bought, resolved through its series and the tenant.
 	GetResolvedEpisodePurchaseAvailability(ctx context.Context, arg GetResolvedEpisodePurchaseAvailabilityParams) (string, error)
+	// The instants a tenant month runs between. A month starts where the statement
+	// of the month before it ended, and ends where the statement of the month
+	// after it started; a neighbour not closed yet leaves that bound at the
+	// month's own midnight in the given zone, the tenant's current one. A closed
+	// month's bounds never move, so a tenant that changes its zone between two
+	// closes leaves no hour in neither month and none in both.
+	GetRoyaltyMonthBounds(ctx context.Context, arg GetRoyaltyMonthBoundsParams) (GetRoyaltyMonthBoundsRow, error)
 	// Totals the month's sales once each, however many creators a sale is
 	// credited to. The month and the refund rule are those of
 	// ListRoyaltyLinesForPeriod.
@@ -1906,11 +1913,11 @@ type Querier interface {
 	// the month, with the month's sales of that episode. It is what a close
 	// writes and what a preview shows, so the two cannot disagree.
 	//
-	// The month runs from the first day's midnight to the next month's in the
-	// given zone. A fully refunded sale is not a sale; a partial refund stays a
-	// sale and is carried as refunded_amount. A test purchase, from a store's
-	// sandbox or a payment provider's test mode, paid the tenant nothing and is not
-	// a sale either. The payout is floored per line over the month's sum, which
+	// The month runs between the bounds GetRoyaltyMonthBounds answers for it. A
+	// fully refunded sale is not a sale; a partial refund stays a sale and is
+	// carried as refunded_amount. A test purchase, from a store's sandbox or a
+	// payment provider's test mode, paid the tenant nothing and is not a sale
+	// either. The payout is floored per line over the month's sum, which
 	// keeps the rounding loss to one yen per line.
 	ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error)
 	// The lines of a statement in the order they were closed in, with the public
