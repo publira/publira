@@ -127,24 +127,35 @@ func (s *apiServer) StartEpisodeCheckout(
 		successURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "success")
 		cancelURL = mobilePurchaseReturnURL(origin, locale, episode.PublicID, "cancelled")
 	}
+	purchase := paymentprovider.Purchase{
+		TenantID:           tenant.ID,
+		ReaderID:           user.ID,
+		EpisodeID:          episode.ID,
+		Price:              episode.Price,
+		ReadingPeriodHours: episode.ReadingPeriodHours.Int32,
+	}
 	checkoutURL, err := provider.StartCheckout(ctx, credentials, paymentprovider.CheckoutRequest{
-		Purchase: paymentprovider.Purchase{
-			TenantID:           tenant.ID,
-			ReaderID:           user.ID,
-			EpisodeID:          episode.ID,
-			Price:              episode.Price,
-			ReadingPeriodHours: episode.ReadingPeriodHours.Int32,
-		},
+		Purchase:       purchase,
 		EpisodeTitle:   episode.Title,
 		SuccessURL:     successURL,
 		CancelURL:      cancelURL,
-		IdempotencyKey: fmt.Sprintf("episode-checkout:%s:%s:%s", tenant.ID, user.ID, episode.ID),
+		IdempotencyKey: checkoutIdempotencyKey(purchase),
 	})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to start a checkout with the payment provider", "error", err, "tenant_id", tenant.ID, "provider", provider.Declaration().ID, "episode_id", episode.ID.String())
 		return nil, connect.NewError(connect.CodeUnavailable, "failed to start checkout")
 	}
 	return &publirav1.StartEpisodeCheckoutResponse{CheckoutUrl: checkoutURL}, nil
+}
+
+// checkoutIdempotencyKey names one reader's checkout of one episode on the
+// terms it is sold on, so a retried request reuses the provider's checkout.
+// The price and the reading period are part of the key because an editor can
+// change them: a provider refuses a key it has seen sent with other amounts,
+// or answers with the checkout it made for them, either of which would keep a
+// reader who started a checkout before the change from buying at the new terms.
+func checkoutIdempotencyKey(purchase paymentprovider.Purchase) string {
+	return fmt.Sprintf("episode-checkout:%s:%s:%s:%d:%d", purchase.TenantID, purchase.ReaderID, purchase.EpisodeID, purchase.Price, purchase.ReadingPeriodHours)
 }
 
 // refuseCheckoutForStoreRoute answers failed_precondition for a tenant whose
