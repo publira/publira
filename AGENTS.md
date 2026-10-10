@@ -66,6 +66,12 @@ A change that touches both the backend (`proto/`, `db/`, `server/`) and the web 
 
 No check enforces this; whether a cross-cutting change had to stay atomic is a review judgement.
 
+### Upgrade notes: written in the pull request that makes the change
+
+A pull request that asks something of an operator upgrading to the release that carries it says what, for that operator, in the **Upgrade notes** section of its description: an environment variable added, renamed, or no longer read, a new database role, a routing change in `infra/proxy/`, a process or a service an install has to run, a migration that runs long or locks a busy table. `None.` says it asks nothing. The section is copied into the notes of the release that ships it, and nobody writes those notes at tagging time, so a change the section leaves out reaches operators unannounced.
+
+Enforced by the `Check upgrade notes` job of the `Release notes` workflow for the changes a diff shows mechanically; whether a migration runs long, or a change asks anything at all, is the author's judgement and the reviewer's.
+
 ### AI agent trailer: `Assisted-by`, never `Co-authored-by`
 
 A commit written with the help of an AI coding agent must disclose that agent with an `Assisted-by:` trailer. The trailer is **process disclosure, not authorship**, following the Linux kernel's [Coding assistants](https://docs.kernel.org/process/coding-assistants.html) policy.

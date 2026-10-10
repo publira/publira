@@ -1,0 +1,247 @@
+name: Release notes
+
+# A release's notes name every change an operator has to act on, in an Upgrade
+# notes section copied from the pull requests the release carries. The check
+# holds a pull request to filling that section in when its diff makes such a
+# change; the publish job collects the sections when a release is tagged.
+
+on:
+  # Not `pull_request`: the check reads the body, so it has to run on `edited`,
+  # and `pull_request_target` runs the check as merged on the base branch
+  # rather than the one the pull request proposes. Nothing here checks out or
+  # executes the head branch.
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+-*"
+
+permissions: {}
+
+jobs:
+  check:
+    name: Check upgrade notes
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: release-notes-check-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      # The base branch: the check, and the tree it searches for the
+      # environment variables the diff names.
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+
+      - name: Collect the description and the diff
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_PATH: ${{ runner.temp }}/pull-request.json
+        with:
+          script: |
+            const { writeFileSync } = require('node:fs');
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+
+            // The body as it is now, not as the event saw it: a run queued
+            // behind an edit would otherwise judge the text it replaced.
+            const { data: pull } = await github.rest.pulls.get({ owner, repo, pull_number });
+            const files = await github.paginate(
+              'GET /repos/{owner}/{repo}/pulls/{pull_number}/files',
+              { owner, repo, pull_number, per_page: 100 },
+            );
+
+            writeFileSync(
+              process.env.INPUT_PATH,
+              JSON.stringify({ body: pull.body, changedFiles: pull.changed_files, files }),
+            );
+
+      - name: Check the Upgrade notes section
+        env:
+          INPUT_PATH: ${{ runner.temp }}/pull-request.json
+        run: node scripts/upgrade-notes.ts check < "${INPUT_PATH}"
+
+  publish:
+    name: Publish release
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      # Every tag and the history between them, to find the previous release
+      # and the commits since it.
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+
+      - name: Find the previous release
+        id: previous
+        env:
+          COMMITS_PATH: ${{ runner.temp }}/commits.txt
+          TAG: ${{ github.ref_name }}
+        run: |
+          # A release's notes run from the release before it that the tag
+          # descends from. A prerelease is not where a release starts from, so
+          # it is skipped unless the tag is a prerelease itself.
+          exclude=()
+          if [[ "${TAG}" != *-* ]]; then
+            exclude=(--exclude '*-*')
+          fi
+          previous="$(git describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' "${exclude[@]}" "${TAG}^" 2> /dev/null || true)"
+          if [[ -n "${previous}" ]]; then
+            git rev-list "${previous}..${TAG}" > "${COMMITS_PATH}"
+            echo "Previous release: ${previous}, $(wc -l < "${COMMITS_PATH}") commits since"
+          else
+            : > "${COMMITS_PATH}"
+            echo "No previous release: ${TAG} is the first"
+          fi
+          {
+            echo "tag=${previous}"
+            echo "commit=$(git rev-parse "${TAG}^{commit}")"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Collect the pull requests since it
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          COMMITS_PATH: ${{ runner.temp }}/commits.txt
+          GENERATED_PATH: ${{ runner.temp }}/generated.md
+          INPUT_PATH: ${{ runner.temp }}/release.json
+          PREVIOUS_TAG: ${{ steps.previous.outputs.tag }}
+          TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ steps.previous.outputs.commit }}
+        with:
+          script: |
+            const { readFileSync, writeFileSync } = require('node:fs');
+            const { owner, repo } = context.repo;
+            const previousTag = process.env.PREVIOUS_TAG || null;
+
+            const pending = new Set(
+              readFileSync(process.env.COMMITS_PATH, 'utf-8').split('\n').filter(Boolean),
+            );
+            const pulls = [];
+            // GraphQL rather than a request per commit: a release carries
+            // hundreds of commits, and a page here answers for a hundred.
+            const query = `query ($owner: String!, $repo: String!, $oid: GitObjectID!, $after: String) {
+              repository(owner: $owner, name: $repo) {
+                object(oid: $oid) {
+                  ... on Commit {
+                    history(first: 100, after: $after) {
+                      pageInfo { hasNextPage endCursor }
+                      nodes {
+                        oid
+                        associatedPullRequests(first: 10) {
+                          nodes { number title body mergeCommit { oid } }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }`;
+            let after = null;
+            while (pending.size > 0) {
+              const { repository } = await github.graphql(query, {
+                owner,
+                repo,
+                oid: process.env.TAG_COMMIT,
+                after,
+              });
+              const { nodes, pageInfo } = repository.object.history;
+              for (const commit of nodes) {
+                if (!pending.delete(commit.oid)) {
+                  continue;
+                }
+                // A commit is also associated with the open pull requests whose
+                // branch contains it; the one it came from is the one it merged.
+                const pull = commit.associatedPullRequests.nodes.find(
+                  (candidate) => candidate.mergeCommit?.oid === commit.oid,
+                );
+                if (pull) {
+                  pulls.push({ number: pull.number, title: pull.title, body: pull.body });
+                }
+              }
+              if (!pageInfo.hasNextPage) {
+                break;
+              }
+              after = pageInfo.endCursor;
+            }
+            core.info(`Collected ${pulls.length} pull requests`);
+
+            // The first release has no list of changes: every pull request
+            // ever merged is not a list anyone reads.
+            let generated = '';
+            if (previousTag) {
+              const { data } = await github.rest.repos.generateReleaseNotes({
+                owner,
+                repo,
+                tag_name: process.env.TAG,
+                previous_tag_name: previousTag,
+              });
+              generated = data.body;
+            }
+
+            writeFileSync(process.env.INPUT_PATH, JSON.stringify({ pulls, previousTag }));
+            writeFileSync(process.env.GENERATED_PATH, generated);
+
+      - name: Write the notes
+        env:
+          GENERATED_PATH: ${{ runner.temp }}/generated.md
+          INPUT_PATH: ${{ runner.temp }}/release.json
+          NOTES_PATH: ${{ runner.temp }}/notes.md
+          PREVIOUS_TAG: ${{ steps.previous.outputs.tag }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          node scripts/upgrade-notes.ts render < "${INPUT_PATH}" > "${NOTES_PATH}"
+          # A release body holds at most 125,000 characters. A release long
+          # enough to pass that loses its list of changes to the comparison
+          # it summarizes, never its Upgrade notes.
+          if (($(wc -m < "${NOTES_PATH}") + $(wc -m < "${GENERATED_PATH}") < 120000)); then
+            {
+              echo
+              cat "${GENERATED_PATH}"
+            } >> "${NOTES_PATH}"
+          elif [[ -n "${PREVIOUS_TAG}" ]]; then
+            {
+              echo
+              echo "**Full Changelog**: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${PREVIOUS_TAG}...${TAG}"
+            } >> "${NOTES_PATH}"
+          fi
+          cat "${NOTES_PATH}"
+
+      - name: Publish the release
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          NOTES_PATH: ${{ runner.temp }}/notes.md
+          TAG: ${{ github.ref_name }}
+        run: |
+          flags=(--title "${TAG}" --notes-file "${NOTES_PATH}")
+          if [[ "${TAG}" == *-* ]]; then
+            flags+=(--prerelease)
+          fi
+          # A re-run replaces the notes of the release the first run published.
+          if gh release view "${TAG}" > /dev/null 2>&1; then
+            gh release edit "${TAG}" "${flags[@]}"
+          else
+            gh release create "${TAG}" --verify-tag "${flags[@]}"
+          fi
