@@ -22,6 +22,7 @@ import {
   isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
+import { getTenantEmailSender } from "#lib/email-settings";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import {
@@ -66,18 +67,25 @@ const SignInSettingsSkeleton = () => (
 const SignInSettingsSection = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const [result, currentUserResult, tenantResult, associationResult] =
-    await Promise.all([
-      getTenantSignInSettings(tenantId, locale),
-      getAdminCurrentUser(tenantId),
-      getTenantForSession(tenantId),
-      getTenantMobileAppAssociation(tenantId, locale),
-    ]);
+  const [
+    result,
+    currentUserResult,
+    tenantResult,
+    associationResult,
+    senderResult,
+  ] = await Promise.all([
+    getTenantSignInSettings(tenantId, locale),
+    getAdminCurrentUser(tenantId),
+    getTenantForSession(tenantId),
+    getTenantMobileAppAssociation(tenantId, locale),
+    getTenantEmailSender(tenantId, locale),
+  ]);
   await redirectToLoginIfSessionRejected(
     result,
     currentUserResult,
     tenantResult,
-    associationResult
+    associationResult,
+    senderResult
   );
   const domain = tenantResult.ok ? tenantResult.tenant.domain : "";
 
@@ -99,6 +107,10 @@ const SignInSettingsSection = async () => {
       canEdit={isTenantAdminRole(
         currentUserResult.ok ? currentUserResult.user.role : undefined
       )}
+      emailSender={senderResult.ok ? senderResult.fromAddress : undefined}
+      emailSenderErrorMessage={
+        senderResult.ok ? undefined : senderResult.message
+      }
       initialSettings={result.ok ? result.settings : undefined}
       loadErrorMessage={result.ok ? undefined : result.message}
       tenantId={tenantId}

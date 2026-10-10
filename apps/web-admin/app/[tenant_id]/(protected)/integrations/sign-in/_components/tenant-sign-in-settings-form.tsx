@@ -46,6 +46,7 @@ import { updateTenantSignInSettingsAction } from "../_lib/actions";
 import { signInOffers } from "../_lib/offers";
 import type { SignInOffer, SignInSurface } from "../_lib/offers";
 import { CallbackUrlCopy } from "./callback-url-copy";
+import { EmailSenderCopy } from "./email-sender-copy";
 
 const statusTone: Record<StoreStatus, BadgeTone> = {
   disabled: "muted",
@@ -253,6 +254,65 @@ const ProviderOffers = ({
   </div>
 );
 
+const EmailSenderValue = ({
+  errorMessage,
+  fromAddress,
+}: {
+  errorMessage?: string;
+  fromAddress?: string;
+}) => {
+  if (errorMessage) {
+    return <FormMessage variant="destructive">{errorMessage}</FormMessage>;
+  }
+  if (!fromAddress) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+          <Message message="admin.settings.sign_in.apple.email_sender_unset" />
+        </Suspense>
+      </p>
+    );
+  }
+  return (
+    <Identifier>
+      <IdentifierValue>{fromAddress}</IdentifierValue>
+      <EmailSenderCopy value={fromAddress} />
+    </Identifier>
+  );
+};
+
+/**
+ * The sender Apple's private email relay has to know, or why it could not be
+ * read. A Hide My Email address only receives mail from a registered sender.
+ */
+const AppleEmailSender = ({
+  errorMessage,
+  fromAddress,
+}: {
+  errorMessage?: string;
+  fromAddress?: string;
+}) =>
+  fromAddress === undefined && !errorMessage ? null : (
+    <Field>
+      <FieldLabel>
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="admin.settings.sign_in.apple.email_sender" />
+        </Suspense>
+      </FieldLabel>
+      <FieldContent>
+        <EmailSenderValue
+          errorMessage={errorMessage}
+          fromAddress={fromAddress}
+        />
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.sign_in.apple.email_sender_description" />
+          </Suspense>
+        </FieldDescription>
+      </FieldContent>
+    </Field>
+  );
+
 /**
  * Each provider's callback URL on the storefront, and the one Apple answers
  * the Android app's sign-in at.
@@ -272,6 +332,13 @@ interface TenantSignInSettingsFormProps {
   /** The callback URLs to register, absent while the tenant has no domain. */
   callbackUrls?: SignInCallbackUrls;
   canEdit: boolean;
+  /**
+   * The address the tenant's mail is sent from, empty where the settings in
+   * force name none, and absent where that read failed.
+   */
+  emailSender?: string;
+  /** Why the email sender could not be read, absent when it was. */
+  emailSenderErrorMessage?: string;
   /** The saved settings, absent when the read failed. */
   initialSettings?: TenantSignInSettings;
   loadErrorMessage?: string;
@@ -283,6 +350,8 @@ export const TenantSignInSettingsForm = ({
   appLinksErrorMessage,
   callbackUrls,
   canEdit,
+  emailSender,
+  emailSenderErrorMessage,
   initialSettings: settings,
   loadErrorMessage,
   tenantId,
@@ -391,6 +460,10 @@ export const TenantSignInSettingsForm = ({
                     </FieldContent>
                   </Field>
                 ) : null}
+                <AppleEmailSender
+                  errorMessage={emailSenderErrorMessage}
+                  fromAddress={emailSender}
+                />
                 <ActionFormFieldset
                   className="grid gap-5"
                   disabled={fieldsDisabled}

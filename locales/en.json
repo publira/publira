@@ -2376,7 +2376,8 @@
         "test_sent": "The test message was sent to {$recipient}.",
         "close": "Close",
         "saved": "The email settings were saved.",
-        "failed": "The request failed. Please try again later."
+        "failed": "The request failed. Please try again later.",
+        "sender_load_failed": "Could not load the email sender. Please try again later."
       },
       "inbound_email": {
         "title": "Inbound email",
@@ -2727,6 +2728,10 @@
           "callback_url_description": "When you configure Sign in with Apple for the Services ID, register this address under Return URLs and its domain under Domains and Subdomains. Apple sends a reader back only to an address registered there.",
           "android_callback_url": "Android app callback URL",
           "android_callback_url_description": "Register this address under Return URLs of the same Services ID as well. The Android app signs in with Apple through it, and the site hands the answer on to the app named under App links.",
+          "email_sender": "Email sender",
+          "email_sender_description": "Register this address in the Apple Developer account under Certificates, Identifiers & Profiles › Services › Sign in with Apple for Email Communication. Apple forwards mail to a reader who chose Hide My Email only from a sender registered there, so without it the site's mail, password resets included, never reaches them. If the sender changes under Email, register the new one as well.",
+          "email_sender_unset": "Not set. No sender is set for the tenant's mail yet.",
+          "copy_email_sender": "Copy the sender address",
           "services_id": "Services ID",
           "services_id_description": "The identifier of the Services ID the site and the Android app sign in with, registered under Certificates, Identifiers & Profiles in the Apple Developer account. Leave it empty if only the iOS app offers Sign in with Apple.",
           "team_id": "Team ID",

@@ -2376,7 +2376,8 @@
         "test_sent": "測試郵件已寄送至{$recipient}。",
         "close": "關閉",
         "saved": "郵件設定已儲存。",
-        "failed": "請求失敗。請稍後再試。"
+        "failed": "請求失敗。請稍後再試。",
+        "sender_load_failed": "無法載入郵件寄件人。請稍後再試。"
       },
       "inbound_email": {
         "title": "收件",
@@ -2727,6 +2728,10 @@
           "callback_url_description": "在Services ID中設定使用Apple登入時，請將此位址註冊到「Return URLs」，並將其網域註冊到「Domains and Subdomains」。Apple只會將讀者送回已註冊的位址。",
           "android_callback_url": "Android應用程式回呼URL",
           "android_callback_url_description": "請將此位址也註冊到同一Services ID的「Return URLs」。Android應用程式透過此位址使用Apple登入，網站會將結果交給「應用程式連結」中指定的應用程式。",
+          "email_sender": "郵件寄件人",
+          "email_sender_description": "請在Apple Developer帳號的「Certificates, Identifiers & Profiles」›「Services」›「Sign in with Apple for Email Communication」中註冊此位址。對於選擇「隱藏我的電子郵件」的讀者，Apple只會轉寄來自在該處註冊之寄件人的郵件，未註冊時，網站的郵件（包括密碼重設郵件）都無法送達。在「郵件」中變更寄件人後，也請註冊新的位址。",
+          "email_sender_unset": "未設定。尚未設定郵件寄件人。",
+          "copy_email_sender": "複製寄件人位址",
           "services_id": "Services ID",
           "services_id_description": "網站和Android應用程式登入所用的Services ID識別碼，在Apple Developer帳戶的「Certificates, Identifiers & Profiles」中註冊。若只有iOS應用程式提供使用Apple登入，請留空。",
           "team_id": "Team ID",
