@@ -43,6 +43,8 @@ Choose **Create series**. The form is the same one the series is edited with lat
 
 Clearing the field later takes a public series off the site again, with its episodes. This is the only way to withdraw a series, since a series cannot be deleted.
 
+When a hidden series becomes public, for the first time or again, the episodes published while it was hidden are announced to the readers following them, the series, or an Author credited on them, and are dated from the moment the series became public. An episode announced while the series was public before keeps its date and is not announced again. [Episodes](./2-episodes.md#when-a-scheduled-episode-appears) describes who is told.
+
 ### Shown on and Sold on
 
 **Shown on** decides where readers can find the series: **Web and app**, **Web only**, or **App only**. A new series starts on **Web and app**. On a surface it is not shown on, the series and its episodes do not exist for the reader, and an episode can narrow this setting but never widen it.

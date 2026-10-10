@@ -56,12 +56,12 @@ A publication that fails is tried again a few times within the same pass. When e
 
 ## Free reading periods and other cached pages
 
-Four jobs exist only to keep the web apps' cached pages on the right side of a time that passed:
+Four jobs keep the web apps' cached pages on the right side of a time that passed:
 
 - **Free reading periods.** An episode inside a **Free reading periods** entry reads as free from the moment the period starts and is priced again once it ends, with no job involved: every read compares the period against the current time. What the job fixes is the pages a site cached before the boundary, which it marks stale at both ends of every period.
 - **The tenant day rollover.** At each tenant's own midnight, in the tenant's time zone, it marks stale the storefront's weekly schedule, the one page whose answer is the tenant's calendar day.
 - **Pinned announcements.** Once an announcement's **Stop showing at** time passes, it takes the announcement off the banner and marks the banner stale.
-- **Scheduled series.** A series saved with a **Publication date and time** in the future is public from that time, with no job involved: every read compares the time against the current one. What the job fixes is the series lists, the Author pages, and the series' own page that a site cached while the series was still hidden, which it marks stale once the time has passed.
+- **Scheduled series.** A series saved with a **Publication date and time** in the future is public from that time, with no job involved: every read compares the time against the current one. What the job fixes is the series lists, the Author pages, and the series' own page that a site cached while the series was still hidden, which it marks stale once the time has passed. At the same pass it dates the episodes published while the series was hidden from that time, and hands their announcements to [the outbox](#the-outbox-mail-push-and-cache-revalidation).
 
 Each runs every minute. None of them drops a cache itself: each records the drop as an entry in the outbox, which the worker then sends to the web apps, so a page that stays stale while the worker has `PUBLIRA_REVALIDATE_TOKEN` is an outbox problem, described [below](#the-outbox-mail-push-and-cache-revalidation).
 

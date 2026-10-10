@@ -52,8 +52,8 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 1", int32(1), now, "EP001")
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeListing)).
 		WithArgs(episodeID, int32(100), sql.NullInt32{Int32: 24, Valid: true}, "scheduled", sql.NullTime{Time: scheduledAtUTC, Valid: true}, sql.NullTime{}, tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
-			AddRow(episodeID, int32(100), int32(24), "scheduled", scheduledAtUTC, nil, tenantID))
+		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id", "announced_at"}).
+			AddRow(episodeID, int32(100), int32(24), "scheduled", scheduledAtUTC, nil, tenantID, nil))
 	expectBakeSeriesCreatorsOntoEpisode(mock, tenantID, seriesID, episodeID)
 	expectResolvedEpisodePurchaseAvailability(mock, tenantID, episodeID, "app")
 	mock.ExpectCommit()
@@ -115,8 +115,8 @@ func TestCreateEpisodePublishesAtOnceWhenScheduledAtHasPassed(t *testing.T) {
 	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 1", int32(1), now, "EP001")
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeListing)).
 		WithArgs(episodeID, int32(0), sql.NullInt32{}, "published", sql.NullTime{Time: scheduledAt, Valid: true}, sqlmock.AnyArg(), tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
-			AddRow(episodeID, int32(0), nil, "published", scheduledAt, now, tenantID))
+		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id", "announced_at"}).
+			AddRow(episodeID, int32(0), nil, "published", scheduledAt, now, tenantID, nil))
 	expectBakeSeriesCreatorsOntoEpisode(mock, tenantID, seriesID, episodeID)
 	expectResolvedEpisodePurchaseAvailability(mock, tenantID, episodeID, "all")
 	expectEpisodePublishedNotification(mock, tenantID, episodeID, now)
@@ -201,8 +201,8 @@ func TestCreateEpisodeAppendsWhenOrderIndexUnset(t *testing.T) {
 	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 31", int32(31), now, "EP031")
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeListing)).
 		WithArgs(episodeID, int32(0), sql.NullInt32{}, "draft", sql.NullTime{}, sql.NullTime{}, tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
-			AddRow(episodeID, int32(0), nil, "draft", nil, nil, tenantID))
+		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id", "announced_at"}).
+			AddRow(episodeID, int32(0), nil, "draft", nil, nil, tenantID, nil))
 	expectBakeSeriesCreatorsOntoEpisode(mock, tenantID, seriesID, episodeID)
 	expectResolvedEpisodePurchaseAvailability(mock, tenantID, episodeID, "all")
 	mock.ExpectCommit()

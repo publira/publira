@@ -1321,9 +1321,10 @@ type Querier interface {
 	// because its own Shown on and its series' do not overlap. The
 	// notification links to the episode, and a follower of a credited creator
 	// would otherwise be sent to a page that answers 404. The gate names no
-	// follower, so the planner checks it once rather than per row. Such an
-	// episode is not announced when its series is published later either (#4044),
-	// and one shown on a single surface is still announced on both (#4043).
+	// follower, so the planner checks it once rather than per row. An episode
+	// held back because its series was not public is announced once the series
+	// is, through RedateEpisodesForSeriesPublication. One shown on a single
+	// surface is still announced on both (#4043).
 	//
 	// Keyset paging on user_id, because the result grows with the tenant's
 	// readership and the caller writes one row per recipient. The cursor is
@@ -2277,6 +2278,13 @@ type Querier interface {
 	// Upserts, so marking an already-read announcement refreshes read_at instead
 	// of failing. The SELECT confines the insert to the caller's own tenant.
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
+	// The follower fan-out's record that it told the episode's followers, written
+	// only when a reader can open the episode now: the same rule
+	// ListEpisodeFollowerIDs gates the fan-out on, read from the same view. An
+	// episode the fan-out answered nobody for is left unannounced, so publishing
+	// its series later announces it then. A second fan-out over the same episode
+	// keeps the first one's time.
+	MarkEpisodeAnnounced(ctx context.Context, arg MarkEpisodeAnnouncedParams) error
 	MarkEpisodeFreeWindowEndRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkEpisodeFreeWindowStartRevalidated(ctx context.Context, id uuid.UUID) error
 	// The scheduled publication job's promotion of an episode it listed as due.
@@ -2507,6 +2515,18 @@ type Querier interface {
 	// holding a secret, and only they pay for the reclaim. A crash loop costs
 	// these rows no retry budget.
 	RecoverStaleProcessingOutboxEvents(ctx context.Context, staleBefore time.Time) ([]OutboxEvent, error)
+	// The episodes a series becoming public owes an announcement: published while
+	// it was not, so their followers were never told, and open to a reader now.
+	// Each is dated from the series' publication instant, because no reader could
+	// open it before then, unless its own publication came later still, as it
+	// does under a series saved with an instant in the past.
+	//
+	// The answer is the episodes the caller queues an announcement for, with the
+	// instant that names this publication of the series. An episode already
+	// announced while the series was public before is not among them and keeps
+	// its date. A series that is not public yet answers no row, and the
+	// apply-series-publications job asks again once its instant has passed.
+	RedateEpisodesForSeriesPublication(ctx context.Context, arg RedateEpisodesForSeriesPublicationParams) ([]RedateEpisodesForSeriesPublicationRow, error)
 	// Recomputes the counter from the reports themselves, in the transaction that
 	// just changed one of them.
 	//
@@ -2696,7 +2716,14 @@ type Querier interface {
 	// The save drops the site caches itself when the instant it stores has already
 	// passed, so it marks that drop done here; an instant still ahead is left for
 	// the apply-series-publications batch to drop once it passes.
-	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error
+	//
+	// applies_publication answers whether this save is the one that makes the
+	// series public: it was not public, or its instant had passed without the
+	// batch applying it yet, and the instant stored now has passed. The caller
+	// then does what the batch would have done, since the batch will not list the
+	// series any more. The old row is read through the self-join, which sees it as
+	// it was before this statement.
+	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) (bool, error)
 	// A resend passes the role the invitation already grants; inviting the same
 	// address again passes the role that invitation asks for.
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)

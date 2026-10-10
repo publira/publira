@@ -55,7 +55,8 @@ func TestListSeriesPublicationsDue(t *testing.T) {
 
 // Saving a series is what publishes it, so the save decides whether the drop
 // is still owed: an instant already passed was dropped by the save itself, and
-// one still ahead is left for the batch.
+// one still ahead is left for the batch. The save that makes the series public
+// says so, and a save that leaves it public does not.
 func TestUpdateSeriesPublicationOwesTheDropOnlyForAnInstantAhead(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -78,24 +79,40 @@ func TestUpdateSeriesPublicationOwesTheDropOnlyForAnInstantAhead(t *testing.T) {
 		}
 		return value
 	}
-	publish := func(publishedAt sql.NullTime) {
+	publish := func(publishedAt sql.NullTime) bool {
 		t.Helper()
-		if err := q.UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{ID: series.ID, PublishedAt: publishedAt}); err != nil {
+		applies, err := q.UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{ID: series.ID, PublishedAt: publishedAt})
+		if err != nil {
 			t.Fatalf("UpdateSeriesPublication: %v", err)
 		}
+		return applies
 	}
 
-	publish(sql.NullTime{Time: now.Add(-time.Minute), Valid: true})
+	if !publish(sql.NullTime{Time: now.Add(-time.Minute), Valid: true}) {
+		t.Error("the save that published a draft series does not say it applied the publication")
+	}
 	if !revalidatedAt().Valid {
 		t.Fatal("a series published at an instant already passed still owes its drop")
 	}
 
-	publish(sql.NullTime{Time: now.Add(time.Hour), Valid: true})
+	if publish(sql.NullTime{Time: now.Add(-2 * time.Minute), Valid: true}) {
+		t.Error("a save of a series that was already public says it applied the publication")
+	}
+
+	if publish(sql.NullTime{Time: now.Add(time.Hour), Valid: true}) {
+		t.Error("a save rescheduling the series ahead says it applied the publication")
+	}
 	if revalidatedAt().Valid {
 		t.Fatal("a series rescheduled to an instant ahead owes no drop, want one owed for that instant")
 	}
 
-	publish(sql.NullTime{})
+	if !publish(sql.NullTime{Time: now.Add(-time.Minute), Valid: true}) {
+		t.Error("the save that published a scheduled series at once does not say it applied the publication")
+	}
+
+	if publish(sql.NullTime{}) {
+		t.Error("the save that unpublished the series says it applied the publication")
+	}
 	if revalidatedAt().Valid {
 		t.Fatal("an unpublished series is marked as dropped")
 	}
@@ -122,7 +139,7 @@ func TestMarkSeriesPublicationRevalidatedSkipsASeriesRescheduledAhead(t *testing
 	if got, want := dueSeriesIDs(t, ctx, q), []uuid.UUID{series.ID}; !slices.Equal(got, want) {
 		t.Fatalf("due series = %v, want %v", got, want)
 	}
-	if err := q.UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
+	if _, err := q.UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          series.ID,
 		PublishedAt: sql.NullTime{Time: now.Add(time.Hour), Valid: true},
 	}); err != nil {

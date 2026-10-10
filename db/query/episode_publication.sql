@@ -85,3 +85,50 @@ WHERE el.episode_id = e.id
     AND s.tenant_id = sqlc.arg('tenant_id')
     AND e.id = sqlc.arg('id')
     AND el.status <> 'published';
+
+-- name: MarkEpisodeAnnounced :exec
+-- The follower fan-out's record that it told the episode's followers, written
+-- only when a reader can open the episode now: the same rule
+-- ListEpisodeFollowerIDs gates the fan-out on, read from the same view. An
+-- episode the fan-out answered nobody for is left unannounced, so publishing
+-- its series later announces it then. A second fan-out over the same episode
+-- keeps the first one's time.
+UPDATE episode_listings el
+SET announced_at = NOW()
+WHERE el.tenant_id = sqlc.arg('tenant_id')
+    AND el.episode_id = sqlc.arg('episode_id')
+    AND el.announced_at IS NULL
+    AND EXISTS (
+        SELECT 1
+        FROM published_episode_surfaces pes
+        WHERE pes.tenant_id = sqlc.arg('tenant_id')
+            AND pes.episode_id = sqlc.arg('episode_id')
+    );
+
+-- name: RedateEpisodesForSeriesPublication :many
+-- The episodes a series becoming public owes an announcement: published while
+-- it was not, so their followers were never told, and open to a reader now.
+-- Each is dated from the series' publication instant, because no reader could
+-- open it before then, unless its own publication came later still, as it
+-- does under a series saved with an instant in the past.
+--
+-- The answer is the episodes the caller queues an announcement for, with the
+-- instant that names this publication of the series. An episode already
+-- announced while the series was public before is not among them and keeps
+-- its date. A series that is not public yet answers no row, and the
+-- apply-series-publications job asks again once its instant has passed.
+UPDATE episode_listings el
+SET published_at = GREATEST(el.published_at, s.published_at)
+FROM series s
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.id = sqlc.arg('series_id')
+    AND el.tenant_id = s.tenant_id
+    AND el.announced_at IS NULL
+    AND el.episode_id IN (
+        SELECT pes.episode_id
+        FROM published_episode_surfaces pes
+        WHERE pes.tenant_id = sqlc.arg('tenant_id')
+            AND pes.series_id = sqlc.arg('series_id')
+    )
+RETURNING el.episode_id,
+    s.published_at::timestamptz AS series_published_at;
