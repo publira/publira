@@ -6,7 +6,8 @@
  *     node scripts/upgrade-notes.ts check < pull-request.json
  *     node scripts/upgrade-notes.ts render < release.json
  *
- * `check` reads `{ body, files }`, the pull request's body and the entries of
+ * `check` reads `{ body, changedFiles, files }`, the pull request's body, its
+ * `changed_files` count, and the entries of
  * `GET /repos/{owner}/{repo}/pulls/{number}/files`, and fails when the diff
  * makes a change an operator may have to act on while the section is empty.
  * It runs from a checkout of the base branch, which it searches for the
@@ -160,12 +161,23 @@ export const environmentChanges = (
  * The changes in the diff an operator may have to act on, each as a sentence
  * naming it. The author decides whether one asks something of an operator; the
  * check only makes sure the question was answered.
+ *
+ * `changedFiles` is how many files the pull request changes. The files
+ * endpoint lists at most 3,000 of them, and a change among the rest cannot be
+ * told apart from none, so a list cut short counts as a change of its own.
  */
 export const watchedChanges = (
   files: readonly ChangedFile[],
-  lookup: BaseLookup
+  lookup: BaseLookup,
+  changedFiles: number = files.length
 ): string[] => {
   const changes: string[] = [];
+
+  if (files.length < changedFiles) {
+    changes.push(
+      `changes ${changedFiles} files, of which the API lists only ${files.length}`
+    );
+  }
 
   for (const file of files) {
     if (file.status === "added" && MIGRATION.test(file.filename)) {
@@ -274,8 +286,12 @@ export const renderReleaseNotes = (
   return lines.join("\n");
 };
 
-const check = (input: { body: string | null; files: ChangedFile[] }): void => {
-  const changes = watchedChanges(input.files, gitGrep);
+const check = (input: {
+  body: string | null;
+  changedFiles: number;
+  files: ChangedFile[];
+}): void => {
+  const changes = watchedChanges(input.files, gitGrep, input.changedFiles);
   if (changes.length === 0) {
     console.log("Nothing in this diff is a change an operator acts on.");
 

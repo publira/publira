@@ -62,7 +62,10 @@ jobs:
               { owner, repo, pull_number, per_page: 100 },
             );
 
-            writeFileSync(process.env.INPUT_PATH, JSON.stringify({ body: pull.body, files }));
+            writeFileSync(
+              process.env.INPUT_PATH,
+              JSON.stringify({ body: pull.body, changedFiles: pull.changed_files, files }),
+            );
 
       - name: Check the Upgrade notes section
         env:

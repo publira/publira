@@ -95,8 +95,9 @@ The check fails while the section is empty when the diff:
 - adds a migration under `db/migrations/`,
 - changes a file under `infra/proxy/` other than its Markdown,
 - changes `server/internal/dbroles/dbroles.go`, which lists the roles `publiractl db roles` asks a password for,
-- adds or removes a service, a secret, or a volume in `infra/deploy/compose.yaml`, or
-- starts or stops reading a `PUBLIRA_*` variable in `server/`, `apps/`, `packages/`, or `infra/`, outside tests and Markdown, judged against the base branch it runs from.
+- adds or removes a service, a secret, or a volume in `infra/deploy/compose.yaml`,
+- starts or stops reading a `PUBLIRA_*` variable in `server/`, `apps/`, `packages/`, or `infra/`, outside tests and Markdown, judged against the base branch it runs from, or
+- changes more files than the files endpoint lists, which is 3,000: a change among the files it leaves out cannot be told apart from none.
 
 `None.` answers it as well as a note does: the check makes sure the question was asked, and the author answers it. A diff that touches none of those passes with the section empty. `CI / Summary` stays the only required check, so a red `Check upgrade notes` holds a pull request through review rather than through the merge queue.
 

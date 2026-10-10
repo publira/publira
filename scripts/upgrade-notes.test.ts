@@ -310,6 +310,16 @@ describe("watchedChanges", () => {
     assert.deepEqual(watchedChanges([image], nowhere), []);
   });
 
+  it("reports a file list the API cut short", () => {
+    const files: ChangedFile[] = [
+      { filename: "apps/web-host/app/page.tsx", status: "modified" },
+    ];
+
+    assert.deepEqual(watchedChanges(files, nowhere, 3001), [
+      "changes 3001 files, of which the API lists only 1",
+    ]);
+  });
+
   it("reports nothing for a change no operator acts on", () => {
     const files: ChangedFile[] = [
       {
