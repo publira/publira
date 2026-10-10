@@ -464,6 +464,113 @@ func TestDBOperatorLoginForcesEnrollmentWhenTheFactorIsRequired(t *testing.T) {
 	}
 }
 
+// An enroll challenge buys one session. Two confirmations racing with
+// different codes of the window would otherwise both enable the factor and
+// both sign in, and a challenge kept after its enrollment could enroll an
+// authenticator of its holder's own once the factor is taken off.
+func TestDBOperatorMfaEnrollChallengeBuysOneSession(t *testing.T) {
+	env := newOperatorMfaEnv(t)
+	requireOperatorMfa(t, env.pg)
+
+	login := env.login(t, env.operator)
+	started, err := env.auth.StartMfaEnrollment(context.Background(), &publirasplatformv1.PlatformAuthServiceStartMfaEnrollmentRequest{ChallengeToken: login.MfaChallenge.Token})
+	if err != nil {
+		t.Fatalf("StartMfaEnrollment with an enroll challenge: %v", err)
+	}
+
+	codes := []string{operatorMfaCode(t, started.Secret, 0), operatorMfaCode(t, started.Secret, 1)}
+	var wg sync.WaitGroup
+	responses := make([]*publirasplatformv1.PlatformAuthServiceConfirmMfaEnrollmentResponse, len(codes))
+	errs := make([]error, len(codes))
+	for i, code := range codes {
+		wg.Go(func() {
+			responses[i], errs[i] = env.auth.ConfirmMfaEnrollment(context.Background(), &publirasplatformv1.PlatformAuthServiceConfirmMfaEnrollmentRequest{
+				ChallengeToken: login.MfaChallenge.Token,
+				Code:           code,
+			})
+		})
+	}
+	wg.Wait()
+
+	var session *publirasplatformv1.PlatformAuthServiceConfirmMfaEnrollmentResponse
+	for i, err := range errs {
+		if err != nil {
+			continue
+		}
+		if session != nil {
+			t.Fatalf("two concurrent confirmations of one enroll challenge both succeeded (errors: %v)", errs)
+		}
+		session = responses[i]
+	}
+	if session.GetAccessToken().GetToken() == "" {
+		t.Fatalf("no concurrent confirmation of the enroll challenge issued a session (errors: %v)", errs)
+	}
+	if got := countRows(t, env.pg, "SELECT count(*) FROM platform_user_mfa_recovery_codes WHERE platform_user_id = $1", env.operator.ID); got != mfa.RecoveryCodeCount {
+		t.Fatalf("recovery code rows = %d, want the %d of the one confirmation that went through", got, mfa.RecoveryCodeCount)
+	}
+
+	signedIn := testutil.WithBearer(context.Background(), session.AccessToken.Token)
+	if _, err := env.auth.DisableMfa(signedIn, &publirasplatformv1.PlatformAuthServiceDisableMfaRequest{Code: session.RecoveryCodes[0]}); err != nil {
+		t.Fatalf("DisableMfa: %v", err)
+	}
+	restarted, err := env.auth.StartMfaEnrollment(context.Background(), &publirasplatformv1.PlatformAuthServiceStartMfaEnrollmentRequest{ChallengeToken: login.MfaChallenge.Token})
+	if err != nil {
+		t.Fatalf("StartMfaEnrollment with the spent enroll challenge: %v", err)
+	}
+	_, err = env.auth.ConfirmMfaEnrollment(context.Background(), &publirasplatformv1.PlatformAuthServiceConfirmMfaEnrollmentRequest{
+		ChallengeToken: login.MfaChallenge.Token,
+		Code:           operatorMfaCode(t, restarted.Secret, 0),
+	})
+	if connect.CodeOf(err) != connect.CodeUnauthenticated || mfaErrorReason(t, err) != "" {
+		t.Fatalf("ConfirmMfaEnrollment with the spent enroll challenge = %v, want an unauthenticated session error", err)
+	}
+	if got := countRows(t, env.pg, "SELECT count(*) FROM platform_user_mfa_totp WHERE platform_user_id = $1 AND enabled_at IS NOT NULL", env.operator.ID); got != 0 {
+		t.Fatalf("confirmed totp rows = %d, want the spent challenge to have enabled nothing", got)
+	}
+}
+
+// A signed-in operator confirming twice at once gets one batch of recovery
+// codes. Were both let through, the later commit would replace the codes the
+// earlier response handed out, and the operator would hold ten that no longer
+// work.
+func TestDBOperatorMfaConfirmsAConcurrentEnrollmentOnce(t *testing.T) {
+	env := newOperatorMfaEnv(t)
+	started, err := env.auth.StartMfaEnrollment(env.session(), &publirasplatformv1.PlatformAuthServiceStartMfaEnrollmentRequest{})
+	if err != nil {
+		t.Fatalf("StartMfaEnrollment: %v", err)
+	}
+
+	codes := []string{operatorMfaCode(t, started.Secret, 0), operatorMfaCode(t, started.Secret, 1)}
+	var wg sync.WaitGroup
+	responses := make([]*publirasplatformv1.PlatformAuthServiceConfirmMfaEnrollmentResponse, len(codes))
+	errs := make([]error, len(codes))
+	for i, code := range codes {
+		wg.Go(func() {
+			responses[i], errs[i] = env.auth.ConfirmMfaEnrollment(env.session(), &publirasplatformv1.PlatformAuthServiceConfirmMfaEnrollmentRequest{Code: code})
+		})
+	}
+	wg.Wait()
+
+	var confirmed *publirasplatformv1.PlatformAuthServiceConfirmMfaEnrollmentResponse
+	for i, err := range errs {
+		if err != nil {
+			continue
+		}
+		if confirmed != nil {
+			t.Fatalf("two concurrent confirmations of one enrollment both succeeded (errors: %v)", errs)
+		}
+		confirmed = responses[i]
+	}
+	if confirmed == nil {
+		t.Fatalf("no concurrent confirmation of the enrollment succeeded (errors: %v)", errs)
+	}
+
+	login := env.login(t, env.operator)
+	if _, err := env.auth.VerifyMfa(context.Background(), &publirasplatformv1.PlatformAuthServiceVerifyMfaRequest{ChallengeToken: login.MfaChallenge.Token, Code: confirmed.RecoveryCodes[0]}); err != nil {
+		t.Fatalf("VerifyMfa with a recovery code the confirmation handed out: %v", err)
+	}
+}
+
 // A password change ends a pending challenge, as it ends a session.
 func TestDBOperatorMfaChallengeEndsWithTheCredentialsVersion(t *testing.T) {
 	env := newOperatorMfaEnv(t)

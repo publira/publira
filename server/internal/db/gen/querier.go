@@ -398,7 +398,13 @@ type Querier interface {
 	DeleteUserPushDeviceForUser(ctx context.Context, arg DeleteUserPushDeviceForUserParams) (int64, error)
 	// last_verified_step is left alone: the code that confirmed the enrollment
 	// was accepted through the same path a sign-in code is, which stored it.
-	EnablePlatformUserMfaTotp(ctx context.Context, platformUserID uuid.UUID) (PlatformUserMfaTotp, error)
+	//
+	// The enabled_at predicate is the claim on the enrollment: two confirmations
+	// accepting different codes of the window both read the row unconfirmed, and
+	// Postgres re-evaluates this WHERE against the row the first one committed, so
+	// the second updates nothing. Affecting no row is therefore an enrollment
+	// another request has already confirmed.
+	EnablePlatformUserMfaTotp(ctx context.Context, platformUserID uuid.UUID) (int64, error)
 	// last_verified_step is left alone: the code that confirmed the enrollment
 	// was accepted through the same path a login code is, which stored it.
 	EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)

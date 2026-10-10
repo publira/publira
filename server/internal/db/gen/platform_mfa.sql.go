@@ -63,32 +63,30 @@ func (q *Queries) DeletePlatformUserMfaTotp(ctx context.Context, platformUserID 
 	return err
 }
 
-const EnablePlatformUserMfaTotp = `-- name: EnablePlatformUserMfaTotp :one
+const EnablePlatformUserMfaTotp = `-- name: EnablePlatformUserMfaTotp :execrows
 UPDATE platform_user_mfa_totp
 SET enabled_at = now(),
     failed_attempts = 0,
     locked_until = NULL,
     updated_at = now()
 WHERE platform_user_id = $1
-RETURNING platform_user_id, secret_encrypted, enabled_at, last_verified_step, failed_attempts, locked_until, created_at, updated_at
+  AND enabled_at IS NULL
 `
 
 // last_verified_step is left alone: the code that confirmed the enrollment
 // was accepted through the same path a sign-in code is, which stored it.
-func (q *Queries) EnablePlatformUserMfaTotp(ctx context.Context, platformUserID uuid.UUID) (PlatformUserMfaTotp, error) {
-	row := q.db.QueryRowContext(ctx, EnablePlatformUserMfaTotp, platformUserID)
-	var i PlatformUserMfaTotp
-	err := row.Scan(
-		&i.PlatformUserID,
-		&i.SecretEncrypted,
-		&i.EnabledAt,
-		&i.LastVerifiedStep,
-		&i.FailedAttempts,
-		&i.LockedUntil,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+//
+// The enabled_at predicate is the claim on the enrollment: two confirmations
+// accepting different codes of the window both read the row unconfirmed, and
+// Postgres re-evaluates this WHERE against the row the first one committed, so
+// the second updates nothing. Affecting no row is therefore an enrollment
+// another request has already confirmed.
+func (q *Queries) EnablePlatformUserMfaTotp(ctx context.Context, platformUserID uuid.UUID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, EnablePlatformUserMfaTotp, platformUserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const GetPlatformUserMfaTotp = `-- name: GetPlatformUserMfaTotp :one

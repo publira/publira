@@ -20,16 +20,22 @@ SET secret_encrypted = EXCLUDED.secret_encrypted,
     updated_at = now()
 RETURNING *;
 
--- name: EnablePlatformUserMfaTotp :one
+-- name: EnablePlatformUserMfaTotp :execrows
 -- last_verified_step is left alone: the code that confirmed the enrollment
 -- was accepted through the same path a sign-in code is, which stored it.
+--
+-- The enabled_at predicate is the claim on the enrollment: two confirmations
+-- accepting different codes of the window both read the row unconfirmed, and
+-- Postgres re-evaluates this WHERE against the row the first one committed, so
+-- the second updates nothing. Affecting no row is therefore an enrollment
+-- another request has already confirmed.
 UPDATE platform_user_mfa_totp
 SET enabled_at = now(),
     failed_attempts = 0,
     locked_until = NULL,
     updated_at = now()
 WHERE platform_user_id = $1
-RETURNING *;
+  AND enabled_at IS NULL;
 
 -- name: MarkPlatformUserMfaTotpVerified :execrows
 -- The step predicate is the replay check: two requests carrying the same code

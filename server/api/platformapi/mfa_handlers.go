@@ -493,7 +493,14 @@ func (s *platformServer) ConfirmMfaEnrollment(
 	}
 
 	codes, err := s.enableOperatorMfa(ctx, actor)
-	if err != nil {
+	switch {
+	case errors.Is(err, errOperatorMfaChallengeSpent):
+		s.recordOperatorMfaAudit(ctx, actor, auditActionOperatorMfaEnrolled, auditlog.OutcomeFailure, "challenge_spent")
+		return nil, invalidSessionError()
+	case errors.Is(err, errOperatorMfaAlreadyEnabled):
+		s.recordOperatorMfaAudit(ctx, actor, auditActionOperatorMfaEnrolled, auditlog.OutcomeFailure, "already_enabled")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "mfa is already enabled")
+	case err != nil:
 		s.recordOperatorMfaAudit(ctx, actor, auditActionOperatorMfaEnrolled, auditlog.OutcomeFailure, "enable_failed")
 		return nil, err
 	}
@@ -517,9 +524,24 @@ func (s *platformServer) ConfirmMfaEnrollment(
 	return resp, nil
 }
 
+// The two refusals enableOperatorMfa reaches only by losing a race with a
+// concurrent confirmation, which ConfirmMfaEnrollment answers apart from a
+// database failure.
+var (
+	errOperatorMfaChallengeSpent = errors.New("operator mfa challenge already spent")
+	errOperatorMfaAlreadyEnabled = errors.New("operator mfa already enabled")
+)
+
 // enableOperatorMfa marks the authenticator confirmed and issues the recovery
 // codes that go with it, in one transaction: an operator left enabled without
 // codes would have no way back in if it lost the authenticator.
+//
+// An enrollment that finishes a sign-in claims its challenge in the same
+// transaction, so the token buys one session however many codes of the window
+// are confirmed with it at once, and is left unspent if the enable rolls back.
+// The enable itself is claimed too: two confirmations that both read the row
+// unconfirmed would otherwise each replace the other's recovery codes, and
+// only the last to commit would hand out codes that still work.
 func (s *platformServer) enableOperatorMfa(ctx context.Context, actor operatorMfaActor) ([]string, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -528,8 +550,25 @@ func (s *platformServer) enableOperatorMfa(ctx context.Context, actor operatorMf
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
-	if _, err := q.EnablePlatformUserMfaTotp(ctx, actor.User.ID); err != nil {
+	if actor.FromChallenge {
+		claimed, err := q.MarkPlatformUserMfaChallengeUsed(ctx, dbmodels.MarkPlatformUserMfaChallengeUsedParams{
+			Jti:            actor.ChallengeID,
+			PlatformUserID: actor.User.ID,
+			ExpiresAt:      actor.ChallengeExpiresAt,
+		})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to mark operator mfa challenge used", err, "platform_user_id", actor.User.ID.String())
+		}
+		if claimed == 0 {
+			return nil, errOperatorMfaChallengeSpent
+		}
+	}
+	enabled, err := q.EnablePlatformUserMfaTotp(ctx, actor.User.ID)
+	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to enable operator mfa totp", err, "platform_user_id", actor.User.ID.String())
+	}
+	if enabled == 0 {
+		return nil, errOperatorMfaAlreadyEnabled
 	}
 	codes, err := replaceOperatorRecoveryCodes(ctx, q, actor.User.ID)
 	if err != nil {
