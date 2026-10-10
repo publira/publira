@@ -1,6 +1,5 @@
 import { createClient } from "@connectrpc/connect";
 import type { Client } from "@connectrpc/connect";
-import { createGrpcTransport } from "@connectrpc/connect-node";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import type { ConnectTransportOptions } from "@connectrpc/connect-web";
 
@@ -28,7 +27,7 @@ import { AdminSeriesService } from "../gen/publira/admin/v1/series_pb.js";
 import { TenantSettingsService } from "../gen/publira/admin/v1/tenant_pb.js";
 import { TenantThemeService } from "../gen/publira/admin/v1/theme_pb.js";
 import { AdminUserService } from "../gen/publira/admin/v1/user_pb.js";
-import { grpcSessionOptions } from "../grpc-session.js";
+import { createApiGrpcTransport } from "../grpc-session.js";
 import { createTenantHeaderInterceptor } from "../tenant-header.js";
 import type { TenantHeaderOptions } from "../tenant-header.js";
 import { createTracingInterceptor } from "../tracing.js";
@@ -90,11 +89,10 @@ export const createAdminApiClient = (
 
   const transportInstance =
     transport === "grpc"
-      ? createGrpcTransport({
+      ? createApiGrpcTransport({
           baseUrl,
           ...transportOptions,
           interceptors,
-          nodeOptions: grpcSessionOptions,
         })
       : createConnectTransport({
           baseUrl,

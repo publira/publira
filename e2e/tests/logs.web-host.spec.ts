@@ -9,17 +9,16 @@ import { unexpectedServerLogLines } from "../src/server-log";
  *
  * `catalog.outage.spec.ts` renders the site while the API is down, and any
  * cached site-chrome read whose entry is missing or stale at that moment
- * reports that it could not ask: it finds nothing listening, or is refused by
- * the GOAWAY the API sends while it shuts down. Which reads that is depends on
- * what the run happened to cache and revalidate beforehand, so the pattern
- * names the shape of the warning rather than a read. Any other failure of
- * those reads still reaches this check.
+ * reports that it could not ask: it finds nothing listening, and so does a
+ * read the GOAWAY of the stopping API refused, which is sent again. Which
+ * reads that is depends on what the run happened to cache and revalidate
+ * beforehand, so the pattern names the shape of the warning rather than a
+ * read. Any other failure of those reads still reaches this check.
  */
 const EXPECTED_ERRORS = [
   /^⨯ Error \[ConnectError\]: \[unauthenticated\] invalid token$/u,
   /^⨯ Error: The destination stream closed early\.$/u,
   /^\[web-host\] \w+ failed Error \[ConnectError\]: \[unavailable\] connect ECONNREFUSED \S+$/u,
-  /^\[web-host\] \w+ failed Error \[ConnectError\]: \[internal\] Stream closed with error code NGHTTP2_REFUSED_STREAM$/u,
 ];
 
 test.describe("web-host server log", () => {
