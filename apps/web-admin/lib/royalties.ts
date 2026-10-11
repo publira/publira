@@ -22,6 +22,7 @@ import { apiClient, withSessionHeaders } from "./api";
 import { cursorPageRequest, cursorPageTokens } from "./cursor-page";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import { getMessagesFor } from "./messages";
+import { readCurrency } from "./price";
 import type { RoyaltyLine } from "./royalty-lines";
 import type { RoyaltyCloseMode, RoyaltyClosePolicy } from "./royalty-period";
 import { getAccessToken } from "./session";
@@ -39,6 +40,11 @@ export interface RoyaltyStatementSummary {
   closedAt: string;
   /** Empty for a close no user started, and once the account is deleted. */
   closedByUserName: string;
+  /**
+   * The currency the totals and lines are in, the tenant's when the month was
+   * closed. `null` when the API answered none, and each amount is then a dash.
+   */
+  currency: string | null;
   totals: RoyaltyTotals;
 }
 
@@ -65,6 +71,11 @@ export type PreviewRoyaltyStatementResult =
        */
       startsAt: string;
       endsAt: string;
+      /**
+       * The currency the totals and lines are in, the tenant's now. `null`
+       * when the API answered none, and each amount is then a dash.
+       */
+      currency: string | null;
       totals: RoyaltyTotals;
       lines: RoyaltyLine[];
     }
@@ -144,7 +155,12 @@ const mapLine = (line: RawLine): RoyaltyLine => ({
 /** The generated `RoyaltyStatement` fields {@link mapStatement} reads. */
 type RawStatement = Pick<
   RoyaltyStatement,
-  "closedAt" | "closedByUserName" | "period" | "timeZone" | "totals"
+  | "closedAt"
+  | "closedByUserName"
+  | "currency"
+  | "period"
+  | "timeZone"
+  | "totals"
 >;
 
 const mapStatement = (
@@ -152,6 +168,7 @@ const mapStatement = (
 ): RoyaltyStatementSummary => ({
   closedAt: statement?.closedAt ?? "",
   closedByUserName: statement?.closedByUserName ?? "",
+  currency: readCurrency(statement?.currency),
   period: statement?.period ?? "",
   timeZone: statement?.timeZone ?? "",
   totals: mapTotals(statement?.totals),
@@ -284,6 +301,7 @@ export const previewRoyaltyStatement = async (
       withSessionHeaders(sessionId)
     );
     return {
+      currency: readCurrency(response.currency),
       endsAt: response.endsAt ?? "",
       lines: (response.lines ?? []).map((line) => mapLine(line)),
       ok: true,

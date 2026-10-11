@@ -161,8 +161,9 @@ describe("royalties", () => {
     );
   });
 
-  it("maps a preview's bounds, lines and totals", async () => {
+  it("maps a preview's bounds, currency, lines and totals", async () => {
     mockApi.previewRoyaltyStatement.mockResolvedValueOnce({
+      currency: "USD",
       endsAt: "2026-08-31T15:00:00Z",
       lines: [wireLine],
       period: "2026-08",
@@ -174,6 +175,7 @@ describe("royalties", () => {
 
     expect(await previewRoyaltyStatement("TENANT001", "en", "2026-08")).toEqual(
       {
+        currency: "USD",
         endsAt: "2026-08-31T15:00:00Z",
         lines: [mappedLine],
         ok: true,
@@ -225,6 +227,7 @@ describe("royalties", () => {
         closedAt: "2026-09-02T01:30:00Z",
         closedByUserName: "Operator",
         closedByUserPublicId: "US001",
+        currency: "JPY",
         period: "2026-08",
         timeZone: "Asia/Tokyo",
         totals: wireTotals,
@@ -245,6 +248,7 @@ describe("royalties", () => {
       statement: {
         closedAt: "2026-09-02T01:30:00Z",
         closedByUserName: "Operator",
+        currency: "JPY",
         period: "2026-08",
         timeZone: "Asia/Tokyo",
         totals: { gross: 5000, payout: 1500, refunded: 0 },

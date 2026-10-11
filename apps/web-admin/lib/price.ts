@@ -10,6 +10,16 @@ import { MAX_INT32 } from "./int32";
  */
 const PRICE_RE = /^(?<units>\d+)(?:\.(?<fraction>\d*))?$/u;
 
+/** An ISO 4217 code as the API spells it. */
+const CURRENCY_RE = /^[A-Z]{3}$/u;
+
+/**
+ * The currency code the API answered, or `null` for anything that is not one,
+ * such as the empty string of a server that predates the field.
+ */
+export const readCurrency = (value: string | undefined): string | null =>
+  value !== undefined && CURRENCY_RE.test(value) ? value : null;
+
 /**
  * An amount the API sends, formatted in the tenant's currency, or a dash while
  * that currency could not be read: a number in no currency is no amount.

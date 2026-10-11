@@ -37,7 +37,6 @@ import {
 } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { getTenantCurrency } from "#lib/public-api";
 import {
   getRoyaltyClosePolicy,
   listRoyaltyStatements,
@@ -106,7 +105,6 @@ const LoadError = ({ message }: { message: string }) => (
  * or not started yet points at the closed statements instead.
  */
 const PreviewContent = ({
-  currency,
   locale,
   period,
   policy,
@@ -114,7 +112,6 @@ const PreviewContent = ({
   tenantId,
   timeZone,
 }: {
-  currency: string | null;
   locale: Locale;
   period: string;
   policy: RoyaltyClosePolicy;
@@ -127,7 +124,7 @@ const PreviewContent = ({
     return (
       <OpenMonth
         closeState={royaltyCloseState(period, policy, zone)}
-        currency={currency}
+        currency={preview.currency}
         endsAt={preview.endsAt}
         lines={preview.lines}
         locale={locale}
@@ -177,11 +174,10 @@ const OpenMonthContent = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const requested = parseOpenMonthSearchParams(sp).period;
   const locale = await getLocale(tenantId);
-  const [timeZone, policyResult, latestResult, currency] = await Promise.all([
+  const [timeZone, policyResult, latestResult] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),
     getRoyaltyClosePolicy(tenantId, locale),
     listRoyaltyStatements(tenantId, locale, { limit: 1 }),
-    getTenantCurrency(tenantId),
   ]);
 
   await redirectToLoginIfSessionRejected(policyResult);
@@ -208,7 +204,6 @@ const OpenMonthContent = async ({
     <AdminSections>
       <PeriodPicker maxPeriod={currentPeriod} period={period} />
       <PreviewContent
-        currency={currency}
         locale={locale}
         period={period}
         policy={policyResult.policy}

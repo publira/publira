@@ -8,6 +8,8 @@ import type { TenantTheme } from "@publira/utils/theme-css-variables";
 import { LRUCache } from "lru-cache";
 import { cacheLife, cacheTag } from "next/cache";
 
+import { readCurrency } from "./price";
+
 /**
  * The public API, which the console reads for the few things the admin API
  * cannot answer: the tenant chrome below, resolved before there is a session,
@@ -17,9 +19,6 @@ export const publicApiClient = createPublicApiClient({
   baseUrl: process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8100",
   transport: "grpc",
 });
-
-/** An ISO 4217 code as the API spells it. */
-const currencyPattern = /^[A-Z]{3}$/u;
 
 interface TenantPublicInfo {
   /**
@@ -87,9 +86,7 @@ export const getTenantPublicInfo = async (
     });
 
     return {
-      currency: currencyPattern.test(response.currency)
-        ? response.currency
-        : null,
+      currency: readCurrency(response.currency),
       defaultLocale: parseLocale(response.defaultLocale.trim()) ?? null,
       name: response.tenantName?.trim() || null,
       theme: resolveTenantThemeColors(response.theme),
@@ -115,7 +112,9 @@ export const getTenantPublicInfo = async (
  * shown or entered without it would be a number in no currency, so a screen
  * that has `null` says the amount is unavailable rather than guessing one. The
  * read carries `tenant:<id>:site`, which the admin API revalidates when the
- * payment settings are saved, and the payment settings Action drops as well.
+ * payment settings are saved, and the payment settings Action drops as well,
+ * and which a change of the platform's default currency drops for every
+ * tenant that sells in it.
  */
 export const getTenantCurrency = async (
   tenantId: string

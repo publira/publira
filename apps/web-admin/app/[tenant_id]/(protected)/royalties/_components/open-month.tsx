@@ -36,8 +36,8 @@ import { RoyaltyLinesTable } from "./royalty-lines-table";
 interface OpenMonthProps {
   closeState: RoyaltyCloseState;
   /**
-   * The tenant's currency, which every amount is in. `null` when it could not
-   * be read, and each amount is then a dash.
+   * The currency every amount is in, the statement's or the preview's.
+   * `null` when the API answered none, and each amount is then a dash.
    */
   currency: string | null;
   /** RFC 3339 instant the month stops counting sales at, exclusive. */

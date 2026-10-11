@@ -66,7 +66,6 @@ import {
 } from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { getTenantCurrency } from "#lib/public-api";
 import { getRoyaltyStatement } from "#lib/royalties";
 import {
   royaltyPeriodSchema,
@@ -131,14 +130,13 @@ const StatementContent = async ({
   }
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const [result, timeZone, t, currency] = await Promise.all([
+  const [result, timeZone, t] = await Promise.all([
     getRoyaltyStatement(tenantId, locale, parsedParams.period, {
       limit: DEFAULT_PAGE_SIZE,
       token,
     }),
     getTenantDisplayTimeZone(tenantId),
     getMessagesFor(locale),
-    getTenantCurrency(tenantId),
   ]);
 
   if (!result.ok) {
@@ -219,7 +217,7 @@ const StatementContent = async ({
           </AdminSectionActions>
         </AdminSectionHeader>
         <RoyaltyFigures
-          currency={currency}
+          currency={statement.currency}
           locale={locale}
           totals={statement.totals}
         />
@@ -261,7 +259,7 @@ const StatementContent = async ({
           </CursorPageEmptyState>
         ) : (
           <RoyaltyLinesTable
-            currency={currency}
+            currency={statement.currency}
             lines={result.lines}
             locale={locale}
           />

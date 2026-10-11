@@ -4,8 +4,21 @@ import {
   maxPriceInputValue,
   priceFormSchema,
   priceInputStep,
+  readCurrency,
   toPriceInputValue,
 } from "./price";
+
+describe("readCurrency", () => {
+  it("reads a code as the API spells it", () => {
+    expect(readCurrency("USD")).toBe("USD");
+  });
+
+  it("reads what is no code as no currency", () => {
+    for (const value of [undefined, "", "usd", "US"]) {
+      expect(readCurrency(value)).toBeNull();
+    }
+  });
+});
 
 describe("toPriceInputValue", () => {
   it("writes a JPY amount as whole yen", () => {

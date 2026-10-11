@@ -40,11 +40,6 @@ import type { RoyaltyStatementSummary } from "#lib/royalties";
 import { royaltyStatementCsvPath } from "#lib/royalty-period";
 
 type StatementListProps = CursorPageHrefs & {
-  /**
-   * The tenant's currency, which every amount is in. `null` when it could not
-   * be read, and each amount is then a dash.
-   */
-  currency: string | null;
   listErrorMessage?: string;
   locale: Locale;
   pageSize: number;
@@ -54,7 +49,6 @@ type StatementListProps = CursorPageHrefs & {
 
 /** The closed months, newest first, each linking to its statement. */
 export const StatementList = async ({
-  currency,
   listErrorMessage,
   locale,
   nextHref,
@@ -163,19 +157,19 @@ export const StatementList = async ({
                 </TableCell>
                 <TableCell className="text-right">
                   {formatTenantAmount(statement.totals.gross, {
-                    currency,
+                    currency: statement.currency,
                     locale,
                   })}
                 </TableCell>
                 <TableCell className="text-right">
                   {formatTenantAmount(statement.totals.refunded, {
-                    currency,
+                    currency: statement.currency,
                     locale,
                   })}
                 </TableCell>
                 <TableCell className="text-right">
                   {formatTenantAmount(statement.totals.payout, {
-                    currency,
+                    currency: statement.currency,
                     locale,
                   })}
                 </TableCell>

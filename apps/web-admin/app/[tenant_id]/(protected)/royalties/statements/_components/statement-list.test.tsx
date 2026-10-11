@@ -35,10 +35,12 @@ vi.mock("next/link", () => ({
 
 const statement = (
   period: string,
-  closedByUserName: string
+  closedByUserName: string,
+  currency = "JPY"
 ): RoyaltyStatementSummary => ({
   closedAt: "2026-09-02T01:30:00Z",
   closedByUserName,
+  currency,
   period,
   timeZone: "Asia/Tokyo",
   totals: { gross: 7000, payout: 2950, refunded: 500 },
@@ -49,15 +51,14 @@ afterEach(() => {
 });
 
 describe("StatementList", () => {
-  it("links each closed month to its statement with its totals", async () => {
+  it("links each closed month to its statement with its totals, each in its own currency", async () => {
     render(
       await StatementList({
-        currency: "JPY",
         locale: "en",
         pageSize: 20,
         statements: [
           statement("2026-08", "Operator"),
-          statement("2026-07", ""),
+          statement("2026-07", "", "USD"),
         ],
         timeZone: "UTC",
       })
@@ -78,12 +79,15 @@ describe("StatementList", () => {
     expect(within(first).getByText("¥2,950")).toBeDefined();
     // Nobody is named for an automatic close or a deleted account.
     expect(within(second).getByText("—")).toBeDefined();
+    // A month closed while the tenant sold in another currency keeps it.
+    expect(within(second).getByText("$70.00")).toBeDefined();
+    expect(within(second).getByText("$5.00")).toBeDefined();
+    expect(within(second).getByText("$29.50")).toBeDefined();
   });
 
   it("says no month has been closed when the first page is empty", async () => {
     render(
       await StatementList({
-        currency: "JPY",
         locale: "en",
         pageSize: 20,
         statements: [],
@@ -98,7 +102,6 @@ describe("StatementList", () => {
   it("keeps the pager on an empty later page", async () => {
     render(
       await StatementList({
-        currency: "JPY",
         locale: "en",
         pageSize: 20,
         previousHref: "?token=previous",
@@ -118,7 +121,6 @@ describe("StatementList", () => {
   it("replaces the list with the failure instead of an empty state", async () => {
     render(
       await StatementList({
-        currency: "JPY",
         listErrorMessage: "Could not load royalties. Please try again later.",
         locale: "en",
         pageSize: 20,

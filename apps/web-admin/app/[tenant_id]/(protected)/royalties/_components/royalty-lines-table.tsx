@@ -19,8 +19,8 @@ import type { RoyaltyLine } from "#lib/royalty-lines";
 
 interface RoyaltyLinesTableProps {
   /**
-   * The tenant's currency, which every amount is in. `null` when it could not
-   * be read, and each amount is then a dash.
+   * The currency every amount is in, the statement's or the preview's.
+   * `null` when the API answered none, and each amount is then a dash.
    */
   currency: string | null;
   lines: readonly RoyaltyLine[];

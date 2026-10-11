@@ -32,7 +32,6 @@ import {
 } from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { getTenantCurrency } from "#lib/public-api";
 import { listRoyaltyStatements } from "#lib/royalties";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -66,13 +65,12 @@ const StatementListContent = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const [result, timeZone, currency] = await Promise.all([
+  const [result, timeZone] = await Promise.all([
     listRoyaltyStatements(tenantId, locale, {
       limit: DEFAULT_PAGE_SIZE,
       token,
     }),
     getTenantDisplayTimeZone(tenantId),
-    getTenantCurrency(tenantId),
   ]);
 
   await redirectToLoginIfSessionRejected(result);
@@ -80,7 +78,6 @@ const StatementListContent = async ({
   return result.ok ? (
     <StatementList
       {...cursorPageHrefs(result)}
-      currency={currency}
       locale={locale}
       pageSize={DEFAULT_PAGE_SIZE}
       statements={result.statements}
@@ -88,7 +85,6 @@ const StatementListContent = async ({
     />
   ) : (
     <StatementList
-      currency={currency}
       listErrorMessage={result.message}
       locale={locale}
       pageSize={DEFAULT_PAGE_SIZE}
