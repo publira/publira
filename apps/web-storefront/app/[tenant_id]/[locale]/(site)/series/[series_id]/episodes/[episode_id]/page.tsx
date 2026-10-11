@@ -29,7 +29,6 @@ import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { adultContentMetadata } from "#lib/age-rating";
-import { toTenantSales } from "#lib/app-payments";
 import { getEpisodeDetail, getSeriesDetail } from "#lib/catalog";
 import type { EpisodeSeriesSummary } from "#lib/catalog";
 import { breadcrumbJsonLd, episodeJsonLd } from "#lib/json-ld";
@@ -37,7 +36,11 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
 import { shareText } from "#lib/share-text";
-import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
+import {
+  getTenantSiteInfo,
+  getTenantSiteLabel,
+  tenantSales,
+} from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
@@ -304,10 +307,7 @@ const EpisodeContent = async (
     appStore: false,
     googlePlay: false,
   };
-  const sales = toTenantSales({
-    acceptsPayments: tenant?.acceptsPayments ?? false,
-    appPayments,
-  });
+  const sales = tenantSales(tenant);
   // Empty where the episode carries no such moment, and the colophon leaves
   // the fact out rather than standing "Not set" where a date would be.
   const publishedAt = formatDateTime(episode.publishedAt, {
@@ -381,6 +381,7 @@ const EpisodeContent = async (
                     checkoutSessionId={checkoutSessionId}
                     commentMode={commentMode}
                     commentToken={commentSearchParams[COMMENT_TOKEN_PARAM]}
+                    currency={sales.currency}
                     episode={episode}
                     googlePlayUrl={tenant?.googlePlayUrl}
                     images={images}

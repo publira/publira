@@ -1,4 +1,3 @@
-import { toIntlLocale } from "@publira/i18n";
 import {
   SectionError,
   SectionErrorDescription,
@@ -6,7 +5,7 @@ import {
   SectionErrorTitle,
 } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatDateTime } from "@publira/utils";
+import { formatDateTime, formatPrice } from "@publira/utils";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
@@ -125,7 +124,10 @@ const PurchaseCard = async ({
         <div>
           <dt>{t("storefront.library.price")}</dt>
           <dd className="mt-1 text-foreground">
-            ¥{purchase.priceAtPurchase.toLocaleString(toIntlLocale(locale))}
+            {formatPrice(purchase.priceAtPurchase, {
+              currency: purchase.currency,
+              locale,
+            })}
           </dd>
         </div>
         <div>

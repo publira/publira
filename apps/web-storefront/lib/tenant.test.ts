@@ -47,6 +47,7 @@ vi.mock("./api-client", () => ({
 const tenantResponse = {
   acceptsPayments: true,
   copyrightText: "© Example",
+  currency: "USD",
   defaultLocale: "en",
   siteDescription: "",
   siteTagline: "",
@@ -102,6 +103,20 @@ describe("tenant", () => {
     });
     expect(info?.timeZone).toBe("America/Los_Angeles");
     expect(info?.acceptsPayments).toBe(true);
+  });
+
+  it("Carry the currency the tenant sells in", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.currency).toBe("USD");
+  });
+
+  it("Read no tenant from a response that names no currency", async () => {
+    mockGetTenant.mockResolvedValueOnce({ ...tenantResponse, currency: "" });
+
+    expect(await getTenantSiteInfo("TENANT_001")).toBeNull();
   });
 
   it("Treat tenants that cannot accept payments as false", async () => {

@@ -25,20 +25,45 @@ export const appAcceptsPayments = (payments: TenantAppPayments): boolean =>
  * Whether the tenant can sell an episode right now through the site's own
  * checkout, and in its app on either platform.
  */
-export interface TenantSales {
+export interface TenantSaleChannels {
   app: boolean;
   web: boolean;
 }
 
-export const toTenantSales = ({
+/**
+ * Where the tenant can sell an episode right now, and the currency its prices
+ * are in: everything a page needs to say what an episode costs.
+ */
+export interface TenantSales extends TenantSaleChannels {
+  /**
+   * ISO 4217 code of the currency every price is an amount in. `null` while
+   * the tenant could not be read, when no price can be quoted at all.
+   */
+  currency: string | null;
+}
+
+export const toTenantSaleChannels = ({
   acceptsPayments,
   appPayments,
 }: {
   acceptsPayments: boolean;
   appPayments: TenantAppPayments;
-}): TenantSales => ({
+}): TenantSaleChannels => ({
   app: appAcceptsPayments(appPayments),
   web: acceptsPayments,
+});
+
+export const toTenantSales = ({
+  acceptsPayments,
+  appPayments,
+  currency,
+}: {
+  acceptsPayments: boolean;
+  appPayments: TenantAppPayments;
+  currency: string | null;
+}): TenantSales => ({
+  ...toTenantSaleChannels({ acceptsPayments, appPayments }),
+  currency,
 });
 
 /**
@@ -52,7 +77,7 @@ export type EpisodeSaleDestination = "app" | "none" | "web";
 
 export const episodeSaleDestination = (
   purchaseSurface: EpisodePurchaseSurface,
-  sales: TenantSales
+  sales: TenantSaleChannels
 ): EpisodeSaleDestination => {
   if (purchaseSurface !== "app" && sales.web) {
     return "web";

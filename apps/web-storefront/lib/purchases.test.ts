@@ -44,4 +44,18 @@ describe("listMyPurchases", () => {
       { Authorization: `Bearer ${ACCESS_TOKEN}` }
     );
   });
+
+  it("keeps the currency each purchase was paid in beside its price", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      purchases: [{ currency: "USD", id: "PURCHASE01", priceAtPurchase: 499 }],
+    });
+
+    const result = await listMyPurchases(TENANT_ID, { locale: "en" });
+
+    expect(result.purchases).toEqual([
+      expect.objectContaining({ currency: "USD", priceAtPurchase: 499 }),
+    ]);
+  });
 });

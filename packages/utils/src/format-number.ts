@@ -83,3 +83,51 @@ export const formatYen = (
   }
   return formatter.format(amount);
 };
+
+export interface FormatPriceOptions {
+  /** ISO 4217 code of the currency the amount is in, as the API names it. */
+  currency: string;
+  /** UI locale the amount is worded in: the sign and the separators differ. */
+  locale: Locale;
+}
+
+const priceFormatterCache = new Map<string, Intl.NumberFormat>();
+
+const getPriceFormatter = (
+  intlLocale: string,
+  currency: string
+): Intl.NumberFormat => {
+  const key = `${intlLocale}\0${currency}`;
+  const cached = priceFormatterCache.get(key);
+  if (cached) {
+    return cached;
+  }
+
+  const formatter = new Intl.NumberFormat(intlLocale, {
+    currency,
+    style: "currency",
+  });
+  priceFormatterCache.set(key, formatter);
+  return formatter;
+};
+
+/**
+ * How many digits of `currency` follow the decimal point, which is how many
+ * places its minor unit — the unit every amount the API sends is an integer
+ * of — sits below the currency itself: 0 for JPY, 2 for USD.
+ */
+export const currencyFractionDigits = (currency: string): number =>
+  getPriceFormatter("en", currency).resolvedOptions().maximumFractionDigits ??
+  0;
+
+/**
+ * Format an amount the API sends — an integer in the minor unit of
+ * `currency` — as that currency: `500` is `¥500` in JPY and `$5.00` in USD.
+ */
+export const formatPrice = (
+  amount: number,
+  options: FormatPriceOptions
+): string =>
+  getPriceFormatter(toIntlLocale(options.locale), options.currency).format(
+    amount / 10 ** currencyFractionDigits(options.currency)
+  );

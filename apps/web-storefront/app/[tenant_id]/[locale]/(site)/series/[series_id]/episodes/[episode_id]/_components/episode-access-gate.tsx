@@ -9,7 +9,10 @@ import type { ReactNode } from "react";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import { episodeSaleDestination, toTenantSales } from "#lib/app-payments";
+import {
+  episodeSaleDestination,
+  toTenantSaleChannels,
+} from "#lib/app-payments";
 import type { TenantAppPayments } from "#lib/app-payments";
 import type { EpisodeNeighborItem, EpisodePurchaseSurface } from "#lib/catalog";
 
@@ -302,7 +305,7 @@ export const EpisodeAccessGate = ({
   // neither can, the gate says what it says for any episode nobody can buy.
   const destination = episodeSaleDestination(
     purchaseSurface,
-    toTenantSales({ acceptsPayments, appPayments })
+    toTenantSaleChannels({ acceptsPayments, appPayments })
   );
   const soldInApp = destination === "app";
   const payable = destination === "web";

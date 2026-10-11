@@ -19,6 +19,8 @@ import { getMessagesFor } from "./messages";
 const defaultPurchasePageSize = 20;
 
 export interface PurchaseItem {
+  /** ISO 4217 code of the currency the reader paid priceAtPurchase in. */
+  currency: string;
   episode: { orderIndex: number; publicId: string; title: string };
   expiresAt: string;
   id: string;
@@ -69,6 +71,7 @@ const emptyPurchasePage = {
  */
 type RawPurchase = Pick<
   MyPurchase,
+  | "currency"
   | "episode"
   | "expiresAt"
   | "id"
@@ -79,6 +82,7 @@ type RawPurchase = Pick<
 >;
 
 const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
+  currency: purchase.currency ?? "",
   episode: {
     orderIndex: purchase.episode?.orderIndex ?? 0,
     publicId: purchase.episode?.publicId ?? "",
