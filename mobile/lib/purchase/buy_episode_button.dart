@@ -11,7 +11,7 @@ import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
-/// "Buy for ¥N": buys one episode the way the tenant's app sells it — the web
+/// "Buy for [price]": buys one episode the way the tenant's app sells it — the web
 /// checkout handed to the system browser, or the store's payment sheet.
 ///
 /// A guest is sent to sign in first, because a purchase is bought by an
@@ -23,6 +23,7 @@ class BuyEpisodeButton extends StatefulWidget {
     required this.episodeId,
     required this.episodeInternalId,
     required this.price,
+    required this.currency,
     required this.onAlreadyPurchased,
     required this.onStorePurchase,
     this.signInReturnTo,
@@ -34,6 +35,9 @@ class BuyEpisodeButton extends StatefulWidget {
   /// Internal id of [episodeId], which the purchase requests take.
   final String episodeInternalId;
   final int price;
+
+  /// The ISO 4217 code of the currency [price] is in, the tenant's.
+  final String currency;
 
   /// The reader already holds the episode, so there was nothing to pay for.
   final VoidCallback onAlreadyPurchased;
@@ -141,7 +145,9 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     final label = AutospacedText(
-      messages.purchaseBuy(price: '¥${messages.formatInteger(widget.price)}'),
+      messages.purchaseBuy(
+        price: messages.formatPrice(widget.price, widget.currency),
+      ),
     );
     final onPressed = _starting ? null : () => unawaited(_buy());
     if (widget.compact) {

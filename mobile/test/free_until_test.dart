@@ -10,6 +10,7 @@ import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_links.dart';
 import 'support/pump_until.dart';
+import 'support/fake_purchase.dart';
 
 void main() {
   final series = fixtureSeries.first;
@@ -65,6 +66,10 @@ void main() {
         auth: fakeAuthController(),
         site: const PublicSite(host: 'localhost'),
         incomingLinks: incoming,
+        // A tenant that sells nothing in the app still prices its episodes,
+        // in the currency the purchases read answers.
+        purchases: FakePurchaseRepository(payments: false),
+        checkoutLauncher: FakeCheckoutLauncher(),
       ),
     );
     await tester.pump();

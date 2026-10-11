@@ -30,6 +30,7 @@ void main() {
     episodeTitle: episodeTitle ?? 'The paid episode',
     orderIndex: series.episodeCount,
     price: 500,
+    currency: 'JPY',
     isActive: isActive,
     purchasedAt: DateTime.utc(2026, 1, 10, 12),
     expiresAt: expiresAt,

@@ -9,6 +9,7 @@ class MyPurchase {
     required this.episodeTitle,
     required this.orderIndex,
     required this.price,
+    required this.currency,
     required this.isActive,
     this.purchasedAt,
     this.expiresAt,
@@ -21,8 +22,12 @@ class MyPurchase {
   final String episodeTitle;
   final int orderIndex;
 
-  /// What the reader paid, in yen.
+  /// What the reader paid, in the minor unit of [currency].
   final int price;
+
+  /// The ISO 4217 code of the currency the reader paid in. Empty for a row
+  /// that names none, whose price is not shown.
+  final String currency;
 
   /// Whether the purchase still opens the episode, as the API judged it when
   /// the page was read.

@@ -57,6 +57,21 @@ class HttpPurchaseRepository implements PurchaseRepository {
   @override
   Future<AppPurchaseRoute> appPurchaseRoute() async => _route(await _tenant());
 
+  @override
+  Future<String> currency() async {
+    final currency = (await _tenant())['currency'];
+    if (currency is! String || !_currencyPattern.hasMatch(currency)) {
+      throw const PurchaseFailure(
+        PurchaseFailureKind.unexpected,
+        message: 'currency must be an ISO 4217 code',
+      );
+    }
+    return currency;
+  }
+
+  /// An ISO 4217 code as the API spells it.
+  static final _currencyPattern = RegExp(r'^[A-Z]{3}$');
+
   Future<Map<String, Object?>> _tenant() async {
     try {
       final tenantId = await _tenants.resolve();
@@ -322,6 +337,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
       episodeTitle: _readString(episode, 'title'),
       orderIndex: _readInt(episode, 'orderIndex'),
       price: _readInt(json, 'priceAtPurchase'),
+      currency: _readString(json, 'currency'),
       // protojson omits a false, which is what every expired row arrives as.
       isActive: json['isActive'] == true,
       purchasedAt: _readInstant(json, 'purchasedAt'),

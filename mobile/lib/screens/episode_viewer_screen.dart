@@ -121,6 +121,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// offers nothing it could not complete.
   var _acceptsPayments = false;
 
+  /// The tenant's currency, `null` until it is read or when it cannot be.
+  String? _currency;
+
   /// Records the page the reader rests on, for the session that is signed in
   /// now. It holds the repository rather than the context, because the last
   /// page is recorded as the screen goes away, when an inherited widget can no
@@ -257,17 +260,21 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   }
 
   Future<void> _loadAcceptsPayments(PurchaseRepository purchase) async {
-    bool accepts;
-    try {
-      accepts = await purchase.acceptsPayments();
-    } on PurchaseFailure {
-      accepts = false;
-    }
+    // Either read failing offers no purchase, and a currency that cannot be
+    // read shows no price.
+    final (accepts, currency) = await (
+      purchase.acceptsPayments().onError<PurchaseFailure>((_, _) => false),
+      purchase
+          .currency()
+          .then<String?>((currency) => currency)
+          .onError<PurchaseFailure>((_, _) => null),
+    ).wait;
     if (!mounted) {
       return;
     }
     setState(() {
-      _acceptsPayments = accepts;
+      _acceptsPayments = accepts && currency != null;
+      _currency = currency;
     });
   }
 
@@ -499,6 +506,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           detail: detail,
           nextSavedOffline: next != null && _saved.contains(next.id),
           acceptsPayments: _acceptsPayments,
+          currency: _currency,
           onOpenNext: _open,
           onOpenComments: _commentsOffered ? _openComments : null,
           onBackToSeries: () =>
@@ -550,6 +558,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             episodeId: widget.episodeId,
             episodeInternalId: detail.episode.internalId,
             price: detail.episode.price,
+            // A purchase is offered only once the currency is known.
+            currency: _currency!,
             onAlreadyPurchased: _reload,
             onStorePurchase: () => context.pushReplacementInTab(
               AppRoutes.episodeViewerPath(

@@ -17,6 +17,27 @@ void main() {
     expect(AppMessages.forLocale(const Locale('en'))!.formatInteger(0), '0');
   });
 
+  test('a price is written in its currency from its minor unit', () {
+    final en = AppMessages.forLocale(const Locale('en'))!;
+    expect(en.formatPrice(500, 'JPY'), '¥500');
+    expect(en.formatPrice(1234567, 'JPY'), '¥1,234,567');
+    expect(en.formatPrice(499, 'USD'), r'$4.99');
+    expect(en.formatPrice(500, 'USD'), r'$5.00');
+  });
+
+  // Every dollar but the US one says whose it is, and a currency with no
+  // symbol of its own is written with its code, as the site writes them.
+  test('a price is never written with a symbol another currency has', () {
+    final en = AppMessages.forLocale(const Locale('en'))!;
+    expect(en.formatPrice(500, 'CAD'), r'CA$5.00');
+    expect(en.formatPrice(500, 'AUD'), r'A$5.00');
+    expect(en.formatPrice(500, 'CHF'), 'CHF\u00a05.00');
+    expect(en.formatPrice(500, 'SEK'), 'SEK\u00a05.00');
+    final ja = AppMessages.forLocale(const Locale('ja'))!;
+    expect(ja.formatPrice(500, 'JPY'), '¥500');
+    expect(ja.formatPrice(500, 'CAD'), r'CA$5.00');
+  });
+
   test('a byte count takes the largest unit that keeps it whole', () {
     final en = AppMessages.forLocale(const Locale('en'))!;
     expect(en.formatByteSize(0), '0 B');

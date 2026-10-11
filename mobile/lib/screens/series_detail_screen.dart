@@ -242,6 +242,9 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// one.
   var _acceptsPayments = false;
 
+  /// The tenant's currency, `null` until it is read or when it cannot be.
+  String? _currency;
+
   /// How many reads of [_access] this screen has started, so that only the
   /// latest one's answer is shown: the read the screen opened with can answer
   /// after the one the return from the viewer made, with an episode locked
@@ -429,18 +432,24 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   ) async {
     final read = ++_purchaseReads;
     // Either read failing offers no purchase, not a failed screen.
-    final (access, acceptsPayments) = await (
+    final (access, acceptsPayments, currency) = await (
       purchase
           .seriesEpisodeAccess(widget.detail.series.internalId)
           .onError<PurchaseFailure>((_, _) => const {}),
       purchase.acceptsPayments().onError<PurchaseFailure>((_, _) => false),
+      purchase
+          .currency()
+          .then<String?>((currency) => currency)
+          .onError<PurchaseFailure>((_, _) => null),
     ).wait;
     if (!mounted || read != _purchaseReads || readerId != _readerId) {
       return;
     }
     setState(() {
       _access = access;
-      _acceptsPayments = acceptsPayments;
+      // A price nobody can read is no purchase to offer.
+      _acceptsPayments = acceptsPayments && currency != null;
+      _currency = currency;
     });
   }
 
@@ -831,6 +840,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                       // row shows until when in its subtitle rather than a
                       // price nobody is charged.
                       price: freeUntil == null ? episode.price : 0,
+                      currency: _currency,
                       soldOnWeb:
                           _acceptsPayments &&
                           episode.purchaseSurface == EpisodePurchaseSurface.web,
@@ -855,6 +865,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                               episodeId: episode.id,
                               episodeInternalId: episode.internalId,
                               price: episode.price,
+                              currency: _currency!,
                               compact: true,
                               signInReturnTo: AppRoutes.episodeViewerPath(
                                 series.id,
@@ -1108,6 +1119,7 @@ class _EpisodeSubtitle extends StatelessWidget {
 class _EpisodeTrailing extends StatelessWidget {
   const _EpisodeTrailing({
     required this.price,
+    required this.currency,
     required this.soldOnWeb,
     required this.saved,
     required this.download,
@@ -1115,6 +1127,10 @@ class _EpisodeTrailing extends StatelessWidget {
   });
 
   final int price;
+
+  /// The currency [price] is shown in, or `null` while the tenant's could not
+  /// be read, when the row shows no price.
+  final String? currency;
 
   /// Whether the episode is sold on the website alone, which the row says in
   /// place of a price the app cannot take.
@@ -1151,8 +1167,8 @@ class _EpisodeTrailing extends StatelessWidget {
             key: const ValueKey('episode-sold-on-web'),
             messages.purchaseSoldOnWeb,
           )
-        else if (price > 0)
-          AutospacedText('¥${messages.formatInteger(price)}'),
+        else if (price > 0 && currency != null)
+          AutospacedText(messages.formatPrice(price, currency!)),
       ],
     );
   }

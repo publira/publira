@@ -94,6 +94,14 @@ void main() {
   }
 
   group('a locked episode', () {
+    testWidgets('is priced in the tenant\'s currency', (tester) async {
+      purchases.tenantCurrency = 'USD';
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, buy);
+
+      expect(find.text(r'Buy for $5.00'), findsOneWidget);
+    });
+
     testWidgets('hands its checkout to the browser', (tester) async {
       await pumpApp(tester, session: fakeSession);
       await pumpUntilFound(tester, buy);

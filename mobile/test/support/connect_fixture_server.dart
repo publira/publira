@@ -69,6 +69,7 @@ class ConnectFixtureServer {
     this.passwordResetRequestStatus = HttpStatus.ok,
     this.passwordResetRequestErrorCode = 'unavailable',
     this.acceptsPayments = false,
+    this.currency = 'JPY',
     this.appPurchaseRoute = 'APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT',
     this.acceptsAppStorePayments = false,
     this.acceptsGooglePlayPayments = false,
@@ -825,6 +826,10 @@ class ConnectFixtureServer {
   /// What `GetTenant` answers for `accepts_payments`.
   bool acceptsPayments;
 
+  /// What `GetTenant` answers for `currency`, and what every purchase it
+  /// lists was paid in.
+  String currency;
+
   /// What `GetTenant` answers for the app purchase route and whether each
   /// store can take the app's payment.
   String appPurchaseRoute;
@@ -1473,6 +1478,7 @@ class ConnectFixtureServer {
         // protojson omits a false.
         if (tenantStatus == HttpStatus.ok && acceptsPayments)
           'acceptsPayments': true,
+        if (tenantStatus == HttpStatus.ok) 'currency': currency,
         if (tenantStatus == HttpStatus.ok) 'appPurchaseRoute': appPurchaseRoute,
         if (tenantStatus == HttpStatus.ok && acceptsAppStorePayments)
           'acceptsAppStorePayments': true,
