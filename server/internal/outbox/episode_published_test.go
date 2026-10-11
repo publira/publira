@@ -41,6 +41,9 @@ func TestEpisodePublishedNotificationWritesOneRowPerFollowerAndOnePush(t *testin
 		if row.SubjectKey != "episode:EP001" {
 			t.Fatalf("notification %d subject_key = %q", i, row.SubjectKey)
 		}
+		if row.Availability != (sql.NullString{String: "all", Valid: true}) {
+			t.Fatalf("notification %d availability = %+v, want all", i, row.Availability)
+		}
 	}
 	var body EpisodePublishedNotificationBody
 	if err := json.Unmarshal(queries.created[0].Payload, &body); err != nil {
@@ -85,6 +88,43 @@ func TestEpisodePublishedNotificationWalksEveryFollowerPage(t *testing.T) {
 	}
 	if queries.listCalls != 2 {
 		t.Fatalf("follower pages read = %d, want 2", queries.listCalls)
+	}
+}
+
+func TestEpisodePublishedNotificationIsFiledForTheOneSurfaceTheEpisodeIsShownOn(t *testing.T) {
+	for _, surface := range []string{"web", "app"} {
+		t.Run(surface, func(t *testing.T) {
+			episodeID := uuid.New()
+			queries := newStubEpisodePublishedQuerier(episodeID, uuid.New())
+			queries.surfaces = []string{surface}
+
+			handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+			if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
+				t.Fatalf("handler: %v", err)
+			}
+
+			if len(queries.created) != 1 {
+				t.Fatalf("notifications written = %d, want 1", len(queries.created))
+			}
+			if got := queries.created[0].Availability; got != (sql.NullString{String: surface, Valid: true}) {
+				t.Fatalf("availability = %+v, want %s", got, surface)
+			}
+		})
+	}
+}
+
+func TestEpisodePublishedNotificationWritesNothingForAnEpisodeShownNowhere(t *testing.T) {
+	episodeID := uuid.New()
+	queries := newStubEpisodePublishedQuerier(episodeID, uuid.New())
+	queries.surfaces = nil
+
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if queries.listCalls != 0 || len(queries.created) != 0 || len(queries.outbox) != 0 {
+		t.Fatalf("follower pages, notifications, outbox events = %d, %d, %d, want 0, 0, 0",
+			queries.listCalls, len(queries.created), len(queries.outbox))
 	}
 }
 
@@ -165,6 +205,7 @@ type stubEpisodePublishedQuerier struct {
 	episode   dbmodels.GetPublishedEpisodeForFollowerNotificationRow
 	getErr    error
 	lookedUp  dbmodels.GetPublishedEpisodeForFollowerNotificationParams
+	surfaces  []string
 	followers []uuid.UUID
 	listCalls int
 	created   []dbmodels.CreateNotificationParams
@@ -180,6 +221,7 @@ func newStubEpisodePublishedQuerier(episodeID uuid.UUID, followers ...uuid.UUID)
 			SeriesPublicID:  "SERIES001",
 			SeriesTitle:     "Series",
 		},
+		surfaces:  []string{"app", "web"},
 		followers: followers,
 	}
 }
@@ -193,6 +235,13 @@ func (s *stubEpisodePublishedQuerier) GetPublishedEpisodeForFollowerNotification
 		return dbmodels.GetPublishedEpisodeForFollowerNotificationRow{}, s.getErr
 	}
 	return s.episode, nil
+}
+
+func (s *stubEpisodePublishedQuerier) ListPublishedEpisodeSurfaces(
+	context.Context,
+	dbmodels.ListPublishedEpisodeSurfacesParams,
+) ([]string, error) {
+	return s.surfaces, nil
 }
 
 // ListEpisodeFollowerIDs answers the keyset the fan-out pages with, so a stub

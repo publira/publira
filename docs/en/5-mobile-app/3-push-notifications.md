@@ -82,7 +82,7 @@ Try it on a physical phone: Firebase does not deliver to the iOS simulator. Inst
 
 1. Sign in to the app as a reader, open **Account**, turn on **New episode notifications**, and allow notifications when the phone asks.
 2. Follow a series in the app.
-3. Publish a new episode of that series from the tenant console.
+3. Publish a new episode of that series from the tenant console, with a **Shown on** that includes the app.
 
 The notification arrives once `publira worker` has sent it, and tapping it opens the episode. The app asks the phone for permission only when a reader turns the switch on, never at launch, so a reader who has not turned it on receives nothing.
 

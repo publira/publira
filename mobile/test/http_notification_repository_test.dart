@@ -131,6 +131,26 @@ void main() {
     expect(await repository().countUnread(), 0);
   });
 
+  test('every inbox call names the app', () async {
+    server.notifications = [row('n-1')];
+
+    await repository().list();
+    await repository().countUnread();
+    await repository().markAllRead();
+
+    for (final procedure in [
+      'ListNotifications',
+      'CountUnreadNotifications',
+      'MarkAllNotificationsAsRead',
+    ]) {
+      expect(
+        server.requestsTo(procedure).first.body['surface'],
+        'CLIENT_SURFACE_APP',
+        reason: procedure,
+      );
+    }
+  });
+
   test('a reader who is signed out asks for nothing', () async {
     accessToken = '';
 

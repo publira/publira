@@ -61,6 +61,10 @@ WHERE token = sqlc.arg('token');
 -- in idx_notifications_tenant_subject_user, so a page costs the recipients it
 -- passes rather than every device the tenant has. The separate user_id bound is
 -- what the index can start from, since the pair spans both tables.
+--
+-- A device is left out where the notification may not be shown on its
+-- surface: a Web Push subscription is the site, and an FCM token on Android
+-- or iOS is the app.
 -- name: ListPushDevicesForNotification :many
 SELECT
     n.id AS notification_id,
@@ -79,5 +83,9 @@ WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND n.subject_key = sqlc.arg('subject_key')
     AND n.user_id >= sqlc.arg('after_user_id')::uuid
     AND (n.user_id, d.token) > (sqlc.arg('after_user_id')::uuid, sqlc.arg('after_token')::text)
+    AND n.availability = ANY (ARRAY[
+        'all'::text,
+        CASE WHEN d.platform = 'web' THEN 'web'::text ELSE 'app'::text END
+    ])
 ORDER BY n.user_id, d.token
 LIMIT sqlc.arg('page_size');

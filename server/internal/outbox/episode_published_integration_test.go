@@ -3,6 +3,7 @@ package outbox
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -201,5 +202,54 @@ func TestEpisodePublishedNotificationReachesNobodyWhileReadersCannotOpenTheEpiso
 	}
 	if pushes != 0 {
 		t.Fatalf("member push events = %d, want 0", pushes)
+	}
+}
+
+// An episode is announced on the surfaces it is shown on: one narrowed to the
+// app or the site is filed for that surface alone, and one shown on both for
+// every surface.
+func TestEpisodePublishedNotificationIsFiledForTheSurfacesTheEpisodeIsShownOn(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "EPPUBSURF001", "publish-surface.example.com", "Publish Surface Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESSURF01", Title: "Surface Series", Published: true})
+	follower := pg.SeedEndUser(t, tenant.ID, "READERSURF01", "series@publish-surface.example.com", "Series Follower")
+	if _, err := pg.DB.ExecContext(ctx, "INSERT INTO series_follows (tenant_id, user_id, series_id) VALUES ($1, $2, $3)", tenant.ID, follower.ID, series.ID); err != nil {
+		t.Fatalf("follow series: %v", err)
+	}
+
+	handler := NewEpisodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{DB: pg.DB})
+	for i, tc := range []struct {
+		availability string
+		want         string
+	}{
+		{availability: "", want: "all"},
+		{availability: "web", want: "web"},
+		{availability: "app", want: "app"},
+	} {
+		episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+			PublicID:     fmt.Sprintf("EPISODESURF%d", i),
+			Title:        "Episode",
+			Status:       testutil.EpisodeStatusPublished,
+			Availability: tc.availability,
+		})
+		if err := handler(ctx, episodePublishedEvent(t, tenant.ID, episode.ID)); err != nil {
+			t.Fatalf("handler for %s: %v", episode.PublicID, err)
+		}
+
+		var got string
+		if err := pg.DB.QueryRowContext(ctx,
+			"SELECT availability FROM notifications WHERE user_id = $1 AND subject_key = $2",
+			follower.ID, "episode:"+episode.PublicID,
+		).Scan(&got); err != nil {
+			t.Fatalf("read notification for %s: %v", episode.PublicID, err)
+		}
+		if got != tc.want {
+			t.Fatalf("availability of an episode shown on %q = %q, want %q", tc.availability, got, tc.want)
+		}
 	}
 }
