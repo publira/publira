@@ -1,6 +1,7 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorHasFieldViolation,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
 import { parseLocale } from "@publira/i18n";
@@ -435,7 +436,7 @@ export const updatePlatformDefaultCurrency = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     // The list offers the runtime's codes, which the server's table can lag
-    // behind: an `invalid-argument` here is a code it does not know.
+    // behind, so a `default_currency` violation is a code it does not know.
     return {
       message: rpcErrorMessage(
         error,
@@ -443,7 +444,9 @@ export const updatePlatformDefaultCurrency = async (
         {
           locale,
           overrides: {
-            "invalid-argument": t("platform.settings.currency_invalid"),
+            ...(rpcErrorHasFieldViolation(error, "default_currency")
+              ? { "invalid-argument": t("platform.settings.currency_invalid") }
+              : {}),
             precondition: t("platform.settings.currency_save_conflict"),
           },
         }

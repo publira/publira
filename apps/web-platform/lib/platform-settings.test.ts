@@ -1,4 +1,8 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -536,7 +540,14 @@ describe("platform-settings", () => {
       mockUpdatePlatformSettingsApi.mockRejectedValueOnce(
         new ConnectError(
           "default_currency must be an ISO 4217 currency code",
-          Code.InvalidArgument
+          Code.InvalidArgument,
+          undefined,
+          [
+            {
+              desc: BadRequestSchema,
+              value: { fieldViolations: [{ field: "default_currency" }] },
+            },
+          ]
         )
       );
 

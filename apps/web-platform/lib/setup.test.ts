@@ -1,4 +1,8 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createInitialUser, isSetupCompleted } from "./setup";
@@ -351,6 +355,37 @@ describe("createInitialUser", () => {
     ).resolves.toEqual({
       alreadyCompleted: false,
       message: "The submitted values are invalid. Check them and try again.",
+      ok: false,
+    });
+  });
+
+  it("says which field to change when the server does not know the currency", async () => {
+    mockCreateInitialUser.mockRejectedValueOnce(
+      new ConnectError(
+        "default_currency must be an ISO 4217 currency code",
+        Code.InvalidArgument,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: { fieldViolations: [{ field: "default_currency" }] },
+          },
+        ]
+      )
+    );
+
+    await expect(
+      createInitialUser({
+        defaultCurrency: "VES",
+        defaultLocale: "en",
+        email: "admin@example.com",
+        locale: "en",
+        name: "Admin",
+        password: "password",
+      })
+    ).resolves.toEqual({
+      alreadyCompleted: false,
+      message: "The API does not recognize this currency. Choose another one.",
       ok: false,
     });
   });

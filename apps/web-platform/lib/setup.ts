@@ -4,6 +4,7 @@ import {
   isRpcError,
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
+  rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
@@ -203,6 +204,11 @@ export const createInitialUser = async ({
         locale,
         overrides: {
           conflict: t("platform.auth.errors.setup_already_completed"),
+          // The list offers the runtime's currencies, which the server's table
+          // can lag behind; every other field it refuses keeps the shared copy.
+          ...(rpcErrorHasFieldViolation(error, "default_currency")
+            ? { "invalid-argument": t("platform.settings.currency_invalid") }
+            : {}),
           // `failed_precondition` is only ever the currency lock: a tenant
           // that sells in the stored currency had a purchase after the
           // screen offered it as changeable.
