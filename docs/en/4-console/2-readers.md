@@ -2,7 +2,7 @@
 title: Readers, comments, and contact messages
 description: Find and act on a reader's account, moderate comments and their reports, answer contact messages, and open a paid episode to a reader with an access ticket.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-11
 ---
 
 The **Readers** group of the console is where the staff deal with the people who read the site: their accounts, the comments they leave on episodes, the messages they send through the contact form, and the access tickets that open a paid episode to one of them without payment. What is done here reaches a reader directly, sometimes without a way back, so each section below says what an action does before saying how to take it.
@@ -207,7 +207,7 @@ A ticket is not a sale. It earns no Author a royalty, and the episode does not a
 
 A reader and an episode have one ticket from the staff at a time:
 
-- If they already have an active one, nothing new is issued, and the existing ticket keeps its expiry and note. The console still says "The ticket was issued." ([#3818](https://github.com/publira/publira/issues/3818)). To change a ticket's expiry or note, revoke it and issue a new one.
+- If they already have an active one, nothing new is issued, and the existing ticket keeps its expiry and note. The console says so and names that ticket. To change a ticket's expiry or note, revoke it from the list and issue a new one.
 - If they have an expired one, the console asks you to revoke it from the list first.
 
 ### Revoking a ticket

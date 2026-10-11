@@ -64,7 +64,15 @@ export interface IssueAccessTicketInput {
 }
 
 export type IssueAccessTicketResult =
-  | { ok: true; ticket: AccessTicketItem }
+  | {
+      /**
+       * False when the pair already had a staff ticket: the server hands that
+       * ticket back unchanged instead of issuing one.
+       */
+      created: boolean;
+      ok: true;
+      ticket: AccessTicketItem;
+    }
   | { message: string; ok: false };
 
 export type RevokeAccessTicketResult =
@@ -259,6 +267,7 @@ export const issueAccessTicket = async (
     }
 
     return {
+      created: response.created,
       ok: true,
       ticket: mapTicket(response.ticket),
     };

@@ -96,12 +96,17 @@ const listEpisodeOptionsSchema = async (locale: Locale) => {
     ),
   });
 };
-const existingNonActiveTicketMessage = async (
+const existingTicketMessage = async (
   publicId: string,
   status: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+  if (status === "active") {
+    return t("admin.access_tickets.existing_active", {
+      id: publicId,
+    });
+  }
   if (status === "expired") {
     return t("admin.access_tickets.existing_expired", {
       id: publicId,
@@ -156,11 +161,16 @@ export const issueAccessTicketAction = async (
     };
   }
 
-  // Issue is idempotent for a non-revoked pair. An expired row still occupies
-  // the unique slot, so treat that as a form error instead of a new grant.
-  if (result.ticket.status !== "active") {
+  // Issue is idempotent for a non-revoked pair: the server hands the existing
+  // ticket back without applying the requested expiry and note, so the form
+  // names that ticket instead of reporting a new grant. An expired one still
+  // occupies the unique slot until it is revoked.
+  if (!result.created) {
+    // The message sends the operator to the list to revoke the named ticket,
+    // and a list cached before another operator issued it would not show it.
+    updateTag(accessTicketsCacheTag(parsed.data.tenantId));
     return {
-      message: await existingNonActiveTicketMessage(
+      message: await existingTicketMessage(
         result.ticket.publicId,
         result.ticket.status,
         locale

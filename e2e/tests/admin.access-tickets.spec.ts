@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { selectComboboxOption, signInAsSeedAdmin } from "../src/admin";
@@ -11,6 +12,44 @@ const SEED_TICKET = {
   memberLabel: "Sample Member (member@example.com)",
   seriesLabel: "Seed Series 001 (SeedSERSAAA1)",
 } as const;
+
+/** The pair `SeedTCKTAAA1` already opens: the member and `Seed Episode 001-10`. */
+const SEED_TICKETED_EPISODE = {
+  episodePublicId: "SeedEPSDAA1A",
+  episodeTitle: "Seed Episode 001-10",
+  ticketPublicId: "SeedTCKTAAA1",
+} as const;
+
+/** Fills the Issue a ticket form for the seed member and submits it. */
+const issueTicketForMember = async (
+  page: Page,
+  episode: { episodePublicId: string; episodeTitle: string },
+  note: string
+) => {
+  await page.getByRole("link", { name: "Issue a ticket" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Issue a ticket" })
+  ).toBeVisible();
+
+  // The reader picker searches the tenant's readers with what is typed, so
+  // it is filled with a query rather than the option's full label.
+  const readerCombobox = page.getByRole("combobox", { name: /Reader/u });
+  await readerCombobox.click();
+  await readerCombobox.fill(SEED_TICKET.memberEmail);
+  await page.getByRole("option", { name: SEED_TICKET.memberLabel }).click();
+  await selectComboboxOption(
+    page,
+    page.getByRole("combobox", { name: /Series/u }),
+    SEED_TICKET.seriesLabel
+  );
+  await selectComboboxOption(
+    page,
+    page.getByRole("combobox", { name: /Episode/u }),
+    `${episode.episodeTitle} (${episode.episodePublicId})`
+  );
+  await page.getByRole("textbox", { name: /Note/u }).fill(note);
+  await page.getByRole("button", { name: "Issue the ticket" }).click();
+};
 
 /**
  * Admin access-ticket issue / list / revoke.
@@ -54,29 +93,7 @@ test.describe("web-admin access tickets", () => {
     const note = `e2e access ticket ${uniqueSuffix()}`;
     notes.push(note);
 
-    await page.getByRole("link", { name: "Issue a ticket" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Issue a ticket" })
-    ).toBeVisible();
-
-    // The reader picker searches the tenant's readers with what is typed, so
-    // it is filled with a query rather than the option's full label.
-    const readerCombobox = page.getByRole("combobox", { name: /Reader/u });
-    await readerCombobox.click();
-    await readerCombobox.fill(SEED_TICKET.memberEmail);
-    await page.getByRole("option", { name: SEED_TICKET.memberLabel }).click();
-    await selectComboboxOption(
-      page,
-      page.getByRole("combobox", { name: /Series/u }),
-      SEED_TICKET.seriesLabel
-    );
-    await selectComboboxOption(
-      page,
-      page.getByRole("combobox", { name: /Episode/u }),
-      `${SEED_TICKET.episodeTitle} (${SEED_TICKET.episodePublicId})`
-    );
-    await page.getByRole("textbox", { name: /Note/u }).fill(note);
-    await page.getByRole("button", { name: "Issue the ticket" }).click();
+    await issueTicketForMember(page, SEED_TICKET, note);
 
     await expect(page).toHaveURL(/\/access-tickets(?:\?[^/]*)?$/u);
     await expect(page.getByText("The ticket was issued.")).toBeVisible();
@@ -96,5 +113,25 @@ test.describe("web-admin access tickets", () => {
     await expect(issuedRow.getByRole("button", { name: "Revoke" })).toHaveCount(
       0
     );
+  });
+
+  test("issuing a ticket the pair already has names the active one instead of issuing", async ({
+    page,
+  }) => {
+    await signInAsSeedAdmin(page, "/access-tickets");
+
+    const note = `e2e duplicate access ticket ${uniqueSuffix()}`;
+    notes.push(note);
+
+    await issueTicketForMember(page, SEED_TICKETED_EPISODE, note);
+
+    await expect(
+      page.getByText(
+        `The same user and episode already have an active ticket (${SEED_TICKETED_EPISODE.ticketPublicId}).`,
+        { exact: false }
+      )
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/access-tickets\/new(?:\?[^/]*)?$/u);
+    await expect(page.getByText("The ticket was issued.")).toHaveCount(0);
   });
 });
