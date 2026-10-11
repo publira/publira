@@ -354,6 +354,15 @@ func (r *Runner) publishEpisode(ctx context.Context, row dbmodels.ListEpisodesRe
 		_ = tx.Rollback()
 		return backoff.Permanent(errNoLongerDue)
 	}
+	// An episode of a series that is not public owes the announcement the
+	// fan-out below cannot make; publishing the series later makes it.
+	if err := qtx.OweEpisodeAnnouncementWhileSeriesHidden(ctx, dbmodels.OweEpisodeAnnouncementWhileSeriesHiddenParams{
+		TenantID:  row.TenantID,
+		EpisodeID: row.EpisodeID,
+	}); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("record the announcement the episode owes: %w", err)
+	}
 	if err := r.notifyFollowers(ctx, qtx, row); err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("notify followers: %w", err)

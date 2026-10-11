@@ -2,7 +2,7 @@
 title: Episodes
 description: Create an episode, add, replace, and delete its pages, change its title, price, and reading period, set its layout, credits, and where it is shown and sold, give it free reading periods, and publish it now or on time.
 published: 2026-10-07
-updated: 2026-10-10
+updated: 2026-10-11
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.

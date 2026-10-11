@@ -797,6 +797,9 @@ func TestUpdateSeriesPublishingTheSeriesQueuesTheAnnouncementsItOwes(t *testing.
 			sqlmock.AnyArg(),
 		).
 		WillReturnError(sql.ErrNoRows)
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.ClearEpisodeAnnouncementsOwed)).
+		WithArgs(tenantID, pq.Array([]uuid.UUID{episodeID})).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.DeleteSeriesCreatorsBySeriesID)).
 		WithArgs(seriesID).
 		WillReturnRows(sqlmock.NewRows([]string{"creator_id"}))

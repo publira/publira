@@ -38,6 +38,11 @@ func (s *stubQueries) RedateEpisodesForSeriesPublication(_ context.Context, arg 
 	return s.redated[arg.SeriesID], nil
 }
 
+func (s *stubQueries) ClearEpisodeAnnouncementsOwed(context.Context, dbmodels.ClearEpisodeAnnouncementsOwedParams) error {
+	s.calls = append(s.calls, "clear")
+	return nil
+}
+
 func (s *stubQueries) InsertOutboxEvent(_ context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error) {
 	s.calls = append(s.calls, arg.EventType)
 	s.outbox = append(s.outbox, arg)
@@ -127,9 +132,9 @@ func TestRunOnceRevalidatesOncePerTenantAndMarksEverySeries(t *testing.T) {
 }
 
 // The episodes added while the series was hidden are dated and their
-// announcements queued before the drop is recorded, so the drop carries the new
-// dates; the series' search sync is queued for them; and the publication is
-// marked applied last.
+// announcements queued before what they owed is cleared, and all of it before
+// the drop is recorded, so the drop carries the new dates; the series' search
+// sync is queued for them; and the publication is marked applied last.
 func TestRunOnceAnnouncesTheEpisodesAddedWhileHiddenBeforeTheDrop(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
@@ -146,7 +151,7 @@ func TestRunOnceAnnouncesTheEpisodesAddedWhileHiddenBeforeTheDrop(t *testing.T) 
 
 	New(queries, reval, quietLogger()).RunOnce(context.Background())
 
-	wantCalls := []string{"redate", outbox.EventTypeEpisodePublishedNotification, outbox.EventTypeCatalogIndexSync, "revalidate", "mark"}
+	wantCalls := []string{"redate", outbox.EventTypeEpisodePublishedNotification, "clear", outbox.EventTypeCatalogIndexSync, "revalidate", "mark"}
 	if !slices.Equal(queries.calls, wantCalls) {
 		t.Fatalf("statements = %v, want %v", queries.calls, wantCalls)
 	}

@@ -86,7 +86,6 @@ type EpisodeFollowerQuerier interface {
 	ListEpisodeFollowerIDs(ctx context.Context, arg dbmodels.ListEpisodeFollowerIDsParams) ([]uuid.UUID, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
-	RecordEpisodeAnnouncement(ctx context.Context, arg dbmodels.RecordEpisodeAnnouncementParams) error
 }
 
 // NotifyEpisodeFollowers writes one notification per reader who asked to hear
@@ -101,10 +100,12 @@ type EpisodeFollowerQuerier interface {
 // shown on the app alone is listed in the app's inbox and pushed to the app,
 // and neither listed on the site nor sent as a Web Push.
 //
-// The listing then records, under the same rule and whether or not anyone
-// follows the episode, whether the announcement is still owed. One the fan-out
-// answered nobody for because its series was not public owes it, and
-// [QueueSeriesPublicationAnnouncements] queues it once the series is.
+// The publication that runs this records, in its own transaction, the
+// announcement an episode of a series that is not public owes, and
+// [QueueSeriesPublicationAnnouncements] queues it once the series is public.
+// The fan-out leaves that record alone: it drains after the publication, and a
+// series published in between has to find the debt where the publication left
+// it.
 //
 // The recipients arrive a page at a time and the rows are written as each page
 // lands. The notification and the push both key on the episode, so a second
@@ -175,20 +176,10 @@ func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publi
 			break
 		}
 	}
-	if notified > 0 {
-		if err := enqueueEpisodePublishedPush(ctx, q, publication, subjectKey); err != nil {
-			return err
-		}
+	if notified == 0 {
+		return nil
 	}
-	// Recorded last, so a run that fails before this point leaves what was
-	// owed as it was and its retry writes the rows it had not reached.
-	if err := q.RecordEpisodeAnnouncement(ctx, dbmodels.RecordEpisodeAnnouncementParams{
-		TenantID:  publication.TenantID,
-		EpisodeID: publication.EpisodeID,
-	}); err != nil {
-		return fmt.Errorf("record episode announcement: %w", err)
-	}
-	return nil
+	return enqueueEpisodePublishedPush(ctx, q, publication, subjectKey)
 }
 
 // SeriesPublicationQuerier is the statements
@@ -196,13 +187,17 @@ func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publi
 type SeriesPublicationQuerier interface {
 	RedateEpisodesForSeriesPublication(ctx context.Context, arg dbmodels.RedateEpisodesForSeriesPublicationParams) ([]dbmodels.RedateEpisodesForSeriesPublicationRow, error)
 	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
+	ClearEpisodeAnnouncementsOwed(ctx context.Context, arg dbmodels.ClearEpisodeAnnouncementsOwedParams) error
 }
 
 // QueueSeriesPublicationAnnouncements is what a series becoming public owes
 // the episodes published while it was not: each is dated from the series'
 // publication instant, and its announcement is queued as the event the console
 // queues for an episode it publishes at once, for the same handler to fan out.
-// It answers how many episodes it queued.
+// What they owed is cleared only once every announcement is queued, so a call
+// that fails part way leaves them owed and is repeated in full; the events key
+// on the series' instant, so a repeat queues nothing twice. It answers how
+// many episodes it queued.
 //
 // It runs on the querier of the write that made the series public, or of the
 // apply-series-publications job once a scheduled instant has passed, so the
@@ -240,6 +235,19 @@ func QueueSeriesPublicationAnnouncements(ctx context.Context, q SeriesPublicatio
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return 0, fmt.Errorf("queue announcement of episode %s: %w", episode.EpisodeID, err)
 		}
+	}
+	if len(episodes) == 0 {
+		return 0, nil
+	}
+	episodeIDs := make([]uuid.UUID, 0, len(episodes))
+	for _, episode := range episodes {
+		episodeIDs = append(episodeIDs, episode.EpisodeID)
+	}
+	if err := q.ClearEpisodeAnnouncementsOwed(ctx, dbmodels.ClearEpisodeAnnouncementsOwedParams{
+		TenantID:   tenantID,
+		EpisodeIds: episodeIDs,
+	}); err != nil {
+		return 0, fmt.Errorf("clear the announcements the episodes owed: %w", err)
 	}
 	return len(episodes), nil
 }

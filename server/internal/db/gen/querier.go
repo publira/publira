@@ -110,6 +110,9 @@ type Querier interface {
 	// The ticker job's write. It is what makes a boundary stop being due, so a run
 	// that was down over one still catches up instead of collecting it.
 	ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error
+	// The episodes RedateEpisodesForSeriesPublication answered, once their
+	// announcements are queued: the outbox owns them from there.
+	ClearEpisodeAnnouncementsOwed(ctx context.Context, arg ClearEpisodeAnnouncementsOwedParams) error
 	ConsumeStorePurchaseIntent(ctx context.Context, arg ConsumeStorePurchaseIntentParams) error
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
@@ -2392,6 +2395,17 @@ type Querier interface {
 	// no row. The no-op update is what makes the existing row come back, with the
 	// terms it was first opened on.
 	OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurchaseIntentParams) (StorePurchaseIntent, error)
+	// Run in the transaction that publishes the episode, by the scheduled
+	// publication job and by the console alike: an episode published while its
+	// series is not public owes its followers the announcement the fan-out cannot
+	// make yet, and publishing the series later makes it. Recorded with the
+	// publication rather than by the fan-out that drains after it, so a series
+	// published in between still finds the debt.
+	//
+	// Only a series that is not public owes one. An episode published into a
+	// public series but shown on no surface is not announced later when it is
+	// shown, so it owes nothing.
+	OweEpisodeAnnouncementWhileSeriesHidden(ctx context.Context, arg OweEpisodeAnnouncementWhileSeriesHiddenParams) error
 	// Projects one comment's publication as the analytics event for that comment.
 	// episode_comments stays the source of truth: the author, the episode and the
 	// moment the comment became public are copied from the row, and the owning
@@ -2482,12 +2496,6 @@ type Querier interface {
 	// events before purged_before. It never moves the mark back, so a run under a
 	// period that was lengthened since cannot hide what an earlier run deleted.
 	RecordContentEventPurge(ctx context.Context, arg RecordContentEventPurgeParams) error
-	// The follower fan-out's record of what it could announce, read from the
-	// view ListEpisodeFollowerIDs gates the fan-out on: an episode no reader can
-	// open now owes its followers the announcement the fan-out could not make, and
-	// publishing its series later makes it then; one a reader can open owes
-	// nothing any more.
-	RecordEpisodeAnnouncement(ctx context.Context, arg RecordEpisodeAnnouncementParams) error
 	// RecordEpisodeReadProjection moves a tenant's projection instant forward, and
 	// starts the chain for a tenant it has not seen yet: every link is placed on
 	// start_through, so the first day each one rebuilds is the day after it.
@@ -2544,10 +2552,12 @@ type Querier interface {
 	// still, as it does under a series saved with an instant in the past.
 	//
 	// The answer is the episodes the caller queues an announcement for, with the
-	// instant that names this publication of the series. An episode already
-	// announced while the series was public before owes nothing, so it is not
-	// among them and keeps its date; the fan-out that announces one of these
-	// clears what it owed. A series that is not public yet answers no row, and the
+	// instant that names this publication of the series; the caller then clears
+	// what they owed with ClearEpisodeAnnouncementsOwed. Until it does, a second
+	// run dates them to the same instant and answers them again, so a caller that
+	// failed in between is retried in full. An episode already announced while the
+	// series was public before owes nothing, so it is not among them and keeps its
+	// date. A series that is not public yet answers no row, and the
 	// apply-series-publications job asks again once its instant has passed.
 	RedateEpisodesForSeriesPublication(ctx context.Context, arg RedateEpisodesForSeriesPublicationParams) ([]RedateEpisodesForSeriesPublicationRow, error)
 	// Recomputes the counter from the reports themselves, in the transaction that
@@ -2694,6 +2704,9 @@ type Querier interface {
 	UpdateEpisodeOrderIndexByIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByIDForTenantAndSeriesParams) error
 	// NULL gives a purchase of the episode no expiry.
 	UpdateEpisodePricingByIDForTenant(ctx context.Context, arg UpdateEpisodePricingByIDForTenantParams) (int64, error)
+	// Taking the episode off the site settles what it owed: no reader can open it,
+	// and the publication that puts it back owes its own announcement if its
+	// series is still not public then.
 	UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error
 	// NULL returns the episode to following its series.
 	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error

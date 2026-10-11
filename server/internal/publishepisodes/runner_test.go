@@ -95,7 +95,7 @@ func TestPublishSuccessNotifiesEachFollowerOnce(t *testing.T) {
 	}
 	assertFollowerPublishedNotifications(t, pg, env, env.follower.ID, episodeFollower.ID, env.admin.ID)
 	if announcementOwed(t, pg, env.episode.ID) {
-		t.Fatal("the announced episode still owes its announcement")
+		t.Fatal("an episode published into a public series owes an announcement")
 	}
 
 	r.RunOnce(ctx)
@@ -192,14 +192,20 @@ func TestPublishNotifiesNoFollowerOfAnEpisodeReadersCannotOpen(t *testing.T) {
 		series string
 		// episode runs after series; empty leaves the episode as seeded.
 		episode string
+		// owed is whether the publication leaves the announcement owed for
+		// when the series is published: only a series that is not public
+		// owes one.
+		owed bool
 	}{
 		{
 			name:   "series without a publication date",
 			series: "UPDATE series SET is_published = false, published_at = NULL WHERE id = $1",
+			owed:   true,
 		},
 		{
 			name:   "series publication still ahead",
 			series: "UPDATE series SET published_at = NOW() + interval '1 day' WHERE id = $1",
+			owed:   true,
 		},
 		{
 			// The episode's own Shown on narrows its series' and never widens
@@ -236,8 +242,8 @@ func TestPublishNotifiesNoFollowerOfAnEpisodeReadersCannotOpen(t *testing.T) {
 			if events := listMemberPushEvents(t, pg); len(events) != 0 {
 				t.Fatalf("member push events = %d, want 0", len(events))
 			}
-			if !announcementOwed(t, pg, env.episode.ID) {
-				t.Fatal("an episode no reader can open owes no announcement, want it owed for when one can")
+			if got := announcementOwed(t, pg, env.episode.ID); got != tc.owed {
+				t.Fatalf("announcement owed = %v, want %v", got, tc.owed)
 			}
 		})
 	}

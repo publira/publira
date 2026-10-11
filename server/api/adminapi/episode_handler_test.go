@@ -154,9 +154,13 @@ func TestCreateEpisodePublishesAtOnceWhenScheduledAtHasPassed(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-// expectEpisodePublishedNotification expects the outbox event that tells the
-// followers of an episode the console published at once.
+// expectEpisodePublishedNotification expects the record of the announcement
+// the episode owes while its series is not public, and the outbox event that
+// tells the followers of an episode the console published at once.
 func expectEpisodePublishedNotification(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, now time.Time) {
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.OweEpisodeAnnouncementWhileSeriesHidden)).
+		WithArgs(tenantID, episodeID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WithArgs(
 			sqlmock.AnyArg(),
