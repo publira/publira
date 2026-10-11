@@ -45,8 +45,8 @@ import {
   getContactMessage,
   listContactMessageAssignees,
 } from "#lib/contact-message";
-import { getTenantInboundEmailSettings } from "#lib/inbound-email-settings";
-import type { TenantInboundEmailSettingsResult } from "#lib/inbound-email-settings";
+import { getTenantInboundEmailReadiness } from "#lib/inbound-email-settings";
+import type { TenantInboundEmailReadinessResult } from "#lib/inbound-email-settings";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
@@ -84,12 +84,12 @@ const contactMessageParamsSchema = z.object({
 });
 
 const contactMessageReplyRoute = (
-  result: TenantInboundEmailSettingsResult
+  result: TenantInboundEmailReadinessResult
 ): ContactMessageReplyRoute => {
   if (!result.ok) {
     return "unknown";
   }
-  return result.settings.ready ? "inbound" : "staff";
+  return result.ready ? "inbound" : "staff";
 };
 
 const DetailSkeleton = () => (
@@ -116,13 +116,13 @@ const ContactMessageDetailContent = async ({
     timeZone,
     assigneesResult,
     currentUser,
-    inboundEmailSettingsResult,
+    inboundEmailReadinessResult,
   ] = await Promise.all([
     getContactMessage(tenantId, locale, parsedParams.contact_message_id),
     getTenantDisplayTimeZone(tenantId),
     listContactMessageAssignees(tenantId, locale),
     verifyAdminSession(tenantId),
-    getTenantInboundEmailSettings(tenantId, locale),
+    getTenantInboundEmailReadiness(tenantId, locale),
   ]);
 
   if (!result.ok) {
@@ -160,7 +160,7 @@ const ContactMessageDetailContent = async ({
 
   await redirectToLoginIfSessionRejected(
     assigneesResult,
-    inboundEmailSettingsResult
+    inboundEmailReadinessResult
   );
 
   return (
@@ -174,7 +174,7 @@ const ContactMessageDetailContent = async ({
       <ContactMessageExchange
         contactMessage={result.contactMessage}
         locale={locale}
-        replyRoute={contactMessageReplyRoute(inboundEmailSettingsResult)}
+        replyRoute={contactMessageReplyRoute(inboundEmailReadinessResult)}
         tenantId={tenantId}
         timeZone={timeZone}
       />

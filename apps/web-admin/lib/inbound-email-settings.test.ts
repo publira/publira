@@ -209,6 +209,70 @@ describe("inbound-email-settings", () => {
     expect(result).not.toHaveProperty("unexpected");
   });
 
+  it("reads whether inbound email is ready outside any cache scope", async () => {
+    mockGetTenantInboundEmailSettingsApi.mockResolvedValueOnce({
+      settings: publicSettings,
+    });
+
+    const { getTenantInboundEmailReadiness } =
+      await import("./inbound-email-settings");
+
+    const result = await getTenantInboundEmailReadiness("TENANT001", "en");
+
+    expect(result).toEqual({ ok: true, ready: true });
+    expect(mockGetTenantInboundEmailSettingsApi).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockCacheTag).not.toHaveBeenCalled();
+    expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("reads a tenant that has saved nothing as not ready", async () => {
+    mockGetTenantInboundEmailSettingsApi.mockResolvedValueOnce({});
+
+    const { getTenantInboundEmailReadiness } =
+      await import("./inbound-email-settings");
+
+    await expect(
+      getTenantInboundEmailReadiness("TENANT001", "en")
+    ).resolves.toEqual({ ok: true, ready: false });
+  });
+
+  it("asks for a sign-in when the readiness is read without a session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { getTenantInboundEmailReadiness } =
+      await import("./inbound-email-settings");
+
+    await expect(
+      getTenantInboundEmailReadiness("TENANT001", "en")
+    ).resolves.toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
+      ok: false,
+      requiresSignIn: true,
+    });
+    expect(mockGetTenantInboundEmailSettingsApi).not.toHaveBeenCalled();
+  });
+
+  it("reports an unreachable API to the readiness read as a message and throws one it cannot classify", async () => {
+    mockGetTenantInboundEmailSettingsApi
+      .mockRejectedValueOnce(
+        new ConnectError("connection refused", Code.Unavailable)
+      )
+      .mockRejectedValueOnce(new ConnectError("boom", Code.Internal));
+
+    const { getTenantInboundEmailReadiness } =
+      await import("./inbound-email-settings");
+
+    await expect(
+      getTenantInboundEmailReadiness("TENANT001", "en")
+    ).resolves.toMatchObject({ ok: false, requiresSignIn: false });
+    await expect(
+      getTenantInboundEmailReadiness("TENANT001", "en")
+    ).rejects.toThrow(ConnectError);
+  });
+
   it("lists the registered providers with the fields each declares", async () => {
     mockListInboundEmailProvidersApi.mockResolvedValueOnce({
       providers: rpcProviders,
