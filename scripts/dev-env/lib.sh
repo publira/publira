@@ -15,7 +15,7 @@ DEV_ENV_SLOT_MAX=15
 # profile is local state nothing in the repository reads and recreating one
 # costs less than keeping every superseded shape loadable. Raise it in the same
 # commit as a change to what a profile holds.
-DEV_ENV_PROFILE_VERSION=3
+DEV_ENV_PROFILE_VERSION=4
 
 dev_env_error() {
   printf 'dev-env: %s\n' "$*" >&2
