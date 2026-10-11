@@ -248,7 +248,7 @@ The upload also needs time to arrive: 300 seconds, which is enough for 256 MiB o
 
 Outside services post to a URL on the tenant's site, under `/api/v1/webhook/`:
 
-- **Payment providers** report payments under `/api/v1/webhook/payment/`, such as `https://comics.example.com/api/v1/webhook/payment/stripe`. The tenant console shows the exact URL to register with each provider: **Webhook URL** under **Payment settings**, and **App Store Server Notifications URL** under **In-app purchase**. Endpoints registered with Stripe before that layout, at `/api/v1/webhook/stripe`, still reach the install, though that path is deprecated.
+- **Payment providers** report payments under `/api/v1/webhook/payment/`, such as `https://comics.example.com/api/v1/webhook/payment/stripe`. The tenant console shows the exact URL to register with each provider: **Webhook URL** under **Payment settings**, and **App Store Server Notifications URL** under **In-app purchase**.
 - **Inbound email providers** post a reader's emailed reply to a contact message under `/api/v1/webhook/email/`: `/api/v1/webhook/email/sendgrid` for SendGrid Inbound Parse, `/api/v1/webhook/email/resend` for Resend.
 
 The routing above already sends every one of them to `web-storefront`, so no rule names a webhook path. What the proxy has to allow:
