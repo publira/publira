@@ -198,8 +198,9 @@ type UpdatePlatformSettingsRequest struct {
 	// the stored row moved on, so a save that read one field before another
 	// session changed it cannot roll that change back.
 	ExpectedRevision int64 `protobuf:"varint,3,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
-	// An ISO 4217 code of three letters. Empty keeps the stored currency, so a
-	// screen that does not show it saves nothing over it.
+	// An ISO 4217 currency code; three letters that name no currency are
+	// INVALID_ARGUMENT. Empty keeps the stored currency, so a screen that does
+	// not show it saves nothing over it.
 	DefaultCurrency string `protobuf:"bytes,4,opt,name=default_currency,json=defaultCurrency,proto3" json:"default_currency,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache

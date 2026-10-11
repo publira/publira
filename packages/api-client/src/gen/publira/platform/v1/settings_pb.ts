@@ -125,8 +125,9 @@ export type UpdatePlatformSettingsRequest = Message<"publira.platform.v1.UpdateP
   expectedRevision: bigint;
 
   /**
-   * An ISO 4217 code of three letters. Empty keeps the stored currency, so a
-   * screen that does not show it saves nothing over it.
+   * An ISO 4217 currency code; three letters that name no currency are
+   * INVALID_ARGUMENT. Empty keeps the stored currency, so a screen that does
+   * not show it saves nothing over it.
    *
    * @generated from field: string default_currency = 4;
    */

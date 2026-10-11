@@ -124,7 +124,7 @@ func TestPlatformSetNamesTheRefusedFlag(t *testing.T) {
 		want string
 	}{
 		{name: "nothing given", args: []string{"set"}, want: "publiractl: no value was given; name at least one of --default-locale, --default-timezone, and --default-currency\n"},
-		{name: "currency that is no code", args: []string{"set", "--default-locale", "en", "--default-currency", "EURO"}, want: "publiractl: --default-currency: default_currency must be an ISO 4217 code of three letters\n"},
+		{name: "currency that is no code", args: []string{"set", "--default-locale", "en", "--default-currency", "EURO"}, want: "publiractl: --default-currency: default_currency must be an ISO 4217 currency code\n"},
 		{name: "no locale saved or given", args: []string{"set", "--default-timezone", "Asia/Tokyo"}, want: "publiractl: --default-locale: default_locale must be a supported locale\n"},
 		{name: "unsupported locale", args: []string{"set", "--default-locale", "fr"}, want: "publiractl: --default-locale: default_locale must be a supported locale\n"},
 		{name: "unknown time zone", args: []string{"set", "--default-locale", "en", "--default-timezone", "Mars/Olympus_Mons"}, want: "publiractl: --default-timezone: timezone must be a valid IANA time zone name\n"},

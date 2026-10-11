@@ -45,8 +45,9 @@ message UpdatePlatformSettingsRequest {
   // the stored row moved on, so a save that read one field before another
   // session changed it cannot roll that change back.
   int64 expected_revision = 3;
-  // An ISO 4217 code of three letters. Empty keeps the stored currency, so a
-  // screen that does not show it saves nothing over it.
+  // An ISO 4217 currency code; three letters that name no currency are
+  // INVALID_ARGUMENT. Empty keeps the stored currency, so a screen that does
+  // not show it saves nothing over it.
   string default_currency = 4;
 }
 

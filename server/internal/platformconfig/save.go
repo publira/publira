@@ -6,8 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"regexp"
 	"strings"
+
+	"golang.org/x/text/currency"
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -38,9 +39,7 @@ var (
 	ErrDefaultCurrencyLocked = errors.New("the default currency cannot change while a tenant that sells in it has a purchase")
 
 	errNegativeRevision = errors.New("expected_revision must not be negative")
-	errInvalidCurrency  = errors.New("default_currency must be an ISO 4217 code of three letters")
-
-	currencyPattern = regexp.MustCompile(`^[A-Z]{3}$`)
+	errInvalidCurrency  = errors.New("default_currency must be an ISO 4217 currency code")
 )
 
 // SaveParams replaces the platform default time zone, locale, and currency.
@@ -68,14 +67,33 @@ func (p SaveParams) Validate() (SaveParams, error) {
 	if err != nil {
 		return SaveParams{}, &fielderr.Invalid{Field: FieldDefaultLocale, Err: err}
 	}
-	currency := strings.ToUpper(strings.TrimSpace(p.DefaultCurrency))
-	if currency != "" && !currencyPattern.MatchString(currency) {
-		return SaveParams{}, &fielderr.Invalid{Field: FieldDefaultCurrency, Err: errInvalidCurrency}
+	defaultCurrency, err := normalizeCurrency(p.DefaultCurrency)
+	if err != nil {
+		return SaveParams{}, &fielderr.Invalid{Field: FieldDefaultCurrency, Err: err}
 	}
 	if p.ExpectedRevision != nil && *p.ExpectedRevision < 0 {
 		return SaveParams{}, &fielderr.Invalid{Field: FieldExpectedRevision, Err: errNegativeRevision}
 	}
-	return SaveParams{DefaultTimezone: timezone, DefaultLocale: defaultLocale, DefaultCurrency: currency, ExpectedRevision: p.ExpectedRevision}, nil
+	return SaveParams{DefaultTimezone: timezone, DefaultLocale: defaultLocale, DefaultCurrency: defaultCurrency, ExpectedRevision: p.ExpectedRevision}, nil
+}
+
+// normalizeCurrency answers the ISO 4217 code value names, upper-cased, or
+// empty for a blank. Three letters are not enough: a code no currency has is
+// one no price can be charged in, and once a tenant that inherits it has sold,
+// [ErrDefaultCurrencyLocked] keeps the typo from being corrected.
+func normalizeCurrency(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", nil
+	}
+	if len(value) != 3 {
+		return "", errInvalidCurrency
+	}
+	unit, err := currency.ParseISO(value)
+	if err != nil {
+		return "", errInvalidCurrency
+	}
+	return unit.String(), nil
 }
 
 // Save writes p in one transaction on db, with its entry filed under actor.
@@ -120,17 +138,17 @@ func write(ctx context.Context, q *dbmodels.Queries, p SaveParams) (dbmodels.Pla
 		if p.ExpectedRevision != nil && *p.ExpectedRevision != 0 {
 			return dbmodels.PlatformConfig{}, false, ErrConflict
 		}
-		currency := p.DefaultCurrency
-		if currency == "" {
-			currency = DefaultCurrency
+		defaultCurrency := p.DefaultCurrency
+		if defaultCurrency == "" {
+			defaultCurrency = DefaultCurrency
 		}
-		if err := refuseLockedCurrencyChange(ctx, q, DefaultCurrency, currency); err != nil {
+		if err := refuseLockedCurrencyChange(ctx, q, DefaultCurrency, defaultCurrency); err != nil {
 			return dbmodels.PlatformConfig{}, false, err
 		}
 		inserted, err := q.InsertPlatformSettings(ctx, dbmodels.InsertPlatformSettingsParams{
 			DefaultTimezone: p.DefaultTimezone,
 			DefaultLocale:   p.DefaultLocale,
-			DefaultCurrency: currency,
+			DefaultCurrency: defaultCurrency,
 		})
 		// Two first saves both find nothing to lock; the primary key settles
 		// which one wins.
