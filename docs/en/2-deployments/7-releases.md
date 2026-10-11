@@ -39,7 +39,7 @@ A patch release carries fixes to the minor release it belongs to, and is held to
 - **No process or service** the install did not run before.
 - **No search index** to rebuild.
 
-Its Upgrade notes therefore always say there is nothing to do. Because the schema does not change, going back to the release you ran is replacing the images again, with no backup to restore. Replace the processes together all the same, as for any release.
+Its Upgrade notes therefore always say there is nothing to do. Upgrade to it the way [Upgrading](./5-upgrading.md) describes all the same, from the backup to replacing every process together: the steps cost little when the schema does not change, and the backup is still the way back if a patch release ever carries a change it should not.
 
 ## Which releases receive fixes
 
