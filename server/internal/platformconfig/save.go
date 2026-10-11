@@ -32,6 +32,11 @@ var (
 	// of the row written over the half it never saw.
 	ErrConflict = errors.New("platform settings have changed since they were read")
 
+	// ErrDefaultCurrencyLocked refuses to change the default currency while a
+	// tenant that sells in it has a purchase: that tenant's prices and the
+	// amounts it recorded are amounts in the stored one.
+	ErrDefaultCurrencyLocked = errors.New("the default currency cannot change while a tenant that sells in it has a purchase")
+
 	errNegativeRevision = errors.New("expected_revision must not be negative")
 	errInvalidCurrency  = errors.New("default_currency must be an ISO 4217 code of three letters")
 
@@ -119,6 +124,9 @@ func write(ctx context.Context, q *dbmodels.Queries, p SaveParams) (dbmodels.Pla
 		if currency == "" {
 			currency = DefaultCurrency
 		}
+		if err := refuseLockedCurrencyChange(ctx, q, DefaultCurrency, currency); err != nil {
+			return dbmodels.PlatformConfig{}, false, err
+		}
 		inserted, err := q.InsertPlatformSettings(ctx, dbmodels.InsertPlatformSettingsParams{
 			DefaultTimezone: p.DefaultTimezone,
 			DefaultLocale:   p.DefaultLocale,
@@ -146,6 +154,9 @@ func write(ctx context.Context, q *dbmodels.Queries, p SaveParams) (dbmodels.Pla
 	if current.DefaultTimezone == p.DefaultTimezone && current.DefaultLocale == p.DefaultLocale && current.DefaultCurrency == p.DefaultCurrency {
 		return current, false, nil
 	}
+	if err := refuseLockedCurrencyChange(ctx, q, current.DefaultCurrency, p.DefaultCurrency); err != nil {
+		return dbmodels.PlatformConfig{}, false, err
+	}
 	updated, err := q.UpdatePlatformSettings(ctx, dbmodels.UpdatePlatformSettingsParams{
 		DefaultTimezone: p.DefaultTimezone,
 		DefaultLocale:   p.DefaultLocale,
@@ -155,6 +166,23 @@ func write(ctx context.Context, q *dbmodels.Queries, p SaveParams) (dbmodels.Pla
 		return dbmodels.PlatformConfig{}, false, fmt.Errorf("update platform settings: %w", err)
 	}
 	return updated, true, nil
+}
+
+// refuseLockedCurrencyChange answers [ErrDefaultCurrencyLocked] for a change
+// from current to next while a tenant that sells in the default currency has a
+// purchase.
+func refuseLockedCurrencyChange(ctx context.Context, q *dbmodels.Queries, current, next string) error {
+	if current == next {
+		return nil
+	}
+	locked, err := q.PlatformCurrencyHasSales(ctx)
+	if err != nil {
+		return fmt.Errorf("check sales in the default currency: %w", err)
+	}
+	if locked {
+		return fmt.Errorf("%w: %s is stored", ErrDefaultCurrencyLocked, current)
+	}
+	return nil
 }
 
 // Get reads the settings row, reporting whether one is saved.

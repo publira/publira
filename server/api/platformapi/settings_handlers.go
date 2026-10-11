@@ -58,7 +58,7 @@ func (s *platformServer) platformSettingsError(ctx context.Context, err error) e
 	if connectErr := rpcerrors.FromFieldError(err); connectErr != nil {
 		return connectErr
 	}
-	if errors.Is(err, platformconfig.ErrConflict) {
+	if errors.Is(err, platformconfig.ErrConflict) || errors.Is(err, platformconfig.ErrDefaultCurrencyLocked) {
 		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	}
 	return s.internalDBError(ctx, "failed to save platform settings", err)

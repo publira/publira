@@ -22,6 +22,21 @@ FROM platform_config
 WHERE singleton = TRUE
 LIMIT 1;
 
+-- name: PlatformCurrencyHasSales :one
+-- Whether a tenant that sells in the platform's default currency, having saved
+-- no payment settings of its own, has a purchase, test ones included. Its
+-- prices and the amounts it recorded are amounts in that currency, so the
+-- default cannot change under it.
+SELECT EXISTS (
+        SELECT 1
+        FROM purchases p
+        WHERE NOT EXISTS (
+                SELECT 1
+                FROM tenant_payment_config c
+                WHERE c.tenant_id = p.tenant_id
+            )
+    );
+
 -- name: InsertPlatformSettings :one
 -- Creates the settings row with the platform default time zone, locale, and
 -- currency.

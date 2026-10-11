@@ -133,6 +133,8 @@ func TestUpdatePlatformSettingsPersistsTheDefaultCurrency(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
 		WillReturnRows(platformConfigRow("UTC", "en", 2, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.PlatformCurrencyHasSales)).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSettings)).
 		WithArgs("UTC", "en", "EUR").
 		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "UTC", "en", now, now, int64(3), "EUR"))
@@ -151,6 +153,31 @@ func TestUpdatePlatformSettingsPersistsTheDefaultCurrency(t *testing.T) {
 	}
 	if resp.Settings.DefaultCurrency != "EUR" {
 		t.Fatalf("default_currency = %q, want EUR", resp.Settings.DefaultCurrency)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+// A tenant that sells in the default currency without payment settings of its
+// own has its prices and its sales in it, so the default holds once one of
+// them has sold.
+func TestUpdatePlatformSettingsRefusesToChangeADefaultCurrencyATenantHasSoldIn(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now()
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
+		WillReturnRows(platformConfigRow("UTC", "en", 2, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.PlatformCurrencyHasSales)).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectRollback()
+
+	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
+		DefaultTimezone:  "UTC",
+		DefaultLocale:    "en",
+		DefaultCurrency:  "EUR",
+		ExpectedRevision: 2,
+	})
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("UpdatePlatformSettings code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }

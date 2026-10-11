@@ -111,6 +111,29 @@ func (q *Queries) LockPlatformConfig(ctx context.Context) (PlatformConfig, error
 	return i, err
 }
 
+const PlatformCurrencyHasSales = `-- name: PlatformCurrencyHasSales :one
+SELECT EXISTS (
+        SELECT 1
+        FROM purchases p
+        WHERE NOT EXISTS (
+                SELECT 1
+                FROM tenant_payment_config c
+                WHERE c.tenant_id = p.tenant_id
+            )
+    )
+`
+
+// Whether a tenant that sells in the platform's default currency, having saved
+// no payment settings of its own, has a purchase, test ones included. Its
+// prices and the amounts it recorded are amounts in that currency, so the
+// default cannot change under it.
+func (q *Queries) PlatformCurrencyHasSales(ctx context.Context) (bool, error) {
+	row := q.db.QueryRowContext(ctx, PlatformCurrencyHasSales)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const UpdatePlatformSettings = `-- name: UpdatePlatformSettings :one
 UPDATE platform_config
 SET default_timezone = $1,

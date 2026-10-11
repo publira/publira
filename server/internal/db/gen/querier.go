@@ -2420,6 +2420,11 @@ type Querier interface {
 	// public series but shown on no surface is not announced later when it is
 	// shown, so it owes nothing.
 	OweEpisodeAnnouncementWhileSeriesHidden(ctx context.Context, arg OweEpisodeAnnouncementWhileSeriesHiddenParams) error
+	// Whether a tenant that sells in the platform's default currency, having saved
+	// no payment settings of its own, has a purchase, test ones included. Its
+	// prices and the amounts it recorded are amounts in that currency, so the
+	// default cannot change under it.
+	PlatformCurrencyHasSales(ctx context.Context) (bool, error)
 	// Projects one comment's publication as the analytics event for that comment.
 	// episode_comments stays the source of truth: the author, the episode and the
 	// moment the comment became public are copied from the row, and the owning

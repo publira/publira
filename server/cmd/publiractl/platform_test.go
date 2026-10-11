@@ -84,6 +84,34 @@ func TestPlatformSetSavesTheDefaultsNewTenantsStartOn(t *testing.T) {
 	}
 }
 
+// A tenant that has saved no payment settings sells in the default currency,
+// so the default holds once such a tenant has sold anything, and moves again
+// once every tenant that has sold has a currency of its own.
+func TestPlatformSetKeepsTheDefaultCurrencyATenantHasSoldIn(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+
+	mustPlatformCommand(t, "set", "--default-locale", "en", "--default-currency", "JPY")
+	tenant := pg.SeedTenant(t, "CURRENCYTNT1", "currency.example.com", "Currency Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "CURRENCYSR01"})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "CURRENCYEP01", Price: 500})
+	reader := pg.SeedEndUser(t, tenant.ID, "CURRENCYUS01", "reader@currency.example.com", "Reader")
+	pg.SeedPurchase(t, tenant.ID, reader.ID, episode.ID, 500)
+
+	code, _, stderr := platformCommand(t, "set", "--default-currency", "EUR")
+	if code != 1 || stderr != "publiractl: the default currency cannot change while a tenant that sells in it has a purchase: JPY is stored\n" {
+		t.Fatalf("exit code = %d, stderr = %q, want the change refused", code, stderr)
+	}
+
+	if _, err := pg.DB.ExecContext(context.Background(), `
+		INSERT INTO tenant_payment_config (tenant_id, provider, currency) VALUES ($1, 'stripe', 'JPY')
+	`, tenant.ID); err != nil {
+		t.Fatalf("save the tenant's own currency: %v", err)
+	}
+	mustPlatformCommand(t, "set", "--default-currency", "EUR")
+}
+
 // A refusal names its flag, and nothing is written.
 func TestPlatformSetNamesTheRefusedFlag(t *testing.T) {
 	pg := testutil.StartPostgres(t)

@@ -39,7 +39,7 @@ Until a policy is saved, the **Setup status** card on the Platform Console's das
 
 **Default time zone** is the time zone a new tenant starts on when it is created without one, and the one the Platform Console shows and counts dates in. A tenant keeps the time zone it was created on, so changing the default moves only tenants created afterwards. A tenant's administrators change its time zone from the tenant console.
 
-**Default currency** is the currency every tenant whose administrators have not saved **Payment settings** sells in, so it is the currency that tenant's prices are entered and shown in. A tenant that saves its payment settings keeps the currency saved there, and the default no longer reaches it. It is set from the command line only, as an ISO 4217 code such as `EUR`.
+**Default currency** is the currency every tenant whose administrators have not saved **Payment settings** sells in, so it is the currency that tenant's prices are entered and shown in. A tenant that saves its payment settings keeps the currency saved there, and the default no longer reaches it. It is set from the command line only, as an ISO 4217 code such as `EUR`, and cannot change once a tenant that sells in it has sold anything: `publiractl` refuses the change until each such tenant has saved its payment settings with a currency of its own.
 
 From the command line:
 
