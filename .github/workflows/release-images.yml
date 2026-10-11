@@ -1,0 +1,215 @@
+name: Release images
+
+# The images of a release, built from the tagged commit and pushed to
+# ghcr.io/publira under the tag and nothing else. An upgrade runs `db migrate`
+# and `db roles` from the new release's publiractl before the processes move,
+# so no reference may ever start pointing at a newer release by itself: there
+# is no `latest` and no `1.2`.
+#
+# Release notes calls this before it publishes the Release, so the notes of a
+# Release never name a tag that cannot be pulled yet.
+
+on:
+  workflow_call:
+
+permissions: {}
+
+env:
+  REGISTRY: ghcr.io/publira
+  SOURCE: ${{ github.server_url }}/${{ github.repository }}
+  TAG: ${{ github.ref_name }}
+
+jobs:
+  build:
+    name: Build / ${{ matrix.image.name }} (${{ matrix.arch.name }})
+    runs-on: ${{ matrix.arch.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    # Every leg writes the same commit, so the output does not depend on which
+    # leg finishes last.
+    outputs:
+      revision: ${{ steps.revision.outputs.commit }}
+    strategy:
+      matrix:
+        # The names infra/deploy/compose.yaml composes as
+        # ${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}, built with the
+        # arguments `task docker:verify:full` passes.
+        image:
+          - name: publira
+            dockerfile: infra/docker/server/Dockerfile
+            args: ""
+            version: true
+          - name: publiractl
+            dockerfile: infra/docker/publiractl/Dockerfile
+            args: ""
+            version: true
+          - name: web-storefront
+            dockerfile: infra/docker/web/Dockerfile
+            args: "APP_NAME=web-storefront PORT=3000"
+            version: false
+          - name: web-admin
+            dockerfile: infra/docker/web/Dockerfile
+            args: "APP_NAME=web-admin PORT=4000"
+            version: false
+          - name: web-platform
+            dockerfile: infra/docker/web/Dockerfile
+            args: "APP_NAME=web-platform PORT=4100"
+            version: false
+          - name: email-renderer
+            dockerfile: infra/docker/node/Dockerfile
+            args: "APP_NAME=email-renderer PORT=8080"
+            version: false
+        # The publira image links libvips through CGO, which its Dockerfile
+        # does not cross-compile, so each architecture builds on a runner of
+        # its own rather than under QEMU.
+        arch:
+          - name: amd64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - name: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Find the commit
+        id: revision
+        run: echo "commit=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+
+      # A docker-container builder: the default docker driver cannot push an
+      # image by its digest alone.
+      - name: Setup / Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Sign in to the registry
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin <<< "${GH_TOKEN}"
+
+      # Pushed by digest and untagged: the tag names the multi-architecture
+      # index the publish job assembles, never a single architecture.
+      - name: Build and push
+        env:
+          ARCH: ${{ matrix.arch.name }}
+          BUILD_ARGS: ${{ matrix.image.args }}
+          DIGESTS_PATH: ${{ runner.temp }}/digests
+          DOCKERFILE: ${{ matrix.image.dockerfile }}
+          IMAGE: ${{ matrix.image.name }}
+          METADATA_PATH: ${{ runner.temp }}/metadata.json
+          PLATFORM: ${{ matrix.arch.platform }}
+          REVISION: ${{ steps.revision.outputs.commit }}
+          VERSION_ARG: ${{ matrix.image.version }}
+        run: |
+          set -euo pipefail
+          flags=()
+          read -ra pairs <<< "${BUILD_ARGS}"
+          for pair in "${pairs[@]}"; do
+            flags+=(--build-arg "${pair}")
+          done
+          # The build context carries no .git, so the Go binaries report the
+          # version linked in here as service.version, or `dev` without it.
+          if [[ "${VERSION_ARG}" == "true" ]]; then
+            flags+=(--build-arg "VERSION=${TAG}")
+          fi
+          # Signing, an SBOM, and provenance are not published yet, and an
+          # attestation manifest would show up as an `unknown/unknown`
+          # platform beside the two real ones.
+          docker buildx build \
+            --file "${DOCKERFILE}" \
+            --platform "${PLATFORM}" \
+            "${flags[@]}" \
+            --label "org.opencontainers.image.source=${SOURCE}" \
+            --label "org.opencontainers.image.version=${TAG}" \
+            --label "org.opencontainers.image.revision=${REVISION}" \
+            --provenance=false \
+            --sbom=false \
+            --output "type=image,name=${REGISTRY}/${IMAGE},push-by-digest=true,name-canonical=true,push=true" \
+            --metadata-file "${METADATA_PATH}" \
+            .
+          mkdir -p "${DIGESTS_PATH}/${IMAGE}"
+          jq -r '."containerimage.digest"' "${METADATA_PATH}" > "${DIGESTS_PATH}/${IMAGE}/${ARCH}"
+          echo "${REGISTRY}/${IMAGE}@$(cat "${DIGESTS_PATH}/${IMAGE}/${ARCH}") (${PLATFORM})"
+
+      - name: Upload the digest
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ matrix.image.name }}-${{ matrix.arch.name }}
+          path: ${{ runner.temp }}/digests/
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      packages: write
+    steps:
+      # One directory per image, holding one file per architecture whose
+      # content is that architecture's digest.
+      - name: Download the digests
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/digests
+
+      - name: Sign in to the registry
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin <<< "${GH_TOKEN}"
+
+      # The index carries the source as an annotation as well as the label on
+      # each image, because the index is what the registry reads to link a
+      # multi-architecture package to the repository.
+      - name: Tag the multi-architecture images
+        env:
+          DIGESTS_PATH: ${{ runner.temp }}/digests
+          REVISION: ${{ needs.build.outputs.revision }}
+        run: |
+          set -euo pipefail
+          cd "${DIGESTS_PATH}"
+          for image in *; do
+            refs=()
+            for digest in "${image}"/*; do
+              refs+=("${REGISTRY}/${image}@$(cat "${digest}")")
+            done
+            docker buildx imagetools create \
+              --tag "${REGISTRY}/${image}:${TAG}" \
+              --annotation "index:org.opencontainers.image.source=${SOURCE}" \
+              --annotation "index:org.opencontainers.image.version=${TAG}" \
+              --annotation "index:org.opencontainers.image.revision=${REVISION}" \
+              "${refs[@]}"
+          done
+
+      # Signed out, so each reference is read the way an operator's install
+      # reads it. A package the organization creates private fails here, and
+      # the Release is not published until it is made public.
+      - name: Check the images pull without signing in
+        env:
+          DIGESTS_PATH: ${{ runner.temp }}/digests
+        run: |
+          set -euo pipefail
+          docker logout ghcr.io
+          cd "${DIGESTS_PATH}"
+          failed=0
+          for image in *; do
+            ref="${REGISTRY}/${image}:${TAG}"
+            if ! platforms="$(docker buildx imagetools inspect "${ref}" \
+              --format '{{range .Manifest.Manifests}}{{.Platform.OS}}/{{.Platform.Architecture}}{{"\n"}}{{end}}' \
+              | sort | paste -sd ' ')"; then
+              echo "::error::${ref} cannot be read without signing in. Make the ${image} package public in its package settings, then re-run this job."
+              failed=1
+            elif [[ "${platforms}" != "linux/amd64 linux/arm64" ]]; then
+              echo "::error::${ref} lists ${platforms:-no platform}, want linux/amd64 linux/arm64."
+              failed=1
+            else
+              echo "${ref}: ${platforms}"
+            fi
+          done
+          exit "${failed}"

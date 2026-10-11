@@ -89,7 +89,7 @@ task docker:smoke:publiractl
 
 Raw `docker build -f infra/docker/<role>/Dockerfile … .` is fine for debugging; keep context at repo root.
 
-After adding a service/target: update `README.md` examples, `Taskfile.yaml` `verify:full`, and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) together. A new **maintenance job** is not a new target — it is a `publiractl job` subcommand, so none of those three registrations change.
+After adding a service/target: update `README.md` examples, `Taskfile.yaml` `verify:full`, the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh), and the image matrix in [`release-images.yml`](../../.github/workflows/release-images.yml) together. A new **maintenance job** is not a new target — it is a `publiractl job` subcommand, so none of those four registrations change.
 
 Docker CI strategy and build triage: [`README.md`](./README.md) (its CI strategy and build-failure triage sections).  
 Host CI as a whole (jobs, path filters, triage): [`.github/workflows/README.md`](../../.github/workflows/README.md).  

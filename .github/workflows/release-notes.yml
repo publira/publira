@@ -3,7 +3,8 @@ name: Release notes
 # A release's notes name every change an operator has to act on, in an Upgrade
 # notes section copied from the pull requests the release carries. The check
 # holds a pull request to filling that section in when its diff makes such a
-# change; the publish job collects the sections when a release is tagged.
+# change; the publish job collects the sections when a release is tagged,
+# once the release's images are pushed.
 
 on:
   # Not `pull_request`: the check reads the body, so it has to run on `edited`,
@@ -72,8 +73,19 @@ jobs:
           INPUT_PATH: ${{ runner.temp }}/pull-request.json
         run: node scripts/upgrade-notes.ts check < "${INPUT_PATH}"
 
+  # The release's images, pushed before the Release exists, so an operator
+  # who reads a fresh Release can already pull its tag.
+  images:
+    name: Images
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/release-images.yml
+
   publish:
     name: Publish release
+    needs: images
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10

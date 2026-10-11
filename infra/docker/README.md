@@ -71,6 +71,7 @@ What is being containerized?
 - **Role directories** use a short category name (`web` / `server` / `node`), never a service name. `publiractl` is the exception: it carries one binary, which the directory is named for, and so is `opensearch`, which carries one third-party service.
 - **`APP_NAME`** is the directory name directly under `apps/` (for example, `web-admin` or `email-renderer`). The Dockerfile adds the `@publira/` prefix.
 - **Example image tags** use `publira/<service-name>:local`, a build-time convention. Deployment defines registry policy separately.
+- **Published images** are `ghcr.io/publira/<service-name>:<release tag>`, pushed for every release by [`release-images.yml`](../../.github/workflows/release-images.yml) (see [Release images](../../.github/workflows/README.md#release-images)).
 
 ## Build conventions
 
@@ -176,6 +177,7 @@ See each service's README and Dockerfile comments for details.
 | **Production image build** | Build and verify deployment images | `task docker:build:*` (runs `docker build -f infra/docker/...` with the root context) |
 | **Local development** | Hot-reload development | Dev Container plus `task dev` / `task server:dev`, and so on (do not use production Dockerfiles) |
 | **CI (images)** | Run `Docker / <target>` after detecting changes | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml), using the same local `task docker:build:*` commands |
+| **Release images** | Push every deployment image of a tagged release to `ghcr.io/publira` | [`.github/workflows/release-images.yml`](../../.github/workflows/release-images.yml), with the arguments `task docker:verify:full` passes |
 
 Production images and the Dev Container serve different purposes. A successful image build does not replace `task dev`, and the reverse is also true. For the complete CI picture, including host CI (`Check` / `Test / *` / `Build` / `Summary`), see [`.github/workflows/README.md`](../../.github/workflows/README.md).
 
@@ -300,7 +302,7 @@ Use these steps when a `Docker / <target>` job or local `task docker:build:*` fa
    - Concern about a missed path-filter match: run Docker `full` through `workflow_dispatch`, or inspect the nightly result
 5. **After a fix**
    - Confirm the representative images with `task docker:verify` before updating the PR.
-   - When adding a role, update this README's tables, [`Taskfile.yaml`](./Taskfile.yaml) `verify:full`, and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) together.
+   - When adding a role, update this README's tables, [`Taskfile.yaml`](./Taskfile.yaml) `verify:full`, the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh), and the image matrix in [`release-images.yml`](../../.github/workflows/release-images.yml) together.
 
 ## Change checklist
 
@@ -308,5 +310,5 @@ Use these steps when a `Docker / <target>` job or local `task docker:build:*` fa
 - [ ] Pinned base-image digests under tags that name the full version and the OS release (see [Image tags](#image-tags)), and made tool-version `ARG`s trackable by Renovate
 - [ ] Verified the build from the root with `docker build -f … .` and `task docker:build:*`
 - [ ] Passed representative verification with `task docker:verify` (and `verify:full` when needed)
-- [ ] For a new target, updated this README's build examples, [`Taskfile.yaml`](./Taskfile.yaml) `verify:full`, and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
+- [ ] For a new target, updated this README's build examples, [`Taskfile.yaml`](./Taskfile.yaml) `verify:full`, the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh), and the image matrix in [`release-images.yml`](../../.github/workflows/release-images.yml)
 - [ ] The documentation link from the root [README.md](../../README.md) reaches this file

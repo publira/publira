@@ -7,6 +7,7 @@
 | `Organize issues` | [`organize-issues.yml`](./organize-issues.yml) | Issue-maintenance automation. |
 | `Review` | [`review.yml`](./review.yml) | Review-support automation. |
 | `Release notes` | [`release-notes.yml`](./release-notes.yml) | The Upgrade notes of every pull request, checked, and collected into the release a tag publishes. |
+| `Release images` | [`release-images.yml`](./release-images.yml) | The images of the release a tag publishes, pushed to `ghcr.io/publira`; called by `Release notes`. |
 
 ## Organize issues
 
@@ -86,7 +87,8 @@ A pull request that already carries a `size/*` label is left alone and the run l
 | Displayed job | Trigger | Purpose |
 | --- | --- | --- |
 | `Check upgrade notes` | `pull_request_target`: `opened`, `edited`, `reopened`, `synchronize` | Fail a pull request whose diff makes a change an operator may have to act on while its Upgrade notes section is empty or missing. |
-| `Publish release` | A pushed tag of the form `1.2.3` or `1.2.3-rc.1` | Publish the GitHub Release of the tag, its notes opening with the Upgrade notes section. |
+| `Images` | A pushed tag of the form `1.2.3` or `1.2.3-rc.1` | Run [`release-images.yml`](./release-images.yml): push the release's images. See [Release images](#release-images). |
+| `Publish release` | The same tag, once `Images` succeeds | Publish the GitHub Release of the tag, its notes opening with the Upgrade notes section. |
 
 ### The check
 
@@ -103,7 +105,7 @@ The check fails while the section is empty when the diff:
 
 ### Cutting a release
 
-Push the tag; the job creates the release. Do not create the release by hand first: a release that already exists has its notes replaced.
+Push the tag; the workflow pushes the release's images and then creates the release. Do not create the release by hand first: a release that already exists has its notes replaced.
 
 ```bash
 git tag -a 1.1.0 -m 1.1.0 origin/main
@@ -111,6 +113,19 @@ git push origin 1.1.0
 ```
 
 The notes cover the commits since the nearest earlier release tag the new one descends from, skipping prereleases unless the new tag is one. They open with **Upgrade notes**, holding the section of every pull request in that range that says more than `None.`, under the pull request's title, or a sentence saying no change asks anything. The list GitHub generates of every pull request in the range follows, and gives way to a comparison link when the two together would not fit in a release. The first release has no earlier one to upgrade from, so its Upgrade notes say so, and it has no list.
+
+### Release images
+
+[`release-images.yml`](./release-images.yml), named `Release images`, runs only as the `Images` job of `Release notes`, so the Release is published after its images and never names a tag an operator cannot pull yet. A failed image build holds the Release back; re-running the failed jobs resumes from there.
+
+| Displayed job | Purpose |
+| --- | --- |
+| `Images / Build / <name> (<arch>)` | Build one image for one architecture from the tagged commit, and push it by digest, untagged. |
+| `Images / Publish` | Tag each image's two digests as one multi-architecture image, then read every tag back signed out. |
+
+It pushes `ghcr.io/publira/<name>:<tag>` for `publira`, `publiractl`, `web-storefront`, `web-admin`, `web-platform`, and `email-renderer`, the names [`infra/deploy/compose.yaml`](../../infra/deploy/compose.yaml) composes, so `PUBLIRA_IMAGE_REGISTRY=ghcr.io/publira` and `PUBLIRA_IMAGE_TAG=<tag>` run a release unedited. Each image is built with the arguments `task docker:verify:full` gives it, the Go images with `VERSION` set to the tag, for `linux/amd64` and `linux/arm64` on a runner of each architecture, and is labelled with `org.opencontainers.image.source`, `.version`, and `.revision`. It is pushed under the exact tag and no other: no `latest`, no `1.2`. No signature, SBOM, or provenance attestation is published.
+
+The jobs hold `packages: write` through `GITHUB_TOKEN` and no other secret. A package a workflow creates can start out private, and `GITHUB_TOKEN` cannot change its visibility, so `Images / Publish` fails naming each package it cannot read signed out. An organization owner makes that package public under its **Package settings**, and re-running the failed jobs publishes the Release.
 
 # CI workflow
 
@@ -299,4 +314,4 @@ In CI the clone is authenticated with `github.token`. github.com answers an unau
 - [ ] Confirmed that a `Detect changes` checkout change still resolves the base locally on `push` and `merge_group` (the `fetch-depth` / `persist-credentials` combination)
 - [ ] Kept `merge_group` on the `on:` block and on the `Path filter` step — the merge queue on `main` requires `Summary` on merge-group commits
 - [ ] Confirmed that `Summary` remains the required branch-ruleset check after changing a displayed job name
-- [ ] Updated `infra/docker/Taskfile.yaml` `verify:full` and the full Docker matrix in `scripts/ci-plan-jobs.sh` when adding a Docker target
+- [ ] Updated `infra/docker/Taskfile.yaml` `verify:full`, the full Docker matrix in `scripts/ci-plan-jobs.sh`, and the image matrix in `release-images.yml` when adding a Docker target
