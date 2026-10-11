@@ -52,6 +52,7 @@ describe("StatementList", () => {
   it("links each closed month to its statement with its totals", async () => {
     render(
       await StatementList({
+        currency: "JPY",
         locale: "en",
         pageSize: 20,
         statements: [
@@ -82,6 +83,7 @@ describe("StatementList", () => {
   it("says no month has been closed when the first page is empty", async () => {
     render(
       await StatementList({
+        currency: "JPY",
         locale: "en",
         pageSize: 20,
         statements: [],
@@ -96,6 +98,7 @@ describe("StatementList", () => {
   it("keeps the pager on an empty later page", async () => {
     render(
       await StatementList({
+        currency: "JPY",
         locale: "en",
         pageSize: 20,
         previousHref: "?token=previous",
@@ -115,6 +118,7 @@ describe("StatementList", () => {
   it("replaces the list with the failure instead of an empty state", async () => {
     render(
       await StatementList({
+        currency: "JPY",
         listErrorMessage: "Could not load royalties. Please try again later.",
         locale: "en",
         pageSize: 20,

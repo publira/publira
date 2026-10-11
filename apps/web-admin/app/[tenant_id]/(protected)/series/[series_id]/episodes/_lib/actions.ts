@@ -39,6 +39,7 @@ import {
 } from "#lib/form-schemas";
 import { toFreeWindowPeriod } from "#lib/free-window-period";
 import { getMessagesFor } from "#lib/messages";
+import { parseTenantPrice, rawPriceFormSchema } from "#lib/price-action";
 import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -65,9 +66,8 @@ const createEpisodeSchema = async (locale: Locale) => {
     availability: z.enum(EPISODE_AVAILABILITY_OVERRIDES, {
       error: t("admin.series.episodes.validation.availability_invalid"),
     }),
-    price: nonNegativeIntFormSchema(
-      t("admin.series.episodes.validation.price_invalid")
-    ),
+    // Read once the tenant's currency is known.
+    price: rawPriceFormSchema,
     publishAt: optionalTrimmedString(),
     // The empty value is the episode following its series.
     purchaseAvailability: z.enum(PURCHASE_AVAILABILITY_OVERRIDES, {
@@ -168,6 +168,15 @@ export const createEpisodeAction = async (
     return toCreateFailure(toFormErrorMessage(parsed.error, { locale }));
   }
 
+  const price = await parseTenantPrice(
+    parsed.data.price,
+    parsed.data.tenantId,
+    locale
+  );
+  if (!price.ok) {
+    return toCreateFailure(price.message);
+  }
+
   const scheduledAt = await toScheduledAt(
     parsed.data.publishAt,
     parsed.data.tenantId,
@@ -184,7 +193,7 @@ export const createEpisodeAction = async (
     createEpisode(
       {
         availability: parsed.data.availability,
-        price: parsed.data.price,
+        price: price.value,
         publishAt: scheduledAt.value,
         purchaseAvailability: parsed.data.purchaseAvailability,
         readingPeriodHours: parsed.data.readingPeriodHours,

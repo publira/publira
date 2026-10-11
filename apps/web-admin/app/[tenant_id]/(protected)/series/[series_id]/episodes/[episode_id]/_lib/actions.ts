@@ -44,6 +44,7 @@ import {
 } from "#lib/form-schemas";
 import { toFreeWindowPeriod } from "#lib/free-window-period";
 import { getMessagesFor } from "#lib/messages";
+import { parseTenantPrice, rawPriceFormSchema } from "#lib/price-action";
 import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { READING_DIRECTIONS } from "#lib/reading-layout";
 import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
@@ -332,9 +333,8 @@ const pricingFormSchema = async (locale: Locale) => {
   ]);
 
   return base.extend({
-    price: nonNegativeIntFormSchema(
-      t("admin.series.episodes.validation.price_invalid")
-    ),
+    // Read once the tenant's currency is known.
+    price: rawPriceFormSchema,
     readingPeriodHours: nonNegativeIntFormSchema(
       t("admin.series.episodes.validation.reading_period_invalid")
     ),
@@ -371,9 +371,13 @@ export const updateEpisodePricingAction = async (
   if (mismatch) {
     return { message: mismatch, ok: false };
   }
+  const parsedPrice = await parseTenantPrice(price, tenantId, locale);
+  if (!parsedPrice.ok) {
+    return { message: parsedPrice.message, ok: false };
+  }
   const result = await withAdminSessionReauth(() =>
     updateEpisodePricing(
-      { episodeId, price, readingPeriodHours, tenantId },
+      { episodeId, price: parsedPrice.value, readingPeriodHours, tenantId },
       locale
     )
   );

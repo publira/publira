@@ -89,6 +89,7 @@ describe("OpenMonth", () => {
         closeState={{ kind: "ready" }}
         endsAt="2026-08-31T15:00:00Z"
         lines={lines}
+        currency="JPY"
         locale="en"
         period="2026-08"
         startsAt="2026-07-31T15:00:00Z"
@@ -109,6 +110,26 @@ describe("OpenMonth", () => {
     expect(screen.getByText("¥2,950")).toBeDefined();
   });
 
+  it("states the totals in the tenant's currency, from its minor unit", () => {
+    render(
+      <OpenMonth
+        closeState={{ kind: "ready" }}
+        currency="USD"
+        endsAt="2026-08-31T15:00:00Z"
+        lines={lines}
+        locale="en"
+        period="2026-08"
+        startsAt="2026-07-31T15:00:00Z"
+        tenantId="TENANT001"
+        timeZone="Asia/Tokyo"
+        totals={totals}
+      />
+    );
+
+    expect(screen.getByText("$70.00")).toBeDefined();
+    expect(screen.getByText("$29.50")).toBeDefined();
+  });
+
   it("states a start the closed month before it set in another zone", () => {
     // March was closed in Asia/Tokyo and the zone then changed to UTC, so
     // April starts where March ended rather than at its own UTC midnight.
@@ -117,6 +138,7 @@ describe("OpenMonth", () => {
         closeState={{ kind: "ready" }}
         endsAt="2026-05-01T00:00:00Z"
         lines={lines}
+        currency="JPY"
         locale="en"
         period="2026-04"
         startsAt="2026-03-31T15:00:00Z"
@@ -139,6 +161,7 @@ describe("OpenMonth", () => {
         closeState={{ kind: "ready" }}
         endsAt="2026-08-31T15:00:00Z"
         lines={lines}
+        currency="JPY"
         locale="en"
         period="2026-08"
         startsAt="2026-07-31T15:00:00Z"
@@ -164,6 +187,7 @@ describe("OpenMonth", () => {
         closeState={{ kind: "ready" }}
         endsAt="2026-08-31T15:00:00Z"
         lines={lines}
+        currency="JPY"
         locale="en"
         period="2026-08"
         startsAt="2026-07-31T15:00:00Z"
@@ -193,6 +217,7 @@ describe("OpenMonth", () => {
         closeState={{ kind: "ready" }}
         endsAt="2026-08-31T15:00:00Z"
         lines={lines}
+        currency="JPY"
         locale="en"
         period="2026-08"
         startsAt="2026-07-31T15:00:00Z"
@@ -218,6 +243,7 @@ describe("OpenMonth", () => {
         closeState={{ closeDate: "2026-09-05", kind: "automatic" }}
         endsAt="2026-08-31T15:00:00Z"
         lines={lines}
+        currency="JPY"
         locale="en"
         period="2026-08"
         startsAt="2026-07-31T15:00:00Z"
@@ -239,6 +265,7 @@ describe("OpenMonth", () => {
         closeState={{ kind: "in-progress", lastDay: "2026-09-30" }}
         endsAt="2026-08-31T15:00:00Z"
         lines={[]}
+        currency="JPY"
         locale="en"
         period="2026-09"
         startsAt="2026-07-31T15:00:00Z"

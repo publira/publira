@@ -12,10 +12,15 @@ afterEach(() => {
   cleanup();
 });
 
-const renderIn = (locale: Locale, status: string, price: number) =>
+const renderIn = (
+  locale: Locale,
+  status: string,
+  price: number,
+  currency: string | null = "JPY"
+) =>
   render(
     <AdminLocaleTestProvider locale={locale}>
-      <EpisodeStatusPrice price={price} status={status} />
+      <EpisodeStatusPrice currency={currency} price={price} status={status} />
     </AdminLocaleTestProvider>
   );
 
@@ -32,6 +37,18 @@ describe("EpisodeStatusPrice", () => {
       expect(container.textContent).toBe(text);
     }
   );
+
+  it("shows the price in the tenant's currency, from its minor unit", () => {
+    const { container } = renderIn("en", "published", 499, "USD");
+
+    expect(container.textContent).toBe("Status: Published / Price: $4.99");
+  });
+
+  it("shows no price while the tenant's currency is unknown", () => {
+    const { container } = renderIn("en", "published", 499, null);
+
+    expect(container.textContent).toBe("Status: Published / Price: -");
+  });
 
   // The Japanese copy is what proves the labels follow the chosen language.
   it("labels the status and the price in the chosen language", () => {

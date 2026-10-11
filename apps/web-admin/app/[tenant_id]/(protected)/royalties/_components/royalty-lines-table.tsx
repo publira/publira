@@ -9,15 +9,20 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import { formatYen } from "@publira/utils";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { formatShareBps } from "#lib/credit-share";
+import { formatTenantAmount } from "#lib/price";
 import { groupRoyaltyLinesByCreator } from "#lib/royalty-lines";
 import type { RoyaltyLine } from "#lib/royalty-lines";
 
 interface RoyaltyLinesTableProps {
+  /**
+   * The tenant's currency, which every amount is in. `null` when it could not
+   * be read, and each amount is then a dash.
+   */
+  currency: string | null;
   lines: readonly RoyaltyLine[];
   locale: Locale;
 }
@@ -31,6 +36,7 @@ const LEADING_COLUMN_COUNT = 7;
  * row heads exactly the rows under it.
  */
 export const RoyaltyLinesTable = ({
+  currency,
   lines,
   locale,
 }: RoyaltyLinesTableProps) => {
@@ -104,16 +110,16 @@ export const RoyaltyLinesTable = ({
               </TableCell>
               <TableCell className="text-right">{line.saleCount}</TableCell>
               <TableCell className="text-right">
-                {formatYen(line.grossAmount, { locale })}
+                {formatTenantAmount(line.grossAmount, { currency, locale })}
               </TableCell>
               <TableCell className="text-right">
-                {formatYen(line.refundedAmount, { locale })}
+                {formatTenantAmount(line.refundedAmount, { currency, locale })}
               </TableCell>
               <TableCell className="text-right">
                 {formatShareBps(line.shareBps, intlLocale)}
               </TableCell>
               <TableCell className="text-right">
-                {formatYen(line.payoutAmount, { locale })}
+                {formatTenantAmount(line.payoutAmount, { currency, locale })}
               </TableCell>
             </TableRow>
           ))}
@@ -129,7 +135,7 @@ export const RoyaltyLinesTable = ({
               </Suspense>
             </TableCell>
             <TableCell className="text-right font-medium">
-              {formatYen(group.payoutSubtotal, { locale })}
+              {formatTenantAmount(group.payoutSubtotal, { currency, locale })}
             </TableCell>
           </TableRow>
         </TableBody>

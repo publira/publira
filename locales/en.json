@@ -1739,7 +1739,7 @@
           "title": "Title",
           "title_placeholder": "Example: Episode 1 — A beginning morning",
           "price": "Price",
-          "price_description": "Set 0 to publish for free.",
+          "price_description": "In {$currency}. Set 0 to publish for free.",
           "reading_period": "Reading period",
           "reading_period_description": "Enter hours. Set 0 for unlimited reading. This starts at the series' reading period, and the episode keeps the value it is created with even if the series' period changes later.",
           "publish_at": "Publication date and time",
@@ -1748,7 +1748,7 @@
         "validation": {
           "creator_credits_invalid": "Every author credit needs an author and a role.",
           "episode_missing": "Episode ID is missing.",
-          "price_invalid": "Price must be a non-negative integer.",
+          "price_invalid": "Price must be 0 or more, with no more decimal places than the currency has.",
           "reading_period_invalid": "Reading period must be a non-negative integer.",
           "series_missing": "Series ID is missing.",
           "tenant_missing": "Tenant ID is missing.",
@@ -1928,7 +1928,8 @@
             "first_count_invalid": "Enter a number of episodes from 1 to {$max}.",
             "free_window_missing": "The free reading period to delete is missing."
           }
-        }
+        },
+        "currency_unavailable": "The tenant's currency could not be read, so a price cannot be entered right now."
       },
       "status": {
         "ongoing": "Ongoing",
@@ -2536,8 +2537,12 @@
         },
         "validation": {
           "field_required": "Enter this value to turn payments on.",
-          "provider_invalid": "Choose a payment provider."
-        }
+          "provider_invalid": "Choose a payment provider.",
+          "currency_invalid": "Choose a currency the provider charges in."
+        },
+        "currency": "Currency",
+        "currency_description": "Readers are charged in this currency, and every price is entered and shown in it. Only the currencies the chosen provider charges in are offered.",
+        "currency_locked": "The currency cannot change now that this tenant has a purchase, since every price and sale is an amount in it."
       },
       "purchase": {
         "title": "Where episodes are sold",

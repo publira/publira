@@ -51,6 +51,7 @@ vi.mock("#components/message", () => ({
 }));
 
 const stripe: PaymentProvider = {
+  currencies: ["JPY", "USD"],
   displayName: "Stripe",
   fields: [
     { name: "secret_key", public: false, required: true, secret: true },
@@ -61,6 +62,7 @@ const stripe: PaymentProvider = {
 };
 
 const payjp: PaymentProvider = {
+  currencies: ["JPY", "USD"],
   displayName: "PAY.JP",
   fields: [
     { name: "secret_key", public: false, required: true, secret: true },
@@ -72,6 +74,7 @@ const payjp: PaymentProvider = {
 
 // A provider no catalog has copy for, so its fields are named as declared.
 const examplePay: PaymentProvider = {
+  currencies: ["JPY", "USD"],
   displayName: "Example Pay",
   fields: [
     { name: "secret_key", public: false, required: true, secret: true },
@@ -101,6 +104,8 @@ const stripeFields = (
 ];
 
 const readySettings: TenantPaymentSettings = {
+  currency: "JPY",
+  currencyLocked: false,
   enabled: true,
   fields: stripeFields("sk_test_••••••••KLMN", "whsec_••••••••WXYZ"),
   provider: "stripe",
@@ -154,6 +159,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("shows an unconfigured tenant as its own status", () => {
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={[stripe]}
         canEdit
         tenantId="TENANT001"
@@ -166,13 +172,54 @@ describe("TenantPaymentSettingsForm", () => {
     expect(screen.getByLabelText("Webhook signing secret")).toBeDefined();
   });
 
+  it("offers the currencies the provider charges in, starting on the saved one", () => {
+    render(
+      <TenantPaymentSettingsForm
+        locale="en"
+        providers={[stripe]}
+        canEdit
+        tenantId="TENANT001"
+        initialSettings={{ ...readySettings, currency: "USD" }}
+      />
+    );
+
+    expect(screen.getByText("US Dollar (USD)")).toBeDefined();
+    expect(
+      screen.getByText(/Only the currencies the chosen provider charges in/u)
+    ).toBeDefined();
+  });
+
+  it("keeps the currency once the tenant has a purchase", () => {
+    render(
+      <TenantPaymentSettingsForm
+        locale="en"
+        providers={[stripe]}
+        canEdit
+        tenantId="TENANT001"
+        initialSettings={{ ...readySettings, currencyLocked: true }}
+      />
+    );
+
+    expect(isClosed(screen.getByRole("combobox", { name: "Currency" }))).toBe(
+      true
+    );
+    expect(
+      screen.getByText(
+        /The currency cannot change now that this tenant has a purchase/u
+      )
+    ).toBeDefined();
+  });
+
   it("renders every field another provider declares and shows a public one as stored", () => {
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit
         tenantId="TENANT001"
         initialSettings={{
+          currency: "JPY",
+          currencyLocked: false,
           enabled: false,
           fields: [
             {
@@ -207,6 +254,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("names PAY.JP's fields and tells where each comes from and where the webhook goes", () => {
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={[payjp, stripe]}
         canEdit
         tenantId="TENANT001"
@@ -249,6 +297,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("shows the chosen provider's fields and webhook URL, and warns that the stored credentials go", async () => {
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit
         tenantId="TENANT001"
@@ -300,10 +349,13 @@ describe("TenantPaymentSettingsForm", () => {
 
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit
         tenantId="TENANT001"
         initialSettings={{
+          currency: "JPY",
+          currencyLocked: false,
           enabled: true,
           fields: [
             {
@@ -345,6 +397,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("offers no removal of a credential the provider requires", () => {
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit
         tenantId="TENANT001"
@@ -359,6 +412,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("shows only the hint and never the plaintext of a usable configuration", () => {
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit
         tenantId="TENANT001"
@@ -378,6 +432,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("reports missing configuration when it is enabled without a secret", () => {
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit
         tenantId="TENANT001"
@@ -391,6 +446,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("shows a saved but disabled configuration as disabled", () => {
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit
         tenantId="TENANT001"
@@ -404,6 +460,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("stays read-only for someone who is not a tenant admin", () => {
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit={false}
         tenantId="TENANT001"
@@ -430,6 +487,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("blocks editing and shows the reason when the fetch fails", () => {
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={[]}
         canEdit
         tenantId="TENANT001"
@@ -451,6 +509,7 @@ describe("TenantPaymentSettingsForm", () => {
   it("turns the fields write-only and keeps the hint once change is pressed", () => {
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit
         tenantId="TENANT001"
@@ -479,6 +538,7 @@ describe("TenantPaymentSettingsForm", () => {
 
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit
         tenantId="TENANT001"
@@ -506,6 +566,7 @@ describe("TenantPaymentSettingsForm", () => {
 
     const { rerender } = render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit
         initialSettings={readySettings}
@@ -529,6 +590,7 @@ describe("TenantPaymentSettingsForm", () => {
     // The save's `updateTag` redraws the page with the settings it stored.
     rerender(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit
         initialSettings={savedSettings}
@@ -550,6 +612,7 @@ describe("TenantPaymentSettingsForm", () => {
 
     render(
       <TenantPaymentSettingsForm
+        locale="en"
         providers={providers}
         canEdit
         tenantId="TENANT001"

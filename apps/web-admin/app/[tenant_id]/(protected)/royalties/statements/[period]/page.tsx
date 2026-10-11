@@ -66,6 +66,7 @@ import {
 } from "#lib/cursor-page";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { getTenantCurrency } from "#lib/public-api";
 import { getRoyaltyStatement } from "#lib/royalties";
 import {
   royaltyPeriodSchema,
@@ -130,13 +131,14 @@ const StatementContent = async ({
   }
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const [result, timeZone, t] = await Promise.all([
+  const [result, timeZone, t, currency] = await Promise.all([
     getRoyaltyStatement(tenantId, locale, parsedParams.period, {
       limit: DEFAULT_PAGE_SIZE,
       token,
     }),
     getTenantDisplayTimeZone(tenantId),
     getMessagesFor(locale),
+    getTenantCurrency(tenantId),
   ]);
 
   if (!result.ok) {
@@ -216,7 +218,11 @@ const StatementContent = async ({
             </LinkButton>
           </AdminSectionActions>
         </AdminSectionHeader>
-        <RoyaltyFigures locale={locale} totals={statement.totals} />
+        <RoyaltyFigures
+          currency={currency}
+          locale={locale}
+          totals={statement.totals}
+        />
       </AdminSection>
 
       <AdminSection>
@@ -254,7 +260,11 @@ const StatementContent = async ({
             </EmptyStateHeading>
           </CursorPageEmptyState>
         ) : (
-          <RoyaltyLinesTable lines={result.lines} locale={locale} />
+          <RoyaltyLinesTable
+            currency={currency}
+            lines={result.lines}
+            locale={locale}
+          />
         )}
         {result.lines.length > 0 || hasPageLinks ? (
           <PaginationFooter>

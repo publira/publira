@@ -6,19 +6,28 @@ import {
   FigureValue,
 } from "@publira/ui-components/figure-line";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatYen } from "@publira/utils";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import { formatTenantAmount } from "#lib/price";
 import type { RoyaltyTotals } from "#lib/royalties";
 
 interface RoyaltyFiguresProps {
+  /**
+   * The tenant's currency, which every amount is in. `null` when it could not
+   * be read, and each amount is then a dash.
+   */
+  currency: string | null;
   locale: Locale;
   totals: RoyaltyTotals;
 }
 
 /** A month's own sales, its refunds, and what its lines pay out. */
-export const RoyaltyFigures = ({ locale, totals }: RoyaltyFiguresProps) => (
+export const RoyaltyFigures = ({
+  currency,
+  locale,
+  totals,
+}: RoyaltyFiguresProps) => (
   <FigureLine>
     <Figure>
       <FigureLabel>
@@ -26,7 +35,9 @@ export const RoyaltyFigures = ({ locale, totals }: RoyaltyFiguresProps) => (
           <Message message="admin.royalties.totals.gross" />
         </Suspense>
       </FigureLabel>
-      <FigureValue>{formatYen(totals.gross, { locale })}</FigureValue>
+      <FigureValue>
+        {formatTenantAmount(totals.gross, { currency, locale })}
+      </FigureValue>
     </Figure>
     <Figure>
       <FigureLabel>
@@ -34,7 +45,9 @@ export const RoyaltyFigures = ({ locale, totals }: RoyaltyFiguresProps) => (
           <Message message="admin.royalties.totals.refunded" />
         </Suspense>
       </FigureLabel>
-      <FigureValue>{formatYen(totals.refunded, { locale })}</FigureValue>
+      <FigureValue>
+        {formatTenantAmount(totals.refunded, { currency, locale })}
+      </FigureValue>
     </Figure>
     <Figure>
       <FigureLabel>
@@ -42,7 +55,9 @@ export const RoyaltyFigures = ({ locale, totals }: RoyaltyFiguresProps) => (
           <Message message="admin.royalties.totals.payout" />
         </Suspense>
       </FigureLabel>
-      <FigureValue>{formatYen(totals.payout, { locale })}</FigureValue>
+      <FigureValue>
+        {formatTenantAmount(totals.payout, { currency, locale })}
+      </FigureValue>
     </Figure>
   </FigureLine>
 );

@@ -34,8 +34,18 @@ describe("StoreProductList", () => {
       await StoreProductList({
         locale: "en",
         products: [
-          { episodeCount: 2, price: 300, productId: "episode_300" },
-          { episodeCount: 1, price: 1200, productId: "episode_1200" },
+          {
+            currency: "JPY",
+            episodeCount: 2,
+            price: 300,
+            productId: "episode_300",
+          },
+          {
+            currency: "USD",
+            episodeCount: 1,
+            price: 1200,
+            productId: "episode_1200",
+          },
         ],
       })
     );
@@ -48,7 +58,7 @@ describe("StoreProductList", () => {
       within(first).getByRole("button", { name: "Copy the product ID" })
     ).toBeDefined();
     expect(within(second).getByText("episode_1200")).toBeDefined();
-    expect(within(second).getByText("¥1,200")).toBeDefined();
+    expect(within(second).getByText("$12.00")).toBeDefined();
   });
 
   it("says no product is needed while the app sells no paid episode", async () => {

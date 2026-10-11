@@ -1739,7 +1739,7 @@
           "title": "标题",
           "title_placeholder": "示例：第1章 — 开始的早晨",
           "price": "价格",
-          "price_description": "设为0即可免费发布。",
+          "price_description": "以{$currency}输入。设为0即可免费发布。",
           "reading_period": "阅读期限",
           "reading_period_description": "请填写小时数。设为0表示不限期阅读。初始值为系列的阅读期限，创建时的值不会因之后修改系列的期限而改变。",
           "publish_at": "发布日期和时间",
@@ -1748,7 +1748,7 @@
         "validation": {
           "creator_credits_invalid": "每条作者署名都需要作者和角色。",
           "episode_missing": "缺少章节ID。",
-          "price_invalid": "价格必须是非负整数。",
+          "price_invalid": "价格必须不小于0，且小数位数不得超过该货币的位数。",
           "reading_period_invalid": "阅读期限必须是非负整数。",
           "series_missing": "缺少系列ID。",
           "tenant_missing": "缺少租户ID。",
@@ -1928,7 +1928,8 @@
             "first_count_invalid": "请输入1到{$max}之间的话数。",
             "free_window_missing": "未指定要删除的免费阅读期。"
           }
-        }
+        },
+        "currency_unavailable": "无法读取租户的货币，目前无法输入价格。"
       },
       "status": {
         "ongoing": "连载中",
@@ -2536,8 +2537,12 @@
         },
         "validation": {
           "field_required": "要启用支付，请输入此值。",
-          "provider_invalid": "请选择支付服务商。"
-        }
+          "provider_invalid": "请选择支付服务商。",
+          "currency_invalid": "请选择服务商支持收费的货币。"
+        },
+        "currency": "货币",
+        "currency_description": "向读者以此货币收费，所有价格均以此货币输入和显示。只能选择所选服务商支持收费的货币。",
+        "currency_locked": "此租户已有购买记录，因此无法更改货币。所有价格和销售额均以此货币计。"
       },
       "purchase": {
         "title": "销售位置",

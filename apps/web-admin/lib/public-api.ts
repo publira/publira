@@ -18,7 +18,17 @@ export const publicApiClient = createPublicApiClient({
   transport: "grpc",
 });
 
+/** An ISO 4217 code as the API spells it. */
+const currencyPattern = /^[A-Z]{3}$/u;
+
 interface TenantPublicInfo {
+  /**
+   * ISO 4217 code of the currency the tenant sells in, which every price and
+   * amount the console shows or takes is an integer in the minor unit of.
+   * `GetTenant` answers it as never empty, so `null` only for a response that
+   * is not one.
+   */
+  currency: string | null;
   /**
    * The tenant's stored default locale. `GetTenant` documents it as never
    * empty and resolves it against the platform default first, so `null` means
@@ -77,6 +87,9 @@ export const getTenantPublicInfo = async (
     });
 
     return {
+      currency: currencyPattern.test(response.currency)
+        ? response.currency
+        : null,
       defaultLocale: parseLocale(response.defaultLocale.trim()) ?? null,
       name: response.tenantName?.trim() || null,
       theme: resolveTenantThemeColors(response.theme),
@@ -95,6 +108,20 @@ export const getTenantPublicInfo = async (
     }
     return null;
   }
+};
+
+/**
+ * The currency the tenant sells in, or `null` when it cannot be read. A price
+ * shown or entered without it would be a number in no currency, so a screen
+ * that has `null` says the amount is unavailable rather than guessing one. The
+ * read carries `tenant:<id>:site`, which the admin API revalidates when the
+ * payment settings are saved, and the payment settings Action drops as well.
+ */
+export const getTenantCurrency = async (
+  tenantId: string
+): Promise<string | null> => {
+  const info = await getTenantPublicInfo(tenantId);
+  return info?.currency ?? null;
 };
 
 export const getTenantName = async (

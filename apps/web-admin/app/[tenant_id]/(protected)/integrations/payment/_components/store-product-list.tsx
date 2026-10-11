@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import { formatYen } from "@publira/utils";
+import { formatPrice } from "@publira/utils";
 import { Suspense } from "react";
 
 import {
@@ -135,7 +135,10 @@ export const StoreProductList = async ({
                   </Identifier>
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatYen(product.price, { locale })}
+                  {formatPrice(product.price, {
+                    currency: product.currency,
+                    locale,
+                  })}
                 </TableCell>
                 <TableCell className="text-right">
                   {product.episodeCount}

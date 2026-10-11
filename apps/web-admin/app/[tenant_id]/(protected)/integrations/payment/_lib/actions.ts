@@ -21,6 +21,7 @@ import {
   updateTenantPaymentSettings,
 } from "#lib/payment-settings";
 import { toProviderCredentialUpdates } from "#lib/provider-credential-form";
+import { tenantSiteCacheTag } from "#lib/public-api";
 import {
   hasSecretKey,
   secretKeyFormInput,
@@ -53,6 +54,11 @@ const tenantPaymentSettingsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
+    // Absent while the select is locked, which keeps the stored currency.
+    currency: z.preprocess(
+      (value) => (typeof value === "string" ? value.trim() : ""),
+      z.string()
+    ),
     enabled: checkboxOnFormSchema,
     provider: requiredTrimmedString(
       t("admin.settings.payment.validation.provider_invalid")
@@ -73,6 +79,7 @@ export const updateTenantPaymentSettingsAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
+      currency: "value",
       enabled: "value",
       provider: "value",
       tenantId: { kind: "value", name: "tenant_id" },
@@ -91,6 +98,17 @@ export const updateTenantPaymentSettingsAction = async (
   );
   if (!declared.ok) {
     return { message: declared.message, ok: false };
+  }
+
+  const { currency } = parsed.data;
+  if (currency && !declared.provider.currencies.includes(currency)) {
+    return {
+      fieldErrors: {
+        currency: t("admin.settings.payment.validation.currency_invalid"),
+      },
+      message: t("errors.validation"),
+      ok: false,
+    };
   }
 
   const credentials = toProviderCredentialUpdates(
@@ -112,6 +130,7 @@ export const updateTenantPaymentSettingsAction = async (
   const result = await withAdminSessionReauth(() =>
     updateTenantPaymentSettings(
       {
+        currency,
         enabled: parsed.data.enabled,
         fields: credentials.fields,
         provider: declared.provider.id,
@@ -128,6 +147,9 @@ export const updateTenantPaymentSettingsAction = async (
   }
 
   updateTag(tenantPaymentSettingsCacheTag(parsed.data.tenantId));
+  // The currency every price on the console is shown and entered in is read
+  // from the public tenant read.
+  updateTag(tenantSiteCacheTag(parsed.data.tenantId));
 
   return {
     message: t("admin.settings.payment.saved"),

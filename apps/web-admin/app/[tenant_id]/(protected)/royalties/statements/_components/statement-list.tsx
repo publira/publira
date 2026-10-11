@@ -20,11 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import {
-  formatDateTime,
-  formatPlainYearMonth,
-  formatYen,
-} from "@publira/utils";
+import { formatDateTime, formatPlainYearMonth } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -39,10 +35,16 @@ import {
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
+import { formatTenantAmount } from "#lib/price";
 import type { RoyaltyStatementSummary } from "#lib/royalties";
 import { royaltyStatementCsvPath } from "#lib/royalty-period";
 
 type StatementListProps = CursorPageHrefs & {
+  /**
+   * The tenant's currency, which every amount is in. `null` when it could not
+   * be read, and each amount is then a dash.
+   */
+  currency: string | null;
   listErrorMessage?: string;
   locale: Locale;
   pageSize: number;
@@ -52,6 +54,7 @@ type StatementListProps = CursorPageHrefs & {
 
 /** The closed months, newest first, each linking to its statement. */
 export const StatementList = async ({
+  currency,
   listErrorMessage,
   locale,
   nextHref,
@@ -159,13 +162,22 @@ export const StatementList = async ({
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatYen(statement.totals.gross, { locale })}
+                  {formatTenantAmount(statement.totals.gross, {
+                    currency,
+                    locale,
+                  })}
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatYen(statement.totals.refunded, { locale })}
+                  {formatTenantAmount(statement.totals.refunded, {
+                    currency,
+                    locale,
+                  })}
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatYen(statement.totals.payout, { locale })}
+                  {formatTenantAmount(statement.totals.payout, {
+                    currency,
+                    locale,
+                  })}
                 </TableCell>
                 <TableCell className="text-right">
                   <LinkButton

@@ -60,6 +60,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
+vi.mock("#lib/public-api", () => ({
+  getTenantCurrency: () => Promise.resolve("JPY"),
+}));
+
 vi.mock("#lib/dashboard", () => ({
   tenantDashboardCacheTag: (tenantId: string) => `tenant:${tenantId}:dashboard`,
 }));
@@ -844,14 +848,26 @@ describe("episode actions", () => {
       );
     });
 
-    // The new-episode form's rules, which stop at what an int32 field carries.
+    // The new-episode form's rules, which stop at what an int32 field carries
+    // and at the decimal places of the tenant's currency.
     it.each([
-      ["a negative price", "-1", "72", "Price must be a non-negative integer."],
+      [
+        "a negative price",
+        "-1",
+        "72",
+        "Price must be 0 or more, with no more decimal places than the currency has.",
+      ],
       [
         "a price past an int32",
         "2147483648",
         "72",
-        "Price must be a non-negative integer.",
+        "Price must be 0 or more, with no more decimal places than the currency has.",
+      ],
+      [
+        "a fraction of a yen",
+        "100.5",
+        "72",
+        "Price must be 0 or more, with no more decimal places than the currency has.",
       ],
       [
         "a reading period that is not a whole number",

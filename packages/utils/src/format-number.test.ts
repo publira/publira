@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  currencyDisplayName,
   currencyFractionDigits,
   formatPercent,
   formatPrice,
-  formatYen,
 } from "./format-number";
 
 describe("formatPercent", () => {
@@ -28,20 +28,6 @@ describe("formatPercent", () => {
 
   it("follows the locale rather than the host environment", () => {
     expect(formatPercent(0.625, { locale: "ja" })).toBe("62.5%");
-  });
-});
-
-describe("formatYen", () => {
-  it("renders a whole-yen amount with the currency sign and grouping", () => {
-    expect(formatYen(1500, { locale: "en" })).toBe("¥1,500");
-  });
-
-  it("renders zero as an amount", () => {
-    expect(formatYen(0, { locale: "en" })).toBe("¥0");
-  });
-
-  it("follows the locale rather than the host environment", () => {
-    expect(formatYen(1_234_567, { locale: "ja" })).toBe("￥1,234,567");
   });
 });
 
@@ -77,5 +63,12 @@ describe("currencyFractionDigits", () => {
     expect(currencyFractionDigits("JPY")).toBe(0);
     expect(currencyFractionDigits("KRW")).toBe(0);
     expect(currencyFractionDigits("USD")).toBe(2);
+  });
+});
+
+describe("currencyDisplayName", () => {
+  it("names a currency in the UI locale", () => {
+    expect(currencyDisplayName("USD", { locale: "en" })).toBe("US Dollar");
+    expect(currencyDisplayName("JPY", { locale: "ja" })).toBe("日本円");
   });
 });

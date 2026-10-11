@@ -121,6 +121,7 @@ describe("EpisodeScheduleForm", () => {
   it("keeps the ids unique when it is mounted alongside the create form", async () => {
     const createForm = await EpisodeForm({
       action: () => Promise.resolve(null),
+      currency: "JPY",
       seriesId: "SERIES001-ID",
       seriesPublicId: "SERIES001",
       seriesReadingPeriodHours: 0,

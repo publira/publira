@@ -18,6 +18,11 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 import { MAX_INT32 } from "#lib/int32";
+import {
+  maxPriceInputValue,
+  priceInputStep,
+  toPriceInputValue,
+} from "#lib/price";
 import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
 
 import type { EpisodeActionState } from "../episode-types";
@@ -26,6 +31,8 @@ import { EpisodePurchaseAvailabilityField } from "./episode-purchase-availabilit
 import { PublishAtInput } from "./publish-at-input";
 
 interface EpisodeFormProps {
+  /** ISO 4217 code of the currency the price is entered in, the tenant's. */
+  currency: string;
   seriesId: string;
   seriesPublicId: string;
   action: (
@@ -54,6 +61,7 @@ interface EpisodeFormProps {
 
 /** Awaits the catalog for the title's placeholder, which is an attribute rather than a node. */
 export const EpisodeForm = async ({
+  currency,
   seriesId,
   seriesPublicId,
   action,
@@ -96,16 +104,20 @@ export const EpisodeForm = async ({
           </FieldLabel>
           <FieldContent>
             <Input
-              defaultValue={0}
-              max={MAX_INT32}
+              defaultValue={toPriceInputValue(0, currency)}
+              max={maxPriceInputValue(currency)}
               min={0}
               name="price"
               required
+              step={priceInputStep(currency)}
               type="number"
             />
             <FieldDescription>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                <Message message="admin.series.episodes.form.price_description" />
+                <Message
+                  message="admin.series.episodes.form.price_description"
+                  values={{ currency }}
+                />
               </Suspense>
             </FieldDescription>
           </FieldContent>

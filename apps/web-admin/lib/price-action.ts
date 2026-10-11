@@ -1,0 +1,52 @@
+import type { Locale } from "@publira/i18n";
+import { z } from "zod";
+
+import { getMessagesFor } from "./messages";
+import { priceFormSchema } from "./price";
+import { getTenantCurrency } from "./public-api";
+
+/**
+ * A raw form value that a price schema reads once the currency is known, so a
+ * form schema can take the field before the Action has resolved the tenant.
+ */
+export const rawPriceFormSchema = z.preprocess(
+  (value) => (typeof value === "string" ? value : ""),
+  z.string()
+);
+
+export type TenantPriceResult =
+  | { ok: true; value: number }
+  | { ok: false; message: string };
+
+/**
+ * A price an Action took for `tenantId`, read in the currency the tenant sells
+ * in as the API answers it now, never one the form claims. Without that
+ * currency no price can be read, and the Action says so instead of storing a
+ * number in a currency nobody chose.
+ */
+export const parseTenantPrice = async (
+  raw: string,
+  tenantId: string,
+  locale: Locale
+): Promise<TenantPriceResult> => {
+  const [t, currency] = await Promise.all([
+    getMessagesFor(locale),
+    getTenantCurrency(tenantId),
+  ]);
+  if (!currency) {
+    return {
+      message: t("admin.series.episodes.currency_unavailable"),
+      ok: false,
+    };
+  }
+  const parsed = priceFormSchema(
+    currency,
+    t("admin.series.episodes.validation.price_invalid")
+  ).safeParse(raw);
+  return parsed.success
+    ? { ok: true, value: parsed.data }
+    : {
+        message: t("admin.series.episodes.validation.price_invalid"),
+        ok: false,
+      };
+};

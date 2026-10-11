@@ -278,8 +278,18 @@ describe("store-payment-settings", () => {
   it("lists the store products the catalog needs", async () => {
     mockListProductsApi.mockResolvedValueOnce({
       products: [
-        { episodeCount: 2, price: 300, productId: "episode_300" },
-        { episodeCount: 1, price: 500, productId: "episode_500" },
+        {
+          currency: "JPY",
+          episodeCount: 2,
+          price: 300,
+          productId: "episode_300",
+        },
+        {
+          currency: "JPY",
+          episodeCount: 1,
+          price: 500,
+          productId: "episode_500",
+        },
       ],
     });
 
@@ -290,8 +300,18 @@ describe("store-payment-settings", () => {
     expect(result).toEqual({
       ok: true,
       products: [
-        { episodeCount: 2, price: 300, productId: "episode_300" },
-        { episodeCount: 1, price: 500, productId: "episode_500" },
+        {
+          currency: "JPY",
+          episodeCount: 2,
+          price: 300,
+          productId: "episode_300",
+        },
+        {
+          currency: "JPY",
+          episodeCount: 1,
+          price: 500,
+          productId: "episode_500",
+        },
       ],
     });
     expect(mockListProductsApi).toHaveBeenCalledWith(

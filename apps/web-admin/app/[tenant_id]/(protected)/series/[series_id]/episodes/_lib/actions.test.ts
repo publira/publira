@@ -50,6 +50,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
+vi.mock("#lib/public-api", () => ({
+  getTenantCurrency: () => Promise.resolve("JPY"),
+}));
+
 vi.mock("#lib/dashboard", () => ({
   tenantDashboardCacheTag: (tenantId: string) => `tenant:${tenantId}:dashboard`,
 }));
