@@ -31,6 +31,20 @@ SET provider = EXCLUDED.provider,
     updated_at = NOW()
 RETURNING *;
 
+-- name: LockTenantCurrency :exec
+-- Serializes, for the rest of the caller's transaction, a change of the
+-- currency a tenant sells in against every write of a price checked against
+-- it, which takes LockTenantCurrencyShared. The check and the write then see
+-- the same currency, so a change cannot commit between them and leave a price
+-- typed in one currency stored as an amount of another.
+SELECT pg_advisory_xact_lock(hashtextextended('tenant-currency:' || sqlc.arg('tenant_id')::uuid::text, 0));
+
+-- name: LockTenantCurrencyShared :exec
+-- Holds off, for the rest of the caller's transaction, a change of the
+-- tenant's currency (LockTenantCurrency), while letting other price writes of
+-- the same tenant go on.
+SELECT pg_advisory_xact_lock_shared(hashtextextended('tenant-currency:' || sqlc.arg('tenant_id')::uuid::text, 0));
+
 -- name: TenantHasPurchases :one
 -- Whether the tenant has any purchase, from a provider's checkout or a store,
 -- test ones included, which keeps the tenant currency from changing.

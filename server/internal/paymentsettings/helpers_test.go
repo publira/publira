@@ -57,6 +57,10 @@ func (m *memoryPaymentQueries) GetPlatformDefaultCurrency(context.Context) (stri
 	return m.platformCurrency, nil
 }
 
+func (*memoryPaymentQueries) LockTenantCurrency(context.Context, uuid.UUID) error {
+	return nil
+}
+
 func (m *memoryPaymentQueries) TenantHasPurchases(_ context.Context, tenantID uuid.UUID) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

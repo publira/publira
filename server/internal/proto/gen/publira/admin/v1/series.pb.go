@@ -1522,8 +1522,14 @@ type UpdateEpisodePricingRequest struct {
 	// A negative period is invalid_argument, as it is to CreateEpisode. Zero
 	// gives a purchase no expiry.
 	ReadingPeriodHours int32 `protobuf:"varint,4,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The ISO 4217 code price was entered in: the tenant currency as the client
+	// read it. A price above zero in a currency that is no longer the tenant's
+	// when it is written is failed_precondition, with a field violation on
+	// currency, rather than stored as an amount of the currency it changed to.
+	// Empty states none, and the price is written unchecked.
+	Currency      string `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateEpisodePricingRequest) Reset() {
@@ -1582,6 +1588,13 @@ func (x *UpdateEpisodePricingRequest) GetReadingPeriodHours() int32 {
 		return x.ReadingPeriodHours
 	}
 	return 0
+}
+
+func (x *UpdateEpisodePricingRequest) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
 }
 
 type UpdateEpisodePricingResponse struct {
@@ -2131,8 +2144,11 @@ type CreateEpisodeRequest struct {
 	// SURFACE_AVAILABILITY_UNSPECIFIED follows the series.
 	PurchaseAvailability v1.SurfaceAvailability `protobuf:"varint,9,opt,name=purchase_availability,json=purchaseAvailability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"purchase_availability,omitempty"`
 	SeriesId             string                 `protobuf:"bytes,10,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// The ISO 4217 code price was entered in, checked as
+	// UpdateEpisodePricingRequest.currency is.
+	Currency      string `protobuf:"bytes,11,opt,name=currency,proto3" json:"currency,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateEpisodeRequest) Reset() {
@@ -2224,6 +2240,13 @@ func (x *CreateEpisodeRequest) GetPurchaseAvailability() v1.SurfaceAvailability 
 func (x *CreateEpisodeRequest) GetSeriesId() string {
 	if x != nil {
 		return x.SeriesId
+	}
+	return ""
+}
+
+func (x *CreateEpisodeRequest) GetCurrency() string {
+	if x != nil {
+		return x.Currency
 	}
 	return ""
 }
@@ -4967,13 +4990,14 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"episode_id\x18\x02 \x01(\tR\tepisodeId\x12\x14\n" +
 	"\x05title\x18\x03 \x01(\tR\x05title\"Q\n" +
 	"\x1aUpdateEpisodeTitleResponse\x123\n" +
-	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\xbd\x01\n" +
+	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\xd9\x01\n" +
 	"\x1bUpdateEpisodePricingRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
 	"episode_id\x18\x02 \x01(\tR\tepisodeId\x12\x14\n" +
 	"\x05price\x18\x03 \x01(\x05R\x05price\x120\n" +
-	"\x14reading_period_hours\x18\x04 \x01(\x05R\x12readingPeriodHours\"S\n" +
+	"\x14reading_period_hours\x18\x04 \x01(\x05R\x12readingPeriodHours\x12\x1a\n" +
+	"\bcurrency\x18\x05 \x01(\tR\bcurrency\"S\n" +
 	"\x1cUpdateEpisodePricingResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\xa8\x02\n" +
 	"\x1aUpdateEpisodeLayoutRequest\x127\n" +
@@ -5010,7 +5034,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"episodeIds\x120\n" +
 	"\x14expected_episode_ids\x18\a \x03(\tR\x12expectedEpisodeIdsJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\x10series_public_idR\x12episode_public_idsR\x1bexpected_episode_public_ids\"P\n" +
 	"\x17ReorderEpisodesResponse\x125\n" +
-	"\bepisodes\x18\x01 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"\xcd\x03\n" +
+	"\bepisodes\x18\x01 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"\xe9\x03\n" +
 	"\x14CreateEpisodeRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1f\n" +
@@ -5022,7 +5046,8 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\favailability\x18\b \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\x12Z\n" +
 	"\x15purchase_availability\x18\t \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\x12\x1b\n" +
 	"\tseries_id\x18\n" +
-	" \x01(\tR\bseriesIdJ\x04\b\x02\x10\x03R\x10series_public_id\"\xa8\x01\n" +
+	" \x01(\tR\bseriesId\x12\x1a\n" +
+	"\bcurrency\x18\v \x01(\tR\bcurrencyJ\x04\b\x02\x10\x03R\x10series_public_id\"\xa8\x01\n" +
 	"\x15CreateEpisodeResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x12Z\n" +
 	"\x15purchase_availability\x18\x02 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\x8c\x01\n" +

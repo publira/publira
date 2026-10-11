@@ -44,6 +44,9 @@ var (
 	ErrProviderUnavailable      = errors.New("stored payment provider is not registered")
 	ErrUnsupportedCurrency      = errors.New("the provider does not charge in the currency")
 	ErrCurrencyLocked           = errors.New("the currency cannot change once the tenant has a purchase")
+	// ErrPriceCurrencyChanged refuses a price entered in a currency the tenant
+	// no longer sells in: its number is an amount of that currency.
+	ErrPriceCurrencyChanged = errors.New("the tenant no longer sells in the currency the price was entered in")
 )
 
 // IsUnavailable reports errors that mean Checkout and Webhook must not run:

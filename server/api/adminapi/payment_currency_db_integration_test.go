@@ -2,13 +2,16 @@ package adminapi
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect/v2"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider/payjp"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
+	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/platformconfig"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -102,5 +105,122 @@ func TestDBTenantCurrencyIsSavedUntilATenantHasAPurchase(t *testing.T) {
 	}
 	if settings.Currency != "USD" || !settings.CurrencyLocked {
 		t.Fatalf("settings currency = %q locked %v, want USD locked", settings.Currency, settings.CurrencyLocked)
+	}
+}
+
+// A price above zero is an amount of the currency it was entered in, so it is
+// written only while the tenant still sells in that currency. A free episode
+// is free in every currency.
+func TestDBAPriceIsWrittenOnlyInTheCurrencyItWasEnteredIn(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	series := env.PG.SeedSeries(t, tenant.Tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA1", Title: "Series A"})
+	episode := env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODE1", Title: "Chapter One", Price: 300})
+	client := env.seriesClient()
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+	currency := dbTenantCurrency(t, env, tenant)
+	other := "JPY"
+	if currency == other {
+		other = "EUR"
+	}
+	price := func(amount int32, in string) error {
+		_, err := client.UpdateEpisodePricing(ctx, &publiraadminv1.UpdateEpisodePricingRequest{
+			Tenant:    tenant.tenantContext(),
+			EpisodeId: episode.ID.String(),
+			Price:     amount,
+			Currency:  in,
+		})
+		return err
+	}
+
+	if err := price(500, currency); err != nil {
+		t.Fatalf("price in %s: %v", currency, err)
+	}
+	err := price(700, other)
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) || connectErr.Code() != connect.CodeFailedPrecondition || violatedField(t, connectErr) != "currency" {
+		t.Fatalf("price in %s error = %v, want failed_precondition on currency", other, err)
+	}
+	if got := getDBEpisode(t, env, tenant, series.PublicID, episode.PublicID).Episode.Price; got != 500 {
+		t.Fatalf("price after the refusal = %d, want 500", got)
+	}
+	if err := price(0, other); err != nil {
+		t.Fatalf("free in %s: %v", other, err)
+	}
+
+	create := func(in string) error {
+		_, err := client.CreateEpisode(ctx, &publiraadminv1.CreateEpisodeRequest{
+			Tenant:   tenant.tenantContext(),
+			SeriesId: series.ID.String(),
+			Title:    "Chapter Two",
+			Price:    100,
+			Currency: in,
+		})
+		return err
+	}
+	if err := create(other); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("create priced in %s error = %v, want failed_precondition", other, err)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM episodes WHERE series_id = $1", series.ID); got != 1 {
+		t.Fatalf("episodes after the refused create = %d, want 1", got)
+	}
+	if err := create(currency); err != nil {
+		t.Fatalf("create priced in %s: %v", currency, err)
+	}
+}
+
+// A price checked against the tenant currency waits for a change of that
+// currency in progress, and is then checked against the currency the change
+// made, rather than written in the one it read before the change committed.
+func TestDBAPriceCheckWaitsForACurrencyChange(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	ctx := context.Background()
+	before := dbTenantCurrency(t, env, tenant)
+	after := "EUR"
+	if before == after {
+		after = "GBP"
+	}
+
+	change, err := env.PG.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin the change: %v", err)
+	}
+	defer change.Rollback() //nolint:errcheck
+	if err := dbmodels.New(change).LockTenantCurrency(ctx, tenant.Tenant.ID); err != nil {
+		t.Fatalf("hold the currency: %v", err)
+	}
+	if _, err := change.ExecContext(ctx, `
+		INSERT INTO platform_config (singleton, default_locale, default_currency) VALUES (TRUE, 'en', $1)
+		ON CONFLICT (singleton) DO UPDATE SET default_currency = EXCLUDED.default_currency
+	`, after); err != nil {
+		t.Fatalf("change the default currency: %v", err)
+	}
+
+	checked := make(chan error, 1)
+	go func() {
+		write, err := env.PG.DB.BeginTx(ctx, nil)
+		if err != nil {
+			checked <- err
+			return
+		}
+		defer write.Rollback() //nolint:errcheck
+		checked <- paymentsettings.CheckPriceCurrency(ctx, dbmodels.New(write), tenant.Tenant.ID, before)
+	}()
+	select {
+	case err := <-checked:
+		t.Fatalf("the check returned %v while the change was in progress, want it to wait", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	if err := change.Commit(); err != nil {
+		t.Fatalf("commit the change: %v", err)
+	}
+	select {
+	case err := <-checked:
+		if !errors.Is(err, paymentsettings.ErrPriceCurrencyChanged) {
+			t.Fatalf("check after the change = %v, want ErrPriceCurrencyChanged", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the check never returned after the change committed")
 	}
 }

@@ -2283,6 +2283,16 @@ type Querier interface {
 	// store that can sell: the store settings and the app association. A tenant
 	// with no row has nothing to lock and cannot be on the store route either.
 	LockTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
+	// Serializes, for the rest of the caller's transaction, a change of the
+	// currency a tenant sells in against every write of a price checked against
+	// it, which takes LockTenantCurrencyShared. The check and the write then see
+	// the same currency, so a change cannot commit between them and leave a price
+	// typed in one currency stored as an amount of another.
+	LockTenantCurrency(ctx context.Context, tenantID uuid.UUID) error
+	// Holds off, for the rest of the caller's transaction, a change of the
+	// tenant's currency (LockTenantCurrency), while letting other price writes of
+	// the same tenant go on.
+	LockTenantCurrencyShared(ctx context.Context, tenantID uuid.UUID) error
 	// Lock the tenant row so concurrent tenant branding image uploads and deletes
 	// (icon, logo) serialize. The following read of the current image must be a
 	// separate statement: READ COMMITTED freezes its snapshot at statement start,

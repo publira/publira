@@ -28,6 +28,7 @@ type PaymentQuerier interface {
 	UpsertTenantPaymentConfig(ctx context.Context, arg dbmodels.UpsertTenantPaymentConfigParams) (dbmodels.TenantPaymentConfig, error)
 	TenantHasPurchases(ctx context.Context, tenantID uuid.UUID) (bool, error)
 	GetPlatformDefaultCurrency(ctx context.Context) (string, error)
+	LockTenantCurrency(ctx context.Context, tenantID uuid.UUID) error
 }
 
 // CurrencyQuerier is what [TenantCurrency] reads.
@@ -48,6 +49,36 @@ func TenantCurrency(ctx context.Context, q CurrencyQuerier, tenantID uuid.UUID) 
 		return "", fmt.Errorf("read tenant payment settings: %w", err)
 	}
 	return row.Currency, nil
+}
+
+// PriceCurrencyQuerier is what [CheckPriceCurrency] runs on: the queries of
+// the transaction that writes the price.
+type PriceCurrencyQuerier interface {
+	LockTenantCurrencyShared(ctx context.Context, tenantID uuid.UUID) error
+	CurrencyQuerier
+}
+
+// CheckPriceCurrency answers [ErrPriceCurrencyChanged] when currency, the one
+// a price was entered in, is not the one tenantID sells in. It first holds
+// off any change of the tenant's currency for the rest of q's transaction, so
+// the price that transaction writes is in the currency checked here when it
+// commits. An empty currency states none and is not checked.
+func CheckPriceCurrency(ctx context.Context, q PriceCurrencyQuerier, tenantID uuid.UUID, currency string) error {
+	currency = strings.ToUpper(strings.TrimSpace(currency))
+	if currency == "" {
+		return nil
+	}
+	if err := q.LockTenantCurrencyShared(ctx, tenantID); err != nil {
+		return fmt.Errorf("hold the tenant currency: %w", err)
+	}
+	current, err := TenantCurrency(ctx, q, tenantID)
+	if err != nil {
+		return err
+	}
+	if currency != current {
+		return fmt.Errorf("%w: %s, not %s", ErrPriceCurrencyChanged, current, currency)
+	}
+	return nil
 }
 
 type Store struct {
@@ -122,6 +153,12 @@ func (s *Store) Upsert(ctx context.Context, tenantID uuid.UUID, input UpdateInpu
 	}
 	declaration := provider.Declaration()
 
+	// Taken before the current currency is read, so that a price written
+	// against it (CheckPriceCurrency) cannot commit in between and be left an
+	// amount of the currency this save changes it to.
+	if err := s.queries.LockTenantCurrency(ctx, tenantID); err != nil {
+		return PublicConfig{}, fmt.Errorf("hold the tenant currency: %w", err)
+	}
 	existing, found, err := s.loadRow(ctx, tenantID)
 	if err != nil {
 		return PublicConfig{}, err

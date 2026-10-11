@@ -587,6 +587,32 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 	return items, nil
 }
 
+const LockTenantCurrency = `-- name: LockTenantCurrency :exec
+SELECT pg_advisory_xact_lock(hashtextextended('tenant-currency:' || $1::uuid::text, 0))
+`
+
+// Serializes, for the rest of the caller's transaction, a change of the
+// currency a tenant sells in against every write of a price checked against
+// it, which takes LockTenantCurrencyShared. The check and the write then see
+// the same currency, so a change cannot commit between them and leave a price
+// typed in one currency stored as an amount of another.
+func (q *Queries) LockTenantCurrency(ctx context.Context, tenantID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, LockTenantCurrency, tenantID)
+	return err
+}
+
+const LockTenantCurrencyShared = `-- name: LockTenantCurrencyShared :exec
+SELECT pg_advisory_xact_lock_shared(hashtextextended('tenant-currency:' || $1::uuid::text, 0))
+`
+
+// Holds off, for the rest of the caller's transaction, a change of the
+// tenant's currency (LockTenantCurrency), while letting other price writes of
+// the same tenant go on.
+func (q *Queries) LockTenantCurrencyShared(ctx context.Context, tenantID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, LockTenantCurrencyShared, tenantID)
+	return err
+}
+
 const RecordRefundOnPurchase = `-- name: RecordRefundOnPurchase :one
 WITH refund AS (
     SELECT p.id,

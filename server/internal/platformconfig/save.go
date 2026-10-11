@@ -219,6 +219,11 @@ func prepareCurrencyChange(ctx context.Context, q *dbmodels.Queries, current, ne
 		return fmt.Errorf("list tenants in the default currency: %w", err)
 	}
 	for _, tenantID := range tenantIDs {
+		// As a save of the tenant's own currency does, so that a price checked
+		// against the default it sells in cannot commit after this reads it.
+		if err := q.LockTenantCurrency(ctx, tenantID); err != nil {
+			return fmt.Errorf("hold the currency of tenant %s: %w", tenantID, err)
+		}
 		if err := revalidateSite(ctx, q, tenantID); err != nil {
 			return fmt.Errorf("record the site revalidation of tenant %s: %w", tenantID, err)
 		}

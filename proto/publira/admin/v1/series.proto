@@ -305,6 +305,12 @@ message UpdateEpisodePricingRequest {
   // A negative period is invalid_argument, as it is to CreateEpisode. Zero
   // gives a purchase no expiry.
   int32 reading_period_hours = 4;
+  // The ISO 4217 code price was entered in: the tenant currency as the client
+  // read it. A price above zero in a currency that is no longer the tenant's
+  // when it is written is failed_precondition, with a field violation on
+  // currency, rather than stored as an amount of the currency it changed to.
+  // Empty states none, and the price is written unchecked.
+  string currency = 5;
 }
 
 message UpdateEpisodePricingResponse {
@@ -412,6 +418,9 @@ message CreateEpisodeRequest {
   // SURFACE_AVAILABILITY_UNSPECIFIED follows the series.
   publira.types.v1.SurfaceAvailability purchase_availability = 9;
   string series_id = 10;
+  // The ISO 4217 code price was entered in, checked as
+  // UpdateEpisodePricingRequest.currency is.
+  string currency = 11;
 }
 
 message CreateEpisodeResponse {
