@@ -73,10 +73,36 @@ jobs:
           INPUT_PATH: ${{ runner.temp }}/pull-request.json
         run: node scripts/upgrade-notes.ts check < "${INPUT_PATH}"
 
+  # A release is cut from a commit that sets every package.json to its
+  # version. A tag refused here pushes no image and publishes no Release.
+  version:
+    name: Check version
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+
+      - name: Check the package.json versions
+        env:
+          TAG: ${{ github.ref_name }}
+        run: node scripts/release-version.ts check "${TAG}"
+
   # The release's images, pushed before the Release exists, so an operator
   # who reads a fresh Release can already pull its tag.
   images:
     name: Images
+    needs: version
     if: github.event_name == 'push'
     permissions:
       contents: read
