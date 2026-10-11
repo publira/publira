@@ -1,5 +1,6 @@
 /**
- * Fail on a page under `docs/en/` that breaks the contract the website reads it by.
+ * Fail on a page under `docs/en/` that breaks the contract the website reads it
+ * by, or on a tree beside it that the documentation does not have yet.
  *
  *     node scripts/check-docs.ts
  *
@@ -26,8 +27,14 @@ import { gfm } from "micromark-extension-gfm";
 import { Temporal } from "temporal-polyfill";
 import { parse as parseYaml } from "yaml";
 
+/** The directory every locale's tree sits in, relative to the repository root. */
+const DOCS = "docs";
+
+/** The one locale the documentation is written in until 1.0.0. */
+const LOCALE = "en";
+
 /** The tree the website publishes, relative to the repository root. */
-const ROOT = "docs/en";
+const ROOT = `${DOCS}/${LOCALE}`;
 
 /** A positive integer without a leading zero, then lowercase ASCII words. */
 const ENTRY_NAME = /^(?<number>[1-9]\d*)-(?<slug>[a-z\d]+(?:-[a-z\d]+)*)$/u;
@@ -566,13 +573,38 @@ const checkImages = (
   });
 
 /**
- * Every finding under `root`, relative to `repository`, as are the files the
- * findings name, in the order of those files and lines.
+ * The findings for a directory under `docs/` other than `docs/en/`.
+ *
+ * The documentation is English alone until 1.0.0, as `docs/README.md` states:
+ * throughout 0.x a minor release can change the behaviour a page describes,
+ * and each such change rewrites the English page in the same pull request, so
+ * a translation beside it would drift without anything noticing. A second
+ * tree is refused here rather than in review, because the `docs-screenshots`
+ * project and the website both pick up any tree that appears. The Issue that
+ * adds the first translation lifts this check.
+ */
+const checkLocales = async (repository: string): Promise<Finding[]> => {
+  const entries = await readdir(path.join(repository, DOCS), {
+    withFileTypes: true,
+  });
+
+  return entries
+    .filter((entry) => entry.isDirectory() && entry.name !== LOCALE)
+    .map((entry) => ({
+      file: path.posix.join(DOCS, entry.name),
+      message: `The documentation is maintained in English alone until 1.0.0, so \`${ROOT}/\` is the only tree under \`${DOCS}/\`. See "Languages" in docs/README.md.`,
+    }));
+};
+
+/**
+ * Every finding under `root`, and every tree beside it under `docs/`, relative
+ * to `repository`, as are the files the findings name, in the order of those files and lines.
  */
 export const scan = async (
   repository = process.cwd(),
   root = ROOT
 ): Promise<Finding[]> => {
+  const locales = await checkLocales(repository);
   const { findings, images, pages } = await checkDirectory(
     repository,
     root,
@@ -589,6 +621,7 @@ export const scan = async (
   }
 
   return [
+    ...locales,
     ...findings,
     ...inPages.flatMap((page) => page.findings),
     ...checkImages(images, shownBy),
