@@ -55,7 +55,6 @@ assert_route "revalidate on platform host stays on web-platform" POST platform.l
 assert_route "view beacon stays on web-storefront" POST localhost /api/v1/views web-storefront /api/v1/views
 assert_route "read beacon stays on web-storefront" POST localhost /api/v1/series/SERIES_001/episodes/EPISODE_001/read web-storefront /api/v1/series/SERIES_001/episodes/EPISODE_001/read
 assert_route "payment webhook stays on web-storefront" POST localhost /api/v1/webhook/payment/stripe web-storefront /api/v1/webhook/payment/stripe
-assert_route "legacy stripe webhook stays on web-storefront" POST localhost /api/v1/webhook/stripe web-storefront /api/v1/webhook/stripe
 assert_route "inbound email webhook stays on web-storefront" POST localhost /api/v1/webhook/email/sendgrid web-storefront /api/v1/webhook/email/sendgrid
 assert_route "bare /api/v1 stays on web-storefront" GET localhost /api/v1 web-storefront /api/v1
 

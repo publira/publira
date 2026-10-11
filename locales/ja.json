@@ -2520,7 +2520,6 @@
         "public_description": "この値は決済時に読者のブラウザへ渡されるため、保存した値をそのまま表示します。",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "{$provider}に、決済の通知の送信先としてこのURLを登録してください。",
-        "webhook_url_legacy_description": "以前に登録した /api/v1/webhook/stripeのエンドポイントも引き続き動きますが、このURLは非推奨で、今後のリリースで削除されます。上のURLに置き換えてください。",
         "webhook_url_payjp_description": "PAY.JPはすべての通知に上で保存したWebhookトークンを付けて送ります。トークンが付いていない通知は受け付けません。",
         "saved": "決済設定を保存しました。",
         "load_failed": "決済設定の取得に失敗しました。時間をおいて再試行してください。",

@@ -179,15 +179,6 @@ const PaymentCredentialSource = ({
 /** What a provider's webhook URL block adds for that provider alone. */
 const PaymentWebhookNote = ({ provider }: { provider: string }) => {
   switch (provider) {
-    case "stripe": {
-      return (
-        <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-            <Message message="admin.settings.payment.webhook_url_legacy_description" />
-          </Suspense>
-        </FieldDescription>
-      );
-    }
     case "payjp": {
       return (
         <FieldDescription>

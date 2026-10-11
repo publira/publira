@@ -87,8 +87,6 @@ Then in the console, under **Payment settings**:
 
 Stripe keeps test-mode and live-mode webhook endpoints apart, each with its own signing secret. When you move to live keys, add the endpoint again in live mode, and enter its signing secret together with the live secret key.
 
-An endpoint registered before at `/api/v1/webhook/stripe` still receives notifications, but that URL will be removed in a later release; replace it with the URL the console shows.
-
 ### PAY.JP
 
 In the PAY.JP dashboard:

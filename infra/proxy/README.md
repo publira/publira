@@ -56,7 +56,7 @@ The path rules apply on every listed host: the public API and image delivery ans
 
 `/api/v1…` is the exception because it belongs to the Next.js apps rather than to the server. Each app mounts its Route Handlers there — `/api/v1/revalidate` on all three, on the public site the view beacon, the read beacon, and the payment and inbound email webhooks, and on the tenant console the royalty statement CSV — and a browser reaches them on the origin it is already on. Nothing under `/api/v1` collides with the public API, whose Connect endpoints are `/api/publira.v1.<Service>/<Method>`.
 
-A webhook an outside service calls on the public site lives at `/api/v1/webhook/<kind>/<provider>`, such as `/api/v1/webhook/payment/stripe` or `/api/v1/webhook/email/sendgrid`; a new kind of webhook is added under that layout rather than beside it. `/api/v1/webhook/stripe` is a deprecated alias of `/api/v1/webhook/payment/stripe`, kept for the endpoints tenants have already registered with Stripe. The prefix rule above already routes every one of them, so no proxy names a webhook path.
+A webhook an outside service calls on the public site lives at `/api/v1/webhook/<kind>/<provider>`, such as `/api/v1/webhook/payment/stripe` or `/api/v1/webhook/email/sendgrid`; a new kind of webhook is added under that layout rather than beside it. The prefix rule above already routes every one of them, so no proxy names a webhook path.
 
 ### Request bodies
 

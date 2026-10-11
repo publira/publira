@@ -2520,7 +2520,6 @@
         "public_description": "This value is handed to the reader's browser at checkout, so it is shown as stored.",
         "webhook_url": "Webhook URL",
         "webhook_url_description": "Register this URL with {$provider} as where it sends payment notifications.",
-        "webhook_url_legacy_description": "An endpoint registered earlier at /api/v1/webhook/stripe still works, but that URL is deprecated and will be removed in a later release. Replace it with the URL above.",
         "webhook_url_payjp_description": "PAY.JP sends every notification with the webhook token stored above, and one that does not carry it is refused.",
         "saved": "The payment settings were saved.",
         "load_failed": "Could not load the payment settings. Please try again later.",

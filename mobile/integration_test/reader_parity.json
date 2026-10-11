@@ -626,10 +626,7 @@
     {
       "name": "The payment providers' webhooks",
       "web": {
-        "routes": [
-          "api/v1/webhook/payment/[provider]",
-          "api/v1/webhook/stripe"
-        ],
+        "routes": ["api/v1/webhook/payment/[provider]"],
         "rpcs": ["ProcessPaymentWebhook"]
       },
       "exception": "The payment provider's servers call it; no reader reaches it. A purchase made from the app lands here too."

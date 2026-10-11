@@ -107,7 +107,7 @@ A store's refund takes the purchase back as a provider's refund does, for the wh
 | `charge.refunded` | `Refunded` |
 | Any other | `Ignored` |
 
-In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/payment/stripe` as the webhook endpoint and enable the three events above. `/api/v1/webhook/stripe` still answers as a deprecated alias for the endpoints registered before, and will be removed in a later release. For local development, forward with the Stripe CLI:
+In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/payment/stripe` as the webhook endpoint and enable the three events above. For local development, forward with the Stripe CLI:
 
 ```bash
 stripe listen --forward-to localhost:3080/api/v1/webhook/payment/stripe
