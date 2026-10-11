@@ -87,7 +87,8 @@ A pull request that already carries a `size/*` label is left alone and the run l
 | Displayed job | Trigger | Purpose |
 | --- | --- | --- |
 | `Check upgrade notes` | `pull_request_target`: `opened`, `edited`, `reopened`, `synchronize` | Fail a pull request whose diff makes a change an operator may have to act on while its Upgrade notes section is empty or missing. |
-| `Images` | A pushed tag of the form `1.2.3` or `1.2.3-rc.1` | Run [`release-images.yml`](./release-images.yml): push the release's images. See [Release images](#release-images). |
+| `Check version` | A pushed tag of the form `1.2.3` or `1.2.3-rc.1` | Fail a tag whose commit carries any other version in a `package.json`, naming each such file. See [Cutting a release](#cutting-a-release). |
+| `Images` | The same tag, once `Check version` succeeds | Run [`release-images.yml`](./release-images.yml): push the release's images. See [Release images](#release-images). |
 | `Publish release` | The same tag, once `Images` succeeds | Publish the GitHub Release of the tag, its notes opening with the Upgrade notes section. |
 
 ### The check
@@ -105,12 +106,24 @@ The check fails while the section is empty when the diff:
 
 ### Cutting a release
 
-Push the tag; the workflow pushes the release's images and then creates the release. Do not create the release by hand first: a release that already exists has its notes replaced.
+A release is cut from a release commit, which sets `version` in every `package.json` the repository tracks, the root included, to the release's number and changes nothing else. [`scripts/release-version.ts`](../../scripts/release-version.ts) makes it, and its behaviour is covered by `scripts/release-version.test.ts`. Between releases every `package.json` keeps the root's version: a package added with any other, copied from a sibling or from anywhere else, fails `Test / TypeScript` in the pull request that adds it, so the release commit never meets a file left behind. `mobile/pubspec.yaml` is not one of them: the app's version is given at build time with `--build-name`. The commit lands through a pull request like any other change:
 
 ```bash
-git tag -a 1.1.0 -m 1.1.0 origin/main
+git switch -c release/1.1.0 origin/main
+node scripts/release-version.ts set 1.1.0
+git commit --allow-empty -am "chore(release): 1.1.0"
+gh pr create --title "chore(release): 1.1.0"
+```
+
+Every release has one, even when every file already carries the number and the commit is empty, as it is for `0.1.0`, so the tag always goes on the commit that merges a release pull request. Once the pull request merges, tag the commit that merged it and push the tag; the workflow pushes the release's images and then creates the release. Do not create the release by hand first: a release that already exists has its notes replaced.
+
+```bash
+git fetch origin
+git tag -a 1.1.0 -m 1.1.0 <merge commit>
 git push origin 1.1.0
 ```
+
+`Check version` runs `node scripts/release-version.ts check` with the tag first, and a tag whose commit carries any other version in any of those files is refused before `Images` starts, so it pushes nothing to `ghcr.io` and publishes no Release; the job's log names each file that does not match. A prerelease such as `1.1.0-rc.1` is held to the same rule, so it gets a release commit of its own. A refused tag is deleted, locally and with `git push origin :refs/tags/<tag>`, and pushed again on the right commit.
 
 The notes cover the commits since the nearest earlier release tag the new one descends from, skipping prereleases unless the new tag is one. They open with **Upgrade notes**, holding the section of every pull request in that range that says more than `None.`, under the pull request's title, or a sentence saying no change asks anything. The list GitHub generates of every pull request in the range follows, and gives way to a comparison link when the two together would not fit in a release. The first release has no earlier one to upgrade from, so its Upgrade notes say so, and it has no list.
 
