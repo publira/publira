@@ -111,11 +111,11 @@ A release is cut from a release commit, which sets `version` in every `package.j
 ```bash
 git switch -c release/1.1.0 origin/main
 node scripts/release-version.ts set 1.1.0
-git commit -am "chore(release): 1.1.0"
+git commit --allow-empty -am "chore(release): 1.1.0"
 gh pr create --title "chore(release): 1.1.0"
 ```
 
-When every file already carries the number, there is no release commit to make, and the tag goes on that commit instead. Once the pull request merges, tag the commit that merged it and push the tag; the workflow pushes the release's images and then creates the release. Do not create the release by hand first: a release that already exists has its notes replaced.
+Every release has one, even when every file already carries the number and the commit is empty, as it is for `0.1.0`, so the tag always goes on the commit that merges a release pull request. Once the pull request merges, tag the commit that merged it and push the tag; the workflow pushes the release's images and then creates the release. Do not create the release by hand first: a release that already exists has its notes replaced.
 
 ```bash
 git fetch origin
