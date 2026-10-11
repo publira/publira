@@ -14,6 +14,8 @@ The repository layout, the toolchain, the verification commands, and the pull re
 
 What an install runs, the environment variables each process reads, and the order an empty install is brought into service in are in [infra/deploy/README.md](infra/deploy/README.md).
 
+The operator documentation, from bringing an install into service to upgrading it, is under [docs/en/2-deployments/](docs/en/2-deployments/index.md). [Releases](docs/en/2-deployments/7-releases.md) says what a `0.x` release may change and which releases receive fixes.
+
 ## Setup
 
 ```bash

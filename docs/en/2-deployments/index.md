@@ -2,7 +2,7 @@
 title: Deployments
 description: How a Publira install is put together and brought into service.
 published: 2026-10-04
-updated: 2026-10-06
+updated: 2026-10-11
 ---
 
 These pages are for the operator who deploys Publira. They describe what an install runs and what it depends on; how those parts are hosted — a Compose file, a Kubernetes cluster, a set of systemd units — is your choice.
@@ -15,5 +15,6 @@ These pages are for the operator who deploys Publira. They describe what an inst
 - [Reverse proxy](./4-reverse-proxy.md): putting a proxy with TLS in front of an install, and what to change on it when a tenant is added.
 - [Upgrading](./5-upgrading.md): bringing a running install to a new release, and what to do when a migration fails.
 - [Backup and restore](./6-backup-and-restore.md): what an install keeps, backing it up, and bringing it back on empty services.
+- [Releases](./7-releases.md): what a `0.x` version number tells you, what a minor and a patch release may change, and which releases receive fixes.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.
