@@ -20,7 +20,7 @@ import {
 } from "../src/scenarios/platform-tenants";
 import {
   WEB_ADMIN_INTERNAL_URL,
-  WEB_HOST_INTERNAL_URL,
+  WEB_STOREFRONT_INTERNAL_URL,
   WEB_PLATFORM_BASE_URL,
 } from "../src/urls";
 
@@ -202,30 +202,30 @@ test.describe("platform tenant operations", () => {
   });
 
   /**
-   * The hosts are made up per run, because web-host and web-admin each keep a
-   * host's tenant for minutes and a host reused across runs would answer from
-   * that cache. A made-up host is on no list of the edge's, so the browser
+   * The hosts are made up per run, because web-storefront and web-admin each
+   * keep a host's tenant for minutes and a host reused across runs would answer
+   * from that cache. A made-up host is on no list of the edge's, so the browser
    * reaches each app on its own port, and the tenant is stored on that port.
    */
-  test("domain / admin_domain reach tenant resolution in web-host and web-admin", async ({
+  test("domain / admin_domain reach tenant resolution in web-storefront and web-admin", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
     const name = `E2E Domain Tenant ${suffix}`;
     const hostname = `e2e-dom-${suffix}.localhost`;
     const adminHostname = `admin.${hostname}`;
-    const hostPort = new URL(WEB_HOST_INTERNAL_URL).port;
+    const storefrontPort = new URL(WEB_STOREFRONT_INTERNAL_URL).port;
     const adminPort = new URL(WEB_ADMIN_INTERNAL_URL).port;
-    const domain = `${hostname}:${hostPort}`;
+    const domain = `${hostname}:${storefrontPort}`;
     const adminDomain = `${adminHostname}:${adminPort}`;
 
     const tenantId = trackTenant(
       await createTenantViaUi(page, { adminDomain, domain, name })
     );
 
-    const hostBase = withHostname(WEB_HOST_INTERNAL_URL, hostname);
-    const hostResponse = await page.goto(`${hostBase}/`);
-    expect(hostResponse?.status(), await page.content()).toBe(200);
+    const storefrontBase = withHostname(WEB_STOREFRONT_INTERNAL_URL, hostname);
+    const storefrontResponse = await page.goto(`${storefrontBase}/`);
+    expect(storefrontResponse?.status(), await page.content()).toBe(200);
     // A brand new tenant has no work for the top page to open with, so the
     // first section heading is what says the page rendered.
     await expect(
@@ -252,15 +252,15 @@ test.describe("platform tenant operations", () => {
 
     const movedHostname = `e2e-dom2-${suffix}.localhost`;
     const movedAdminHostname = `admin.${movedHostname}`;
-    const movedDomain = `${movedHostname}:${hostPort}`;
+    const movedDomain = `${movedHostname}:${storefrontPort}`;
     const movedAdminDomain = `${movedAdminHostname}:${adminPort}`;
     await tenantDomainInput(page).fill(movedDomain);
     await tenantAdminDomainInput(page).fill(movedAdminDomain);
     await tenantDomainForm(page).getByRole("button", { name: "Save" }).click();
     await expect(formMessage(page)).toContainText("Saved.");
 
-    // DB is the source of truth; web-host keeps a positive-hit LRU for ~5 min so
-    // the old Host can still answer until the cache entry expires.
+    // DB is the source of truth; web-storefront keeps a positive-hit LRU for ~5
+    // min so the old Host can still answer until the cache entry expires.
     expect(
       querySql(`
         SELECT domain || '|' || COALESCE(admin_domain, '')
@@ -270,7 +270,7 @@ test.describe("platform tenant operations", () => {
       `)
     ).toBe(`${movedDomain}|${movedAdminDomain}`);
 
-    const movedHost = withHostname(WEB_HOST_INTERNAL_URL, movedHostname);
+    const movedHost = withHostname(WEB_STOREFRONT_INTERNAL_URL, movedHostname);
     const movedHostResponse = await page.goto(`${movedHost}/`);
     expect(movedHostResponse?.status(), await page.content()).toBe(200);
     await expect(page.getByRole("link", { exact: true, name })).toBeVisible();

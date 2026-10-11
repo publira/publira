@@ -155,7 +155,7 @@ fi
 # Router names Traefik loads from infra/proxy/traefik/dynamic/routes.yaml. A
 # list with no hosts leaves its router out.
 PUBLIRA_ROUTING_ROUTERS=(
-  web-host
+  web-storefront
   web-admin
   api
   images
@@ -678,15 +678,15 @@ assert_upload_delivered() {
   routing_log "ok: ${name} → ${want_backend}${path} with ${bytes} bytes and its headers intact"
 }
 
-# The edge answers and a listed site host reaches web-host. Readiness for the
-# proxies that publish no API of their own.
-edge_serves_web_host() {
+# The edge answers and a listed site host reaches web-storefront. Readiness for
+# the proxies that publish no API of their own.
+edge_serves_web_storefront() {
   local out code body
   out="$(http_probe GET localhost /)"
   code="$(printf '%s' "${out}" | sed -n '1p')"
   body="$(printf '%s' "${out}" | tail -n +2)"
   [[ "${code}" == "200" ]] || return 1
-  [[ "$(json_string_field "${body}" backend)" == "web-host" ]]
+  [[ "$(json_string_field "${body}" backend)" == "web-storefront" ]]
 }
 
 collect_diagnostics() {

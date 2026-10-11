@@ -78,9 +78,9 @@ export const SubmitContactMessageResponseSchema: GenMessage<SubmitContactMessage
   messageDesc(file_publira_v1_contact, 1);
 
 /**
- * `web-host` forwards an inbound email provider's raw request body and headers
- * to this RPC. Verifying the request and reading the mail out of it stay on
- * the API server, with the credentials the provider declares.
+ * `web-storefront` forwards an inbound email provider's raw request body and
+ * headers to this RPC. Verifying the request and reading the mail out of it
+ * stay on the API server, with the credentials the provider declares.
  *
  * @generated from message publira.v1.ProcessInboundEmailWebhookRequest
  */

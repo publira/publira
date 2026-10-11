@@ -12,9 +12,9 @@ import {
 } from "../src/scenarios/email-rejection";
 import { disposableEmailDomains } from "../src/sign-in-provider";
 import {
-  hostPath,
+  storefrontPath,
   WEB_ADMIN_EMAIL_REJECTION_BASE_URL,
-  WEB_HOST_EMAIL_REJECTION_BASE_URL,
+  WEB_STOREFRONT_EMAIL_REJECTION_BASE_URL,
 } from "../src/urls";
 
 /**
@@ -25,7 +25,7 @@ import {
  * is what turns a sign-up the stack accepted into one it refuses.
  */
 
-const signupUrl = `${WEB_HOST_EMAIL_REJECTION_BASE_URL}${hostPath("/signup")}`;
+const signupUrl = `${WEB_STOREFRONT_EMAIL_REJECTION_BASE_URL}${storefrontPath("/signup")}`;
 
 const SAVE = "Save the refused email addresses";
 const SAVED = "The refused email addresses were saved.";

@@ -15,7 +15,7 @@ The host name picks a web app, and the proxy routes only the host names you list
 
 | Host | Listed in | Process |
 | --- | --- | --- |
-| A tenant's domain | `PUBLIRA_EDGE_SITE_HOSTS` | `web-host` |
+| A tenant's domain | `PUBLIRA_EDGE_SITE_HOSTS` | `web-storefront` |
 | A tenant's console host: `admin.<domain>`, or the one it was given with `--admin-domain` | `PUBLIRA_EDGE_ADMIN_HOSTS` | `web-admin` |
 | The Platform Console's host, such as `platform.example.com`, when you run it | `PUBLIRA_EDGE_PLATFORM_HOSTS` | `web-platform` |
 
@@ -40,12 +40,12 @@ The repository ships the same routing for three proxies. Take the files of the o
 
 Each sample keeps the backend addresses apart from the routing, and the committed addresses name the development container, so they are the first thing you replace:
 
-| Backend        | Address                                                    |
-| -------------- | ---------------------------------------------------------- |
-| `web-host`     | `web-host`, on the port it listens on                      |
-| `web-admin`    | `web-admin`, on the port it listens on                     |
+| Backend | Address |
+| --- | --- |
+| `web-storefront` | `web-storefront`, on the port it listens on |
+| `web-admin` | `web-admin`, on the port it listens on |
 | `web-platform` | `web-platform`, on the port it listens on, when you run it |
-| `api`          | The edge listener of `publira server`, port `8000`         |
+| `api` | The edge listener of `publira server`, port `8000` |
 
 The internal listener of `publira server`, port `8100`, is for the web apps alone. The proxy never forwards to it, so keep it off any network the proxy is reachable from.
 
@@ -251,7 +251,7 @@ Outside services post to a URL on the tenant's site, under `/api/v1/webhook/`:
 - **Payment providers** report payments under `/api/v1/webhook/payment/`, such as `https://comics.example.com/api/v1/webhook/payment/stripe`. The tenant console shows the exact URL to register with each provider: **Webhook URL** under **Payment settings**, and **App Store Server Notifications URL** under **In-app purchase**. Endpoints registered with Stripe before that layout, at `/api/v1/webhook/stripe`, still reach the install, though that path is deprecated.
 - **Inbound email providers** post a reader's emailed reply to a contact message under `/api/v1/webhook/email/`: `/api/v1/webhook/email/sendgrid` for SendGrid Inbound Parse, `/api/v1/webhook/email/resend` for Resend.
 
-The routing above already sends every one of them to `web-host`, so no rule names a webhook path. What the proxy has to allow:
+The routing above already sends every one of them to `web-storefront`, so no rule names a webhook path. What the proxy has to allow:
 
 - **The provider reaches the path from the internet.** An IP allowlist, a sign-in prompt, or a bot challenge in front of the tenant's site has to let these requests through, or payments are taken and never recorded, and replies never reach the console.
 - **The body arrives as the provider sent it.** Each notification is signed over its exact bytes, so a rule on this path that rewrites request bodies makes Publira refuse it.

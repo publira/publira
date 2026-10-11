@@ -1,6 +1,6 @@
 -- Scenario: a member whose email address the email-change E2E may rewrite
 --
--- `host.email-change.spec.ts` runs the address change to its end: it requests
+-- `storefront.email-change.spec.ts` runs the address change to its end: it requests
 -- one, opens the confirmation link mailed to each side, and then signs in with
 -- the address the account has moved to. Neither the dev seed member nor the
 -- settings member can absorb that — both are the address another suite signs in

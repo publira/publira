@@ -6,10 +6,10 @@
 # host is a 502 and every other route is unaffected.
 http:
   services:
-    web-host:
+    web-storefront:
       loadBalancer:
         servers:
-          - url: "http://web-host:3000"
+          - url: "http://web-storefront:3000"
 
     web-admin:
       loadBalancer:

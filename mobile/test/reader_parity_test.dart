@@ -6,8 +6,8 @@ import 'package:publira/router.dart';
 
 /// The app routes `integration_test/reader_parity.json` names as the way to
 /// each public-reader capability. `scripts/check-reader-parity.ts` holds the
-/// rest of the matrix to web-host and to the app's calls; only the router can
-/// say whether a route pattern is one it serves.
+/// rest of the matrix to web-storefront and to the app's calls; only the router
+/// can say whether a route pattern is one it serves.
 List<String> _mobileRoutes() {
   final matrix =
       jsonDecode(File('integration_test/reader_parity.json').readAsStringSync())

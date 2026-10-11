@@ -8,7 +8,7 @@ test.describe("web-admin client catalog", () => {
     await signInAsSeedAdmin(page, "/");
 
     await expectDocumentWithoutCatalogNamespaces(page, "/", {
-      excluded: ["host", "mobile", "email", "platform"],
+      excluded: ["storefront", "mobile", "email", "platform"],
       included: ["admin", "errors", "locale"],
     });
   });

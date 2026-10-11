@@ -10,9 +10,9 @@ A Publira install is made of four long-lived processes, a handful of services th
 
 | Process | Serves | Reached by |
 | --- | --- | --- |
-| `web-host` | The public site of every tenant | The reverse proxy, on each tenant's domain |
+| `web-storefront` | The public site of every tenant | The reverse proxy, on each tenant's domain |
 | `web-admin` | The tenant console | The reverse proxy, on each tenant's console host, `admin.<domain>` unless the tenant was given another |
-| `publira server` | The public API and image delivery on its edge listener, and the API the web apps call on its internal listener | The reverse proxy, on `/api` and `/images`; `web-host` and `web-admin`, on the internal listener |
+| `publira server` | The public API and image delivery on its edge listener, and the API the web apps call on its internal listener | The reverse proxy, on `/api` and `/images`; `web-storefront` and `web-admin`, on the internal listener |
 | `publira worker` | Outgoing mail and push notifications, cache revalidation, and every scheduled job | Nothing; it only answers health checks |
 
 Every process answers `GET /livez` and `GET /readyz`, so an orchestrator can probe it. The web apps are built from one image and `publira server` and `publira worker` from another; the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) list them.
@@ -23,7 +23,7 @@ Every process answers `GET /livez` and `GET /readyz`, so an orchestrator can pro
 | --- | --- | --- |
 | A reverse proxy | Browsers and the mobile app | The routing that sends each host and path to the right process |
 | PostgreSQL | Every process | Everything the install stores |
-| Valkey, or any Redis-protocol server | `publira server`, `web-host`, `web-admin` | The image conversion cache, the rate limit counters, and the web apps' shared cache |
+| Valkey, or any Redis-protocol server | `publira server`, `web-storefront`, `web-admin` | The image conversion cache, the rate limit counters, and the web apps' shared cache |
 | An S3-compatible object store | `publira server`, `publira worker` | Every uploaded image |
 | An SMTP server | `publira worker` | Nothing; it delivers the mail the install sends, such as reader sign-up and password reset |
 

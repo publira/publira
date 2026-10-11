@@ -10,9 +10,9 @@ The images are built from [`infra/docker/`](../docker/README.md), and the revers
 
 | Process | Image | Serves | Reached by |
 | --- | --- | --- | --- |
-| `web-host` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-host` | The public tenant site | The reverse proxy, on each tenant's domain |
+| `web-storefront` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-storefront` | The public tenant site | The reverse proxy, on each tenant's domain |
 | `web-admin` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-admin` | The tenant console | The reverse proxy, on each tenant's console host: the one it was given with `--admin-domain`, or `admin.<domain>` without one |
-| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | The public API and image delivery on its edge listener (`:8000`), and every Connect namespace on its internal listener (`:8100`) | The reverse proxy, on `/api` and `/images`; `web-host` and `web-admin`, on the internal listener |
+| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | The public API and image delivery on its edge listener (`:8000`), and every Connect namespace on its internal listener (`:8100`) | The reverse proxy, on `/api` and `/images`; `web-storefront` and `web-admin`, on the internal listener |
 | `publira worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker` as the container argument | The Outbox drain — mail, push, cache revalidation — and every scheduled job | Nothing; it serves `/livez` and `/readyz` on `:8003` |
 
 Every one of them serves `GET /livez` and `GET /readyz` for the orchestrator's probes.
@@ -23,7 +23,7 @@ Every one of them serves `GET /livez` and `GET /readyz` for the orchestrator's p
 | --- | --- | --- |
 | A reverse proxy | Browsers and the mobile app | The routing in [`infra/proxy/README.md`](../proxy/README.md), from one of the sample configurations there, given the install's hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` |
 | PostgreSQL | Every process | Everything the install stores |
-| Valkey, or any Redis-protocol server | `publira server`, `web-host`, `web-admin` | The image conversion cache, the rate limit counters, and the Next.js cache |
+| Valkey, or any Redis-protocol server | `publira server`, `web-storefront`, `web-admin` | The image conversion cache, the rate limit counters, and the Next.js cache |
 | An S3-compatible object store | `publira server`, `publira worker` | Every uploaded image. The bucket is created by the operator; `publiractl` saves where it is |
 | An SMTP server | `publira worker` | The mail the install sends: reader sign-up, password reset, administrator invitations |
 
@@ -40,13 +40,13 @@ The [`infra/docker/publiractl`](../docker/publiractl/Dockerfile) image carries `
 
 ## Environment variables
 
-What the minimal install sets on each process. Every variable not listed here is optional, and the README of the process that reads it says what it tunes: [`publira server` and `publira worker`](../../server/cmd/publira/README.md), [`publiractl`](../../server/cmd/publiractl/README.md), [`web-host`](../../apps/web-host/README.md), and [`web-admin`](../../apps/web-admin/README.md).
+What the minimal install sets on each process. Every variable not listed here is optional, and the README of the process that reads it says what it tunes: [`publira server` and `publira worker`](../../server/cmd/publira/README.md), [`publiractl`](../../server/cmd/publiractl/README.md), [`web-storefront`](../../apps/web-storefront/README.md), and [`web-admin`](../../apps/web-admin/README.md).
 
 ### Shared values
 
 Each row is one value, set under the name each process reads it by.
 
-| Value | `web-host` | `web-admin` | `publira server` | `publira worker` | `publiractl` |
+| Value | `web-storefront` | `web-admin` | `publira server` | `publira worker` | `publiractl` |
 | --- | --- | --- | --- | --- | --- |
 | The secret encryption keys | — | — | `PUBLIRA_SECRET_ENCRYPTION_KEYS`, `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` | the same | the same |
 | The cache revalidation token | `PNCH_REVALIDATE_TOKEN` | `PNCH_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | — |
@@ -61,11 +61,11 @@ The secret encryption keys seal the SMTP password, the object store's access key
 
 | Process | Variable | Value |
 | --- | --- | --- |
-| `web-host`, `web-admin` | `PUBLIRA_GRPC_URL` | The internal listener of `publira server`, such as `http://publira-server:8100` |
-| `web-host`, `web-admin` | `PUBLIRA_AUTH_SECRET` | The key the app seals its session cookie with, at least 32 bytes. The two apps need not share one |
+| `web-storefront`, `web-admin` | `PUBLIRA_GRPC_URL` | The internal listener of `publira server`, such as `http://publira-server:8100` |
+| `web-storefront`, `web-admin` | `PUBLIRA_AUTH_SECRET` | The key the app seals its session cookie with, at least 32 bytes. The two apps need not share one |
 | `publira server` | `PUBLIRA_AUTH_JWT_SECRET` | The key access tokens are signed with, at least 32 bytes |
 | `publira server` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL` | The `publira_public` and `publira_admin` connections |
-| `publira server`, `publira worker` | `PUBLIRA_WEB_HOST_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL` | The private network URLs of `web-host` and `web-admin`, such as `http://web-host:3000`, where the cache revalidation is sent |
+| `publira server`, `publira worker` | `PUBLIRA_WEB_STOREFRONT_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL` | The private network URLs of `web-storefront` and `web-admin`, such as `http://web-storefront:3000`, where the cache revalidation is sent |
 | `publira worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The `publira_outbox`, `publira_ticker`, and `publira_content_stats` connections |
 | `publiractl` | `PUBLIRA_DB_URL` | The superuser connection, read by the `db` commands alone |
 
@@ -108,7 +108,7 @@ Before the first step, provision the dependency services: a PostgreSQL database 
 
    Its summary names the tenant site and the tenant console, and prints the administrator's password when it generated one.
 
-5. **Put the reverse proxy in front** of `web-host`, `web-admin`, and the edge listener of `publira server`, with the tenant's domain in `PUBLIRA_EDGE_SITE_HOSTS`, its console host in `PUBLIRA_EDGE_ADMIN_HOSTS`, and TLS for both host names. The administrator signs in to the tenant console at `https://admin.<domain>`.
+5. **Put the reverse proxy in front** of `web-storefront`, `web-admin`, and the edge listener of `publira server`, with the tenant's domain in `PUBLIRA_EDGE_SITE_HOSTS`, its console host in `PUBLIRA_EDGE_ADMIN_HOSTS`, and TLS for both host names. The administrator signs in to the tenant console at `https://admin.<domain>`.
 
 On every later release, run `db migrate` and then `db roles` with that release's publiractl image before its processes start. [Upgrading](../../docs/en/2-deployments/5-upgrading.md) is the full procedure, with the backup before it and what to do when a migration fails.
 
@@ -122,7 +122,7 @@ On every later release, run `db migrate` and then `db roles` with that release's
 | [`.env.example`](.env.example) | Every variable `compose.yaml` reads. Copy it to `.env` beside it and fill in every empty value; a required one left empty stops `docker compose` before anything starts |
 | [`services.yaml`](services.yaml) | Traefik's backend addresses, naming the Compose services. The routing is [`routes.yaml`](../proxy/traefik/dynamic/routes.yaml), mounted as it stands |
 
-The images are `${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}`, where `<name>` is `publira`, `publiractl`, `web-host`, `web-admin`, `web-platform`, or `email-renderer`; `task docker:verify:full` builds them all as `publira/<name>:local`. The edge publishes plain HTTP on `127.0.0.1:${PUBLIRA_EDGE_PORT}`, which whatever terminates TLS on the host forwards to, and routes the hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` and no others. `PUBLIRA_EDGE_TRUSTED_PROXIES` lists, separated by commas, the addresses the edge trusts to name the client address in `X-Forwarded-For`: the gateway of the install's Docker network, which a terminator on the host reaches it from. Empty, it trusts none, and records every request with the terminator's address. `PUBLIRA_TENANT_URL_SCHEME` is the scheme of tenant links. Empty means https.
+The images are `${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}`, where `<name>` is `publira`, `publiractl`, `web-storefront`, `web-admin`, `web-platform`, or `email-renderer`; `task docker:verify:full` builds them all as `publira/<name>:local`. The edge publishes plain HTTP on `127.0.0.1:${PUBLIRA_EDGE_PORT}`, which whatever terminates TLS on the host forwards to, and routes the hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` and no others. `PUBLIRA_EDGE_TRUSTED_PROXIES` lists, separated by commas, the addresses the edge trusts to name the client address in `X-Forwarded-For`: the gateway of the install's Docker network, which a terminator on the host reaches it from. Empty, it trusts none, and records every request with the terminator's address. `PUBLIRA_TENANT_URL_SCHEME` is the scheme of tenant links. Empty means https.
 
 The optional processes run when `COMPOSE_PROFILES` names them — `web-platform`, `email-renderer`, or both, comma-separated — together with the variables `.env.example` lists under each.
 

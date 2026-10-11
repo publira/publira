@@ -94,14 +94,14 @@ export const LOCALE_LANG_SCRIPT = `(function(){try{var s=${JSON.stringify(getLoc
  * Source of the inline `<head>` script that applies the locale the **URL**
  * names to `<html lang>`, for an app that keeps the locale in the path.
  *
- * `web-host` serves the tenant's default locale from an unprefixed path and
- * every other locale from `/{locale}/...`, so the first path segment names the
- * locale in every case but the default one — and there
+ * `web-storefront` serves the tenant's default locale from an unprefixed path
+ * and every other locale from `/{locale}/...`, so the first path segment names
+ * the locale in every case but the default one — and there
  * {@link RESOLVED_LOCALE_COOKIE_NAME} carries the default the proxy resolved
  * for this very response. The script reads the two in that order and applies a
  * value only when it is one of {@link getLocales}; anything else leaves the
- * attribute exactly as the server rendered it, so nothing here turns "no
- * locale was resolved" into a language.
+ * attribute exactly as the server rendered it, so nothing here turns "no locale
+ * was resolved" into a language.
  *
  * The attribute is written rather than rendered because the element that
  * carries it belongs to a root layout, and a root layout does not read: an

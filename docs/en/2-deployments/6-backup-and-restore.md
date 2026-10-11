@@ -132,7 +132,7 @@ Add `--endpoint` and `--force-path-style` for a store other than Amazon S3; ever
 
 ### 4. Start the processes
 
-Start `publira server`, `publira worker`, `web-host`, and `web-admin`, and `web-platform` and `email-renderer` if you run them, with the encryption keys the install ran with. The other secrets may be the ones you kept or new ones, set as [Generate the secrets](./2-installing.md#generate-the-secrets) describes.
+Start `publira server`, `publira worker`, `web-storefront`, and `web-admin`, and `web-platform` and `email-renderer` if you run them, with the encryption keys the install ran with. The other secrets may be the ones you kept or new ones, set as [Generate the secrets](./2-installing.md#generate-the-secrets) describes.
 
 Start them on an empty Valkey. A Valkey that served the install before the restore holds pages and images cached from data the restore took back, and the web apps would keep serving them until each entry expires. If it serves nothing else, empty it with `FLUSHALL`.
 

@@ -1,16 +1,17 @@
 /**
- * Fail when a public-reader capability of web-host has no place in the mobile
- * app's parity matrix.
+ * Fail when a public-reader capability of web-storefront has no place in the
+ * mobile app's parity matrix.
  *
  *     node scripts/check-reader-parity.ts
  *
  * `mobile/integration_test/reader_parity.json` lists what a reader can do on
  * the storefront, each with the app's way to do the same thing or an explicit
- * exception saying why the app has none. A capability is what web-host serves
- * to a reader: every page under `[tenant_id]/[locale]`, every route handler
- * under `[tenant_id]/api`, and every public API call it makes, through
- * whichever variable holds the client. Each of those has to be claimed by an entry, so a new page or a
- * new call fails here until whoever adds it says where the app stands.
+ * exception saying why the app has none. A capability is what web-storefront
+ * serves to a reader: every page under `[tenant_id]/[locale]`, every route
+ * handler under `[tenant_id]/api`, and every public API call it makes, through
+ * whichever variable holds the client. Each of those has to be claimed by an
+ * entry, so a new page or a new call fails here until whoever adds it says
+ * where the app stands.
  *
  * The matrix is also held to what it claims: a web route or call it names must
  * still exist, an app call it names must be one the app makes, and a test it
@@ -24,8 +25,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-const WEB_APP_ROOT = "apps/web-host/app/[tenant_id]";
-const WEB_SOURCE_ROOT = "apps/web-host";
+const WEB_APP_ROOT = "apps/web-storefront/app/[tenant_id]";
+const WEB_SOURCE_ROOT = "apps/web-storefront";
 const PUBLIC_CLIENT_PATH = "packages/api-client/src/public/client.ts";
 const PUBLIC_PROTO_ROOT = "proto/publira/v1";
 const MOBILE_SOURCE_ROOT = "mobile/lib";
@@ -125,7 +126,7 @@ export const webCallsIn = (
   return methodsIn(source, call).filter((method) => rpcs.has(method));
 };
 
-/** What an entry says web-host serves, held to what web-host still serves. */
+/** What an entry says web-storefront serves, held to what web-storefront still serves. */
 const webProblems = (
   capability: Capability,
   inventory: Inventory
@@ -134,13 +135,13 @@ const webProblems = (
     .filter((route) => !inventory.webRoutes.has(route))
     .map(
       (route) =>
-        `"${capability.name}" names the web route ${route}, which web-host no longer serves.`
+        `"${capability.name}" names the web route ${route}, which web-storefront no longer serves.`
     ),
   ...(capability.web.rpcs ?? [])
     .filter((rpc) => !inventory.webRpcs.has(rpc))
     .map(
       (rpc) =>
-        `"${capability.name}" names the web call ${rpc}, which web-host no longer makes.`
+        `"${capability.name}" names the web call ${rpc}, which web-storefront no longer makes.`
     ),
 ];
 
@@ -205,7 +206,7 @@ const unclaimed = (
     .toSorted()
     .map(
       (item) =>
-        `web-host ${kind} ${item}, which ${MATRIX_PATH} does not list: name the app's path to it, or the exception.`
+        `web-storefront ${kind} ${item}, which ${MATRIX_PATH} does not list: name the app's path to it, or the exception.`
     );
 
 export const findProblems = (
@@ -299,7 +300,7 @@ const main = async (): Promise<void> => {
   }
 
   console.log(
-    `${MATRIX_PATH}: every public-reader capability of web-host has a mobile path or an exception.`
+    `${MATRIX_PATH}: every public-reader capability of web-storefront has a mobile path or an exception.`
   );
 };
 

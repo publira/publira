@@ -6,7 +6,7 @@ published: 2026-10-06
 
 This page takes an install from nothing to a tenant console its first administrator signs in to. It follows the order the steps have to run in and explains what each one decides; the full list of variables each process reads, and every flag of `publiractl`, stay in the reference linked from each step.
 
-It describes the smallest install, the one in the [Overview](./1-overview.md): `web-host`, `web-admin`, `publira server`, and `publira worker`, managed from `publiractl`. [Turning on the optional processes](#turning-on-the-optional-processes) at the end adds the HTML mail and the Platform Console.
+It describes the smallest install, the one in the [Overview](./1-overview.md): `web-storefront`, `web-admin`, `publira server`, and `publira worker`, managed from `publiractl`. [Turning on the optional processes](#turning-on-the-optional-processes) at the end adds the HTML mail and the Platform Console.
 
 ## Before you start
 
@@ -21,7 +21,7 @@ To run the whole install on one host, the Compose file in the repository provisi
 Create these before the first step. Publira creates everything inside them, so each one starts empty.
 
 - **A PostgreSQL database**, and a superuser login on it. Only `publiractl db migrate` and `publiractl db roles` connect as the superuser: `db roles` creates the login roles and an event trigger, which only a superuser may do. No long-lived process ever uses this login.
-- **A Valkey instance**, or any server that speaks the Redis protocol. `publira server`, `web-host`, and `web-admin` share it for the image conversion cache, the rate limit counters, and the web apps' cache. A connection that carries a password has to use `rediss://`, with TLS: `publira server` refuses to start on a `redis://` URL with a password in it.
+- **A Valkey instance**, or any server that speaks the Redis protocol. `publira server`, `web-storefront`, and `web-admin` share it for the image conversion cache, the rate limit counters, and the web apps' cache. A connection that carries a password has to use `rediss://`, with TLS: `publira server` refuses to start on a `redis://` URL with a password in it.
 - **An empty bucket** in an S3-compatible object store, and a credential that can read and write it. Every uploaded image is kept there. `publiractl setup` saves the bucket and the credential, so the processes need nothing else to reach it. If the processes should use a credential from their environment instead, such as an instance role, leave the access key out at setup and give `publira server`, `publira worker`, and `publiractl` the `AWS_*` variables.
 - **An SMTP account**: its host, port, encryption, user name and password, and the address mail is sent from. Reader sign-up, password reset, and administrator invitations all go through it.
 - **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the reverse proxy. The first serves the tenant's public site and the second its console. If the console belongs on another host name, choose it now: `publiractl setup` takes it as `--admin-domain`.
@@ -34,8 +34,8 @@ An install needs a handful of secrets that only you hold. Generate a fresh set f
 | --- | --- | --- | --- |
 | The secret encryption keys | `k1:$(openssl rand -base64 32)` as `PUBLIRA_SECRET_ENCRYPTION_KEYS`, and `k1` as `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` | `publira server`, `publira worker`, `publiractl` | Every credential the install stores: the SMTP password, the object store's secret key, the search engine's password, the Web Push private key, and each tenant's payment, push, and sign-in credentials |
 | The access token signing key | `openssl rand -base64 32` as `PUBLIRA_AUTH_JWT_SECRET` | `publira server` | Every signed-in session. Whoever holds it can sign a token for any user and call every API as them |
-| Each web app's session key | `openssl rand -base64 32` as that app's `PUBLIRA_AUTH_SECRET` | `web-host` and `web-admin`, one each | The session cookie, which carries the user's access token. The two apps may share one, but need not |
-| The cache revalidation token | `openssl rand -hex 32` | `publira server` and `publira worker` as `PUBLIRA_REVALIDATE_TOKEN`, `web-host` and `web-admin` as `PNCH_REVALIDATE_TOKEN` | The endpoint the servers call to drop a web app's cached pages after a change. Without it the servers send nothing, and the web apps keep serving what they cached before the change |
+| Each web app's session key | `openssl rand -base64 32` as that app's `PUBLIRA_AUTH_SECRET` | `web-storefront` and `web-admin`, one each | The session cookie, which carries the user's access token. The two apps may share one, but need not |
+| The cache revalidation token | `openssl rand -hex 32` | `publira server` and `publira worker` as `PUBLIRA_REVALIDATE_TOKEN`, `web-storefront` and `web-admin` as `PNCH_REVALIDATE_TOKEN` | The endpoint the servers call to drop a web app's cached pages after a change. Without it the servers send nothing, and the web apps keep serving what they cached before the change |
 | The web service token | `openssl rand -base64 32` as `PUBLIRA_WEB_SERVICE_TOKEN` | `publira server` and `web-admin` | The reads the console makes as itself rather than as one of its staff, such as the catalog lists every staff member sees alike, so it can cache them once for all of them. `web-admin` does not start without it |
 | One password per database role | `openssl rand -hex 32`, six times | `publiractl db roles`, and the connection URL of the process that uses the role | The database itself. A connection URL carries the password unescaped, so keep to URL-safe characters, as the hex output does |
 
@@ -86,7 +86,7 @@ Running it again changes nothing but the passwords it is given, so it is also ho
 
 ### 3. Start the four processes
 
-Start `publira server`, `publira worker`, `web-host`, and `web-admin` with the variables in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables). Each connection URL names its role and the password `db roles` gave it, such as `postgres://publira_public:<password>@db.internal:5432/publira?sslmode=require` for `PUBLIRA_PUBLIC_DB_URL`. Set every one of them: a connection URL left unset falls back to a development URL, not to another of your variables, and fails to sign in.
+Start `publira server`, `publira worker`, `web-storefront`, and `web-admin` with the variables in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables). Each connection URL names its role and the password `db roles` gave it, such as `postgres://publira_public:<password>@db.internal:5432/publira?sslmode=require` for `PUBLIRA_PUBLIC_DB_URL`. Set every one of them: a connection URL left unset falls back to a development URL, not to another of your variables, and fails to sign in.
 
 `publira worker` creates the tables of its job queue when it starts, so it needs no step of its own. `publira server` and `publira worker` each report one check per database login in `GET /readyz`, so a role whose password does not match is named there.
 
@@ -122,7 +122,7 @@ The summary at the end names the tenant site and the tenant console, and prints 
 Route the two host names to the processes:
 
 - `admin.<domain>`, or the console host you chose, to `web-admin`.
-- The tenant's domain to `web-host`.
+- The tenant's domain to `web-storefront`.
 - `/api` and `/images` on either host to the edge listener of `publira server`, except `/api/v1`, which belongs to the web app the host picked.
 
 The proxy routes only the host names you list, and answers any other with a 404 of its own. The repository ships sample configurations for Traefik, nginx, and Caddy, which read the lists from environment variables: the tenant's domain goes in `PUBLIRA_EDGE_SITE_HOSTS`, and its console host in `PUBLIRA_EDGE_ADMIN_HOSTS`.
@@ -153,6 +153,6 @@ Open it and create its first operator on the setup screen. That operator is sepa
 
 ## Next steps
 
-The full list of variables each process reads is in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md), and the optional ones in the READMEs of [`publira server` and `publira worker`](https://github.com/publira/publira/blob/main/server/cmd/publira/README.md), [`web-host`](https://github.com/publira/publira/blob/main/apps/web-host/README.md), [`web-admin`](https://github.com/publira/publira/blob/main/apps/web-admin/README.md), and [`web-platform`](https://github.com/publira/publira/blob/main/apps/web-platform/README.md). Every `publiractl` command is in the [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md).
+The full list of variables each process reads is in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md), and the optional ones in the READMEs of [`publira server` and `publira worker`](https://github.com/publira/publira/blob/main/server/cmd/publira/README.md), [`web-storefront`](https://github.com/publira/publira/blob/main/apps/web-storefront/README.md), [`web-admin`](https://github.com/publira/publira/blob/main/apps/web-admin/README.md), and [`web-platform`](https://github.com/publira/publira/blob/main/apps/web-platform/README.md). Every `publiractl` command is in the [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md).
 
 On every later release, [Upgrading](./5-upgrading.md) brings the install forward: the migrations and the roles first, with that release's `publiractl` image, and then its processes.

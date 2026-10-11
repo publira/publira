@@ -49,7 +49,7 @@ while ((SECONDS < deadline)); do
       routing_log "ok: ${#PUBLIRA_ROUTING_ROUTERS[@]} routers + ${#PUBLIRA_ROUTING_MIDDLEWARES[@]} middlewares advertised"
       exit 0
     fi
-  elif edge_serves_web_host; then
+  elif edge_serves_web_storefront; then
     routing_log "ok: the edge answers on :${PUBLIRA_ROUTING_EDGE_PORT}"
     exit 0
   fi
@@ -64,4 +64,4 @@ if [[ "${traefik_api}" == "1" ]]; then
   routing_fail "readiness failed: traefik-routers"
 fi
 
-routing_fail "readiness failed: the ${PUBLIRA_ROUTING_PROXY} edge did not serve web-host on :${PUBLIRA_ROUTING_EDGE_PORT}"
+routing_fail "readiness failed: the ${PUBLIRA_ROUTING_PROXY} edge did not serve web-storefront on :${PUBLIRA_ROUTING_EDGE_PORT}"

@@ -8,7 +8,7 @@ import { querySql } from "./db";
  * gives it back.
  */
 export const STUB_PUSH_ENDPOINT =
-  "https://push.e2e.test/subscriptions/host-e2e";
+  "https://push.e2e.test/subscriptions/storefront-e2e";
 
 /**
  * The VAPID public key this stack's API publishes, which is what the browser
@@ -39,7 +39,7 @@ const vapidPublicKey = (): string => {
  * the spec asserts is still the app's own sequence.
  *
  * `subscribe` checks its arguments rather than ignoring them. A stub that
- * accepted anything would pass just as well if web-host stopped sending
+ * accepted anything would pass just as well if web-storefront stopped sending
  * `userVisibleOnly`, or sent a key that was not this tenant's — the two things
  * a real push service would reject the subscription over, and the two a test
  * against a stub would otherwise never see.

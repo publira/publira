@@ -1,9 +1,9 @@
 -- Scenario: a tenant that names its terms of service and privacy policy
 --
--- `host.signup-consent.spec.ts` signs a reader up where the sign-up form asks
+-- `storefront.signup-consent.spec.ts` signs a reader up where the sign-up form asks
 -- for consent to those two pages. The nomination is one setting for a whole
 -- tenant, so the tenant that asks cannot be the development seed one, whose
--- sign-up `host.account-lifecycle.spec.ts` drives without a consent control.
+-- sign-up `storefront.account-lifecycle.spec.ts` drives without a consent control.
 --
 -- The terms page has a superseded version before the published one, so the
 -- version the suite reads back is not simply the page's only one. Only the

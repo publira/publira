@@ -329,8 +329,8 @@ func TestGetTenantAnswersNoThemeWithoutAThemeRow(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
-// web-host caches whatever GetTenant answers, so a failed branding read answered
-// as a tenant without a theme would be served as that tenant's brand.
+// web-storefront caches whatever GetTenant answers, so a failed branding read
+// answered as a tenant without a theme would be served as that tenant's brand.
 func TestGetTenantFailsWhenTheBrandingCannotBeRead(t *testing.T) {
 	iconImageID := uuid.Must(uuid.NewV7())
 	readFailure := errors.New("connection reset by peer")

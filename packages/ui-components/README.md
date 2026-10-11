@@ -1,6 +1,6 @@
 # @publira/ui-components
 
-The UI components shared by web-admin, web-host, and the other apps.
+The UI components shared by web-admin, web-storefront, and the other apps.
 
 ## Principles
 

@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
-import { WEB_HOST_BASE_URL } from "./urls";
+import { WEB_STOREFRONT_BASE_URL } from "./urls";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 
@@ -45,7 +45,7 @@ export const applyScenarioSql = (name: string): void => {
       "-v",
       "ON_ERROR_STOP=1",
       "-v",
-      `tenant_port=${new URL(WEB_HOST_BASE_URL).port}`,
+      `tenant_port=${new URL(WEB_STOREFRONT_BASE_URL).port}`,
       "-f",
       sqlPath,
     ],

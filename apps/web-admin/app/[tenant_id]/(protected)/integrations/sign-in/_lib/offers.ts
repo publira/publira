@@ -21,7 +21,7 @@ export interface SignInOffers {
  *
  * This repeats the conditions the clients apply rather than inventing its own:
  * the storefront offers a provider through its Services ID or Web client ID
- * (`getTenantSignInClients` in web-host), and the app through the clients
+ * (`getTenantSignInClients` in web-storefront), and the app through the clients
  * `offeredProviders` in `mobile/lib/auth/provider_sign_in.dart` picks for its
  * platform. Neither is reachable from here, so a change to one of them changes
  * this as well.

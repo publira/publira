@@ -151,7 +151,7 @@ abstract class CatalogRepository {
   });
 
   /// Detail for [publicId]. Returns `null` when the series is missing,
-  /// unpublished, or not in this tenant (same 404 policy as web-host).
+  /// unpublished, or not in this tenant (same 404 policy as web-storefront).
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<SeriesDetail?> getSeries(String publicId);
 
@@ -227,7 +227,7 @@ abstract class CatalogRepository {
 
   /// Body of [episodePublicId] for the reader. Returns `null` when the episode
   /// is missing, unpublished, not in this tenant, or belongs to a series other
-  /// than [seriesPublicId] (same 404 policy as web-host).
+  /// than [seriesPublicId] (same 404 policy as web-storefront).
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<EpisodeDetail?> getEpisode(
     String seriesPublicId,

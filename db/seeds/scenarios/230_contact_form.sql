@@ -1,6 +1,6 @@
 -- Scenario: a reader who sends the tenant a message from the contact form
 --
--- `host.contact-form.spec.ts` follows the date of birth copy on the settings
+-- `storefront.contact-form.spec.ts` follows the date of birth copy on the settings
 -- screen to the contact form, which only a reader with a stored birth date is
 -- shown, and sends a message as that reader and as a guest. The dev seed
 -- member has no birth date, and giving it one would change what the settings

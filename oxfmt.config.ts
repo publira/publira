@@ -7,7 +7,7 @@ const sortTailwindcss = (
     ? ultracite.sortTailwindcss
     : {
         ...ultracite.sortTailwindcss,
-        stylesheet: "apps/web-host/app/globals.css",
+        stylesheet: "apps/web-storefront/app/globals.css",
       }
 ) satisfies SortTailwindcssUserConfig;
 

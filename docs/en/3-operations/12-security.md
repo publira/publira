@@ -31,7 +31,7 @@ Give each secret only to the processes that read it. A process that does not nee
 | The access token signing key, `PUBLIRA_AUTH_JWT_SECRET` | `publira server` | Everything else | Sign a session for any reader, member of staff, or operator |
 | Each web app's session key, `PUBLIRA_AUTH_SECRET` | That web app | `publira server`, `publira worker` | Read and forge that app's session cookies, which carry the user's access token |
 | The cache revalidation token | `publira server`, `publira worker`, and every web app | `publiractl` | Drop any cached page, as often as they like |
-| The web service token | `publira server`, `web-admin`, `web-platform` | `web-host`, `publira worker` | Read, through the internal listener, the catalog of any tenant, unpublished series included, and the platform's tenants, operators, and readers |
+| The web service token | `publira server`, `web-admin`, `web-platform` | `web-storefront`, `publira worker` | Read, through the internal listener, the catalog of any tenant, unpublished series included, and the platform's tenants, operators, and readers |
 | The superuser's password | The `publiractl db` commands | Every long-lived process | Everything in the database |
 | Each role's password | The processes that connect as that role | The others | What that role reaches |
 
@@ -158,7 +158,7 @@ These values are read when a process starts. Rotating one is a matter of giving 
 | The cache revalidation token | `publira server`, `publira worker`, and every web app | Signs nobody out |
 | The web service token | `publira server`, `web-admin`, and `web-platform` | Signs nobody out |
 
-On a Docker Compose install, the variables are `PUBLIRA_AUTH_JWT_SECRET`, `PUBLIRA_WEB_HOST_AUTH_SECRET`, `PUBLIRA_WEB_ADMIN_AUTH_SECRET`, `PUBLIRA_WEB_PLATFORM_AUTH_SECRET`, `PUBLIRA_REVALIDATE_TOKEN`, and `PUBLIRA_WEB_SERVICE_TOKEN` in `.env`. Change one, and `docker compose up -d` restarts exactly the processes that read it.
+On a Docker Compose install, the variables are `PUBLIRA_AUTH_JWT_SECRET`, `PUBLIRA_WEB_STOREFRONT_AUTH_SECRET`, `PUBLIRA_WEB_ADMIN_AUTH_SECRET`, `PUBLIRA_WEB_PLATFORM_AUTH_SECRET`, `PUBLIRA_REVALIDATE_TOKEN`, and `PUBLIRA_WEB_SERVICE_TOKEN` in `.env`. Change one, and `docker compose up -d` restarts exactly the processes that read it.
 
 ### The access token signing key
 
@@ -170,7 +170,7 @@ Rotate it whenever it may have leaked, and whenever a session key has: a session
 
 ### A web app's session key
 
-Each web app seals its session cookie with its own `PUBLIRA_AUTH_SECRET`. A new key makes every cookie it sealed unreadable, so its users land on the sign-in screen, without a message, while the other apps keep their sessions. Rotating the key of `web-host` signs readers out of the site but not out of the mobile app, and cancels a Sign in with Apple or Google that was under way; rotating the key of `web-admin` also cancels a two-step verification sign-in that was under way.
+Each web app seals its session cookie with its own `PUBLIRA_AUTH_SECRET`. A new key makes every cookie it sealed unreadable, so its users land on the sign-in screen, without a message, while the other apps keep their sessions. Rotating the key of `web-storefront` signs readers out of the site but not out of the mobile app, and cancels a Sign in with Apple or Google that was under way; rotating the key of `web-admin` also cancels a two-step verification sign-in that was under way.
 
 The value has to be at least 32 bytes, and only its first 32 bytes are used, so generate a whole new one with `openssl rand -base64 32` rather than editing the end of the old one.
 

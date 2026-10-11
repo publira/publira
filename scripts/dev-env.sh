@@ -84,7 +84,7 @@ start_profile() {
   fi
   local port
   for port in \
-    "${PUBLIRA_WEB_HOST_PORT}" "${PUBLIRA_WEB_ADMIN_PORT}" "${PUBLIRA_WEB_PLATFORM_PORT}" \
+    "${PUBLIRA_WEB_STOREFRONT_PORT}" "${PUBLIRA_WEB_ADMIN_PORT}" "${PUBLIRA_WEB_PLATFORM_PORT}" \
     "${PUBLIRA_PUBLIC_API_PORT}" "${PUBLIRA_PUBLIC_API_GRPC_PORT}" \
     "${PUBLIRA_EMAIL_RENDERER_PORT}" "${PUBLIRA_WORKER_PORT}" \
     "${PUBLIRA_EDGE_PORT}"; do
@@ -135,7 +135,7 @@ start_profile() {
     PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID="${DEV_ENV_SECRET_ENCRYPTION_PRIMARY_KEY_ID}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     PUBLIRA_WEB_SERVICE_TOKEN="${PUBLIRA_WEB_SERVICE_TOKEN}" \
-    PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
+    PUBLIRA_WEB_STOREFRONT_INTERNAL_URL="${PUBLIRA_WEB_STOREFRONT_INTERNAL_URL}" \
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
     PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
     "${REPO_ROOT}/server/bin/publira" server
@@ -154,7 +154,7 @@ start_profile() {
     PUBLIRA_SECRET_ENCRYPTION_KEYS="${DEV_ENV_SECRET_ENCRYPTION_KEYS}" \
     PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID="${DEV_ENV_SECRET_ENCRYPTION_PRIMARY_KEY_ID}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
-    PUBLIRA_WEB_HOST_INTERNAL_URL="${PUBLIRA_WEB_HOST_INTERNAL_URL}" \
+    PUBLIRA_WEB_STOREFRONT_INTERNAL_URL="${PUBLIRA_WEB_STOREFRONT_INTERNAL_URL}" \
     PUBLIRA_WEB_ADMIN_INTERNAL_URL="${PUBLIRA_WEB_ADMIN_INTERNAL_URL}" \
     PUBLIRA_WEB_PLATFORM_INTERNAL_URL="${PUBLIRA_WEB_PLATFORM_INTERNAL_URL}" \
     "${REPO_ROOT}/server/bin/publira" worker
@@ -168,18 +168,18 @@ start_profile() {
   cd "${REPO_ROOT}"
   pnpm build \
     --filter "@publira/email-renderer^..." \
-    --filter "@publira/web-host^..." \
+    --filter "@publira/web-storefront^..." \
     --filter "@publira/web-admin^..." \
     --filter "@publira/web-platform^..."
   dev_env_start_background "${run_dir}" email-renderer PORT="${PUBLIRA_EMAIL_RENDERER_PORT}" \
     pnpm dev --only --filter @publira/email-renderer
-  dev_env_start_background "${run_dir}" web-host "${tracing[@]}" PORT="${PUBLIRA_WEB_HOST_PORT}" \
+  dev_env_start_background "${run_dir}" web-storefront "${tracing[@]}" PORT="${PUBLIRA_WEB_STOREFRONT_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
     PUBLIRA_TENANT_URL_SCHEME="${PUBLIRA_TENANT_URL_SCHEME}" \
     PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}" \
     PNCH_REDIS_URL="${PNCH_REDIS_URL}" PNCH_REVALIDATE_TOKEN="${PNCH_REVALIDATE_TOKEN}" \
-    pnpm dev --only --filter @publira/web-host
+    pnpm dev --only --filter @publira/web-storefront
   dev_env_start_background "${run_dir}" web-admin "${tracing[@]}" PORT="${PUBLIRA_WEB_ADMIN_PORT}" \
     PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" PUBLIRA_COOKIE_SUFFIX="${PUBLIRA_COOKIE_SUFFIX}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL}" \
@@ -257,7 +257,7 @@ show_profile() {
   dev_env_load_profile "${name}"
   db_path="${PUBLIRA_DB_URL##*/}"
   db_name="${db_path%%\?*}"
-  printf 'name: %s\nworktree: %s\nslot: %s\ndatabase: %s\nredis: %s\nbucket: %s\nweb-host: http://localhost:%s\nweb-admin: http://admin.localhost:%s\nweb-platform: %s\n' \
+  printf 'name: %s\nworktree: %s\nslot: %s\ndatabase: %s\nredis: %s\nbucket: %s\nweb-storefront: http://localhost:%s\nweb-admin: http://admin.localhost:%s\nweb-platform: %s\n' \
     "${DEV_ENV_NAME}" "${DEV_ENV_OWNER_WORKTREE}" "${DEV_ENV_SLOT}" "${db_name}" "${PUBLIRA_REDIS_URL}" \
     "${PUBLIRA_S3_BUCKET}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_EDGE_PORT}" "${PUBLIRA_PLATFORM_APP_URL}"
 }

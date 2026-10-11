@@ -93,8 +93,8 @@ docker build -f infra/docker/web/Dockerfile \
   -t publira/web-admin:local .
 
 docker build -f infra/docker/web/Dockerfile \
-  --build-arg APP_NAME=web-host --build-arg PORT=3000 \
-  -t publira/web-host:local .
+  --build-arg APP_NAME=web-storefront --build-arg PORT=3000 \
+  -t publira/web-storefront:local .
 
 docker build -f infra/docker/web/Dockerfile \
   --build-arg APP_NAME=web-platform --build-arg PORT=4100 \
@@ -188,11 +188,11 @@ Prerequisites: run from the repository root with Docker Engine and Buildx availa
 The four primary build paths for Issues and CI are the following representatives, one for each role:
 
 ```bash
-# All at once (web-host / publira / publiractl / email-renderer)
+# All at once (web-storefront / publira / publiractl / email-renderer)
 task docker:verify
 
 # Or individually
-task docker:build:web APP_NAME=web-host PORT=3000
+task docker:build:web APP_NAME=web-storefront PORT=3000
 task docker:build:server
 task docker:build:publiractl
 task docker:build:node APP_NAME=email-renderer PORT=8080
@@ -201,7 +201,7 @@ task docker:build:node APP_NAME=email-renderer PORT=8080
 Runtime smoke tests for distroless images without external dependencies:
 
 ```bash
-task docker:smoke:web APP_NAME=web-host PORT=3000
+task docker:smoke:web APP_NAME=web-storefront PORT=3000
 task docker:smoke:node APP_NAME=email-renderer PORT=8080
 ```
 
@@ -221,8 +221,8 @@ Task is equivalent to the following command. You may run it directly rather than
 
 ```bash
 docker build -f infra/docker/web/Dockerfile \
-  --build-arg APP_NAME=web-host --build-arg PORT=3000 \
-  -t publira/web-host:local .
+  --build-arg APP_NAME=web-storefront --build-arg PORT=3000 \
+  -t publira/web-storefront:local .
 ```
 
 ## Docker CI execution strategy
@@ -252,7 +252,7 @@ Use **change detection (role representatives) plus nightly full builds**.
 
 | Role | Representative target | Watched paths (summary) |
 | --- | --- | --- |
-| web | `web-host` | `apps/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/web/**` |
+| web | `web-storefront` | `apps/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/web/**` |
 | server | `publira` | `server/**`, `infra/docker/server/**` |
 | publiractl | `publiractl` | `server/**`, `infra/docker/publiractl/**` |
 | node | `email-renderer` | `apps/email-renderer/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/node/**` |
@@ -275,7 +275,7 @@ Use these steps when a `Docker / <target>` job or local `task docker:build:*` fa
    Run the `task docker:build:…` line from the CI log as-is.
 
    ```bash
-   task docker:build:web APP_NAME=web-host PORT=3000
+   task docker:build:web APP_NAME=web-storefront PORT=3000
    # Or run all representatives.
    task docker:verify
    ```

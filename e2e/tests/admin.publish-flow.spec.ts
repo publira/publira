@@ -25,16 +25,20 @@ import {
   MULTI_TENANT_SCENARIO,
   OTHER_TENANT,
 } from "../src/scenarios/multi-tenant";
-import { hostPath, WEB_ADMIN_BASE_URL, WEB_HOST_BASE_URL } from "../src/urls";
+import {
+  storefrontPath,
+  WEB_ADMIN_BASE_URL,
+  WEB_STOREFRONT_BASE_URL,
+} from "../src/urls";
 
-const hostUrl = (pathname: string): string =>
-  `${WEB_HOST_BASE_URL}${hostPath(pathname)}`;
+const storefrontUrl = (pathname: string): string =>
+  `${WEB_STOREFRONT_BASE_URL}${storefrontPath(pathname)}`;
 
 const adminUrl = (pathname: string): string =>
   `${WEB_ADMIN_BASE_URL}${pathname}`;
 
 /**
- * Admin → admin API → public API → web-host publish flow.
+ * Admin → admin API → public API → web-storefront publish flow.
  *
  * Login is a prerequisite helper (auth coverage is `admin.auth.spec.ts`). Each test uses a
  * unique title so runs do not depend on leftover rows from a previous suite.
@@ -222,7 +226,7 @@ test.describe("admin publish flow", () => {
     );
   });
 
-  test("publishing a series makes it visible on the same tenant's web-host", async ({
+  test("publishing a series makes it visible on the same tenant's web-storefront", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -241,8 +245,9 @@ test.describe("admin publish flow", () => {
     await expect(fields.title).toHaveValue(title);
     await expect(fields.publishedAt).not.toHaveValue("");
 
-    // Brand-new public_id: first host request misses cache and hits public API.
-    const response = await page.goto(hostUrl(`/series/${seriesId}`));
+    // Brand-new public_id: first storefront request misses cache and hits
+    // public API.
+    const response = await page.goto(storefrontUrl(`/series/${seriesId}`));
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: title })
@@ -250,7 +255,7 @@ test.describe("admin publish flow", () => {
     await expect(page.getByText(synopsis)).toBeVisible();
   });
 
-  test("submits and schedules an episode, and it reaches web-host once published", async ({
+  test("submits and schedules an episode, and it reaches web-storefront once published", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -283,14 +288,16 @@ test.describe("admin publish flow", () => {
     ).toBeVisible();
     await expect(page.getByText(/Status: Scheduled/u)).toBeVisible();
 
-    // Do not fetch the host URL while the episode is still scheduled: web-host
-    // would cache the 404 under `"use cache"` and keep missing after publish.
+    // Do not fetch the storefront URL while the episode is still scheduled:
+    // web-storefront would cache the 404 under `"use cache"` and keep missing
+    // after publish.
     nudgeScheduledEpisodeReady(episodeId);
     await waitUntilEpisodePublishedInDb(episodeId);
 
-    // First host request after DB publish — never seen this public_id before.
+    // First storefront request after DB publish — never seen this public_id
+    // before.
     const episodeResponse = await page.goto(
-      hostUrl(`/series/${seriesId}/episodes/${episodeId}`)
+      storefrontUrl(`/series/${seriesId}/episodes/${episodeId}`)
     );
     expect(episodeResponse?.status(), await page.content()).toBe(200);
     await expect(
@@ -299,14 +306,14 @@ test.describe("admin publish flow", () => {
 
     // Parent series detail also lists the published episode. Another spec's
     // top page can fill this entry before the publication, and the worker's
-    // drop reaches web-host through the Outbox and only marks it stale.
+    // drop reaches web-storefront through the Outbox and only marks it stale.
     await expect(async () => {
-      await page.goto(hostUrl(`/series/${seriesId}`));
+      await page.goto(storefrontUrl(`/series/${seriesId}`));
       await expect(page.getByText(episodeTitle)).toBeVisible({ timeout: 5000 });
     }).toPass({ timeout: 30_000 });
   });
 
-  test("publishes an episode whose publication time has passed as it is created, and web-host lists it", async ({
+  test("publishes an episode whose publication time has passed as it is created, and web-storefront lists it", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -322,7 +329,7 @@ test.describe("admin publish flow", () => {
     );
 
     // Nothing nudges the schedule here: the create itself publishes, so the
-    // worker's publication pass has no part in what the host shows.
+    // worker's publication pass has no part in what the storefront shows.
     const episodeId = await createEpisodeViaUi(page, {
       publishAt: publishedAtOneHourAgo(),
       seriesPublicId: seriesId,
@@ -333,17 +340,17 @@ test.describe("admin publish flow", () => {
     await expect(page.getByText(/Status: Published/u)).toBeVisible();
 
     const episodeResponse = await page.goto(
-      hostUrl(`/series/${seriesId}/episodes/${episodeId}`)
+      storefrontUrl(`/series/${seriesId}/episodes/${episodeId}`)
     );
     expect(episodeResponse?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: episodeTitle })
     ).toBeVisible();
 
-    // The drop the create recorded reaches web-host through the Outbox when
-    // its immediate attempt does not, and only marks the entry stale.
+    // The drop the create recorded reaches web-storefront through the Outbox
+    // when its immediate attempt does not, and only marks the entry stale.
     await expect(async () => {
-      await page.goto(hostUrl(`/series/${seriesId}`));
+      await page.goto(storefrontUrl(`/series/${seriesId}`));
       await expect(page.getByText(episodeTitle)).toBeVisible({ timeout: 5000 });
     }).toPass({ timeout: 30_000 });
   });
@@ -373,7 +380,7 @@ test.describe("admin publish flow", () => {
     const saved = page.getByText("Publication date and time updated.");
 
     // Nothing nudges the schedule here: the save itself publishes, so the
-    // worker's publication pass has no part in what the host shows.
+    // worker's publication pass has no part in what the storefront shows.
     await page.goto(editUrl);
     // The form posts the instant in a hidden field React writes from the wall
     // clock, so a wall clock typed before hydration shows in the field and is
@@ -392,7 +399,7 @@ test.describe("admin publish flow", () => {
     await expect(page.getByText(/Status: Published/u)).toBeVisible();
 
     const episodeResponse = await page.goto(
-      hostUrl(`/series/${seriesId}/episodes/${episodeId}`)
+      storefrontUrl(`/series/${seriesId}/episodes/${episodeId}`)
     );
     expect(episodeResponse?.status(), await page.content()).toBe(200);
     await expect(

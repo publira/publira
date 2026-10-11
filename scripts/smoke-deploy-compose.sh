@@ -67,7 +67,7 @@ PUBLIRA_CONTENT_STATS_DB_PASSWORD=$(secret)
 PUBLIRA_SECRET_ENCRYPTION_KEYS=k1:$(openssl rand -base64 32)
 PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID=k1
 PUBLIRA_AUTH_JWT_SECRET=$(secret)
-PUBLIRA_WEB_HOST_AUTH_SECRET=$(secret)
+PUBLIRA_WEB_STOREFRONT_AUTH_SECRET=$(secret)
 PUBLIRA_WEB_ADMIN_AUTH_SECRET=$(secret)
 PUBLIRA_REVALIDATE_TOKEN=$(secret)
 PUBLIRA_WEB_SERVICE_TOKEN=$(secret)
@@ -132,7 +132,7 @@ expect_page "Platform Console" "platform.localhost"
 
 # A long-lived process that exited or keeps restarting is a failure even when
 # every page above answered.
-for service in server worker web-host web-admin web-platform email-renderer proxy; do
+for service in server worker web-storefront web-admin web-platform email-renderer proxy; do
   state="$(compose ps --all --format '{{.State}}' "${service}")"
   restarts="$(docker inspect --format '{{.RestartCount}}' "$(compose ps --all -q "${service}")")"
   if [ "${state}" != running ] || [ "${restarts}" != 0 ]; then

@@ -71,7 +71,7 @@ func (d Declaration) Field(name string) (Field, bool) {
 }
 
 // WebhookPath answers the path on a tenant's storefront that receives the
-// notifications of the provider id names. apps/web-host serves it.
+// notifications of the provider id names. apps/web-storefront serves it.
 func WebhookPath(id string) string {
 	return "/api/v1/webhook/payment/" + id
 }

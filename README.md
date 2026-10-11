@@ -128,7 +128,7 @@ In the local seed (`task db:setup`), the initial platform/tenant SMTP settings p
 
 ## Session cookie encryption key (`PUBLIRA_AUTH_SECRET`)
 
-The three Next.js apps (web-host / web-admin / web-platform) seal the login session with the JWE (`dir` + `A256GCM`) of `@publira/web-session`. `PUBLIRA_AUTH_SECRET` is that key.
+The three Next.js apps (web-storefront / web-admin / web-platform) seal the login session with the JWE (`dir` + `A256GCM`) of `@publira/web-session`. `PUBLIRA_AUTH_SECRET` is that key.
 
 - It is **required**. There is no fallback in the code, and encryption and decryption throw when it is unset or shorter than 32 bytes (`resolveAuthSecret()`)
 - The cookie payload carries the API access token, so leaking the key allows both forging and decrypting a session. Issue one per environment (for example, `openssl rand -base64 32`)
@@ -161,7 +161,7 @@ For self-hosted and multi-instance deployments, the server-side cache of Next.js
 - In the Dev Container the `redis` service starts and `PNCH_REDIS_URL=redis://redis:6379` is passed to the app container, next to the server's `PUBLIRA_REDIS_URL` with the same value; on the host it is `redis://127.0.0.1:6379` (loopback only, because no authentication is configured)
 - To look inside directly: `docker compose exec redis redis-cli` from the repository root
 - `redis://localhost:6379` is the library-side default that `@publira/next-cache-handlers` uses when `PNCH_REDIS_URL` is unset
-- The key space is separated per app by `PNCH_CACHE_APP` (for example, `web-host`), under the prefix `pnch:{app}:`
+- The key space is separated per app by `PNCH_CACHE_APP` (for example, `web-storefront`), under the prefix `pnch:{app}:`
 - Details: [`@publira/next-cache-handlers`](https://www.npmjs.com/package/@publira/next-cache-handlers)
 
 ## Object storage for development (RustFS)
@@ -227,14 +227,14 @@ Traefik drops `traceparent` / `tracestate` / `baggage` from the requests that ar
 
 1. Start the stack with an active dev profile (`task dev-env:start`; it prints the URLs of the profile)
 2. Open the printed host URL in a browser
-3. In the Jaeger UI (`http://localhost:16686`), select `publira-web-host` under Service and open a recent trace
+3. In the Jaeger UI (`http://localhost:16686`), select `publira-web-storefront` under Service and open a recent trace
 
 Under the root span of `GET /[tenant_id]/[locale]` you find the client spans SSR called, such as `CatalogService/ListPublishedSeries`, the identically named server spans of `publira-api-server` as their children, and `db.query` below those. When the service changes within one trace, propagation from Web to API to DB is working. The processing of `proxy.ts` forms a separate trace rooted at `middleware GET`.
 
 Start with `NEXT_OTEL_VERBOSE=1` only when you want to see the internal spans of Next.js itself (`BaseServer.renderToResponse`, `Router.executeRoute`, and so on). It is off by default because the number of spans per request grows a lot and the trace fills up at a stage the application code cannot influence.
 
 ```bash
-NEXT_OTEL_VERBOSE=1 pnpm dev --filter @publira/web-host
+NEXT_OTEL_VERBOSE=1 pnpm dev --filter @publira/web-storefront
 ```
 
 For the details of the configuration and instrumentation, see [server/README.md](server/README.md#distributed-tracing-opentelemetry) for the Go side and [packages/tracing/README.md](packages/tracing/README.md) for the Next.js side.

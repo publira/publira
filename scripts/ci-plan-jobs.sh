@@ -27,12 +27,12 @@ flag() {
 }
 
 # Fixed matrix rows (JSON objects, no spaces needed for GITHUB_OUTPUT single-line).
-rep_web='{"role":"web","target":"web-host","port":"3000","task":"docker:build:web","arg":"APP_NAME=web-host","extra":"PORT=3000"}'
+rep_web='{"role":"web","target":"web-storefront","port":"3000","task":"docker:build:web","arg":"APP_NAME=web-storefront","extra":"PORT=3000"}'
 rep_server='{"role":"server","target":"publira","port":"","task":"docker:build:server","arg":"","extra":""}'
 rep_publiractl='{"role":"publiractl","target":"publiractl","port":"","task":"docker:build:publiractl","arg":"","extra":""}'
 rep_node='{"role":"node","target":"email-renderer","port":"8080","task":"docker:build:node","arg":"APP_NAME=email-renderer","extra":"PORT=8080"}'
 
-full_web_host='{"role":"web","target":"web-host","port":"3000","task":"docker:build:web","arg":"APP_NAME=web-host","extra":"PORT=3000"}'
+full_web_storefront='{"role":"web","target":"web-storefront","port":"3000","task":"docker:build:web","arg":"APP_NAME=web-storefront","extra":"PORT=3000"}'
 full_web_admin='{"role":"web","target":"web-admin","port":"4000","task":"docker:build:web","arg":"APP_NAME=web-admin","extra":"PORT=4000"}'
 full_web_platform='{"role":"web","target":"web-platform","port":"4100","task":"docker:build:web","arg":"APP_NAME=web-platform","extra":"PORT=4100"}'
 full_server='{"role":"server","target":"publira","port":"","task":"docker:build:server","arg":"","extra":""}'
@@ -81,7 +81,7 @@ case "${event}" in
     test_bootstrap=true
     test_deploy=true
     matrix_items=(
-      "${full_web_host}"
+      "${full_web_storefront}"
       "${full_web_admin}"
       "${full_web_platform}"
       "${full_server}"
@@ -109,7 +109,7 @@ case "${event}" in
     build=true
     if [[ "${docker_mode_input}" == "full" ]]; then
       matrix_items=(
-        "${full_web_host}"
+        "${full_web_storefront}"
         "${full_web_admin}"
         "${full_web_platform}"
         "${full_server}"
@@ -140,7 +140,7 @@ case "${event}" in
     if flag FILTER_BUILD; then build=true; fi
     if flag FILTER_DOCKER_CORE; then
       matrix_items=(
-        "${full_web_host}"
+        "${full_web_storefront}"
         "${full_web_admin}"
         "${full_web_platform}"
         "${full_server}"

@@ -35,7 +35,7 @@ import { Button, LinkButton } from "@publira/ui-components/button";
 | `variant` | What it is for |
 | --- | --- |
 | `default` | The primary action of a console screen, filled in Ai |
-| `secondary` | The reading action on the host site, filled in Shu |
+| `secondary` | The reading action on the storefront, filled in Shu |
 | `ink` | A filled action that is neither of those |
 | `outline` | A secondary action, on the control outline over the card fill |
 | `ghost` | An action that carries no box until it is hovered |

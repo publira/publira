@@ -153,7 +153,7 @@ screenshot_in_browser() {
   # out in tens: the edge takes the fiftieth, this takes the sixtieth. The
   # number is compiled into the build, which is why it is derived rather than
   # picked from whatever is free.
-  port="$((PUBLIRA_WEB_HOST_PORT + 60))"
+  port="$((PUBLIRA_WEB_STOREFRONT_PORT + 60))"
   origin="http://127.0.0.1:${port}"
   sign_in_reader
   mapfile -t defines < <(mobile_dart_defines "${origin}")

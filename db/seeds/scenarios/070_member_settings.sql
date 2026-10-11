@@ -1,8 +1,8 @@
 -- Scenario: a member whose own account the settings E2E may rewrite
 --
--- `host.member-settings.spec.ts` renames the reader, turns their email
+-- `storefront.member-settings.spec.ts` renames the reader, turns their email
 -- notifications off, submits an email change, changes their password, and
--- follows a series. The dev seed member cannot absorb that: `host.auth` signs
+-- follows a series. The dev seed member cannot absorb that: `storefront.auth` signs
 -- in with its address, `announcements.pagination` reads its announcement list,
 -- and both run beside this suite under `workers: 3`.
 --

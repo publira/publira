@@ -16,28 +16,30 @@ const envUrl = (name: string, fallback: string): string => {
 };
 
 /** Public-site path under the default locale: `/series` → `/series`. */
-export const hostPath = (pathname: string): string => pathname;
+export const storefrontPath = (pathname: string): string => pathname;
 
 /**
  * Public-site path under an explicit locale prefix:
  * `("en", "/series")` → `/en/series`.
  *
- * Only a locale other than the tenant's own default is canonical this way —
- * the default is served by {@link hostPath}, and spelling it out redirects. A
+ * Only a locale other than the tenant's own default is canonical this way — the
+ * default is served by {@link storefrontPath}, and spelling it out redirects. A
  * test therefore says which locale it means rather than which tenant it is
  * talking to, and the two tenants the suite uses read the same way.
  */
-export const localeHostPath = (locale: string, pathname: string): string =>
-  pathname === "/" ? `/${locale}` : `/${locale}${pathname}`;
+export const localeStorefrontPath = (
+  locale: string,
+  pathname: string
+): string => (pathname === "/" ? `/${locale}` : `/${locale}${pathname}`);
 
 /**
- * Public catalog site (web-host), through the E2E Traefik edge, the way a
+ * Public catalog site (web-storefront), through the E2E Traefik edge, the way a
  * deployment serves it: an episode body image is `/images/episodes/{id}` on the
- * reader's own origin, and only the edge joins web-host and the image routes
- * under one host and port. Matches the seed domain `localhost:<edge>`.
+ * reader's own origin, and only the edge joins web-storefront and the image
+ * routes under one host and port. Matches the seed domain `localhost:<edge>`.
  */
-export const WEB_HOST_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_BASE_URL",
+export const WEB_STOREFRONT_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_BASE_URL",
   "http://localhost:3080"
 );
 
@@ -46,7 +48,7 @@ export const WEB_HOST_BASE_URL = envUrl(
  * port the suite reaches every tenant on.
  */
 export const tenantHost = (hostname: string): string =>
-  `${hostname}:${new URL(WEB_HOST_BASE_URL).port}`;
+  `${hostname}:${new URL(WEB_STOREFRONT_BASE_URL).port}`;
 
 /**
  * The browser the screenshot projects render in (`e2e/browser/Dockerfile`).
@@ -74,27 +76,27 @@ export const MAILPIT_BASE_URL = envUrl(
 );
 
 /**
- * web-host on loopback, the way the Go servers reach it.
+ * web-storefront on loopback, the way the Go servers reach it.
  *
- * `WEB_HOST_BASE_URL` is a Host header the browser resolves; this is the
+ * `WEB_STOREFRONT_BASE_URL` is a Host header the browser resolves; this is the
  * address a Node-side request can actually connect to, and it is what
  * `src/revalidate.ts` posts cache tags to. A browser opens it only under a
  * host made up during the run, which no list of the edge's names, so the
  * edge would answer it with a 404 of its own.
  */
-export const WEB_HOST_INTERNAL_URL = envUrl(
-  "PUBLIRA_WEB_HOST_INTERNAL_URL",
-  WEB_HOST_BASE_URL
+export const WEB_STOREFRONT_INTERNAL_URL = envUrl(
+  "PUBLIRA_WEB_STOREFRONT_INTERNAL_URL",
+  WEB_STOREFRONT_BASE_URL
 );
 
-/** Public API gRPC/Connect origin used by web-host (readyz probe target). */
+/** Public API gRPC/Connect origin used by web-storefront (readyz probe target). */
 export const PUBLIC_API_BASE_URL = envUrl(
   "PUBLIRA_E2E_PUBLIC_API_BASE_URL",
   "http://127.0.0.1:8100"
 );
 
 /**
- * Same web-host origin under a different Host header.
+ * Same web-storefront origin under a different Host header.
  *
  * Chromium resolves every `*.localhost` name to loopback itself (RFC 6761), so
  * no DNS entry or hosts file is needed — but only the browser does, so keep
@@ -109,12 +111,12 @@ export const withHostname = (baseUrl: string, hostname: string): string => {
 /** Tenant admin console (web-admin). Matches the seed admin domain. */
 export const WEB_ADMIN_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_ADMIN_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "admin.localhost")
+  withHostname(WEB_STOREFRONT_BASE_URL, "admin.localhost")
 );
 
 /**
  * web-admin on loopback, the way the Go servers reach it, for the same use as
- * {@link WEB_HOST_INTERNAL_URL}: a console host made up during the run.
+ * {@link WEB_STOREFRONT_INTERNAL_URL}: a console host made up during the run.
  */
 export const WEB_ADMIN_INTERNAL_URL = envUrl(
   "PUBLIRA_WEB_ADMIN_INTERNAL_URL",
@@ -124,7 +126,7 @@ export const WEB_ADMIN_INTERNAL_URL = envUrl(
 /** Platform console (web-platform). */
 export const WEB_PLATFORM_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_PLATFORM_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "platform.localhost")
+  withHostname(WEB_STOREFRONT_BASE_URL, "platform.localhost")
 );
 
 /**
@@ -137,9 +139,9 @@ export const WEB_PLATFORM_INTERNAL_URL = envUrl(
 );
 
 /** Second tenant from the scenario seed `db/seeds/scenarios/010_multi_tenant.sql`. */
-export const WEB_HOST_OTHER_TENANT_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_OTHER_TENANT_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "other.localhost")
+export const WEB_STOREFRONT_OTHER_TENANT_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_OTHER_TENANT_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "other.localhost")
 );
 
 /**
@@ -161,9 +163,9 @@ export const WEB_ADMIN_OTHER_TENANT_BASE_URL = envUrl(
  * episode's tenant, and to every reader following it, its series, or one of
  * its creators.
  */
-export const WEB_HOST_NOTIFICATION_INBOX_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_NOTIFICATION_INBOX_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "notify.localhost")
+export const WEB_STOREFRONT_NOTIFICATION_INBOX_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_NOTIFICATION_INBOX_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "notify.localhost")
 );
 
 /** Admin console of the same inbox tenant. */
@@ -180,9 +182,9 @@ export const WEB_ADMIN_NOTIFICATION_INBOX_BASE_URL = envUrl(
  * delivery is posted into is the opposite of the inbox tenant above: everything
  * that arrives in it arrived on purpose.
  */
-export const WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "announce.localhost")
+export const WEB_STOREFRONT_ANNOUNCEMENT_DELIVERY_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_ANNOUNCEMENT_DELIVERY_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "announce.localhost")
 );
 
 /** Admin console of the same delivery tenant. */
@@ -198,9 +200,9 @@ export const WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL = envUrl(
  * A pinned announcement is drawn above every page of its tenant's site, so it
  * is pinned in a tenant no other spec browses.
  */
-export const WEB_HOST_ANNOUNCEMENT_BANNER_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_ANNOUNCEMENT_BANNER_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "banner.localhost")
+export const WEB_STOREFRONT_ANNOUNCEMENT_BANNER_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_ANNOUNCEMENT_BANNER_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "banner.localhost")
 );
 
 /** Admin console of the same banner tenant. */
@@ -263,9 +265,9 @@ export const WEB_ADMIN_APP_LINKS_BASE_URL = envUrl(
 );
 
 /** Public site of the same app links tenant, which serves its association documents. */
-export const WEB_HOST_APP_LINKS_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_APP_LINKS_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "app-links.localhost")
+export const WEB_STOREFRONT_APP_LINKS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_APP_LINKS_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "app-links.localhost")
 );
 
 /**
@@ -280,9 +282,9 @@ export const WEB_ADMIN_SIGN_IN_PROVIDERS_BASE_URL = envUrl(
 );
 
 /** Public site of the same tenant, whose tenant read names the providers offered. */
-export const WEB_HOST_SIGN_IN_PROVIDERS_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_SIGN_IN_PROVIDERS_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "sign-in.localhost")
+export const WEB_STOREFRONT_SIGN_IN_PROVIDERS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_SIGN_IN_PROVIDERS_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "sign-in.localhost")
 );
 
 /**
@@ -300,9 +302,9 @@ export const WEB_ADMIN_ROYALTIES_BASE_URL = envUrl(
  * changes, from `db/seeds/scenarios/380_email_rejection.sql`. The setting is
  * tenant-wide, so the sign-ups it refuses are not ones another suite drives.
  */
-export const WEB_HOST_EMAIL_REJECTION_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_EMAIL_REJECTION_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "reject.localhost")
+export const WEB_STOREFRONT_EMAIL_REJECTION_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_EMAIL_REJECTION_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "reject.localhost")
 );
 
 /** Admin console of the same email rejection tenant. */
@@ -316,18 +318,18 @@ export const WEB_ADMIN_EMAIL_REJECTION_BASE_URL = envUrl(
  * `db/seeds/scenarios/300_signup_consent.sql`. The nomination is tenant-wide,
  * so the sign-up that asks for consent is not the one another suite drives.
  */
-export const WEB_HOST_SIGNUP_CONSENT_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_SIGNUP_CONSENT_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "consent.localhost")
+export const WEB_STOREFRONT_SIGNUP_CONSENT_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_SIGNUP_CONSENT_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "consent.localhost")
 );
 
 /**
  * Public site of the tenant from the same scenario that names one page as both
  * its terms of service and its privacy policy.
  */
-export const WEB_HOST_SIGNUP_SHARED_CONSENT_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_SIGNUP_SHARED_CONSENT_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "shared-consent.localhost")
+export const WEB_STOREFRONT_SIGNUP_SHARED_CONSENT_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_SIGNUP_SHARED_CONSENT_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "shared-consent.localhost")
 );
 
 /**
@@ -335,14 +337,14 @@ export const WEB_HOST_SIGNUP_SHARED_CONSENT_BASE_URL = envUrl(
  * Which providers a tenant offers changes its sign-in screen, so neither is a
  * tenant another suite signs in on.
  */
-export const WEB_HOST_SOCIAL_SIGN_IN_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_SOCIAL_SIGN_IN_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "social.localhost")
+export const WEB_STOREFRONT_SOCIAL_SIGN_IN_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_SOCIAL_SIGN_IN_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "social.localhost")
 );
 
-export const WEB_HOST_SOCIAL_SIGN_IN_CONSENT_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_SOCIAL_SIGN_IN_CONSENT_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "social-consent.localhost")
+export const WEB_STOREFRONT_SOCIAL_SIGN_IN_CONSENT_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_SOCIAL_SIGN_IN_CONSENT_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "social-consent.localhost")
 );
 
 /**
@@ -371,9 +373,9 @@ export const WEB_ADMIN_TENANT_MEMBERS_BASE_URL = envUrl(
  * any tenant admin of its tenant, so the suite that hands messages between two
  * of them needs a tenant of its own.
  */
-export const WEB_HOST_CONTACT_WORKFLOW_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_CONTACT_WORKFLOW_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "desk.localhost")
+export const WEB_STOREFRONT_CONTACT_WORKFLOW_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_CONTACT_WORKFLOW_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "desk.localhost")
 );
 
 /** Admin console of the same contact-workflow tenant. */
@@ -389,9 +391,9 @@ export const WEB_ADMIN_CONTACT_WORKFLOW_BASE_URL = envUrl(
  * `tenant_config.comment_mode` is tenant-wide, so the one tenant that takes
  * comments is not a tenant any other suite reads episode pages on.
  */
-export const WEB_HOST_EPISODE_COMMENTS_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_EPISODE_COMMENTS_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "comment.localhost")
+export const WEB_STOREFRONT_EPISODE_COMMENTS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_EPISODE_COMMENTS_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "comment.localhost")
 );
 
 /**
@@ -401,9 +403,9 @@ export const WEB_HOST_EPISODE_COMMENTS_BASE_URL = envUrl(
  * `tenant_config.comment_mode` is tenant-wide, so the tenant that holds
  * comments for approval cannot be the one whose comments publish immediately.
  */
-export const WEB_HOST_COMMENT_MODERATION_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_COMMENT_MODERATION_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "moderate.localhost")
+export const WEB_STOREFRONT_COMMENT_MODERATION_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_COMMENT_MODERATION_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "moderate.localhost")
 );
 
 /** Admin console of the same moderation tenant. */
@@ -419,9 +421,9 @@ export const WEB_ADMIN_COMMENT_MODERATION_BASE_URL = envUrl(
  * `tenant_config.age_verification` is tenant-wide, so the tenant that checks
  * ages is not one whose rated series another suite opens by confirming.
  */
-export const WEB_HOST_AGE_VERIFICATION_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_AGE_VERIFICATION_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "age.localhost")
+export const WEB_STOREFRONT_AGE_VERIFICATION_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_AGE_VERIFICATION_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "age.localhost")
 );
 
 /** Admin console of the same age-verification tenant. */
@@ -437,9 +439,9 @@ export const WEB_ADMIN_AGE_VERIFICATION_BASE_URL = envUrl(
  * Every other seeded tenant saves `en`, so this is the only host where the
  * unprefixed URL is Japanese and `/en/...` is the one that keeps its prefix.
  */
-export const WEB_HOST_JAPANESE_DEFAULT_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_JAPANESE_DEFAULT_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "locale.localhost")
+export const WEB_STOREFRONT_JAPANESE_DEFAULT_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_JAPANESE_DEFAULT_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "locale.localhost")
 );
 
 /** Admin console of the same Japanese-default tenant. */
@@ -449,20 +451,20 @@ export const WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL = envUrl(
 );
 
 /** Host that maps to no tenant at all. */
-export const WEB_HOST_UNKNOWN_TENANT_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_UNKNOWN_TENANT_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "unknown-tenant.localhost")
+export const WEB_STOREFRONT_UNKNOWN_TENANT_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_UNKNOWN_TENANT_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "unknown-tenant.localhost")
 );
 
 /**
  * A Host that has never been resolved before, so tenant resolution has to reach
- * the public API instead of answering from web-host's in-process LRU.
+ * the public API instead of answering from web-storefront's in-process LRU.
  *
  * A name made up per call is on no list of the edge's, so the browser reaches
- * web-host on its own port.
+ * web-storefront on its own port.
  */
 export const uncachedTenantBaseUrl = (): string =>
-  withHostname(WEB_HOST_INTERNAL_URL, `outage-${randomUUID()}.localhost`);
+  withHostname(WEB_STOREFRONT_INTERNAL_URL, `outage-${randomUUID()}.localhost`);
 
 /**
  * Public site of the wait-for-free tenant from the scenario seed
@@ -472,7 +474,7 @@ export const uncachedTenantBaseUrl = (): string =>
  * reading the development seed's episodes should find, so the series is on a
  * tenant of its own.
  */
-export const WEB_HOST_WAIT_FREE_BASE_URL = envUrl(
-  "PUBLIRA_E2E_WEB_HOST_WAIT_FREE_BASE_URL",
-  withHostname(WEB_HOST_BASE_URL, "waitfree.localhost")
+export const WEB_STOREFRONT_WAIT_FREE_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_WAIT_FREE_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "waitfree.localhost")
 );

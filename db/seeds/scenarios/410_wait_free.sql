@@ -1,6 +1,6 @@
 -- Scenario: a series that offers wait-for-free
 --
--- `host.wait-free.spec.ts` reads the rule off the series page, spends a ticket
+-- `storefront.wait-free.spec.ts` reads the rule off the series page, spends a ticket
 -- from the episode gate, and then meets the countdown and the excluded latest
 -- episode. The rule is a series setting, but the suite runs on a tenant of its
 -- own all the same: the series would otherwise sit in the dev seed's catalogue

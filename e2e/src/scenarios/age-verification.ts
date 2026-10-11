@@ -3,17 +3,17 @@
  *
  * `tenant_config.age_verification` is one setting for a whole tenant, so the
  * suite that turns it on runs on a tenant of its own: on the development seed
- * tenant it would take away the body `host.age-rating.spec.ts` opens behind the
- * browser's own confirmation.
+ * tenant it would take away the body `storefront.age-rating.spec.ts` opens
+ * behind the browser's own confirmation.
  */
 
 export const AGE_VERIFICATION_SCENARIO = "190_age_verification";
 
 export const AGE_VERIFICATION_TENANT = {
   /**
-   * The tenant's uuid, not its `public_id`: web-host's cache tags are built
-   * from the routing id, and the console suite drops them after writing the
-   * rule back behind the app.
+   * The tenant's uuid, not its `public_id`: web-storefront's cache tags are
+   * built from the routing id, and the console suite drops them after writing
+   * the rule back behind the app.
    */
   id: "018f0fa0-0001-7000-8000-000000000001",
   name: "Age Verification Tenant",

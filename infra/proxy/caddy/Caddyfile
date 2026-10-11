@@ -135,7 +135,7 @@
 		}
 
 		handle @site {
-			reverse_proxy {$PUBLIRA_UPSTREAM_WEB_HOST:app:3000} {
+			reverse_proxy {$PUBLIRA_UPSTREAM_WEB_STOREFRONT:app:3000} {
 				import publira_forwarded
 			}
 		}

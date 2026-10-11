@@ -86,7 +86,7 @@ If the release adds a role, pass that role's password with its `--<name>-passwor
 
 ### 4. Restart the processes on the new images
 
-Replace `publira server`, `publira worker`, `web-host`, and `web-admin` with the images of the new release, together with `web-platform` and `email-renderer` if you run them, and with any variable the release notes asked you to set.
+Replace `publira server`, `publira worker`, `web-storefront`, and `web-admin` with the images of the new release, together with `web-platform` and `email-renderer` if you run them, and with any variable the release notes asked you to set.
 
 `publira worker` applies the migrations of its own job queue when it starts, so its tables need no step of their own.
 
@@ -207,7 +207,7 @@ If you build the images on the host rather than pull them from a registry, build
 If you decided to [stop the processes](#decide-whether-to-stop-the-processes-first), stop them first, naming `web-platform` and `email-renderer` too if you run them:
 
 ```bash
-docker compose stop server worker web-host web-admin
+docker compose stop server worker web-storefront web-admin
 ```
 
 Then take the backup:
@@ -250,7 +250,7 @@ docker compose exec postgres psql -U postgres -d publira -c "UPDATE schema_migra
 To go back to the release you ran instead:
 
 ```bash
-docker compose stop server worker web-host web-admin
+docker compose stop server worker web-storefront web-admin
 docker compose exec postgres psql -U postgres -d postgres -c 'DROP DATABASE publira' -c 'CREATE DATABASE publira'
 docker compose exec -T postgres pg_restore -U postgres -d publira < publira-before-upgrade.dump
 git checkout <current tag>

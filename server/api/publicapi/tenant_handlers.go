@@ -90,8 +90,8 @@ func (s *apiServer) GetTenant(
 		acceptsAppStorePayments, acceptsGooglePlayPayments = s.tenantAcceptsStorePayments(ctx, tenant.ID)
 	}
 
-	// A failed read is not answered as a tenant without a theme: web-host would
-	// cache the default palette as this tenant's brand.
+	// A failed read is not answered as a tenant without a theme: web-storefront
+	// would cache the default palette as this tenant's brand.
 	var theme *publirattypesv1.TenantTheme
 	themeRow, err := queries.GetTenantThemeByTenantID(ctx, tenant.ID)
 	switch {
@@ -105,8 +105,8 @@ func (s *apiServer) GetTenant(
 		return nil, s.internalError(ctx, "failed to read the tenant theme", err, "tenant_id", tenant.ID.String())
 	}
 
-	// Failed rather than answered without providers, which web-host would cache
-	// as a tenant whose readers cannot sign in with them.
+	// Failed rather than answered without providers, which web-storefront would
+	// cache as a tenant whose readers cannot sign in with them.
 	signIn, err := signin.NewSettings(queries, s.encryptor).Get(ctx, tenant.ID)
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to read the tenant sign-in settings", err, "tenant_id", tenant.ID.String())

@@ -27,7 +27,7 @@ class PublishedPage {
   /// The name of the language the page is shown in, when that is not
   /// [requested], or `null` when the page is in the language asked for.
   ///
-  /// The name is the catalog's own label, the one `web-host` shows, so a
+  /// The name is the catalog's own label, the one `web-storefront` shows, so a
   /// served locale no catalog carries has none and is reported as `null`.
   String? fallbackLanguage(Locale requested) {
     final served = supportedLocaleForCode(locale);

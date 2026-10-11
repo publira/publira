@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { MISSING_PUBLIC_ID, SEED_TENANT } from "../src/scenarios/multi-tenant";
-import { hostPath } from "../src/urls";
+import { storefrontPath } from "../src/urls";
 
 /**
  * Missing content inside a resolved tenant. Every route renders
@@ -16,11 +16,13 @@ import { hostPath } from "../src/urls";
  * the shell has been committed with a 200. What the reader sees is the same
  * either way.
  */
-test.describe("web-host catalog not found", () => {
+test.describe("web-storefront catalog not found", () => {
   test("a missing series shows the not-found page with the site UI intact", async ({
     page,
   }) => {
-    const response = await page.goto(hostPath(`/series/${MISSING_PUBLIC_ID}`));
+    const response = await page.goto(
+      storefrontPath(`/series/${MISSING_PUBLIC_ID}`)
+    );
 
     expect(response?.status(), await page.content()).toBe(404);
     await expect(
@@ -38,7 +40,7 @@ test.describe("web-host catalog not found", () => {
 
   test("a missing episode shows the not-found page", async ({ page }) => {
     const response = await page.goto(
-      hostPath(
+      storefrontPath(
         `/series/${SEED_TENANT.series.publicId}/episodes/${MISSING_PUBLIC_ID}`
       )
     );
@@ -51,7 +53,7 @@ test.describe("web-host catalog not found", () => {
 
   test("an episode id from another series is not found", async ({ page }) => {
     const response = await page.goto(
-      hostPath(
+      storefrontPath(
         `/series/${MISSING_PUBLIC_ID}/episodes/${SEED_TENANT.series.freeEpisodeId}`
       )
     );
@@ -66,7 +68,7 @@ test.describe("web-host catalog not found", () => {
     // Base58 uses both cases, so a case-folded lookup would resolve two
     // different IDs to the same record.
     const response = await page.goto(
-      hostPath(`/series/${SEED_TENANT.series.publicId.toUpperCase()}`)
+      storefrontPath(`/series/${SEED_TENANT.series.publicId.toUpperCase()}`)
     );
 
     expect(response?.status(), await page.content()).toBe(404);
@@ -74,7 +76,9 @@ test.describe("web-host catalog not found", () => {
   });
 
   test("a missing label shows the not-found page", async ({ page }) => {
-    const response = await page.goto(hostPath(`/labels/${MISSING_PUBLIC_ID}`));
+    const response = await page.goto(
+      storefrontPath(`/labels/${MISSING_PUBLIC_ID}`)
+    );
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
@@ -83,7 +87,9 @@ test.describe("web-host catalog not found", () => {
   });
 
   test("a missing genre shows the not-found page", async ({ page }) => {
-    const response = await page.goto(hostPath(`/genres/${MISSING_PUBLIC_ID}`));
+    const response = await page.goto(
+      storefrontPath(`/genres/${MISSING_PUBLIC_ID}`)
+    );
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
@@ -99,7 +105,7 @@ test.describe("web-host catalog not found", () => {
   test("a tag no published series carries shows the not-found page", async ({
     page,
   }) => {
-    const response = await page.goto(hostPath("/tags/no-such-tag"));
+    const response = await page.goto(storefrontPath("/tags/no-such-tag"));
 
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
@@ -109,7 +115,7 @@ test.describe("web-host catalog not found", () => {
 
   test("a missing creator shows the not-found page", async ({ page }) => {
     const response = await page.goto(
-      hostPath(`/creators/${MISSING_PUBLIC_ID}`)
+      storefrontPath(`/creators/${MISSING_PUBLIC_ID}`)
     );
 
     expect(response?.status(), await page.content()).toBe(200);
@@ -121,7 +127,9 @@ test.describe("web-host catalog not found", () => {
   test("a missing published page shows the not-found page", async ({
     page,
   }) => {
-    const response = await page.goto(hostPath("/page/no-such-published-page"));
+    const response = await page.goto(
+      storefrontPath("/page/no-such-published-page")
+    );
 
     expect(response?.status(), await page.content()).toBe(404);
     await expect(

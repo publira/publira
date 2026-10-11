@@ -4,7 +4,9 @@ import { describe, it } from "node:test";
 import { findAgentCoAuthors } from "./check-agent-trailer.ts";
 
 const commit = (...trailers: string[]): string =>
-  ["feat(web-host): add episode access gate", "", ...trailers, ""].join("\n");
+  ["feat(web-storefront): add episode access gate", "", ...trailers, ""].join(
+    "\n"
+  );
 
 describe("findAgentCoAuthors", () => {
   it("rejects an agent co-author in every capitalization of the token", () => {

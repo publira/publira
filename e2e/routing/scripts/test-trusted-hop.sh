@@ -15,14 +15,14 @@ fi
 
 routing_log "=== route probes behind a trusted hop ==="
 
-assert_hop_client_address "web-host through the trusted hop" localhost / web-host
+assert_hop_client_address "web-storefront through the trusted hop" localhost / web-storefront
 assert_hop_client_address "web-admin through the trusted hop" admin.localhost / web-admin
 assert_hop_client_address "api through the trusted hop" localhost /api/foo api
 assert_hop_client_address "images through the trusted hop" admin.localhost /images/cover api
 
 # The host is outside the trusted range, so its forged headers are replaced as
 # they are on an edge that trusts nothing.
-assert_forwarded_headers "web-host from outside the trusted range" GET localhost / web-host
+assert_forwarded_headers "web-storefront from outside the trusted range" GET localhost / web-storefront
 assert_forwarded_headers "api from outside the trusted range" GET localhost /api/foo api
 
 # Traefik takes its read timeout from the static configuration, which only

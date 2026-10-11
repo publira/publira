@@ -520,8 +520,8 @@ const calendarDifference = (
  * What it returns depends on when it is read, so it belongs in the browser. A
  * Server Component that renders one under Cache Components writes it into the
  * prerendered shell, where "2 hours ago" stays two hours ago for as long as
- * that entry lives; `web-host`'s `RelativeTime` is what calls this, over an
- * absolute date the server can state truthfully.
+ * that entry lives; `web-storefront`'s `RelativeTime` is what calls this, over
+ * an absolute date the server can state truthfully.
  *
  * Invalid or empty input returns `options.fallback` (default: the original
  * `value`), the same contract as {@link formatDate}.

@@ -237,8 +237,8 @@ func TestRecordContentViewRecordsASeriesViewForASeriesTarget(t *testing.T) {
 }
 
 // A bearer this server cannot verify leaves the view anonymous, and an
-// anonymous view with nothing to identify it is not recorded. web-host sends
-// the cookie or the bearer and never both, and it cannot relay the API's
+// anonymous view with nothing to identify it is not recorded. web-storefront
+// sends the cookie or the bearer and never both, and it cannot relay the API's
 // Set-Cookie back to the reader, so minting here would open a fresh actor on
 // every beacon a stale session sends — the unbounded actor growth this RPC
 // exists to stop.

@@ -149,7 +149,7 @@ func TestRunOnceLeavesBoundariesUnmarkedWhenRevalidationFails(t *testing.T) {
 		{ID: failing, TenantID: tenantA, StartDue: yes(), EndDue: no()},
 		{ID: healthy, TenantID: tenantA, StartDue: yes(), EndDue: no()},
 	}}
-	reval := &stubRevalidator{err: errors.New("web-host is unreachable")}
+	reval := &stubRevalidator{err: errors.New("web-storefront is unreachable")}
 
 	New(queries, reval, quietLogger()).RunOnce(context.Background())
 

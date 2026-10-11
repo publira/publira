@@ -54,7 +54,7 @@ start_web_app() {
   fi
   # Only the consoles call the server with the web apps' own credential.
   local service_token=""
-  [[ "${app_name}" == "web-host" ]] || service_token="${PUBLIRA_WEB_SERVICE_TOKEN}"
+  [[ "${app_name}" == "web-storefront" ]] || service_token="${PUBLIRA_WEB_SERVICE_TOKEN}"
   : > "${LOG_DIR}/${app_name}.log"
   start_process_group "${app_name}" "${run_dir}" "${LOG_DIR}/${app_name}.log" \
     env \
@@ -78,7 +78,7 @@ for port in \
   "${PUBLIRA_E2E_WORKER_PORT}" \
   "${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" \
   "${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}" \
-  "${PUBLIRA_E2E_WEB_HOST_PORT}" \
+  "${PUBLIRA_E2E_WEB_STOREFRONT_PORT}" \
   "${PUBLIRA_E2E_WEB_ADMIN_PORT}" \
   "${PUBLIRA_E2E_WEB_PLATFORM_PORT}"; do
   if ss -ltn 2> /dev/null | grep -qE ":${port}\\b" || netstat -ltn 2> /dev/null | grep -qE ":${port}\\b"; then
@@ -102,10 +102,10 @@ bash "${PUBLIRA_E2E_SCRIPTS_DIR}/worker.sh" start
 # Bind hostname must match browser Host so Next internal rewrites are not
 # treated as external proxies (127.0.0.1 vs localhost → socket hang up).
 start_web_app \
-  "web-host" \
-  "${PUBLIRA_E2E_WEB_HOST_PORT}" \
+  "web-storefront" \
+  "${PUBLIRA_E2E_WEB_STOREFRONT_PORT}" \
   "${PUBLIRA_E2E_WEB_BIND_HOST:-localhost}" \
-  "web-host"
+  "web-storefront"
 
 # web-admin is reached as admin.localhost (seed admin_domain). Chromium resolves
 # *.localhost to loopback; the server must bind a hostname that accepts that Host.

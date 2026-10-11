@@ -14,9 +14,9 @@ import {
   CONTACT_WORKFLOW_UNHANDLED,
 } from "../src/scenarios/contact-workflow";
 import {
-  hostPath,
+  storefrontPath,
   WEB_ADMIN_CONTACT_WORKFLOW_BASE_URL,
-  WEB_HOST_CONTACT_WORKFLOW_BASE_URL,
+  WEB_STOREFRONT_CONTACT_WORKFLOW_BASE_URL,
 } from "../src/urls";
 
 type Staff = typeof CONTACT_WORKFLOW_ADMIN | typeof CONTACT_WORKFLOW_COLLEAGUE;
@@ -165,7 +165,9 @@ const submitThroughPublicApi = async (
   page: Page,
   message: { body: string; replyToEmail: string; subject: string }
 ): Promise<{ body: unknown; status: number }> => {
-  await page.goto(`${WEB_HOST_CONTACT_WORKFLOW_BASE_URL}${hostPath("/")}`);
+  await page.goto(
+    `${WEB_STOREFRONT_CONTACT_WORKFLOW_BASE_URL}${storefrontPath("/")}`
+  );
   return page.evaluate(
     async ({ path, request }) => {
       const response = await fetch(path, {
@@ -190,7 +192,7 @@ const submitThroughPublicApi = async (
  * handled, so every step reads it back from the screen rather than trusting
  * the toast. Reading and marking a single message on its own is
  * `admin.contact-inbox.spec.ts`; sending one from the public site is
- * `host.contact-form.spec.ts`.
+ * `storefront.contact-form.spec.ts`.
  */
 test.describe("web-admin contact-message workflow between staff", () => {
   test.describe.configure({ mode: "serial" });

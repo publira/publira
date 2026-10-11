@@ -13,7 +13,7 @@ fi
 
 routing_log "=== route probes with no platform hosts ==="
 
-assert_route "web-host listed host" GET localhost / web-host /
+assert_route "web-storefront listed host" GET localhost / web-storefront /
 assert_route "web-admin listed host" GET admin.localhost / web-admin /
 assert_route "api on a listed host" GET localhost /api/foo api /api/foo
 assert_route "images on a listed host" GET admin.localhost /images/cover api /images/cover

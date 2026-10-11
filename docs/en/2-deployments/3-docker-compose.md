@@ -19,7 +19,7 @@ The Compose file runs the same steps as [Installing](./2-installing.md), which e
 | `valkey` | Valkey, holding the image conversion cache, the rate limit counters, and the web apps' cache | Nothing; it starts empty after every restart |
 | `rustfs` | [RustFS](https://github.com/rustfs/rustfs), an S3-compatible object store, holding every uploaded image | The `rustfs-data` volume |
 | `proxy` | Traefik, the reverse proxy, with the repository's own routing | Nothing |
-| `server`, `worker`, `web-host`, `web-admin` | The four processes the [Overview](./1-overview.md) describes | Nothing |
+| `server`, `worker`, `web-storefront`, `web-admin` | The four processes the [Overview](./1-overview.md) describes | Nothing |
 | `web-platform`, `email-renderer` | The optional processes, which run only when you turn them on | Nothing |
 | `publiractl` | The command-line tool, never kept running: you run it with `docker compose run --rm publiractl <command>` | Nothing |
 
@@ -33,7 +33,7 @@ You need:
 
 - **A host with Docker Engine and the Compose plugin**, `docker compose`.
 - **A checkout of the repository at the release you install**, such as a clone checked out at that release's tag. The Compose file is not self-contained: it mounts the proxy's routing from `infra/proxy/`, so keep the whole checkout rather than copying `infra/deploy/` out of it. Every command on this page runs from `infra/deploy/`.
-- **The images of that release**, `publira`, `publiractl`, `web-host`, and `web-admin`, plus `web-platform` and `email-renderer` if you will run them. Build them from the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) and push them to a registry the host can pull from, or build them on the host itself: `task docker:verify:full` builds them all as `publira/<name>:local`.
+- **The images of that release**, `publira`, `publiractl`, `web-storefront`, and `web-admin`, plus `web-platform` and `email-renderer` if you will run them. Build them from the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) and push them to a registry the host can pull from, or build them on the host itself: `task docker:verify:full` builds them all as `publira/<name>:local`.
 - **An SMTP account**, which `publiractl setup` asks for: its host, port, encryption, user name and password, and the address mail is sent from.
 - **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the host.
 
@@ -80,7 +80,7 @@ Generate every one of these with the command beside it, a fresh value for every 
 | `PUBLIRA_PUBLIC_DB_PASSWORD`, `PUBLIRA_ADMIN_DB_PASSWORD`, `PUBLIRA_PLATFORM_DB_PASSWORD`, `PUBLIRA_OUTBOX_DB_PASSWORD`, `PUBLIRA_TICKER_DB_PASSWORD`, `PUBLIRA_CONTENT_STATS_DB_PASSWORD` | `openssl rand -hex 32`, one each |
 | `PUBLIRA_SECRET_ENCRYPTION_KEYS` | `echo "k1:$(openssl rand -base64 32)"` |
 | `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` | `k1`, the ID in front of the key above |
-| `PUBLIRA_AUTH_JWT_SECRET`, `PUBLIRA_WEB_HOST_AUTH_SECRET`, `PUBLIRA_WEB_ADMIN_AUTH_SECRET`, `PUBLIRA_WEB_SERVICE_TOKEN` | `openssl rand -base64 32`, one each |
+| `PUBLIRA_AUTH_JWT_SECRET`, `PUBLIRA_WEB_STOREFRONT_AUTH_SECRET`, `PUBLIRA_WEB_ADMIN_AUTH_SECRET`, `PUBLIRA_WEB_SERVICE_TOKEN` | `openssl rand -base64 32`, one each |
 | `PUBLIRA_REVALIDATE_TOKEN` | `openssl rand -hex 32` |
 | `PUBLIRA_RUSTFS_ACCESS_KEY`, `PUBLIRA_RUSTFS_SECRET_KEY` | `openssl rand -hex 32`, one each |
 

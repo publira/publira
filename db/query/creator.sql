@@ -5,12 +5,12 @@
 -- is (name, id); id is a UUIDv7, so the order stays unique even when two
 -- creators share a name.
 --
--- web-host used to order the names with localeCompare(..., "ja"), but the ICU
--- ja collation compares differently unless every environment carries the same
--- locale data, which changes the cursor comparison and breaks the btree
--- keyset scan. name is therefore compared in the database's default
--- collation. Adding ja-x-icu later means rebuilding the index in that
--- collation and moving the cursor comparison to it as well.
+-- web-storefront used to order the names with localeCompare(..., "ja"), but the
+-- ICU ja collation compares differently unless every environment carries the
+-- same locale data, which changes the cursor comparison and breaks the btree
+-- keyset scan. name is therefore compared in the database's default collation.
+-- Adding ja-x-icu later means rebuilding the index in that collation and moving
+-- the cursor comparison to it as well.
 --
 -- The EXISTS published predicate is the one
 -- ListActiveSeriesIDsByPublishedAtDesc uses. Once the two drift apart, the

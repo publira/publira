@@ -65,7 +65,7 @@ func (d Declaration) Missing(c Credentials) []string {
 }
 
 // WebhookPath answers the path on a tenant's storefront that receives the mail
-// the provider id names posts. apps/web-host serves it.
+// the provider id names posts. apps/web-storefront serves it.
 func WebhookPath(id string) string {
 	return "/api/v1/webhook/email/" + id
 }

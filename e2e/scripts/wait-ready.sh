@@ -83,12 +83,12 @@ wait_http "worker/readyz" \
 
 # Use localhost (not 127.0.0.1) to match browser Host / server bind hostname.
 # Substring `ok`, matching the previous check_http_body.
-wait_http "web-host/livez" \
-  "http://localhost:${PUBLIRA_E2E_WEB_HOST_PORT}/livez" \
+wait_http "web-storefront/livez" \
+  "http://localhost:${PUBLIRA_E2E_WEB_STOREFRONT_PORT}/livez" \
   --expect-body-regex "ok"
 
-wait_http "web-host/readyz" \
-  "http://localhost:${PUBLIRA_E2E_WEB_HOST_PORT}/readyz" \
+wait_http "web-storefront/readyz" \
+  "http://localhost:${PUBLIRA_E2E_WEB_STOREFRONT_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
 # web-admin binds 0.0.0.0; probe via 127.0.0.1 (tenant resolution is skipped
@@ -112,7 +112,7 @@ wait_http "web-platform/readyz" \
 
 # The edge itself, last: it only answers once both of its backends do. The
 # viewer performance suite reads pages through this origin.
-wait_http "edge/web-host/readyz" \
+wait_http "edge/web-storefront/readyz" \
   "http://localhost:${PUBLIRA_E2E_EDGE_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 

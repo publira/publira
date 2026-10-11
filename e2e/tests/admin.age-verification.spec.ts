@@ -4,9 +4,8 @@ import type { Page } from "@playwright/test";
 import { signInAsAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
 import { uploadEpisodePages } from "../src/episode-pages";
-import { signInAsMember } from "../src/host";
 import {
-  revalidateHostTags,
+  revalidateStorefrontTags,
   tenantSeriesDetailTag,
   tenantSiteTag,
 } from "../src/revalidate";
@@ -20,10 +19,11 @@ import {
   AGE_VERIFICATION_TENANT,
 } from "../src/scenarios/age-verification";
 import { episodePageLabel } from "../src/scenarios/viewer-pages";
+import { signInAsMember } from "../src/storefront";
 import {
-  hostPath,
+  storefrontPath,
   WEB_ADMIN_AGE_VERIFICATION_BASE_URL,
-  WEB_HOST_AGE_VERIFICATION_BASE_URL,
+  WEB_STOREFRONT_AGE_VERIFICATION_BASE_URL,
 } from "../src/urls";
 
 /**
@@ -36,7 +36,7 @@ import {
  * scenario seed that puts the rule back between runs.
  */
 
-const episodeUrl = `${WEB_HOST_AGE_VERIFICATION_BASE_URL}${hostPath(AGE_VERIFICATION_EPISODE_PATH)}`;
+const episodeUrl = `${WEB_STOREFRONT_AGE_VERIFICATION_BASE_URL}${storefrontPath(AGE_VERIFICATION_EPISODE_PATH)}`;
 
 const AGE_GATE_MESSAGE = "This work is not available for your age.";
 
@@ -100,7 +100,8 @@ const pollAgeGate = (page: Page) =>
   );
 
 /**
- * Put the tenant back on the rule the suites expect and tell web-host about it.
+ * Put the tenant back on the rule the suites expect and tell web-storefront
+ * about it.
  *
  * The scenario file writes `r18` back, a write no app saw, so without the tags
  * the storefront would keep gating this tenant by whatever the console last
@@ -112,7 +113,7 @@ const pollAgeGate = (page: Page) =>
 const resetAgeVerification = async (): Promise<void> => {
   applyScenarioSql(AGE_VERIFICATION_SCENARIO);
   uploadEpisodePages(AGE_VERIFICATION_EPISODE.publicId);
-  await revalidateHostTags([
+  await revalidateStorefrontTags([
     tenantSiteTag(AGE_VERIFICATION_TENANT.id),
     tenantSeriesDetailTag(AGE_VERIFICATION_TENANT.id),
   ]);
@@ -195,7 +196,7 @@ test.describe("web-admin age verification", () => {
         readerPage,
         AGE_VERIFICATION_MINOR,
         AGE_VERIFICATION_EPISODE_PATH,
-        WEB_HOST_AGE_VERIFICATION_BASE_URL
+        WEB_STOREFRONT_AGE_VERIFICATION_BASE_URL
       );
       await pollAgeGate(readerPage).toBe(1);
       await expect(ratingConfirmation(readerPage)).toHaveCount(0);
@@ -246,7 +247,7 @@ test.describe("web-admin age verification", () => {
         readerPage,
         AGE_VERIFICATION_CORRECTED,
         AGE_VERIFICATION_EPISODE_PATH,
-        WEB_HOST_AGE_VERIFICATION_BASE_URL
+        WEB_STOREFRONT_AGE_VERIFICATION_BASE_URL
       );
       await expect(readerPage.getByText(AGE_GATE_MESSAGE)).toBeVisible();
 

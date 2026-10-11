@@ -65,7 +65,7 @@ func (a viewActor) resolved() bool {
 // A caller whose bearer was rejected gets no minted identifier. userID is unset
 // for it the same way it is for a signed-out reader, but the two are not the
 // same case: a rejected bearer usually comes from a caller that cannot keep the
-// cookie either — web-host sends one or the other and never relays the
+// cookie either — web-storefront sends one or the other and never relays the
 // Set-Cookie — so minting would open a new actor on every request and put back
 // exactly the unbounded actor growth this instrumentation was moved out of the
 // detail reads to stop. Such a view is attributed to a cookie when one came

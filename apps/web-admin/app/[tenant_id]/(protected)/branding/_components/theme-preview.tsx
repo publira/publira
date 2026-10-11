@@ -9,9 +9,9 @@ import { Message } from "#components/message";
 import { ThemePreviewFrame } from "./theme-preview-frame";
 
 /**
- * The site's own navigation, taken from `host.*` rather than restated under
- * `admin.*`: a facsimile that says "Labels" where the site says something else
- * is a picture of a site nobody visits. The row is the one the site header
+ * The site's own navigation, taken from `storefront.*` rather than restated
+ * under `admin.*`: a facsimile that says "Labels" where the site says something
+ * else is a picture of a site nobody visits. The row is the one the site header
  * draws, so it names what that row names and changes with it. Only the sample
  * content — the site name and the two works — is the preview's own copy,
  * because the site has no fixed wording for it.
@@ -20,12 +20,12 @@ const SiteNavLabels = () => (
   <>
     <span>
       <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-        <Message message="host.nav.labels" />
+        <Message message="storefront.nav.labels" />
       </Suspense>
     </span>
     <span>
       <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-        <Message message="host.nav.genres" />
+        <Message message="storefront.nav.genres" />
       </Suspense>
     </span>
   </>
@@ -55,7 +55,7 @@ const WorkRow = ({
     </span>
     <Badge tone="success">
       <Suspense fallback={<SkeletonLine className="h-3 w-8" />}>
-        <Message message="host.common.free" />
+        <Message message="storefront.common.free" />
       </Suspense>
     </Badge>
   </div>
@@ -72,9 +72,9 @@ const WorkRow = ({
  * and the reading action in the one Shu a screen is allowed. No surface here
  * is filled with a gradient, because none on the site is.
  *
- * The copy is rendered here on the server so that the site's `host.*` strings
- * never join the catalog `AdminLocaleProvider` writes into every console page;
- * only the frame reads the form's colors.
+ * The copy is rendered here on the server so that the site's `storefront.*`
+ * strings never join the catalog `AdminLocaleProvider` writes into every
+ * console page; only the frame reads the form's colors.
  */
 export const ThemePreview = () => (
   <ThemePreviewFrame>
@@ -93,17 +93,17 @@ export const ThemePreview = () => (
       <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
         <span className="rounded-control border border-input bg-card px-3 py-1.5 text-xs text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
-            <Message message="host.nav.search" />
+            <Message message="storefront.nav.search" />
           </Suspense>
         </span>
         <span className={buttonVariants({ size: "sm", variant: "ghost" })}>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <Message message="host.nav.login" />
+            <Message message="storefront.nav.login" />
           </Suspense>
         </span>
         <span className={buttonVariants({ size: "sm", variant: "ink" })}>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-            <Message message="host.nav.signup" />
+            <Message message="storefront.nav.signup" />
           </Suspense>
         </span>
       </div>
@@ -150,14 +150,14 @@ export const ThemePreview = () => (
           <div className="flex shrink-0 items-center gap-2">
             <span className={buttonVariants({ size: "sm" })}>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                <Message message="host.common.view_series_detail" />
+                <Message message="storefront.common.view_series_detail" />
               </Suspense>
             </span>
             <span
               className={buttonVariants({ size: "sm", variant: "secondary" })}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-                <Message message="host.common.read" />
+                <Message message="storefront.common.read" />
               </Suspense>
             </span>
           </div>
@@ -168,12 +168,12 @@ export const ThemePreview = () => (
         <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
           <p className="font-serif text-base leading-tight">
             <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
-              <Message message="host.top.free_heading" />
+              <Message message="storefront.top.free_heading" />
             </Suspense>
           </p>
           <span className="text-xs text-primary underline underline-offset-4">
             <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
-              <Message message="host.top.view_all" />
+              <Message message="storefront.top.view_all" />
             </Suspense>
           </span>
         </div>

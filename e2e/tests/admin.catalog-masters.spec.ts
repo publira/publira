@@ -39,26 +39,34 @@ import {
   OTHER_TENANT,
 } from "../src/scenarios/multi-tenant";
 import { serverActionAnswered } from "../src/server-action";
-import { hostPath, WEB_ADMIN_BASE_URL, WEB_HOST_BASE_URL } from "../src/urls";
+import {
+  storefrontPath,
+  WEB_ADMIN_BASE_URL,
+  WEB_STOREFRONT_BASE_URL,
+} from "../src/urls";
 
-const hostUrl = (pathname: string): string =>
-  `${WEB_HOST_BASE_URL}${hostPath(pathname)}`;
+const storefrontUrl = (pathname: string): string =>
+  `${WEB_STOREFRONT_BASE_URL}${storefrontPath(pathname)}`;
 
 const adminUrl = (pathname: string): string =>
   `${WEB_ADMIN_BASE_URL}${pathname}`;
 
 /**
- * Read a web-host page again and again until it reports what the console just
- * saved.
+ * Read a web-storefront page again and again until it reports what the console
+ * just saved.
  *
- * An admin write revalidates the tags web-host holds its cached reads under,
- * and revalidation marks those entries stale rather than dropping them: the
- * request right after the write is still answered from the stale entry while
- * the refresh runs behind it, and the request after that carries the new
+ * An admin write revalidates the tags web-storefront holds its cached reads
+ * under, and revalidation marks those entries stale rather than dropping them:
+ * the request right after the write is still answered from the stale entry
+ * while the refresh runs behind it, and the request after that carries the new
  * value. Waiting on a single navigation would be waiting on a copy that can
  * never change, so these assertions navigate again instead.
  */
-const pollHostPage = <T>(page: Page, url: string, read: () => Promise<T>) =>
+const pollStorefrontPage = <T>(
+  page: Page,
+  url: string,
+  read: () => Promise<T>
+) =>
   expect.poll(
     async () => {
       await page.goto(url);
@@ -140,7 +148,7 @@ const uploadIcon = async (
   const path = await savedIconPath(page);
   // The console names the path, and the bytes are read on the public site's
   // host, which the runner can resolve.
-  const response = await request.get(`${WEB_HOST_BASE_URL}${path}`);
+  const response = await request.get(`${WEB_STOREFRONT_BASE_URL}${path}`);
   expect(response.status(), path).toBe(200);
   return createHash("sha256")
     .update(await response.body())
@@ -320,7 +328,7 @@ test.describe("admin catalog masters", () => {
     await expect(thirdRow.roleCombobox).toHaveValue("Artist");
   });
 
-  test("editing a creator reaches the creator detail page on web-host", async ({
+  test("editing a creator reaches the creator detail page on web-storefront", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -343,9 +351,9 @@ test.describe("admin catalog masters", () => {
       })
     );
 
-    // Brand-new public_id: this first host request misses cache and hits the
-    // public API, so nothing older than the series can be served here.
-    const response = await page.goto(hostUrl(`/creators/${creatorId}`));
+    // Brand-new public_id: this first storefront request misses cache and hits
+    // the public API, so nothing older than the series can be served here.
+    const response = await page.goto(storefrontUrl(`/creators/${creatorId}`));
     expect(response?.status(), await page.content()).toBe(200);
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
     await expect(page.getByText(profileText)).toBeVisible();
@@ -364,8 +372,10 @@ test.describe("admin catalog masters", () => {
     await expect(formMessage(page)).toContainText("Author updated.");
 
     // The saved edit reaches the public page without waiting for an expiry.
-    await pollHostPage(page, hostUrl(`/creators/${creatorId}`), () =>
-      mainHeadingText(page)
+    await pollStorefrontPage(
+      page,
+      storefrontUrl(`/creators/${creatorId}`),
+      () => mainHeadingText(page)
     ).toBe(renamed);
     await expect(page.getByText(editedProfileText)).toBeVisible();
   });
@@ -392,7 +402,7 @@ test.describe("admin catalog masters", () => {
     expect(framed).not.toBe(centred);
   });
 
-  test("registers a label and shows it in the list and on web-host", async ({
+  test("registers a label and shows it in the list and on web-storefront", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -408,7 +418,7 @@ test.describe("admin catalog masters", () => {
 
     // A label is public in its own right — it does not need a series — and the
     // public list is newest first, so a label just made is on the first page.
-    await pollHostPage(page, hostUrl("/labels"), async () => {
+    await pollStorefrontPage(page, storefrontUrl("/labels"), async () => {
       // Wait for the list itself before counting in it: every row is one link
       // into `/labels/`, and the pagination beneath them carries none.
       await page
@@ -423,13 +433,16 @@ test.describe("admin catalog masters", () => {
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   });
 
-  test("editing a label reaches label detail on web-host", async ({ page }) => {
+  test("editing a label reaches label detail on web-storefront", async ({
+    page,
+  }) => {
     const suffix = uniqueSuffix();
     const name = `E2E Label ${suffix}`;
     const labelId = trackLabel(await createLabelViaUi(page, name));
 
-    // Brand-new public_id: the first host request cannot be served from cache.
-    const response = await page.goto(hostUrl(`/labels/${labelId}`));
+    // Brand-new public_id: the first storefront request cannot be served from
+    // cache.
+    const response = await page.goto(storefrontUrl(`/labels/${labelId}`));
     expect(response?.status(), await page.content()).toBe(200);
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
 
@@ -443,7 +456,7 @@ test.describe("admin catalog masters", () => {
 
     // As with a creator, the saved edit reaches the storefront rather than
     // leaving the previous name on it.
-    await pollHostPage(page, hostUrl(`/labels/${labelId}`), () =>
+    await pollStorefrontPage(page, storefrontUrl(`/labels/${labelId}`), () =>
       mainHeadingText(page)
     ).toBe(renamed);
   });

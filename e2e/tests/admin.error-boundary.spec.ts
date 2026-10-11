@@ -7,17 +7,17 @@ import { WEB_ADMIN_BASE_URL } from "../src/urls";
 /**
  * Route-level error boundary for the console.
  *
- * The reach rule the web-host spec measures is a framework one, so this app
- * gets the same coverage rather than an assumption that it inherits it: a
+ * The reach rule the web-storefront spec measures is a framework one, so this
+ * app gets the same coverage rather than an assumption that it inherits it: a
  * failure raised after the static shell has been flushed reaches the boundary
  * on a **direct hit**, not only on a client navigation.
  *
- * Which boundary catches it differs from web-host, and that is the point of
- * asserting it here. The console chrome `(protected)/layout.tsx` renders reads
- * the session and tenant, so an admin API outage fails that layout — above
- * `(protected)/error.tsx` — and `app/[tenant_id]/error.tsx` takes over with no
- * console chrome around it. A failure inside a page instead is caught by the
- * `SectionErrorBoundary` around that section, which
+ * Which boundary catches it differs from web-storefront, and that is the point
+ * of asserting it here. The console chrome `(protected)/layout.tsx` renders
+ * reads the session and tenant, so an admin API outage fails that layout —
+ * above `(protected)/error.tsx` — and `app/[tenant_id]/error.tsx` takes over
+ * with no console chrome around it. A failure inside a page instead is caught
+ * by the `SectionErrorBoundary` around that section, which
  * `admin.publish-flow.spec.ts` exercises as part of the normal flows.
  */
 test.describe("web-admin console error boundary", () => {

@@ -19,7 +19,7 @@ import (
 )
 
 // notify posts an App Store Server Notifications V2 body, signed by signer,
-// the way web-host forwards one.
+// the way web-storefront forwards one.
 func (e *storePurchaseEnv) notify(t *testing.T, signer *appstoretest.Signer, notification appstoretest.Notification) error {
 	t.Helper()
 	body, err := json.Marshal(map[string]string{"signedPayload": signer.Sign(t, notification)})

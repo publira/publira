@@ -103,7 +103,7 @@ Top-level keys are separated by reader. Copy appearing in only one app belongs u
 | `email` | The mail the Go server words and sends, laid out as HTML by `@publira/email-templates` |
 | `platform` | Screen copy for `web-platform` (the platform console) |
 | `admin` | Screen copy for `web-admin` (the tenant administration console) |
-| `host` | Screen copy for `web-host` (the tenant-facing public site) |
+| `storefront` | Screen copy for `web-storefront` (the tenant-facing public site) |
 | `mobile` | Screen copy for the Flutter app under `mobile/` |
 
 Within an app namespace, separate keys by screen (or a cohesive area). Promote copy to that area's shared section (such as `platform.auth.fields`) only when multiple screens use it.

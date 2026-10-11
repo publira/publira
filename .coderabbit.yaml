@@ -30,7 +30,7 @@ reviews:
   path_instructions:
     - path: "apps/**/*.{ts,tsx}"
       instructions: |
-        Next.js App Router monorepo (web-admin / web-host / web-platform).
+        Next.js App Router monorepo (web-admin / web-storefront / web-platform).
         Source of truth: AGENTS.md and apps/AGENTS.md.
 
         - React: user actions in event handlers only. No props→state via useEffect.

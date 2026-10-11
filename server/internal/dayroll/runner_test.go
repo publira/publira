@@ -101,7 +101,7 @@ func TestRunOnceFollowsEachTenantsOwnMidnight(t *testing.T) {
 }
 
 func TestRunOnceRetriesATenantWhoseDropFailed(t *testing.T) {
-	reval := &stubRevalidator{err: errors.New("web-host is unreachable")}
+	reval := &stubRevalidator{err: errors.New("web-storefront is unreachable")}
 	runner := New(everyTenant(seoul), reval, quietLogger())
 
 	runner.RunOnce(context.Background(), at(t, "2026-03-02T12:00:00Z"))

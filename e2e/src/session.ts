@@ -6,7 +6,7 @@ import { SignJWT } from "jose";
 
 import { runSql } from "./db";
 
-export const HOST_SESSION_COOKIE_NAME = "publira_web_host_auth";
+export const HOST_SESSION_COOKIE_NAME = "publira_web_storefront_auth";
 export const ADMIN_SESSION_COOKIE_NAME = "publira_web_admin_auth";
 export const PLATFORM_SESSION_COOKIE_NAME = "publira_web_platform_auth";
 

@@ -3180,7 +3180,7 @@
       }
     }
   },
-  "host": {
+  "storefront": {
     "announcements": {
       "banner_dismiss": "이 공지사항 닫기",
       "banner_link": "공지사항 읽기",

@@ -56,7 +56,7 @@ alpha_path="$(dev_env_profile_path alpha)"
 bravo_path="$(dev_env_profile_path bravo)"
 charlie_path="$(dev_env_profile_path charlie)"
 
-for key in PUBLIRA_DB_URL PUBLIRA_CONTENT_STATS_DB_URL PUBLIRA_REDIS_URL PUBLIRA_S3_BUCKET PUBLIRA_COOKIE_SUFFIX PUBLIRA_WEB_HOST_PORT PUBLIRA_EDGE_PORT; do
+for key in PUBLIRA_DB_URL PUBLIRA_CONTENT_STATS_DB_URL PUBLIRA_REDIS_URL PUBLIRA_S3_BUCKET PUBLIRA_COOKIE_SUFFIX PUBLIRA_WEB_STOREFRONT_PORT PUBLIRA_EDGE_PORT; do
   alpha_value="$(dev_env_profile_value "${alpha_path}" "${key}")"
   bravo_value="$(dev_env_profile_value "${bravo_path}" "${key}")"
   [[ "${alpha_value}" != "${bravo_value}" ]] || fail "${key} is shared by alpha and bravo"
@@ -441,7 +441,7 @@ wait_for_process_exit() {
 }
 
 chain_run_dir="$(dev_env_profile_run_dir chain)"
-start_fake_service "${chain_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-host"
+start_fake_service "${chain_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-storefront"
 chain_sid="${fake_service_sid}"
 wait_for_session_members "${chain_sid}" 2 || fail "the started service did not reach a session of its own"
 dev_env_stop_profile chain > /dev/null
@@ -455,7 +455,7 @@ pass "stopping a profile ends the descendants of the pid it recorded"
 # a process group of its own, and the process that started it may exit first,
 # leaving it with no parent from the recorded pid.
 orphan_run_dir="$(dev_env_profile_run_dir orphan)"
-start_fake_service "${orphan_run_dir}" web bash -c 'set -m; bash -c "sleep 300; true" "$0" &' "${REPO_ROOT}/apps/web-host"
+start_fake_service "${orphan_run_dir}" web bash -c 'set -m; bash -c "sleep 300; true" "$0" &' "${REPO_ROOT}/apps/web-storefront"
 orphan_sid="${fake_service_sid}"
 wait_for_process_exit "${orphan_sid}" || fail "the process that started the orphaned child did not exit"
 wait_for_session_members "${orphan_sid}" 2 || fail "the orphaned child did not outlive the process that started it"
@@ -490,7 +490,7 @@ rm -f "${hermetic_run_dir}/env.pid"
 pass "a service is started with only the variables its line names and the base ones"
 
 finished_run_dir="$(dev_env_profile_run_dir finished)"
-start_fake_service "${finished_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-host"
+start_fake_service "${finished_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-storefront"
 finished_sid="${fake_service_sid}"
 wait_for_session_members "${finished_sid}" 2 || fail "the started service did not reach a session of its own"
 dev_env_signal_session KILL "${finished_sid}"
@@ -516,7 +516,7 @@ pass "a pid whose session no longer belongs to this repository is not signalled"
 # A ps that fails stands for a listing that could not be taken, which says
 # nothing about whether the session still has members.
 unlisted_run_dir="$(dev_env_profile_run_dir unlisted)"
-start_fake_service "${unlisted_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-host"
+start_fake_service "${unlisted_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-storefront"
 unlisted_sid="${fake_service_sid}"
 write_stub "${test_dir}/ps-failing/ps" 'exit 1'
 if (PATH="${test_dir}/ps-failing:${PATH}" dev_env_stop_profile unlisted) > /dev/null 2>&1; then
@@ -532,7 +532,7 @@ pass "a stop that cannot list a session's processes keeps its pid file and fails
 # the directory would therefore call every profile that has ever been started a
 # running one.
 logged_run_dir="$(dev_env_profile_run_dir logged)"
-start_fake_service "${logged_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-host"
+start_fake_service "${logged_run_dir}" web bash -c 'sleep 300; true' "${REPO_ROOT}/apps/web-storefront"
 dev_env_profile_has_running_processes logged || fail "a profile whose service is running was not reported as running"
 dev_env_stop_profile logged > /dev/null
 [[ -f "${logged_run_dir}/web.log" ]] || fail "the log of a stopped service was removed"

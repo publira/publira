@@ -37,8 +37,8 @@ import sharp from "sharp";
  * being cropped and re-encoded per aspect ratio without the suite comparing
  * subsampling artefacts. The quality is set where a 1050x1500 comic page lands
  * around 100 KB, the weight of a scanned page of that size: lighter pages would
- * quietly buy `e2e/tests/host.viewer-performance.spec.ts` headroom a real body
- * does not have.
+ * quietly buy `e2e/tests/storefront.viewer-performance.spec.ts` headroom a real
+ * body does not have.
  */
 const JPEG = {
   chromaSubsampling: "4:4:4",

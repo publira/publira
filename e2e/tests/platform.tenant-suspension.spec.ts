@@ -13,7 +13,7 @@ import {
 import { ADMIN_SESSION_COOKIE_NAME, plantSessionCookie } from "../src/session";
 import {
   WEB_ADMIN_INTERNAL_URL,
-  WEB_HOST_INTERNAL_URL,
+  WEB_STOREFRONT_INTERNAL_URL,
   withHostname,
 } from "../src/urls";
 
@@ -31,7 +31,7 @@ const CONSOLE_UNAVAILABLE = "This admin console is unavailable";
  */
 const moveTenantToFreshHosts = (): { console: string; site: string } => {
   const label = `suspend-${randomUUID()}`;
-  const site = withHostname(WEB_HOST_INTERNAL_URL, `${label}.localhost`);
+  const site = withHostname(WEB_STOREFRONT_INTERNAL_URL, `${label}.localhost`);
   const admin = withHostname(
     WEB_ADMIN_INTERNAL_URL,
     `admin.${label}.localhost`

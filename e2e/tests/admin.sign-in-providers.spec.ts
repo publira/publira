@@ -12,7 +12,7 @@ import {
 } from "../src/scenarios/sign-in-providers";
 import {
   WEB_ADMIN_SIGN_IN_PROVIDERS_BASE_URL,
-  WEB_HOST_SIGN_IN_PROVIDERS_BASE_URL,
+  WEB_STOREFRONT_SIGN_IN_PROVIDERS_BASE_URL,
 } from "../src/urls";
 
 /**
@@ -173,7 +173,7 @@ test.describe("sign-in providers", () => {
     // The API revalidates the site's tenant read as the save lands, so the
     // site names both providers from here on.
     const site = await context.newPage();
-    await site.goto(WEB_HOST_SIGN_IN_PROVIDERS_BASE_URL);
+    await site.goto(WEB_STOREFRONT_SIGN_IN_PROVIDERS_BASE_URL);
     await expect
       .poll(() => offeredProviders(site))
       .toStrictEqual({
@@ -215,7 +215,7 @@ test.describe("sign-in providers", () => {
     await expect(page.getByLabel("Web client ID")).toHaveValue(WEB_CLIENT_ID);
 
     const site = await context.newPage();
-    await site.goto(WEB_HOST_SIGN_IN_PROVIDERS_BASE_URL);
+    await site.goto(WEB_STOREFRONT_SIGN_IN_PROVIDERS_BASE_URL);
     await expect
       .poll(() => offeredProviders(site))
       .toStrictEqual({

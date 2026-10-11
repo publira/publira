@@ -132,7 +132,7 @@ Never run `gh stack merge` or `gh pr merge`: `main` is merged through its queue.
 - Disclose the AI agent with an `Assisted-by:` trailer, passed with `--trailer` so Git records a real trailer:
 
   ```bash
-  git commit -m "feat(web-host): add episode access gate" \
+  git commit -m "feat(web-storefront): add episode access gate" \
     --trailer "Assisted-by: Claude Code:claude-opus-5"
   ```
 

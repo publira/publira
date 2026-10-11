@@ -68,7 +68,7 @@ func newCapturingCheckoutProvider() *capturingCheckoutProvider {
 	return &capturingCheckoutProvider{Provider: stripe.New(), url: "https://checkout.stripe.test/cs_test"}
 }
 
-// paymentWebhookRequest is the request web-host makes for a provider's
+// paymentWebhookRequest is the request web-storefront makes for a provider's
 // delivery.
 func paymentWebhookRequest(tenantID, provider string, payload []byte, headers http.Header) *publirav1.ProcessPaymentWebhookRequest {
 	forwarded := make(map[string]string, len(headers))

@@ -83,7 +83,7 @@ describe("coefficient", () => {
     assert.equal(coefficient("e2e/tests/reader.spec.ts"), 0.5);
     assert.equal(coefficient("mobile/test/widget_test.dart"), 0.5);
     assert.equal(coefficient(".github/workflows/ci.yml"), 0.7);
-    assert.equal(coefficient("apps/web-host/src/app/page.tsx"), 0.9);
+    assert.equal(coefficient("apps/web-storefront/src/app/page.tsx"), 0.9);
     assert.equal(coefficient("server/internal/auth/session.go"), 1);
     assert.equal(coefficient("packages/utils/src/index.ts"), 1);
     assert.equal(coefficient("mobile/lib/main.dart"), 1);
@@ -154,16 +154,16 @@ describe("significantLinesByFile", () => {
   it("attributes a deleted file to the path it had", () => {
     const counts = significantLinesByFile(
       [
-        "diff --git a/apps/web-host/src/old.ts b/apps/web-host/src/old.ts",
+        "diff --git a/apps/web-storefront/src/old.ts b/apps/web-storefront/src/old.ts",
         "deleted file mode 100644",
-        "--- a/apps/web-host/src/old.ts",
+        "--- a/apps/web-storefront/src/old.ts",
         "+++ /dev/null",
         "@@ -1,1 +0,0 @@",
         "-export const gone = true;",
         "",
       ].join("\n")
     );
-    assert.deepEqual([...counts], [["apps/web-host/src/old.ts", 1]]);
+    assert.deepEqual([...counts], [["apps/web-storefront/src/old.ts", 1]]);
   });
 
   it("records a rename with no hunks as zero lines", () => {

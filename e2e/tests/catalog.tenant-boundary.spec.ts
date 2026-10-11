@@ -7,13 +7,13 @@ import {
   SEED_TENANT,
 } from "../src/scenarios/multi-tenant";
 import {
-  hostPath,
-  WEB_HOST_OTHER_TENANT_BASE_URL,
-  WEB_HOST_UNKNOWN_TENANT_BASE_URL,
+  storefrontPath,
+  WEB_STOREFRONT_OTHER_TENANT_BASE_URL,
+  WEB_STOREFRONT_UNKNOWN_TENANT_BASE_URL,
 } from "../src/urls";
 
 const otherTenantUrl = (pathname: string): string =>
-  `${WEB_HOST_OTHER_TENANT_BASE_URL}${hostPath(pathname)}`;
+  `${WEB_STOREFRONT_OTHER_TENANT_BASE_URL}${storefrontPath(pathname)}`;
 
 /**
  * Host-based tenant resolution and the isolation it has to guarantee: the
@@ -26,7 +26,7 @@ const otherTenantUrl = (pathname: string): string =>
  * same either way and asserted below — the other tenant's title, episode title
  * and creator name never appear in the response.
  */
-test.describe("web-host tenant boundary", () => {
+test.describe("web-storefront tenant boundary", () => {
   test.beforeAll(() => {
     applyScenarioSql(MULTI_TENANT_SCENARIO);
   });
@@ -72,7 +72,7 @@ test.describe("web-host tenant boundary", () => {
 
     // The shelf holds one cover per published series, each a single link.
     const covers = page.locator(
-      `main a[href^="${hostPath("/series/")}"]:not([href*="/episodes/"])`
+      `main a[href^="${storefrontPath("/series/")}"]:not([href*="/episodes/"])`
     );
     await expect(covers).toHaveCount(1);
     await expect(covers).toContainText(OTHER_TENANT.publishedSeries.title);
@@ -235,7 +235,7 @@ test.describe("web-host tenant boundary", () => {
 
   test("a Host bound to no tenant is a 404", async ({ page }) => {
     const response = await page.goto(
-      `${WEB_HOST_UNKNOWN_TENANT_BASE_URL}${hostPath("/")}`
+      `${WEB_STOREFRONT_UNKNOWN_TENANT_BASE_URL}${storefrontPath("/")}`
     );
 
     // Still a real 404: `proxy.ts` answers an unmapped Host before any route

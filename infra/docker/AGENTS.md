@@ -72,7 +72,7 @@ Dev Container is **out of scope** here: its image is built in the `publira/base-
 From the **repository root**, prefer Task (same entrypoint as CI):
 
 ```bash
-# Role representatives (web-host / publira / publiractl / email-renderer)
+# Role representatives (web-storefront / publira / publiractl / email-renderer)
 task docker:verify
 
 # Or only what you touched
@@ -82,7 +82,7 @@ task docker:build:publiractl
 task docker:build:node APP_NAME=email-renderer PORT=8080
 
 # Runtime smoke (publiractl brings up its own PostgreSQL through compose.smoke.yaml)
-task docker:smoke:web APP_NAME=web-host PORT=3000
+task docker:smoke:web APP_NAME=web-storefront PORT=3000
 task docker:smoke:node APP_NAME=email-renderer PORT=8080
 task docker:smoke:publiractl
 ```

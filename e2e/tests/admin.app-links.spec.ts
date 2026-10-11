@@ -10,8 +10,8 @@ import {
 } from "../src/scenarios/app-links";
 import {
   WEB_ADMIN_APP_LINKS_BASE_URL,
-  WEB_HOST_APP_LINKS_BASE_URL,
-  WEB_HOST_BASE_URL,
+  WEB_STOREFRONT_APP_LINKS_BASE_URL,
+  WEB_STOREFRONT_BASE_URL,
 } from "../src/urls";
 
 /**
@@ -141,7 +141,7 @@ test.describe("app links", () => {
 
     await expectAssociation(
       page.request,
-      WEB_HOST_APP_LINKS_BASE_URL,
+      WEB_STOREFRONT_APP_LINKS_BASE_URL,
       ASSET_LINKS
     ).toStrictEqual({
       body: [
@@ -159,7 +159,7 @@ test.describe("app links", () => {
     });
     await expectAssociation(
       page.request,
-      WEB_HOST_APP_LINKS_BASE_URL,
+      WEB_STOREFRONT_APP_LINKS_BASE_URL,
       APPLE_APP_SITE_ASSOCIATION
     ).toMatchObject({
       body: {
@@ -182,12 +182,12 @@ test.describe("app links", () => {
     // The development seed tenant has no app, and nothing stands in for one.
     await expectAssociation(
       page.request,
-      WEB_HOST_BASE_URL,
+      WEB_STOREFRONT_BASE_URL,
       ASSET_LINKS
     ).toMatchObject(NOT_SERVED);
     await expectAssociation(
       page.request,
-      WEB_HOST_BASE_URL,
+      WEB_STOREFRONT_BASE_URL,
       APPLE_APP_SITE_ASSOCIATION
     ).toMatchObject(NOT_SERVED);
 
@@ -230,12 +230,12 @@ test.describe("app links", () => {
 
     await expectAssociation(
       page.request,
-      WEB_HOST_APP_LINKS_BASE_URL,
+      WEB_STOREFRONT_APP_LINKS_BASE_URL,
       ASSET_LINKS
     ).toMatchObject(NOT_SERVED);
     await expectAssociation(
       page.request,
-      WEB_HOST_APP_LINKS_BASE_URL,
+      WEB_STOREFRONT_APP_LINKS_BASE_URL,
       APPLE_APP_SITE_ASSOCIATION
     ).toMatchObject({ status: 200 });
 

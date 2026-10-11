@@ -10,10 +10,9 @@ import {
 } from "../src/comments";
 import { applyScenarioSql } from "../src/db";
 import { uploadEpisodePages } from "../src/episode-pages";
-import { signInAsMember } from "../src/host";
 import {
   episodeCommentsTag,
-  revalidateHostTags,
+  revalidateStorefrontTags,
   tenantSiteTag,
 } from "../src/revalidate";
 import {
@@ -25,10 +24,11 @@ import {
   COMMENT_MODERATION_SCENARIO,
   COMMENT_MODERATION_TENANT,
 } from "../src/scenarios/comment-moderation";
+import { signInAsMember } from "../src/storefront";
 import {
-  hostPath,
+  storefrontPath,
   WEB_ADMIN_COMMENT_MODERATION_BASE_URL,
-  WEB_HOST_COMMENT_MODERATION_BASE_URL,
+  WEB_STOREFRONT_COMMENT_MODERATION_BASE_URL,
 } from "../src/urls";
 
 /**
@@ -41,7 +41,7 @@ import {
  * empties the queue between runs.
  */
 
-const episodeUrl = `${WEB_HOST_COMMENT_MODERATION_BASE_URL}${hostPath(COMMENT_MODERATION_PATH)}`;
+const episodeUrl = `${WEB_STOREFRONT_COMMENT_MODERATION_BASE_URL}${storefrontPath(COMMENT_MODERATION_PATH)}`;
 
 /** Choose one mode on the settings card and submit it. */
 const saveCommentMode = async (page: Page, option: string): Promise<void> => {
@@ -148,7 +148,8 @@ const pollCommentsSection = (page: Page) =>
   });
 
 /**
- * Put the tenant back the way the suite needs it and tell web-host about it.
+ * Put the tenant back the way the suite needs it and tell web-storefront about
+ * it.
  *
  * The scenario file deletes the comments a previous run wrote and writes the
  * tenant's comment mode back to `approval_required`, both of them writes no app
@@ -164,7 +165,7 @@ const pollCommentsSection = (page: Page) =>
 const resetComments = async (): Promise<void> => {
   applyScenarioSql(COMMENT_MODERATION_SCENARIO);
   uploadEpisodePages(COMMENT_MODERATION_EPISODE.publicId);
-  await revalidateHostTags([
+  await revalidateStorefrontTags([
     episodeCommentsTag(
       COMMENT_MODERATION_TENANT.id,
       COMMENT_MODERATION_EPISODE.publicId
@@ -197,7 +198,7 @@ test.describe("web-admin comment moderation", () => {
       page,
       COMMENT_MODERATION_MEMBER,
       COMMENT_MODERATION_PATH,
-      WEB_HOST_COMMENT_MODERATION_BASE_URL
+      WEB_STOREFRONT_COMMENT_MODERATION_BASE_URL
     );
     await postComment(page, body);
     await expect(
@@ -264,7 +265,7 @@ test.describe("web-admin comment moderation", () => {
       page,
       COMMENT_MODERATION_MEMBER,
       COMMENT_MODERATION_PATH,
-      WEB_HOST_COMMENT_MODERATION_BASE_URL
+      WEB_STOREFRONT_COMMENT_MODERATION_BASE_URL
     );
     await postComment(page, body);
 
@@ -340,7 +341,7 @@ test.describe("web-admin comment moderation", () => {
       page,
       COMMENT_MODERATION_MEMBER,
       COMMENT_MODERATION_PATH,
-      WEB_HOST_COMMENT_MODERATION_BASE_URL
+      WEB_STOREFRONT_COMMENT_MODERATION_BASE_URL
     );
     await postComment(page, body);
 
@@ -393,7 +394,7 @@ test.describe("web-admin comment moderation", () => {
       page,
       COMMENT_MODERATION_MEMBER,
       COMMENT_MODERATION_PATH,
-      WEB_HOST_COMMENT_MODERATION_BASE_URL
+      WEB_STOREFRONT_COMMENT_MODERATION_BASE_URL
     );
     await postComment(page, body);
 
@@ -422,7 +423,7 @@ test.describe("web-admin comment moderation", () => {
         reporterPage,
         COMMENT_MODERATION_REPORTER,
         COMMENT_MODERATION_PATH,
-        WEB_HOST_COMMENT_MODERATION_BASE_URL
+        WEB_STOREFRONT_COMMENT_MODERATION_BASE_URL
       );
       await pollEpisodePage(reporterPage, () =>
         reporterPage.getByText(body).count()
@@ -478,7 +479,7 @@ test.describe("web-admin comment moderation", () => {
       page,
       COMMENT_MODERATION_MEMBER,
       COMMENT_MODERATION_PATH,
-      WEB_HOST_COMMENT_MODERATION_BASE_URL
+      WEB_STOREFRONT_COMMENT_MODERATION_BASE_URL
     );
     await postComment(page, body);
 

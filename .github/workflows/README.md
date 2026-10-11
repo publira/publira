@@ -133,7 +133,7 @@ Implementation:
 | Displayed job | Contents | Details |
 | --- | --- | --- |
 | `Detect changes` | Evaluate path filters and select jobs and Docker matrix entries. | This file |
-| `Lint and Format` | `pnpm check` across every file type that oxfmt supports, then `pnpm reader-parity:check`, which holds the mobile app's reader parity matrix to web-host. | [`AGENTS.md`](../../AGENTS.md) |
+| `Lint and Format` | `pnpm check` across every file type that oxfmt supports, then `pnpm reader-parity:check`, which holds the mobile app's reader parity matrix to web-storefront. | [`AGENTS.md`](../../AGENTS.md) |
 | `Check` | Locale-catalog, `sqlc`, and buf-generated drift; literal-`<svg>` grep, the design-token guard, the `docs/en/` contract, and `pnpm typecheck`. Saves the Go module cache every Go job restores. | [`AGENTS.md`](../../AGENTS.md), [`docs/README.md`](../../docs/README.md) |
 | `Lint / Go` | `go mod tidy` drift guard, then `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test -count=1 ./...` in `server/`; on `main`, saves the `test` Go build cache. | [`server/AGENTS.md`](../../server/AGENTS.md) |

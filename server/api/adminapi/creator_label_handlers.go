@@ -667,12 +667,12 @@ func (s *adminServer) GetLabel(
 	return &publiraadminv1.GetLabelResponse{Label: adminLabel(row.ID, protomapper.LabelWithImage(row.PublicID, row.Name, row.EyeCatchImageUpdatedAt, variants))}, nil
 }
 
-// creatorRevalidateTags names what web-host caches a creator under. The creator
-// list and the creator detail page read it under `:creators`, and so do the
-// series lists that print creator names on their cards; the series detail page
-// prints them too and is only reachable under `:series:detail`, so a rename
-// that stopped at `:creators` would leave the previous name on that page until
-// the entry expired on its own.
+// creatorRevalidateTags names what web-storefront caches a creator under. The
+// creator list and the creator detail page read it under `:creators`, and so do
+// the series lists that print creator names on their cards; the series detail
+// page prints them too and is only reachable under `:series:detail`, so a
+// rename that stopped at `:creators` would leave the previous name on that page
+// until the entry expired on its own.
 func creatorRevalidateTags(tenantID string) []string {
 	normalizedTenantID := strings.TrimSpace(tenantID)
 	return []string{
@@ -874,11 +874,11 @@ func (s *adminServer) UpdateCreator(
 	))}, nil
 }
 
-// labelRevalidateTags names what web-host caches a label under. The label list
-// and the label detail page read it under `:labels`, and every series card and
-// series detail page renders the name of the series' label, so a rename that
-// stopped at `:labels` would leave the previous name on the storefront until
-// those entries expired on their own.
+// labelRevalidateTags names what web-storefront caches a label under. The label
+// list and the label detail page read it under `:labels`, and every series card
+// and series detail page renders the name of the series' label, so a rename
+// that stopped at `:labels` would leave the previous name on the storefront
+// until those entries expired on their own.
 func labelRevalidateTags(tenantID string) []string {
 	normalizedTenantID := strings.TrimSpace(tenantID)
 	return []string{

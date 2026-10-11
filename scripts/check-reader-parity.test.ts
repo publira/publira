@@ -31,23 +31,25 @@ describe("webRouteOf", () => {
   it("names a page by its directory below the tenant segment", () => {
     assert.equal(
       webRouteOf(
-        "apps/web-host/app/[tenant_id]/[locale]/(site)/series/page.tsx"
+        "apps/web-storefront/app/[tenant_id]/[locale]/(site)/series/page.tsx"
       ),
       "[locale]/(site)/series"
     );
     assert.equal(
-      webRouteOf("apps/web-host/app/[tenant_id]/api/v1/views/route.ts"),
+      webRouteOf("apps/web-storefront/app/[tenant_id]/api/v1/views/route.ts"),
       "api/v1/views"
     );
   });
 
   it("leaves out what no reader does", () => {
     assert.equal(
-      webRouteOf("apps/web-host/app/[tenant_id]/theme.css/route.ts"),
+      webRouteOf("apps/web-storefront/app/[tenant_id]/theme.css/route.ts"),
       null
     );
     assert.equal(
-      webRouteOf("apps/web-host/app/[tenant_id]/[locale]/(site)/layout.tsx"),
+      webRouteOf(
+        "apps/web-storefront/app/[tenant_id]/[locale]/(site)/layout.tsx"
+      ),
       null
     );
   });
@@ -96,7 +98,7 @@ describe("webCallsIn", () => {
 });
 
 describe("findProblems", () => {
-  it("accepts a matrix that claims everything web-host serves", () => {
+  it("accepts a matrix that claims everything web-storefront serves", () => {
     assert.deepEqual(findProblems([seriesDetail], inventory()), []);
   });
 

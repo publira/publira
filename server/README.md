@@ -81,12 +81,12 @@ A paid episode is sold as a one-time payment through the web payment provider th
 
 - **Start.** `StartEpisodeCheckout` loads the tenant's enabled provider and credentials from `tenant_payment_config` and calls `StartCheckout` with the purchase (tenant, reader, episode, price, reading period), the episode title, the URLs the reader returns to, and an idempotency key derived from all of those, so a retry of the same request reuses the provider's checkout while one that differs in any of them starts a checkout of its own. It answers the URL the provider gives back, which the storefront and the app send the reader to. An episode that already has a valid purchase does not start a checkout, and can be bought again once that purchase has expired.
 - **Return.** After paying or cancelling, the reader comes back to the episode URL on the tenant's `domain` with `checkout=success` or `checkout=cancelled`. The return confirms nothing; only a notification does.
-- **Notification.** `POST /api/v1/webhook/payment/<provider>` on `web-host` receives the provider's notifications on the tenant's public domain and forwards the raw body and every header to `ProcessPaymentWebhook` with the provider id. The API server refuses a provider the tenant does not use and hands the rest to `ParseNotification`, which verifies the notification against the tenant's credentials, reads the provider's API where the notification alone does not say enough, and answers `PurchaseCompleted`, `Refunded`, or `Ignored`.
+- **Notification.** `POST /api/v1/webhook/payment/<provider>` on `web-storefront` receives the provider's notifications on the tenant's public domain and forwards the raw body and every header to `ProcessPaymentWebhook` with the provider id. The API server refuses a provider the tenant does not use and hands the rest to `ParseNotification`, which verifies the notification against the tenant's credentials, reads the provider's API where the notification alone does not say enough, and answers `PurchaseCompleted`, `Refunded`, or `Ignored`.
 - **Purchase.** `PurchaseCompleted` creates a row in `purchases`, keyed by `(provider, provider_checkout_id)` so that a redelivered notification creates nothing more, and stores the id the provider's refunds name as `provider_payment_id`. The purchase it carries must belong to the tenant whose path it arrived on. A payment made in the provider's test mode is recorded with `is_test`, opens the episode, and is left out of royalty statements and the daily content stats.
 - **Refund.** `Refunded` carries the total refunded so far on one payment. `refunded_amount` holds it, and `refunded_at` is set once it reaches the price paid; a fully refunded purchase opens nothing and no longer blocks the reader from buying the episode again, while a partial refund leaves the reading right alone. A refund that names no amount in JPY is recorded as a full refund.
 - **Held refund.** A provider need order neither its notifications nor its retries, so a refund can arrive before the purchase it reverses. Such a refund is kept in `unapplied_refunds` under `(provider, provider_payment_id)` and written onto the purchase by the notification that finally creates it.
 
-Without a usable configuration neither the checkout nor the webhook runs, and web-host turns the resulting `FailedPrecondition` into a 503, which the provider retries. A notification that does not verify or cannot be read is a 400, and a provider id the registry does not know is a 404. Verifying signatures, currencies, amounts, and purchase permissions stays in the API server.
+Without a usable configuration neither the checkout nor the webhook runs, and web-storefront turns the resulting `FailedPrecondition` into a 503, which the provider retries. A notification that does not verify or cannot be read is a 400, and a provider id the registry does not know is a 404. Verifying signatures, currencies, amounts, and purchase permissions stays in the API server.
 
 Tenant administrators choose a provider from `ListPaymentProviders` and store the credential fields it declares through `AdminPaymentSettingsService`. Every field is stored encrypted in `tenant_payment_config`; a secret field is shown back masked and a public one as stored. Payments can be turned on only once every required field has a value, and choosing another provider clears the fields stored for the previous one.
 
@@ -162,7 +162,7 @@ The settings store, the admin RPCs, the console form, the webhook route, and the
 Staff answer a contact message from the console, and the `contact_message_reply_email` outbox handler mails the answer to the reader through the tenant's SMTP settings. Where the reader's reply goes depends on whether the tenant receives inbound email:
 
 - **Not configured.** The answer's `Reply-To` is the answering staff member's account address, so the reply lands in that person's mailbox and Publira never sees it.
-- **Configured and ready.** The answer's `Reply-To` is the message's own address on the tenant's inbound domain, `contact+<message public id>@<inbound domain>`. The provider receives the reply there and posts it to `POST /api/v1/webhook/email/<provider>` on `web-host`, which forwards the raw body and every header to `ContactService.ProcessInboundEmailWebhook`. The API server matches the mail to its message by that address first and by the Message-IDs its `In-Reply-To` and `References` name second, stores it under the message as a reader entry without the quoted answer, puts the message back among the waiting ones, and queues the `contact_message_staff_email` notice for it.
+- **Configured and ready.** The answer's `Reply-To` is the message's own address on the tenant's inbound domain, `contact+<message public id>@<inbound domain>`. The provider receives the reply there and posts it to `POST /api/v1/webhook/email/<provider>` on `web-storefront`, which forwards the raw body and every header to `ContactService.ProcessInboundEmailWebhook`. The API server matches the mail to its message by that address first and by the Message-IDs its `In-Reply-To` and `References` name second, stores it under the message as a reader entry without the quoted answer, puts the message back among the waiting ones, and queues the `contact_message_staff_email` notice for it.
 
 An inbound provider is a package under `internal/inboundprovider` that implements `inboundprovider.Provider`, and `providers.Registry()` lists the ones a tenant may choose from. Tenant administrators choose one from `ListInboundEmailProviders` and store it, the inbound domain, and the credential fields it declares through `AdminInboundEmailSettingsService`; the fields are stored encrypted in `tenant_inbound_email_config` and shown back masked. The settings are ready once they are enabled with a domain and every required field.
 
@@ -180,7 +180,7 @@ The **Email** page under **Integrations** in `web-admin` is where a tenant admin
 
 ### Receiving replies on a development machine
 
-Neither provider has a CLI that forwards to `localhost` the way the Stripe and PAY.JP CLIs do: both deliver from the internet, so the edge needs a public HTTPS URL in front of it. Open a tunnel to `localhost:3080` that rewrites the `Host` header to the seed tenant's domain, which is what `web-host` resolves the tenant from:
+Neither provider has a CLI that forwards to `localhost` the way the Stripe and PAY.JP CLIs do: both deliver from the internet, so the edge needs a public HTTPS URL in front of it. Open a tunnel to `localhost:3080` that rewrites the `Host` header to the seed tenant's domain, which is what `web-storefront` resolves the tenant from:
 
 ```bash
 cloudflared tunnel --url http://localhost:3080 --http-host-header localhost:3080
@@ -260,7 +260,7 @@ Building requires libvips. For the details, see [cmd/publira/README.md](cmd/publ
 
 With `PUBLIRA_REVALIDATE_TOKEN` set, a write records the cache tags it leaves stale as a `next_cache_revalidation` outbox event, and the tags are sent to the internal Route Handler `POST /api/v1/revalidate` in each Next.js app — by `publira server` as soon as the write commits, and by `publira worker` for whatever that attempt did not finish. The tags go to every app whose URL is set, and an app without one is not a destination, so a deployment that runs no Platform Console leaves `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` unset. Both processes log their destinations at startup, and refuse to start when the token is set with none of the three, or with one that is not an absolute URL.
 
-- `PUBLIRA_WEB_HOST_INTERNAL_URL` (for example `http://web-host:3000`)
+- `PUBLIRA_WEB_STOREFRONT_INTERNAL_URL` (for example `http://web-storefront:3000`)
 - `PUBLIRA_WEB_ADMIN_INTERNAL_URL` (for example `http://web-admin:4000`)
 - `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (for example `http://web-platform:4100`)
 
@@ -315,7 +315,7 @@ A save does not move the search onto an index nobody has built. The row keeps th
 - Any other target, or another analysis on the same one, is built by the worker's `maintenance.build_search_index` job, which looks for one every 30 seconds, from the database, and the search moves onto it once the index holds the catalog. Until then `publira server` keeps answering from the previous index, and the worker writes every `catalog_index_sync` event into both targets, or into the alias alone when the build fills a new index behind it and writes every tenant again once the alias has moved.
 - A build that fails is recorded on the row and reported by `GetPlatformSearchSettings` and `publiractl search show`; the search stays where it was, and the job tries again on its next pass.
 
-`publira server` and `publira worker` reread the row within 30 seconds, so a save reaches them without a restart. Every write to a series, a creator, or a label, and every write to an episode or a free window that changes what its series is narrowed or sorted by, queues a `catalog_index_sync` outbox event in its own transaction; so do the ticker jobs when a free window opens or closes and when a scheduled episode is published. The worker rewrites the named row's document from the database, or replaces it with a tombstone no search finds when the row is published nowhere, and once a search can find that write it records a `next_cache_revalidation` for the cache tag web-host holds the searches of that kind under; on `sql` with no build due it marks those events done as it claims them. `publiractl search reindex` rebuilds the index on the saved engine, for a mapping a release changed or an index that was lost; see [publiractl](cmd/publiractl/README.md#search).
+`publira server` and `publira worker` reread the row within 30 seconds, so a save reaches them without a restart. Every write to a series, a creator, or a label, and every write to an episode or a free window that changes what its series is narrowed or sorted by, queues a `catalog_index_sync` outbox event in its own transaction; so do the ticker jobs when a free window opens or closes and when a scheduled episode is published. The worker rewrites the named row's document from the database, or replaces it with a tombstone no search finds when the row is published nowhere, and once a search can find that write it records a `next_cache_revalidation` for the cache tag web-storefront holds the searches of that kind under; on `sql` with no build due it marks those events done as it claims them. `publiractl search reindex` rebuilds the index on the saved engine, for a mapping a release changed or an index that was lost; see [publiractl](cmd/publiractl/README.md#search).
 
 ### Text analysis
 
@@ -386,7 +386,7 @@ Propagation uses W3C Trace Context (`traceparent`) and Baggage. An inbound `trac
 
 Because the headers are gone, the RPC becomes a **new root span** on the API side. The caller's trace ID is not adopted, and setting `sampled=01` does not override the 10% sampling in production. A trace is joined up only inside the gateway.
 
-First-party server-to-server traffic does not pass through the gateway, so this removal does not apply to it. SSR (web-host / web-admin / web-platform) connects directly to the API's gRPC port, and publira server and worker call the Next.js revalidation endpoints directly through `PUBLIRA_WEB_*_INTERNAL_URL`. `traceparent` passes through in both cases, so "web app → API → DB query" remains a single trace.
+First-party server-to-server traffic does not pass through the gateway, so this removal does not apply to it. SSR (web-storefront / web-admin / web-platform) connects directly to the API's gRPC port, and publira server and worker call the Next.js revalidation endpoints directly through `PUBLIRA_WEB_*_INTERNAL_URL`. `traceparent` passes through in both cases, so "web app → API → DB query" remains a single trace.
 
 The mobile app and the browser run on the user's device, so they are not first-party and their trace context is stripped at the gateway.
 
@@ -528,7 +528,7 @@ Browser cookies are managed on the Next.js side as JWE with `jose`, and only `Au
 | TTL | 24h |
 | Audience | `public` / `admin` / `platform` / `media` / `admin-media` / `admin-mfa-verify` / `admin-mfa-enroll` / `platform-mfa-verify` / `platform-mfa-enroll` |
 | Revocation | `users.credentials_version` / `platform_users.credentials_version` (incremented on a password change and the like) |
-| Next cookie | `PUBLIRA_AUTH_SECRET` (**required**, at least 32 bytes. It is for JWE and is separate from the API's JWT secret. There is no fallback: if it is unset or too short, an exception is raised) / cookie names such as `publira_web_host_auth` |
+| Next cookie | `PUBLIRA_AUTH_SECRET` (**required**, at least 32 bytes. It is for JWE and is separate from the API's JWT secret. There is no fallback: if it is unset or too short, an exception is raised) / cookie names such as `publira_web_storefront_auth` |
 
 ### Sign in with Apple and Google
 
@@ -747,7 +747,7 @@ The rate is `complete_count / member_view_count` over a range of days. A period 
   - This is what the reverse proxy forwards `/api` and `/images` to, prefixes kept, on every host
 - Internal listener, `:8100` (changeable with `PUBLIRA_PUBLIC_API_GRPC_ADDR`)
   - All three namespaces: `publira.v1`, `publira.admin.v1` (`AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`), and `publira.platform.v1`
-  - web-host, web-admin, and web-platform dial it directly over the private network
+  - web-storefront, web-admin, and web-platform dial it directly over the private network
 
 The proto packages produce non-colliding procedure paths, so one mux carries all three; the registration is the whole boundary, because a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on the same route. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
 
@@ -806,7 +806,7 @@ Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL
   - `GET /readyz` — readiness of the dependencies. `200` when healthy, `503` when not. Intended for a K8s readinessProbe or a load balancer.
   - Server / worker: at minimum a DB `Ping`
   - `publira server`'s internal listener holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform` — so a failure says which login stopped answering. Its edge-facing listener checks the public pool alone under `db`: that is the only namespace it serves, and the state of the two consoles' pools is not an outsider's to read.
-  - Web (`web-admin` / `web-host` / `web-platform`): the upstream API's `/readyz` plus Redis (the Redis check is skipped when `PNCH_REDIS_URL` is disabled)
+  - Web (`web-admin` / `web-storefront` / `web-platform`): the upstream API's `/readyz` plus Redis (the Redis check is skipped when `PNCH_REDIS_URL` is disabled)
   - Example `/readyz` responses (JSON):
     - Healthy: `{"status":"ok","checks":{"db":{"status":"ok"}}}`
     - Dependency failure: `{"status":"unavailable","checks":{"db":{"status":"error","error":"..."}}}` (HTTP 503)

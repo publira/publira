@@ -2,7 +2,7 @@
 
 The package that holds the browser session cookie for the Next.js apps. It seals the API access token into a JWE, opens it again, and builds the `Authorization` header the sealed token is there to produce.
 
-All three consoles (`web-host`, `web-admin`, `web-platform`) use it, and each keeps its own cookie name and cache tag. What is shared is the envelope, not the cookie: the payload shape, the encryption, the expiry check, and the cookie attributes.
+All three consoles (`web-storefront`, `web-admin`, `web-platform`) use it, and each keeps its own cookie name and cache tag. What is shared is the envelope, not the cookie: the payload shape, the encryption, the expiry check, and the cookie attributes.
 
 The session itself is issued by the Go API. Nothing here signs a token or decides who is signed in — it only carries what the API returned across requests.
 
@@ -107,7 +107,7 @@ await apiClient.auth.getMe(
 import { profileCookieName } from "@publira/web-session/cookie-name";
 
 export const PUBLIC_SESSION_COOKIE_NAME = profileCookieName(
-  "publira_web_host_auth"
+  "publira_web_storefront_auth"
 );
 ```
 

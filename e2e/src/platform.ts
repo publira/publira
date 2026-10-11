@@ -56,9 +56,10 @@ export interface CreateTenantInput {
   /**
    * Label of the option to pick in the default-language selector.
    *
-   * Every assertion this suite makes on a tenant-owned screen — the web-host
-   * catalog, the tenant's web-admin login — is written against the English
-   * copy, so the helper picks `English` unless a test says otherwise.
+   * Every assertion this suite makes on a tenant-owned screen — the
+   * web-storefront catalog, the tenant's web-admin login — is written against
+   * the English copy, so the helper picks `English` unless a test says
+   * otherwise.
    */
   defaultLocaleLabel?: LocaleLabel;
 }
