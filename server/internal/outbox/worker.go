@@ -14,12 +14,13 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverdatabasesql"
 	"github.com/riverqueue/river/rivertype"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/tenantstatus"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 const (
@@ -39,7 +40,18 @@ const (
 	maxLastErrorBytes      = 2048
 )
 
-var tracer = otel.Tracer("github.com/publira/publira/server/internal/outbox")
+// ServiceName is the service.name the drain's spans carry, and the worker
+// process's default. The drain looks its provider up by this name rather than
+// using the global one, because a process that serves the API as well
+// installs the API's name as its default.
+const ServiceName = "publira-worker"
+
+// tracer is resolved on every use, not when the package is initialized:
+// tracing.Setup runs after that, and a provider looked up before it would be
+// the global one.
+func tracer() trace.Tracer {
+	return tracing.TracerProvider(ServiceName).Tracer("github.com/publira/publira/server/internal/outbox")
+}
 
 // Config tunes the resident worker. Zero values become the defaults of
 // 2s drain, 10 attempts, and 15m stale reclaim.
@@ -335,7 +347,7 @@ func uniqueInFlightStates() []rivertype.JobState {
 }
 
 func (w *Worker) drain(ctx context.Context) error {
-	ctx, span := tracer.Start(ctx, "outbox.drain")
+	ctx, span := tracer().Start(ctx, "outbox.drain")
 	defer span.End()
 
 	tx, err := w.db.BeginTx(ctx, nil)
@@ -479,7 +491,7 @@ func (w *Worker) reportReclaimed(ctx context.Context, reclaimed []dbmodels.Outbo
 }
 
 func (w *Worker) process(ctx context.Context, eventID uuid.UUID) error {
-	ctx, span := tracer.Start(ctx, "outbox.process")
+	ctx, span := tracer().Start(ctx, "outbox.process")
 	defer span.End()
 	span.SetAttributes(attribute.String("outbox.event_id", eventID.String()))
 

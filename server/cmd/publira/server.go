@@ -7,37 +7,28 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/publira/publira/server/api/adminapi"
 	"github.com/publira/publira/server/api/platformapi"
 	"github.com/publira/publira/server/api/publicapi"
-	"github.com/publira/publira/server/config"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/catalogsearch/sqlbackend"
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/imageserver"
-	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/mailguard"
-	"github.com/publira/publira/server/internal/metrics"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/redisurl"
-	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/signin"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
 	s3storage "github.com/publira/publira/server/internal/storage/s3"
-	"github.com/publira/publira/server/internal/tracing"
 )
 
 const (
@@ -49,69 +40,42 @@ const (
 	defaultPlatformDBURL = "postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable"
 )
 
-// runServer serves the API and image delivery from one process: the edge
-// listener carries what the reverse proxy forwards, /api and /images alike,
-// and the internal listener carries the three Connect namespaces the Next.js
-// apps dial directly.
-func runServer() int {
-	logger := logging.New(os.Stdout, nil)
-	slog.SetDefault(logger)
-
-	// One service.name per Connect namespace, and one for the image routes,
-	// so the four stay apart in a trace UI now that they share a process.
-	shutdownTracing, err := tracing.Setup(
-		context.Background(),
+// serverServiceNames is one service.name per Connect namespace, and one for
+// the image routes, so the four stay apart in a trace UI now that they share
+// a process. The public namespace's comes first: it is the process default.
+func serverServiceNames() []string {
+	return []string{
 		publicapi.ServiceName,
 		adminapi.ServiceName,
 		platformapi.ServiceName,
 		imageserver.ServiceName,
-	)
-	if err != nil {
-		// Telemetry is not worth refusing to serve traffic over.
-		logger.Error("failed to initialize tracing", "error", err)
 	}
-	// Metrics describe the process rather than one of its namespaces, so
-	// they report under the process default alone.
-	shutdownMetrics, err := metrics.Setup(context.Background(), publicapi.ServiceName)
-	if err != nil {
-		logger.Error("failed to initialize metrics", "error", err)
-	}
+}
 
-	cfg, err := config.New()
-	if err != nil {
-		logger.Error("failed to load config", "error", err)
-		return 1
-	}
+// buildServer builds the API and image delivery: the edge listener carries
+// what the reverse proxy forwards, /api and /images alike, and the internal
+// listener carries the three Connect namespaces the Next.js apps dial
+// directly.
+func buildServer(deps shared) (_ half, err error) {
+	logger := deps.logger
 
 	// Refused here rather than where Redis is dialled, which falls back to
 	// in-process state and would leave the misconfiguration running.
 	if _, err := redisurl.FromEnv(); err != nil {
-		logger.Error("failed to load config", "error", err)
-		return 1
+		return half{}, failed("failed to load config", err)
 	}
 	idTokens, err := signin.VerifierConfigFromEnv()
 	if err != nil {
-		logger.Error("failed to load config", "error", err)
-		return 1
+		return half{}, failed("failed to load config", err)
 	}
 	clientIPs, err := clientip.FromEnv()
 	if err != nil {
-		logger.Error("failed to load config", "error", err)
-		return 1
+		return half{}, failed("failed to load config", err)
 	}
 
 	tokens, err := auth.NewTokenManagerFromEnv()
 	if err != nil {
-		logger.Error("failed to initialize access token manager", "error", err)
-		return 1
-	}
-
-	// One client for the whole process, shared by the two namespaces whose
-	// writes leave a cache entry stale.
-	revalidateClient, err := newRevalidateClient(logger)
-	if err != nil {
-		logger.Error("failed to initialize next revalidate", "error", err)
-		return 1
+		return half{}, failed("failed to initialize access token manager", err)
 	}
 
 	// One pool per PostgreSQL login, because the login is what the database
@@ -124,25 +88,15 @@ func runServer() int {
 	// the login it answers as rather than opening a second one for it.
 	pools, err := openServerPools()
 	if err != nil {
-		logger.Error("failed to initialize db", "error", err)
-		return 1
+		return half{}, failed("failed to initialize db", err)
 	}
-	defer pools.close() //nolint:errcheck
-
-	// Declared as the interface, never as *secretcrypto.Manager: a typed nil
-	// assigned to an interface is not nil, and it would slip past the guard in
-	// emailsettings.DecryptPassword into a nil-receiver method call. A process
-	// started without keys has to report an unusable manager, so a handler can
-	// retry once an operator restarts it with them.
-	var encryptor emailsettings.SecretManager
-	if len(cfg.Encryption.Keys) > 0 {
-		manager, managerErr := secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
-		if managerErr != nil {
-			logger.Error("failed to initialize secret encryption manager", "error", managerErr)
-			return 1
+	defer func() {
+		if err != nil {
+			_ = pools.close()
 		}
-		encryptor = manager
-	}
+	}()
+
+	encryptor := deps.encryptor
 
 	// The object store is read from the platform's settings on the platform
 	// pool, the one login here that may read them, so this process starts
@@ -176,10 +130,11 @@ func runServer() int {
 	login := loginguard.NewShared(policy, logger)
 	mail := mailguard.NewShared(policy, logger)
 
-	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, revalidateClient, searcher, idTokens, login, mail)
+	// The revalidate client is shared by the two namespaces whose writes leave
+	// a cache entry stale.
+	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, deps.revalidate, searcher, idTokens, login, mail)
 	if err != nil {
-		logger.Error("failed to initialize public api handler", "error", err)
-		return 1
+		return half{}, failed("failed to initialize public api handler", err)
 	}
 
 	smtpTester := internalsmtp.NewClient()
@@ -187,10 +142,9 @@ func runServer() int {
 	webServiceToken := newWebServiceToken(logger)
 
 	adminRecorder := auditlog.NewAsync(dbmodels.New(pools.admin), pools.admin, logger)
-	adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, revalidateClient, adminRecorder, webServiceToken, login, mail)
+	adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, deps.revalidate, adminRecorder, webServiceToken, login, mail)
 	if err != nil {
-		logger.Error("failed to initialize admin api handler", "error", err)
-		return 1
+		return half{}, failed("failed to initialize admin api handler", err)
 	}
 
 	platformRecorder := auditlog.NewAsync(dbmodels.New(pools.platform), nil, logger)
@@ -205,28 +159,22 @@ func runServer() int {
 		tokens,
 	)
 	if err != nil {
-		logger.Error("failed to initialize image handler", "error", err)
-		return 1
+		return half{}, failed("failed to initialize image handler", err)
 	}
 
 	edgeAddr := addrFromEnv("PUBLIRA_PUBLIC_API_ADDR", defaultEdgeAddr)
 	internalAddr := addrFromEnv("PUBLIRA_PUBLIC_API_GRPC_ADDR", defaultInternalAddr)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	logger.Info("starting server (edge)", "addr", edgeAddr)
-	logger.Info("starting server (internal)", "addr", internalAddr)
-	if err := httpserver.Serve(ctx, logger, []*http.Server{
-		httpserver.New(edgeAddr, edgeHandler(clientIPs, publicAPI, imageHandler, pools)),
-		httpserver.New(internalAddr, internalHandler(clientIPs, publicAPI, adminAPI, platformAPI, pools)),
-	}, adminRecorder.Shutdown, platformRecorder.Shutdown, shutdownTracing, shutdownMetrics, func(context.Context) error {
-		return errors.Join(imageHandler.Close(), pools.close())
-	}); err != nil {
-		logger.Error("server failed", "error", err)
-		return 1
-	}
-	return 0
+	return half{
+		listeners: []listener{
+			{name: "server (edge)", server: httpserver.New(edgeAddr, edgeHandler(clientIPs, publicAPI, imageHandler, pools))},
+			{name: "server (internal)", server: httpserver.New(internalAddr, internalHandler(clientIPs, publicAPI, adminAPI, platformAPI, pools))},
+		},
+		drain: []func(context.Context) error{adminRecorder.Shutdown, platformRecorder.Shutdown},
+		close: func() error {
+			return errors.Join(imageHandler.Close(), pools.close())
+		},
+	}, nil
 }
 
 // edgeHandler serves what the internet may reach: the public API under /api

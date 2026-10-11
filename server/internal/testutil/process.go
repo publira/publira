@@ -100,6 +100,31 @@ func (p *Process) WaitReady(t *testing.T, url string) {
 	}
 }
 
+// Stop sends the process SIGTERM, as an orchestrator stopping it would, and
+// returns its exit code once it has exited, failing the test if it outlives
+// the deadline.
+func (p *Process) Stop(t *testing.T) int {
+	t.Helper()
+	if err := p.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		t.Fatalf("signal the process: %v", err)
+	}
+	select {
+	case <-p.done:
+	case <-time.After(15 * time.Second):
+		t.Fatal("the process did not exit within the deadline")
+	}
+	var exitErr *exec.ExitError
+	switch {
+	case p.err == nil:
+		return 0
+	case errors.As(p.err, &exitErr):
+		return exitErr.ExitCode()
+	default:
+		t.Fatalf("wait for the process: %v", p.err)
+		return 0
+	}
+}
+
 // RunMain runs the current test binary's command to completion with env as its
 // whole environment, and returns its exit code and output.
 func RunMain(t *testing.T, env []string, args ...string) (int, string) {

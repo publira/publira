@@ -39,23 +39,64 @@ func TestRunUnknownCommand(t *testing.T) {
 	}
 }
 
-// A command takes no arguments: everything a process reads is in the
-// environment, so an argument is a mistake rather than a setting.
-func TestRunRejectsExtraArguments(t *testing.T) {
-	var stderr strings.Builder
-	if code := run([]string{"server", "--port", "8000"}, &stderr); code == 0 {
-		t.Fatal("exit code = 0, want non-zero")
-	}
-	if !strings.Contains(stderr.String(), "takes no arguments") {
-		t.Fatalf("stderr = %q, want the extra argument rejection", stderr.String())
+// Everything a process reads is in the environment, and the one flag there is
+// chooses what server hosts, so any other argument is a mistake rather than a
+// setting. None of these invocations starts anything.
+func TestRunRejectsArgumentsTheCommandDoesNotTake(t *testing.T) {
+	for _, tc := range []struct {
+		args   []string
+		reason string
+	}{
+		{[]string{"server", "--port", "8000"}, "flag provided but not defined: -port"},
+		{[]string{"server", "extra"}, "server takes no arguments other than --with-worker"},
+		{[]string{"server", "--with-worker", "extra"}, "server takes no arguments other than --with-worker"},
+		{[]string{"worker", "extra"}, "worker takes no arguments"},
+		{[]string{"worker", "--with-worker"}, "worker takes no arguments"},
+		{[]string{"--with-worker"}, `unknown command "--with-worker"`},
+	} {
+		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
+			var stderr strings.Builder
+			if code := run(tc.args, &stderr); code != 2 {
+				t.Fatalf("exit code = %d, want 2", code)
+			}
+			out := stderr.String()
+			if !strings.Contains(out, tc.reason) {
+				t.Fatalf("stderr = %q, want %q", out, tc.reason)
+			}
+			if !strings.Contains(out, "Usage: publira <command>") {
+				t.Fatalf("stderr = %q, want the usage text", out)
+			}
+		})
 	}
 }
 
-func TestUsageListsEveryCommand(t *testing.T) {
+func TestParseServerFlags(t *testing.T) {
+	for _, tc := range []struct {
+		args []string
+		want bool
+	}{
+		{nil, false},
+		{[]string{"--with-worker"}, true},
+		{[]string{"-with-worker"}, true},
+		{[]string{"--with-worker=false"}, false},
+	} {
+		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
+			got, err := parseServerFlags(tc.args)
+			if err != nil {
+				t.Fatalf("parseServerFlags(%q): %v", tc.args, err)
+			}
+			if got != tc.want {
+				t.Fatalf("parseServerFlags(%q) = %v, want %v", tc.args, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestUsageListsEveryCommandAndFlag(t *testing.T) {
 	out := usage()
-	for _, command := range []string{"server", "worker"} {
-		if !strings.Contains(out, "  "+command+" ") {
-			t.Fatalf("usage text is missing %q", command)
+	for _, entry := range []string{"server", "worker", "--with-worker"} {
+		if !strings.Contains(out, "  "+entry+" ") {
+			t.Fatalf("usage text is missing %q", entry)
 		}
 	}
 }

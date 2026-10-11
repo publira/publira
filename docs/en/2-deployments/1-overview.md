@@ -2,6 +2,7 @@
 title: Overview
 description: What a Publira install runs, and the services it depends on.
 published: 2026-10-04
+updated: 2026-10-11
 ---
 
 A Publira install is made of four long-lived processes, a handful of services they depend on, and one command-line tool you run by hand. This page describes the smallest install that serves a tenant: its public site and its console, managed from `publiractl` rather than from the Platform Console.
@@ -16,6 +17,8 @@ A Publira install is made of four long-lived processes, a handful of services th
 | `publira worker` | Outgoing mail and push notifications, cache revalidation, and every scheduled job | Nothing; it only answers health checks |
 
 Every process answers `GET /livez` and `GET /readyz`, so an orchestrator can probe it. The web apps are built from one image and `publira server` and `publira worker` from another; the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) list them.
+
+An install on one host that will never run more than one copy of the server or the worker can run both as one process: `publira server --with-worker` does everything both processes do, on the same three ports, and reads the variables of both. You give up two things. You can no longer scale the server and the worker separately. And the process that faces the internet also holds the worker's three database logins, among them the one that owns the tables of the job queue and may create tables of its own. Keep the two processes apart unless having one fewer to run matters more to you than that.
 
 ## The services it depends on
 

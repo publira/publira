@@ -2,6 +2,7 @@
 title: Monitoring
 description: Probing every process with /livez and /readyz, the log lines and metrics worth alerting on, and turning on OpenTelemetry metrics and traces.
 published: 2026-10-07
+updated: 2026-10-11
 ---
 
 An install tells you how it is doing in four ways: every process answers a liveness and a readiness check, `publira server` and `publira worker` write a structured log, the same two export OpenTelemetry metrics once you turn them on, and every process but `email-renderer` can export OpenTelemetry traces. This page says what each of them reports, how to wire them into an orchestrator and an alerting system, and what is worth an alert. Which monitoring system receives them is your choice; the page names only what an install sends.
@@ -22,6 +23,8 @@ Every process answers two requests over plain HTTP:
 | `publira worker` | `8003` (`PUBLIRA_WORKER_ADDR`) | Each of its three database logins: `db.outbox`, `db.ticker`, and `db.content_stats`. It also answers not ready until its job queue has started |
 | `web-storefront`, `web-admin`, `web-platform` | `PORT`: `3000`, `4000`, and `4100` in the images as the repository builds them | `api`, the `/readyz` of `publira server`'s internal listener, at `PUBLIRA_GRPC_URL`; and `redis`, a ping to the shared cache at `PNCH_REDIS_URL`, which always passes while that cache is turned off |
 | `email-renderer` | `8080` (`PORT`) | Nothing: it depends on no other service, so it is ready whenever it is up |
+
+A `publira server --with-worker` process answers on all three ports of the first three rows, each with the checks its row names, so probe it as you would probe the two processes.
 
 None of them checks the object store, the SMTP server, or the search engine. A failure there shows in the log and in what readers see, not in `/readyz`.
 
@@ -101,7 +104,7 @@ Choose how they are exported with `OTEL_METRICS_EXPORTER`:
 - **`otlp`**, the default, pushes them every 60 seconds to `OTEL_EXPORTER_OTLP_ENDPOINT`, the same collector address the traces use.
 - **`prometheus`** serves them for a Prometheus scraper at `/metrics` on port `9464`. Set `OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0` as well: the default, `localhost`, cannot be reached from outside the container. When `publira server` and `publira worker` share a network namespace, such as one Kubernetes pod, give each its own `OTEL_EXPORTER_PROMETHEUS_PORT`.
 
-On the [Docker Compose](../2-deployments/3-docker-compose.md) install, set `PUBLIRA_METRICS_ENABLED`, `OTEL_METRICS_EXPORTER`, and `OTEL_EXPORTER_PROMETHEUS_HOST` in `.env`, which passes them to both processes, and run `docker compose up -d` again. The other variables, and the full list of what is recorded, are in the [metrics reference](https://github.com/publira/publira/blob/main/server/README.md#metrics-opentelemetry). Each process reports under one `service.name`: `publira-api-server` for `publira server` and `publira-worker` for `publira worker`.
+On the [Docker Compose](../2-deployments/3-docker-compose.md) install, set `PUBLIRA_METRICS_ENABLED`, `OTEL_METRICS_EXPORTER`, and `OTEL_EXPORTER_PROMETHEUS_HOST` in `.env`, which passes them to both processes, and run `docker compose up -d` again. The other variables, and the full list of what is recorded, are in the [metrics reference](https://github.com/publira/publira/blob/main/server/README.md#metrics-opentelemetry). Each process reports under one `service.name`: `publira-api-server` for `publira server` and `publira-worker` for `publira worker`. A `publira server --with-worker` process reports everything under `publira-api-server`.
 
 ### The outbox
 
@@ -146,7 +149,7 @@ Point them at your collector with the variables the OpenTelemetry SDK reads itse
 
 On the [Docker Compose](../2-deployments/3-docker-compose.md) install, set these and `PUBLIRA_TRACING_ENABLED` in `.env`, which passes them to `publira server`, the worker, and the web apps, and run `docker compose up -d` again.
 
-Each process reports under a `service.name` of its own: `publira-api-server`, `publira-admin-api-server`, and `publira-platform-api-server` for the three APIs `publira server` serves, `publira-image-server` for its image delivery, `publira-worker` and a name per scheduled job for `publira worker`, and `publira-web-storefront`, `publira-web-admin`, and `publira-web-platform` for the web apps. The full list, and what is recorded on each span, is in the [server's tracing reference](https://github.com/publira/publira/blob/main/server/README.md#distributed-tracing-opentelemetry). The health checks of `publira server` are not traced, so a probe does not fill the backend with a trace every few seconds.
+Each process reports under a `service.name` of its own: `publira-api-server`, `publira-admin-api-server`, and `publira-platform-api-server` for the three APIs `publira server` serves, `publira-image-server` for its image delivery, `publira-worker` and a name per scheduled job for `publira worker`, all of them kept when `publira server --with-worker` runs both in one process, and `publira-web-storefront`, `publira-web-admin`, and `publira-web-platform` for the web apps. The full list, and what is recorded on each span, is in the [server's tracing reference](https://github.com/publira/publira/blob/main/server/README.md#distributed-tracing-opentelemetry). The health checks of `publira server` are not traced, so a probe does not fill the backend with a trace every few seconds.
 
 ### Sampling
 
