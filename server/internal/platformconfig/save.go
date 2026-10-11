@@ -136,11 +136,30 @@ func normalizeCurrency(value string) (string, error) {
 	if len(value) != 3 {
 		return "", errInvalidCurrency
 	}
+	if code := strings.ToUpper(value); codesMissingFromParseISO[code] {
+		return code, nil
+	}
 	unit, err := currency.ParseISO(value)
 	if err != nil {
 		return "", errInvalidCurrency
 	}
 	return unit.String(), nil
+}
+
+// codesMissingFromParseISO are the current ISO 4217 codes [currency.ParseISO]
+// refuses. Its table is derived from CLDR 32, which predates them, while the
+// Platform Console offers the currencies of the runtime's ICU data, which
+// carries most of them: without this set a currency the console lists would be
+// one the server refuses to save.
+var codesMissingFromParseISO = map[string]bool{
+	"MRU": true, // Mauritanian ouguiya
+	"SLE": true, // Sierra Leonean leone
+	"UYW": true, // Uruguayan unidad previsional
+	"VED": true, // Venezuelan bolívar digital
+	"VES": true, // Venezuelan bolívar soberano
+	"XAD": true, // Arab Accounting Dinar
+	"XCG": true, // Caribbean guilder
+	"ZWG": true, // Zimbabwe Gold
 }
 
 // Saved is the settings row a save leaves stored.
