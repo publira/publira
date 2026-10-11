@@ -2,89 +2,69 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log/slog"
 	"net/http"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
-	"github.com/publira/publira/server/config"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrenderer"
-	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/fcmsettings"
 	"github.com/publira/publira/server/internal/googleplay"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/httpserver"
-	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/maintenancejobs"
-	"github.com/publira/publira/server/internal/metrics"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/revalidate"
-	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/signin"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/sqldb"
 	"github.com/publira/publira/server/internal/tickerjobs"
-	"github.com/publira/publira/server/internal/tracing"
 	"github.com/publira/publira/server/internal/webpushsettings"
 )
 
 const (
-	workerServiceName = "publira-worker"
-
 	defaultWorkerAddr        = ":8003"
 	defaultWorkerDBURL       = "postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable"
 	defaultTickerDBURL       = "postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable"
 	defaultContentStatsDBURL = "postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable"
 )
 
-// runWorker hosts the one River client a deployment needs: it drains the
-// Outbox, runs the periodic jobs, and owns the maintenance jobs, so nothing
-// beside it has to invoke a job on a timer.
-func runWorker() int {
-	logger := logging.New(os.Stdout, nil)
-	slog.SetDefault(logger)
+// workerServiceNames is one service.name per periodic job alongside the
+// Outbox drain's, so a run of publish-episodes is still a
+// publira-publish-episodes trace, and a rebuild of the daily stats a
+// publira-aggregate-content-stats one, now that none of them has a process or
+// a schedule of its own. The drain's comes first: it is the worker process's
+// default.
+func workerServiceNames() []string {
+	serviceNames := append([]string{outbox.ServiceName}, tickerjobs.ServiceNames()...)
+	return append(serviceNames, maintenancejobs.ServiceNames()...)
+}
 
-	// One service.name per periodic job alongside the process default, so a run
-	// of publish-episodes is still a publira-publish-episodes trace, and a
-	// rebuild of the daily stats a publira-aggregate-content-stats one, now
-	// that none of them has a process or a schedule of its own.
-	serviceNames := append([]string{workerServiceName}, tickerjobs.ServiceNames()...)
-	serviceNames = append(serviceNames, maintenancejobs.ServiceNames()...)
-	shutdownTracing, err := tracing.Setup(context.Background(), serviceNames...)
-	if err != nil {
-		logger.Error("failed to initialize tracing", "error", err)
-	}
-	shutdownMetrics, err := metrics.Setup(context.Background(), workerServiceName)
-	if err != nil {
-		logger.Error("failed to initialize metrics", "error", err)
-	}
+// buildWorker builds and starts the one River client a deployment needs: it
+// drains the Outbox, runs the periodic jobs, and owns the maintenance jobs, so
+// nothing beside it has to invoke a job on a timer.
+func buildWorker(deps shared) (_ half, err error) {
+	logger := deps.logger
 
-	cfg, err := config.New()
-	if err != nil {
-		logger.Error("failed to load config", "error", err)
-		return 1
-	}
-
-	// One client for the whole process: the periodic jobs record what they owe
-	// through it, and the handler below is what sends every recorded drop.
-	revalidateClient, err := newRevalidateClient(logger)
-	if err != nil {
-		logger.Error("failed to initialize next revalidate", "error", err)
-		return 1
-	}
+	// Each pool is closed again when a later step fails, since the process
+	// that hosts this half may already be holding the server's.
+	var pools []*sql.DB
+	defer func() {
+		if err != nil {
+			_ = closePools(pools)
+		}
+	}()
 
 	db, err := sqldb.Open(dbURLFromEnv("PUBLIRA_WORKER_DB_URL", defaultWorkerDBURL))
 	if err != nil {
-		logger.Error("failed to initialize db", "error", err)
-		return 1
+		return half{}, failed("failed to initialize db", err)
 	}
-	defer db.Close() //nolint:errcheck
+	pools = append(pools, db)
 
 	// The periodic jobs get a pool of their own rather than sharing the one
 	// above. publira_outbox owns River's schema and holds CREATE on the public
@@ -93,10 +73,9 @@ func runWorker() int {
 	// that.
 	tickerDB, err := sqldb.Open(dbURLFromEnv("PUBLIRA_TICKER_DB_URL", defaultTickerDBURL))
 	if err != nil {
-		logger.Error("failed to initialize the ticker jobs db", "error", err)
-		return 1
+		return half{}, failed("failed to initialize the ticker jobs db", err)
 	}
-	defer tickerDB.Close() //nolint:errcheck
+	pools = append(pools, tickerDB)
 
 	jobs, err := tickerjobs.New(tickerjobs.Config{
 		DB: tickerDB,
@@ -104,7 +83,7 @@ func runWorker() int {
 		// not update one, and a drop recorded a drain away needs no attempt of
 		// its own.
 		Revalidate: revalidate.NewRequester(revalidate.RequesterConfig{
-			Client:  revalidateClient,
+			Client:  deps.revalidate,
 			Queries: dbmodels.New(tickerDB),
 			Logger:  logger,
 		}),
@@ -117,37 +96,22 @@ func runWorker() int {
 		SeriesPublicationInterval:  envSeconds("PUBLIRA_SERIES_PUBLICATION_INTERVAL_SECONDS", 0),
 	})
 	if err != nil {
-		logger.Error("failed to initialize the ticker jobs", "error", err)
-		return 1
+		return half{}, failed("failed to initialize the ticker jobs", err)
 	}
 	logger.Info("ticker jobs registered", jobs.Settings()...)
 
 	// The rebuild and purge work connects as publira_content_stats, the role
 	// the publiractl subcommands use for it. It is the third login in this
-	// process and the third pool: what the work may reach is decided by the
-	// role, and a process that hosts three kinds of job is still not a reason
-	// for any of them to borrow another's privileges.
+	// half and the third pool: what the work may reach is decided by the role,
+	// and a process that hosts three kinds of job is still not a reason for any
+	// of them to borrow another's privileges.
 	contentStatsDB, err := sqldb.Open(dbURLFromEnv("PUBLIRA_CONTENT_STATS_DB_URL", defaultContentStatsDBURL))
 	if err != nil {
-		logger.Error("failed to initialize the maintenance jobs db", "error", err)
-		return 1
+		return half{}, failed("failed to initialize the maintenance jobs db", err)
 	}
-	defer contentStatsDB.Close() //nolint:errcheck
+	pools = append(pools, contentStatsDB)
 
-	// Declared as the interface, never as *secretcrypto.Manager: a typed nil
-	// assigned to an interface is not nil, and it would slip past the guard in
-	// emailsettings.DecryptPassword into a nil-receiver method call. A process
-	// started without keys has to report an unusable manager, so a handler can
-	// retry once an operator restarts it with them.
-	var encryptor emailsettings.SecretManager
-	if len(cfg.Encryption.Keys) > 0 {
-		manager, managerErr := secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
-		if managerErr != nil {
-			logger.Error("failed to initialize secret encryption manager", "error", managerErr)
-			return 1
-		}
-		encryptor = manager
-	}
+	encryptor := deps.encryptor
 
 	// The worker writes the documents the catalog_index_sync events name into
 	// the engines the platform's search settings name. The row is reread for
@@ -179,8 +143,7 @@ func runWorker() int {
 		Logger:     logger,
 	})
 	if err != nil {
-		logger.Error("failed to initialize the maintenance jobs", "error", err)
-		return 1
+		return half{}, failed("failed to initialize the maintenance jobs", err)
 	}
 	logger.Info("maintenance jobs registered", maintenanceJobs.Settings()...)
 
@@ -199,8 +162,8 @@ func runWorker() int {
 	// every event by dropping nothing instead of reporting that this worker
 	// cannot send.
 	var invalidator outbox.CacheInvalidator
-	if revalidateClient != nil {
-		invalidator = revalidateClient
+	if deps.revalidate != nil {
+		invalidator = deps.revalidate
 	}
 	// The catalog index handler owes the storefront's searches a drop once the
 	// document it wrote can be found. It records the drop on this pool and
@@ -209,7 +172,7 @@ func runWorker() int {
 	// revalidation is off.
 	var searchCacheRecorder outbox.CacheInvalidationRecorder
 	if requester := revalidate.NewRequester(revalidate.RequesterConfig{
-		Client:  revalidateClient,
+		Client:  deps.revalidate,
 		Queries: dbmodels.New(db),
 		Logger:  logger,
 	}); requester != nil {
@@ -227,12 +190,11 @@ func runWorker() int {
 		outbox.AppleSignInHandlerConfig{DB: db, Encryptor: encryptor, Tokens: signin.NewAppleClient(signin.AppleClientConfig{})},
 		invalidator, catalogIndexer, searchCacheRecorder))
 	if err != nil {
-		logger.Error("failed to start the outbox drain", "error", err)
-		return 1
+		return half{}, failed("failed to start the outbox drain", err)
 	}
 
 	mux := http.NewServeMux()
-	// One check per pool: with three logins behind one process, a single "db"
+	// One check per pool: with three logins behind one half, a single "db"
 	// could not say which of them stopped answering.
 	health.Register(mux,
 		health.WithDBNamed("db.outbox", db),
@@ -243,21 +205,21 @@ func runWorker() int {
 
 	addr := addrFromEnv("PUBLIRA_WORKER_ADDR", defaultWorkerAddr)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	return half{
+		listeners: []listener{{name: "worker", server: httpserver.New(addr, mux)}},
+		drain:     []func(context.Context) error{worker.Stop},
+		close: func() error {
+			return closePools(pools)
+		},
+	}, nil
+}
 
-	logger.Info("starting worker", "addr", addr)
-	if err := httpserver.Serve(ctx, logger, []*http.Server{
-		httpserver.New(addr, mux),
-	}, func(ctx context.Context) error {
-		return worker.Stop(ctx)
-	}, shutdownTracing, shutdownMetrics, func(context.Context) error {
-		return errors.Join(db.Close(), tickerDB.Close(), contentStatsDB.Close())
-	}); err != nil {
-		logger.Error("worker failed", "error", err)
-		return 1
+func closePools(pools []*sql.DB) error {
+	var errs []error
+	for _, db := range pools {
+		errs = append(errs, db.Close())
 	}
-	return 0
+	return errors.Join(errs...)
 }
 
 func workerConfig(

@@ -11,9 +11,16 @@
 // set of environment variables to document. publiractl, the command an
 // operator runs by hand, stays a binary of its own because it has to work on
 // a deployment that serves nothing.
+//
+// server --with-worker hosts the worker in the server's process as well, for
+// an install that will not scale the two apart. It is a flag on server rather
+// than a third command because the server is the process the reverse proxy
+// points at, and the worker riding in it is an extension of that process.
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -30,17 +37,41 @@ func run(args []string, stderr io.Writer) int {
 	if len(args) == 0 {
 		return usageError(stderr, "a command is required")
 	}
-	if len(args) > 1 {
-		return usageError(stderr, fmt.Sprintf("%s takes no arguments", args[0]))
-	}
-	switch args[0] {
+	command, rest := args[0], args[1:]
+	switch command {
 	case "server":
-		return runServer()
+		withWorker, err := parseServerFlags(rest)
+		if err != nil {
+			return usageError(stderr, err.Error())
+		}
+		return serve(command, hosted{server: true, worker: withWorker})
 	case "worker":
-		return runWorker()
+		if len(rest) > 0 {
+			return usageError(stderr, fmt.Sprintf("%s takes no arguments", command))
+		}
+		return serve(command, hosted{worker: true})
 	default:
-		return usageError(stderr, fmt.Sprintf("unknown command %q", args[0]))
+		return usageError(stderr, fmt.Sprintf("unknown command %q", command))
 	}
+}
+
+// parseServerFlags reads the one flag server takes. A flag chooses what the
+// process hosts and nothing else: every value it runs with comes from the
+// environment, so anything else after the command is a mistake rather than a
+// setting.
+func parseServerFlags(args []string) (withWorker bool, err error) {
+	fs := flag.NewFlagSet("server", flag.ContinueOnError)
+	// The flag package prints its own usage on a parse error; run prints this
+	// command's instead.
+	fs.SetOutput(io.Discard)
+	fs.BoolVar(&withWorker, "with-worker", false, "")
+	if err := fs.Parse(args); err != nil {
+		return false, err
+	}
+	if fs.NArg() > 0 {
+		return false, errors.New("server takes no arguments other than --with-worker")
+	}
+	return withWorker, nil
 }
 
 // usageError reports a bad invocation on w, followed by the usage text, and
@@ -51,8 +82,10 @@ func usageError(w io.Writer, reason string) int {
 }
 
 func usage() string {
-	return "\nUsage: publira <command>\n\nCommands:\n" +
+	return "\nUsage: publira <command> [flags]\n\nCommands:\n" +
 		"  server                    Serve the API and image delivery to the edge and the Next.js apps\n" +
 		"  worker                    Drain the Outbox and run every scheduled job\n" +
+		"\nFlags of server:\n" +
+		"  --with-worker             Host the worker in the same process as well\n" +
 		"\nEvery command reads its settings from the environment.\n"
 }

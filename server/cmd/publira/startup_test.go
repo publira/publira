@@ -143,7 +143,7 @@ func startInternalListener(t *testing.T, pg *testutil.PostgresEnv, env map[strin
 func TestServerRefusesAPasswordOverPlaintextRedis(t *testing.T) {
 	code, output := testutil.RunMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
 		"PUBLIRA_REDIS_URL": "redis://:secret@redis:6379",
-	}), "server")
+	}, revalidationWithoutPlatformConsole()), "server")
 	if code == 0 {
 		t.Fatalf("exit code = 0, want a failure; output:\n%s", output)
 	}
@@ -173,6 +173,70 @@ func TestWorkerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 	assertReadyChecks(t, "http://"+addr+"/readyz", "db.outbox", "db.ticker", "db.content_stats")
 }
 
+// A server that hosts the worker brings up all three listeners, each with the
+// readiness checks it answers with in a process of its own, and one SIGTERM
+// stops all of it: the exit status is 0 only when every listener drained and
+// every hook — the audit log flush, the River client, the six pools — returned
+// within the shared deadline.
+func TestServerWithWorkerServesBothHalvesAndStopsThemTogether(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	edgeAddr := testutil.FreeAddr(t)
+	internalAddr := testutil.FreeAddr(t)
+	workerAddr := testutil.FreeAddr(t)
+
+	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_PUBLIC_DB_URL":        pg.PublicURL,
+		"PUBLIRA_ADMIN_DB_URL":         pg.AdminURL,
+		"PUBLIRA_PLATFORM_DB_URL":      pg.PlatformURL,
+		"PUBLIRA_PUBLIC_API_ADDR":      edgeAddr,
+		"PUBLIRA_PUBLIC_API_GRPC_ADDR": internalAddr,
+		"PUBLIRA_WORKER_DB_URL":        pg.OutboxURL,
+		"PUBLIRA_TICKER_DB_URL":        pg.TickerURL,
+		"PUBLIRA_CONTENT_STATS_DB_URL": pg.ContentStatsURL,
+		"PUBLIRA_WORKER_ADDR":          workerAddr,
+	}, revalidationWithoutPlatformConsole()), "server", "--with-worker")
+	for _, addr := range []string{edgeAddr, internalAddr, workerAddr} {
+		p.WaitReady(t, "http://"+addr+"/readyz")
+		assertLive(t, "http://"+addr+"/livez")
+	}
+
+	assertReadyChecks(t, "http://"+edgeAddr+"/readyz", "db")
+	assertReadyChecks(t, "http://"+internalAddr+"/readyz", "db.public", "db.admin", "db.platform")
+	assertReadyChecks(t, "http://"+workerAddr+"/readyz", "db.outbox", "db.ticker", "db.content_stats")
+
+	if code := p.Stop(t); code != 0 {
+		t.Fatalf("exit code after SIGTERM = %d, want 0; output:\n%s", code, p.Output())
+	}
+}
+
+// Either half failing to initialize stops the process, as it does when that
+// half runs alone. The worker is built after the server, so a worker that
+// cannot start is also the case where a built half has to be taken down.
+func TestServerWithWorkerRefusesToStartWhenTheWorkerCannot(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	code, output := testutil.RunMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_PUBLIC_DB_URL":           pg.PublicURL,
+		"PUBLIRA_ADMIN_DB_URL":            pg.AdminURL,
+		"PUBLIRA_PLATFORM_DB_URL":         pg.PlatformURL,
+		"PUBLIRA_PUBLIC_API_ADDR":         testutil.FreeAddr(t),
+		"PUBLIRA_PUBLIC_API_GRPC_ADDR":    testutil.FreeAddr(t),
+		"PUBLIRA_WORKER_DB_URL":           pg.OutboxURL,
+		"PUBLIRA_TICKER_DB_URL":           pg.TickerURL,
+		"PUBLIRA_CONTENT_STATS_DB_URL":    pg.ContentStatsURL,
+		"PUBLIRA_WORKER_ADDR":             testutil.FreeAddr(t),
+		"PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE": "not-a-number",
+	}, revalidationWithoutPlatformConsole()), "server", "--with-worker")
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1; output:\n%s", code, output)
+	}
+	if !strings.Contains(output, "PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE") {
+		t.Fatalf("output does not name PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE:\n%s", output)
+	}
+}
+
 // revalidationWithoutPlatformConsole is where a deployment that runs no
 // Platform Console sends cache tags: the storefront and the tenant console,
 // and no web-platform URL at all.
@@ -186,9 +250,9 @@ func revalidationWithoutPlatformConsole() map[string]string {
 // A revalidate token with no web app to send to can only be a mistake, so both
 // processes refuse to start and name the variables that would have fixed it.
 func TestRefusesARevalidateTokenWithNoDestination(t *testing.T) {
-	for _, command := range []string{"server", "worker"} {
-		t.Run(command, func(t *testing.T) {
-			code, output := testutil.RunMain(t, testutil.Env(testutil.DeploymentSecrets()), command)
+	for _, args := range [][]string{{"server"}, {"worker"}, {"server", "--with-worker"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			code, output := testutil.RunMain(t, testutil.Env(testutil.DeploymentSecrets()), args...)
 			if code == 0 {
 				t.Fatalf("exit code = 0, want a failure; output:\n%s", output)
 			}
@@ -214,6 +278,24 @@ func TestRefusesToStartWithoutACommand(t *testing.T) {
 	}
 	if !strings.Contains(output, "Usage: publira <command>") {
 		t.Fatalf("output does not carry the usage text:\n%s", output)
+	}
+}
+
+// assertLive fails unless url answers 200.
+func assertLive(t *testing.T, url string) {
+	t.Helper()
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatalf("liveness request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("liveness request: %v", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("%s status = %d, want %d", url, resp.StatusCode, http.StatusOK)
 	}
 }
 

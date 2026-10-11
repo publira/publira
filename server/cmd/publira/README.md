@@ -7,7 +7,7 @@ The binary behind both of a deployment's long-lived Go processes. The first argu
 | `publira server` | The API and image delivery, on the two listeners below |
 | `publira worker` | The Outbox drain and every scheduled job               |
 
-Without a command, with a command other than these two, or with any further argument, the binary prints its usage to stderr and exits with status 2. With the three Next.js apps, a deployment therefore runs five processes, and both Go ones come from one image ([`infra/docker/server/Dockerfile`](../../../infra/docker/server/Dockerfile)). [`publiractl`](../publiractl/README.md), the command an operator runs by hand, stays a binary of its own because it has to work on a deployment that serves nothing.
+`publira server --with-worker` runs both in one process; see [Hosting the worker](#hosting-the-worker---with-worker). Without a command, with a command other than these two, or with any further argument — `--with-worker` after `server` aside — the binary prints its usage to stderr and exits with status 2. With the three Next.js apps, a deployment therefore runs five processes, and both Go ones come from one image ([`infra/docker/server/Dockerfile`](../../../infra/docker/server/Dockerfile)). [`publiractl`](../publiractl/README.md), the command an operator runs by hand, stays a binary of its own because it has to work on a deployment that serves nothing.
 
 ## publira server
 
@@ -107,6 +107,20 @@ The publication state and the price are not considered, so a draft, a scheduled,
 | Marking one's own notifications as read, signing out, and changing one's password and email address | Yes | Yes | Yes |
 
 The server checks mutating RPCs in a shared interceptor, so a rejected call never starts a DB update, an audit log entry, or an email.
+
+### Hosting the worker (`--with-worker`)
+
+```bash
+publira server --with-worker
+```
+
+runs everything [`publira worker`](#publira-worker) runs inside this process as well, for an install on one host that will not scale the two apart: the Go side becomes one container, or one systemd unit, instead of two. It is the only flag the binary takes, and it chooses what the process hosts, and every value still comes from the environment. The image's default command stays `server`, and [`infra/deploy/compose.yaml`](../../../infra/deploy/compose.yaml) still runs the two as separate services.
+
+Nothing is merged. The process holds all six pools, one per login, and serves all three listeners — the edge-facing `:8000`, the internal `:8100`, and the worker's `:8003` — each with the `/livez` and `/readyz` it answers with in a process of its own, so an orchestrator's probes and the reverse proxy's routing are unchanged. It therefore reads the union of both processes' environment variables: the ones [above](#main-environment-variables) and the ones [under the worker](#main-environment-variables-1). The configuration, the cache revalidation client, and the secret encryption manager are built once and shared. Either half failing to initialize stops the process, as it does when that half runs alone. One `SIGTERM` stops the three listeners, then flushes the audit log and stops the River client, then flushes the telemetry and closes the six pools, all within the same 30-second deadline.
+
+Every `service.name` of both processes is kept: the Connect namespaces, the image routes, `publira-worker` for the Outbox drain, and one per job. The process default is `publira-api-server`, so the metrics — the Outbox instruments among them — and the database and outbound HTTP spans that belong to no namespace or job report under that name.
+
+The trade-off is the process boundary. Two processes can be scaled independently; one cannot, and adding a replica adds both. And the process the reverse proxy forwards internet traffic to also holds the worker's logins, `publira_outbox` among them, which owns River's schema and holds `CREATE` on the `public` schema. Keep the two processes apart wherever running one more is not the larger cost.
 
 ## publira worker
 

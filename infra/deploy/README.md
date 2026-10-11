@@ -17,6 +17,14 @@ The images are built from [`infra/docker/`](../docker/README.md), and the revers
 
 Every one of them serves `GET /livez` and `GET /readyz` for the orchestrator's probes.
 
+An install on one host that will not scale the Go processes apart may run the two as one instead:
+
+| Process | Image | Serves | Reached by |
+| --- | --- | --- | --- |
+| `publira server --with-worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --with-worker` as the container argument | Everything both processes above serve, on the same three listeners (`:8000`, `:8100`, `:8003`) and the same six database logins | What reaches the two processes above |
+
+It reads the variables of both, so it is given the union of the `publira server` and `publira worker` rows below. What it gives up is the process boundary: the server and the worker can no longer be scaled independently, and the process the reverse proxy forwards internet traffic to also holds the worker's logins, `publira_outbox` among them, which owns River's schema. [`publira server --with-worker`](../../server/cmd/publira/README.md#hosting-the-worker---with-worker) has the details. The Compose file beside this README keeps the two services.
+
 ### Services the processes depend on
 
 | Service | Used by | What it holds |
@@ -68,6 +76,8 @@ The secret encryption keys seal the SMTP password, the object store's access key
 | `publira server`, `publira worker` | `PUBLIRA_WEB_STOREFRONT_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL` | The private network URLs of `web-storefront` and `web-admin`, such as `http://web-storefront:3000`, where the cache revalidation is sent |
 | `publira worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The `publira_outbox`, `publira_ticker`, and `publira_content_stats` connections |
 | `publiractl` | `PUBLIRA_DB_URL` | The superuser connection, read by the `db` commands alone |
+
+`publira server --with-worker` reads every row naming `publira server` or `publira worker`, here and under [Shared values](#shared-values).
 
 `PUBLIRA_WEB_PLATFORM_INTERNAL_URL`, `PUBLIRA_PLATFORM_APP_URL`, and `PUBLIRA_EMAIL_RENDERER_URL` are left unset: they name the optional processes. The web images set `PORT`, `HOSTNAME`, and `PNCH_CACHE_APP` themselves.
 
