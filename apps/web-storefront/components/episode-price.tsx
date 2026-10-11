@@ -1,6 +1,6 @@
-import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { formatPrice } from "@publira/utils";
 import { Suspense } from "react";
 
 import { FreeUntilBadge } from "#components/free-until-badge";
@@ -31,7 +31,8 @@ type FreeUntilProps =
  *
  * A priced episode inside an open free reading period says until when it is
  * free instead of quoting the price, because the price is what it costs only
- * after that.
+ * after that. A price is quoted in the tenant's currency, and not at all while
+ * the tenant could not be read: a number with no currency is no price.
  */
 export const EpisodePrice = ({
   freeUntil,
@@ -70,5 +71,8 @@ export const EpisodePrice = ({
       </Suspense>
     );
   }
-  return `¥${price.toLocaleString(toIntlLocale(locale))}`;
+  if (!sales.currency) {
+    return null;
+  }
+  return formatPrice(price, { currency: sales.currency, locale });
 };

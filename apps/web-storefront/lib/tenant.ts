@@ -18,6 +18,21 @@ import { getMessagesFor } from "./messages";
 import { publishedPageHrefFromSlug } from "./pages";
 import type { SignInProvider } from "./sign-in-provider";
 
+/** An ISO 4217 code as the API spells it. */
+const currencyPattern = /^[A-Z]{3}$/u;
+
+/**
+ * The currency code the API answered with, or a throw when it is not one.
+ * `GetTenant` documents `currency` as never empty, so a value that fails here
+ * is a response this build cannot price anything with.
+ */
+const requireCurrency = (value: string): string => {
+  if (!currencyPattern.test(value)) {
+    throw new Error(`tenant currency is not an ISO 4217 code: ${value}`);
+  }
+  return value;
+};
+
 /**
  * The locale code the API answered with, or a throw when this build has no
  * catalog for it. `GetTenant` documents `default_locale` as never empty and
@@ -142,6 +157,11 @@ export interface TenantSiteInfo {
   /** Whether episode pages offer a comment section, and how a post reaches it. */
   commentMode: TenantCommentMode;
   copyrightText?: string;
+  /**
+   * ISO 4217 code of the currency the tenant sells in. Every price the site
+   * shows is an integer in its minor unit.
+   */
+  currency: string;
   /** UI locale a reader gets when the URL does not name one. */
   defaultLocale: Locale;
   domain: string;
@@ -282,6 +302,7 @@ export const getTenantSiteInfo = async (
       appleServicesId: nonEmpty(response.appleSignIn?.servicesId),
       commentMode: toTenantCommentMode(response.commentMode),
       copyrightText: trimmed(response.copyrightText),
+      currency: requireCurrency(response.currency),
       // The server resolves the tenant value against the platform default
       // before answering (`locale.Resolve`), so a code that fails to parse here
       // is one this build does not serve. Rendering the site in some other
@@ -396,16 +417,19 @@ export const getTenantDisplayTimeZone = async (
 };
 
 /**
+ * Where a tenant already read can sell an episode, and in what currency. A
+ * tenant that could not be read sells nowhere, and quotes no price.
+ */
+export const tenantSales = (tenant: TenantSiteInfo | null): TenantSales =>
+  tenant ? toTenantSales(tenant) : { app: false, currency: null, web: false };
+
+/**
  * Where the tenant can sell an episode right now, for a page that says what
  * each episode costs and where it is bought. A tenant that could not be read
  * sells nowhere.
  */
-export const getTenantSales = async (
-  tenantId: string
-): Promise<TenantSales> => {
-  const tenant = await getTenantSiteInfo(tenantId);
-  return tenant ? toTenantSales(tenant) : { app: false, web: false };
-};
+export const getTenantSales = async (tenantId: string): Promise<TenantSales> =>
+  tenantSales(await getTenantSiteInfo(tenantId));
 
 /**
  * The tenant's default UI locale, for server-side code that has to name a

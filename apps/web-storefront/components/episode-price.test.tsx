@@ -17,7 +17,7 @@ vi.mock("#components/message", () => ({
 
 afterEach(cleanup);
 
-const sellsEverywhere = { app: true, web: true };
+const sellsEverywhere = { app: true, currency: "JPY", web: true };
 
 describe("EpisodePrice", () => {
   it("Quote the price of an episode the web sells", () => {
@@ -50,7 +50,7 @@ describe("EpisodePrice", () => {
   it("Quote the price of an episode sold in the app alone while the app cannot sell it", () => {
     render(
       <EpisodePrice
-        sales={{ app: false, web: true }}
+        sales={{ app: false, currency: "JPY", web: true }}
         locale="en"
         price={1200}
         purchaseSurface="app"
@@ -67,7 +67,7 @@ describe("EpisodePrice", () => {
         locale="en"
         price={1200}
         purchaseSurface="all"
-        sales={{ app: true, web: false }}
+        sales={{ app: true, currency: "JPY", web: false }}
       />
     );
 
@@ -81,7 +81,7 @@ describe("EpisodePrice", () => {
         locale="en"
         price={1200}
         purchaseSurface="all"
-        sales={{ app: false, web: false }}
+        sales={{ app: false, currency: "JPY", web: false }}
       />
     );
 
@@ -119,6 +119,32 @@ describe("EpisodePrice", () => {
     );
 
     expect(screen.getByText("¥1,200")).toBeDefined();
+  });
+
+  it("Quote the price in the tenant's currency, from its minor unit", () => {
+    render(
+      <EpisodePrice
+        locale="en"
+        price={499}
+        purchaseSurface="all"
+        sales={{ ...sellsEverywhere, currency: "USD" }}
+      />
+    );
+
+    expect(screen.getByText("$4.99")).toBeDefined();
+  });
+
+  it("Quote no price while the tenant's currency is unknown", () => {
+    const { container } = render(
+      <EpisodePrice
+        locale="en"
+        price={1200}
+        purchaseSurface="all"
+        sales={{ app: false, currency: null, web: false }}
+      />
+    );
+
+    expect(container.textContent).toBe("");
   });
 
   it("Call a free episode free wherever it is sold", () => {

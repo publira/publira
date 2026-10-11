@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatPercent, formatYen } from "./format-number";
+import {
+  currencyFractionDigits,
+  formatPercent,
+  formatPrice,
+  formatYen,
+} from "./format-number";
 
 describe("formatPercent", () => {
   it("renders a ratio as a percentage with one fraction digit", () => {
@@ -37,5 +42,40 @@ describe("formatYen", () => {
 
   it("follows the locale rather than the host environment", () => {
     expect(formatYen(1_234_567, { locale: "ja" })).toBe("￥1,234,567");
+  });
+});
+
+describe("formatPrice", () => {
+  it("renders a JPY amount as whole yen", () => {
+    expect(formatPrice(1500, { currency: "JPY", locale: "en" })).toBe("¥1,500");
+  });
+
+  it("renders a USD amount from its cents", () => {
+    expect(formatPrice(499, { currency: "USD", locale: "en" })).toBe("$4.99");
+  });
+
+  it("keeps the fraction digits of a whole amount in a currency with decimals", () => {
+    expect(formatPrice(500, { currency: "EUR", locale: "en" })).toBe("€5.00");
+  });
+
+  it("renders zero as an amount", () => {
+    expect(formatPrice(0, { currency: "USD", locale: "en" })).toBe("$0.00");
+  });
+
+  it("follows the locale rather than the host environment", () => {
+    expect(formatPrice(1_234_567, { currency: "JPY", locale: "ja" })).toBe(
+      "￥1,234,567"
+    );
+    expect(formatPrice(123_456, { currency: "USD", locale: "ja" })).toBe(
+      "$1,234.56"
+    );
+  });
+});
+
+describe("currencyFractionDigits", () => {
+  it("answers how far below the currency its minor unit sits", () => {
+    expect(currencyFractionDigits("JPY")).toBe(0);
+    expect(currencyFractionDigits("KRW")).toBe(0);
+    expect(currencyFractionDigits("USD")).toBe(2);
   });
 });

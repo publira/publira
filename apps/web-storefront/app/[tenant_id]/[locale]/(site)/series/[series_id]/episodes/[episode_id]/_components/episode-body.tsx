@@ -42,6 +42,7 @@ export const EpisodeBody = async ({
   checkoutSessionId,
   commentMode,
   commentToken,
+  currency,
   episode,
   googlePlayUrl,
   images,
@@ -65,6 +66,11 @@ export const EpisodeBody = async ({
   commentMode: SeriesCommentMode;
   /** Cursor of the comment page the URL asks for. Empty on the newest page. */
   commentToken: string;
+  /**
+   * The currency the viewer's end panel quotes a price in, `null` while the
+   * tenant could not be read.
+   */
+  currency: string | null;
   episode: EpisodeDetail;
   googlePlayUrl?: string;
   images: EpisodeImageItem[];
@@ -85,7 +91,7 @@ export const EpisodeBody = async ({
   if (isPublicEpisodeBody(access)) {
     return (
       <EpisodeViewer
-        sales={toTenantSales({ acceptsPayments, appPayments })}
+        sales={toTenantSales({ acceptsPayments, appPayments, currency })}
         commentMode={commentMode}
         commentToken={commentToken}
         episode={episode}
@@ -166,7 +172,7 @@ export const EpisodeBody = async ({
   ) {
     return (
       <EpisodeViewer
-        sales={toTenantSales({ acceptsPayments, appPayments })}
+        sales={toTenantSales({ acceptsPayments, appPayments, currency })}
         commentMode={commentMode}
         commentToken={commentToken}
         episode={episode}
