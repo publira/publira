@@ -85,6 +85,10 @@ func (s *apiServer) GetTenant(
 		_ = err
 	}
 	acceptsPayments := s.tenantAcceptsPayments(ctx, tenant.ID)
+	currency, err := s.tenantCurrency(ctx, queries, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
 	var acceptsAppStorePayments, acceptsGooglePlayPayments bool
 	if appPurchaseRoute == publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_STORE {
 		acceptsAppStorePayments, acceptsGooglePlayPayments = s.tenantAcceptsStorePayments(ctx, tenant.ID)
@@ -134,6 +138,7 @@ func (s *apiServer) GetTenant(
 		Timezone:                  tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 		DefaultLocale:             defaultLocale,
 		AcceptsPayments:           acceptsPayments,
+		Currency:                  currency,
 		AgeVerification:           ageVerification,
 		CommentMode:               commentMode,
 		WebPushVapidPublicKey:     s.publishedWebPushPublicKey(ctx),

@@ -382,6 +382,10 @@ func (s *adminServer) GetTenant(
 	if tenant.AdminDomain.Valid {
 		adminDomain = tenant.AdminDomain.String
 	}
+	currency, err := s.paymentStore(ctx).Currency(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to read the tenant currency", err, "tenant_id", tenant.ID.String())
+	}
 
 	return &publiraadminv1.AdminAuthServiceGetTenantResponse{
 		Tenant: &publiraadminv1.AdminAuthServiceTenant{
@@ -389,6 +393,7 @@ func (s *adminServer) GetTenant(
 			Name:        tenant.Name,
 			Domain:      tenant.Domain,
 			AdminDomain: adminDomain,
+			Currency:    currency,
 		},
 	}, nil
 }

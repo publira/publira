@@ -30,6 +30,9 @@ message PaymentProvider {
   // The path on the tenant's storefront the provider's notifications are
   // received on, such as "/api/v1/webhook/payment/stripe".
   string webhook_path = 4;
+  // The ISO 4217 codes, in capitals, of the currencies the provider can charge
+  // in, in its declared order. A tenant may sell only in one of them.
+  repeated string currencies = 5;
 }
 
 message ListPaymentProvidersRequest {
@@ -68,6 +71,13 @@ message TenantPaymentSettings {
   bool ready = 7;
   // One entry per field the provider declares, in its declared order.
   repeated PaymentCredentialFieldState fields = 8;
+  // The ISO 4217 code, in capitals, of the currency the tenant sells in, and
+  // stores every price and amount in the minor unit of. JPY before any is
+  // saved.
+  string currency = 9;
+  // True once the tenant has a purchase, every amount of which is in currency,
+  // so that UpdateTenantPaymentSettings refuses to change it.
+  bool currency_locked = 10;
 }
 
 message GetTenantPaymentSettingsRequest {
@@ -97,6 +107,11 @@ message UpdateTenantPaymentSettingsRequest {
   string provider = 2;
   bool enabled = 3;
   repeated PaymentCredentialFieldUpdate fields = 8;
+  // The ISO 4217 code of the currency to sell in, which has to be one the
+  // provider declares; anything else is invalid_argument, whether named here
+  // or kept. Empty keeps the stored currency. A change is failed_precondition
+  // once currency_locked is true.
+  string currency = 9;
 }
 
 message UpdateTenantPaymentSettingsResponse {
@@ -192,10 +207,12 @@ message UpdateTenantStorePaymentSettingsResponse {
 message TenantStoreProduct {
   // The same ID in both stores, derived from the price.
   string product_id = 1;
-  // The price in JPY.
+  // The price in the minor unit of currency.
   int32 price = 2;
   // How many episodes sell at this price, drafts and scheduled ones included.
   int32 episode_count = 3;
+  // The ISO 4217 code, in capitals, of the tenant currency price is in.
+  string currency = 4;
 }
 
 message ListTenantStoreProductsRequest {

@@ -6,7 +6,9 @@ package storeproduct
 
 import "strconv"
 
-// ProductID is the product an episode priced at price JPY is bought as.
+// ProductID is the product an episode priced at price, in the minor unit of the
+// tenant currency, is bought as. The ID names no currency: the tenant has one,
+// and the store sets what each storefront charges for the product.
 func ProductID(price int32) string {
 	return "episode_" + strconv.FormatInt(int64(price), 10)
 }

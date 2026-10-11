@@ -18,16 +18,27 @@ INSERT INTO tenant_payment_config (
         enabled,
         credentials_encrypted,
         credential_hints,
+        currency,
         updated_at
     )
-VALUES ($1, $2, $3, $4, $5, NOW()) ON CONFLICT (tenant_id) DO
+VALUES ($1, $2, $3, $4, $5, $6, NOW()) ON CONFLICT (tenant_id) DO
 UPDATE
 SET provider = EXCLUDED.provider,
     enabled = EXCLUDED.enabled,
     credentials_encrypted = EXCLUDED.credentials_encrypted,
     credential_hints = EXCLUDED.credential_hints,
+    currency = EXCLUDED.currency,
     updated_at = NOW()
 RETURNING *;
+
+-- name: TenantHasPurchases :one
+-- Whether any purchase, from a provider's checkout or a store, test ones
+-- included, is recorded in the tenant's currency.
+SELECT EXISTS (
+        SELECT 1
+        FROM purchases
+        WHERE tenant_id = $1
+    );
 
 -- name: GetPurchasableEpisodeForTenant :one
 SELECT e.id,

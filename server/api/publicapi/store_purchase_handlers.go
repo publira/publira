@@ -278,6 +278,10 @@ func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, u
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read a store purchase", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
 	}
+	currency, err := s.tenantCurrency(ctx, queries, tenantID)
+	if err != nil {
+		return nil, err
+	}
 	return purchaseItemFromRow(purchasePageRow{
 		id:                row.ID,
 		priceAtPurchase:   row.PriceAtPurchase,
@@ -289,7 +293,7 @@ func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, u
 		episodeOrderIndex: row.EpisodeOrderIndex,
 		seriesPublicID:    row.SeriesPublicID,
 		seriesTitle:       row.SeriesTitle,
-	}, time.Now()), nil
+	}, currency, time.Now()), nil
 }
 
 func (s *apiServer) appStores(ctx context.Context) *paymentsettings.AppStores {

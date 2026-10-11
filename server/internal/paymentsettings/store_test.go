@@ -229,8 +229,11 @@ func TestStoreGetPublicMissingRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetPublic: %v", err)
 	}
-	if cfg.Provider != "" || cfg.Enabled || cfg.Ready || len(cfg.Fields) != 0 {
+	if cfg.Provider != "" || cfg.Enabled || cfg.Ready || len(cfg.Fields) != 0 || cfg.CurrencyLocked {
 		t.Fatalf("missing row config = %+v, want empty", cfg)
+	}
+	if cfg.Currency != DefaultCurrency {
+		t.Fatalf("currency = %q, want %q", cfg.Currency, DefaultCurrency)
 	}
 	if cfg.TenantID != tenantID {
 		t.Fatalf("tenant id = %s, want %s", cfg.TenantID, tenantID)
@@ -280,6 +283,8 @@ func TestStoreRejectsWhatTheProviderDoesNotDeclare(t *testing.T) {
 		{name: "unknown mode", input: UpdateInput{Provider: stripe.ID, Fields: []FieldUpdate{
 			{Name: stripe.FieldSecretKey, Mode: 99},
 		}}, want: secretupdate.ErrInvalidMode},
+		{name: "undeclared currency", input: UpdateInput{Provider: cardProviderID, Currency: "USD"}, want: ErrUnsupportedCurrency},
+		{name: "currency that is no code", input: UpdateInput{Provider: stripe.ID, Currency: "dollars"}, want: ErrUnsupportedCurrency},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -287,6 +292,95 @@ func TestStoreRejectsWhatTheProviderDoesNotDeclare(t *testing.T) {
 				t.Fatalf("Upsert error = %v, want %v", err, tt.want)
 			}
 		})
+	}
+}
+
+func TestStoreKeepsTheCurrencyARequestDoesNotName(t *testing.T) {
+	queries := newMemoryPaymentQueries()
+	audit := &memoryAuditQueries{}
+	store := newTestStore(t, queries, audit, &bytes.Buffer{})
+	tenantID := uuid.Must(uuid.NewV7())
+	meta := AuditMeta{ActorUserID: uuid.Must(uuid.NewV7()), ActorRole: auth.RoleTenantAdmin}
+
+	first, err := store.Upsert(context.Background(), tenantID, stripeInput(false), meta)
+	if err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	if first.Currency != DefaultCurrency {
+		t.Fatalf("first save currency = %q, want %q", first.Currency, DefaultCurrency)
+	}
+
+	input := stripeInput(true)
+	input.Currency = " usd "
+	changed, err := store.Upsert(context.Background(), tenantID, input, meta)
+	if err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	if changed.Currency != "USD" {
+		t.Fatalf("currency = %q, want USD", changed.Currency)
+	}
+	if got, err := store.Currency(context.Background(), tenantID); err != nil || got != "USD" {
+		t.Fatalf("Currency = %q, %v, want USD", got, err)
+	}
+
+	kept, err := store.Upsert(context.Background(), tenantID, stripeInput(true), meta)
+	if err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	if kept.Currency != "USD" {
+		t.Fatalf("currency after a save naming none = %q, want USD", kept.Currency)
+	}
+
+	// A provider that cannot charge in the stored currency is refused even
+	// when the request names none.
+	if _, err := store.Upsert(context.Background(), tenantID, cardInput(true), meta); !errors.Is(err, ErrUnsupportedCurrency) {
+		t.Fatalf("switch to a provider without USD: error = %v, want ErrUnsupportedCurrency", err)
+	}
+
+	var reasons []string
+	for _, entry := range audit.snapshot() {
+		reasons = append(reasons, entry.Reason.String)
+	}
+	if len(reasons) != 3 || !strings.Contains(reasons[1], "currency") || strings.Contains(reasons[0], "currency") || strings.Contains(reasons[2], "currency") {
+		t.Fatalf("audit reasons = %q, want only the second save to name the currency", reasons)
+	}
+}
+
+func TestStoreRefusesACurrencyChangeOnceTheTenantHasAPurchase(t *testing.T) {
+	queries := newMemoryPaymentQueries()
+	store := newTestStore(t, queries, &memoryAuditQueries{}, &bytes.Buffer{})
+	tenantID := uuid.Must(uuid.NewV7())
+
+	if _, err := store.Upsert(context.Background(), tenantID, stripeInput(true), AuditMeta{}); err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	queries.purchased[tenantID] = true
+
+	cfg, err := store.GetPublic(context.Background(), tenantID)
+	if err != nil {
+		t.Fatalf("GetPublic: %v", err)
+	}
+	if !cfg.CurrencyLocked {
+		t.Fatal("a tenant with a purchase reads its currency as unlocked")
+	}
+
+	input := stripeInput(true)
+	input.Currency = "USD"
+	if _, err := store.Upsert(context.Background(), tenantID, input, AuditMeta{}); !errors.Is(err, ErrCurrencyLocked) {
+		t.Fatalf("Upsert error = %v, want ErrCurrencyLocked", err)
+	}
+	if got, _ := store.Currency(context.Background(), tenantID); got != DefaultCurrency {
+		t.Fatalf("currency = %q after a refused change, want %q", got, DefaultCurrency)
+	}
+
+	// Naming the stored currency again changes nothing, so it is no change.
+	input.Currency = DefaultCurrency
+	saved, err := store.Upsert(context.Background(), tenantID, input, AuditMeta{})
+	if err != nil {
+		t.Fatalf("Upsert with the stored currency: %v", err)
+	}
+	if !saved.CurrencyLocked {
+		t.Fatal("Upsert answered the currency as unlocked")
 	}
 }
 

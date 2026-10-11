@@ -77,7 +77,7 @@ func (s *apiServer) StartEpisodeCheckout(
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the tenant site origin", err, "tenant_id", tenant.ID.String())
 	}
-	provider, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
+	provider, config, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +135,7 @@ func (s *apiServer) StartEpisodeCheckout(
 			ReaderID:           user.ID,
 			EpisodeID:          episode.ID,
 			Price:              episode.Price,
+			Currency:           config.Currency,
 			ReadingPeriodHours: episode.ReadingPeriodHours.Int32,
 		},
 		EpisodeTitle: episode.Title,
@@ -294,7 +295,9 @@ func (s *apiServer) purchasePage(
 	return mapPurchaseDescRows(rows), nil
 }
 
-func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurchase {
+// purchaseItemFromRow answers row as the reader's purchase, with its price in
+// currency, the tenant's.
+func purchaseItemFromRow(row purchasePageRow, currency string, now time.Time) *publirav1.MyPurchase {
 	expiresAt := ""
 	// A refunded purchase opens nothing, so the library must not offer it as
 	// one the reader can still open.
@@ -312,6 +315,7 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurcha
 			PublicId:   row.episodePublicID,
 			Title:      row.episodeTitle,
 		},
+		Currency:        currency,
 		ExpiresAt:       expiresAt,
 		IsActive:        isActive,
 		PriceAtPurchase: row.priceAtPurchase,
@@ -356,10 +360,14 @@ func (s *apiServer) ListMyPurchases(
 		return nil, s.internalDBError(ctx, "failed to list purchases", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+	currency, err := s.tenantCurrency(ctx, s.queriesFor(ctx), tenant.ID)
+	if err != nil {
+		return nil, err
+	}
 	now := time.Now()
 	items := make([]*publirav1.MyPurchase, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, purchaseItemFromRow(row, now))
+		items = append(items, purchaseItemFromRow(row, currency, now))
 	}
 
 	res := &publirav1.ListMyPurchasesResponse{Purchases: items}
@@ -414,7 +422,7 @@ func (s *apiServer) ProcessPaymentWebhook(
 	if err != nil {
 		return nil, err
 	}
-	provider, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
+	provider, config, credentials, err := s.loadPaymentProvider(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -447,12 +455,25 @@ func (s *apiServer) ProcessPaymentWebhook(
 
 	switch event := event.(type) {
 	case paymentprovider.Refunded:
-		if err := s.recordRefund(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
+		if err := s.recordRefund(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, config.Currency, event); err != nil {
 			return nil, err
 		}
 	case paymentprovider.PurchaseCompleted:
 		if event.Purchase.TenantID != tenant.ID {
 			return nil, connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
+		}
+		// The price is recorded as an amount in the tenant currency, so a
+		// payment in any other cannot be recorded as one. Failing the delivery
+		// keeps the provider retrying it while someone looks.
+		if event.Purchase.Currency != config.Currency {
+			return nil, s.internalError(ctx, "a completed checkout was paid in a currency other than the tenant's",
+				errors.New("checkout currency does not match the tenant currency"),
+				"tenant_id", tenant.ID.String(),
+				"event_id", event.ID,
+				"checkout_id", event.CheckoutID,
+				"checkout_currency", event.Purchase.Currency,
+				"tenant_currency", config.Currency,
+			)
 		}
 		if err := s.createPurchase(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
 			return nil, s.internalDBError(ctx, "failed to create purchase from a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
@@ -466,14 +487,16 @@ func (s *apiServer) recordRefund(
 	queries Querier,
 	tenantID uuid.UUID,
 	providerID string,
+	currency string,
 	event paymentprovider.Refunded,
 ) error {
 	// An amount is only comparable to price_at_purchase when it arrives in the
-	// currency the checkout charged, and a refund of nothing is not a refund.
-	// Either way the purchase is recorded as refunded in full, which is what a
-	// refund notification means when it says nothing more precise.
+	// tenant currency, which every purchase was charged in, and a refund of
+	// nothing is not a refund. Either way the purchase is recorded as refunded
+	// in full, which is what a refund notification means when it says nothing
+	// more precise.
 	var refundedAmount sql.NullInt32
-	if event.Currency == "JPY" && event.AmountRefunded > 0 && event.AmountRefunded <= math.MaxInt32 {
+	if event.Currency == currency && event.AmountRefunded > 0 && event.AmountRefunded <= math.MaxInt32 {
 		refundedAmount = sql.NullInt32{Int32: int32(event.AmountRefunded), Valid: true}
 	} else {
 		s.logger.WarnContext(ctx, "refund reported no comparable amount and is recorded as a full refund",
@@ -481,6 +504,7 @@ func (s *apiServer) recordRefund(
 			"event_id", event.ID,
 			"payment_id", event.PaymentID,
 			"currency", event.Currency,
+			"tenant_currency", currency,
 			"amount_refunded", event.AmountRefunded,
 		)
 	}
@@ -629,22 +653,33 @@ func (s *apiServer) paymentStore(ctx context.Context) *paymentsettings.Store {
 	return paymentsettings.New(s.queriesFor(ctx), s.encryptor, s.paymentProviders, nil, s.logger)
 }
 
+// tenantCurrency answers the currency the tenant sells in, read through
+// queries so that a caller inside a transaction reads it there.
+func (s *apiServer) tenantCurrency(ctx context.Context, queries Querier, tenantID uuid.UUID) (string, error) {
+	currency, err := paymentsettings.New(queries, s.encryptor, s.paymentProviders, nil, s.logger).Currency(ctx, tenantID)
+	if err != nil {
+		return "", s.internalDBError(ctx, "failed to read the tenant currency", err, "tenant_id", tenantID.String())
+	}
+	return currency, nil
+}
+
 // loadPaymentProvider answers the tenant's enabled payment provider with its
-// credentials, or failed_precondition when the tenant cannot take payments.
-func (s *apiServer) loadPaymentProvider(ctx context.Context, tenantID uuid.UUID) (paymentprovider.Provider, paymentprovider.Credentials, error) {
+// settings and credentials, or failed_precondition when the tenant cannot take
+// payments.
+func (s *apiServer) loadPaymentProvider(ctx context.Context, tenantID uuid.UUID) (paymentprovider.Provider, paymentsettings.PublicConfig, paymentprovider.Credentials, error) {
 	config, credentials, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID)
 	if err != nil {
 		if paymentsettings.IsUnavailable(err) {
 			s.logger.WarnContext(ctx, "tenant payment settings are unavailable",
 				"tenant_id", tenantID,
 			)
-			return nil, nil, paymentsNotConfiguredError()
+			return nil, paymentsettings.PublicConfig{}, nil, paymentsNotConfiguredError()
 		}
-		return nil, nil, s.internalDBError(ctx, "failed to load tenant payment settings", err, "tenant_id", tenantID.String())
+		return nil, paymentsettings.PublicConfig{}, nil, s.internalDBError(ctx, "failed to load tenant payment settings", err, "tenant_id", tenantID.String())
 	}
 	provider, ok := s.paymentProviders.Lookup(config.Provider)
 	if !ok {
-		return nil, nil, paymentsNotConfiguredError()
+		return nil, paymentsettings.PublicConfig{}, nil, paymentsNotConfiguredError()
 	}
-	return provider, credentials, nil
+	return provider, config, credentials, nil
 }

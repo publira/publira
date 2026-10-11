@@ -27,6 +27,10 @@ const (
 
 	maskFill = "••••••••"
 	maskTail = 4
+
+	// DefaultCurrency is the currency of a tenant that has not saved payment
+	// settings, and of every row the currency was added to.
+	DefaultCurrency = "JPY"
 )
 
 var (
@@ -42,6 +46,8 @@ var (
 	ErrSecretMissing            = errors.New("required payment credential is not configured")
 	ErrNotEnabled               = errors.New("tenant payment settings are not enabled")
 	ErrProviderUnavailable      = errors.New("stored payment provider is not registered")
+	ErrUnsupportedCurrency      = errors.New("the provider does not charge in the currency")
+	ErrCurrencyLocked           = errors.New("the currency cannot change once the tenant has a purchase")
 )
 
 // IsUnavailable reports errors that mean Checkout and Webhook must not run:
@@ -82,6 +88,12 @@ type PublicConfig struct {
 	// Provider is empty until the tenant saves one.
 	Provider string
 	Enabled  bool
+	// Currency is the ISO 4217 code, in capitals, of the currency the tenant
+	// sells in and stores every amount in the minor unit of.
+	Currency string
+	// CurrencyLocked reports that the tenant has a purchase, so Currency can no
+	// longer change. Only [Store.GetPublic] and [Store.Upsert] answer it.
+	CurrencyLocked bool
 	// Fields has one entry per field the provider declares, in its order.
 	Fields    []FieldState
 	Ready     bool
@@ -110,6 +122,10 @@ type FieldUpdate struct {
 type UpdateInput struct {
 	Provider string
 	Enabled  bool
+	// Currency is the ISO 4217 code to sell in, which the provider has to
+	// charge in. Empty keeps the stored one, which is [DefaultCurrency] before
+	// any is saved.
+	Currency string
 	// Fields the input leaves out are left as they are, unless the provider
 	// changes, which clears every field stored for the previous one.
 	Fields []FieldUpdate

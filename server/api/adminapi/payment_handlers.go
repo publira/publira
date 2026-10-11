@@ -41,10 +41,12 @@ func tenantPaymentSettingsToProto(cfg paymentsettings.PublicConfig) *publiraadmi
 		})
 	}
 	return &publiraadminv1.TenantPaymentSettings{
-		Provider: cfg.Provider,
-		Enabled:  cfg.Enabled,
-		Fields:   fields,
-		Ready:    cfg.Ready,
+		Provider:       cfg.Provider,
+		Enabled:        cfg.Enabled,
+		Fields:         fields,
+		Ready:          cfg.Ready,
+		Currency:       cfg.Currency,
+		CurrencyLocked: cfg.CurrencyLocked,
 	}
 }
 
@@ -64,6 +66,7 @@ func paymentProviderToProto(provider paymentprovider.Provider) *publiraadminv1.P
 		DisplayName: declaration.DisplayName,
 		Fields:      fields,
 		WebhookPath: paymentprovider.WebhookPath(declaration.ID),
+		Currencies:  declaration.Currencies,
 	}
 }
 
@@ -74,8 +77,11 @@ func mapPaymentSettingsUpdateError(err error) error {
 		errors.Is(err, paymentsettings.ErrDuplicateField),
 		errors.Is(err, paymentsettings.ErrSecretRequired),
 		errors.Is(err, paymentsettings.ErrFieldsRequired),
+		errors.Is(err, paymentsettings.ErrUnsupportedCurrency),
 		errors.Is(err, secretupdate.ErrInvalidMode):
 		return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+	case errors.Is(err, paymentsettings.ErrCurrencyLocked):
+		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	case errors.Is(err, paymentsettings.ErrSecretManagerUnavailable):
 		return connect.NewError(connect.CodeFailedPrecondition, "payment secret encryption is not configured")
 	default:
@@ -155,6 +161,7 @@ func (s *adminServer) UpdateTenantPaymentSettings(
 		saved, err := store.Upsert(txCtx, tenant.ID, paymentsettings.UpdateInput{
 			Provider: req.Provider,
 			Enabled:  req.Enabled,
+			Currency: req.Currency,
 			Fields:   fields,
 		}, paymentsettings.AuditMeta{
 			ActorUserID: sessionCtx.User.ID,
@@ -345,12 +352,17 @@ func (s *adminServer) ListTenantStoreProducts(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list tenant store product prices", err, "tenant_id", tenant.ID.String())
 	}
+	currency, err := s.paymentStore(ctx).Currency(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to read the tenant currency", err, "tenant_id", tenant.ID.String())
+	}
 	products := make([]*publiraadminv1.TenantStoreProduct, 0, len(rows))
 	for _, row := range rows {
 		products = append(products, &publiraadminv1.TenantStoreProduct{
 			ProductId:    storeproduct.ProductID(row.Price),
 			Price:        row.Price,
 			EpisodeCount: row.EpisodeCount,
+			Currency:     currency,
 		})
 	}
 	return &publiraadminv1.ListTenantStoreProductsResponse{Products: products}, nil

@@ -128,7 +128,8 @@ export const UpdateRoyaltyConfigResponseSchema: GenMessage<UpdateRoyaltyConfigRe
 
 /**
  * The figures of one month: its own sales, and what its lines pay out.
- * Amounts are whole yen.
+ * Amounts are integers in the minor unit of the tenant currency, which
+ * AdminAuthService.GetTenant answers.
  *
  * @generated from message publira.admin.v1.RoyaltyStatementTotals
  */
@@ -295,7 +296,8 @@ export type RoyaltyStatementLine = Message<"publira.admin.v1.RoyaltyStatementLin
   shareBps: number;
 
   /**
-   * (gross_amount - refunded_amount) * share_bps / 10000, floored to whole yen.
+   * (gross_amount - refunded_amount) * share_bps / 10000, floored to the minor
+   * unit of the tenant currency.
    *
    * @generated from field: int64 payout_amount = 14;
    */
@@ -601,10 +603,13 @@ export type ExportRoyaltyStatementResponse = Message<"publira.admin.v1.ExportRoy
    *   episode_id        the episode's ID, as closed
    *   episode_title     as closed
    *   sale_count        integer
-   *   gross_amount      whole yen, no currency symbol
-   *   refunded_amount   whole yen, no currency symbol
+   *   gross_amount      an integer in the tenant currency's minor unit, no
+   *                     currency symbol
+   *   refunded_amount   an integer in the tenant currency's minor unit, no
+   *                     currency symbol
    *   share_percent     the share with two decimals, 12.50 for 1250 bps
-   *   payout_amount     whole yen, no currency symbol
+   *   payout_amount     an integer in the tenant currency's minor unit, no
+   *                     currency symbol
    *
    * The IDs are the rows' internal IDs, not their public IDs, and they stay
    * on the line after the row is deleted.

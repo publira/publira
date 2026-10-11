@@ -28,6 +28,7 @@ func testPurchase() paymentprovider.Purchase {
 		ReaderID:           uuid.New(),
 		EpisodeID:          uuid.New(),
 		Price:              500,
+		Currency:           "JPY",
 		ReadingPeriodHours: 72,
 	}
 }

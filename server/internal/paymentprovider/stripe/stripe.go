@@ -39,6 +39,17 @@ const (
 	MetadataReadingPeriodHours = "reading_period_hours"
 )
 
+// currencies are the currencies Stripe's documentation states a minimum charge
+// for. Stripe charges each in its ISO 4217 minor unit; ISK and UGX, which it
+// charges in hundredths although ISO 4217 gives them no minor unit, are not
+// among them, since a price stored for them would charge a hundredth of what
+// the tenant set.
+var currencies = []string{
+	"AED", "ARS", "AUD", "BRL", "CAD", "CHF", "COP", "CZK", "DKK", "EUR", "GBP",
+	"HKD", "HUF", "IDR", "ILS", "INR", "JPY", "KRW", "MXN", "MYR", "NOK", "NZD",
+	"PHP", "PLN", "RON", "RUB", "SEK", "SGD", "THB", "USD", "ZAR",
+}
+
 // Provider is Stripe Checkout.
 type Provider struct{}
 
@@ -56,6 +67,7 @@ func (*Provider) Declaration() paymentprovider.Declaration {
 			{Name: FieldWebhookSecret, Secret: true, Required: true},
 		},
 		SignatureHeader: SignatureHeader,
+		Currencies:      currencies,
 	}
 }
 
@@ -72,7 +84,7 @@ func (*Provider) StartCheckout(ctx context.Context, credentials paymentprovider.
 		CancelURL: stripego.String(req.CancelURL),
 		LineItems: []*stripego.CheckoutSessionCreateLineItemParams{{
 			PriceData: &stripego.CheckoutSessionCreateLineItemPriceDataParams{
-				Currency: stripego.String(string(stripego.CurrencyJPY)),
+				Currency: stripego.String(strings.ToLower(req.Purchase.Currency)),
 				ProductData: &stripego.CheckoutSessionCreateLineItemPriceDataProductDataParams{
 					Name: stripego.String(req.EpisodeTitle),
 				},
@@ -170,12 +182,13 @@ func purchaseCompletedEvent(event *stripego.Event) (paymentprovider.Event, error
 	if event.Type == stripego.EventTypeCheckoutSessionCompleted && session.PaymentStatus == stripego.CheckoutSessionPaymentStatusUnpaid {
 		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
 	}
-	if session.PaymentStatus != stripego.CheckoutSessionPaymentStatusPaid || session.Currency != stripego.CurrencyJPY {
-		return nil, errors.New("checkout session was not paid in JPY")
+	if session.PaymentStatus != stripego.CheckoutSessionPaymentStatusPaid {
+		return nil, errors.New("checkout session was not paid")
 	}
 	if session.AmountTotal != int64(purchase.Price) || strings.TrimSpace(session.ID) == "" {
 		return nil, errors.New("checkout session amount or ID is invalid")
 	}
+	purchase.Currency = strings.ToUpper(string(session.Currency))
 	// The refund events this purchase may later receive name the payment
 	// intent and never the session, so the event has to carry it.
 	paymentIntentID := ""

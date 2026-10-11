@@ -35,7 +35,7 @@ SELECT
 -- carried as refunded_amount. A test purchase, from a store's sandbox or a
 -- payment provider's test mode, paid the tenant nothing and is not a sale
 -- either. The payout is floored per line over the month's sum, which
--- keeps the rounding loss to one yen per line.
+-- keeps the rounding loss to one minor unit of the tenant currency per line.
 SELECT
     ec.creator_id,
     c.public_id AS creator_public_id,

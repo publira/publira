@@ -113,11 +113,12 @@ func publicPaymentColumns() []string {
 		"tenant_id", "provider", "enabled",
 		"created_at", "updated_at",
 		"credentials_encrypted", "credential_hints",
+		"currency",
 	}
 }
 
-// stripePaymentConfigRow is an enabled Stripe settings row holding the given
-// ciphertexts and hints for its secret key and webhook secret.
+// stripePaymentConfigRow is an enabled Stripe settings row in JPY holding the
+// given ciphertexts and hints for its secret key and webhook secret.
 func stripePaymentConfigRow(t *testing.T, tenantID uuid.UUID, secretEnc, webhookEnc, secretHint, webhookHint string, now time.Time) *sqlmock.Rows {
 	t.Helper()
 	fields := func(secretKey, webhookSecret string) []byte {
@@ -138,6 +139,7 @@ func stripePaymentConfigRow(t *testing.T, tenantID uuid.UUID, secretEnc, webhook
 		now,
 		fields(secretEnc, webhookEnc),
 		fields(secretHint, webhookHint),
+		"JPY",
 	)
 }
 
@@ -434,6 +436,9 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	}
 	if env.checkout.secretKey != testCheckoutSecretKey {
 		t.Fatalf("checkout secret = %q, want tenant secret", env.checkout.secretKey)
+	}
+	if env.checkout.input.Purchase.Currency != "JPY" {
+		t.Fatalf("checkout currency = %q, want the tenant's JPY", env.checkout.input.Purchase.Currency)
 	}
 	if env.checkout.input.SuccessURL != "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success" {
 		t.Fatalf("successURL = %q, want web return URL", env.checkout.input.SuccessURL)

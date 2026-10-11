@@ -328,7 +328,8 @@ func (x *UpdateRoyaltyConfigResponse) GetConfig() *RoyaltyConfig {
 }
 
 // The figures of one month: its own sales, and what its lines pay out.
-// Amounts are whole yen.
+// Amounts are integers in the minor unit of the tenant currency, which
+// AdminAuthService.GetTenant answers.
 type RoyaltyStatementTotals struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// What the month sold, each sale counted once however many creators it is
@@ -504,7 +505,8 @@ type RoyaltyStatementLine struct {
 	RefundedAmount int64  `protobuf:"varint,12,opt,name=refunded_amount,json=refundedAmount,proto3" json:"refunded_amount,omitempty"`
 	// The credit's share in basis points (10000 is all of it), as applied.
 	ShareBps int32 `protobuf:"varint,13,opt,name=share_bps,json=shareBps,proto3" json:"share_bps,omitempty"`
-	// (gross_amount - refunded_amount) * share_bps / 10000, floored to whole yen.
+	// (gross_amount - refunded_amount) * share_bps / 10000, floored to the minor
+	// unit of the tenant currency.
 	PayoutAmount  int64 `protobuf:"varint,14,opt,name=payout_amount,json=payoutAmount,proto3" json:"payout_amount,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1212,10 +1214,13 @@ type ExportRoyaltyStatementResponse struct {
 	//	episode_id        the episode's ID, as closed
 	//	episode_title     as closed
 	//	sale_count        integer
-	//	gross_amount      whole yen, no currency symbol
-	//	refunded_amount   whole yen, no currency symbol
+	//	gross_amount      an integer in the tenant currency's minor unit, no
+	//	                  currency symbol
+	//	refunded_amount   an integer in the tenant currency's minor unit, no
+	//	                  currency symbol
 	//	share_percent     the share with two decimals, 12.50 for 1250 bps
-	//	payout_amount     whole yen, no currency symbol
+	//	payout_amount     an integer in the tenant currency's minor unit, no
+	//	                  currency symbol
 	//
 	// The IDs are the rows' internal IDs, not their public IDs, and they stay
 	// on the line after the row is deleted.

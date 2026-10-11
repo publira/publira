@@ -1117,6 +1117,7 @@ type TenantPaymentConfig struct {
 	UpdatedAt            time.Time       `json:"updated_at"`
 	CredentialsEncrypted json.RawMessage `json:"credentials_encrypted"`
 	CredentialHints      json.RawMessage `json:"credential_hints"`
+	Currency             string          `json:"currency"`
 }
 
 type TenantRatingTotal struct {

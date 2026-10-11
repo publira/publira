@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider/payjp"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -43,7 +45,16 @@ func tenantPaymentColumns() []string {
 		"tenant_id", "provider", "enabled",
 		"created_at", "updated_at",
 		"credentials_encrypted", "credential_hints",
+		"currency",
 	}
+}
+
+// expectTenantHasPurchases answers whether the tenant has a purchase, which
+// locks its currency.
+func expectTenantHasPurchases(mock sqlmock.Sqlmock, tenantID uuid.UUID, has bool) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.TenantHasPurchases)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(has))
 }
 
 func newPaymentAdminServer(t *testing.T, logs *bytes.Buffer) (*httptest.Server, sqlmock.Sqlmock) {
@@ -98,6 +109,7 @@ func addPaymentConfigRow(
 		now,
 		stripeFieldsJSON(t, secretEnc, webhookEnc),
 		stripeFieldsJSON(t, secretHint, webhookHint),
+		"JPY",
 	)
 }
 
@@ -150,6 +162,9 @@ func TestListPaymentProvidersAnswersEachProvidersDeclaration(t *testing.T) {
 	}
 	if strings.Join(names, ",") != stripe.FieldSecretKey+","+stripe.FieldWebhookSecret {
 		t.Fatalf("stripe fields = %v", names)
+	}
+	if !slices.Contains(found.Currencies, "JPY") || !slices.Contains(found.Currencies, "USD") {
+		t.Fatalf("stripe currencies = %v, want JPY and USD among them", found.Currencies)
 	}
 	assertExpectations(t, mock)
 }
@@ -204,6 +219,7 @@ func TestGetTenantPaymentSettingsReturnsEmptyWhenMissing(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectTenantHasPurchases(mock, tenantID, false)
 
 	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	req := &publiraadminv1.GetTenantPaymentSettingsRequest{
@@ -216,6 +232,9 @@ func TestGetTenantPaymentSettingsReturnsEmptyWhenMissing(t *testing.T) {
 	settings := resp.Settings
 	if settings.Provider != "" || settings.Enabled || settings.Ready || len(settings.Fields) != 0 {
 		t.Fatalf("settings = %+v, want empty with no provider", settings)
+	}
+	if settings.Currency != "JPY" || settings.CurrencyLocked {
+		t.Fatalf("currency = %q locked %v, want an unlocked JPY", settings.Currency, settings.CurrencyLocked)
 	}
 	assertExpectations(t, mock)
 }
@@ -244,6 +263,7 @@ func TestGetTenantPaymentSettingsOmitsPlaintextSecrets(t *testing.T) {
 			webhookHint,
 			now,
 		))
+	expectTenantHasPurchases(mock, tenantID, true)
 
 	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	req := &publiraadminv1.GetTenantPaymentSettingsRequest{
@@ -256,6 +276,9 @@ func TestGetTenantPaymentSettingsOmitsPlaintextSecrets(t *testing.T) {
 	settings := resp.Settings
 	if settings.Provider != stripe.ID || !settings.Enabled || !settings.Ready {
 		t.Fatalf("settings = %+v, want ready enabled stripe", settings)
+	}
+	if settings.Currency != "JPY" || !settings.CurrencyLocked {
+		t.Fatalf("currency = %q locked %v, want JPY locked by the tenant's purchase", settings.Currency, settings.CurrencyLocked)
 	}
 	for name, hint := range map[string]string{stripe.FieldSecretKey: secretHint, stripe.FieldWebhookSecret: webhookHint} {
 		field := stripeFieldState(t, settings, name)
@@ -302,6 +325,7 @@ func TestUpdateTenantPaymentSettingsRejectsEnableWithoutSecrets(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectTenantHasPurchases(mock, tenantID, false)
 	mock.ExpectRollback()
 
 	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -361,6 +385,7 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectTenantHasPurchases(mock, tenantID, false)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantPaymentConfig)).
 		WithArgs(
 			tenantID,
@@ -368,6 +393,7 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 			true,
 			sqlmock.AnyArg(),
 			stripeFieldsJSON(t, secretHint, webhookHint),
+			"JPY",
 		).
 		WillReturnRows(addPaymentConfigRow(
 			t,
@@ -413,4 +439,60 @@ func errString(err error) string {
 		return ""
 	}
 	return err.Error()
+}
+
+func TestUpdateTenantPaymentSettingsRefusesACurrencyChangeOnceTheTenantHasAPurchase(t *testing.T) {
+	ts, mock := newPaymentAdminServer(t, nil)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
+		WithArgs(tenantID).
+		WillReturnRows(addPaymentConfigRow(t, sqlmock.NewRows(tenantPaymentColumns()), tenantID, true,
+			"enc:v1:k1:ciphertext", "enc:v1:k1:webhook", "sk_••••", "whsec_••••", now))
+	expectTenantHasPurchases(mock, tenantID, true)
+	mock.ExpectRollback()
+
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantPaymentSettingsRequest{
+		Provider: stripe.ID,
+		Enabled:  true,
+		Currency: "USD",
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("UpdateTenantPaymentSettings code = %v, want failed_precondition", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUpdateTenantPaymentSettingsRefusesACurrencyTheProviderDoesNotDeclare(t *testing.T) {
+	ts, mock := newPaymentAdminServer(t, nil)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+	expectTenantHasPurchases(mock, tenantID, false)
+	mock.ExpectRollback()
+
+	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	_, err := client.UpdateTenantPaymentSettings(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantPaymentSettingsRequest{
+		Provider: payjp.ID,
+		Currency: "USD",
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateTenantPaymentSettings code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
 }

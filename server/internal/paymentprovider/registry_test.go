@@ -22,8 +22,8 @@ func (declaredProvider) ParseNotification(context.Context, []byte, http.Header, 
 
 func TestRegistryLooksUpProvidersByID(t *testing.T) {
 	registry := NewRegistry(
-		declaredProvider{Declaration{ID: "zeta"}},
-		declaredProvider{Declaration{ID: "alpha"}},
+		declaredProvider{Declaration{ID: "zeta", Currencies: []string{"JPY"}}},
+		declaredProvider{Declaration{ID: "alpha", Currencies: []string{"JPY"}}},
 	)
 	if _, ok := registry.Lookup("alpha"); !ok {
 		t.Fatal("Lookup(alpha) found nothing")
@@ -48,7 +48,7 @@ func TestRegistryRefusesAnIDThatCannotNameARouteSegment(t *testing.T) {
 					t.Fatalf("NewRegistry accepted id %q", id)
 				}
 			}()
-			NewRegistry(declaredProvider{Declaration{ID: id}})
+			NewRegistry(declaredProvider{Declaration{ID: id, Currencies: []string{"JPY"}}})
 		})
 	}
 }
@@ -59,7 +59,7 @@ func TestRegistryRefusesAnIDRegisteredTwice(t *testing.T) {
 			t.Fatal("NewRegistry accepted a duplicate id")
 		}
 	}()
-	NewRegistry(declaredProvider{Declaration{ID: "stripe"}}, declaredProvider{Declaration{ID: "stripe"}})
+	NewRegistry(declaredProvider{Declaration{ID: "stripe", Currencies: []string{"JPY"}}}, declaredProvider{Declaration{ID: "stripe", Currencies: []string{"JPY"}}})
 }
 
 func TestRegistryRefusesAFieldDeclaredSecretAndPublic(t *testing.T) {
@@ -68,7 +68,7 @@ func TestRegistryRefusesAFieldDeclaredSecretAndPublic(t *testing.T) {
 			t.Fatal("NewRegistry accepted a field that is both secret and public")
 		}
 	}()
-	NewRegistry(declaredProvider{Declaration{ID: "stripe", Fields: []Field{{Name: "key", Secret: true, Public: true}}}})
+	NewRegistry(declaredProvider{Declaration{ID: "stripe", Fields: []Field{{Name: "key", Secret: true, Public: true}}, Currencies: []string{"JPY"}}})
 }
 
 func TestRegistryRefusesAFieldDeclaredTwice(t *testing.T) {
@@ -77,7 +77,35 @@ func TestRegistryRefusesAFieldDeclaredTwice(t *testing.T) {
 			t.Fatal("NewRegistry accepted a field declared twice")
 		}
 	}()
-	NewRegistry(declaredProvider{Declaration{ID: "stripe", Fields: []Field{{Name: "key", Public: true}, {Name: "key", Secret: true}}}})
+	NewRegistry(declaredProvider{Declaration{ID: "stripe", Fields: []Field{{Name: "key", Public: true}, {Name: "key", Secret: true}}, Currencies: []string{"JPY"}}})
+}
+
+func TestRegistryRefusesACurrencyThatIsNotAnISOCode(t *testing.T) {
+	for name, currencies := range map[string][]string{
+		"none":        nil,
+		"lower case":  {"jpy"},
+		"two letters": {"JP"},
+		"a symbol":    {"¥"},
+		"twice":       {"JPY", "USD", "JPY"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatalf("NewRegistry accepted currencies %q", currencies)
+				}
+			}()
+			NewRegistry(declaredProvider{Declaration{ID: "stripe", Currencies: currencies}})
+		})
+	}
+}
+
+func TestDeclarationChargesOnlyItsCurrencies(t *testing.T) {
+	declaration := Declaration{Currencies: []string{"JPY", "USD"}}
+	for currency, want := range map[string]bool{"JPY": true, "USD": true, "EUR": false, "usd": false, "": false} {
+		if got := declaration.Charges(currency); got != want {
+			t.Errorf("Charges(%q) = %v, want %v", currency, got, want)
+		}
+	}
 }
 
 func TestDeclarationMissingNamesEmptyRequiredFields(t *testing.T) {

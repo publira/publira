@@ -226,12 +226,9 @@ func TestStoreRejectsPlaintextAtDatabase(t *testing.T) {
 	}
 }
 
-// The migration versions the credential map test steps between: the last one
-// before the fields moved into a map, and the one that moved them.
-const (
-	beforeCredentialFieldsVersion = 20260927150050
-	credentialFieldsVersion       = 20260927220815
-)
+// beforeCredentialFieldsVersion is the last migration before the credential
+// fields moved into a map, which the credential map tests start from.
+const beforeCredentialFieldsVersion = 20260927150050
 
 // A tenant that saved its Stripe secret key and webhook secret before the
 // settings held a map of fields keeps both, under the field names Stripe
@@ -272,7 +269,9 @@ func TestCredentialFieldsMigrationKeepsStripeSettingsReady(t *testing.T) {
 		t.Fatalf("insert disabled settings: %v", err)
 	}
 
-	pg.MigrateTo(t, credentialFieldsVersion)
+	// The store reads the schema of this build, so the row is read once every
+	// later migration has run over it too.
+	pg.MigrateUp(t)
 
 	store := newIntegrationStore(t, pg.DB, &bytes.Buffer{})
 	cfg, credentials, err := store.LoadEnabledSecrets(ctx, ready.ID)
@@ -281,6 +280,9 @@ func TestCredentialFieldsMigrationKeepsStripeSettingsReady(t *testing.T) {
 	}
 	if !cfg.Ready || cfg.Provider != stripe.ID {
 		t.Fatalf("migrated config = %+v, want ready stripe", cfg)
+	}
+	if cfg.Currency != paymentsettings.DefaultCurrency {
+		t.Fatalf("migrated currency = %q, want %q, which every tenant sold in before", cfg.Currency, paymentsettings.DefaultCurrency)
 	}
 	if credentials[stripe.FieldSecretKey] != integrationSecretKey || credentials[stripe.FieldWebhookSecret] != integrationWebhookSecret {
 		t.Fatal("migrated credentials do not decrypt to what was stored")

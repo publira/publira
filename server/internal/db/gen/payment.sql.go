@@ -164,7 +164,7 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 }
 
 const GetEnabledTenantPaymentConfigByTenantID = `-- name: GetEnabledTenantPaymentConfigByTenantID :one
-SELECT tenant_id, provider, enabled, created_at, updated_at, credentials_encrypted, credential_hints
+SELECT tenant_id, provider, enabled, created_at, updated_at, credentials_encrypted, credential_hints, currency
 FROM tenant_payment_config
 WHERE tenant_id = $1
     AND enabled = TRUE
@@ -182,6 +182,7 @@ func (q *Queries) GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, t
 		&i.UpdatedAt,
 		&i.CredentialsEncrypted,
 		&i.CredentialHints,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -246,7 +247,7 @@ func (q *Queries) GetPurchasableEpisodeForTenant(ctx context.Context, arg GetPur
 }
 
 const GetTenantPaymentConfigByTenantID = `-- name: GetTenantPaymentConfigByTenantID :one
-SELECT tenant_id, provider, enabled, created_at, updated_at, credentials_encrypted, credential_hints
+SELECT tenant_id, provider, enabled, created_at, updated_at, credentials_encrypted, credential_hints, currency
 FROM tenant_payment_config
 WHERE tenant_id = $1
 LIMIT 1
@@ -263,6 +264,7 @@ func (q *Queries) GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID
 		&i.UpdatedAt,
 		&i.CredentialsEncrypted,
 		&i.CredentialHints,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -642,6 +644,23 @@ func (q *Queries) ReleaseUnappliedRefund(ctx context.Context, arg ReleaseUnappli
 	return err
 }
 
+const TenantHasPurchases = `-- name: TenantHasPurchases :one
+SELECT EXISTS (
+        SELECT 1
+        FROM purchases
+        WHERE tenant_id = $1
+    )
+`
+
+// Whether any purchase, from a provider's checkout or a store, test ones
+// included, is recorded in the tenant's currency.
+func (q *Queries) TenantHasPurchases(ctx context.Context, tenantID uuid.UUID) (bool, error) {
+	row := q.db.QueryRowContext(ctx, TenantHasPurchases, tenantID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const UpsertTenantPaymentConfig = `-- name: UpsertTenantPaymentConfig :one
 INSERT INTO tenant_payment_config (
         tenant_id,
@@ -649,16 +668,18 @@ INSERT INTO tenant_payment_config (
         enabled,
         credentials_encrypted,
         credential_hints,
+        currency,
         updated_at
     )
-VALUES ($1, $2, $3, $4, $5, NOW()) ON CONFLICT (tenant_id) DO
+VALUES ($1, $2, $3, $4, $5, $6, NOW()) ON CONFLICT (tenant_id) DO
 UPDATE
 SET provider = EXCLUDED.provider,
     enabled = EXCLUDED.enabled,
     credentials_encrypted = EXCLUDED.credentials_encrypted,
     credential_hints = EXCLUDED.credential_hints,
+    currency = EXCLUDED.currency,
     updated_at = NOW()
-RETURNING tenant_id, provider, enabled, created_at, updated_at, credentials_encrypted, credential_hints
+RETURNING tenant_id, provider, enabled, created_at, updated_at, credentials_encrypted, credential_hints, currency
 `
 
 type UpsertTenantPaymentConfigParams struct {
@@ -667,6 +688,7 @@ type UpsertTenantPaymentConfigParams struct {
 	Enabled              bool            `json:"enabled"`
 	CredentialsEncrypted json.RawMessage `json:"credentials_encrypted"`
 	CredentialHints      json.RawMessage `json:"credential_hints"`
+	Currency             string          `json:"currency"`
 }
 
 func (q *Queries) UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error) {
@@ -676,6 +698,7 @@ func (q *Queries) UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenan
 		arg.Enabled,
 		arg.CredentialsEncrypted,
 		arg.CredentialHints,
+		arg.Currency,
 	)
 	var i TenantPaymentConfig
 	err := row.Scan(
@@ -686,6 +709,7 @@ func (q *Queries) UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenan
 		&i.UpdatedAt,
 		&i.CredentialsEncrypted,
 		&i.CredentialHints,
+		&i.Currency,
 	)
 	return i, err
 }

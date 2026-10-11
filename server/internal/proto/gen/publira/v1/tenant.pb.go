@@ -307,8 +307,13 @@ type GetTenantResponse struct {
 	// one signs in through. A provider is absent where the tenant has not
 	// enabled it or it is not ready, and AuthService.LoginWithIdToken refuses it
 	// then.
-	AppleSignIn   *TenantAppleSignIn  `protobuf:"bytes,21,opt,name=apple_sign_in,json=appleSignIn,proto3" json:"apple_sign_in,omitempty"`
-	GoogleSignIn  *TenantGoogleSignIn `protobuf:"bytes,22,opt,name=google_sign_in,json=googleSignIn,proto3" json:"google_sign_in,omitempty"`
+	AppleSignIn  *TenantAppleSignIn  `protobuf:"bytes,21,opt,name=apple_sign_in,json=appleSignIn,proto3" json:"apple_sign_in,omitempty"`
+	GoogleSignIn *TenantGoogleSignIn `protobuf:"bytes,22,opt,name=google_sign_in,json=googleSignIn,proto3" json:"google_sign_in,omitempty"`
+	// The ISO 4217 code, in capitals, of the currency the tenant sells in. Every
+	// price the catalog answers is an integer in its minor unit, so a price of
+	// 500 is 500 yen in JPY and 5.00 dollars in USD. Never empty: a tenant that
+	// has not chosen one sells in JPY.
+	Currency      string `protobuf:"bytes,23,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -481,6 +486,13 @@ func (x *GetTenantResponse) GetGoogleSignIn() *TenantGoogleSignIn {
 		return x.GoogleSignIn
 	}
 	return nil
+}
+
+func (x *GetTenantResponse) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
 }
 
 // How a client signs a reader in with Apple. The iOS app signs in with its own
@@ -813,7 +825,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x1bGetTenantLegalPagesResponse\x12:\n" +
 	"\n" +
 	"terms_page\x18\x01 \x01(\v2\x1b.publira.v1.TenantLegalPageR\ttermsPage\x12>\n" +
-	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\xb0\b\n" +
+	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\xcc\b\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -836,7 +848,8 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x1aaccepts_app_store_payments\x18\x13 \x01(\bR\x17acceptsAppStorePayments\x12?\n" +
 	"\x1caccepts_google_play_payments\x18\x14 \x01(\bR\x19acceptsGooglePlayPayments\x12A\n" +
 	"\rapple_sign_in\x18\x15 \x01(\v2\x1d.publira.v1.TenantAppleSignInR\vappleSignIn\x12D\n" +
-	"\x0egoogle_sign_in\x18\x16 \x01(\v2\x1e.publira.v1.TenantGoogleSignInR\fgoogleSignInJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
+	"\x0egoogle_sign_in\x18\x16 \x01(\v2\x1e.publira.v1.TenantGoogleSignInR\fgoogleSignIn\x12\x1a\n" +
+	"\bcurrency\x18\x17 \x01(\tR\bcurrencyJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
 	"terms_pageR\fprivacy_page\"4\n" +
 	"\x11TenantAppleSignIn\x12\x1f\n" +
 	"\vservices_id\x18\x01 \x01(\tR\n" +

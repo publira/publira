@@ -222,7 +222,7 @@ func TestDBListTenantStoreProductsNamesOneProductPerAppPrice(t *testing.T) {
 		t.Fatalf("products = %v, want %v", got, want)
 	}
 	for i, w := range want {
-		if got[i].ProductId != w.productID || got[i].Price != w.price || got[i].EpisodeCount != w.count {
+		if got[i].ProductId != w.productID || got[i].Price != w.price || got[i].EpisodeCount != w.count || got[i].Currency != "JPY" {
 			t.Fatalf("products[%d] = %v, want %+v", i, got[i], w)
 		}
 	}

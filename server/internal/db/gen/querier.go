@@ -1980,7 +1980,7 @@ type Querier interface {
 	// carried as refunded_amount. A test purchase, from a store's sandbox or a
 	// payment provider's test mode, paid the tenant nothing and is not a sale
 	// either. The payout is floored per line over the month's sum, which
-	// keeps the rounding loss to one yen per line.
+	// keeps the rounding loss to one minor unit of the tenant currency per line.
 	ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error)
 	// The lines of a statement in the order they were closed in, with the public
 	// IDs of the catalog rows that still exist.
@@ -2678,6 +2678,9 @@ type Querier interface {
 	// verified claim to it. The password goes: whoever set it never proved the
 	// address was theirs, and could otherwise sign in beside its owner.
 	TakeOverUnverifiedUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	// Whether any purchase, from a provider's checkout or a store, test ones
+	// included, is recorded in the tenant's currency.
+	TenantHasPurchases(ctx context.Context, tenantID uuid.UUID) (bool, error)
 	// Records that the eye-catch changed after one of its ratios was replaced.
 	TouchGenreImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
