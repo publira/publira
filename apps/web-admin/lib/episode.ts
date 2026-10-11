@@ -235,6 +235,23 @@ const mapErrorToMessage = async (
   });
 };
 
+/**
+ * The failure of a write that carries a price: the one {@link mapErrorToMessage}
+ * words, except a refusal of the currency the price was entered in, which the
+ * API gives when the tenant's currency changed after the form read it.
+ */
+const mapPriceErrorToMessage = async (
+  error: unknown,
+  fallbackMessage: string,
+  locale: Locale
+): Promise<string> => {
+  if (rpcErrorHasFieldViolation(error, "currency")) {
+    const t = await getMessagesFor(locale);
+    return t("admin.series.episodes.currency_changed");
+  }
+  return mapErrorToMessage(error, fallbackMessage, locale);
+};
+
 const mapReorderErrorToMessage = async (
   error: unknown,
   locale: Locale
@@ -552,6 +569,8 @@ export const createEpisode = async (
     seriesId: string;
     title: string;
     price: number;
+    /** The currency the price was entered in, which the API checks it against. */
+    currency: string;
     readingPeriodHours: number;
     publishAt: string;
     availability: EpisodeAvailabilityOverride;
@@ -577,6 +596,7 @@ export const createEpisode = async (
         availability: input.availability
           ? SURFACE_AVAILABILITY_ENUM[input.availability]
           : undefined,
+        currency: input.currency,
         // Omitting orderIndex makes the server append to the end.
         price: input.price,
         purchaseAvailability: toSurfaceAvailabilityOverrideEnum(
@@ -606,7 +626,7 @@ export const createEpisode = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: await mapErrorToMessage(
+      message: await mapPriceErrorToMessage(
         error,
         t("admin.series.episodes.create_failed"),
         locale
@@ -1729,6 +1749,8 @@ export const updateEpisodePricing = async (
     tenantId: string;
     episodeId: string;
     price: number;
+    /** The currency the price was entered in, which the API checks it against. */
+    currency: string;
     readingPeriodHours: number;
   },
   locale: Locale
@@ -1747,6 +1769,7 @@ export const updateEpisodePricing = async (
   try {
     const response = await apiClient.series.updateEpisodePricing(
       {
+        currency: input.currency,
         episodeId: input.episodeId,
         price: input.price,
         readingPeriodHours: input.readingPeriodHours,
@@ -1770,7 +1793,7 @@ export const updateEpisodePricing = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: await mapErrorToMessage(
+      message: await mapPriceErrorToMessage(
         error,
         t("admin.series.episodes.pricing.failed"),
         locale

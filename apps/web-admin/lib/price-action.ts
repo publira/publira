@@ -15,7 +15,11 @@ export const rawPriceFormSchema = z.preprocess(
 );
 
 export type TenantPriceResult =
-  | { ok: true; value: number }
+  /**
+   * `currency` is the one the price was read in, which the write sends along
+   * for the API to check it against the tenant's again.
+   */
+  | { ok: true; value: number; currency: string }
   | { ok: false; message: string };
 
 /**
@@ -56,7 +60,7 @@ export const parseTenantPrice = async (
     t("admin.series.episodes.validation.price_invalid")
   ).safeParse(raw);
   return parsed.success
-    ? { ok: true, value: parsed.data }
+    ? { currency, ok: true, value: parsed.data }
     : {
         message: t("admin.series.episodes.validation.price_invalid"),
         ok: false,

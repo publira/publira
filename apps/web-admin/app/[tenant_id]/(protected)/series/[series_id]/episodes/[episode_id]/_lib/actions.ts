@@ -386,7 +386,13 @@ export const updateEpisodePricingAction = async (
   }
   const result = await withAdminSessionReauth(() =>
     updateEpisodePricing(
-      { episodeId, price: parsedPrice.value, readingPeriodHours, tenantId },
+      {
+        currency: parsedPrice.currency,
+        episodeId,
+        price: parsedPrice.value,
+        readingPeriodHours,
+        tenantId,
+      },
       locale
     )
   );

@@ -197,6 +197,7 @@ export const createEpisodeAction = async (
     createEpisode(
       {
         availability: parsed.data.availability,
+        currency: price.currency,
         price: price.value,
         publishAt: scheduledAt.value,
         purchaseAvailability: parsed.data.purchaseAvailability,

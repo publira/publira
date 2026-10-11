@@ -836,6 +836,7 @@ describe("episode actions", () => {
 
       expect(mockUpdateEpisodePricing).toHaveBeenCalledWith(
         {
+          currency: "JPY",
           episodeId: "018f0e6a-4000-7000-8000-000000000001",
           price: 120,
           readingPeriodHours: 72,

@@ -575,6 +575,7 @@ describe("the surfaces an episode is shown on", () => {
     await createEpisode(
       {
         availability: "",
+        currency: "JPY",
         price: 0,
         publishAt: "",
         purchaseAvailability: "",
@@ -599,6 +600,7 @@ describe("the surfaces an episode is shown on", () => {
     await createEpisode(
       {
         availability: "web",
+        currency: "JPY",
         price: 0,
         publishAt: "",
         purchaseAvailability: "",
@@ -725,6 +727,7 @@ describe("where an episode may be bought", () => {
     await createEpisode(
       {
         availability: "",
+        currency: "JPY",
         price: 100,
         publishAt: "",
         purchaseAvailability: "app",
@@ -953,6 +956,7 @@ describe("updateEpisodePricing", () => {
     const { updateEpisodePricing } = await import("./episode");
     const result = await updateEpisodePricing(
       {
+        currency: "JPY",
         episodeId: "EPISODE001-ID",
         price: 120,
         readingPeriodHours: 72,
@@ -963,6 +967,7 @@ describe("updateEpisodePricing", () => {
 
     expect(mockUpdateEpisodePricing).toHaveBeenCalledWith(
       {
+        currency: "JPY",
         episodeId: "EPISODE001-ID",
         price: 120,
         readingPeriodHours: 72,
@@ -976,12 +981,44 @@ describe("updateEpisodePricing", () => {
     });
   });
 
+  // The tenant's currency changed after the form read it, and the API refused
+  // the price as an amount of the old one.
+  it("asks for the price again when the API refuses its currency", async () => {
+    mockUpdateEpisodePricing.mockRejectedValue(
+      new ConnectError("currency changed", Code.FailedPrecondition, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: { fieldViolations: [{ field: "currency" }] },
+        },
+      ])
+    );
+
+    const { updateEpisodePricing } = await import("./episode");
+    const result = await updateEpisodePricing(
+      {
+        currency: "JPY",
+        episodeId: "EPISODE001-ID",
+        price: 500,
+        readingPeriodHours: 0,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "The tenant's currency changed after this form was opened. Reload the page and enter the price again.",
+      ok: false,
+    });
+  });
+
   it("reports the failure when the API answers no episode", async () => {
     mockUpdateEpisodePricing.mockResolvedValue({});
 
     const { updateEpisodePricing } = await import("./episode");
     const result = await updateEpisodePricing(
       {
+        currency: "JPY",
         episodeId: "EPISODE001-ID",
         price: 0,
         readingPeriodHours: 0,
