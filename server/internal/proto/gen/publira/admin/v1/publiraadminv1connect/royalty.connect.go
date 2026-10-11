@@ -117,10 +117,12 @@ type AdminRoyaltyServiceClient interface {
 	PreviewRoyaltyStatement(context.Context, *v1.PreviewRoyaltyStatementRequest) (*v1.PreviewRoyaltyStatementResponse, error)
 	// Closes a month into a statement that never changes afterwards: a later
 	// edit of a share, a creator or a catalog row, and a refund recorded after
-	// the close, all leave it as it was closed. A closed month is never reopened;
-	// a correction is a manual process outside Publira. already_exists for a
-	// month that is already closed, failed_precondition for a month that is not
-	// over yet.
+	// the close, all leave it as it was closed. A closed month is never reopened.
+	// A refund recorded after a month was closed is carried instead into the
+	// first statement closed after it for a later month, as adjustment lines at
+	// the shares the closed month applied, and each part of a refund is carried
+	// once. already_exists for a month that is already closed,
+	// failed_precondition for a month that is not over yet.
 	//
 	// Minimum role: tenant_admin.
 	CloseRoyaltyStatement(context.Context, *v1.CloseRoyaltyStatementRequest) (*v1.CloseRoyaltyStatementResponse, error)
@@ -166,10 +168,12 @@ type AdminRoyaltyServiceHandler interface {
 	PreviewRoyaltyStatement(context.Context, *v1.PreviewRoyaltyStatementRequest) (*v1.PreviewRoyaltyStatementResponse, error)
 	// Closes a month into a statement that never changes afterwards: a later
 	// edit of a share, a creator or a catalog row, and a refund recorded after
-	// the close, all leave it as it was closed. A closed month is never reopened;
-	// a correction is a manual process outside Publira. already_exists for a
-	// month that is already closed, failed_precondition for a month that is not
-	// over yet.
+	// the close, all leave it as it was closed. A closed month is never reopened.
+	// A refund recorded after a month was closed is carried instead into the
+	// first statement closed after it for a later month, as adjustment lines at
+	// the shares the closed month applied, and each part of a refund is carried
+	// once. already_exists for a month that is already closed,
+	// failed_precondition for a month that is not over yet.
 	//
 	// Minimum role: tenant_admin.
 	CloseRoyaltyStatement(context.Context, *v1.CloseRoyaltyStatementRequest) (*v1.CloseRoyaltyStatementResponse, error)

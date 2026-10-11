@@ -170,6 +170,7 @@ func closeTenant(
 				"period", royalties.FormatPeriod(period),
 				"total_gross", statement.TotalGross,
 				"total_refunded", statement.TotalRefunded,
+				"total_adjustment", statement.TotalAdjustment,
 				"total_payout", statement.TotalPayout,
 			)
 		}

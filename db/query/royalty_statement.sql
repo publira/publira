@@ -91,6 +91,63 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.purchased_at >= sqlc.arg('starts_at')::timestamptz
     AND p.purchased_at < sqlc.arg('ends_at')::timestamptz;
 
+-- name: ListRoyaltyAdjustmentLinesForPeriod :many
+-- Computes the adjustment lines of one tenant month: for each line of a
+-- statement of an earlier month, the refunds recorded on its sales since they
+-- were counted, at the share that line applied and under the names it was
+-- closed with. A credit added or edited since that close changes nothing
+-- here. A sale in another currency than the one asked for was never counted
+-- by a statement in it. The payout is the same expression as a line of sales,
+-- over changes that are negative, and a statement lists these after the
+-- month's own lines, oldest adjusted month first.
+SELECT
+    l.creator_id,
+    c.public_id AS creator_public_id,
+    l.creator_name,
+    l.series_id,
+    s.public_id AS series_public_id,
+    l.series_title,
+    l.episode_id,
+    e.public_id AS episode_public_id,
+    l.episode_title,
+    l.role_id,
+    r.public_id AS role_public_id,
+    l.role_name,
+    l.statement_id AS adjusted_statement_id,
+    u.period AS adjusted_period,
+    sum(u.sale_count)::integer AS sale_count,
+    sum(u.gross_amount)::bigint AS gross_amount,
+    sum(u.refunded_amount)::bigint AS refunded_amount,
+    l.share_bps,
+    ((sum(u.gross_amount) - sum(u.refunded_amount)) * l.share_bps / 10000)::bigint AS payout_amount
+FROM royalty_uncarried_refunds u
+JOIN royalty_statement_lines l ON l.tenant_id = u.tenant_id
+    AND l.statement_id = u.statement_id
+    AND l.episode_id = u.episode_id
+    AND l.adjusted_statement_id IS NULL
+LEFT JOIN creators c ON c.tenant_id = l.tenant_id AND c.id = l.creator_id
+LEFT JOIN series s ON s.tenant_id = l.tenant_id AND s.id = l.series_id
+LEFT JOIN episodes e ON e.tenant_id = l.tenant_id AND e.id = l.episode_id
+LEFT JOIN creator_roles r ON r.tenant_id = l.tenant_id AND r.id = l.role_id
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND u.currency = sqlc.arg('currency')::text
+    AND u.period < sqlc.arg('period')::date
+GROUP BY
+    u.period,
+    l.statement_id, l.line_number,
+    c.public_id, s.public_id, e.public_id, r.public_id
+ORDER BY u.period, l.line_number;
+
+-- name: GetRoyaltyAdjustmentTotalForPeriod :one
+-- Totals what ListRoyaltyAdjustmentLinesForPeriod takes back, each refunded
+-- sale counted once however many creators it is credited to.
+SELECT
+    COALESCE(sum(u.gross_amount - u.refunded_amount), 0)::bigint AS total_adjustment
+FROM royalty_uncarried_refunds u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND u.currency = sqlc.arg('currency')::text
+    AND u.period < sqlc.arg('period')::date;
+
 -- name: InsertRoyaltyStatement :one
 -- A second close of the same month fails on royalty_statements_tenant_id_period_key.
 INSERT INTO royalty_statements (
@@ -104,6 +161,7 @@ INSERT INTO royalty_statements (
     currency,
     total_gross,
     total_refunded,
+    total_adjustment,
     total_payout
 ) VALUES (
     sqlc.arg('id'),
@@ -116,6 +174,7 @@ INSERT INTO royalty_statements (
     sqlc.arg('currency'),
     sqlc.arg('total_gross'),
     sqlc.arg('total_refunded'),
+    sqlc.arg('total_adjustment'),
     sqlc.arg('total_payout')
 )
 RETURNING *;
@@ -140,7 +199,8 @@ INSERT INTO royalty_statement_lines (
     gross_amount,
     refunded_amount,
     share_bps,
-    payout_amount
+    payout_amount,
+    adjusted_statement_id
 )
 SELECT
     sqlc.arg('tenant_id'),
@@ -158,7 +218,8 @@ SELECT
     line.gross_amount,
     line.refunded_amount,
     line.share_bps,
-    line.payout_amount
+    line.payout_amount,
+    line.adjusted_statement_id
 FROM jsonb_to_recordset(sqlc.arg('lines')::jsonb) AS line(
     line_number integer,
     creator_id uuid,
@@ -173,8 +234,50 @@ FROM jsonb_to_recordset(sqlc.arg('lines')::jsonb) AS line(
     gross_amount bigint,
     refunded_amount bigint,
     share_bps integer,
-    payout_amount bigint
+    payout_amount bigint,
+    adjusted_statement_id uuid
 );
+
+-- name: InsertRoyaltyStatementPurchases :exec
+-- Writes down what a statement counted of each purchase: every sale of its
+-- own month, by the rules of ListRoyaltyLinesForPeriod, and the change it
+-- carries of each sale ListRoyaltyAdjustmentLinesForPeriod adjusts. Both
+-- halves read the purchases as they stood before this statement, which is the
+-- snapshot the lines were computed in.
+INSERT INTO royalty_statement_purchases (
+    tenant_id,
+    purchase_id,
+    statement_id,
+    sale_count,
+    gross_amount,
+    refunded_amount
+)
+SELECT
+    p.tenant_id,
+    p.id AS purchase_id,
+    sqlc.arg('statement_id')::uuid AS statement_id,
+    1 AS sale_count,
+    p.price_at_purchase AS gross_amount,
+    COALESCE(p.refunded_amount, 0) AS refunded_amount
+FROM purchases p
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND p.refunded_at IS NULL
+    AND NOT p.is_test
+    AND p.currency = sqlc.arg('currency')::text
+    AND p.purchased_at >= sqlc.arg('starts_at')::timestamptz
+    AND p.purchased_at < sqlc.arg('ends_at')::timestamptz
+UNION ALL
+SELECT
+    u.tenant_id,
+    u.purchase_id,
+    sqlc.arg('statement_id')::uuid AS statement_id,
+    u.sale_count,
+    u.gross_amount::integer AS gross_amount,
+    u.refunded_amount::integer AS refunded_amount
+FROM royalty_uncarried_refunds u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND u.currency = sqlc.arg('currency')::text
+    AND u.period < sqlc.arg('period')::date;
 
 -- name: GetRoyaltyStatementByPeriod :one
 SELECT
@@ -227,18 +330,21 @@ LIMIT sqlc.arg('row_limit');
 
 -- name: ListRoyaltyStatementLinesAsc :many
 -- The lines of a statement in the order they were closed in, with the public
--- IDs of the catalog rows that still exist.
+-- IDs of the catalog rows that still exist and the month an adjustment line
+-- adjusts.
 SELECT
     l.*,
     c.public_id AS creator_public_id,
     s.public_id AS series_public_id,
     e.public_id AS episode_public_id,
-    r.public_id AS role_public_id
+    r.public_id AS role_public_id,
+    adjusted.period AS adjusted_period
 FROM royalty_statement_lines l
 LEFT JOIN creators c ON c.tenant_id = l.tenant_id AND c.id = l.creator_id
 LEFT JOIN series s ON s.tenant_id = l.tenant_id AND s.id = l.series_id
 LEFT JOIN episodes e ON e.tenant_id = l.tenant_id AND e.id = l.episode_id
 LEFT JOIN creator_roles r ON r.tenant_id = l.tenant_id AND r.id = l.role_id
+LEFT JOIN royalty_statements adjusted ON adjusted.tenant_id = l.tenant_id AND adjusted.id = l.adjusted_statement_id
 WHERE l.tenant_id = sqlc.arg('tenant_id')
     AND l.statement_id = sqlc.arg('statement_id')
     AND l.line_number > sqlc.arg('after_line_number')::integer
@@ -252,12 +358,14 @@ SELECT
     c.public_id AS creator_public_id,
     s.public_id AS series_public_id,
     e.public_id AS episode_public_id,
-    r.public_id AS role_public_id
+    r.public_id AS role_public_id,
+    adjusted.period AS adjusted_period
 FROM royalty_statement_lines l
 LEFT JOIN creators c ON c.tenant_id = l.tenant_id AND c.id = l.creator_id
 LEFT JOIN series s ON s.tenant_id = l.tenant_id AND s.id = l.series_id
 LEFT JOIN episodes e ON e.tenant_id = l.tenant_id AND e.id = l.episode_id
 LEFT JOIN creator_roles r ON r.tenant_id = l.tenant_id AND r.id = l.role_id
+LEFT JOIN royalty_statements adjusted ON adjusted.tenant_id = l.tenant_id AND adjusted.id = l.adjusted_statement_id
 WHERE l.tenant_id = sqlc.arg('tenant_id')
     AND l.statement_id = sqlc.arg('statement_id')
     AND l.line_number < sqlc.arg('before_line_number')::integer
@@ -266,9 +374,13 @@ LIMIT sqlc.arg('row_limit');
 
 -- name: ListRoyaltyStatementLinesForExport :many
 -- Every line of a statement as it was closed, for the CSV export. It reads the
--- stored columns only, so the export of a closed month never changes.
-SELECT *
-FROM royalty_statement_lines
-WHERE tenant_id = sqlc.arg('tenant_id')
-    AND statement_id = sqlc.arg('statement_id')
-ORDER BY line_number ASC;
+-- stored columns only, and the period of a statement that is never deleted
+-- while the tenant exists, so the export of a closed month never changes.
+SELECT
+    l.*,
+    adjusted.period AS adjusted_period
+FROM royalty_statement_lines l
+LEFT JOIN royalty_statements adjusted ON adjusted.tenant_id = l.tenant_id AND adjusted.id = l.adjusted_statement_id
+WHERE l.tenant_id = sqlc.arg('tenant_id')
+    AND l.statement_id = sqlc.arg('statement_id')
+ORDER BY l.line_number ASC;

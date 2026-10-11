@@ -40,18 +40,24 @@ message UpdateRoyaltyConfigResponse {
   RoyaltyConfig config = 1;
 }
 
-// The figures of one month: its own sales, and what its lines pay out.
-// Amounts are integers in the minor unit of the currency of the statement or
-// preview they belong to, and count only the sales paid in it.
+// The figures of one month: its own sales, the refunds it carries of earlier
+// months' sales, and what its lines pay out. Amounts are integers in the minor
+// unit of the currency of the statement or preview they belong to, and count
+// only the sales paid in it.
 message RoyaltyStatementTotals {
   // What the month sold, each sale counted once however many creators it is
   // credited to. A fully refunded sale is not a sale.
   int64 gross = 1;
   // Partial refunds of the sales in gross.
   int64 refunded = 2;
-  // The sum of the lines' payouts. The rest of gross net of refunds is the
-  // tenant's own.
+  // The sum of the lines' payouts, the adjustment lines included, so negative
+  // for a month whose refunds of earlier sales outweigh its own. The rest of
+  // gross net of refunds and adjustment is the tenant's own.
   int64 payout = 3;
+  // The net sales of earlier closed months that refunds recorded since their
+  // close take back, each sale counted once: zero, or a negative amount. The
+  // adjustment lines carry it to the creators.
+  int64 adjustment = 4;
 }
 
 // A closed month.
@@ -74,6 +80,15 @@ message RoyaltyStatement {
 // One creator's credit on one episode for one role, with that episode's sales
 // in the month. Names are as they stood at close; a public ID is empty once the
 // row it named has been deleted.
+//
+// A line with adjusted_period set is an adjustment instead: it carries the
+// refunds recorded since that earlier month was closed on the sales one of its
+// lines counted, with that line's names and share. Its figures are changes and
+// never positive: sale_count is minus the sales refunded in full, gross_amount
+// minus their price, and refunded_amount the change in what is refunded of the
+// sales counted, negative when a sale partly refunded at close was then
+// refunded in full. Adjustment lines follow the month's own lines, oldest
+// adjusted month first.
 message RoyaltyStatementLine {
   // Position in the statement, from 1.
   int32 line_number = 1;
@@ -91,9 +106,13 @@ message RoyaltyStatementLine {
   int64 refunded_amount = 12;
   // The credit's share in basis points (10000 is all of it), as applied.
   int32 share_bps = 13;
-  // (gross_amount - refunded_amount) * share_bps / 10000, floored to the minor
-  // unit of the statement's currency.
+  // (gross_amount - refunded_amount) * share_bps / 10000, rounded toward zero
+  // to the minor unit of the statement's currency: floored on a line of
+  // sales, and on an adjustment never more than the refunded sales paid.
   int64 payout_amount = 14;
+  // YYYY-MM of the closed month an adjustment line adjusts. Empty for a line
+  // of the month's own sales.
+  string adjusted_period = 15;
 }
 
 message PreviewRoyaltyStatementRequest {
@@ -107,6 +126,9 @@ message PreviewRoyaltyStatementResponse {
   // The tenant's current zone, which the month's own midnights are in.
   string time_zone = 2;
   RoyaltyStatementTotals totals = 3;
+  // The month's own lines, then the adjustments for the refunds recorded so
+  // far on sales of earlier closed months, which closing the month now would
+  // carry.
   repeated RoyaltyStatementLine lines = 4;
   // RFC 3339 instants of the half-open range the month counts sales in. Each
   // is the month's own midnight in time_zone unless the month next to it is
@@ -194,6 +216,10 @@ message ExportRoyaltyStatementResponse {
   //   payout_amount     an integer in the minor unit of currency, no currency
   //                     symbol
   //   currency          the statement's ISO 4217 code, the same on every row
+  //   adjusted_period   YYYY-MM of the closed month an adjustment line
+  //                     adjusts; empty for a line of the month's own sales.
+  //                     The amounts of an adjustment line are changes, zero
+  //                     or negative, as RoyaltyStatementLine describes
   //
   // The IDs are the rows' internal IDs, not their public IDs, and they stay
   // on the line after the row is deleted.
@@ -218,10 +244,12 @@ service AdminRoyaltyService {
   rpc PreviewRoyaltyStatement(PreviewRoyaltyStatementRequest) returns (PreviewRoyaltyStatementResponse) {}
   // Closes a month into a statement that never changes afterwards: a later
   // edit of a share, a creator or a catalog row, and a refund recorded after
-  // the close, all leave it as it was closed. A closed month is never reopened;
-  // a correction is a manual process outside Publira. already_exists for a
-  // month that is already closed, failed_precondition for a month that is not
-  // over yet.
+  // the close, all leave it as it was closed. A closed month is never reopened.
+  // A refund recorded after a month was closed is carried instead into the
+  // first statement closed after it for a later month, as adjustment lines at
+  // the shares the closed month applied, and each part of a refund is carried
+  // once. already_exists for a month that is already closed,
+  // failed_precondition for a month that is not over yet.
   //
   // Minimum role: tenant_admin.
   rpc CloseRoyaltyStatement(CloseRoyaltyStatementRequest) returns (CloseRoyaltyStatementResponse) {}
