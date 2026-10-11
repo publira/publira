@@ -408,8 +408,12 @@ func (x *IssueAccessTicketRequest) GetEpisodeId() string {
 }
 
 type IssueAccessTicketResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ticket        *AdminAccessTicket     `protobuf:"bytes,1,opt,name=ticket,proto3" json:"ticket,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Ticket *AdminAccessTicket     `protobuf:"bytes,1,opt,name=ticket,proto3" json:"ticket,omitempty"`
+	// True when this call issued the ticket. False when the reader and the
+	// episode already had a non-revoked staff ticket: that ticket comes back
+	// unchanged, and the requested expires_at and note are not applied.
+	Created       bool `protobuf:"varint,2,opt,name=created,proto3" json:"created,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -449,6 +453,13 @@ func (x *IssueAccessTicketResponse) GetTicket() *AdminAccessTicket {
 		return x.Ticket
 	}
 	return nil
+}
+
+func (x *IssueAccessTicketResponse) GetCreated() bool {
+	if x != nil {
+		return x.Created
+	}
+	return false
 }
 
 type RevokeAccessTicketRequest struct {
@@ -592,9 +603,10 @@ const file_publira_admin_v1_access_ticket_proto_rawDesc = "" +
 	"\x04note\x18\x05 \x01(\tR\x04note\x12\x17\n" +
 	"\auser_id\x18\x06 \x01(\tR\x06userId\x12\x1d\n" +
 	"\n" +
-	"episode_id\x18\a \x01(\tR\tepisodeIdJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04R\x0euser_public_idR\x11episode_public_id\"X\n" +
+	"episode_id\x18\a \x01(\tR\tepisodeIdJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04R\x0euser_public_idR\x11episode_public_id\"r\n" +
 	"\x19IssueAccessTicketResponse\x12;\n" +
-	"\x06ticket\x18\x01 \x01(\v2#.publira.admin.v1.AdminAccessTicketR\x06ticket\"\x8f\x01\n" +
+	"\x06ticket\x18\x01 \x01(\v2#.publira.admin.v1.AdminAccessTicketR\x06ticket\x12\x18\n" +
+	"\acreated\x18\x02 \x01(\bR\acreated\"\x8f\x01\n" +
 	"\x19RevokeAccessTicketRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10access_ticket_id\x18\x03 \x01(\tR\x0eaccessTicketIdJ\x04\b\x02\x10\x03R\tpublic_id\"Y\n" +

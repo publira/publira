@@ -385,10 +385,11 @@ func (s *adminServer) IssueAccessTicket(
 		return nil, err
 	}
 
-	// Idempotent re-issue: return the existing non-revoked ticket when one already
-	// covers this pair. Requested expires_at and note are ignored; revoke and
-	// re-issue to change them. Includes expired-but-not-revoked rows so the
-	// unique partial index on non-revoked (tenant, user, episode) stays consistent.
+	// Idempotent re-issue: return the existing non-revoked ticket, with created
+	// left false, when one already covers this pair. Requested expires_at and
+	// note are ignored; revoke and re-issue to change them. Includes
+	// expired-but-not-revoked rows so the unique partial index on non-revoked
+	// (tenant, user, episode) stays consistent.
 	existing, existingErr := s.queriesFor(ctx).GetNonRevokedAccessTicketForUserEpisode(ctx, dbmodels.GetNonRevokedAccessTicketForUserEpisodeParams{
 		TenantID:  tenant.ID,
 		UserID:    userID,
@@ -464,7 +465,8 @@ func (s *adminServer) IssueAccessTicket(
 	})
 
 	return &publiraadminv1.IssueAccessTicketResponse{
-		Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
+		Ticket:  mapAccessTicketFromGetRow(ticketRow, time.Now()),
+		Created: true,
 	}, nil
 }
 

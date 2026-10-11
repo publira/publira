@@ -77,6 +77,10 @@ message IssueAccessTicketRequest {
 
 message IssueAccessTicketResponse {
   AdminAccessTicket ticket = 1;
+  // True when this call issued the ticket. False when the reader and the
+  // episode already had a non-revoked staff ticket: that ticket comes back
+  // unchanged, and the requested expires_at and note are not applied.
+  bool created = 2;
 }
 
 message RevokeAccessTicketRequest {
