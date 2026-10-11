@@ -4,6 +4,27 @@ import 'package:intl/intl.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
 
+/// The symbol CLDR's root locale writes each currency a payment provider
+/// declares with, for those whose symbol is not their code: the one
+/// `Intl.NumberFormat` writes on the site, and one no two currencies share.
+/// Any other currency is written with its code.
+const _currencySymbols = {
+  'AUD': r'A$',
+  'BRL': r'R$',
+  'CAD': r'CA$',
+  'EUR': '€',
+  'GBP': '£',
+  'HKD': r'HK$',
+  'ILS': '₪',
+  'INR': '₹',
+  'JPY': '¥',
+  'KRW': '₩',
+  'MXN': r'MX$',
+  'NZD': r'NZ$',
+  'PHP': '₱',
+  'USD': r'$',
+};
+
 /// Values rendered the way the catalog's locale writes them.
 ///
 /// A message that inserts a number without a numeric function such as
@@ -17,11 +38,16 @@ extension AppMessagesFormatting on AppMessages {
 
   /// [amount], an integer in the minor unit of [currency] the way the API
   /// sends every price, written as that currency in this locale — `500` is
-  /// `¥500` in JPY and `$5.00` in USD under `en-US`.
+  /// `¥500` in JPY, `$5.00` in USD, and `CA$5.00` in CAD under `en-US`.
+  ///
+  /// The symbol is the one in [_currencySymbols], or the code itself. `intl`'s
+  /// own simple symbols write CAD and AUD as `$` too, which would show a
+  /// Canadian price as if it were in US dollars.
   String formatPrice(int amount, String currency) {
-    final format = NumberFormat.simpleCurrency(
+    final format = NumberFormat.currency(
       locale: intlLocale,
       name: currency,
+      symbol: _currencySymbols[currency] ?? '$currency\u00a0',
     );
     return format.format(amount / pow(10, format.decimalDigits ?? 0));
   }
