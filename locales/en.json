@@ -2994,6 +2994,7 @@
       "revoke_confirm_action": "Revoke",
       "revoke_confirm_description": "A revoked ticket no longer opens its episode. To grant the same user access again, issue a new ticket after revoking this one.",
       "issued": "The ticket was issued.",
+      "existing_active": "The same user and episode already have an active ticket ({$id}). Its expiry and note were left as they were; to change them, revoke it from the list and issue a new one.",
       "existing_expired": "An expired ticket for the same user and episode ({$id}) has not been revoked. Revoke it from the list before setting a new expiry.",
       "existing_ticket": "A ticket for the same user and episode ({$id}) cannot be issued. Check the list.",
       "user_not_found": "That user was not found.",

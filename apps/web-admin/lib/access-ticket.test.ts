@@ -244,6 +244,19 @@ describe("issueAccessTicket", () => {
     );
   });
 
+  it("passes on whether the server created the ticket or returned an existing one", async () => {
+    mockIssueAccessTicket.mockResolvedValueOnce({
+      created: false,
+      ticket: ticket("TICKET000001", "2026-01-05T11:00:00Z"),
+    });
+
+    expect(await issue()).toMatchObject({
+      created: false,
+      ok: true,
+      ticket: { publicId: "TICKET000001" },
+    });
+  });
+
   it("says the user was not found when the server names user_id", async () => {
     mockIssueAccessTicket.mockRejectedValue(notFound("user_id"));
 
