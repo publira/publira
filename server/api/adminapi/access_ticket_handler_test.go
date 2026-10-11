@@ -14,6 +14,7 @@ import (
 	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
@@ -126,6 +127,9 @@ func TestIssueAccessTicketSuccess(t *testing.T) {
 	if resp.Ticket.UserPublicId != "MEMBER001" {
 		t.Fatalf("user_public_id = %q, want MEMBER001", resp.Ticket.UserPublicId)
 	}
+	if !resp.Created {
+		t.Fatal("created = false, want true for a newly issued ticket")
+	}
 
 	assertExpectations(t, mock)
 }
@@ -211,6 +215,75 @@ func TestIssueAccessTicketReturnsExistingNonRevoked(t *testing.T) {
 	}
 	if resp.Ticket.ExpiresAt != "" {
 		t.Fatalf("expires_at = %q, want empty (existing ticket unchanged)", resp.Ticket.ExpiresAt)
+	}
+	if resp.Created {
+		t.Fatal("created = true, want false for the existing ticket")
+	}
+
+	assertExpectations(t, mock)
+}
+
+// A concurrent issue for the same pair can win the unique index between the
+// lookup and the insert. The winner's ticket comes back as an existing one.
+func TestIssueAccessTicketReturnsConcurrentWinnerAsExisting(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	memberID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	ticketID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByIDForTenant)).
+		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, memberID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
+			AddRow(memberID, "MEMBER001", "Sample Member", "member@example.com", "active", tenantID, now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
+		WithArgs(tenantID, episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability", "series_id"}).
+			AddRow(episodeID, "EPISODE001", "Episode 1", int32(1), int32(500), nil, "published", nil, now, nil, nil, nil, nil, nil, nil, "all", uuid.Must(uuid.NewV7())))
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetNonRevokedAccessTicketForUserEpisode)).
+		WithArgs(tenantID, memberID, episodeID).
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAccessTicket)).
+		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), episodeID, memberID, sql.NullTime{}, sql.NullString{}, uuid.NullUUID{UUID: actorID, Valid: true}).
+		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "idx_access_tickets_active_staff_user_episode"})
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetNonRevokedAccessTicketForUserEpisode)).
+		WithArgs(tenantID, memberID, episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "episode_id", "user_id", "expires_at", "revoked_at", "note", "created_by_user_id", "created_at", "source"}).
+			AddRow(ticketID, tenantID, "TICKETWIN001", episodeID, memberID, nil, nil, nil, actorID, now, "staff"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetAccessTicketForTenant)).
+		WithArgs(tenantID, ticketID).
+		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
+			ticketID, tenantID, "TICKETWIN001", episodeID, "EPISODE001", "Episode 1",
+			"SERIES001", "Series 1", memberID, "MEMBER001", "Sample Member", "member@example.com",
+			nil, nil, nil, actorID, now,
+		))
+
+	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.IssueAccessTicket(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.IssueAccessTicketRequest{
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		UserId:    memberID.String(),
+		EpisodeId: episodeID.String(),
+	})
+	if err != nil {
+		t.Fatalf("IssueAccessTicket: %v", err)
+	}
+	if resp.Ticket.PublicId != "TICKETWIN001" {
+		t.Fatalf("public_id = %q, want TICKETWIN001", resp.Ticket.PublicId)
+	}
+	if resp.Created {
+		t.Fatal("created = true, want false for the concurrent winner's ticket")
 	}
 
 	assertExpectations(t, mock)

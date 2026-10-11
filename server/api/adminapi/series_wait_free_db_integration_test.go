@@ -157,8 +157,8 @@ func TestDBIssueAccessTicketBesideAWaitFreeTicket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("IssueAccessTicket: %v", err)
 	}
-	if issued.Ticket.PublicId == "TICKETWAIT01" {
-		t.Fatalf("issued ticket = %s, want a new staff ticket", issued.Ticket.PublicId)
+	if issued.Ticket.PublicId == "TICKETWAIT01" || !issued.Created {
+		t.Fatalf("issued ticket = %s (created=%t), want a new staff ticket", issued.Ticket.PublicId, issued.Created)
 	}
 
 	for _, req := range []*publiraadminv1.ListAccessTicketsRequest{
