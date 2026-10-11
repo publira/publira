@@ -129,7 +129,8 @@ describe("payment-settings", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:payment-settings"
     );
-    expect(mockCacheLife).not.toHaveBeenCalled();
+    // The inherited currency and its lock change without this app.
+    expect(mockCacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
   });
 
   it("keeps a plaintext secret in the response out of the settings meant for the screen", async () => {

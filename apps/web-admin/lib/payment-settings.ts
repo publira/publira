@@ -9,7 +9,7 @@ import {
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
   isUnauthenticatedError,
@@ -170,6 +170,12 @@ const getTenantPaymentSettingsForSession = async (
   sessionId: string
 ): Promise<TenantPaymentSettingsResult> => {
   "use cache: private";
+  // The currency of a tenant that has saved no settings is the platform's
+  // default, which publira server and publiractl change without this app, and
+  // the currency locks once a reader buys on the storefront, so the entry is
+  // refetched once it is a minute old rather than kept for the default quarter
+  // of an hour.
+  cacheLife("minutes");
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
