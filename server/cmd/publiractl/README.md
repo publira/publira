@@ -81,7 +81,7 @@ go -C server run ./cmd/publiractl setup
 | Platform defaults | yes | The default locale, the time zone new tenants start on (`UTC` unless given), and the currency a tenant with no payment settings sells in (`USD` unless given) | `platform set` |
 | Object store | yes | The bucket and how to reach it, after a connection test it has to pass; a store that fails the test is not saved | `storage set`, `storage test` |
 | Search | no | The catalog search engine, `sql` unless one is given, after a connection test an engine with an index has to pass; the worker builds that index once it is saved | `search set`, `search test` |
-| SMTP | yes | The SMTP settings, then a test message when an address is given for one | `smtp set`, `smtp test` |
+| SMTP | yes | The SMTP settings, then a test message when an address is given for one; without a username no password is read, and the worker sends without authenticating | `smtp set`, `smtp test` |
 | Web Push | no | The subject, generating the VAPID key pair | `webpush init` |
 | Tenant | yes | A tenant on the platform's time zone and locale unless given | `tenant create` |
 | First administrator | yes | A console account with the `tenant_admin` role and no mail sent, its password typed twice or generated | `tenant admin create` |

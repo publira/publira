@@ -26,7 +26,7 @@ Create these before the first step. Publira creates everything inside them, so e
 - **A PostgreSQL database**, and a superuser login on it. Only `publiractl db migrate` and `publiractl db roles` connect as the superuser: `db roles` creates the login roles and an event trigger, which only a superuser may do. No long-lived process ever uses this login.
 - **A Valkey instance**, or any server that speaks the Redis protocol. `publira server`, `web-storefront`, and `web-admin` share it for the image conversion cache, the rate limit counters, and the web apps' cache. A connection that carries a password has to use `rediss://`, with TLS: `publira server` refuses to start on a `redis://` URL with a password in it.
 - **An empty bucket** in an S3-compatible object store, and a credential that can read and write it. Every uploaded image is kept there. `publiractl setup` saves the bucket and the credential, so the processes need nothing else to reach it. If the processes should use a credential from their environment instead, such as an instance role, leave the access key out at setup and give `publira server`, `publira worker`, and `publiractl` the `AWS_*` variables.
-- **An SMTP account**: its host, port, encryption, user name and password, and the address mail is sent from. Reader sign-up, password reset, and administrator invitations all go through it.
+- **An SMTP server**: its host, port, encryption, and the address mail is sent from, and the user name and password to sign in with, unless it relays without credentials, as a local MTA or a relay that trusts the host's address does. Reader sign-up, password reset, and administrator invitations all go through it.
 - **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the reverse proxy. The first serves the tenant's public site and the second its console. If the console belongs on another host name, choose it now: `publiractl setup` takes it as `--admin-domain`.
 
 ## Generate the secrets
@@ -42,7 +42,7 @@ An install needs a handful of secrets that only you hold. Generate a fresh set f
 | The web service token | `openssl rand -base64 32` as `PUBLIRA_WEB_SERVICE_TOKEN` | `publira server` and `web-admin` | The reads the console makes as itself rather than as one of its staff, such as the catalog lists every staff member sees alike, so it can cache them once for all of them. `web-admin` does not start without it |
 | One password per database role | `openssl rand -hex 32`, six times | `publiractl db roles`, and the connection URL of the process that uses the role | The database itself. A connection URL carries the password unescaped, so keep to URL-safe characters, as the hex output does |
 
-The encryption keys need the most care. `publiractl setup` seals the SMTP password and the object store's key with them, and `publira server` and `publira worker` unseal them with the keys they were given. A process given other keys cannot read what `publiractl` stored: the worker would fail to send mail, and the server to reach the object store. Lose the keys and every stored credential has to be entered again. To replace a key later without losing what it sealed, add the new key beside the old one rather than in its place, as [Rotating the secret encryption keys](../3-operations/12-security.md#rotating-the-secret-encryption-keys) describes.
+The encryption keys need the most care. `publiractl setup` seals the SMTP password and the object store's key with them, when you give it either, and `publira server` and `publira worker` unseal them with the keys they were given. A process given other keys cannot read what `publiractl` stored: the worker would fail to send mail, and the server to reach the object store. Lose the keys and every stored credential has to be entered again. To replace a key later without losing what it sealed, add the new key beside the old one rather than in its place, as [Rotating the secret encryption keys](../3-operations/12-security.md#rotating-the-secret-encryption-keys) describes.
 
 ## The database roles
 
@@ -100,7 +100,7 @@ Start `publira server`, `publira worker`, `web-storefront`, and `web-admin` from
 1. The platform's default locale, the time zone new tenants start on, and the currency a tenant sells in until its administrators choose one (`USD` unless you give another).
 2. The object store, after a connection test it has to pass.
 3. Optionally, the catalog search engine, which is the database itself unless you choose another.
-4. The SMTP settings, and a test message if you give an address for one.
+4. The SMTP settings, and a test message if you give an address for one. Leave the user name blank for a relay that takes no credentials: mail is then sent without signing in, and no password is asked for.
 5. Optionally, Web Push.
 6. The tenant, on its domain.
 7. Its first administrator, with a password you type or one it generates.

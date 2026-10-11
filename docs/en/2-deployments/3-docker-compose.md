@@ -34,7 +34,7 @@ You need:
 - **A host with Docker Engine and the Compose plugin**, `docker compose`, on `linux/amd64` or `linux/arm64`, the two platforms the images are published for. On any other, the first pull fails with `no matching manifest`, and the host runs images built for it instead, as [The images](#the-images) describes.
 - **A checkout of the repository at the release you install**, such as a clone checked out at that release's tag, such as `v0.1.0`. The Compose file is not self-contained: it mounts the proxy's routing from `infra/proxy/`, so keep the whole checkout rather than copying `infra/deploy/` out of it. Every command on this page runs from `infra/deploy/`.
 - **Access from the host to `ghcr.io`**, where every release publishes its images. `docker compose` pulls them the first time a command needs them, without signing in, so nothing is built on the host.
-- **An SMTP account**, which `publiractl setup` asks for: its host, port, encryption, user name and password, and the address mail is sent from.
+- **An SMTP server**, which `publiractl setup` asks for: its host, port, encryption, and the address mail is sent from, and the user name and password to sign in with, unless it relays without credentials.
 - **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the host.
 
 ## Fill in `.env`

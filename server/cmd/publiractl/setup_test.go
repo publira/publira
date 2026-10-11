@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -94,6 +95,19 @@ func (e *setupEnv) everyFlag(t *testing.T) []string {
 		"--admin-email", "owner@comics.example.com",
 		"--admin-name", "Owner",
 	}
+}
+
+// withoutFlags is args without each of names and the value that follows it.
+func withoutFlags(args []string, names ...string) []string {
+	kept := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		if slices.Contains(names, args[i]) {
+			i++
+			continue
+		}
+		kept = append(kept, args[i])
+	}
+	return kept
 }
 
 // installState is every row setup writes, as a run on a finished install must
@@ -392,6 +406,58 @@ func TestSetupRefusesAnExistingUserWithoutTheAdminRole(t *testing.T) {
 	}
 	if strings.Contains(stdout, "First administrator") {
 		t.Fatalf("summary reports the administrator:\n%s", stdout)
+	}
+}
+
+// Without --username the SMTP step reads no password, so an install whose
+// relay takes no credentials is set up without one and mails through it
+// without signing in.
+func TestSetupSavesSMTPSettingsForARelayWithoutCredentials(t *testing.T) {
+	env := startSetupEnv(t)
+	relay := testutil.StartSMTPRelay(t)
+	args := append(withoutFlags(env.everyFlag(t), "--host", "--port", "--username", "--smtp-password-file"),
+		"--host", relay.Host, "--port", strconv.Itoa(int(relay.Port)), "--non-interactive", "--generate-admin-password")
+
+	var stderr bytes.Buffer
+	code, stdout := runSetup(t, pipedConsole("", &stderr), args...)
+	if code != 0 {
+		t.Fatalf("exit code = %d\n%s", code, stderr.String())
+	}
+	want := "SMTP                 created  " + relay.Host + ":" + strconv.Itoa(int(relay.Port)) + ", test message sent to operator@example.com\n"
+	if !summaryHas(stdout, want) {
+		t.Fatalf("summary = \n%s\nwant a line %q", stdout, want)
+	}
+	var username, encrypted string
+	if err := env.pg.DB.QueryRowContext(context.Background(),
+		`SELECT username, password_encrypted FROM platform_smtp_config`,
+	).Scan(&username, &encrypted); err != nil {
+		t.Fatalf("read platform_smtp_config: %v", err)
+	}
+	if username != "" || encrypted != "" {
+		t.Fatalf("stored username = %q, password = %q; want neither", username, encrypted)
+	}
+	if got := len(relay.Messages()); got != 1 {
+		t.Fatalf("test messages = %d, want 1", got)
+	}
+	if logins := relay.Logins(); len(logins) != 0 {
+		t.Fatalf("logins = %v, want the relay sent through without AUTH", logins)
+	}
+}
+
+// A password has no username to go with when --username is left out, so the
+// SMTP step refuses it naming --username, as publiractl smtp set does, and
+// saves nothing.
+func TestSetupRefusesAnSMTPPasswordWithoutAUsername(t *testing.T) {
+	env := startSetupEnv(t)
+	args := append(withoutFlags(env.everyFlag(t), "--username"), "--non-interactive", "--generate-admin-password")
+
+	var stderr bytes.Buffer
+	code, _ := runSetup(t, pipedConsole("", &stderr), args...)
+	if code != 1 || !strings.Contains(stderr.String(), "publiractl: --username: username is required with a password\n") {
+		t.Fatalf("exit code = %d, stderr = %q; want the refusal naming --username", code, stderr.String())
+	}
+	if got := countPlatformRows(t, env.pg, `SELECT count(*) FROM platform_smtp_config`); got != 0 {
+		t.Fatalf("platform_smtp_config rows = %d, want 0", got)
 	}
 }
 
