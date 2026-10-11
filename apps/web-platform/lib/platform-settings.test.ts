@@ -58,6 +58,17 @@ vi.mock("./api-client", () => ({
 const storedRevision = 3;
 const savedRevision = 4;
 
+/** A stored settings row in USD, locked or not. */
+const stored = (defaultCurrencyLocked: boolean) => ({
+  settings: {
+    defaultCurrency: "USD",
+    defaultCurrencyLocked,
+    defaultLocale: "ja",
+    defaultTimezone: "Asia/Tokyo",
+    revision: BigInt(storedRevision),
+  },
+});
+
 describe("platform-settings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -71,9 +82,14 @@ describe("platform-settings", () => {
     });
   });
 
-  it("returns the default time zone and locale when loading succeeds", async () => {
+  it("returns the default time zone, locale, and currency when loading succeeds", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
-      settings: { defaultLocale: "en", defaultTimezone: "America/Los_Angeles" },
+      settings: {
+        defaultCurrency: "JPY",
+        defaultCurrencyLocked: true,
+        defaultLocale: "en",
+        defaultTimezone: "America/Los_Angeles",
+      },
     });
 
     const { getPlatformSettings } = await import("./platform-settings");
@@ -81,6 +97,8 @@ describe("platform-settings", () => {
     const result = await getPlatformSettings();
 
     expect(result).toEqual({
+      defaultCurrency: "JPY",
+      defaultCurrencyLocked: true,
       defaultLocale: "en",
       defaultTimezone: "America/Los_Angeles",
       ok: true,
@@ -142,6 +160,23 @@ describe("platform-settings", () => {
     expect(result).not.toHaveProperty("defaultLocale");
   });
 
+  it("treats a settings row with no currency as a failed read", async () => {
+    mockGetPlatformSettingsApi.mockResolvedValueOnce({
+      settings: {
+        defaultCurrency: "",
+        defaultLocale: "en",
+        defaultTimezone: "UTC",
+      },
+    });
+
+    const { getPlatformSettings } = await import("./platform-settings");
+
+    const result = await getPlatformSettings();
+
+    expect(result.ok).toBe(false);
+    expect(result).not.toHaveProperty("defaultCurrency");
+  });
+
   it("treats a locale this build does not serve as a failed read", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: { defaultLocale: "fr", defaultTimezone: "UTC" },
@@ -183,6 +218,7 @@ describe("platform-settings", () => {
   it("returns the saved default time zone when updating succeeds", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: {
+        defaultCurrency: "USD",
         defaultLocale: "en",
         defaultTimezone: "UTC",
         revision: BigInt(storedRevision),
@@ -190,6 +226,7 @@ describe("platform-settings", () => {
     });
     mockUpdatePlatformSettingsApi.mockResolvedValueOnce({
       settings: {
+        defaultCurrency: "USD",
         defaultLocale: "en",
         defaultTimezone: "Europe/Paris",
         revision: BigInt(savedRevision),
@@ -220,6 +257,7 @@ describe("platform-settings", () => {
   it("asks for a reload when the server refuses a time zone save as stale", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: {
+        defaultCurrency: "USD",
         defaultLocale: "en",
         defaultTimezone: "UTC",
         revision: BigInt(storedRevision),
@@ -261,6 +299,7 @@ describe("platform-settings", () => {
   it("returns the server message for invalid_argument during updates", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: {
+        defaultCurrency: "USD",
         defaultLocale: "ja",
         defaultTimezone: "UTC",
         revision: BigInt(storedRevision),
@@ -287,6 +326,7 @@ describe("platform-settings", () => {
   it("returns a shared error message when permission is denied", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: {
+        defaultCurrency: "USD",
         defaultLocale: "ja",
         defaultTimezone: "UTC",
         revision: BigInt(storedRevision),
@@ -306,6 +346,7 @@ describe("platform-settings", () => {
   it("reloads and sends the current time zone when updating the default locale", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: {
+        defaultCurrency: "USD",
         defaultLocale: "ja",
         defaultTimezone: "Europe/Paris",
         revision: BigInt(storedRevision),
@@ -313,6 +354,7 @@ describe("platform-settings", () => {
     });
     mockUpdatePlatformSettingsApi.mockResolvedValueOnce({
       settings: {
+        defaultCurrency: "USD",
         defaultLocale: "en",
         defaultTimezone: "Europe/Paris",
         revision: BigInt(savedRevision),
@@ -327,6 +369,7 @@ describe("platform-settings", () => {
     // The server's current value is sent rather than the one the screen holds,
     // so a time zone saved in another session is not rolled back, and the
     // revision it came with lets the server refuse the save if it moved again.
+    // No currency at all: the API keeps the stored one when a save names none.
     expect(mockUpdatePlatformSettingsApi).toHaveBeenCalledWith(
       {
         defaultLocale: "en",
@@ -340,6 +383,7 @@ describe("platform-settings", () => {
   it("asks for a reload when the server refuses a default locale save as stale", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: {
+        defaultCurrency: "USD",
         defaultLocale: "ja",
         defaultTimezone: "Europe/Paris",
         revision: BigInt(storedRevision),
@@ -379,6 +423,7 @@ describe("platform-settings", () => {
   it("returns a shared error message when updating the default locale fails", async () => {
     mockGetPlatformSettingsApi.mockResolvedValueOnce({
       settings: {
+        defaultCurrency: "USD",
         defaultLocale: "ja",
         defaultTimezone: "UTC",
         revision: BigInt(storedRevision),
@@ -414,5 +459,143 @@ describe("platform-settings", () => {
     });
     expect(mockGetPlatformSettingsApi).not.toHaveBeenCalled();
     expect(mockUpdatePlatformSettingsApi).not.toHaveBeenCalled();
+  });
+  describe("updatePlatformDefaultCurrency", () => {
+    it("sends the currency with the stored locale, time zone, and revision", async () => {
+      mockGetPlatformSettingsApi.mockResolvedValueOnce(stored(false));
+      mockUpdatePlatformSettingsApi.mockResolvedValueOnce({
+        settings: {
+          defaultCurrency: "JPY",
+          defaultLocale: "ja",
+          defaultTimezone: "Asia/Tokyo",
+          revision: BigInt(savedRevision),
+        },
+      });
+
+      const { updatePlatformDefaultCurrency } =
+        await import("./platform-settings");
+
+      const result = await updatePlatformDefaultCurrency("JPY", "en");
+
+      expect(result).toEqual({ defaultCurrency: "JPY", ok: true });
+      expect(mockUpdatePlatformSettingsApi).toHaveBeenCalledWith(
+        {
+          defaultCurrency: "JPY",
+          defaultLocale: "ja",
+          defaultTimezone: "Asia/Tokyo",
+          expectedRevision: BigInt(storedRevision),
+        },
+        { headers: { Authorization: "Bearer session-token" } }
+      );
+    });
+
+    it("says why without calling the API when the stored currency is locked", async () => {
+      mockGetPlatformSettingsApi.mockResolvedValueOnce(stored(true));
+
+      const { updatePlatformDefaultCurrency } =
+        await import("./platform-settings");
+
+      const result = await updatePlatformDefaultCurrency("JPY", "en");
+
+      expect(result).toEqual({
+        message:
+          "The default currency cannot change now that a tenant that sells in it has a purchase, since every price and sale of that tenant is an amount in it.",
+        ok: false,
+      });
+      expect(mockUpdatePlatformSettingsApi).not.toHaveBeenCalled();
+    });
+
+    it("asks for a reload when the server refuses the save", async () => {
+      mockGetPlatformSettingsApi.mockResolvedValueOnce(stored(false));
+      mockUpdatePlatformSettingsApi.mockRejectedValueOnce(
+        new ConnectError(
+          "the default currency cannot change while a tenant that sells in it has a purchase",
+          Code.FailedPrecondition
+        )
+      );
+
+      const { updatePlatformDefaultCurrency } =
+        await import("./platform-settings");
+
+      const result = await updatePlatformDefaultCurrency("JPY", "en");
+
+      expect(result).toEqual({
+        message:
+          "The platform settings changed, or a tenant that sells in the default currency had a purchase, after this screen was opened, so nothing was saved. Reload the screen and try again.",
+        ok: false,
+      });
+    });
+
+    it("words a code the server does not know in the operator's language", async () => {
+      mockGetPlatformSettingsApi.mockResolvedValueOnce(stored(false));
+      mockUpdatePlatformSettingsApi.mockRejectedValueOnce(
+        new ConnectError(
+          "default_currency must be an ISO 4217 currency code",
+          Code.InvalidArgument
+        )
+      );
+
+      const { updatePlatformDefaultCurrency } =
+        await import("./platform-settings");
+
+      const result = await updatePlatformDefaultCurrency("VES", "ja");
+
+      expect(result).toEqual({
+        message: "APIがこの通貨を認識できません。別の通貨を選択してください。",
+        ok: false,
+      });
+    });
+
+    it("saves nothing when the read before the save fails", async () => {
+      mockGetPlatformSettingsApi.mockRejectedValueOnce(
+        new ConnectError("platform api unavailable", Code.Unavailable)
+      );
+
+      const { updatePlatformDefaultCurrency } =
+        await import("./platform-settings");
+
+      const result = await updatePlatformDefaultCurrency("JPY", "en");
+
+      expect(result.ok).toBe(false);
+      expect(mockUpdatePlatformSettingsApi).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getPlatformCurrencyForSetup", () => {
+    it("reads the stored currency and its lock without a session", async () => {
+      mockGetPlatformSettingsApi.mockResolvedValueOnce({
+        settings: {
+          defaultCurrency: "JPY",
+          defaultCurrencyLocked: true,
+          defaultLocale: "en",
+          defaultTimezone: "UTC",
+        },
+      });
+
+      const { getPlatformCurrencyForSetup } =
+        await import("./platform-settings");
+
+      await expect(getPlatformCurrencyForSetup()).resolves.toEqual({
+        defaultCurrency: "JPY",
+        defaultCurrencyLocked: true,
+      });
+      expect(mockVerifyPlatformSession).not.toHaveBeenCalled();
+      expect(mockGetPlatformSettingsApi).toHaveBeenCalledWith(
+        {},
+        { headers: { Authorization: "Bearer service-token" } }
+      );
+      expect(mockCacheTag).toHaveBeenCalledWith("platform:settings");
+    });
+
+    it("answers nothing when there are no settings to read", async () => {
+      mockGetPlatformSettingsApi.mockRejectedValueOnce(
+        new ConnectError("failed to read platform settings", Code.Internal)
+      );
+
+      const { getPlatformCurrencyForSetup } =
+        await import("./platform-settings");
+
+      await expect(getPlatformCurrencyForSetup()).resolves.toBeNull();
+    });
   });
 });

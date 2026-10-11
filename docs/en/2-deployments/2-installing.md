@@ -152,7 +152,7 @@ Without `email-renderer`, the worker sends every mail as plain text. Run it, and
 - Set `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and `publira worker`, so cache revalidation reaches it, and `PUBLIRA_PLATFORM_APP_URL` on `publira worker`, the address operators open it at, which the links in its mail are built from.
 - Choose a host name for it, such as `platform.example.com`, point it at the reverse proxy, and route it to `web-platform`: in the samples, by listing it in `PUBLIRA_EDGE_PLATFORM_HOSTS`.
 
-Open it and create its first operator on the setup screen. That operator is separate from the tenant administrator `publiractl setup` created: the Platform Console has accounts of its own, and the screen is offered until the first one exists. The language chosen on that screen becomes the platform's default locale, replacing the one `publiractl setup` saved; every other setting stays, and `publiractl` keeps working beside the console.
+Open it and create its first operator on the setup screen. That operator is separate from the tenant administrator `publiractl setup` created: the Platform Console has accounts of its own, and the screen is offered until the first one exists. The language chosen on that screen becomes the platform's default locale, replacing the one `publiractl setup` saved. The screen also asks for the default currency, starting on the one `publiractl setup` saved, so leaving it as it is keeps it. Every other setting stays, and `publiractl` keeps working beside the console.
 
 ## Next steps
 

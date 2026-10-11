@@ -15,15 +15,14 @@ Each group can be set from the Platform Console or from `publiractl`, run the wa
 
 | Group | Platform Console | `publiractl` |
 | --- | --- | --- |
-| The default language and time zone | **General**, under **Platform** | `platform set`, `platform show` |
-| The default currency | — | `platform set`, `platform show` |
+| The default language, time zone, and currency | **General**, under **Platform** | `platform set`, `platform show` |
 | Two-step verification, the sign-in, password, purchase, ticket, and mail limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
 | The comment, report, rating, contact, and viewer limits | **Community**, under **Policies** | `policy set`, `policy show` |
 | How long expiring records are kept | **Retention**, under **Policies** | `retention set`, `retention show` |
 
 ![The Platform Console's sidebar: General under Platform, Email, Storage, Search, and Web Push under Services, and Security, Community, and Retention under Policies.](./platform-policies-sidebar.png)
 
-Both write through the same code. A `set` command changes only the values its flags name and keeps the rest, and a page in the Platform Console saves every value on it at once. A save that changes nothing is not recorded; any other save is recorded in **Audit logs** as **Updated platform settings**, **Updated the platform policy**, or **Updated the retention defaults**. The **Security**, **Community**, and **Retention** pages do not overwrite a save they have not seen: if someone saved that page after you opened it, the Platform Console refuses with "Another operator changed these settings, so nothing was saved. Reload and try again." **Security** and **Community** are saved as one policy, so a save of either one refuses a stale copy of the other too. The two forms on **General settings** do not check this: each saves its own value over whatever is stored, and keeps the other value as stored. `publiractl` reads the stored values just before it writes them, and if another save lands between the two, it exits `1`, after which running the same command again applies its flags over that save.
+Both write through the same code. A `set` command changes only the values its flags name and keeps the rest, and a page in the Platform Console saves every value on it at once. A save that changes nothing is not recorded; any other save is recorded in **Audit logs** as **Updated platform settings**, **Updated the platform policy**, or **Updated the retention defaults**. The **Security**, **Community**, and **Retention** pages do not overwrite a save they have not seen: if someone saved that page after you opened it, the Platform Console refuses with "Another operator changed these settings, so nothing was saved. Reload and try again." **Security** and **Community** are saved as one policy, so a save of either one refuses a stale copy of the other too. The three forms on **General settings** do not check this: each saves its own value over whatever is stored, and keeps the other values as stored. `publiractl` reads the stored values just before it writes them, and if another save lands between the two, it exits `1`, after which running the same command again applies its flags over that save.
 
 An Operator or a Super admin can save these pages. An Auditor sees the same forms and has the save refused.
 
@@ -31,15 +30,15 @@ Until a policy is saved, the **Setup status** card on the Platform Console's das
 
 ## Platform defaults
 
-**General settings** holds two values, each with its own save button.
+**General settings** holds three values, each with its own save button.
 
-![General settings: Default language with Save default language, and Default time zone with Save default time zone.](./platform-policies-general.png)
+![General settings: Default language with Save default language, Default time zone with Save default time zone, and Default currency, read-only because a tenant that sells in it has a purchase, with Save default currency.](./platform-policies-general.png)
 
 **Default language** is the language the Platform Console is shown in to an operator who has not chosen one, its sign-in screen included, and the language of the mail the Platform Console sends its operators, such as a password reset. It does not decide any tenant's language: every tenant is given its own default language when it is created, as [Tenants](./2-tenants.md#before-you-create-a-tenant) describes. The first operator chose this value on the setup screen.
 
 **Default time zone** is the time zone a new tenant starts on when it is created without one, and the one the Platform Console shows and counts dates in. A tenant keeps the time zone it was created on, so changing the default moves only tenants created afterwards. A tenant's administrators change its time zone from the tenant console.
 
-**Default currency** is the currency every tenant whose administrators have not saved **Payment settings** sells in, so it is the currency that tenant's prices are entered and shown in. A tenant that saves its payment settings keeps the currency saved there, and the default no longer reaches it. It is set from the command line only, as an ISO 4217 code such as `EUR`, and cannot change once a tenant that sells in it has sold anything: `publiractl` refuses the change until each such tenant has saved its payment settings with a currency of its own. `publiractl setup` asks for it when the install is set up, which is the time to choose it.
+**Default currency** is the currency every tenant whose administrators have not saved **Payment settings** sells in, so it is the currency that tenant's prices are entered and shown in. A tenant that saves its payment settings keeps the currency saved there, and the default no longer reaches it. Find it in the list by its name or by its ISO 4217 code, such as `EUR`. It cannot change once a tenant that sells in it has sold anything: the field is then read-only and says why, and `publiractl` refuses the change too, until each such tenant has saved its payment settings with a currency of its own. `publiractl setup` and the Platform Console's setup screen ask for it when the install is set up, which is the time to choose it.
 
 From the command line:
 
@@ -177,6 +176,7 @@ A tenant's administrators change some of these for their own tenant from **Setti
 | Group | What a tenant can do |
 | --- | --- |
 | **General**: default language and time zone | Nothing here; each tenant has its own language and time zone from the moment it is created, and changes them from **Settings** in its console |
+| **General**: default currency | Choose a currency of its own in **Payment settings**, after which the default no longer reaches it |
 | **Security**: every value | Nothing. The one related choice a tenant makes is whether to refuse disposable email domains, and the list it refuses with is the platform's |
 | **Community**: every value | Make any of them stricter: lower limits, or a longer duplicate comment window. A value looser than the platform's is refused |
 | **Retention**: every period | Set any of them longer or shorter than the platform's default, from 1 to 36500 days, and from 30 days for **Content events** |

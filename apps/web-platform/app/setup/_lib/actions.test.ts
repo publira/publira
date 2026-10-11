@@ -28,6 +28,10 @@ vi.mock("#lib/setup-status", () => ({
   platformSetupStatusCacheTag: "platform:setup-status",
 }));
 
+vi.mock("#lib/platform-settings", () => ({
+  platformSettingsCacheTag: "platform:settings",
+}));
+
 vi.mock("#lib/initial-locale", () => ({
   getInitialLocaleCandidate: mockGetInitialLocaleCandidate,
 }));
@@ -35,6 +39,7 @@ vi.mock("#lib/initial-locale", () => ({
 const setupFormData = (overrides: Record<string, string> = {}): FormData => {
   const fields = {
     confirmPassword: "correct-horse-battery",
+    default_currency: "JPY",
     default_locale: "en",
     email: "admin@example.com",
     name: "Admin User",
@@ -68,7 +73,9 @@ describe("setupAction", () => {
       "NEXT_REDIRECT:/login?setup=done"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("platform:setup-status");
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:settings");
     expect(mockCreateInitialUser).toHaveBeenCalledWith({
+      defaultCurrency: "JPY",
       defaultLocale: "en",
       email: "admin@example.com",
       // The failure copy follows the screen, which renders in the negotiated
@@ -114,6 +121,35 @@ describe("setupAction", () => {
     const result = await setupAction(null, formData);
 
     expect(result?.ok).toBe(false);
+    expect(mockCreateInitialUser).not.toHaveBeenCalled();
+  });
+
+  it("sends no currency when the locked field posted none", async () => {
+    mockCreateInitialUser.mockResolvedValueOnce({ ok: true });
+    const formData = setupFormData();
+    formData.delete("default_currency");
+
+    const { setupAction } = await import("./actions");
+
+    await expect(setupAction(null, formData)).rejects.toThrow(
+      "NEXT_REDIRECT:/login?setup=done"
+    );
+    expect(mockCreateInitialUser).toHaveBeenCalledWith(
+      expect.objectContaining({ defaultCurrency: undefined })
+    );
+  });
+
+  it("rejects a currency left unchosen without calling the API", async () => {
+    mockGetInitialLocaleCandidate.mockResolvedValue("en");
+
+    const { setupAction } = await import("./actions");
+
+    const result = await setupAction(
+      null,
+      setupFormData({ default_currency: "" })
+    );
+
+    expect(result).toEqual({ message: "Select a currency.", ok: false });
     expect(mockCreateInitialUser).not.toHaveBeenCalled();
   });
 

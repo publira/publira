@@ -37,3 +37,20 @@ export const SETUP_OPERATOR = {
 export const SETUP_DEFAULT_LOCALE_LABEL = "English" as const;
 
 export const SETUP_DEFAULT_LOCALE_CODE = "en" as const;
+
+/**
+ * The currency chosen on the setup form, by the name the list shows it under
+ * in English, and the code it is saved under.
+ *
+ * Emptying the operators deletes the settings row as well, and the seeded
+ * tenants have purchases and no payment settings of their own, so the
+ * currency they sell in is the one a platform without settings has, USD, and
+ * it is locked. The form can save that one and nothing else; the restore file
+ * then puts back the development seed's JPY.
+ */
+export const SETUP_DEFAULT_CURRENCY_LABEL = "US Dollar (USD)" as const;
+
+export const SETUP_DEFAULT_CURRENCY_CODE = "USD" as const;
+
+/** A currency the lock above refuses, chosen first to see the refusal. */
+export const SETUP_LOCKED_OUT_CURRENCY_LABEL = "Japanese Yen (JPY)" as const;

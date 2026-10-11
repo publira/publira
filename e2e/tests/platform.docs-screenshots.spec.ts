@@ -203,7 +203,7 @@ for (const locale of DOCS_LOCALES) {
         await expectDocsScreenshot(page, {
           element: [
             docsSection(page, t("platform.settings.default_locale_title")),
-            docsSection(page, t("platform.settings.default_timezone_title")),
+            docsSection(page, t("platform.settings.default_currency_title")),
           ],
           locale,
           page: "operations/platform-policies",

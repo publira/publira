@@ -17,6 +17,7 @@ import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformSettings } from "#lib/platform-settings";
 
+import { PlatformDefaultCurrencyForm } from "./_components/platform-default-currency-form";
 import { PlatformDefaultLocaleForm } from "./_components/platform-default-locale-form";
 import { PlatformTimezoneForm } from "./_components/platform-timezone-form";
 
@@ -95,12 +96,24 @@ const GeneralSettingsContent = async () => {
           }
         />
       </Suspense>
+      <Suspense fallback={<SettingsFormSkeleton />}>
+        <PlatformDefaultCurrencyForm
+          initialDefaultCurrency={
+            settingsResult.ok ? settingsResult.defaultCurrency : undefined
+          }
+          loadErrorMessage={
+            settingsResult.ok ? undefined : settingsResult.message
+          }
+          locked={settingsResult.ok && settingsResult.defaultCurrencyLocked}
+        />
+      </Suspense>
     </div>
   );
 };
 
 const GeneralSettingsContentSkeleton = () => (
   <div className="grid gap-6">
+    <SettingsFormSkeleton />
     <SettingsFormSkeleton />
     <SettingsFormSkeleton />
   </div>

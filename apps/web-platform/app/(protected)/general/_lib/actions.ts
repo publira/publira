@@ -16,6 +16,7 @@ import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import {
   platformSettingsCacheTag,
+  updatePlatformDefaultCurrency,
   updatePlatformDefaultLocale,
   updatePlatformDefaultTimezone,
 } from "#lib/platform-settings";
@@ -65,6 +66,23 @@ const platformDefaultLocaleSchema = async (locale: Locale) => {
     defaultLocale: z.enum(getLocales(), {
       error: t("platform.settings.locale_required"),
     }),
+  });
+};
+
+/**
+ * The Go server checks the code against its ISO 4217 table and stays the
+ * authority; this only refuses what is not a code at all, which the list
+ * never offers.
+ */
+const platformDefaultCurrencySchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const required = t("platform.settings.currency_required");
+
+  return z.object({
+    defaultCurrency: z
+      .string({ error: required })
+      .trim()
+      .regex(/^[A-Z]{3}$/u, required),
   });
 };
 
@@ -140,6 +158,40 @@ export const updatePlatformDefaultLocaleAction = async (
 
   return {
     message: t("platform.settings.default_locale_saved"),
+    ok: true,
+  };
+};
+
+export const updatePlatformDefaultCurrencyAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const { locale, t } = await loadActionCatalog();
+  const schema = await platformDefaultCurrencySchema(locale);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      defaultCurrency: { kind: "value", name: "default_currency" },
+    })
+  );
+  if (!parsed.success) {
+    // One control, so the field message is the form message.
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const result = await withPlatformSessionReauth(() =>
+    updatePlatformDefaultCurrency(parsed.data.defaultCurrency, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(platformSettingsCacheTag);
+  updateTag(platformAuditLogsCacheTag);
+
+  return {
+    message: t("platform.settings.default_currency_saved"),
     ok: true,
   };
 };

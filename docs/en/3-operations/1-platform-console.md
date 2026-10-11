@@ -39,8 +39,9 @@ Run `web-platform` as [Installing](../2-deployments/2-installing.md#the-platform
 
 - **Full name**, **Email address**, and **Password**, with **Password (confirm)**: the first operator's account.
 - **Default language**: the language the Platform Console starts in. It also becomes the platform's default language, replacing the one `publiractl setup` saved. Each operator can switch the language they see later, and each tenant picks its own when it is created.
+- **Default currency**: the currency every tenant sells in until its administrators save **Payment settings** of their own. It starts on the one `publiractl setup` saved, so leaving it as it is keeps that currency; type a name or an ISO 4217 code such as `EUR` to find another. Once a tenant that sells in it has a purchase, the field is read-only and says so, since that tenant's prices are amounts in it. [Platform defaults](./9-platform-policies.md#platform-defaults) says what the currency reaches.
 
-![The Initial setup screen: Full name, Email address, Password, Password (confirm), Default language, and Create administrator.](./platform-console-initial-setup.png)
+![The Initial setup screen: Full name, Email address, Password, Password (confirm), Default language, Default currency, and Create administrator.](./platform-console-initial-setup.png)
 
 **Create administrator** creates the account with the **Super admin** role and sends you to the sign-in screen. From then on the setup screen is gone: there is no second first operator, and nothing in `publiractl` creates an operator. Every later operator is added by a Super admin from **Operators**.
 

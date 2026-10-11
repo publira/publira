@@ -249,11 +249,12 @@ describe("resolveSetupState", () => {
 });
 
 describe("createInitialUser", () => {
-  it("sends the chosen default locale and reports success", async () => {
+  it("sends the chosen default locale and currency and reports success", async () => {
     mockCreateInitialUser.mockResolvedValueOnce({});
 
     await expect(
       createInitialUser({
+        defaultCurrency: "JPY",
         defaultLocale: "en",
         email: "admin@example.com",
         locale: "en",
@@ -263,6 +264,7 @@ describe("createInitialUser", () => {
     ).resolves.toEqual({ ok: true });
     expect(mockCreateInitialUser).toHaveBeenCalledWith(
       {
+        defaultCurrency: "JPY",
         defaultLocale: "en",
         email: "admin@example.com",
         name: "Admin",
@@ -270,6 +272,47 @@ describe("createInitialUser", () => {
       },
       { headers: { "X-Forwarded-For": "203.0.113.7" } }
     );
+  });
+
+  it("sends an empty currency, which keeps the stored one, when none was chosen", async () => {
+    mockCreateInitialUser.mockResolvedValueOnce({});
+
+    await createInitialUser({
+      defaultLocale: "en",
+      email: "admin@example.com",
+      locale: "en",
+      name: "Admin",
+      password: "password",
+    });
+
+    expect(mockCreateInitialUser).toHaveBeenCalledWith(
+      expect.objectContaining({ defaultCurrency: "" }),
+      expect.anything()
+    );
+  });
+
+  it("explains a currency the lock kept", async () => {
+    mockCreateInitialUser.mockRejectedValueOnce(
+      new ConnectError(
+        "the default currency cannot change while a tenant that sells in it has a purchase",
+        Code.FailedPrecondition
+      )
+    );
+
+    const result = await createInitialUser({
+      defaultCurrency: "EUR",
+      defaultLocale: "en",
+      email: "admin@example.com",
+      locale: "en",
+      name: "Admin",
+      password: "password",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result).toMatchObject({
+      alreadyCompleted: false,
+      message: expect.stringMatching(/^A tenant that sells in the saved/u),
+    });
   });
 
   it("reports an already-completed setup with its own message", async () => {
