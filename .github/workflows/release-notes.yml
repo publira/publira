@@ -15,8 +15,8 @@ on:
     types: [opened, edited, reopened, synchronize]
   push:
     tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
-      - "[0-9]+.[0-9]+.[0-9]+-*"
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-*"
 
 permissions: {}
 
@@ -82,6 +82,8 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -93,10 +95,17 @@ jobs:
         with:
           node-version: 24.21.0
 
+      # The Git tag carries a `v` in front of the version, and nothing else
+      # does: the package.json files, the image tags, and the binaries carry
+      # the bare number.
       - name: Check the package.json versions
+        id: version
         env:
           TAG: ${{ github.ref_name }}
-        run: node scripts/release-version.ts check "${TAG}"
+        run: |
+          version="${TAG#v}"
+          node scripts/release-version.ts check "${version}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
   # The release's images, pushed before the Release exists, so an operator
   # who reads a fresh Release can already pull its tag.
@@ -108,6 +117,8 @@ jobs:
       contents: read
       packages: write
     uses: ./.github/workflows/release-images.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
 
   publish:
     name: Publish release
@@ -145,7 +156,7 @@ jobs:
           if [[ "${TAG}" != *-* ]]; then
             exclude=(--exclude '*-*')
           fi
-          previous="$(git describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' "${exclude[@]}" "${TAG}^" 2> /dev/null || true)"
+          previous="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' "${exclude[@]}" "${TAG}^" 2> /dev/null || true)"
           if [[ -n "${previous}" ]]; then
             git rev-list "${previous}..${TAG}" > "${COMMITS_PATH}"
             echo "Previous release: ${previous}, $(wc -l < "${COMMITS_PATH}") commits since"

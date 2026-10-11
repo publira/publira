@@ -71,7 +71,7 @@ What is being containerized?
 - **Role directories** use a short category name (`web` / `server` / `node`), never a service name. `publiractl` is the exception: it carries one binary, which the directory is named for, and so is `opensearch`, which carries one third-party service.
 - **`APP_NAME`** is the directory name directly under `apps/` (for example, `web-admin` or `email-renderer`). The Dockerfile adds the `@publira/` prefix.
 - **Example image tags** use `publira/<service-name>:local`, a build-time convention. Deployment defines registry policy separately.
-- **Published images** are `ghcr.io/publira/<service-name>:<release tag>`, pushed for every release by [`release-images.yml`](../../.github/workflows/release-images.yml) (see [Release images](../../.github/workflows/README.md#release-images)).
+- **Published images** are `ghcr.io/publira/<service-name>:<version>`, the release's Git tag without its `v`, pushed for every release by [`release-images.yml`](../../.github/workflows/release-images.yml) (see [Release images](../../.github/workflows/README.md#release-images)).
 
 ## Build conventions
 

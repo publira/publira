@@ -4,13 +4,13 @@ description: What a 0.x version number tells you, what a minor and a patch relea
 published: 2026-10-11
 ---
 
-Publira is released as tags of the repository named `MAJOR.MINOR.PATCH`, with no `v` in front, starting at `0.1.0`. Each one is published with its release notes on the repository's [Releases](https://github.com/publira/publira/releases) page, and its images are pushed under the same tag and no other: there is no `latest` and no `0.1`, so an install moves to a new release only when you change the tag it runs. This page says what the number of a `0.x` release tells you before you upgrade to it, and which releases receive fixes.
+Publira is released as tags of the repository named `vMAJOR.MINOR.PATCH`, starting at `v0.1.0`. Each one is published with its release notes on the repository's [Releases](https://github.com/publira/publira/releases) page, and its images are pushed under the release's version, the tag without its `v`, and no other tag: `v0.1.0` is pulled as `ghcr.io/publira/<name>:0.1.0`. There is no `latest` and no `0.1`, so an install moves to a new release only when you change the version it runs. This page says what the number of a `0.x` release tells you before you upgrade to it, and which releases receive fixes.
 
 ## What the number tells you
 
-- **A minor release**, such as `0.2.0`, is where every change that asks something of you lands. Read its notes before you upgrade.
-- **A patch release**, such as `0.2.1`, fixes the minor release it belongs to and asks nothing of you beyond replacing the images.
-- **A tag with a suffix**, such as `0.2.0-rc.1`, is a prerelease, and the Releases page marks it as one. It is there to try a release before it is out, and it receives no fixes; run the release itself on an install that serves readers.
+- **A minor release**, such as `v0.2.0`, is where every change that asks something of you lands. Read its notes before you upgrade.
+- **A patch release**, such as `v0.2.1`, fixes the minor release it belongs to and asks nothing of you beyond replacing the images.
+- **A tag with a suffix**, such as `v0.2.0-rc.1`, is a prerelease, and the Releases page marks it as one. It is there to try a release before it is out, and it receives no fixes; run the release itself on an install that serves readers.
 
 ## Minor releases
 
