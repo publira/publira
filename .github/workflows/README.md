@@ -109,10 +109,10 @@ The check fails while the section is empty when the diff:
 A release is cut from a release commit, which sets `version` in every `package.json` the repository tracks, the root included, to the release's number and changes nothing else. [`scripts/release-version.ts`](../../scripts/release-version.ts) makes it, and its behaviour is covered by `scripts/release-version.test.ts`. Between releases every `package.json` keeps the root's version: a package added with any other, copied from a sibling or from anywhere else, fails `Test / TypeScript` in the pull request that adds it, so the release commit never meets a file left behind. `mobile/pubspec.yaml` is not one of them: the app's version is given at build time with `--build-name`. The commit lands through a pull request like any other change:
 
 ```bash
-git switch -c release/1.1.0 origin/main
+git switch -c release/v1.1.0 origin/main
 node scripts/release-version.ts set 1.1.0
-git commit --allow-empty -am "chore(release): 1.1.0"
-gh pr create --title "chore(release): 1.1.0"
+git commit --allow-empty -am "chore(release): v1.1.0"
+gh pr create --title "chore(release): v1.1.0"
 ```
 
 Every release has one, even when every file already carries the number and the commit is empty, as it is for `0.1.0`, so the tag always goes on the commit that merges a release pull request. Once the pull request merges, tag the commit that merged it with the version behind a `v`, and push the tag; the workflow pushes the release's images and then creates the release. Do not create the release by hand first: a release that already exists has its notes replaced.
@@ -123,7 +123,7 @@ git tag -a v1.1.0 -m v1.1.0 <merge commit>
 git push origin v1.1.0
 ```
 
-The `v` belongs to the Git tag alone. The workflow takes it off and uses the bare number everywhere else: in the check against the `package.json` files, in the image tags, and in the version linked into the Go binaries. A tag without the `v` starts no release.
+The `v` belongs to the name of the release: the Git tag, and the subject of the release commit and its pull request, which name the release the tag will mark. The version is the bare number, and the workflow takes the `v` off the tag to use it everywhere else: in the check against the `package.json` files, in the image tags, and in the version linked into the Go binaries. A tag without the `v` starts no release.
 
 `Check version` runs `node scripts/release-version.ts check` with that number first, and a tag whose commit carries any other version in any of those files is refused before `Images` starts, so it pushes nothing to `ghcr.io` and publishes no Release; the job's log names each file that does not match. A prerelease such as `v1.1.0-rc.1` is held to the same rule, so it gets a release commit of its own. A refused tag is deleted, locally and with `git push origin :refs/tags/<tag>`, and pushed again on the right commit.
 
