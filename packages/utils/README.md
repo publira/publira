@@ -195,7 +195,7 @@ await getSeries(parsed.series_id);
 
 `routeParamStringArray()` is the catch-all (`[...slug]`) form. A page builds the schema for the whole `params` and passes only the output of `parseRouteParams` to `lib/`.
 
-A real example: [web-host's series detail page](../../apps/web-host/app/%5Btenant_id%5D/%5Blocale%5D/%28site%29/series/%5Bseries_id%5D/page.tsx)
+A real example: [web-storefront's series detail page](../../apps/web-storefront/app/%5Btenant_id%5D/%5Blocale%5D/%28site%29/series/%5Bseries_id%5D/page.tsx)
 
 ### `FormData` and Server Actions
 
@@ -232,14 +232,14 @@ A screen whose ActionState has no per-field slot collapses the errors into one m
 `images.loaderFile` takes a path relative to the app root, so each app re-exports `imageServerLoader` from a file of its own and this package holds the implementation.
 
 ```ts
-// apps/web-host/lib/image-loader.ts
+// apps/web-storefront/lib/image-loader.ts
 "use client";
 
 export { imageServerLoader as default } from "@publira/utils/image-loader";
 ```
 
 ```ts
-// apps/web-host/next.config.ts
+// apps/web-storefront/next.config.ts
 images: {
   loader: "custom",
   loaderFile: "./lib/image-loader.ts",

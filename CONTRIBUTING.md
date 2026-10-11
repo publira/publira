@@ -7,7 +7,7 @@ This page answers three questions for a first-time contributor: what to install,
 ```text
 .
 ├── apps/               # [Node.js] Web apps (Turborepo)
-│   ├── web-host/       # Tenant-facing site (catalog / auth / my page)
+│   ├── web-storefront/       # Tenant-facing site (catalog / auth / my page)
 │   ├── web-admin/      # Submission and management console for publishers and editors
 │   ├── web-platform/   # Cross-tenant operations console for platform operators
 │   └── email-renderer/ # Node service that renders React Email over ConnectRPC
@@ -105,7 +105,7 @@ Load the same environment variables first when starting a single app as well. Ea
 
 ```bash
 eval "$(task --silent dev-env:env)"
-pnpm dev --filter @publira/web-host
+pnpm dev --filter @publira/web-storefront
 ```
 
 `task dev-env:list` shows every profile and the worktree that selected it. To discard one, run `task dev-env:destroy NAME=<name>`. It checks that no worktree has the target selected and that it is stopped, then deletes only that profile's database, Redis DB, and bucket after you retype the name. It does not touch the shared development environment, E2E, or other profiles.
@@ -138,7 +138,7 @@ When a CI run is red, [`.github/workflows/README.md`](.github/workflows/README.m
 - **Disclose a coding agent with an `Assisted-by` trailer, never a co-author trailer.** The full rule and its reasons are in the [AI agent trailer](AGENTS.md#ai-agent-trailer-assisted-by-never-co-authored-by) section of `AGENTS.md`. In short: the trailer discloses the process, a co-author line would claim authorship an AI cannot hold. Pass it with `--trailer` so Git records a real trailer:
 
   ```bash
-  git commit -m "feat(web-host): add episode access gate" \
+  git commit -m "feat(web-storefront): add episode access gate" \
     --trailer "Assisted-by: Claude Code:claude-opus-5"
   ```
 

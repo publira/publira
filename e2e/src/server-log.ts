@@ -60,7 +60,7 @@ const entryDigest = (
  * `error-context.md` records the same ID is the one that rendered it.
  */
 export const unexpectedServerLogLines = async (
-  app: "web-admin" | "web-host" | "web-platform",
+  app: "web-admin" | "web-storefront" | "web-platform",
   expectedErrors: readonly RegExp[]
 ): Promise<string[]> => {
   const runDir = process.env.PUBLIRA_E2E_RUN_DIR;

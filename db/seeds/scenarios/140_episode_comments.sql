@@ -1,10 +1,10 @@
 -- Scenario: a tenant that takes reader comments
 --
--- `host.episode-comments.spec.ts` posts comments, deletes them, and removes one
+-- `storefront.episode-comments.spec.ts` posts comments, deletes them, and removes one
 -- the way staff would. `tenant_config.comment_mode` is one setting for a whole
 -- tenant, so a suite that turns commenting on cannot share a tenant with the
 -- ones reading the dev seed's episode pages: the section would appear under
--- every episode `host.episode-reading` and `host.viewer-performance` open.
+-- every episode `storefront.episode-reading` and `storefront.viewer-performance` open.
 --
 -- Two members, because the point of the suite is what one reader sees of
 -- another reader's comment. Password hashes match the dev seed (`memberpass`).

@@ -52,7 +52,7 @@ For the apps that keep the UI locale in a cookie rather than in the URL:
 | `LOCALE_COOKIE_MAX_AGE` | The `Max-Age` that cookie is written with, in seconds |
 | `RESOLVED_LOCALE_COOKIE_NAME` | The stored console default the server resolved, written by the app's `proxy.ts` so the browser can name it without a read of its own |
 | `LOCALE_LANG_SCRIPT` | The inline `<head>` script that applies those cookies to `<html lang>` before the browser paints |
-| `PATH_LOCALE_LANG_SCRIPT` | The same for an app that keeps the locale in the path, such as `web-host` |
+| `PATH_LOCALE_LANG_SCRIPT` | The same for an app that keeps the locale in the path, such as `web-storefront` |
 
 Both cookie names go through `profileCookieName` from [`@publira/web-session`](../web-session), so a local development profile gets its own.
 
@@ -64,20 +64,22 @@ import type { Locale, MessageKey } from "@publira/i18n";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import { loadLocaleMessages } from "@publira/i18n/messages";
 
-export type HostMessages = SharedMessages;
-export type HostMessageKey = MessageKey<HostMessages>;
+export type StorefrontMessages = SharedMessages;
+export type StorefrontMessageKey = MessageKey<StorefrontMessages>;
 
-export const loadHostMessages = (locale: Locale): Promise<HostMessages> =>
-  loadLocaleMessages(locale) as Promise<HostMessages>;
+export const loadStorefrontMessages = (
+  locale: Locale
+): Promise<StorefrontMessages> =>
+  loadLocaleMessages(locale) as Promise<StorefrontMessages>;
 ```
 
 ```tsx
 import { bindMessages } from "@publira/i18n";
 
-const t = bindMessages(await loadHostMessages(locale), locale);
+const t = bindMessages(await loadStorefrontMessages(locale), locale);
 
-<h1>{t("host.series.list_title")}</h1>;
-<p>{t("host.series.list_description", { site })}</p>;
+<h1>{t("storefront.series.list_title")}</h1>;
+<p>{t("storefront.series.list_description", { site })}</p>;
 ```
 
 Apps do not bind a catalog themselves. Each one exports a `getMessages()` that resolves the request's locale and answers the bound accessor, so a Server Component writes `const t = await getMessages();` and nothing else.

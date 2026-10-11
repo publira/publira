@@ -339,7 +339,7 @@ dev_env_write_profile() {
     printf 'PUBLIRA_AUTH_JWT_SECRET=%s\n' "$(dev_env_random_secret)"
     printf 'PUBLIRA_REVALIDATE_TOKEN=%s\n' "$(dev_env_random_secret)"
     printf 'PUBLIRA_WEB_SERVICE_TOKEN=%s\n' "$(dev_env_random_secret)"
-    printf 'PUBLIRA_WEB_HOST_PORT=%s\n' "${port_base}"
+    printf 'PUBLIRA_WEB_STOREFRONT_PORT=%s\n' "${port_base}"
     printf 'PUBLIRA_WEB_ADMIN_PORT=%s\n' "$((port_base + 1))"
     printf 'PUBLIRA_WEB_PLATFORM_PORT=%s\n' "$((port_base + 2))"
     printf 'PUBLIRA_PUBLIC_API_PORT=%s\n' "$((port_base + 10))"
@@ -352,7 +352,7 @@ dev_env_write_profile() {
     # the edge's.
     printf 'PUBLIRA_EDGE_PORT=%s\n' "$((port_base + 50))"
     printf 'PUBLIRA_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 11))"
-    printf 'PUBLIRA_WEB_HOST_INTERNAL_URL=http://127.0.0.1:%s\n' "${port_base}"
+    printf 'PUBLIRA_WEB_STOREFRONT_INTERNAL_URL=http://127.0.0.1:%s\n' "${port_base}"
     printf 'PUBLIRA_WEB_ADMIN_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 1))"
     printf 'PUBLIRA_WEB_PLATFORM_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 2))"
     printf 'PUBLIRA_PLATFORM_APP_URL=http://platform.localhost:%s\n' "$((port_base + 50))"
@@ -406,12 +406,12 @@ dev_env_load_profile() {
     PUBLIRA_WORKER_DB_URL PUBLIRA_CONTENT_STATS_DB_URL PUBLIRA_TICKER_DB_URL \
     PUBLIRA_S3_FORCE_PATH_STYLE PUBLIRA_COOKIE_SUFFIX PUBLIRA_AUTH_SECRET \
     PUBLIRA_AUTH_JWT_SECRET PUBLIRA_REVALIDATE_TOKEN PUBLIRA_WEB_SERVICE_TOKEN \
-    PUBLIRA_WEB_HOST_PORT \
+    PUBLIRA_WEB_STOREFRONT_PORT \
     PUBLIRA_WEB_ADMIN_PORT PUBLIRA_WEB_PLATFORM_PORT PUBLIRA_PUBLIC_API_PORT \
     PUBLIRA_PUBLIC_API_GRPC_PORT \
     PUBLIRA_EMAIL_RENDERER_PORT PUBLIRA_WORKER_PORT PUBLIRA_EDGE_PORT \
     PUBLIRA_GRPC_URL \
-    PUBLIRA_WEB_HOST_INTERNAL_URL PUBLIRA_WEB_ADMIN_INTERNAL_URL PUBLIRA_WEB_PLATFORM_INTERNAL_URL \
+    PUBLIRA_WEB_STOREFRONT_INTERNAL_URL PUBLIRA_WEB_ADMIN_INTERNAL_URL PUBLIRA_WEB_PLATFORM_INTERNAL_URL \
     PUBLIRA_PLATFORM_APP_URL PUBLIRA_EMAIL_RENDERER_URL; do
     dev_env_load_required_profile_value "${profile_path}" "${key}"
   done
@@ -482,10 +482,10 @@ dev_env_start_edge() {
 # the next start.
 http:
   services:
-    web-host:
+    web-storefront:
       loadBalancer:
         servers:
-          - url: "http://127.0.0.1:${PUBLIRA_WEB_HOST_PORT}"
+          - url: "http://127.0.0.1:${PUBLIRA_WEB_STOREFRONT_PORT}"
     web-admin:
       loadBalancer:
         servers:

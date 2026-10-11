@@ -52,7 +52,7 @@ const WEBHOOK_HEADERS = [
  * answers /images too, so there is no port of its own for the images.
  */
 const BACKENDS = new Map([
-  [3000, "web-host"],
+  [3000, "web-storefront"],
   [4000, "web-admin"],
   [4100, "web-platform"],
   [8000, "api"],

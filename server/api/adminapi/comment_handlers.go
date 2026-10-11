@@ -479,8 +479,8 @@ func commentAuditEntry(
 //
 // Every moderation action changes what that list answers — an approval adds a
 // comment to it, a removal or a purge takes one out — and the console cannot
-// reach web-host's cache itself, so the invalidation is owed here, beside the
-// write.
+// reach web-storefront's cache itself, so the invalidation is owed here, beside
+// the write.
 func (s *adminServer) recordCommentListRevalidation(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, episodePublicID string) (revalidate.Owed, error) {
 	tag := fmt.Sprintf("tenant:%s:episode:%s:comments", tenantID.String(), episodePublicID)
 	return s.reval.Record(ctx, q, tenantID, []string{tag})

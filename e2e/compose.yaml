@@ -1,5 +1,6 @@
 # Ephemeral dependency stack for E2E (project name: publira-e2e).
-# Apps (publira server, web-host) run on the host; only data stores are containerized.
+# Apps (publira server, web-storefront) run on the host; only data stores are
+# containerized.
 #
 # The exceptions are traefik, the edge in front of those host processes, and
 # the browser the screenshot projects render in.
@@ -136,12 +137,12 @@ services:
 
   # The public edge, matching what Traefik serves in the Dev Container: an
   # episode body image is `/images/episodes/{id}` on the reader's own origin,
-  # so without something joining web-host and publira server's image routes under
-  # one host and port the browser cannot reach a page at all.
+  # so without something joining web-storefront and publira server's image
+  # routes under one host and port the browser cannot reach a page at all.
   #
   # `network_mode: host` because every backend is a host process on loopback,
   # which a bridged container has no route to. Only the viewer performance
-  # suite goes through here; every other suite keeps talking to web-host
+  # suite goes through here; every other suite keeps talking to web-storefront
   # directly.
   #
   # The routing is the repository's own: infra/proxy/traefik/dynamic is mounted
@@ -167,8 +168,9 @@ services:
     # development seed's tenant, each scenario tenant under db/seeds/scenarios,
     # and the Platform Console. A scenario that adds a tenant adds its two
     # hosts here. `unknown-tenant.localhost` is a site host no tenant holds,
-    # for the spec that asserts web-host's own answer to one. A spec that needs
-    # a host made up during the run reaches the app on its own port instead.
+    # for the spec that asserts web-storefront's own answer to one. A spec that
+    # needs a host made up during the run reaches the app on its own port
+    # instead.
     # Each list is folded, one host per line, which the formatter would join
     # into a single line.
     # prettier-ignore

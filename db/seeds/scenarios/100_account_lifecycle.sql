@@ -1,6 +1,6 @@
 -- Scenario: the accounts the reader account-lifecycle E2E owns
 --
--- `host.account-lifecycle.spec.ts` signs readers up from `/signup`, confirms
+-- `storefront.account-lifecycle.spec.ts` signs readers up from `/signup`, confirms
 -- them from the mailed `/verify` link, and resets a registered reader's
 -- password. No account another suite signs in with can absorb either half: a
 -- sign-up needs an address that is not registered when the run starts, and a

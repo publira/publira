@@ -1,9 +1,9 @@
 -- Scenario: a tenant that makes readers prove an age for its `r18` work
 --
--- `host.age-verification.spec.ts` asserts that an `r18` body stays closed to a
+-- `storefront.age-verification.spec.ts` asserts that an `r18` body stays closed to a
 -- reader the rule stops. `tenant_config.age_verification` is one setting for a
 -- whole tenant, so a suite that turns it on cannot share a tenant with the ones
--- reading the dev seed's rated series: `host.age-rating.spec.ts` confirms the
+-- reading the dev seed's rated series: `storefront.age-rating.spec.ts` confirms the
 -- browser interstitial there and then opens the body behind it, which is
 -- exactly what this rule takes away.
 --

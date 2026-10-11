@@ -51,11 +51,11 @@ http:
 
   routers:
 {{- if $site }}
-    web-host:
+    web-storefront:
       rule: '{{ template "hosts" $site }}'
       priority: 100
       entryPoints: [web]
-      service: web-host
+      service: web-storefront
 {{- end }}
 {{- if $admin }}
 

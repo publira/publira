@@ -6,7 +6,7 @@ import {
   BROWSER_WS_ENDPOINT,
   WEB_ADMIN_AGE_VERIFICATION_BASE_URL,
   WEB_ADMIN_BASE_URL,
-  WEB_HOST_BASE_URL,
+  WEB_STOREFRONT_BASE_URL,
   WEB_PLATFORM_BASE_URL,
 } from "./src/urls";
 
@@ -86,9 +86,9 @@ const commentModerationSpecs = /admin\.comment-moderation\./u;
 
 /**
  * The spec that changes its tenant's saved age verification rule and waits for
- * the public gate to observe each value. `host.age-verification.spec.ts` reads
- * the same tenant through the rule the scenario seeds, so this one runs after
- * the parallel projects rather than beside it.
+ * the public gate to observe each value. `storefront.age-verification.spec.ts`
+ * reads the same tenant through the rule the scenario seeds, so this one runs
+ * after the parallel projects rather than beside it.
  */
 const ageVerificationSpecs = /admin\.age-verification\./u;
 
@@ -205,7 +205,7 @@ const docsScreenshotProjectUse = {
 
 /** Every project the screenshot suites have to precede. */
 const screenshotDependencies = [
-  "screenshots-host",
+  "screenshots-storefront",
   "screenshots-admin",
   "screenshots-platform",
   "docs-screenshots",
@@ -224,11 +224,11 @@ const workers = 3;
 // the console's list or another episode on the public catalogue.
 const screenshotProjects: PlaywrightTestProject[] = [
   {
-    name: "screenshots-host",
-    testMatch: [/host\.screenshots\./u],
+    name: "screenshots-storefront",
+    testMatch: [/storefront\.screenshots\./u],
     use: {
       ...screenshotProjectUse,
-      baseURL: WEB_HOST_BASE_URL,
+      baseURL: WEB_STOREFRONT_BASE_URL,
     },
   },
   {
@@ -261,7 +261,7 @@ const screenshotProjects: PlaywrightTestProject[] = [
   // tenant added while the platform baseline runs is in its tenant list.
   {
     dependencies: [
-      "screenshots-host",
+      "screenshots-storefront",
       "screenshots-admin",
       "screenshots-platform",
     ],
@@ -282,7 +282,7 @@ const screenshotProjects: PlaywrightTestProject[] = [
 const mainProjects: PlaywrightTestProject[] = [
   {
     dependencies: screenshotDependencies,
-    name: "web-host",
+    name: "web-storefront",
     testIgnore: [
       /admin\./u,
       /platform\./u,
@@ -296,7 +296,7 @@ const mainProjects: PlaywrightTestProject[] = [
     ],
     use: {
       ...desktopChrome,
-      baseURL: WEB_HOST_BASE_URL,
+      baseURL: WEB_STOREFRONT_BASE_URL,
     },
   },
   // After the screenshots for the reason the three projects around it are:
@@ -309,7 +309,7 @@ const mainProjects: PlaywrightTestProject[] = [
     timeout: 120_000,
     use: {
       ...desktopChrome,
-      baseURL: WEB_HOST_BASE_URL,
+      baseURL: WEB_STOREFRONT_BASE_URL,
     },
   },
   // Moves the storefront search from one engine to another, so it follows
@@ -355,11 +355,11 @@ const mainProjects: PlaywrightTestProject[] = [
   // episodes these open count as views, which the catalogue ranks by.
   {
     dependencies: screenshotDependencies,
-    name: "tablet-host",
-    testMatch: [/host\.tablet\./u],
+    name: "tablet-storefront",
+    testMatch: [/storefront\.tablet\./u],
     use: {
       ...tabletChrome,
-      baseURL: WEB_HOST_BASE_URL,
+      baseURL: WEB_STOREFRONT_BASE_URL,
     },
   },
   {
@@ -428,7 +428,7 @@ const exclusiveProjects: PlaywrightTestProject[] = [
     testMatch: [/catalog\.outage\./u],
     use: {
       ...desktopChrome,
-      baseURL: WEB_HOST_BASE_URL,
+      baseURL: WEB_STOREFRONT_BASE_URL,
     },
   },
   {
@@ -438,7 +438,7 @@ const exclusiveProjects: PlaywrightTestProject[] = [
     testMatch: [/catalog\.error-boundary\./u],
     use: {
       ...desktopChrome,
-      baseURL: WEB_HOST_BASE_URL,
+      baseURL: WEB_STOREFRONT_BASE_URL,
     },
   },
   {
@@ -557,8 +557,8 @@ const exclusiveProjects: PlaywrightTestProject[] = [
       baseURL: WEB_PLATFORM_BASE_URL,
     },
   },
-  // This round trip changes a tenant-wide setting and asks web-host to read
-  // both values through its cache. It follows every parallel project so
+  // This round trip changes a tenant-wide setting and asks web-storefront to
+  // read both values through its cache. It follows every parallel project so
   // concurrent requests cannot race either cache revalidation.
   {
     dependencies: [
@@ -663,7 +663,7 @@ const performanceProjects: PlaywrightTestProject[] = [
     testMatch: [performanceSpecs],
     use: {
       ...desktopChrome,
-      baseURL: WEB_HOST_BASE_URL,
+      baseURL: WEB_STOREFRONT_BASE_URL,
     },
   },
 ];
@@ -782,7 +782,7 @@ export default defineConfig({
   testDir: "./tests",
   timeout: 60_000,
   use: {
-    baseURL: WEB_HOST_BASE_URL,
+    baseURL: WEB_STOREFRONT_BASE_URL,
     screenshot: "only-on-failure",
     trace: "on-first-retry",
     video: "retain-on-failure",

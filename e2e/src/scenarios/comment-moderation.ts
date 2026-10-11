@@ -12,8 +12,9 @@ export const COMMENT_MODERATION_SCENARIO = "150_comment_moderation";
 
 export const COMMENT_MODERATION_TENANT = {
   /**
-   * The tenant's uuid, not its `public_id`: web-host's cache tags are built
-   * from the routing id, and the suite drops one after approving a comment.
+   * The tenant's uuid, not its `public_id`: web-storefront's cache tags are
+   * built from the routing id, and the suite drops one after approving a
+   * comment.
    */
   id: "018f0f70-0001-7000-8000-000000000001",
   name: "Moderation Tenant",

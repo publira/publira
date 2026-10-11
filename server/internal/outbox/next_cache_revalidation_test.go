@@ -54,7 +54,7 @@ func TestNextCacheRevalidationHandlerDropsTheTagsTheEventNames(t *testing.T) {
 // A web app that is down is a transient failure: the drop is still owed, so the
 // event has to come back rather than die.
 func TestNextCacheRevalidationHandlerRetriesWhenAnAppIsUnreachable(t *testing.T) {
-	invalidator := &stubCacheInvalidator{err: errors.New("web-host is unreachable")}
+	invalidator := &stubCacheInvalidator{err: errors.New("web-storefront is unreachable")}
 
 	err := NewNextCacheRevalidationHandler(invalidator)(
 		context.Background(),

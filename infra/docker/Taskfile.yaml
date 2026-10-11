@@ -4,7 +4,7 @@ version: "3"
 # (included from the root Taskfile without dir override).
 #
 # Examples:
-#   task docker:build:web APP_NAME=web-host PORT=3000
+#   task docker:build:web APP_NAME=web-storefront PORT=3000
 #   task docker:build:server
 #   task docker:build:publiractl
 #   task docker:build:node APP_NAME=email-renderer PORT=8080
@@ -68,11 +68,11 @@ tasks:
   # Representative set shared by local checks and CI (path-filtered / PR).
   # Covers each role once: web / server / publiractl / node.
   verify:
-    desc: Build representative images (web-host, publira, publiractl, email-renderer)
+    desc: Build representative images (web-storefront, publira, publiractl, email-renderer)
     cmds:
       - task: build:web
         vars:
-          APP_NAME: web-host
+          APP_NAME: web-storefront
           PORT: "3000"
       - task: build:server
       - task: build:publiractl
@@ -86,7 +86,7 @@ tasks:
     desc: Build all production images documented in infra/docker/README.md
     cmds:
       - task: build:web
-        vars: { APP_NAME: web-host, PORT: "3000" }
+        vars: { APP_NAME: web-storefront, PORT: "3000" }
       - task: build:web
         vars: { APP_NAME: web-admin, PORT: "4000" }
       - task: build:web

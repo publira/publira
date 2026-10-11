@@ -83,7 +83,7 @@ server {
     listen 80;
     server_name ~(?!) ${PUBLIRA_EDGE_SITE_HOSTS};
 
-    set $publira_app publira_web_host;
+    set $publira_app publira_web_storefront;
     include /etc/nginx/templates/snippets/proxy-headers.conf;
 
     include /etc/nginx/templates/snippets/app-routes.conf;

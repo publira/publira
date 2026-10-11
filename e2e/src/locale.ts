@@ -68,7 +68,7 @@ const openLocaleMenu = async (
  * Open the public site's header language menu, labelled in `from`, and hand
  * back its option for `to`, already on screen.
  */
-export const openHostLocaleMenu = async (
+export const openStorefrontLocaleMenu = async (
   page: Page,
   from: LocaleLabel,
   to: LocaleLabel
@@ -87,12 +87,12 @@ export const openHostLocaleMenu = async (
  * Each option is a real link there — the locale is in the URL — so this is a
  * navigation, not a form submission.
  */
-export const switchHostLocale = async (
+export const switchStorefrontLocale = async (
   page: Page,
   from: LocaleLabel,
   to: LocaleLabel
 ): Promise<void> => {
-  const option = await openHostLocaleMenu(page, from, to);
+  const option = await openStorefrontLocaleMenu(page, from, to);
   await option.click();
 };
 

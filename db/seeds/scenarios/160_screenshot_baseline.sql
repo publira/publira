@@ -15,7 +15,7 @@
 -- applying it for itself, so the dates the baseline recorded are the dates
 -- every later suite reads as well.
 --
--- Used by e2e/tests/host.screenshots.spec.ts,
+-- Used by e2e/tests/storefront.screenshots.spec.ts,
 -- e2e/tests/admin.screenshots.spec.ts,
 -- e2e/tests/platform.screenshots.spec.ts, and the documentation's
 -- e2e/tests/*.docs-screenshots.spec.ts.

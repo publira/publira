@@ -53,7 +53,7 @@ export default defineConfig({
         "apps/*/lib/auth.test.ts",
         // Builds the expiry that `writePublicSessionCookie` hands to the same
         // cookie boundary.
-        "apps/web-host/lib/auth-session.test.ts",
+        "apps/web-storefront/lib/auth-session.test.ts",
         // web-admin converts an instant to the cookie API's `Date` here and
         // nowhere else: its API timestamps are parsed with `parseInstant`, and
         // both cookie writers reach the boundary through this one function.
@@ -118,7 +118,7 @@ export default defineConfig({
        * cookie-driven `<html>` attributes.
        *
        * The injected source is `LOCALE_LANG_SCRIPT` in the cookie consoles and
-       * `PATH_LOCALE_LANG_SCRIPT` in `web-host`, constants built from
+       * `PATH_LOCALE_LANG_SCRIPT` in `web-storefront`, constants built from
        * `getLocales` and the locale cookie names in `@publira/i18n`. No
        * request-derived value reaches either, and the script writes an
        * attribute rather than markup. See AGENTS.md "UI locale".
@@ -126,14 +126,14 @@ export default defineConfig({
        * `web-platform` owns `app/layout.tsx`. `web-admin` rewrites onto
        * `/[tenant_id]/...`, so the same document lives at
        * `app/[tenant_id]/layout.tsx` — one directory deep, which `*` matches
-       * without also covering `(protected)/layout.tsx`. `web-host` adds the
-       * locale segment, which puts its own document one directory deeper
+       * without also covering `(protected)/layout.tsx`. `web-storefront` adds
+       * the locale segment, which puts its own document one directory deeper
        * still, above the `(site)` and `(auth)` layouts.
        */
       files: [
         "apps/*/app/layout.tsx",
         "apps/web-admin/app/*/layout.tsx",
-        "apps/web-host/app/*/*/layout.tsx",
+        "apps/web-storefront/app/*/*/layout.tsx",
       ],
       rules: {
         "react/no-danger": "off",
@@ -149,7 +149,7 @@ export default defineConfig({
        * every `<` escaped, so no value in it, tenant-authored or not, can close
        * the element and add markup.
        */
-      files: ["apps/web-host/components/json-ld.tsx"],
+      files: ["apps/web-storefront/components/json-ld.tsx"],
       rules: {
         "react/no-danger": "off",
       },
@@ -161,12 +161,12 @@ export default defineConfig({
        *
        * Every value the attribute could take needs a read — the operator's
        * cookie and the stored default behind it in the consoles, the URL's
-       * locale segment in `web-host` — and a root layout that awaits blocks
-       * the whole tree. An `<html>` attribute is never worth that, so every
-       * root layout stays synchronous and the locale reaches the script from
-       * what the browser already has: the two cookies in the consoles
+       * locale segment in `web-storefront` — and a root layout that awaits
+       * blocks the whole tree. An `<html>` attribute is never worth that, so
+       * every root layout stays synchronous and the locale reaches the script
+       * from what the browser already has: the two cookies in the consoles
        * (`LOCALE_LANG_SCRIPT`), the path and the proxy-published default in
-       * `web-host` (`PATH_LOCALE_LANG_SCRIPT`).
+       * `web-storefront` (`PATH_LOCALE_LANG_SCRIPT`).
        *
        * Until it runs the document names no language, and a document that
        * carries neither source keeps naming none. A `lang` the document is not
@@ -178,7 +178,7 @@ export default defineConfig({
       files: [
         "apps/web-platform/app/layout.tsx",
         "apps/web-admin/app/*/layout.tsx",
-        "apps/web-host/app/*/*/layout.tsx",
+        "apps/web-storefront/app/*/*/layout.tsx",
       ],
       rules: {
         "jsx-a11y/html-has-lang": "off",

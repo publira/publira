@@ -24,7 +24,7 @@ x-tenant-url: &tenant-url
 # answers keeps the worker retrying the event.
 x-revalidate: &revalidate
   PUBLIRA_REVALIDATE_TOKEN: ${PUBLIRA_REVALIDATE_TOKEN:?}
-  PUBLIRA_WEB_HOST_INTERNAL_URL: http://web-host:3000
+  PUBLIRA_WEB_STOREFRONT_INTERNAL_URL: http://web-storefront:3000
   PUBLIRA_WEB_ADMIN_INTERNAL_URL: http://web-admin:4000
   PUBLIRA_WEB_PLATFORM_INTERNAL_URL: ${PUBLIRA_WEB_PLATFORM_INTERNAL_URL:-}
 
@@ -126,7 +126,7 @@ services:
       - ./services.yaml:/etc/traefik/dynamic/services.yaml:ro
     depends_on:
       - server
-      - web-host
+      - web-storefront
       - web-admin
 
   server:
@@ -161,12 +161,12 @@ services:
       postgres:
         condition: service_healthy
 
-  web-host:
-    image: ${PUBLIRA_IMAGE_REGISTRY:?}/web-host:${PUBLIRA_IMAGE_TAG:?}
+  web-storefront:
+    image: ${PUBLIRA_IMAGE_REGISTRY:?}/web-storefront:${PUBLIRA_IMAGE_TAG:?}
     restart: unless-stopped
     environment:
       <<: [*web-app, *tenant-url, *tracing]
-      PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_HOST_AUTH_SECRET:?}
+      PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_STOREFRONT_AUTH_SECRET:?}
     depends_on:
       - server
       - valkey

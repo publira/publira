@@ -16,21 +16,21 @@ acquire_e2e_lock
 # repository's infra/proxy/traefik/dynamic and lays this file over the
 # services.yaml in it, so the routers are the ones every environment runs and
 # only the addresses are written here — the ports are overridable
-# (PUBLIRA_E2E_WEB_HOST_PORT and the rest) and a file provider substitutes no
-# variables of its own.
+# (PUBLIRA_E2E_WEB_STOREFRONT_PORT and the rest) and a file provider substitutes
+# no variables of its own.
 #
-# `localhost` rather than a literal address: web-host is started with
+# `localhost` rather than a literal address: web-storefront is started with
 # HOSTNAME=localhost and Next resolves that to ::1 alone, while publira server
 # binds every address. Only a name covers both, and it keeps working when
-# PUBLIRA_E2E_WEB_BIND_HOST moves web-host to an IPv4 address instead.
+# PUBLIRA_E2E_WEB_BIND_HOST moves web-storefront to an IPv4 address instead.
 e2e_log "writing traefik services to ${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR}/services.yaml"
 cat > "${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR}/services.yaml" << EOF
 http:
   services:
-    web-host:
+    web-storefront:
       loadBalancer:
         servers:
-          - url: "http://localhost:${PUBLIRA_E2E_WEB_HOST_PORT}"
+          - url: "http://localhost:${PUBLIRA_E2E_WEB_STOREFRONT_PORT}"
     web-admin:
       loadBalancer:
         servers:

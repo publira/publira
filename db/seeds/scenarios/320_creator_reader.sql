@@ -1,6 +1,6 @@
 -- Scenario: a reader account linked to the creator the seed series credits
 --
--- `host.creator-own-episode.spec.ts` signs in as the author of `Seed Series
+-- `storefront.creator-own-episode.spec.ts` signs in as the author of `Seed Series
 -- 001` and asserts what the storefront shows them on their own episodes: the
 -- priced `Seed Episode 001-10` open without a purchase and said to be open to
 -- them as its author, and no reaction offered on any of them. The dev seed

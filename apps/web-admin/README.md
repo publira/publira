@@ -56,7 +56,7 @@ The payment webhook URL on Payment settings is the tenant's storefront (`storefr
 
 ### Server cache (Redis)
 
-`next.config.ts` wires `@publira/next-cache-handlers`, as web-host does.
+`next.config.ts` wires `@publira/next-cache-handlers`, as web-storefront does.
 
 - `PNCH_REDIS_URL` (the same value as the server's `PUBLIRA_REDIS_URL`)
 - `PNCH_CACHE_APP=web-admin` (set by the `dev` and `start` scripts; it separates the key space)

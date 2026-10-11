@@ -1,6 +1,6 @@
 -- Scenario: tenants that sign readers in with Apple and Google
 --
--- `host.social-sign-in.spec.ts` signs readers in through the sign-in-provider
+-- `storefront.social-sign-in.spec.ts` signs readers in through the sign-in-provider
 -- stand-in the E2E stack runs, which signs ID tokens for the client IDs below.
 -- Which providers a tenant offers changes its sign-in screen, so no tenant
 -- another suite reads can offer them.

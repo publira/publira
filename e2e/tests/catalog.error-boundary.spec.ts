@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 import { startServer, stopServer } from "../src/server";
-import { hostPath } from "../src/urls";
+import { storefrontPath } from "../src/urls";
 
 /**
  * Route-level error boundary: a server-side exception has to show an error
@@ -41,10 +41,10 @@ import { hostPath } from "../src/urls";
  * the wider outage matrix (503 on tenant resolution, per-section degradation,
  * the failure not being cached); this file owns the retry affordance.
  */
-test.describe("web-host site error boundary", () => {
+test.describe("web-storefront site error boundary", () => {
   // Isolated project `catalog-error-boundary` (see playwright.config.ts).
   // Filename `.error-boundary.` is what keeps this file off the parallel
-  // web-host project; it is chained after `catalog-outage` so the two
+  // web-storefront project; it is chained after `catalog-outage` so the two
   // stopServer specs cannot overlap.
   test.describe.configure({ mode: "serial" });
 
@@ -66,7 +66,9 @@ test.describe("web-host site error boundary", () => {
     // answers 503 for a Host it cannot resolve, which would end the request
     // before any page renders. A URL that matches no published page warms that
     // lookup without filling a catalog cache entry.
-    await page.goto(hostPath("/no-such-page-for-the-error-boundary-spec"));
+    await page.goto(
+      storefrontPath("/no-such-page-for-the-error-boundary-spec")
+    );
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
@@ -74,7 +76,9 @@ test.describe("web-host site error boundary", () => {
     try {
       stopServer();
 
-      const response = await page.goto(hostPath(`/series/${uncachedSeriesId}`));
+      const response = await page.goto(
+        storefrontPath(`/series/${uncachedSeriesId}`)
+      );
 
       // The point of the whole issue: a failing route answers with the site's
       // own error screen, not a bare 500.

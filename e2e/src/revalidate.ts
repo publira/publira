@@ -1,4 +1,4 @@
-import { WEB_HOST_INTERNAL_URL, WEB_PLATFORM_INTERNAL_URL } from "./urls";
+import { WEB_STOREFRONT_INTERNAL_URL, WEB_PLATFORM_INTERNAL_URL } from "./urls";
 
 const revalidateTags = async (
   app: string,
@@ -28,12 +28,12 @@ const revalidateTags = async (
 };
 
 /**
- * Drop web-host cache tags the way the Go servers do after a write.
+ * Drop web-storefront cache tags the way the Go servers do after a write.
  *
  * A spec that changes data through the console or the site needs none of this:
  * the API revalidates the tags its own write touched. A spec that reaches past
  * the app and writes to Postgres directly — a scenario seed that empties a
- * table, or a state no screen produces — leaves web-host holding a
+ * table, or a state no screen produces — leaves web-storefront holding a
  * `"use cache"` entry nothing invalidated, so it has to send the same request
  * the servers send.
  *
@@ -41,15 +41,17 @@ const revalidateTags = async (
  * right after this one may still be answered from the old copy. Poll by
  * navigating again rather than asserting on a single load.
  */
-export const revalidateHostTags = (tags: readonly string[]): Promise<void> =>
-  revalidateTags("web-host", WEB_HOST_INTERNAL_URL, tags);
+export const revalidateStorefrontTags = (
+  tags: readonly string[]
+): Promise<void> =>
+  revalidateTags("web-storefront", WEB_STOREFRONT_INTERNAL_URL, tags);
 
 /**
  * Drop web-platform cache tags after a spec wrote a platform-wide row straight
- * to Postgres, for the reason {@link revalidateHostTags} gives: the Platform
- * Console reads those rows through `"use cache"`, one entry for every
- * operator, so an entry filled earlier in the run outlives the write. The
- * same stale-while-revalidate caveat applies.
+ * to Postgres, for the reason {@link revalidateStorefrontTags} gives: the
+ * Platform Console reads those rows through `"use cache"`, one entry for every
+ * operator, so an entry filled earlier in the run outlives the write. The same
+ * stale-while-revalidate caveat applies.
  */
 export const revalidatePlatformTags = (
   tags: readonly string[]
@@ -87,14 +89,14 @@ export const platformAuditLogsTag = "platform:audit-logs";
 export const platformNotificationsTag = "platform:notifications";
 
 /**
- * The tag web-host holds the tenant's site chrome under. The comment mode
+ * The tag web-storefront holds the tenant's site chrome under. The comment mode
  * rides on that read, so a scenario seed that writes `tenant_config` directly
  * has to drop it.
  */
 export const tenantSiteTag = (tenantId: string): string =>
   `tenant:${tenantId}:site`;
 
-/** The tag web-host holds one episode's public comment list under. */
+/** The tag web-storefront holds one episode's public comment list under. */
 export const episodeCommentsTag = (
   tenantId: string,
   episodePublicId: string

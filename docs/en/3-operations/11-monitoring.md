@@ -20,7 +20,7 @@ Every process answers two requests over plain HTTP:
 | `publira server`, internal listener | `8100` (`PUBLIRA_PUBLIC_API_GRPC_ADDR`) | Each of its three database logins: `db.public`, `db.admin`, and `db.platform` |
 | `publira server`, edge listener | `8000` (`PUBLIRA_PUBLIC_API_ADDR`) | The `publira_public` login alone, as `db`: the only one the public API uses |
 | `publira worker` | `8003` (`PUBLIRA_WORKER_ADDR`) | Each of its three database logins: `db.outbox`, `db.ticker`, and `db.content_stats`. It also answers not ready until its job queue has started |
-| `web-host`, `web-admin`, `web-platform` | `PORT`: `3000`, `4000`, and `4100` in the images as the repository builds them | `api`, the `/readyz` of `publira server`'s internal listener, at `PUBLIRA_GRPC_URL`; and `redis`, a ping to the shared cache at `PNCH_REDIS_URL`, which always passes while that cache is turned off |
+| `web-storefront`, `web-admin`, `web-platform` | `PORT`: `3000`, `4000`, and `4100` in the images as the repository builds them | `api`, the `/readyz` of `publira server`'s internal listener, at `PUBLIRA_GRPC_URL`; and `redis`, a ping to the shared cache at `PNCH_REDIS_URL`, which always passes while that cache is turned off |
 | `email-renderer` | `8080` (`PORT`) | Nothing: it depends on no other service, so it is ready whenever it is up |
 
 None of them checks the object store, the SMTP server, or the search engine. A failure there shows in the log and in what readers see, not in `/readyz`.
@@ -74,7 +74,7 @@ time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b
 
 Every record has `time`, `level` (`INFO`, `WARN`, or `ERROR`), and `msg`. A record logged while handling a request or a job that is being traced also has `trace_id` and `span_id`, which lead to that trace in your tracing backend. The rest depends on what logged it: the outbox's records name the entry (`event_id`, `event_type`, `attempts`), a maintenance job's name the run (`job_kind`, `job_id`, `attempt`), and a failure carries `error`. The level is fixed at `INFO`: there is no variable to make the log quieter or more detailed.
 
-The web apps and `email-renderer` write Next.js's and Node.js's own plain-text output instead. Their failures are lines prefixed with the app's name, such as `[web-host] getTenantSiteInfo failed`, and a readiness check that failed is logged as `health check api failed`.
+The web apps and `email-renderer` write Next.js's and Node.js's own plain-text output instead. Their failures are lines prefixed with the app's name, such as `[web-storefront] getTenantSiteInfo failed`, and a readiness check that failed is logged as `health check api failed`.
 
 ### What to alert on
 
@@ -146,7 +146,7 @@ Point them at your collector with the variables the OpenTelemetry SDK reads itse
 
 On the [Docker Compose](../2-deployments/3-docker-compose.md) install, set these and `PUBLIRA_TRACING_ENABLED` in `.env`, which passes them to `publira server`, the worker, and the web apps, and run `docker compose up -d` again.
 
-Each process reports under a `service.name` of its own: `publira-api-server`, `publira-admin-api-server`, and `publira-platform-api-server` for the three APIs `publira server` serves, `publira-image-server` for its image delivery, `publira-worker` and a name per scheduled job for `publira worker`, and `publira-web-host`, `publira-web-admin`, and `publira-web-platform` for the web apps. The full list, and what is recorded on each span, is in the [server's tracing reference](https://github.com/publira/publira/blob/main/server/README.md#distributed-tracing-opentelemetry). The health checks of `publira server` are not traced, so a probe does not fill the backend with a trace every few seconds.
+Each process reports under a `service.name` of its own: `publira-api-server`, `publira-admin-api-server`, and `publira-platform-api-server` for the three APIs `publira server` serves, `publira-image-server` for its image delivery, `publira-worker` and a name per scheduled job for `publira worker`, and `publira-web-storefront`, `publira-web-admin`, and `publira-web-platform` for the web apps. The full list, and what is recorded on each span, is in the [server's tracing reference](https://github.com/publira/publira/blob/main/server/README.md#distributed-tracing-opentelemetry). The health checks of `publira server` are not traced, so a probe does not fill the backend with a trace every few seconds.
 
 ### Sampling
 

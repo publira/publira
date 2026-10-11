@@ -4,7 +4,7 @@ The end-user mobile app for iOS and Android, built with Flutter.
 
 ## Role
 
-- Provide a mobile reading experience equivalent to `web-host`
+- Provide a mobile reading experience equivalent to `web-storefront`
 - Reflect each tenant's theme and brand in the mobile UI
 - Keep APIs aligned with the schema generated in `packages/api-client/`
 - Keep what the reader has read on the device, so an episode opens without a network
@@ -449,13 +449,13 @@ To add copy, add the key under `mobile.<screen>` to every `locales/*.json`, run 
 
 ### Locale
 
-`PubliraApp` resolves the locale the way `web-host` does, with the device standing in for the browser. The first device language that names a catalog wins, whether by its whole tag, by the script that tag is written in, or by its language alone. A device set to none of them takes the tenant's `default_locale`, which `GetTenantByDomain` returns and `TenantResolver` keeps; until that answer arrives, and for good when it cannot, on a launch without a network, the app opens in English, the same decision `@publira/i18n` makes for a browser with no usable preference. `MaterialApp.localizationsDelegates` carries the app's own delegate alongside the `flutter_localizations` ones, so Material's own strings follow the same locale.
+`PubliraApp` resolves the locale the way `web-storefront` does, with the device standing in for the browser. The first device language that names a catalog wins, whether by its whole tag, by the script that tag is written in, or by its language alone. A device set to none of them takes the tenant's `default_locale`, which `GetTenantByDomain` returns and `TenantResolver` keeps; until that answer arrives, and for good when it cannot, on a launch without a network, the app opens in English, the same decision `@publira/i18n` makes for a browser with no usable preference. `MaterialApp.localizationsDelegates` carries the app's own delegate alongside the `flutter_localizations` ones, so Material's own strings follow the same locale.
 
 There is no in-app switcher: the device setting is the switch, and changing it while the app runs re-renders every screen.
 
 ## Viewer
 
-The viewer displays the images returned by `GetEpisodeDetail` as episode content, paging from right to left (the same reading direction as the `web-host` reader).
+The viewer displays the images returned by `GetEpisodeDetail` as episode content, paging from right to left (the same reading direction as the `web-storefront` reader).
 
 - The page container reserves space from the API's `width` / `height` before the image arrives, so the layout does not shift. Images without dimensions use the entire viewport as a provisional container
 - Each page has its own loading and failure-with-retry state, so one failed page does not fail the entire episode body
@@ -465,7 +465,7 @@ The viewer displays the images returned by `GetEpisodeDetail` as episode content
 - A response without `X-Publira-Image-Encryption` is decoded as it arrives, which is what keeps the reader working when a rolling deploy answers them from a server instance it has not replaced yet. A page whose stream cannot be reversed fails on its own and offers a retry, the same way a failed fetch does
 - Pages are requested with an `Accept` that offers WebP and leaves AVIF out, because the server's image converter negotiates the rendition from that header and Flutter has no AVIF codec
 - Leaving the reader evicts the episode's pages from the shared image cache, so a body's decoded pixels are not left behind whatever is read next
-- A signed-in reader opens the episode on the page `GetMyReadingPosition` answers with, which is the same position `web-host` writes, and the page they rest on is recorded with `SaveReadingPosition`. A guest has no position and opens on the first page
+- A signed-in reader opens the episode on the page `GetMyReadingPosition` answers with, which is the same position `web-storefront` writes, and the page they rest on is recorded with `SaveReadingPosition`. A guest has no position and opens on the first page
 - The screen after the last page ends the episode: it offers the next one `GetEpisodeDetail` names, with what it costs, and leads back to the series; the last published episode of a series says so instead. The bottom bar carries the episodes either side of this one beside the page controls, and taking either of them replaces the reader rather than stacking a second one on it
 
 ## Comments
@@ -546,14 +546,14 @@ A paid episode is bought the way the tenant's `app_purchase_route`, which `GetTe
 
 ## Sign-in
 
-A reader signs in with an email address and a password, which `AuthService/Login` answers with a public-audience JWT (24-hour TTL, revoked by `credentials_version`). Every API and image request carries that token, so a purchased or ticketed paid episode reads on the device the same way it does in `web-host`.
+A reader signs in with an email address and a password, which `AuthService/Login` answers with a public-audience JWT (24-hour TTL, revoked by `credentials_version`). Every API and image request carries that token, so a purchased or ticketed paid episode reads on the device the same way it does in `web-storefront`.
 
 - The session lives in the OS keychain / Keystore through `flutter_secure_storage`, never in `shared_preferences`, and is restored at launch
 - The launch confirms a restored token with `AuthService/GetMe`. A rejected token is dropped and the reader is told, with the sign-in screen one tap away; an unreachable API leaves the session alone, so a launch without a network still opens signed in
 - Nothing signs the reader back in on its own. Once the 24-hour token is gone, the reader signs in again
 - Signing out drops the stored session, and a paid episode goes back to its locked state
 
-`web-host` holds its own session in the `@publira/web-session` JWE cookie. The app has no cookie jar, which is why the token lives in the platform credential store instead.
+`web-storefront` holds its own session in the `@publira/web-session` JWE cookie. The app has no cookie jar, which is why the token lives in the platform credential store instead.
 
 ### Apple and Google
 
@@ -701,7 +701,7 @@ PUBLIRA_MOBILE_SCREENSHOT_READER= task mobile:screenshot -- /sign-in
 - A notification and an announcement opened by the seed member, and the read mark each sends reaching the API
 - Every page the storefront's footer lists opening from the account screen
 
-`integration_test/reader_parity.json` is the public-reader parity matrix: every capability `web-host` serves a reader, with the app route and call that do the same, or an exception saying why the app has none. `pnpm reader-parity:check` fails when a `web-host` page, route handler, or public API call is not in it, and `test/reader_parity_test.dart` resolves every app route it names against the router. An entry whose record both surfaces read (`sharedRecord`) names the tests here that cover it.
+`integration_test/reader_parity.json` is the public-reader parity matrix: every capability `web-storefront` serves a reader, with the app route and call that do the same, or an exception saying why the app has none. `pnpm reader-parity:check` fails when a `web-storefront` page, route handler, or public API call is not in it, and `test/reader_parity_test.dart` resolves every app route it names against the router. An entry whose record both surfaces read (`sharedRecord`) names the tests here that cover it.
 
 By default, it uses an on-device Connect fixture server. When `PUBLIRA_LIVE_API=true`, it also runs against the public API for the development seed (`Seed Series 001` / `SeedSERSAAA1`), signing in as `member@example.com`, who holds a seeded access ticket for the paid episode. The live group also reads the unread announcement and notification `db/seeds/scenarios/310_mobile_reader_records.sql` gives that member, which `scripts/e2e-db-setup.sh` applies after the stack's own setup; apply it again before re-running against a stack that is already up.
 

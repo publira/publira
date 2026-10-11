@@ -115,28 +115,28 @@ const cases: CountCase[] = [
     one: "Added a free reading period to 1 episode.",
   },
   {
-    key: "host.common.free_episode_count",
+    key: "storefront.common.free_episode_count",
     many: "1,200 free episodes",
     one: "1 free episode",
   },
   {
-    key: "host.episode.page_count_value",
+    key: "storefront.episode.page_count_value",
     many: "1,200 pages",
     one: "1 page",
   },
   {
-    key: "host.episode.reading_period_hours",
+    key: "storefront.episode.reading_period_hours",
     many: "1,200 hours",
     one: "1 hour",
     variable: "hours",
   },
   {
-    key: "host.series.episode_count",
+    key: "storefront.series.episode_count",
     many: "1,200 episodes",
     one: "1 episode",
   },
   {
-    key: "host.series.rating.public",
+    key: "storefront.series.rating.public",
     many: "Rating: 3.5 · 1,200 readers",
     one: "Rating: 3.5 · 1 reader",
     values: { average: "3.5" },
@@ -153,7 +153,9 @@ describe("count-dependent copy", () => {
   });
 
   it("writes one form for every count in a locale with no plural categories", () => {
-    expect(ja("host.series.episode_count", { count: 1 })).toBe("全1話");
-    expect(ja("host.series.episode_count", { count: 1200 })).toBe("全1,200話");
+    expect(ja("storefront.series.episode_count", { count: 1 })).toBe("全1話");
+    expect(ja("storefront.series.episode_count", { count: 1200 })).toBe(
+      "全1,200話"
+    );
   });
 });

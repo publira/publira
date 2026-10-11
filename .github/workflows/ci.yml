@@ -251,7 +251,7 @@ jobs:
               - 'docs/**/*.png'
               # The E2E edge mounts the same routers every environment runs.
               - 'infra/proxy/traefik/**'
-              - 'apps/web-host/**'
+              - 'apps/web-storefront/**'
               - 'apps/web-admin/**'
               - 'apps/web-platform/**'
               # The stack builds and runs email-renderer: the worker renders
@@ -313,8 +313,9 @@ jobs:
               - 'db/**'
               - 'e2e/bootstrap/**'
               # task dev starts every app and server, so any of their sources
-              # can break startup — Test / E2E covers web-host / web-admin /
-              # web-platform and their APIs, not the full task dev surface.
+              # can break startup — Test / E2E covers web-storefront /
+              # web-admin / web-platform and their APIs, not the full task dev
+              # surface.
               - 'apps/**'
               - 'packages/**'
               - 'server/**'
@@ -468,8 +469,8 @@ jobs:
         run: pnpm check
 
       # Here rather than in Check, whose path filter leaves out mobile/: the
-      # matrix is held both to web-host and to the app, and this job runs for
-      # a change to either.
+      # matrix is held both to web-storefront and to the app, and this job runs
+      # for a change to either.
       - name: Validate / Reader parity
         run: pnpm reader-parity:check
 
@@ -1121,7 +1122,7 @@ jobs:
           set -euo pipefail
           tar -czf "${RUNNER_TEMP}/e2e-build.tgz" \
             server/bin \
-            apps/web-host/.next/standalone apps/web-host/.next/static \
+            apps/web-storefront/.next/standalone apps/web-storefront/.next/static \
             apps/web-admin/.next/standalone apps/web-admin/.next/static \
             apps/web-platform/.next/standalone apps/web-platform/.next/static \
             apps/email-renderer/dist \

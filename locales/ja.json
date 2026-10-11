@@ -3180,7 +3180,7 @@
       }
     }
   },
-  "host": {
+  "storefront": {
     "announcements": {
       "banner_dismiss": "このお知らせを閉じる",
       "banner_link": "お知らせを読む",

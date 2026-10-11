@@ -18,7 +18,7 @@ Image builds are a separate concern and live under [`infra/docker/`](../docker/R
 
 | Name | Serves | Port in the Dev Container |
 | --- | --- | --- |
-| `web-host` | The public tenant site | `3000` |
+| `web-storefront` | The public tenant site | `3000` |
 | `web-admin` | The tenant console | `4000` |
 | `web-platform` | The platform console | `4100` |
 | `api` | The edge listener of `publira server`: the public API (Connect RPC plus `/readyz`) and image delivery for the tenant site and the tenant console alike | `8000` |
@@ -27,10 +27,10 @@ Image builds are a separate concern and live under [`infra/docker/`](../docker/R
 
 The hostname decides which Next.js app answers, and the hosts are listed rather than recognised: each sample reads one environment variable per app and routes exactly the hosts it names.
 
-| Variable                      | App            | Holds                       |
-| ----------------------------- | -------------- | --------------------------- |
-| `PUBLIRA_EDGE_SITE_HOSTS`     | `web-host`     | Every tenant's domain       |
-| `PUBLIRA_EDGE_ADMIN_HOSTS`    | `web-admin`    | Every tenant's console host |
+| Variable | App | Holds |
+| --- | --- | --- |
+| `PUBLIRA_EDGE_SITE_HOSTS` | `web-storefront` | Every tenant's domain |
+| `PUBLIRA_EDGE_ADMIN_HOSTS` | `web-admin` | Every tenant's console host |
 | `PUBLIRA_EDGE_PLATFORM_HOSTS` | `web-platform` | The Platform Console's host |
 
 Each is a list of host names separated by spaces, without a port: the form a Caddyfile placeholder and nginx's `server_name` take as they are, and the Traefik template splits. A host belongs to one list. Matching ignores the port the `Host` header carries, so `admin.localhost:3080` is a console host when `admin.localhost` is listed.
@@ -60,7 +60,7 @@ A webhook an outside service calls on the public site lives at `/api/v1/webhook/
 
 ### Request bodies
 
-A request under `/api/v1` is admitted with a body of up to 33 MiB: an inbound email webhook carries a whole mail with its attachments, which SendGrid accepts up to 30 MB, and `web-host` reads up to 32 MiB of it. On a console host, `/api/v1/episode-pages` is admitted with a body of up to 256 MiB: the episode edit screen posts a whole episode's pages there in one upload, and `web-admin` reads up to 256 MiB of it. Traefik and Caddy set no limit unless one is configured; nginx's default is 1 MB, so its sample raises it on those locations.
+A request under `/api/v1` is admitted with a body of up to 33 MiB: an inbound email webhook carries a whole mail with its attachments, which SendGrid accepts up to 30 MB, and `web-storefront` reads up to 32 MiB of it. On a console host, `/api/v1/episode-pages` is admitted with a body of up to 256 MiB: the episode edit screen posts a whole episode's pages there in one upload, and `web-admin` reads up to 256 MiB of it. Traefik and Caddy set no limit unless one is configured; nginx's default is 1 MB, so its sample raises it on those locations.
 
 That upload is given 300 seconds to arrive, which takes 256 MiB over an uplink of about 7.2 Mbit/s. It is as long as `web-admin`'s Node.js server gives a request to arrive whole, so an edge that streams the body on gains nothing by waiting longer. Traefik gives a request 60 seconds, body included, unless configured otherwise, and it sets that per entry point rather than per router, so every Traefik edge here gives every request on the `web` entry point 300 seconds. nginx limits only the wait between two reads of a body, 60 seconds by default, and passes the body on once all of it has arrived; Caddy sets no limit on reading a body. Neither sample changes its default.
 

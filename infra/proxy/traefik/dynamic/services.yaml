@@ -10,7 +10,7 @@
 # processes listen on.
 http:
   services:
-    web-host:
+    web-storefront:
       loadBalancer:
         servers:
           - url: 'http://{{ env "PUBLIRA_EDGE_BACKEND_HOST" | default "app" }}:3000'

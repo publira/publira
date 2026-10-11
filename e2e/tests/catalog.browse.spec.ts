@@ -1,15 +1,15 @@
 import { expect, test } from "@playwright/test";
 
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
-import { hostPath, localeHostPath } from "../src/urls";
+import { storefrontPath, localeStorefrontPath } from "../src/urls";
 
-/** Keep in sync with `SERIES_PAGE_SIZE` in the web-host series list page. */
+/** Keep in sync with `SERIES_PAGE_SIZE` in the web-storefront series list page. */
 const SERIES_PAGE_SIZE = 24;
 
 /** Labels created by `db/seeds/dev/010_catalog.sql`. */
 const SEED_LABEL_COUNT = 10;
 
-/** Keep in sync with `RELATED_SERIES_COUNT` in the web-host series detail page. */
+/** Keep in sync with `RELATED_SERIES_COUNT` in the web-storefront series detail page. */
 const RELATED_SERIES_COUNT = 6;
 
 /**
@@ -20,9 +20,9 @@ const RELATED_SERIES_COUNT = 6;
  * Every section streams in behind Suspense, so the assertions target the
  * resolved content rather than the skeletons.
  */
-test.describe("web-host catalog browsing", () => {
+test.describe("web-storefront catalog browsing", () => {
   test("every catalog top section shows published data", async ({ page }) => {
-    const response = await page.goto(hostPath("/"));
+    const response = await page.goto(storefrontPath("/"));
     expect(response?.status(), await page.content()).toBe(200);
 
     // The featured work is the page's own heading, and its reading button is
@@ -37,7 +37,7 @@ test.describe("web-host catalog browsing", () => {
     // recommendation shelf a tenant sees before the batch has run.
     const ranking = page.getByRole("region", { name: "Top 10 this week" });
     await expect(
-      ranking.locator(`a[href^="${hostPath("/series/")}"]`).first()
+      ranking.locator(`a[href^="${storefrontPath("/series/")}"]`).first()
     ).toBeVisible();
 
     const newEpisodes = page.getByRole("region", { name: "New episodes" });
@@ -49,7 +49,7 @@ test.describe("web-host catalog browsing", () => {
     // that is what the module is for: the badge is the assertion.
     const freeSeries = page.getByRole("region", { name: "Free to read" });
     await expect(
-      freeSeries.locator(`a[href^="${hostPath("/series/")}"]`).first()
+      freeSeries.locator(`a[href^="${storefrontPath("/series/")}"]`).first()
     ).toBeVisible();
     await expect(
       freeSeries.getByText(/^\d+ free episodes?$/u).first()
@@ -59,7 +59,7 @@ test.describe("web-host catalog browsing", () => {
       name: "Recently updated",
     });
     await expect(
-      updatedSeries.locator(`a[href^="${hostPath("/series/")}"]`).first()
+      updatedSeries.locator(`a[href^="${storefrontPath("/series/")}"]`).first()
     ).toBeVisible();
 
     const featuredLabels = page.getByRole("region", {
@@ -78,7 +78,9 @@ test.describe("web-host catalog browsing", () => {
       name: "Featured authors",
     });
     await expect(
-      featuredCreators.locator(`a[href^="${hostPath("/creators/")}"]`).first()
+      featuredCreators
+        .locator(`a[href^="${storefrontPath("/creators/")}"]`)
+        .first()
     ).toBeVisible();
 
     // The per-section fallback must not have kicked in. Every section's
@@ -89,7 +91,7 @@ test.describe("web-host catalog browsing", () => {
   test("the series list leads through series detail to an episode", async ({
     page,
   }) => {
-    await page.goto(hostPath("/"));
+    await page.goto(storefrontPath("/"));
     // "Recently updated" rather than the popularity module above it: that one
     // leads to `/ranking` while the seed tenant carries a snapshot.
     await page
@@ -105,10 +107,10 @@ test.describe("web-host catalog browsing", () => {
     // Assert the list itself is populated; the known seed series is opened by
     // public_id below.
     await expect(
-      page.locator(`a[href^="${hostPath("/series/")}"]`).first()
+      page.locator(`a[href^="${storefrontPath("/series/")}"]`).first()
     ).toBeVisible();
 
-    await page.goto(hostPath(`/series/${SEED_TENANT.series.publicId}`));
+    await page.goto(storefrontPath(`/series/${SEED_TENANT.series.publicId}`));
     await expect(
       page.getByRole("heading", { level: 1, name: SEED_TENANT.series.title })
     ).toBeVisible();
@@ -159,12 +161,12 @@ test.describe("web-host catalog browsing", () => {
       page.getByRole("link", { name: "Back to the series" })
     ).toHaveAttribute(
       "href",
-      hostPath(`/series/${SEED_TENANT.series.publicId}`)
+      storefrontPath(`/series/${SEED_TENANT.series.publicId}`)
     );
   });
 
   test("the series list pages through with a cursor", async ({ page }) => {
-    const response = await page.goto(hostPath("/series"));
+    const response = await page.goto(storefrontPath("/series"));
     expect(response?.status(), await page.content()).toBe(200);
 
     // db/seeds/dev/010_catalog.sql publishes more series than one page holds.
@@ -174,7 +176,7 @@ test.describe("web-host catalog browsing", () => {
     // "You may also like". `:not([href*="/episodes/"])` drops the first, and
     // `:visible` drops what the reader is no longer looking at.
     const seriesCards = page.locator(
-      `a[href^="${hostPath("/series/")}"]:not([href*="/episodes/"]):visible`
+      `a[href^="${storefrontPath("/series/")}"]:not([href*="/episodes/"]):visible`
     );
     await expect(seriesCards).toHaveCount(SERIES_PAGE_SIZE);
     const firstPageHrefs = await seriesCards.evaluateAll((links) =>
@@ -235,7 +237,7 @@ test.describe("web-host catalog browsing", () => {
   });
 
   test("the label list leads to label detail", async ({ page }) => {
-    const response = await page.goto(hostPath("/labels"));
+    const response = await page.goto(storefrontPath("/labels"));
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
@@ -275,7 +277,7 @@ test.describe("web-host catalog browsing", () => {
   test("a representative keyword hits the expected series", async ({
     page,
   }) => {
-    const response = await page.goto(hostPath("/search"));
+    const response = await page.goto(storefrontPath("/search"));
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
@@ -305,7 +307,7 @@ test.describe("web-host catalog browsing", () => {
     page,
   }) => {
     const response = await page.goto(
-      hostPath(`/search?q=${encodeURIComponent(SEED_TENANT.creatorName)}`)
+      storefrontPath(`/search?q=${encodeURIComponent(SEED_TENANT.creatorName)}`)
     );
     expect(response?.status(), await page.content()).toBe(200);
 
@@ -334,7 +336,7 @@ test.describe("web-host catalog browsing", () => {
   }) => {
     // Every seeded creator is named `Seed Author NNN`, so the prefix alone
     // matches far more of them than the overview lists.
-    const response = await page.goto(hostPath("/search?q=Seed+Author"));
+    const response = await page.goto(storefrontPath("/search?q=Seed+Author"));
     expect(response?.status(), await page.content()).toBe(200);
 
     const creators = page.getByRole("region", { exact: true, name: "Authors" });
@@ -354,7 +356,7 @@ test.describe("web-host catalog browsing", () => {
   });
 
   test("the creator list leads to creator detail", async ({ page }) => {
-    const response = await page.goto(hostPath("/creators"));
+    const response = await page.goto(storefrontPath("/creators"));
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
@@ -390,7 +392,7 @@ test.describe("web-host catalog browsing", () => {
   test("a link to the retired /authors path reaches /creators", async ({
     page,
   }) => {
-    const list = await page.request.get(hostPath("/authors"), {
+    const list = await page.request.get(storefrontPath("/authors"), {
       maxRedirects: 0,
     });
     expect(list.status()).toBe(308);
@@ -399,7 +401,7 @@ test.describe("web-host catalog browsing", () => {
     );
 
     const detail = await page.request.get(
-      hostPath(`/authors/${SEED_TENANT.creatorId}?token=djF8Zg`),
+      storefrontPath(`/authors/${SEED_TENANT.creatorId}?token=djF8Zg`),
       { maxRedirects: 0 }
     );
     expect(detail.status()).toBe(308);
@@ -411,7 +413,7 @@ test.describe("web-host catalog browsing", () => {
     expect(detailLocation.search).toBe("?token=djF8Zg");
 
     const prefixed = await page.request.get(
-      localeHostPath("ja", `/authors/${SEED_TENANT.creatorId}`),
+      localeStorefrontPath("ja", `/authors/${SEED_TENANT.creatorId}`),
       { maxRedirects: 0 }
     );
     expect(prefixed.status()).toBe(308);
@@ -420,7 +422,7 @@ test.describe("web-host catalog browsing", () => {
     ).toBe(`/ja/creators/${SEED_TENANT.creatorId}`);
 
     // Following it renders the creator the old URL named.
-    await page.goto(hostPath(`/authors/${SEED_TENANT.creatorId}`));
+    await page.goto(storefrontPath(`/authors/${SEED_TENANT.creatorId}`));
     await expect(page).toHaveURL(
       new RegExp(`/creators/${SEED_TENANT.creatorId}$`, "u")
     );

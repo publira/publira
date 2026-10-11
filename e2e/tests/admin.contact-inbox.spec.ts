@@ -17,7 +17,7 @@ import {
  *
  * The messages are seeded rather than sent, so the states and senders the
  * inbox tells apart are the same on every run. Sending one from the public
- * site is `host.contact-form.spec.ts`.
+ * site is `storefront.contact-form.spec.ts`.
  */
 test.describe("web-admin contact inbox", () => {
   test.describe.configure({ mode: "serial" });

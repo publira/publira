@@ -273,8 +273,8 @@ func TestDBViewEventIsNotRecordedForAnUnpublishedTarget(t *testing.T) {
 	}
 }
 
-// The detail RPCs are behind a `"use cache"` boundary in web-host, and a fill
-// of that cache reaches the API carrying neither the reader's cookie nor a
+// The detail RPCs are behind a `"use cache"` boundary in web-storefront, and a
+// fill of that cache reaches the API carrying neither the reader's cookie nor a
 // bearer. When they instrumented views themselves, every fill minted a fresh
 // actor and left a row nothing could deduplicate.
 func TestDBRepeatedDetailReadsRecordNoViewEvents(t *testing.T) {

@@ -13,7 +13,7 @@ import (
 
 func setInternalURLs(t *testing.T, hostURL, adminURL, platformURL string) {
 	t.Helper()
-	t.Setenv(webHostInternalURLEnv, hostURL)
+	t.Setenv(webStorefrontInternalURLEnv, hostURL)
 	t.Setenv(webAdminInternalURLEnv, adminURL)
 	t.Setenv(webPlatformInternalURLEnv, platformURL)
 }
@@ -40,7 +40,7 @@ func TestNewClientRequiresAtLeastOneWebAppURL(t *testing.T) {
 	if err == nil {
 		t.Fatal("NewClient() error = nil, want the missing URLs reported")
 	}
-	for _, env := range []string{webHostInternalURLEnv, webAdminInternalURLEnv, webPlatformInternalURLEnv} {
+	for _, env := range []string{webStorefrontInternalURLEnv, webAdminInternalURLEnv, webPlatformInternalURLEnv} {
 		if !strings.Contains(err.Error(), env) {
 			t.Errorf("NewClient() error = %v, want it to name %s", err, env)
 		}
@@ -48,7 +48,7 @@ func TestNewClientRequiresAtLeastOneWebAppURL(t *testing.T) {
 }
 
 func TestNewClientRejectsAMalformedWebAppURL(t *testing.T) {
-	setInternalURLs(t, "http://web-host:3000", "web-admin:4000", "")
+	setInternalURLs(t, "http://web-storefront:3000", "web-admin:4000", "")
 
 	client, err := NewClient("token", nil)
 	if client != nil {
@@ -67,21 +67,21 @@ func TestNewClientSendsOnlyToTheWebAppsWithAURL(t *testing.T) {
 	}{
 		{
 			name:    "storefront only",
-			hostURL: "http://web-host:3000",
-			want:    []string{"web-host"},
+			hostURL: "http://web-storefront:3000",
+			want:    []string{"web-storefront"},
 		},
 		{
 			name:     "no platform console",
-			hostURL:  "http://web-host:3000",
+			hostURL:  "http://web-storefront:3000",
 			adminURL: "http://web-admin:4000",
-			want:     []string{"web-host", "web-admin"},
+			want:     []string{"web-storefront", "web-admin"},
 		},
 		{
 			name:        "every app",
-			hostURL:     "http://web-host:3000",
+			hostURL:     "http://web-storefront:3000",
 			adminURL:    "http://web-admin:4000",
 			platformURL: "http://web-platform:4100",
-			want:        []string{"web-host", "web-admin", "web-platform"},
+			want:        []string{"web-storefront", "web-admin", "web-platform"},
 		},
 	}
 	for _, tc := range cases {
@@ -100,11 +100,11 @@ func TestNewClientSendsOnlyToTheWebAppsWithAURL(t *testing.T) {
 }
 
 func TestBuildEndpointUsesInternalRevalidatePath(t *testing.T) {
-	endpoint, err := buildEndpoint("http://web-host:3000/internal")
+	endpoint, err := buildEndpoint("http://web-storefront:3000/internal")
 	if err != nil {
 		t.Fatalf("buildEndpoint() error = %v", err)
 	}
-	if endpoint != "http://web-host:3000/internal/api/v1/revalidate" {
+	if endpoint != "http://web-storefront:3000/internal/api/v1/revalidate" {
 		t.Fatalf("endpoint = %q, want direct revalidate endpoint", endpoint)
 	}
 }
@@ -142,13 +142,13 @@ func TestRevalidateTagsPostsToEveryWebAppWithoutTenantHeaders(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		}))
 	}
-	webHost := server("web-host")
-	defer webHost.Close()
+	webStorefront := server("web-storefront")
+	defer webStorefront.Close()
 	webAdmin := server("web-admin")
 	defer webAdmin.Close()
 	webPlatform := server("web-platform")
 	defer webPlatform.Close()
-	setInternalURLs(t, webHost.URL, webAdmin.URL, webPlatform.URL)
+	setInternalURLs(t, webStorefront.URL, webAdmin.URL, webPlatform.URL)
 
 	client, err := NewClient("token", nil)
 	if err != nil {

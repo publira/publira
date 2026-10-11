@@ -79,7 +79,7 @@ describe("CommentCreatorMark", () => {
 
       expect(
         screen.getByText(
-          sharedMessage("host.episode.comments.creator_badge", locale)
+          sharedMessage("storefront.episode.comments.creator_badge", locale)
         )
       ).toBeTruthy();
     }

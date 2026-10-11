@@ -59,9 +59,9 @@ type requestPayload struct {
 const (
 	revalidatePath = "/api/v1/revalidate"
 
-	webHostInternalURLEnv     = "PUBLIRA_WEB_HOST_INTERNAL_URL"
-	webAdminInternalURLEnv    = "PUBLIRA_WEB_ADMIN_INTERNAL_URL"
-	webPlatformInternalURLEnv = "PUBLIRA_WEB_PLATFORM_INTERNAL_URL"
+	webStorefrontInternalURLEnv = "PUBLIRA_WEB_STOREFRONT_INTERNAL_URL"
+	webAdminInternalURLEnv      = "PUBLIRA_WEB_ADMIN_INTERNAL_URL"
+	webPlatformInternalURLEnv   = "PUBLIRA_WEB_PLATFORM_INTERNAL_URL"
 )
 
 // NewClient returns nil when token is empty, which turns revalidation off. With
@@ -146,7 +146,7 @@ func (c *Client) Destinations() []string {
 
 func targetsFromEnvironment() ([]target, error) {
 	candidates := []target{
-		{name: "web-host", env: webHostInternalURLEnv},
+		{name: "web-storefront", env: webStorefrontInternalURLEnv},
 		{name: "web-admin", env: webAdminInternalURLEnv},
 		{name: "web-platform", env: webPlatformInternalURLEnv},
 	}
@@ -164,7 +164,7 @@ func targetsFromEnvironment() ([]target, error) {
 	if len(targets) == 0 {
 		return nil, fmt.Errorf(
 			"PUBLIRA_REVALIDATE_TOKEN is set but none of %s, %s, or %s is",
-			webHostInternalURLEnv, webAdminInternalURLEnv, webPlatformInternalURLEnv,
+			webStorefrontInternalURLEnv, webAdminInternalURLEnv, webPlatformInternalURLEnv,
 		)
 	}
 	return targets, nil

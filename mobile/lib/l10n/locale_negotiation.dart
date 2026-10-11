@@ -46,7 +46,7 @@ String? _languageAndScript(Locale locale, Map<String, String> likelyScripts) {
 /// when it asks for none.
 ///
 /// [deviceLocales] is the reader's ordered preference, the way the browser's
-/// `Accept-Language` is for `web-host`, so the first entry that names a
+/// `Accept-Language` is for `web-storefront`, so the first entry that names a
 /// catalog wins outright. That entry is matched from the most specific answer
 /// to the least, the order `basicLocaleListResolution` of
 /// `package:flutter/widgets` matches in: its whole tag, then a catalog written
@@ -98,9 +98,9 @@ Locale? matchDeviceLocale(List<Locale> deviceLocales) => matchLocale(
 ///
 /// The device's languages are the reader's own preference, so the first
 /// supported one wins outright. A device set to nothing the catalogs cover
-/// takes the tenant's default instead, the same setting `web-host` serves a
-/// visitor who chose no language; [tenantDefaultLocale] is that code once
-/// `GetTenantByDomain` has answered, and `null` until then. With neither,
+/// takes the tenant's default instead, the same setting `web-storefront`
+/// serves a visitor who chose no language; [tenantDefaultLocale] is that code
+/// once `GetTenantByDomain` has answered, and `null` until then. With neither,
 /// the app opens in [fallbackLocale].
 Locale resolveAppLocale({
   required List<Locale> deviceLocales,

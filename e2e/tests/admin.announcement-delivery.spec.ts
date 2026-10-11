@@ -7,11 +7,6 @@ import {
   signInAsAnnouncementDeliveryAdmin,
 } from "../src/admin";
 import { applyScenarioSql, querySql, quoteSqlLiteral, runSql } from "../src/db";
-import {
-  openHostUserMenu,
-  signInAsAnnouncementDeliveryMember,
-  signInAsSeedMember,
-} from "../src/host";
 import { uniqueSuffix } from "../src/scenarios/admin-publish";
 import {
   ANNOUNCEMENT_DELIVERY_ADMIN,
@@ -20,10 +15,18 @@ import {
   ANNOUNCEMENT_DELIVERY_STAFF,
   ANNOUNCEMENT_DELIVERY_TENANT,
 } from "../src/scenarios/announcement-delivery";
-import { hostPath, WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL } from "../src/urls";
+import {
+  openStorefrontUserMenu,
+  signInAsAnnouncementDeliveryMember,
+  signInAsSeedMember,
+} from "../src/storefront";
+import {
+  storefrontPath,
+  WEB_STOREFRONT_ANNOUNCEMENT_DELIVERY_BASE_URL,
+} from "../src/urls";
 
-const deliveryHostUrl = (pathname: string): string =>
-  `${WEB_HOST_ANNOUNCEMENT_DELIVERY_BASE_URL}${hostPath(pathname)}`;
+const deliveryStorefrontUrl = (pathname: string): string =>
+  `${WEB_STOREFRONT_ANNOUNCEMENT_DELIVERY_BASE_URL}${storefrontPath(pathname)}`;
 
 /** This tenant's announcement events the worker has still to drain. */
 const queuedAnnouncementEvents = (): number =>
@@ -97,8 +100,8 @@ const deliverAnnouncement = async (
 };
 
 /**
- * Read the member announcement list until it shows `title` as the leading
- * row. The admin write is stored immediately, but the host list is a cached
+ * Read the member announcement list until it shows `title` as the leading row.
+ * The admin write is stored immediately, but the storefront list is a cached
  * private read and the first navigation after the write can still be served
  * from a stale entry, so this retries the navigation rather than sleeping.
  */
@@ -107,7 +110,7 @@ const expectLeadingAnnouncement = async (
   title: string
 ): Promise<void> => {
   await expect(async () => {
-    await page.goto(deliveryHostUrl("/announcements"));
+    await page.goto(deliveryStorefrontUrl("/announcements"));
     await expect(page.locator("article h3").first()).toHaveText(title, {
       timeout: 5000,
     });
@@ -147,14 +150,15 @@ const expectUnreadNotification = async (
 
 /**
  * Announcement delivery: the console form under `/announcements/new`, the
- * member list it feeds on the same tenant's web-host, and the notification it
- * raises for every reader it addresses.
+ * member list it feeds on the same tenant's web-storefront, and the
+ * notification it raises for every reader it addresses.
  *
  * Its tenant is its own, because a delivery here is a delivery: the bell of
  * everyone the announcement addresses stops being empty, which is exactly what
- * the tenant of `host.notifications.spec.ts` / `admin.notifications.spec.ts`
- * exists to keep. The scenario file empties this tenant and `afterEach` empties
- * it again, so a long-lived stack does not accumulate what the runs delivered.
+ * the tenant of `storefront.notifications.spec.ts` /
+ * `admin.notifications.spec.ts` exists to keep. The scenario file empties this
+ * tenant and `afterEach` empties it again, so a long-lived stack does not
+ * accumulate what the runs delivered.
  */
 test.describe("admin announcement delivery", () => {
   test.beforeAll(async () => {
@@ -198,7 +202,7 @@ test.describe("admin announcement delivery", () => {
     // straight to `/announcements` would assert delivery to a page nothing
     // leads to.
     await signInAsAnnouncementDeliveryMember(page);
-    await openHostUserMenu(page);
+    await openStorefrontUserMenu(page);
     await page.getByRole("menuitem", { name: "Announcements" }).click();
     await expect(page).toHaveURL(/\/announcements\/?$/u);
     await expectLeadingAnnouncement(page, title);
@@ -239,7 +243,7 @@ test.describe("admin announcement delivery", () => {
     await signInAsAnnouncementDeliveryMember(page);
     await expectUnreadNotification(
       page,
-      deliveryHostUrl("/notifications"),
+      deliveryStorefrontUrl("/notifications"),
       title,
       1
     );

@@ -11,8 +11,8 @@ export const EPISODE_COMMENTS_SCENARIO = "140_episode_comments";
 
 export const EPISODE_COMMENTS_TENANT = {
   /**
-   * The tenant's uuid, not its `public_id`: web-host's cache tags are built
-   * from the routing id, and the spec drops one of those after removing a
+   * The tenant's uuid, not its `public_id`: web-storefront's cache tags are
+   * built from the routing id, and the spec drops one of those after removing a
    * comment behind the app's back.
    */
   id: "018f0f60-0001-7000-8000-000000000001",

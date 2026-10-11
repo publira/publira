@@ -20,8 +20,8 @@ export const nudgeScheduledEpisodeReady = (episodePublicId: string): void => {
 };
 
 /**
- * Wait until the ticker.publish_episodes job has promoted the listing.
- * Poll via SQL (not web-host): a premature host request would cache the 404
+ * Wait until the ticker.publish_episodes job has promoted the listing. Poll via
+ * SQL (not web-storefront): a premature storefront request would cache the 404
  * under `"use cache"` and keep failing after the worker succeeds.
  */
 export const waitUntilEpisodePublishedInDb = async (

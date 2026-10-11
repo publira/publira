@@ -83,7 +83,7 @@ describe("isInstallSource", () => {
   it("keeps what ships in an install", () => {
     for (const path of [
       "server/config/runtime.go",
-      "apps/web-host/next.config.ts",
+      "apps/web-storefront/next.config.ts",
       "packages/api-client/src/index.ts",
       "infra/deploy/compose.yaml",
       "infra/deploy/.env.example",
@@ -95,7 +95,7 @@ describe("isInstallSource", () => {
   it("drops tests, documentation, and the development tooling", () => {
     for (const path of [
       "server/config/runtime_test.go",
-      "apps/web-host/lib/env.test.ts",
+      "apps/web-storefront/lib/env.test.ts",
       "server/internal/foo/testdata/env.txt",
       "infra/deploy/README.md",
       "scripts/dev-env.sh",
@@ -312,7 +312,7 @@ describe("watchedChanges", () => {
 
   it("reports a file list the API cut short", () => {
     const files: ChangedFile[] = [
-      { filename: "apps/web-host/app/page.tsx", status: "modified" },
+      { filename: "apps/web-storefront/app/page.tsx", status: "modified" },
     ];
 
     assert.deepEqual(watchedChanges(files, nowhere, 3001), [
@@ -323,7 +323,7 @@ describe("watchedChanges", () => {
   it("reports nothing for a change no operator acts on", () => {
     const files: ChangedFile[] = [
       {
-        filename: "apps/web-host/app/page.tsx",
+        filename: "apps/web-storefront/app/page.tsx",
         patch: "@@ -1 +1 @@\n-<p>a</p>\n+<p>b</p>",
         status: "modified",
       },

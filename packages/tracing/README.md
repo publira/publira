@@ -1,18 +1,18 @@
 # `@publira/tracing`
 
-The shared package that registers the OpenTelemetry SDK from the `instrumentation.ts` of the Next.js apps (`web-host` / `web-admin` / `web-platform`). It reads the same environment variables and uses the same defaults as [`server/internal/tracing`](../../server/internal/tracing) on the Go side, so a single deployment configuration lines the whole stack's traces up.
+The shared package that registers the OpenTelemetry SDK from the `instrumentation.ts` of the Next.js apps (`web-storefront` / `web-admin` / `web-platform`). It reads the same environment variables and uses the same defaults as [`server/internal/tracing`](../../server/internal/tracing) on the Go side, so a single deployment configuration lines the whole stack's traces up.
 
 The registration itself is [`@vercel/otel`](https://www.npmjs.com/package/@vercel/otel). The spans Next.js already instruments (the inbound request, rendering, `fetch`) come out of this registration alone.
 
 ## Usage
 
 ```ts
-// apps/web-host/instrumentation.ts
+// apps/web-storefront/instrumentation.ts
 import { registerTracing } from "@publira/tracing";
 
 export const register = async () => {
   await import("temporal-polyfill/global");
-  registerTracing("publira-web-host");
+  registerTracing("publira-web-storefront");
 };
 ```
 
@@ -36,7 +36,7 @@ Only two variables are ours — the enable flag and the deployment environment. 
 
 | Key | Value |
 | --- | --- |
-| `service.name` | The argument to `registerTracing` (`publira-web-host` / `publira-web-admin` / `publira-web-platform`). Overridable with `OTEL_SERVICE_NAME` |
+| `service.name` | The argument to `registerTracing` (`publira-web-storefront` / `publira-web-admin` / `publira-web-platform`). Overridable with `OTEL_SERVICE_NAME` |
 | `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, or `development` when unset |
 | `node.env` / `process.runtime.name` | Runtime information `@vercel/otel` adds |
 | `cloud.provider` / `vercel.runtime` | The same, and left in place off Vercel |
@@ -55,7 +55,7 @@ By default Next.js emits only the spans on its own allowlist (`NextVanillaSpanAl
 `NEXT_OTEL_VERBOSE=1` adds the internal spans outside that allowlist (`BaseServer.renderToResponse`, `Router.executeRoute`, `AppRender.renderToReadableStream`, and so on). It multiplies the spans per request with stages application code cannot move, so set it only to follow Next.js's own internals.
 
 ```bash
-NEXT_OTEL_VERBOSE=1 pnpm dev --filter @publira/web-host
+NEXT_OTEL_VERBOSE=1 pnpm dev --filter @publira/web-storefront
 ```
 
 ## How a trace is joined up

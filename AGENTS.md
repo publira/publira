@@ -81,7 +81,7 @@ A commit written with the help of an AI coding agent must disclose that agent wi
 - Pass the trailer to `git commit` with `--trailer` so it is appended as a real trailer instead of free-form body text:
 
 ```bash
-git commit -m "feat(web-host): add episode access gate" \
+git commit -m "feat(web-storefront): add episode access gate" \
   --trailer "Assisted-by: Claude Code:claude-opus-5"
 ```
 

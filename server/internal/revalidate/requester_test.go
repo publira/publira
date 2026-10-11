@@ -53,9 +53,9 @@ func newRecordingApps(t *testing.T, answer func(w http.ResponseWriter), apps ...
 	t.Helper()
 	log := &revalidationLog{}
 	envs := map[string]string{
-		"web-host":     webHostInternalURLEnv,
-		"web-admin":    webAdminInternalURLEnv,
-		"web-platform": webPlatformInternalURLEnv,
+		"web-storefront": webStorefrontInternalURLEnv,
+		"web-admin":      webAdminInternalURLEnv,
+		"web-platform":   webPlatformInternalURLEnv,
 	}
 	for _, env := range envs {
 		t.Setenv(env, "")
@@ -129,7 +129,7 @@ func newTestClient(t *testing.T) *Client {
 }
 
 func TestRecordWritesTheInvalidationAsATenantOutboxEvent(t *testing.T) {
-	setInternalURLs(t, "http://web-host:3000", "http://web-admin:3100", "http://web-platform:4100")
+	setInternalURLs(t, "http://web-storefront:3000", "http://web-admin:3100", "http://web-platform:4100")
 	queries := &recordingQuerier{}
 	requester := NewRequester(RequesterConfig{Client: newTestClient(t), Queries: queries, Logger: quietLogger()})
 	tenantID := uuid.Must(uuid.NewV7())
@@ -172,7 +172,7 @@ func TestRecordWritesTheInvalidationAsATenantOutboxEvent(t *testing.T) {
 // Two writes leaving the same tags stale are two debts, and the second must not
 // be dropped as a duplicate of the first.
 func TestRecordGivesEveryInvalidationItsOwnKey(t *testing.T) {
-	setInternalURLs(t, "http://web-host:3000", "http://web-admin:3100", "http://web-platform:4100")
+	setInternalURLs(t, "http://web-storefront:3000", "http://web-admin:3100", "http://web-platform:4100")
 	queries := &recordingQuerier{}
 	requester := NewRequester(RequesterConfig{Client: newTestClient(t), Queries: queries, Logger: quietLogger()})
 	tenantID := uuid.Must(uuid.NewV7())
@@ -193,7 +193,7 @@ func TestRecordGivesEveryInvalidationItsOwnKey(t *testing.T) {
 }
 
 func TestRecordRefusesAnInvalidationWithNoTenant(t *testing.T) {
-	setInternalURLs(t, "http://web-host:3000", "http://web-admin:3100", "http://web-platform:4100")
+	setInternalURLs(t, "http://web-storefront:3000", "http://web-admin:3100", "http://web-platform:4100")
 	queries := &recordingQuerier{}
 	requester := NewRequester(RequesterConfig{Client: newTestClient(t), Queries: queries, Logger: quietLogger()})
 
@@ -271,9 +271,9 @@ func TestSendMarksTheInvalidationDoneOnceEveryAppAnswered(t *testing.T) {
 		name string
 		apps []string
 	}{
-		{name: "one destination", apps: []string{"web-host"}},
-		{name: "two destinations", apps: []string{"web-admin", "web-host"}},
-		{name: "three destinations", apps: []string{"web-admin", "web-host", "web-platform"}},
+		{name: "one destination", apps: []string{"web-storefront"}},
+		{name: "two destinations", apps: []string{"web-admin", "web-storefront"}},
+		{name: "three destinations", apps: []string{"web-admin", "web-platform", "web-storefront"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -364,7 +364,7 @@ func TestSendReturnsWhileAnAppHangs(t *testing.T) {
 // A requester with no database cannot complete what it sends, so it does not
 // send: the drain the record is waiting on is the one that drops the tags.
 func TestSendLeavesEverythingToTheWorkerWithoutADatabase(t *testing.T) {
-	apps := newRecordingApps(t, func(http.ResponseWriter) {}, "web-admin", "web-host", "web-platform")
+	apps := newRecordingApps(t, func(http.ResponseWriter) {}, "web-admin", "web-storefront", "web-platform")
 
 	requester := NewRequester(RequesterConfig{Client: newTestClient(t), Logger: quietLogger()})
 	requester.Send(context.Background(), Owed{

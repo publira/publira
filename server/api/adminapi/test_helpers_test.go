@@ -151,9 +151,9 @@ const testRevalidateToken = "test-revalidate-token"
 // revalidateTargets maps each web app a write is sent to onto the variable
 // that points the client at it.
 var revalidateTargets = map[string]string{
-	"web-host":     "PUBLIRA_WEB_HOST_INTERNAL_URL",
-	"web-admin":    "PUBLIRA_WEB_ADMIN_INTERNAL_URL",
-	"web-platform": "PUBLIRA_WEB_PLATFORM_INTERNAL_URL",
+	"web-storefront": "PUBLIRA_WEB_STOREFRONT_INTERNAL_URL",
+	"web-admin":      "PUBLIRA_WEB_ADMIN_INTERNAL_URL",
+	"web-platform":   "PUBLIRA_WEB_PLATFORM_INTERNAL_URL",
 }
 
 // revalidateRecorder stands in for the Next.js apps and collects the tags the

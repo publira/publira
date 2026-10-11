@@ -20,7 +20,7 @@ Renders every entry with sharp, at the version the root `package.json` pins, int
 
 Edit the SVG, run the task, and commit both — the render is reproducible, so a run on a clean tree leaves it clean and a JPEG that changes on its own is one somebody forgot to regenerate.
 
-A source maps to a list rather than to one path because the same picture can serve more than one consumer, and to a sized output because one drawing can serve several delivered sizes. Redrawing a body page therefore moves whatever reads its output: today the `episode-comic-*` screenshot baselines and the bytes `e2e/tests/host.viewer-performance.spec.ts` measures the reader against, so re-record and re-measure in the same change. Redrawing a seed card moves every screenshot that photographs a shelf.
+A source maps to a list rather than to one path because the same picture can serve more than one consumer, and to a sized output because one drawing can serve several delivered sizes. Redrawing a body page therefore moves whatever reads its output: today the `episode-comic-*` screenshot baselines and the bytes `e2e/tests/storefront.viewer-performance.spec.ts` measures the reader against, so re-record and re-measure in the same change. Redrawing a seed card moves every screenshot that photographs a shelf.
 
 `brand/logo-mark.svg` is the one source not edited by hand. It is written by
 

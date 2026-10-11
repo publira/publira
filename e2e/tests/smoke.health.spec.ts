@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
  * Health probes must not depend on tenant Host resolution.
  * Failures here usually mean the stack is not ready (or died mid-run).
  */
-test.describe("web-host health probes", () => {
+test.describe("web-storefront health probes", () => {
   test("GET /livez returns plain ok", async ({ request }) => {
     const response = await request.get("/livez");
     const body = await response.text();

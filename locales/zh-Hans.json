@@ -3180,7 +3180,7 @@
       }
     }
   },
-  "host": {
+  "storefront": {
     "announcements": {
       "banner_dismiss": "关闭该公告",
       "banner_link": "阅读公告",

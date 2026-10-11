@@ -12,10 +12,10 @@ const leaves = (
   namespaceLeaves(
     locales,
     new Map<string, unknown>([
-      ["ja", { host: first }],
-      ["en", { host: second }],
+      ["ja", { storefront: first }],
+      ["en", { storefront: second }],
     ]),
-    ["host"]
+    ["storefront"]
   );
 
 describe("variableMismatches", () => {
@@ -43,7 +43,7 @@ describe("variableMismatches", () => {
           { footer: "Sent by {$brand}", home: "Home" }
         )
       ),
-      ["host.footer: ja reads $brnad; en reads $brand"]
+      ["storefront.footer: ja reads $brnad; en reads $brand"]
     );
   });
 
@@ -52,7 +52,7 @@ describe("variableMismatches", () => {
       variableMismatches(
         leaves({ welcome: "Welcome" }, { welcome: "Welcome, {$name}" })
       ),
-      ["host.welcome: ja reads nothing; en reads $name"]
+      ["storefront.welcome: ja reads nothing; en reads $name"]
     );
     assert.deepEqual(
       variableMismatches(

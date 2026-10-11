@@ -13,13 +13,17 @@ import {
   MULTI_TENANT_SCENARIO,
   OTHER_TENANT,
 } from "../src/scenarios/multi-tenant";
-import { hostPath, WEB_ADMIN_BASE_URL, WEB_HOST_BASE_URL } from "../src/urls";
+import {
+  storefrontPath,
+  WEB_ADMIN_BASE_URL,
+  WEB_STOREFRONT_BASE_URL,
+} from "../src/urls";
 
 const adminUrl = (pathname: string): string =>
   `${WEB_ADMIN_BASE_URL}${pathname}`;
 
-const hostUrl = (pathname: string): string =>
-  `${WEB_HOST_BASE_URL}${hostPath(pathname)}`;
+const storefrontUrl = (pathname: string): string =>
+  `${WEB_STOREFRONT_BASE_URL}${storefrontPath(pathname)}`;
 
 /**
  * One row of the workspace's version table, picked by its version cell so
@@ -57,7 +61,7 @@ const footerLinks = (page: Page): Locator =>
  * Read the public URL until it shows `title` as its heading.
  *
  * Publishing a version and renaming a page both drop the tenant's page cache
- * tags, and the admin API asks web-host to do that out of band from the
+ * tags, and the admin API asks web-storefront to do that out of band from the
  * redirect the console has already followed. So the public read is a poll
  * rather than a single request after a fixed wait.
  */
@@ -67,7 +71,7 @@ const expectPublicPageHeading = async (
   title: string
 ): Promise<void> => {
   await expect(async () => {
-    await page.goto(hostUrl(pathname));
+    await page.goto(storefrontUrl(pathname));
     await expect(
       page.getByRole("heading", { level: 1, name: title })
     ).toBeVisible({ timeout: 5000 });
@@ -76,9 +80,9 @@ const expectPublicPageHeading = async (
 
 /**
  * Published page management: the console screens under `/pages` and the public
- * page they put up at `/page/[...slug]` on the same tenant's web-host.
+ * page they put up at `/page/[...slug]` on the same tenant's web-storefront.
  *
- * `apps/web-host/lib/published-page-path.ts` and its unit test hold the
+ * `apps/web-storefront/lib/published-page-path.ts` and its unit test hold the
  * path-matching rules, and the reserved slugs live in `server/internal/pageslug`;
  * this is their end-to-end counterpart, not a replacement.
  *
@@ -131,14 +135,14 @@ test.describe("admin published pages", () => {
 
     // No published page has the slug, so the path goes to the app's routes and
     // matches none of them.
-    const response = await page.goto(hostUrl(slug));
+    const response = await page.goto(storefrontUrl(slug));
     expect(response?.status(), await page.content()).toBe(404);
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
   });
 
-  test("publishing a version makes the page reachable on the tenant's web-host", async ({
+  test("publishing a version makes the page reachable on the tenant's web-storefront", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -195,7 +199,7 @@ test.describe("admin published pages", () => {
 
     // The page's own URL and the footer link both come off the same cache tags.
     await expect(async () => {
-      await page.goto(hostUrl(slug));
+      await page.goto(storefrontUrl(slug));
       await expect(
         page.getByRole("heading", { level: 1, name: "Page not found" })
       ).toBeVisible({ timeout: 5000 });
@@ -250,7 +254,7 @@ test.describe("admin published pages", () => {
     // API drops out of band, so the public read is polled.
     const expectFooterLink = async (count: number): Promise<void> => {
       await expect(async () => {
-        await page.goto(hostUrl(slug));
+        await page.goto(storefrontUrl(slug));
         await expect(
           footerLinks(page).getByRole("link", { name: title })
         ).toHaveCount(count, { timeout: 5000 });
@@ -326,7 +330,7 @@ test.describe("admin published pages", () => {
       timeout: 30_000,
     });
 
-    await page.goto(hostUrl(slug));
+    await page.goto(storefrontUrl(slug));
     await expect(page.getByText(body)).toBeVisible();
     await expect(page.getByText(editedBody)).toHaveCount(0);
 
@@ -334,7 +338,7 @@ test.describe("admin published pages", () => {
     await publishVersion(page, 2);
 
     await expect(async () => {
-      await page.goto(hostUrl(slug));
+      await page.goto(storefrontUrl(slug));
       await expect(page.getByText(editedBody)).toBeVisible({ timeout: 5000 });
     }).toPass({ timeout: 60_000 });
     await expect(page.getByText(body)).toHaveCount(0);
@@ -472,7 +476,7 @@ test.describe("admin published pages", () => {
     await expectPublicPageHeading(page, slug, title);
     await expect(page.getByText(body)).toBeVisible();
 
-    await page.goto(hostUrl("/"));
+    await page.goto(storefrontUrl("/"));
     await footerLinks(page).getByRole("link", { name: title }).click();
     await expect(page).toHaveURL(new RegExp(`${slug}$`, "u"));
     await expect(

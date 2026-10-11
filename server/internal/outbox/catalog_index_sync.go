@@ -50,11 +50,11 @@ type CacheInvalidationRecorder interface {
 	RevalidateTags(ctx context.Context, tenantID uuid.UUID, tags []string) error
 }
 
-// catalogSearchCacheTags names the tag web-host holds the public search of
-// kind under. A search answers documents of one kind, and a document changes
+// catalogSearchCacheTags names the tag web-storefront holds the public search
+// of kind under. A search answers documents of one kind, and a document changes
 // only through an event naming its kind, so that kind's tag reaches every
-// search the event can have changed. The other tags a search carries answer
-// for what the database tells it, and the writes that change it drop them.
+// search the event can have changed. The other tags a search carries answer for
+// what the database tells it, and the writes that change it drop them.
 func catalogSearchCacheTags(tenantID uuid.UUID, kind string) []string {
 	switch kind {
 	case "series":

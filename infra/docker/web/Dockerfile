@@ -13,7 +13,7 @@
 #     -t publira/web-admin:local \
 #     .
 #
-# APP_NAME is the directory name under apps/ (e.g. web-admin, web-host, web-platform).
+# APP_NAME is the directory name under apps/ (e.g. web-admin, web-storefront, web-platform).
 # Package name is derived as @publira/${APP_NAME}.
 
 # -----------------------------------------------------------------------------

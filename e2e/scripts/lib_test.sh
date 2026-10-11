@@ -31,7 +31,7 @@ stack_env() {
     -u PUBLIRA_E2E_MAILPIT_HTTP_PORT \
     -u PUBLIRA_E2E_MAILPIT_BASE_URL \
     -u PUBLIRA_S3_ENDPOINT \
-    -u PUBLIRA_E2E_WEB_HOST_PORT \
+    -u PUBLIRA_E2E_WEB_STOREFRONT_PORT \
     -u PUBLIRA_E2E_WEB_ADMIN_PORT \
     -u PUBLIRA_E2E_WEB_PLATFORM_PORT \
     -u PUBLIRA_E2E_PUBLIC_API_PORT \
@@ -59,13 +59,13 @@ else
   fail "default PUBLIRA_E2E_RUN_DIR is ${default_run_dir}, want ${PUBLIRA_E2E_DIR}/.run"
 fi
 
-host_override_dir="$(compute_run_dir PUBLIRA_E2E_WEB_HOST_PORT=3001)"
+host_override_dir="$(compute_run_dir PUBLIRA_E2E_WEB_STOREFRONT_PORT=3001)"
 if [[ "${host_override_dir}" == "${default_run_dir}" ]]; then
-  fail "PUBLIRA_E2E_WEB_HOST_PORT override still uses ${host_override_dir}"
+  fail "PUBLIRA_E2E_WEB_STOREFRONT_PORT override still uses ${host_override_dir}"
 elif [[ "${host_override_dir}" != *"-h3001-"* ]]; then
-  fail "PUBLIRA_E2E_WEB_HOST_PORT override dir ${host_override_dir} does not encode h3001"
+  fail "PUBLIRA_E2E_WEB_STOREFRONT_PORT override dir ${host_override_dir} does not encode h3001"
 else
-  pass "PUBLIRA_E2E_WEB_HOST_PORT override isolates RUN_DIR"
+  pass "PUBLIRA_E2E_WEB_STOREFRONT_PORT override isolates RUN_DIR"
 fi
 
 api_override_dir="$(compute_run_dir PUBLIRA_E2E_PUBLIC_API_PORT=8010)"
@@ -164,7 +164,7 @@ else
   pass "COMPOSE_PROJECT_NAME override isolates RUN_DIR"
 fi
 
-explicit_dir="$(compute_run_dir PUBLIRA_E2E_RUN_DIR=/tmp/publira-e2e-explicit PUBLIRA_E2E_WEB_HOST_PORT=3001)"
+explicit_dir="$(compute_run_dir PUBLIRA_E2E_RUN_DIR=/tmp/publira-e2e-explicit PUBLIRA_E2E_WEB_STOREFRONT_PORT=3001)"
 if [[ "${explicit_dir}" == "/tmp/publira-e2e-explicit" ]]; then
   pass "explicit PUBLIRA_E2E_RUN_DIR wins over port overrides"
 else
@@ -299,7 +299,7 @@ fi
 # the way `next dev` forks `next-server`.
 listen_port="$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
 listener="import socket, time; s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(('127.0.0.1', ${listen_port})); s.listen(); time.sleep(300)"
-start_stand_in chain web-host bash -c 'python3 -c "$1" & wait' bash "${listener}"
+start_stand_in chain web-storefront bash -c 'python3 -c "$1" & wait' bash "${listener}"
 pgid_chain="${stand_in_pgid}"
 wait_for_group_size "${pgid_chain}" 2 || fail "the forking stand-in did not reach two processes"
 for _ in $(seq 1 50); do
@@ -307,7 +307,7 @@ for _ in $(seq 1 50); do
   sleep 0.1
 done
 port_listening "${listen_port}" || fail "the forked stand-in never listened on ${listen_port}"
-in_run_dir chain stop_pid_file web-host > /dev/null 2>&1 || true
+in_run_dir chain stop_pid_file web-storefront > /dev/null 2>&1 || true
 if group_alive "${pgid_chain}"; then
   fail "a descendant of the recorded pid survived the stop"
 elif port_listening "${listen_port}"; then
@@ -315,7 +315,7 @@ elif port_listening "${listen_port}"; then
 else
   pass "stop_pid_file ends the descendants of the recorded pid and frees their port"
 fi
-[[ ! -e "${pid_root}/chain/pids/web-host.pid" ]] || fail "the pid file of a stopped app was kept"
+[[ ! -e "${pid_root}/chain/pids/web-storefront.pid" ]] || fail "the pid file of a stopped app was kept"
 
 # The recorded pid has exited and its child still runs under the same group.
 start_stand_in orphan app bash -c 'sleep 300 & exit 0'

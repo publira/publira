@@ -29,9 +29,9 @@ message SubmitContactMessageRequest {
 // reader who is never answered through Publira has nothing to name it in.
 message SubmitContactMessageResponse {}
 
-// `web-host` forwards an inbound email provider's raw request body and headers
-// to this RPC. Verifying the request and reading the mail out of it stay on
-// the API server, with the credentials the provider declares.
+// `web-storefront` forwards an inbound email provider's raw request body and
+// headers to this RPC. Verifying the request and reading the mail out of it
+// stay on the API server, with the credentials the provider declares.
 message ProcessInboundEmailWebhookRequest {
   publira.types.v1.TenantContext tenant = 1;
   // The id of the provider the request came from, such as `sendgrid`.

@@ -140,9 +140,9 @@ func (*SubmitContactMessageResponse) Descriptor() ([]byte, []int) {
 	return file_publira_v1_contact_proto_rawDescGZIP(), []int{1}
 }
 
-// `web-host` forwards an inbound email provider's raw request body and headers
-// to this RPC. Verifying the request and reading the mail out of it stay on
-// the API server, with the credentials the provider declares.
+// `web-storefront` forwards an inbound email provider's raw request body and
+// headers to this RPC. Verifying the request and reading the mail out of it
+// stay on the API server, with the credentials the provider declares.
 type ProcessInboundEmailWebhookRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`

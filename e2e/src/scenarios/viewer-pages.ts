@@ -56,7 +56,7 @@ export const LAST_EPISODE_PRICE_LABEL = "¥500";
 
 /**
  * The accessible name the viewer gives one page's canvas, from
- * `host.episode.viewer.page_title` in the seed tenant's default locale.
+ * `storefront.episode.viewer.page_title` in the seed tenant's default locale.
  */
 export const episodePageLabel = (episodeTitle: string, page: number): string =>
   `${episodeTitle}, page ${page}`;
@@ -67,7 +67,7 @@ export const viewerPageLabel = (page: number): string =>
 
 /**
  * The accessible name of the reader's progress slider, from
- * `host.episode.viewer.progress`. Its `aria-valuetext` names the pages on
+ * `storefront.episode.viewer.progress`. Its `aria-valuetext` names the pages on
  * screen and the page count, as "Pages 2-3 of 8".
  */
 export const VIEWER_PROGRESS_LABEL = "Reading progress";

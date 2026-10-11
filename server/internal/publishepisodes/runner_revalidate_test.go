@@ -23,7 +23,7 @@ func TestPublishRecordsTheDropOfTheSeriesDetailAndLists(t *testing.T) {
 
 	// The requester only records here: it has no pool to mark a send done on,
 	// which is how the worker runs it, so the target is never called.
-	t.Setenv("PUBLIRA_WEB_HOST_INTERNAL_URL", "http://web-host.invalid")
+	t.Setenv("PUBLIRA_WEB_STOREFRONT_INTERNAL_URL", "http://web-storefront.invalid")
 	client, err := revalidate.NewClient("test-revalidate-token", logger)
 	if err != nil {
 		t.Fatalf("revalidate.NewClient: %v", err)

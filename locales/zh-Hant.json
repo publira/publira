@@ -3180,7 +3180,7 @@
       }
     }
   },
-  "host": {
+  "storefront": {
     "announcements": {
       "banner_dismiss": "關閉該公告",
       "banner_link": "閱讀公告",

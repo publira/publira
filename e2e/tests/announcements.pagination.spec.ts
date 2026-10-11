@@ -2,14 +2,14 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql } from "../src/db";
-import { signInAsSeedMember } from "../src/host";
 import {
   MEMBER_ANNOUNCEMENTS,
   MEMBER_ANNOUNCEMENTS_SCENARIO,
 } from "../src/scenarios/member-announcements";
-import { hostPath } from "../src/urls";
+import { signInAsSeedMember } from "../src/storefront";
+import { storefrontPath } from "../src/urls";
 
-/** Keep in sync with `ANNOUNCEMENTS_PAGE_SIZE` in the web-host announcements page. */
+/** Keep in sync with `ANNOUNCEMENTS_PAGE_SIZE` in the web-storefront announcements page. */
 const ANNOUNCEMENTS_PAGE_SIZE = 20;
 
 const signIn = async (page: Page): Promise<void> => {
@@ -52,7 +52,7 @@ const movePage = async (page: Page, label: string): Promise<void> => {
  * rather than the skeleton, and page moves go through `movePage` so the rows
  * are known to have caught up with the URL.
  */
-test.describe("web-host member announcements", () => {
+test.describe("web-storefront member announcements", () => {
   // Shared seed member: one test marks a notice as read, which would race
   // the pagination assertions if the file were fullyParallel.
   test.describe.configure({ mode: "serial" });
@@ -146,7 +146,7 @@ test.describe("web-host member announcements", () => {
       ANNOUNCEMENTS_PAGE_SIZE
     );
 
-    await page.goto(hostPath("/announcements?token=not%20a%20token"));
+    await page.goto(storefrontPath("/announcements?token=not%20a%20token"));
 
     await expect(page.locator("article h3")).toHaveCount(
       ANNOUNCEMENTS_PAGE_SIZE

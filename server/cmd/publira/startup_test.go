@@ -178,8 +178,8 @@ func TestWorkerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 // and no web-platform URL at all.
 func revalidationWithoutPlatformConsole() map[string]string {
 	return map[string]string{
-		"PUBLIRA_WEB_HOST_INTERNAL_URL":  "http://web-host:3000",
-		"PUBLIRA_WEB_ADMIN_INTERNAL_URL": "http://web-admin:4000",
+		"PUBLIRA_WEB_STOREFRONT_INTERNAL_URL": "http://web-storefront:3000",
+		"PUBLIRA_WEB_ADMIN_INTERNAL_URL":      "http://web-admin:4000",
 	}
 }
 
@@ -193,7 +193,7 @@ func TestRefusesARevalidateTokenWithNoDestination(t *testing.T) {
 				t.Fatalf("exit code = 0, want a failure; output:\n%s", output)
 			}
 			for _, env := range []string{
-				"PUBLIRA_WEB_HOST_INTERNAL_URL",
+				"PUBLIRA_WEB_STOREFRONT_INTERNAL_URL",
 				"PUBLIRA_WEB_ADMIN_INTERNAL_URL",
 				"PUBLIRA_WEB_PLATFORM_INTERNAL_URL",
 			} {

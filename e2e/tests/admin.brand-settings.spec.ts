@@ -7,20 +7,20 @@ import { EYE_CATCH_ASPECT_FIXTURES } from "../src/scenarios/eye-catch";
 import { MULTI_TENANT_SCENARIO } from "../src/scenarios/multi-tenant";
 import { serverActionAnswered } from "../src/server-action";
 import {
-  hostPath,
+  storefrontPath,
   WEB_ADMIN_BASE_URL,
-  WEB_HOST_BASE_URL,
-  WEB_HOST_OTHER_TENANT_BASE_URL,
+  WEB_STOREFRONT_BASE_URL,
+  WEB_STOREFRONT_OTHER_TENANT_BASE_URL,
 } from "../src/urls";
 
 const adminUrl = (pathname: string): string =>
   `${WEB_ADMIN_BASE_URL}${pathname}`;
 
-const hostUrl = (pathname: string): string =>
-  `${WEB_HOST_BASE_URL}${hostPath(pathname)}`;
+const storefrontUrl = (pathname: string): string =>
+  `${WEB_STOREFRONT_BASE_URL}${storefrontPath(pathname)}`;
 
-const otherHostUrl = (pathname: string): string =>
-  `${WEB_HOST_OTHER_TENANT_BASE_URL}${hostPath(pathname)}`;
+const otherStorefrontUrl = (pathname: string): string =>
+  `${WEB_STOREFRONT_OTHER_TENANT_BASE_URL}${storefrontPath(pathname)}`;
 
 /**
  * Default `--publira-color-primary`. Keep in sync with
@@ -74,7 +74,7 @@ const openThemeSettings = async (page: Page): Promise<void> => {
  */
 const fetchThemeCss = async (
   request: APIRequestContext,
-  origin = WEB_HOST_BASE_URL
+  origin = WEB_STOREFRONT_BASE_URL
 ): Promise<string> => {
   const url = new URL(THEME_CSS_PATH, `${origin}/`);
   url.searchParams.set("e2e", crypto.randomUUID());
@@ -97,7 +97,7 @@ const themePrimaryDeclaration = (css: string): string => {
 const expectThemeCssToContain = async (
   request: APIRequestContext,
   snippet: string,
-  origin = WEB_HOST_BASE_URL
+  origin = WEB_STOREFRONT_BASE_URL
 ): Promise<void> => {
   await expect
     .poll(async () => await fetchThemeCss(request, origin), {
@@ -115,7 +115,7 @@ const primaryCustomProperty = (page: Page): Promise<string> =>
       .toLowerCase()
   );
 
-const hostSansFontFamily = (page: Page): Promise<string> =>
+const storefrontSansFontFamily = (page: Page): Promise<string> =>
   page.evaluate(() => getComputedStyle(document.body).fontFamily);
 
 /**
@@ -135,15 +135,19 @@ const disableThemeCssHttpCache = async (page: Page): Promise<void> => {
 };
 
 /**
- * Read a web-host page again and again until it reports what the console just
- * saved. Same reason as `admin.catalog-masters.spec.ts`: revalidation serves
- * the stale entry once while the refresh runs behind it.
+ * Read a web-storefront page again and again until it reports what the console
+ * just saved. Same reason as `admin.catalog-masters.spec.ts`: revalidation
+ * serves the stale entry once while the refresh runs behind it.
  *
  * `read` has to answer "not yet" rather than wait for what is missing: a read
  * that blocks spends the whole budget on one load, because `expect.poll` never
  * aborts its callback.
  */
-const pollHostPage = <T>(page: Page, url: string, read: () => Promise<T>) =>
+const pollStorefrontPage = <T>(
+  page: Page,
+  url: string,
+  read: () => Promise<T>
+) =>
   expect.poll(
     async () => {
       await page.goto(url);
@@ -240,7 +244,7 @@ const uploadBranding = async (
  * already carries that Host.
  */
 const fetchOtherTenantThemeCss = async (page: Page): Promise<string> => {
-  await page.goto(otherHostUrl("/"));
+  await page.goto(otherStorefrontUrl("/"));
   return await page.evaluate(async () => {
     const response = await fetch("/theme.css", { cache: "no-store" });
     if (!response.ok) {
@@ -250,14 +254,14 @@ const fetchOtherTenantThemeCss = async (page: Page): Promise<string> => {
   });
 };
 
-const toHostAssetUrl = (src: string): string =>
-  new URL(src, WEB_HOST_BASE_URL).toString();
+const toStorefrontAssetUrl = (src: string): string =>
+  new URL(src, WEB_STOREFRONT_BASE_URL).toString();
 
 const expectDeliveredImage = async (
   request: APIRequestContext,
   src: string
 ): Promise<void> => {
-  const response = await request.get(toHostAssetUrl(src));
+  const response = await request.get(toStorefrontAssetUrl(src));
   expect(response.status(), src).toBe(200);
   expect(response.headers()["content-type"]).toMatch(/^image\//u);
 };
@@ -363,7 +367,7 @@ test.describe("admin brand settings", () => {
     );
 
     await disableThemeCssHttpCache(page);
-    await pollHostPage(page, hostUrl("/"), async () => {
+    await pollStorefrontPage(page, storefrontUrl("/"), async () => {
       await expect(
         page.getByRole("heading", { exact: true, name: "New episodes" })
       ).toBeVisible({ timeout: 5000 });
@@ -385,11 +389,11 @@ test.describe("admin brand settings", () => {
     );
 
     await disableThemeCssHttpCache(page);
-    await pollHostPage(page, hostUrl("/"), async () => {
+    await pollStorefrontPage(page, storefrontUrl("/"), async () => {
       await expect(
         page.getByRole("heading", { exact: true, name: "New episodes" })
       ).toBeVisible({ timeout: 5000 });
-      return await hostSansFontFamily(page);
+      return await storefrontSansFontFamily(page);
     }).toBe("Arial, sans-serif");
   });
 
@@ -453,9 +457,9 @@ test.describe("admin brand settings", () => {
     restoreLogo = true;
     await uploadBranding(page, "logo", "Save the logo", "The logo was saved.");
 
-    await pollHostPage(page, hostUrl("/"), () => headerBrandMark(page)).toMatch(
-      /^\/images\/tenants\/[^/]+\/logo$/u
-    );
+    await pollStorefrontPage(page, storefrontUrl("/"), () =>
+      headerBrandMark(page)
+    ).toMatch(/^\/images\/tenants\/[^/]+\/logo$/u);
 
     const logoSrc = await headerLogo(page).getAttribute("src");
     expect(logoSrc).toBeTruthy();
@@ -472,9 +476,9 @@ test.describe("admin brand settings", () => {
     await deleteBrandingIfSet(page, "logo", "The logo was deleted.");
     restoreLogo = false;
 
-    await pollHostPage(page, hostUrl("/"), () => headerBrandMark(page)).toBe(
-      SEED_TENANT_NAME
-    );
+    await pollStorefrontPage(page, storefrontUrl("/"), () =>
+      headerBrandMark(page)
+    ).toBe(SEED_TENANT_NAME);
     await expect(headerLogo(page)).toHaveCount(0);
   });
 
@@ -482,7 +486,7 @@ test.describe("admin brand settings", () => {
     page,
     request,
   }) => {
-    await page.goto(otherHostUrl("/"));
+    await page.goto(otherStorefrontUrl("/"));
     expect(await declaredIconHref(page)).toBe("");
     await expect(appleTouchIconLink(page)).toHaveCount(0);
 
@@ -490,7 +494,7 @@ test.describe("admin brand settings", () => {
     await openThemeSettings(page);
     await uploadBranding(page, "icon", "Save the icon", "The icon was saved.");
 
-    await pollHostPage(page, hostUrl("/"), () =>
+    await pollStorefrontPage(page, storefrontUrl("/"), () =>
       declaredIconHref(page)
     ).toMatch(/\/images\/tenants\/[^/]+\/icon(?:\?|$)/u);
 
@@ -509,9 +513,9 @@ test.describe("admin brand settings", () => {
     await deleteBrandingIfSet(page, "icon", "The icon was deleted.");
     restoreIcon = false;
 
-    await pollHostPage(page, hostUrl("/"), () => declaredIconHref(page)).toBe(
-      ""
-    );
+    await pollStorefrontPage(page, storefrontUrl("/"), () =>
+      declaredIconHref(page)
+    ).toBe("");
     await expect(appleTouchIconLink(page)).toHaveCount(0);
   });
 });

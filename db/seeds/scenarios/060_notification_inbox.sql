@@ -4,7 +4,7 @@
 -- episode fans a notification out to every admin of that episode's tenant and
 -- to the readers who follow it. A spec that asserts the empty bell therefore
 -- cannot share a tenant with the publish flow: `admin.publish-flow` publishes
--- into the dev seed tenant while `host.notifications` / `admin.notifications`
+-- into the dev seed tenant while `storefront.notifications` / `admin.notifications`
 -- are reading the same accounts' inboxes.
 --
 -- This tenant owns no series, so no spec in the suite can deliver a

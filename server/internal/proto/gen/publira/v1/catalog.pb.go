@@ -7005,9 +7005,9 @@ func (x *ListMyPurchasesResponse) GetNextToken() string {
 	return ""
 }
 
-// `web-host` forwards a payment provider's raw request body and headers to this
-// RPC. Signature verification and all purchase validation stay on the API
-// server, which reads the signature from the header the provider declares.
+// `web-storefront` forwards a payment provider's raw request body and headers
+// to this RPC. Signature verification and all purchase validation stay on the
+// API server, which reads the signature from the header the provider declares.
 type ProcessPaymentWebhookRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -7372,8 +7372,8 @@ func (x *ConfirmStorePurchaseResponse) GetPurchase() *MyPurchase {
 	return nil
 }
 
-// `web-host` forwards the raw body of an App Store Server Notifications V2
-// request to this RPC. The signed payload is verified against Apple's root
+// `web-storefront` forwards the raw body of an App Store Server Notifications
+// V2 request to this RPC. The signed payload is verified against Apple's root
 // certificate here, and it has to name the tenant's own iOS app.
 //
 // REFUND and REVOKE take back the purchase of the transaction they carry,

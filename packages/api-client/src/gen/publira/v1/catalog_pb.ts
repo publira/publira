@@ -3518,9 +3518,9 @@ export const ListMyPurchasesResponseSchema: GenMessage<ListMyPurchasesResponse> 
   messageDesc(file_publira_v1_catalog, 88);
 
 /**
- * `web-host` forwards a payment provider's raw request body and headers to this
- * RPC. Signature verification and all purchase validation stay on the API
- * server, which reads the signature from the header the provider declares.
+ * `web-storefront` forwards a payment provider's raw request body and headers
+ * to this RPC. Signature verification and all purchase validation stay on the
+ * API server, which reads the signature from the header the provider declares.
  *
  * @generated from message publira.v1.ProcessPaymentWebhookRequest
  */
@@ -3709,8 +3709,8 @@ export const ConfirmStorePurchaseResponseSchema: GenMessage<ConfirmStorePurchase
   messageDesc(file_publira_v1_catalog, 94);
 
 /**
- * `web-host` forwards the raw body of an App Store Server Notifications V2
- * request to this RPC. The signed payload is verified against Apple's root
+ * `web-storefront` forwards the raw body of an App Store Server Notifications
+ * V2 request to this RPC. The signed payload is verified against Apple's root
  * certificate here, and it has to name the tenant's own iOS app.
  *
  * REFUND and REVOKE take back the purchase of the transaction they carry,

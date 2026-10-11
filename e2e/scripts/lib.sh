@@ -21,7 +21,7 @@ export PUBLIRA_E2E_RUSTFS_PORT="${PUBLIRA_E2E_RUSTFS_PORT:-9003}"
 export PUBLIRA_E2E_MAILPIT_SMTP_PORT="${PUBLIRA_E2E_MAILPIT_SMTP_PORT:-1026}"
 export PUBLIRA_E2E_MAILPIT_HTTP_PORT="${PUBLIRA_E2E_MAILPIT_HTTP_PORT:-8026}"
 
-export PUBLIRA_E2E_WEB_HOST_PORT="${PUBLIRA_E2E_WEB_HOST_PORT:-3000}"
+export PUBLIRA_E2E_WEB_STOREFRONT_PORT="${PUBLIRA_E2E_WEB_STOREFRONT_PORT:-3000}"
 export PUBLIRA_E2E_WEB_ADMIN_PORT="${PUBLIRA_E2E_WEB_ADMIN_PORT:-4000}"
 export PUBLIRA_E2E_WEB_PLATFORM_PORT="${PUBLIRA_E2E_WEB_PLATFORM_PORT:-4100}"
 export PUBLIRA_E2E_PUBLIC_API_PORT="${PUBLIRA_E2E_PUBLIC_API_PORT:-8000}"
@@ -30,7 +30,7 @@ export PUBLIRA_E2E_WORKER_PORT="${PUBLIRA_E2E_WORKER_PORT:-8003}"
 export PUBLIRA_E2E_EMAIL_RENDERER_PORT="${PUBLIRA_E2E_EMAIL_RENDERER_PORT:-8300}"
 export PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT="${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT:-8400}"
 # Traefik entrypoint. `/images` belongs to the server and everything else to
-# web-host, so the browser can reach both from one origin the way the Dev
+# web-storefront, so the browser can reach both from one origin the way the Dev
 # Container edge serves them.
 export PUBLIRA_E2E_EDGE_PORT="${PUBLIRA_E2E_EDGE_PORT:-3080}"
 # The pinned browser the screenshot projects connect to, so a baseline taken
@@ -63,8 +63,9 @@ export PUBLIRA_S3_FORCE_PATH_STYLE="true"
 # The devcontainer sets it for `task dev`, and an inherited value would send
 # this stack's spans to the dev stack's Jaeger and change what the apps log:
 # with tracing on, Next.js logs "Unexpected root span type
-# 'ResolveMetadata.generateMetadata'" on a cold render (vercel/next.js#91831),
-# a line web-host's server log check refuses like any other it did not expect.
+# 'ResolveMetadata.generateMetadata'" on a cold render (vercel/next.js#91831), a
+# line web-storefront's server log check refuses like any other it did not
+# expect.
 unset PUBLIRA_TRACING_ENABLED
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-publira}"
@@ -75,7 +76,7 @@ export PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBL
 # Every app is opened through the edge, like a deployment serves them: the
 # images they render are `/images` on their own origin, and every tenant host is
 # stored with this port.
-export PUBLIRA_E2E_WEB_HOST_BASE_URL="${PUBLIRA_E2E_WEB_HOST_BASE_URL:-http://localhost:${PUBLIRA_E2E_EDGE_PORT}}"
+export PUBLIRA_E2E_WEB_STOREFRONT_BASE_URL="${PUBLIRA_E2E_WEB_STOREFRONT_BASE_URL:-http://localhost:${PUBLIRA_E2E_EDGE_PORT}}"
 export PUBLIRA_E2E_WEB_ADMIN_BASE_URL="${PUBLIRA_E2E_WEB_ADMIN_BASE_URL:-http://admin.localhost:${PUBLIRA_E2E_EDGE_PORT}}"
 export PUBLIRA_E2E_WEB_PLATFORM_BASE_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL:-http://platform.localhost:${PUBLIRA_E2E_EDGE_PORT}}"
 export PUBLIRA_E2E_PUBLIC_API_BASE_URL="${PUBLIRA_E2E_PUBLIC_API_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}}"
@@ -119,7 +120,7 @@ export PUBLIRA_E2E_PUBLISH_EPISODES_INTERVAL_SEC="${PUBLIRA_E2E_PUBLISH_EPISODES
 export PUBLIRA_E2E_FREE_WINDOW_INTERVAL_SEC="${PUBLIRA_E2E_FREE_WINDOW_INTERVAL_SEC:-2}"
 export PUBLIRA_E2E_TENANT_DAY_INTERVAL_SEC="${PUBLIRA_E2E_TENANT_DAY_INTERVAL_SEC:-2}"
 
-export PNCH_CACHE_APP="${PNCH_CACHE_APP:-web-host}"
+export PNCH_CACHE_APP="${PNCH_CACHE_APP:-web-storefront}"
 
 # Session cookie (JWE) key for the three Next.js apps. Required — the apps have
 # no fallback. Test-stack value only; inheriting the devcontainer's is fine
@@ -148,9 +149,9 @@ export PUBLIRA_WEB_SERVICE_TOKEN="${PUBLIRA_WEB_SERVICE_TOKEN:-publira-e2e-only-
 # same reason as PUBLIRA_REDIS_URL above: an inherited Dev Container value
 # names the dev stack's apps, so the tags would drop another build's cache
 # entries and leave this run's untouched. The hostnames follow how start-apps
-# binds each app — web-host binds `localhost`, while web-admin and
+# binds each app — web-storefront binds `localhost`, while web-admin and
 # web-platform bind 0.0.0.0 and are reached over IPv4.
-export PUBLIRA_WEB_HOST_INTERNAL_URL="http://localhost:${PUBLIRA_E2E_WEB_HOST_PORT}"
+export PUBLIRA_WEB_STOREFRONT_INTERNAL_URL="http://localhost:${PUBLIRA_E2E_WEB_STOREFRONT_PORT}"
 export PUBLIRA_WEB_ADMIN_INTERNAL_URL="http://127.0.0.1:${PUBLIRA_E2E_WEB_ADMIN_PORT}"
 export PUBLIRA_WEB_PLATFORM_INTERNAL_URL="http://127.0.0.1:${PUBLIRA_E2E_WEB_PLATFORM_PORT}"
 
@@ -197,7 +198,7 @@ else
     [[ "${PUBLIRA_E2E_RUSTFS_PORT}" != "9003" ]] ||
     [[ "${PUBLIRA_E2E_MAILPIT_SMTP_PORT}" != "1026" ]] ||
     [[ "${PUBLIRA_E2E_MAILPIT_HTTP_PORT}" != "8026" ]] ||
-    [[ "${PUBLIRA_E2E_WEB_HOST_PORT}" != "3000" ]] ||
+    [[ "${PUBLIRA_E2E_WEB_STOREFRONT_PORT}" != "3000" ]] ||
     [[ "${PUBLIRA_E2E_WEB_ADMIN_PORT}" != "4000" ]] ||
     [[ "${PUBLIRA_E2E_WEB_PLATFORM_PORT}" != "4100" ]] ||
     [[ "${PUBLIRA_E2E_PUBLIC_API_PORT}" != "8000" ]] ||
@@ -214,7 +215,7 @@ else
   else
     # Directory name encodes the override set so start/stop/wait in one session
     # share state, while a different port set gets its own directory.
-    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_HOST_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}-w${PUBLIRA_E2E_WORKER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-sp${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}-os${PUBLIRA_E2E_OPENSEARCH_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
+    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_STOREFRONT_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}-w${PUBLIRA_E2E_WORKER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-sp${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}-os${PUBLIRA_E2E_OPENSEARCH_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
   fi
   unset _e2e_uses_default_stack
 fi

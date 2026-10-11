@@ -12,7 +12,7 @@ import {
   uniqueSuffix,
 } from "../src/scenarios/admin-publish";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
-import { hostPath, WEB_ADMIN_BASE_URL } from "../src/urls";
+import { storefrontPath, WEB_ADMIN_BASE_URL } from "../src/urls";
 
 /**
  * Which engine the server searches with. `scripts/db-setup.sh` saves it from
@@ -85,7 +85,7 @@ const expectSeriesResult = async (
 ): Promise<void> => {
   await expect(async () => {
     const response = await page.goto(
-      hostPath(`/search?q=${encodeURIComponent(query)}`)
+      storefrontPath(`/search?q=${encodeURIComponent(query)}`)
     );
     expect(response?.status()).toBe(200);
 

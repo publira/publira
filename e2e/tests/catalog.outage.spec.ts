@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 import { startServer, stopServer } from "../src/server";
-import { hostPath, uncachedTenantBaseUrl } from "../src/urls";
+import { storefrontPath, uncachedTenantBaseUrl } from "../src/urls";
 
 /**
  * A series id no run has ever requested, so no `"use cache"` entry can answer
@@ -19,11 +19,11 @@ const uncachedSeriesId = `OUTAGE${randomUUID().replaceAll("-", "").slice(0, 10)}
  * `Retry-After`, never a tenant mix-up and never a hang.
  *
  * Each navigation uses a Host that has never been resolved before, so
- * web-host's in-process tenant cache cannot answer it.
+ * web-storefront's in-process tenant cache cannot answer it.
  */
-test.describe("web-host public API outage", () => {
+test.describe("web-storefront public API outage", () => {
   // Isolated project `catalog-outage` (see playwright.config.ts). Filename
-  // `.outage.` is what keeps this file off the parallel web-host project.
+  // `.outage.` is what keeps this file off the parallel web-storefront project.
   test.describe.configure({ mode: "serial" });
 
   test.beforeAll(() => {
@@ -38,7 +38,7 @@ test.describe("web-host public API outage", () => {
     page,
   }) => {
     const response = await page.goto(
-      `${uncachedTenantBaseUrl()}${hostPath("/")}`
+      `${uncachedTenantBaseUrl()}${storefrontPath("/")}`
     );
 
     expect(response?.status(), await page.content()).toBe(503);
@@ -83,7 +83,7 @@ test.describe("web-host public API outage", () => {
     // either, so the chrome below answers from whatever the run cached before
     // or degrades to the tenant's defaults — and both have to keep its links.
     startServer();
-    const warmup = await page.goto(hostPath("/no-such-page-in-any-spec"));
+    const warmup = await page.goto(storefrontPath("/no-such-page-in-any-spec"));
     expect(warmup?.status(), await page.content()).toBe(404);
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
@@ -92,7 +92,9 @@ test.describe("web-host public API outage", () => {
     try {
       stopServer();
 
-      const response = await page.goto(hostPath(`/series/${uncachedSeriesId}`));
+      const response = await page.goto(
+        storefrontPath(`/series/${uncachedSeriesId}`)
+      );
 
       expect(response?.status(), await page.content()).toBe(200);
       await expect(
@@ -111,7 +113,7 @@ test.describe("web-host public API outage", () => {
       // and is requested by no other spec, which keeps this list read cold — a
       // page whose entry is already cached would rightly answer from the cache
       // and prove nothing.
-      await page.goto(hostPath("/series?token=OUTAGE00"));
+      await page.goto(storefrontPath("/series?token=OUTAGE00"));
       await expect(
         page.getByRole("heading", { level: 1, name: "Series" })
       ).toBeVisible();
@@ -124,7 +126,7 @@ test.describe("web-host public API outage", () => {
       // this production build has stripped the `Code`, and the section would
       // fall through to its error boundary — the one with a "Try again"
       // button — instead of the message the read already built.
-      await page.goto(hostPath("/announcements"));
+      await page.goto(storefrontPath("/announcements"));
       await expect(
         page.getByRole("heading", { level: 1, name: "Announcements" })
       ).toBeVisible();
@@ -148,7 +150,7 @@ test.describe("web-host public API outage", () => {
     // Same URL, no revalidation and no wait: the failure just rendered must not
     // have been stored, so the next request shows the real answer — which for
     // this id is "not found", not the failure display.
-    await page.goto(hostPath(`/series/${uncachedSeriesId}`));
+    await page.goto(storefrontPath(`/series/${uncachedSeriesId}`));
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
@@ -157,7 +159,7 @@ test.describe("web-host public API outage", () => {
     // The list is checked without the token: a healthy API rejects
     // `OUTAGE00` as a malformed cursor, so that URL shows a section failure by
     // design and says nothing about caching.
-    await page.goto(hostPath("/series"));
+    await page.goto(storefrontPath("/series"));
     await expect(page.getByText("Could not show the series list")).toHaveCount(
       0
     );
@@ -172,11 +174,11 @@ test.describe("web-host public API outage", () => {
     // Another never-resolved Host: 503 → 404 means tenant resolution reached
     // the API again and got a definitive answer, not a cached one.
     const resolved = await page.goto(
-      `${uncachedTenantBaseUrl()}${hostPath("/")}`
+      `${uncachedTenantBaseUrl()}${storefrontPath("/")}`
     );
     expect(resolved?.status(), await page.content()).toBe(404);
 
-    const response = await page.goto(hostPath("/"));
+    const response = await page.goto(storefrontPath("/"));
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 2, name: "New episodes" })

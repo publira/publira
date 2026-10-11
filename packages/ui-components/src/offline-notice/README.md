@@ -13,7 +13,7 @@ Each app mounts it once, in its root layout:
 ```tsx
 <OfflineNotice>
   <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-    <Message message="host.common.offline" />
+    <Message message="storefront.common.offline" />
   </Suspense>
 </OfflineNotice>
 ```

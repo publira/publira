@@ -45,7 +45,7 @@ A request carries no session of its own: the session travels as the `Authorizati
 
 Using the types alone:
 
-`@publira/api-client/admin/types` re-exports the shared `publira.types.v1` messages plus the admin.v1 entities that web-admin's mappers `Pick` from. `@publira/api-client/public/types` puts the same shared messages next to the publira.v1 entities web-host `Pick`s from, and `@publira/api-client/platform/types` does the same for the platform.v1 entities. In all three, the request and response types stay on the per-service modules.
+`@publira/api-client/admin/types` re-exports the shared `publira.types.v1` messages plus the admin.v1 entities that web-admin's mappers `Pick` from. `@publira/api-client/public/types` puts the same shared messages next to the publira.v1 entities web-storefront `Pick`s from, and `@publira/api-client/platform/types` does the same for the platform.v1 entities. In all three, the request and response types stay on the per-service modules.
 
 ```ts
 import type { AdminAuthServiceGetMeRequest } from "@publira/api-client/admin/auth";

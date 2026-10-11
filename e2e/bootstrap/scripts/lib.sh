@@ -179,8 +179,8 @@ bootstrap_probes() {
   cat << 'EOF'
 server/edge	http://127.0.0.1:8000/readyz	json
 server/internal	http://127.0.0.1:8100/readyz	json
-web-host/livez	http://localhost:3000/livez	text
-web-host/readyz	http://localhost:3000/readyz	json
+web-storefront/livez	http://localhost:3000/livez	text
+web-storefront/readyz	http://localhost:3000/readyz	json
 web-admin/livez	http://localhost:4000/livez	text
 web-admin/readyz	http://localhost:4000/readyz	json
 web-platform/livez	http://localhost:4100/livez	text
