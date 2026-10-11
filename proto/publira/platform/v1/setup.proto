@@ -31,6 +31,12 @@ message CreateInitialUserRequest {
   // the setup screen. Required: the settings row is created here and has no
   // column default for the locale, so the first language is never left unstated.
   string default_locale = 4;
+  // ISO 4217 code of the currency every tenant that has saved no payment
+  // settings of its own sells in, as UpdatePlatformSettingsRequest takes it:
+  // three letters that name no currency are INVALID_ARGUMENT and create
+  // nothing. Empty keeps the stored currency, which is USD on a platform that
+  // has saved none.
+  string default_currency = 5;
 }
 
 // Response returned after the first operator account is created.

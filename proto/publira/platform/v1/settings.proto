@@ -24,6 +24,10 @@ message PlatformSettings {
   // payment settings of its own sells in, and the one a tenant's settings start
   // on. Never empty in a response.
   string default_currency = 4;
+  // True while a tenant that sells in default_currency, having saved no
+  // payment settings of its own, has a purchase, so that
+  // UpdatePlatformSettings refuses to change it.
+  bool default_currency_locked = 5;
 }
 
 message GetPlatformSettingsRequest {}
@@ -47,7 +51,8 @@ message UpdatePlatformSettingsRequest {
   int64 expected_revision = 3;
   // An ISO 4217 currency code; three letters that name no currency are
   // INVALID_ARGUMENT. Empty keeps the stored currency, so a screen that does
-  // not show it saves nothing over it.
+  // not show it saves nothing over it. A change is FAILED_PRECONDITION while
+  // PlatformSettings.default_currency_locked is true.
   string default_currency = 4;
 }
 

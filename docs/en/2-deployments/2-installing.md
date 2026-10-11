@@ -97,7 +97,7 @@ Start `publira server`, `publira worker`, `web-storefront`, and `web-admin` from
 
 `publiractl setup` saves what the install needs to serve its first tenant and creates the tenant's first administrator:
 
-1. The platform's default locale, and the time zone new tenants start on.
+1. The platform's default locale, the time zone new tenants start on, and the currency a tenant sells in until its administrators choose one (`USD` unless you give another).
 2. The object store, after a connection test it has to pass.
 3. Optionally, the catalog search engine, which is the database itself unless you choose another.
 4. The SMTP settings, and a test message if you give an address for one.

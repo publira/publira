@@ -42,8 +42,12 @@ type PlatformSettings struct {
 	// payment settings of its own sells in, and the one a tenant's settings start
 	// on. Never empty in a response.
 	DefaultCurrency string `protobuf:"bytes,4,opt,name=default_currency,json=defaultCurrency,proto3" json:"default_currency,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// True while a tenant that sells in default_currency, having saved no
+	// payment settings of its own, has a purchase, so that
+	// UpdatePlatformSettings refuses to change it.
+	DefaultCurrencyLocked bool `protobuf:"varint,5,opt,name=default_currency_locked,json=defaultCurrencyLocked,proto3" json:"default_currency_locked,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *PlatformSettings) Reset() {
@@ -102,6 +106,13 @@ func (x *PlatformSettings) GetDefaultCurrency() string {
 		return x.DefaultCurrency
 	}
 	return ""
+}
+
+func (x *PlatformSettings) GetDefaultCurrencyLocked() bool {
+	if x != nil {
+		return x.DefaultCurrencyLocked
+	}
+	return false
 }
 
 type GetPlatformSettingsRequest struct {
@@ -200,7 +211,8 @@ type UpdatePlatformSettingsRequest struct {
 	ExpectedRevision int64 `protobuf:"varint,3,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
 	// An ISO 4217 currency code; three letters that name no currency are
 	// INVALID_ARGUMENT. Empty keeps the stored currency, so a screen that does
-	// not show it saves nothing over it.
+	// not show it saves nothing over it. A change is FAILED_PRECONDITION while
+	// PlatformSettings.default_currency_locked is true.
 	DefaultCurrency string `protobuf:"bytes,4,opt,name=default_currency,json=defaultCurrency,proto3" json:"default_currency,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
@@ -312,12 +324,13 @@ var File_publira_platform_v1_settings_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_settings_proto_rawDesc = "" +
 	"\n" +
-	"\"publira/platform/v1/settings.proto\x12\x13publira.platform.v1\"\xab\x01\n" +
+	"\"publira/platform/v1/settings.proto\x12\x13publira.platform.v1\"\xe3\x01\n" +
 	"\x10PlatformSettings\x12)\n" +
 	"\x10default_timezone\x18\x01 \x01(\tR\x0fdefaultTimezone\x12%\n" +
 	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\x12\x1a\n" +
 	"\brevision\x18\x03 \x01(\x03R\brevision\x12)\n" +
-	"\x10default_currency\x18\x04 \x01(\tR\x0fdefaultCurrency\"\x1c\n" +
+	"\x10default_currency\x18\x04 \x01(\tR\x0fdefaultCurrency\x126\n" +
+	"\x17default_currency_locked\x18\x05 \x01(\bR\x15defaultCurrencyLocked\"\x1c\n" +
 	"\x1aGetPlatformSettingsRequest\"`\n" +
 	"\x1bGetPlatformSettingsResponse\x12A\n" +
 	"\bsettings\x18\x01 \x01(\v2%.publira.platform.v1.PlatformSettingsR\bsettings\"\xc9\x01\n" +

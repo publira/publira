@@ -52,7 +52,7 @@ var setupCommand = command{
 type setupFlags struct {
 	nonInteractive bool
 
-	defaultLocale, defaultTimezone string
+	defaultLocale, defaultTimezone, defaultCurrency string
 
 	storage         storagesettings.Settings
 	accessKeyID     string
@@ -82,6 +82,7 @@ func setupSetup(f *commandFlags) func(context.Context, *commandEnv) error {
 
 	f.StringVar(&fl.defaultLocale, "default-locale", "", "the platform's language, one of "+strings.Join(locale.Supported, ", "))
 	f.StringVar(&fl.defaultTimezone, "default-timezone", "", "the IANA time zone new tenants start on (default \""+tenanttz.Default+"\")")
+	f.StringVar(&fl.defaultCurrency, "default-currency", "", "the ISO 4217 code of the currency a tenant with no payment settings sells in (default \""+platformconfig.DefaultCurrency+"\")")
 
 	f.StringVar(&fl.storage.Bucket, "bucket", "", "the bucket images are stored in")
 	f.StringVar(&fl.storage.Region, "region", "", "the bucket's region")
@@ -312,14 +313,14 @@ func (r *setupRun) platformStep(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if found && !r.anyGiven("default-locale", "default-timezone") {
+	if found && !r.anyGiven("default-locale", "default-timezone", "default-currency") {
 		r.platformLocale, r.platformTimezone = stored.DefaultLocale, stored.DefaultTimezone
-		r.done("Platform defaults", outcomeKept, stored.DefaultLocale+", "+stored.DefaultTimezone)
+		r.done("Platform defaults", outcomeKept, platformDefaultsDetail(stored))
 		return nil
 	}
-	defLocale, defTimezone := "", tenanttz.Default
+	defLocale, defTimezone, defCurrency := "", tenanttz.Default, platformconfig.DefaultCurrency
 	if found {
-		defLocale, defTimezone = stored.DefaultLocale, stored.DefaultTimezone
+		defLocale, defTimezone, defCurrency = stored.DefaultLocale, stored.DefaultTimezone, stored.DefaultCurrency
 	}
 	params := platformconfig.SaveParams{}
 	if params.DefaultLocale, err = r.value("default-locale", "Default locale ("+strings.Join(locale.Supported, ", ")+")", r.flags.defaultLocale, defLocale, true); err != nil {
@@ -328,13 +329,21 @@ func (r *setupRun) platformStep(ctx context.Context) error {
 	if params.DefaultTimezone, err = r.value("default-timezone", "Default time zone", r.flags.defaultTimezone, defTimezone, true); err != nil {
 		return err
 	}
+	if params.DefaultCurrency, err = r.value("default-currency", "Default currency (ISO 4217)", r.flags.defaultCurrency, defCurrency, true); err != nil {
+		return err
+	}
 	saved, err := platformconfig.Save(ctx, r.db, r.env.logger, auditlog.SystemPlatformActor, params, revalidate.RecordSiteDrop)
 	if err != nil {
 		return named(err, platformFlags)
 	}
 	r.platformLocale, r.platformTimezone = saved.DefaultLocale, saved.DefaultTimezone
-	r.done("Platform defaults", outcome(found, stored.Revision, saved.Revision), saved.DefaultLocale+", "+saved.DefaultTimezone)
+	r.done("Platform defaults", outcome(found, stored.Revision, saved.Revision), platformDefaultsDetail(saved.PlatformConfig))
 	return nil
+}
+
+// platformDefaultsDetail is how the summary names the platform defaults.
+func platformDefaultsDetail(config dbmodels.PlatformConfig) string {
+	return config.DefaultLocale + ", " + config.DefaultTimezone + ", " + config.DefaultCurrency
 }
 
 func (r *setupRun) storageStep(ctx context.Context) error {

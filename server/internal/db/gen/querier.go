@@ -2829,12 +2829,6 @@ type Querier interface {
 	UpsertContentRankingSnapshot(ctx context.Context, arg UpsertContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
 	UpsertItemRecommendFeatures(ctx context.Context, arg UpsertItemRecommendFeaturesParams) (ItemRecommendFeature, error)
-	// Stores only the default locale chosen during initial setup. No time zone has
-	// been chosen at that point, so a new row leaves it to the column DEFAULT and
-	// an existing row keeps the value it already has. The ON CONFLICT branch lets
-	// setup finish on a platform whose settings row outlived its operators;
-	// LockPlatformInitialSetup, not this statement, keeps two setups apart.
-	UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error)
 	// Starting enrollment replaces whatever unconfirmed secret was there and
 	// clears the lock, so a stalled attempt never blocks the next one.
 	UpsertPlatformUserMfaTotpSecret(ctx context.Context, arg UpsertPlatformUserMfaTotpSecretParams) (PlatformUserMfaTotp, error)

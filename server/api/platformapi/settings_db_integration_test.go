@@ -501,3 +501,57 @@ func TestDBUpdatePlatformSettingsConcurrentSavesOneWins(t *testing.T) {
 		t.Fatalf("platform_config.revision = %d, want %d", got, shared+1)
 	}
 }
+
+// The default currency is locked exactly while a tenant that sells in it has a
+// purchase, and both the read and the save say so, so the console can tell
+// before a save is refused. A tenant with a currency of its own no longer
+// sells in the default, so its purchases leave the default free.
+func TestDBPlatformSettingsReportWhetherTheDefaultCurrencyIsLocked(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	ctx := testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator))
+	revision := seedPlatformSettings(t, client, operator, "UTC", "en")
+
+	locked := func(t *testing.T, want bool) {
+		t.Helper()
+		resp, err := client.GetPlatformSettings(ctx, &publirasplatformv1.GetPlatformSettingsRequest{})
+		if err != nil {
+			t.Fatalf("GetPlatformSettings: %v", err)
+		}
+		if resp.Settings.DefaultCurrencyLocked != want {
+			t.Fatalf("default_currency_locked = %v, want %v", resp.Settings.DefaultCurrencyLocked, want)
+		}
+	}
+	locked(t, false)
+
+	tenant := pg.SeedTenant(t, "CURRENCYTNT1", "currency.example.com", "Currency Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "CURRENCYSR01"})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "CURRENCYEP01", Price: 500})
+	reader := pg.SeedEndUser(t, tenant.ID, "CURRENCYUS01", "reader@currency.example.com", "Reader")
+	locked(t, false)
+
+	pg.SeedPurchase(t, tenant.ID, reader.ID, episode.ID, 500)
+	locked(t, true)
+
+	// A save that keeps the currency goes through, and answers that one
+	// changing it would not.
+	saved, err := client.UpdatePlatformSettings(ctx, &publirasplatformv1.UpdatePlatformSettingsRequest{
+		DefaultTimezone:  "Europe/Berlin",
+		DefaultLocale:    "en",
+		ExpectedRevision: revision,
+	})
+	if err != nil {
+		t.Fatalf("UpdatePlatformSettings: %v", err)
+	}
+	if !saved.Settings.DefaultCurrencyLocked {
+		t.Fatal("default_currency_locked after a save = false, want true")
+	}
+
+	if _, err := pg.DB.ExecContext(context.Background(), `
+		INSERT INTO tenant_payment_config (tenant_id, provider, currency) VALUES ($1, 'stripe', 'USD')
+	`, tenant.ID); err != nil {
+		t.Fatalf("save the tenant's own currency: %v", err)
+	}
+	locked(t, false)
+}

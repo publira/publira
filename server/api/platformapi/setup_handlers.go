@@ -13,10 +13,12 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
-	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/platformconfig"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/revalidate"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 func (s *platformServer) CheckSetupStatus(
@@ -77,11 +79,20 @@ func (s *platformServer) CreateInitialUser(
 	}
 	// The setup screen offers the supported locales and sends the one the
 	// operator picked; there is no stored preference yet to fall back on, so an
-	// absent or unsupported code is rejected rather than guessed at.
-	defaultLocale, err := locale.Normalize(req.DefaultLocale)
+	// absent or unsupported code is rejected rather than guessed at. The
+	// currency is checked as the platform settings save checks it, before
+	// anything is written.
+	defaults, err := platformconfig.InitialParams{
+		DefaultLocale:   req.DefaultLocale,
+		DefaultCurrency: req.DefaultCurrency,
+	}.Validate()
 	if err != nil {
-		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "invalid_locale")
-		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+		reason := "invalid_locale"
+		if fielderr.Field(err) == platformconfig.FieldDefaultCurrency {
+			reason = "invalid_currency"
+		}
+		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", reason)
+		return nil, rpcerrors.FromFieldError(err)
 	}
 
 	// Fast path: refuse a finished setup before paying for the password hash.
@@ -158,11 +169,16 @@ func (s *platformServer) CreateInitialUser(
 		return nil, s.internalDBError(ctx, "failed to create initial platform user role", err, "platform_user_id", userID.String())
 	}
 
-	// The chosen locale becomes the platform default in the same transaction, so
-	// a platform that has an administrator always has a language to render in.
-	if _, err := txq.UpsertPlatformDefaultLocale(ctx, defaultLocale); err != nil {
-		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "platform_locale_save_failed")
-		return nil, s.internalDBError(ctx, "failed to save the initial platform default locale", err, "platform_user_id", userID.String())
+	// The chosen locale and currency become the platform defaults in the same
+	// transaction, so a platform that has an administrator always has a
+	// language to render in.
+	if _, err := platformconfig.SaveInitial(ctx, txq, defaults, revalidate.RecordSiteDrop); err != nil {
+		if errors.Is(err, platformconfig.ErrDefaultCurrencyLocked) {
+			auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "platform_currency_locked")
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
+		}
+		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "platform_defaults_save_failed")
+		return nil, s.internalDBError(ctx, "failed to save the initial platform defaults", err, "platform_user_id", userID.String())
 	}
 
 	if err := tx.Commit(); err != nil {

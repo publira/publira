@@ -15,16 +15,17 @@ import (
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
-func platformSettingsFromConfig(config dbmodels.PlatformConfig) (*publirasplatformv1.PlatformSettings, error) {
+func platformSettingsFromConfig(config dbmodels.PlatformConfig, currencyLocked bool) (*publirasplatformv1.PlatformSettings, error) {
 	defaultLocale, err := locale.Resolve(config.DefaultLocale)
 	if err != nil {
 		return nil, err
 	}
 	return &publirasplatformv1.PlatformSettings{
-		DefaultTimezone: tenanttz.Resolve(config.DefaultTimezone, nil),
-		DefaultLocale:   defaultLocale,
-		Revision:        config.Revision,
-		DefaultCurrency: config.DefaultCurrency,
+		DefaultTimezone:       tenanttz.Resolve(config.DefaultTimezone, nil),
+		DefaultLocale:         defaultLocale,
+		Revision:              config.Revision,
+		DefaultCurrency:       config.DefaultCurrency,
+		DefaultCurrencyLocked: currencyLocked,
 	}, nil
 }
 
@@ -40,11 +41,16 @@ func (s *platformServer) GetPlatformSettings(
 	// The row's revision is part of the answer: the console sends it back when
 	// it saves one of the two fields, which is what lets the server tell that
 	// the other field it names is still the one that was read here.
-	config, err := s.queriesFor(ctx).GetPlatformConfig(ctx)
+	queries := s.queriesFor(ctx)
+	config, err := queries.GetPlatformConfig(ctx)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read platform settings", err)
 	}
-	settings, err := platformSettingsFromConfig(config)
+	currencyLocked, err := platformconfig.CurrencyLocked(ctx, queries)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to read whether the default currency is locked", err)
+	}
+	settings, err := platformSettingsFromConfig(config, currencyLocked)
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to resolve platform settings", err)
 	}
@@ -88,7 +94,7 @@ func (s *platformServer) UpdatePlatformSettings(
 	if err != nil {
 		return nil, s.platformSettingsError(ctx, err)
 	}
-	settings, err := platformSettingsFromConfig(updated)
+	settings, err := platformSettingsFromConfig(updated.PlatformConfig, updated.CurrencyLocked)
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to resolve platform settings", err)
 	}

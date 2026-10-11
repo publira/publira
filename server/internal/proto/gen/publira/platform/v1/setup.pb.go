@@ -130,8 +130,14 @@ type CreateInitialUserRequest struct {
 	// the setup screen. Required: the settings row is created here and has no
 	// column default for the locale, so the first language is never left unstated.
 	DefaultLocale string `protobuf:"bytes,4,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// ISO 4217 code of the currency every tenant that has saved no payment
+	// settings of its own sells in, as UpdatePlatformSettingsRequest takes it:
+	// three letters that name no currency are INVALID_ARGUMENT and create
+	// nothing. Empty keeps the stored currency, which is USD on a platform that
+	// has saved none.
+	DefaultCurrency string `protobuf:"bytes,5,opt,name=default_currency,json=defaultCurrency,proto3" json:"default_currency,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CreateInitialUserRequest) Reset() {
@@ -192,6 +198,13 @@ func (x *CreateInitialUserRequest) GetDefaultLocale() string {
 	return ""
 }
 
+func (x *CreateInitialUserRequest) GetDefaultCurrency() string {
+	if x != nil {
+		return x.DefaultCurrency
+	}
+	return ""
+}
+
 // Response returned after the first operator account is created.
 type CreateInitialUserResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -237,12 +250,13 @@ const file_publira_platform_v1_setup_proto_rawDesc = "" +
 	"\x17CheckSetupStatusRequest\"j\n" +
 	"\x18CheckSetupStatusResponse\x12'\n" +
 	"\x0fsetup_completed\x18\x01 \x01(\bR\x0esetupCompleted\x12%\n" +
-	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"\x87\x01\n" +
+	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"\xb2\x01\n" +
 	"\x18CreateInitialUserRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x03 \x01(\tR\bpassword\x12%\n" +
-	"\x0edefault_locale\x18\x04 \x01(\tR\rdefaultLocale\"\x1b\n" +
+	"\x0edefault_locale\x18\x04 \x01(\tR\rdefaultLocale\x12)\n" +
+	"\x10default_currency\x18\x05 \x01(\tR\x0fdefaultCurrency\"\x1b\n" +
 	"\x19CreateInitialUserResponse2\xff\x01\n" +
 	"\x14PlatformSetupService\x12q\n" +
 	"\x10CheckSetupStatus\x12,.publira.platform.v1.CheckSetupStatusRequest\x1a-.publira.platform.v1.CheckSetupStatusResponse\"\x00\x12t\n" +

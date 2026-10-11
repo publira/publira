@@ -174,7 +174,7 @@ docker compose run --rm publiractl setup \
   --access-key-id <access key> --secret-access-key-file /run/secrets/rustfs-secret-key
 ```
 
-`setup` asks on the terminal for everything the flags do not give: the platform's default locale and time zone, the SMTP settings, whether to set up Web Push, the tenant's name and domain, and its first administrator. It also asks for the object store's public base URL, which you leave blank, since nothing serves the bucket's objects directly, and then tests the bucket before it saves it. [Set the install up](./2-installing.md#4-set-the-install-up) describes each step.
+`setup` asks on the terminal for everything the flags do not give: the platform's default locale, time zone, and currency, the SMTP settings, whether to set up Web Push, the tenant's name and domain, and its first administrator. It also asks for the object store's public base URL, which you leave blank, since nothing serves the bucket's objects directly, and then tests the bucket before it saves it. [Set the install up](./2-installing.md#4-set-the-install-up) describes each step.
 
 When it asks for the tenant site domain, give the domain you listed in `PUBLIRA_EDGE_SITE_HOSTS`, such as `comics.example.com`. The console host defaults to `admin.<domain>`, the name you listed in `PUBLIRA_EDGE_ADMIN_HOSTS`.
 

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -73,6 +74,7 @@ func (e *setupEnv) everyFlag(t *testing.T) []string {
 	return []string{
 		"--default-locale", "en",
 		"--default-timezone", "Asia/Tokyo",
+		"--default-currency", "EUR",
 		"--bucket", "publiractl-setup",
 		"--region", e.s3.Region,
 		"--endpoint", e.s3.Endpoint,
@@ -124,7 +126,7 @@ func TestSetupWithEveryFlagAndThenOnTheFinishedInstall(t *testing.T) {
 		t.Fatalf("exit code = %d\n%s", code, stderr.String())
 	}
 	for _, want := range []string{
-		"Platform defaults    created  en, Asia/Tokyo\n",
+		"Platform defaults    created  en, Asia/Tokyo, EUR\n",
 		"Object store         created  publiractl-setup\n",
 		"Search               kept     sql\n",
 		"SMTP                 created  " + env.smtp.Host + ":" + strconv.Itoa(int(env.smtp.Port)) + ", test message sent to operator@example.com\n",
@@ -220,6 +222,32 @@ func TestSetupNonInteractiveNamesTheFirstMissingValue(t *testing.T) {
 	}
 }
 
+// A run that changes one platform default asks for the others offering what is
+// stored, so answering nothing keeps them.
+func TestSetupOffersTheStoredPlatformDefaults(t *testing.T) {
+	startSetupEnv(t)
+	mustPlatformCommand(t, "set", "--default-locale", "en", "--default-currency", "EUR")
+
+	var stderr bytes.Buffer
+	answers := strings.Join([]string{
+		"", // default locale, the stored en
+		"", // default currency, the stored EUR
+	}, "\n") + "\n"
+	code, _ := runSetup(t, terminalConsole(&stderr, answers), "--default-timezone", "Europe/Berlin")
+	// The run stops at the object store, whose bucket nothing answers.
+	if code != 1 || !strings.Contains(stderr.String(), `stdin closed before "Bucket" was answered`) {
+		t.Fatalf("exit code = %d, stderr = \n%s", code, stderr.String())
+	}
+	for _, want := range []string{"Default locale (" + strings.Join(locale.Supported, ", ") + ") [en]: ", "Default currency (ISO 4217) [EUR]: ", "Platform defaults: updated en, Europe/Berlin, EUR\n"} {
+		if !strings.Contains(stderr.String(), want) {
+			t.Fatalf("stderr = \n%s\nwant %q", stderr.String(), want)
+		}
+	}
+	if strings.Contains(stderr.String(), "Default time zone") {
+		t.Fatalf("asked for the time zone a flag gave:\n%s", stderr.String())
+	}
+}
+
 // A store that refuses the connection test is not saved.
 func TestSetupDoesNotSaveAStoreThatFailsTheTest(t *testing.T) {
 	env := startSetupEnv(t)
@@ -260,6 +288,7 @@ func TestSetupResumesAnInterruptedRun(t *testing.T) {
 	first := strings.Join([]string{
 		"en",               // default locale
 		"",                 // default time zone, UTC
+		"",                 // default currency, USD
 		"publiractl-setup", // bucket
 		env.s3.Region,      // region
 		env.s3.Endpoint,    // endpoint
@@ -304,7 +333,7 @@ func TestSetupResumesAnInterruptedRun(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		"Platform defaults    kept     en, UTC\n",
+		"Platform defaults    kept     en, UTC, USD\n",
 		"Object store         kept     publiractl-setup\n",
 		"Search               kept     sql\n",
 		"Web Push             skipped  publiractl webpush init turns it on\n",

@@ -84,6 +84,46 @@ func (p SaveParams) Validate() (SaveParams, error) {
 	return SaveParams{DefaultTimezone: timezone, DefaultLocale: defaultLocale, DefaultCurrency: defaultCurrency, ExpectedRevision: p.ExpectedRevision}, nil
 }
 
+// InitialParams are the platform defaults initial setup asks the first
+// operator for. The time zone is not among them: a platform that has saved none
+// starts on [tenanttz.Default], and one whose settings outlived its operators
+// keeps the stored one.
+type InitialParams struct {
+	DefaultLocale string
+	// DefaultCurrency is read as [SaveParams.DefaultCurrency] is: empty keeps
+	// the stored one, which is [DefaultCurrency] before any is saved.
+	DefaultCurrency string
+}
+
+// Validate normalizes p, or refuses it with a [*fielderr.Invalid], without
+// reading anything.
+func (p InitialParams) Validate() (InitialParams, error) {
+	defaultLocale, err := locale.Normalize(p.DefaultLocale)
+	if err != nil {
+		return InitialParams{}, &fielderr.Invalid{Field: FieldDefaultLocale, Err: err}
+	}
+	defaultCurrency, err := normalizeCurrency(p.DefaultCurrency)
+	if err != nil {
+		return InitialParams{}, &fielderr.Invalid{Field: FieldDefaultCurrency, Err: err}
+	}
+	return InitialParams{DefaultLocale: defaultLocale, DefaultCurrency: defaultCurrency}, nil
+}
+
+// SaveInitial writes p on q, inside the transaction that creates the first
+// operator, so that a platform that has an operator always has a language to
+// render in. It saves as [Save] does, refusing a currency change with
+// [ErrDefaultCurrencyLocked] and recording the drops it owes with
+// revalidateSite, but files no platform audit entry: the platform_initial_setup
+// event of the caller reports the setup as a whole.
+func SaveInitial(ctx context.Context, q *dbmodels.Queries, p InitialParams, revalidateSite SiteRevalidator) (dbmodels.PlatformConfig, error) {
+	p, err := p.Validate()
+	if err != nil {
+		return dbmodels.PlatformConfig{}, err
+	}
+	saved, _, err := write(ctx, q, SaveParams{DefaultLocale: p.DefaultLocale, DefaultCurrency: p.DefaultCurrency}, revalidateSite)
+	return saved, err
+}
+
 // normalizeCurrency answers the ISO 4217 code value names, upper-cased, or
 // empty for a blank. Three letters are not enough: a code no currency has is
 // one no price can be charged in, and once a tenant that inherits it has sold,
@@ -103,26 +143,43 @@ func normalizeCurrency(value string) (string, error) {
 	return unit.String(), nil
 }
 
+// Saved is the settings row a save leaves stored.
+type Saved struct {
+	dbmodels.PlatformConfig
+	// CurrencyLocked reports whether a save that changes DefaultCurrency is
+	// refused with [ErrDefaultCurrencyLocked]. It is read inside the save's
+	// transaction, so a save that commits always has it to answer.
+	CurrencyLocked bool
+}
+
 // Save writes p in one transaction on db, with its entry filed under actor.
 // The row is locked first, so the revision it compares against cannot change
 // between the comparison and the write. A save that changes no stored value
 // writes nothing and files nothing. A save that changes the default currency
 // records with revalidateSite a drop for each tenant that sells in it.
-func Save(ctx context.Context, db *sql.DB, logger *slog.Logger, actor auditlog.PlatformActor, p SaveParams, revalidateSite SiteRevalidator) (dbmodels.PlatformConfig, error) {
+func Save(ctx context.Context, db *sql.DB, logger *slog.Logger, actor auditlog.PlatformActor, p SaveParams, revalidateSite SiteRevalidator) (Saved, error) {
 	p, err := p.Validate()
 	if err != nil {
-		return dbmodels.PlatformConfig{}, err
+		return Saved{}, err
 	}
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return dbmodels.PlatformConfig{}, fmt.Errorf("begin: %w", err)
+		return Saved{}, fmt.Errorf("begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
-	saved, changed, err := write(ctx, q, p, revalidateSite)
-	if err != nil || !changed {
-		return saved, err
+	config, changed, err := write(ctx, q, p, revalidateSite)
+	if err != nil {
+		return Saved{}, err
+	}
+	locked, err := CurrencyLocked(ctx, q)
+	if err != nil {
+		return Saved{}, err
+	}
+	saved := Saved{PlatformConfig: config, CurrencyLocked: locked}
+	if !changed {
+		return saved, nil
 	}
 	if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
 		Action:     "platform_settings_updated",
@@ -130,14 +187,18 @@ func Save(ctx context.Context, db *sql.DB, logger *slog.Logger, actor auditlog.P
 		TargetID:   "platform",
 		Outcome:    auditlog.OutcomeSuccess,
 	})); err != nil {
-		return dbmodels.PlatformConfig{}, fmt.Errorf("audit platform_settings_updated: %w", err)
+		return Saved{}, fmt.Errorf("audit platform_settings_updated: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
-		return dbmodels.PlatformConfig{}, fmt.Errorf("commit: %w", err)
+		return Saved{}, fmt.Errorf("commit: %w", err)
 	}
 	return saved, nil
 }
 
+// write saves p over the locked settings row on q, reporting whether it changed
+// anything. An empty DefaultTimezone or DefaultCurrency keeps the stored one,
+// or the constant before any is saved; [SaveParams.Validate] lets only the
+// currency through empty, and [SaveInitial] leaves the time zone so.
 func write(ctx context.Context, q *dbmodels.Queries, p SaveParams, revalidateSite SiteRevalidator) (dbmodels.PlatformConfig, bool, error) {
 	current, err := q.LockPlatformConfig(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -146,7 +207,10 @@ func write(ctx context.Context, q *dbmodels.Queries, p SaveParams, revalidateSit
 		if p.ExpectedRevision != nil && *p.ExpectedRevision != 0 {
 			return dbmodels.PlatformConfig{}, false, ErrConflict
 		}
-		defaultCurrency := p.DefaultCurrency
+		defaultTimezone, defaultCurrency := p.DefaultTimezone, p.DefaultCurrency
+		if defaultTimezone == "" {
+			defaultTimezone = tenanttz.Default
+		}
 		if defaultCurrency == "" {
 			defaultCurrency = DefaultCurrency
 		}
@@ -154,7 +218,7 @@ func write(ctx context.Context, q *dbmodels.Queries, p SaveParams, revalidateSit
 			return dbmodels.PlatformConfig{}, false, err
 		}
 		inserted, err := q.InsertPlatformSettings(ctx, dbmodels.InsertPlatformSettingsParams{
-			DefaultTimezone: p.DefaultTimezone,
+			DefaultTimezone: defaultTimezone,
 			DefaultLocale:   p.DefaultLocale,
 			DefaultCurrency: defaultCurrency,
 		})
@@ -173,6 +237,9 @@ func write(ctx context.Context, q *dbmodels.Queries, p SaveParams, revalidateSit
 	}
 	if p.ExpectedRevision != nil && *p.ExpectedRevision != current.Revision {
 		return dbmodels.PlatformConfig{}, false, ErrConflict
+	}
+	if p.DefaultTimezone == "" {
+		p.DefaultTimezone = current.DefaultTimezone
 	}
 	if p.DefaultCurrency == "" {
 		p.DefaultCurrency = current.DefaultCurrency
@@ -207,9 +274,9 @@ func prepareCurrencyChange(ctx context.Context, q *dbmodels.Queries, current, ne
 	if current == next {
 		return nil
 	}
-	locked, err := q.PlatformCurrencyHasSales(ctx)
+	locked, err := CurrencyLocked(ctx, q)
 	if err != nil {
-		return fmt.Errorf("check sales in the default currency: %w", err)
+		return err
 	}
 	if locked {
 		return fmt.Errorf("%w: %s is stored", ErrDefaultCurrencyLocked, current)
@@ -229,6 +296,22 @@ func prepareCurrencyChange(ctx context.Context, q *dbmodels.Queries, current, ne
 		}
 	}
 	return nil
+}
+
+// CurrencyLockQuerier reads whether the default currency can still change.
+type CurrencyLockQuerier interface {
+	PlatformCurrencyHasSales(ctx context.Context) (bool, error)
+}
+
+// CurrencyLocked reports whether a save that changes the default currency is
+// refused with [ErrDefaultCurrencyLocked], so a screen can say so before it
+// offers the change.
+func CurrencyLocked(ctx context.Context, q CurrencyLockQuerier) (bool, error) {
+	locked, err := q.PlatformCurrencyHasSales(ctx)
+	if err != nil {
+		return false, fmt.Errorf("check sales in the default currency: %w", err)
+	}
+	return locked, nil
 }
 
 // Get reads the settings row, reporting whether one is saved.

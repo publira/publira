@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/platformconfig"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/testutil"
@@ -132,26 +133,28 @@ func TestDBLoginRejectsPlatformUserWithoutRole(t *testing.T) {
 	}
 }
 
-// The locale the operator picks on the setup screen is the platform default
-// from the moment setup finishes, so the console has a language to render in
-// before anyone opens the settings screen.
-func TestDBInitialSetupSavesTheChosenDefaultLocale(t *testing.T) {
+// The locale and the currency the operator picks on the setup screen are the
+// platform defaults from the moment setup finishes, so the console has a
+// language to render in before anyone opens the settings screen, and no tenant
+// starts selling in a currency nobody chose.
+func TestDBInitialSetupSavesTheChosenDefaults(t *testing.T) {
 	ts, pg := newDBIntegrationEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	if _, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
-		Name:          "Initial Admin",
-		Email:         "initial-admin@example.com",
-		Password:      "initial-admin-password",
-		DefaultLocale: "en",
+		Name:            "Initial Admin",
+		Email:           "initial-admin@example.com",
+		Password:        "initial-admin-password",
+		DefaultLocale:   "en",
+		DefaultCurrency: "EUR",
 	}); err != nil {
 		t.Fatalf("CreateInitialUser: %v", err)
 	}
 
-	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_config WHERE default_locale = 'en'`); got != 1 {
-		t.Fatalf("platform_config rows with default_locale = en: %d, want 1", got)
+	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_config WHERE default_locale = 'en' AND default_currency = 'EUR'`); got != 1 {
+		t.Fatalf("platform_config rows with default_locale = en and default_currency = EUR: %d, want 1", got)
 	}
 
 	loginResp, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
@@ -171,6 +174,55 @@ func TestDBInitialSetupSavesTheChosenDefaultLocale(t *testing.T) {
 	}
 	if resp.Settings.DefaultLocale != "en" {
 		t.Fatalf("default_locale = %q, want en", resp.Settings.DefaultLocale)
+	}
+	if resp.Settings.DefaultCurrency != "EUR" {
+		t.Fatalf("default_currency = %q, want EUR", resp.Settings.DefaultCurrency)
+	}
+}
+
+// A setup that names no currency starts the platform on the built-in one, as a
+// platform settings save that names none would.
+func TestDBInitialSetupWithoutACurrencyStartsOnTheBuiltInOne(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+
+	if _, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+		Name:          "Initial Admin",
+		Email:         "initial-admin@example.com",
+		Password:      "initial-admin-password",
+		DefaultLocale: "en",
+	}); err != nil {
+		t.Fatalf("CreateInitialUser: %v", err)
+	}
+
+	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_config WHERE default_currency = '`+platformconfig.DefaultCurrency+`'`); got != 1 {
+		t.Fatalf("platform_config rows with default_currency = %s: %d, want 1", platformconfig.DefaultCurrency, got)
+	}
+}
+
+// Three letters that name no currency are refused before any write, as the
+// platform settings save refuses them, so a rejected setup leaves no
+// administrator and no settings row behind.
+func TestDBCreateInitialUserRejectsACodeThatNamesNoCurrency(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+
+	_, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+		Name:            "Initial Admin",
+		Email:           "initial-admin@example.com",
+		Password:        "initial-admin-password",
+		DefaultLocale:   "en",
+		DefaultCurrency: "ABC",
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateInitialUser code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+
+	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_users"); got != 0 {
+		t.Fatalf("platform_users rows = %d, want 0", got)
+	}
+	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_config"); got != 0 {
+		t.Fatalf("platform_config rows = %d, want 0", got)
 	}
 }
 

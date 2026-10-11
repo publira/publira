@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/settings.proto.
  */
 export const file_publira_platform_v1_settings: GenFile = /*@__PURE__*/
-  fileDesc("CiJwdWJsaXJhL3BsYXRmb3JtL3YxL3NldHRpbmdzLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxInAKEFBsYXRmb3JtU2V0dGluZ3MSGAoQZGVmYXVsdF90aW1lem9uZRgBIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgCIAEoCRIQCghyZXZpc2lvbhgDIAEoAxIYChBkZWZhdWx0X2N1cnJlbmN5GAQgASgJIhwKGkdldFBsYXRmb3JtU2V0dGluZ3NSZXF1ZXN0IlYKG0dldFBsYXRmb3JtU2V0dGluZ3NSZXNwb25zZRI3CghzZXR0aW5ncxgBIAEoCzIlLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZXR0aW5ncyKGAQodVXBkYXRlUGxhdGZvcm1TZXR0aW5nc1JlcXVlc3QSGAoQZGVmYXVsdF90aW1lem9uZRgBIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgCIAEoCRIZChFleHBlY3RlZF9yZXZpc2lvbhgDIAEoAxIYChBkZWZhdWx0X2N1cnJlbmN5GAQgASgJIlkKHlVwZGF0ZVBsYXRmb3JtU2V0dGluZ3NSZXNwb25zZRI3CghzZXR0aW5ncxgBIAEoCzIlLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZXR0aW5nczKbAgoXUGxhdGZvcm1TZXR0aW5nc1NlcnZpY2USegoTR2V0UGxhdGZvcm1TZXR0aW5ncxIvLnB1YmxpcmEucGxhdGZvcm0udjEuR2V0UGxhdGZvcm1TZXR0aW5nc1JlcXVlc3QaMC5wdWJsaXJhLnBsYXRmb3JtLnYxLkdldFBsYXRmb3JtU2V0dGluZ3NSZXNwb25zZSIAEoMBChZVcGRhdGVQbGF0Zm9ybVNldHRpbmdzEjIucHVibGlyYS5wbGF0Zm9ybS52MS5VcGRhdGVQbGF0Zm9ybVNldHRpbmdzUmVxdWVzdBozLnB1YmxpcmEucGxhdGZvcm0udjEuVXBkYXRlUGxhdGZvcm1TZXR0aW5nc1Jlc3BvbnNlIgBCXVpbZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3BsYXRmb3JtL3YxO3B1YmxpcmFzcGxhdGZvcm12MWIGcHJvdG8z");
+  fileDesc("CiJwdWJsaXJhL3BsYXRmb3JtL3YxL3NldHRpbmdzLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIpEBChBQbGF0Zm9ybVNldHRpbmdzEhgKEGRlZmF1bHRfdGltZXpvbmUYASABKAkSFgoOZGVmYXVsdF9sb2NhbGUYAiABKAkSEAoIcmV2aXNpb24YAyABKAMSGAoQZGVmYXVsdF9jdXJyZW5jeRgEIAEoCRIfChdkZWZhdWx0X2N1cnJlbmN5X2xvY2tlZBgFIAEoCCIcChpHZXRQbGF0Zm9ybVNldHRpbmdzUmVxdWVzdCJWChtHZXRQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2USNwoIc2V0dGluZ3MYASABKAsyJS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2V0dGluZ3MihgEKHVVwZGF0ZVBsYXRmb3JtU2V0dGluZ3NSZXF1ZXN0EhgKEGRlZmF1bHRfdGltZXpvbmUYASABKAkSFgoOZGVmYXVsdF9sb2NhbGUYAiABKAkSGQoRZXhwZWN0ZWRfcmV2aXNpb24YAyABKAMSGAoQZGVmYXVsdF9jdXJyZW5jeRgEIAEoCSJZCh5VcGRhdGVQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2USNwoIc2V0dGluZ3MYASABKAsyJS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2V0dGluZ3MymwIKF1BsYXRmb3JtU2V0dGluZ3NTZXJ2aWNlEnoKE0dldFBsYXRmb3JtU2V0dGluZ3MSLy5wdWJsaXJhLnBsYXRmb3JtLnYxLkdldFBsYXRmb3JtU2V0dGluZ3NSZXF1ZXN0GjAucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2UiABKDAQoWVXBkYXRlUGxhdGZvcm1TZXR0aW5ncxIyLnB1YmxpcmEucGxhdGZvcm0udjEuVXBkYXRlUGxhdGZvcm1TZXR0aW5nc1JlcXVlc3QaMy5wdWJsaXJhLnBsYXRmb3JtLnYxLlVwZGF0ZVBsYXRmb3JtU2V0dGluZ3NSZXNwb25zZSIAQl1aW2dpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw");
 
 /**
  * Platform-wide settings that are not tied to a single tenant. Email/SMTP has its
@@ -55,6 +55,15 @@ export type PlatformSettings = Message<"publira.platform.v1.PlatformSettings"> &
    * @generated from field: string default_currency = 4;
    */
   defaultCurrency: string;
+
+  /**
+   * True while a tenant that sells in default_currency, having saved no
+   * payment settings of its own, has a purchase, so that
+   * UpdatePlatformSettings refuses to change it.
+   *
+   * @generated from field: bool default_currency_locked = 5;
+   */
+  defaultCurrencyLocked: boolean;
 };
 
 /**
@@ -127,7 +136,8 @@ export type UpdatePlatformSettingsRequest = Message<"publira.platform.v1.UpdateP
   /**
    * An ISO 4217 currency code; three letters that name no currency are
    * INVALID_ARGUMENT. Empty keeps the stored currency, so a screen that does
-   * not show it saves nothing over it.
+   * not show it saves nothing over it. A change is FAILED_PRECONDITION while
+   * PlatformSettings.default_currency_locked is true.
    *
    * @generated from field: string default_currency = 4;
    */
