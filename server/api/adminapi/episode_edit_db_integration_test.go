@@ -116,14 +116,14 @@ func TestDBUpdateEpisodePricingChangesTheTermsOfTheNextSaleOnly(t *testing.T) {
 	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "READER01", "reader@tenant-a.example.com", "Reader")
 	expiresAt := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Microsecond)
 	if _, err := env.PG.DB.ExecContext(context.Background(), `
-		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, expires_at)
-		VALUES ($1, $2, $3, $4, 300, $5)
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, expires_at, currency)
+		VALUES ($1, $2, $3, $4, 300, $5, 'JPY')
 	`, uuid.Must(uuid.NewV7()), tenant.Tenant.ID, reader.ID, episode.ID, expiresAt); err != nil {
 		t.Fatalf("insert purchase: %v", err)
 	}
 	if _, err := env.PG.DB.ExecContext(context.Background(), `
-		INSERT INTO store_purchase_intents (id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours)
-		VALUES ($1, $2, $3, $4, 300, 'episode_300', 24)
+		INSERT INTO store_purchase_intents (id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, currency)
+		VALUES ($1, $2, $3, $4, 300, 'episode_300', 24, 'JPY')
 	`, uuid.Must(uuid.NewV7()), tenant.Tenant.ID, reader.ID, episode.ID); err != nil {
 		t.Fatalf("insert store purchase intent: %v", err)
 	}

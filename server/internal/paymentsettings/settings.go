@@ -27,10 +27,6 @@ const (
 
 	maskFill = "••••••••"
 	maskTail = 4
-
-	// DefaultCurrency is the currency of a tenant that has not saved payment
-	// settings, and of every row the currency was added to.
-	DefaultCurrency = "JPY"
 )
 
 var (
@@ -123,8 +119,8 @@ type UpdateInput struct {
 	Provider string
 	Enabled  bool
 	// Currency is the ISO 4217 code to sell in, which the provider has to
-	// charge in. Empty keeps the stored one, which is [DefaultCurrency] before
-	// any is saved.
+	// charge in. Empty keeps the stored one, which is the platform's default
+	// before any is saved.
 	Currency string
 	// Fields the input leaves out are left as they are, unless the provider
 	// changes, which clears every field stored for the previous one.

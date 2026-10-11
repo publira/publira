@@ -16,6 +16,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/paymentsettings"
 )
 
 const periodLayout = "2006-01"
@@ -242,8 +243,15 @@ func closeStatementOnce(
 }
 
 func compute(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID, bounds Bounds) (Computation, error) {
+	// A statement is in the tenant currency, and a sale paid in another, by a
+	// checkout started before the tenant changed it, is not one of its sales.
+	currency, err := paymentsettings.TenantCurrency(ctx, queries, tenantID)
+	if err != nil {
+		return Computation{}, fmt.Errorf("resolve tenant currency: %w", err)
+	}
 	lines, err := queries.ListRoyaltyLinesForPeriod(ctx, dbmodels.ListRoyaltyLinesForPeriodParams{
 		TenantID: tenantID,
+		Currency: currency,
 		StartsAt: bounds.Start,
 		EndsAt:   bounds.End,
 	})
@@ -252,6 +260,7 @@ func compute(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID,
 	}
 	sales, err := queries.GetRoyaltySalesTotalsForPeriod(ctx, dbmodels.GetRoyaltySalesTotalsForPeriodParams{
 		TenantID: tenantID,
+		Currency: currency,
 		StartsAt: bounds.Start,
 		EndsAt:   bounds.End,
 	})

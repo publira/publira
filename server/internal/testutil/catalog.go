@@ -12,6 +12,8 @@ import (
 
 	"github.com/publira/publira/server/internal/catalogslug"
 	"github.com/publira/publira/server/internal/creatorroles"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/publicid"
 )
 
@@ -667,20 +669,38 @@ func (e *PostgresEnv) SeedEpisodeFreeWindow(t *testing.T, tenantID, episodeID uu
 }
 
 // SeedPurchase grants the user permanent access to the episode, the entitlement
-// the public API checks before it hands out episode images.
+// the public API checks before it hands out episode images. The purchase is in
+// the tenant's currency.
 func (e *PostgresEnv) SeedPurchase(t *testing.T, tenantID, userID, episodeID uuid.UUID, price int32) {
+	t.Helper()
+	e.requireDB(t)
+
+	currency := e.TenantCurrency(t, tenantID)
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, currency)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, uuid.Must(uuid.NewV7()), tenantID, userID, episodeID, price, currency); err != nil {
+		t.Fatalf("insert purchase of episode %s: %v", episodeID, err)
+	}
+}
+
+// TenantCurrency answers the currency the tenant sells in, which a sale seeded
+// for it has to be in for a royalty statement to count it.
+func (e *PostgresEnv) TenantCurrency(t *testing.T, tenantID uuid.UUID) string {
 	t.Helper()
 	e.requireDB(t)
 
 	ctx, cancel := seedContext()
 	defer cancel()
 
-	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase)
-		VALUES ($1, $2, $3, $4, $5)
-	`, uuid.Must(uuid.NewV7()), tenantID, userID, episodeID, price); err != nil {
-		t.Fatalf("insert purchase of episode %s: %v", episodeID, err)
+	currency, err := paymentsettings.TenantCurrency(ctx, dbmodels.New(e.DB), tenantID)
+	if err != nil {
+		t.Fatalf("resolve the currency of tenant %s: %v", tenantID, err)
 	}
+	return currency
 }
 
 // SeedPage inserts a page, its translation in the tenant's default locale, and

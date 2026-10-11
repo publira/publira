@@ -3441,8 +3441,9 @@ export type MyPurchase = Message<"publira.v1.MyPurchase"> & {
   isActive: boolean;
 
   /**
-   * The ISO 4217 code, in capitals, of the tenant currency price_at_purchase is
-   * in.
+   * The ISO 4217 code, in capitals, of the currency price_at_purchase is in:
+   * the one the reader paid in, which is the tenant's unless the payment was
+   * started before the tenant changed it.
    *
    * @generated from field: string currency = 8;
    */

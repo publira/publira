@@ -542,6 +542,7 @@ type PlatformConfig struct {
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 	Revision        int64     `json:"revision"`
+	DefaultCurrency string    `json:"default_currency"`
 }
 
 type PlatformNotification struct {
@@ -766,6 +767,7 @@ type Purchase struct {
 	StoreTransactionID sql.NullString `json:"store_transaction_id"`
 	IsTest             bool           `json:"is_test"`
 	Provider           sql.NullString `json:"provider"`
+	Currency           string         `json:"currency"`
 }
 
 type RoyaltyStatement struct {
@@ -934,6 +936,7 @@ type StorePurchaseIntent struct {
 	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
 	CreatedAt          time.Time     `json:"created_at"`
 	ConsumedAt         sql.NullTime  `json:"consumed_at"`
+	Currency           string        `json:"currency"`
 }
 
 type Tag struct {
@@ -1206,11 +1209,12 @@ type TenantUserRole struct {
 }
 
 type UnappliedRefund struct {
-	TenantID          uuid.UUID     `json:"tenant_id"`
-	ProviderPaymentID string        `json:"provider_payment_id"`
-	RefundedAmount    sql.NullInt32 `json:"refunded_amount"`
-	ReceivedAt        time.Time     `json:"received_at"`
-	Provider          string        `json:"provider"`
+	TenantID          uuid.UUID      `json:"tenant_id"`
+	ProviderPaymentID string         `json:"provider_payment_id"`
+	RefundedAmount    sql.NullInt32  `json:"refunded_amount"`
+	ReceivedAt        time.Time      `json:"received_at"`
+	Provider          string         `json:"provider"`
+	Currency          sql.NullString `json:"currency"`
 }
 
 type UnappliedStoreRefund struct {

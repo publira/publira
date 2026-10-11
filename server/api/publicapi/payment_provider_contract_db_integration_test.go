@@ -163,6 +163,7 @@ func (c *contractTenant) SalesGross(t *testing.T) int64 {
 	month := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	totals, err := dbmodels.New(c.harness.pg.DB).GetRoyaltySalesTotalsForPeriod(context.Background(), dbmodels.GetRoyaltySalesTotalsForPeriodParams{
 		TenantID: c.purchase.TenantID,
+		Currency: c.purchase.Currency,
 		StartsAt: month,
 		EndsAt:   month.AddDate(0, 1, 0),
 	})

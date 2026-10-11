@@ -23,6 +23,7 @@ func platformSettingsFromConfig(config dbmodels.PlatformConfig) (*publirasplatfo
 		DefaultTimezone: tenanttz.Resolve(config.DefaultTimezone, nil),
 		DefaultLocale:   defaultLocale,
 		Revision:        config.Revision,
+		DefaultCurrency: config.DefaultCurrency,
 	}, nil
 }
 
@@ -71,6 +72,7 @@ func (s *platformServer) UpdatePlatformSettings(
 	params := platformconfig.SaveParams{
 		DefaultTimezone:  req.GetDefaultTimezone(),
 		DefaultLocale:    req.GetDefaultLocale(),
+		DefaultCurrency:  req.GetDefaultCurrency(),
 		ExpectedRevision: &expectedRevision,
 	}
 	if _, err := params.Validate(); err != nil {

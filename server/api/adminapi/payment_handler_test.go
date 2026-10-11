@@ -49,6 +49,13 @@ func tenantPaymentColumns() []string {
 	}
 }
 
+// expectPlatformDefaultCurrency answers the platform's default currency, which
+// a tenant with no payment settings sells in.
+func expectPlatformDefaultCurrency(mock sqlmock.Sqlmock, currency string) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformDefaultCurrency)).
+		WillReturnRows(sqlmock.NewRows([]string{"default_currency"}).AddRow(currency))
+}
+
 // expectTenantHasPurchases answers whether the tenant has a purchase, which
 // locks its currency.
 func expectTenantHasPurchases(mock sqlmock.Sqlmock, tenantID uuid.UUID, has bool) {
@@ -220,6 +227,7 @@ func TestGetTenantPaymentSettingsReturnsEmptyWhenMissing(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 	expectTenantHasPurchases(mock, tenantID, false)
+	expectPlatformDefaultCurrency(mock, "JPY")
 
 	client := publiraadminv1connect.NewAdminPaymentSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	req := &publiraadminv1.GetTenantPaymentSettingsRequest{
@@ -325,6 +333,7 @@ func TestUpdateTenantPaymentSettingsRejectsEnableWithoutSecrets(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectPlatformDefaultCurrency(mock, "JPY")
 	expectTenantHasPurchases(mock, tenantID, false)
 	mock.ExpectRollback()
 
@@ -385,6 +394,7 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectPlatformDefaultCurrency(mock, "JPY")
 	expectTenantHasPurchases(mock, tenantID, false)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantPaymentConfig)).
 		WithArgs(
@@ -482,6 +492,7 @@ func TestUpdateTenantPaymentSettingsRefusesACurrencyTheProviderDoesNotDeclare(t 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectPlatformDefaultCurrency(mock, "JPY")
 	expectTenantHasPurchases(mock, tenantID, false)
 	mock.ExpectRollback()
 

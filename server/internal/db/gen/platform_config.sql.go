@@ -10,7 +10,7 @@ import (
 )
 
 const GetPlatformConfig = `-- name: GetPlatformConfig :one
-SELECT singleton, default_timezone, default_locale, created_at, updated_at, revision
+SELECT singleton, default_timezone, default_locale, created_at, updated_at, revision, default_currency
 FROM platform_config
 WHERE singleton = TRUE
 LIMIT 1
@@ -26,32 +26,53 @@ func (q *Queries) GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Revision,
+		&i.DefaultCurrency,
 	)
 	return i, err
 }
 
+const GetPlatformDefaultCurrency = `-- name: GetPlatformDefaultCurrency :one
+SELECT default_currency
+FROM platform_config
+WHERE singleton = TRUE
+LIMIT 1
+`
+
+// The currency of every tenant that has not saved payment settings. The one
+// column the tenant-facing roles may read of this row, so it has a query of
+// its own rather than GetPlatformConfig's whole row.
+func (q *Queries) GetPlatformDefaultCurrency(ctx context.Context) (string, error) {
+	row := q.db.QueryRowContext(ctx, GetPlatformDefaultCurrency)
+	var default_currency string
+	err := row.Scan(&default_currency)
+	return default_currency, err
+}
+
 const InsertPlatformSettings = `-- name: InsertPlatformSettings :one
-INSERT INTO platform_config (singleton, default_timezone, default_locale, updated_at)
+INSERT INTO platform_config (singleton, default_timezone, default_locale, default_currency, updated_at)
 VALUES (
         TRUE,
         $1,
         $2,
+        $3,
         NOW()
     )
-RETURNING singleton, default_timezone, default_locale, created_at, updated_at, revision
+RETURNING singleton, default_timezone, default_locale, created_at, updated_at, revision, default_currency
 `
 
 type InsertPlatformSettingsParams struct {
 	DefaultTimezone string `json:"default_timezone"`
 	DefaultLocale   string `json:"default_locale"`
+	DefaultCurrency string `json:"default_currency"`
 }
 
-// Creates the settings row with the platform default time zone and locale.
+// Creates the settings row with the platform default time zone, locale, and
+// currency.
 // No ON CONFLICT clause: LockPlatformConfig has nothing to lock when the row is
 // absent, so a losing racer must fail on the primary key rather than overwrite
 // the row the winner just created.
 func (q *Queries) InsertPlatformSettings(ctx context.Context, arg InsertPlatformSettingsParams) (PlatformConfig, error) {
-	row := q.db.QueryRowContext(ctx, InsertPlatformSettings, arg.DefaultTimezone, arg.DefaultLocale)
+	row := q.db.QueryRowContext(ctx, InsertPlatformSettings, arg.DefaultTimezone, arg.DefaultLocale, arg.DefaultCurrency)
 	var i PlatformConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -60,12 +81,13 @@ func (q *Queries) InsertPlatformSettings(ctx context.Context, arg InsertPlatform
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Revision,
+		&i.DefaultCurrency,
 	)
 	return i, err
 }
 
 const LockPlatformConfig = `-- name: LockPlatformConfig :one
-SELECT singleton, default_timezone, default_locale, created_at, updated_at, revision
+SELECT singleton, default_timezone, default_locale, created_at, updated_at, revision, default_currency
 FROM platform_config
 WHERE singleton = TRUE
 FOR UPDATE
@@ -84,6 +106,7 @@ func (q *Queries) LockPlatformConfig(ctx context.Context) (PlatformConfig, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Revision,
+		&i.DefaultCurrency,
 	)
 	return i, err
 }
@@ -92,22 +115,25 @@ const UpdatePlatformSettings = `-- name: UpdatePlatformSettings :one
 UPDATE platform_config
 SET default_timezone = $1,
     default_locale = $2,
+    default_currency = $3,
     revision = revision + 1,
     updated_at = NOW()
 WHERE singleton = TRUE
-RETURNING singleton, default_timezone, default_locale, created_at, updated_at, revision
+RETURNING singleton, default_timezone, default_locale, created_at, updated_at, revision, default_currency
 `
 
 type UpdatePlatformSettingsParams struct {
 	DefaultTimezone string `json:"default_timezone"`
 	DefaultLocale   string `json:"default_locale"`
+	DefaultCurrency string `json:"default_currency"`
 }
 
-// Writes the platform default time zone and locale over the existing row. The
+// Writes the platform default time zone, locale, and currency over the
+// existing row. The
 // revision moves with every write, which is what makes a save based on an
 // earlier read detectable.
 func (q *Queries) UpdatePlatformSettings(ctx context.Context, arg UpdatePlatformSettingsParams) (PlatformConfig, error) {
-	row := q.db.QueryRowContext(ctx, UpdatePlatformSettings, arg.DefaultTimezone, arg.DefaultLocale)
+	row := q.db.QueryRowContext(ctx, UpdatePlatformSettings, arg.DefaultTimezone, arg.DefaultLocale, arg.DefaultCurrency)
 	var i PlatformConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -116,6 +142,7 @@ func (q *Queries) UpdatePlatformSettings(ctx context.Context, arg UpdatePlatform
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Revision,
+		&i.DefaultCurrency,
 	)
 	return i, err
 }
@@ -127,7 +154,7 @@ UPDATE
 SET default_locale = EXCLUDED.default_locale,
     revision = platform_config.revision + 1,
     updated_at = NOW()
-RETURNING singleton, default_timezone, default_locale, created_at, updated_at, revision
+RETURNING singleton, default_timezone, default_locale, created_at, updated_at, revision, default_currency
 `
 
 // Stores only the default locale chosen during initial setup. No time zone has
@@ -145,6 +172,7 @@ func (q *Queries) UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Revision,
+		&i.DefaultCurrency,
 	)
 	return i, err
 }

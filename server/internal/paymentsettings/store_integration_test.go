@@ -216,8 +216,8 @@ func TestStoreRejectsPlaintextAtDatabase(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := pg.DB.ExecContext(ctx, `
-				INSERT INTO tenant_payment_config (tenant_id, provider, enabled, credentials_encrypted)
-				VALUES ($1, 'stripe', false, $2)
+				INSERT INTO tenant_payment_config (tenant_id, provider, enabled, credentials_encrypted, currency)
+				VALUES ($1, 'stripe', false, $2, 'JPY')
 			`, tenant.ID, credentials)
 			if !isCheckViolation(err) {
 				t.Fatalf("insert error = %v, want check_violation", err)
@@ -281,8 +281,8 @@ func TestCredentialFieldsMigrationKeepsStripeSettingsReady(t *testing.T) {
 	if !cfg.Ready || cfg.Provider != stripe.ID {
 		t.Fatalf("migrated config = %+v, want ready stripe", cfg)
 	}
-	if cfg.Currency != paymentsettings.DefaultCurrency {
-		t.Fatalf("migrated currency = %q, want %q, which every tenant sold in before", cfg.Currency, paymentsettings.DefaultCurrency)
+	if cfg.Currency != "JPY" {
+		t.Fatalf("migrated currency = %q, want JPY, which every tenant sold in before", cfg.Currency)
 	}
 	if credentials[stripe.FieldSecretKey] != integrationSecretKey || credentials[stripe.FieldWebhookSecret] != integrationWebhookSecret {
 		t.Fatal("migrated credentials do not decrypt to what was stored")
@@ -329,8 +329,8 @@ func TestCredentialFieldsMigrationDownKeepsWhatTheOldColumnsCanHold(t *testing.T
 	insert := func(tenantID uuid.UUID, provider, credentials, hints string) {
 		t.Helper()
 		if _, err := pg.DB.ExecContext(ctx, `
-			INSERT INTO tenant_payment_config (tenant_id, provider, enabled, credentials_encrypted, credential_hints)
-			VALUES ($1, $2, true, $3, $4)
+			INSERT INTO tenant_payment_config (tenant_id, provider, enabled, credentials_encrypted, credential_hints, currency)
+			VALUES ($1, $2, true, $3, $4, 'JPY')
 		`, tenantID, provider, credentials, hints); err != nil {
 			t.Fatalf("insert %s settings: %v", provider, err)
 		}

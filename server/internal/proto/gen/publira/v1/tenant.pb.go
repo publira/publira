@@ -312,7 +312,7 @@ type GetTenantResponse struct {
 	// The ISO 4217 code, in capitals, of the currency the tenant sells in. Every
 	// price the catalog answers is an integer in its minor unit, so a price of
 	// 500 is 500 yen in JPY and 5.00 dollars in USD. Never empty: a tenant that
-	// has not chosen one sells in JPY.
+	// has saved no payment settings sells in the platform's default currency.
 	Currency      string `protobuf:"bytes,23,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

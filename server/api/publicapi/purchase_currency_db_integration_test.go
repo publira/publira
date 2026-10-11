@@ -24,7 +24,9 @@ import (
 )
 
 // A tenant that sells in USD charges, records, refunds, and reports the price
-// it set as cents, and takes nothing paid in another currency for a purchase.
+// it set as cents. A checkout started before the tenant changed its currency
+// still opens the episode, recorded in the currency it was paid in, and is no
+// sale on a statement in the new one.
 func TestDBATenantInADecimalCurrencySellsInIt(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -90,6 +92,7 @@ func TestDBATenantInADecimalCurrencySellsInIt(t *testing.T) {
 			"amount_total":   499,
 			"currency":       currency,
 			"payment_status": "paid",
+			"livemode":       true,
 			"payment_intent": "pi_" + id,
 			"metadata": map[string]string{
 				stripe.MetadataTenantID:  tenant.ID.String(),
@@ -110,8 +113,9 @@ func TestDBATenantInADecimalCurrencySellsInIt(t *testing.T) {
 		}
 	}
 
-	if err := deliver("checkout.session.completed", paidSession("cs_usd_yen", "jpy")); err == nil {
-		t.Fatal("a checkout paid in JPY was accepted for a tenant in USD")
+	// Paid in the yen the tenant sold in before it changed to USD.
+	if err := deliver("checkout.session.completed", paidSession("cs_usd_yen", "jpy")); err != nil {
+		t.Fatalf("checkout paid in JPY: %v", err)
 	}
 	if err := deliver("checkout.session.completed", paidSession("cs_usd", "usd")); err != nil {
 		t.Fatalf("checkout paid in USD: %v", err)
@@ -121,17 +125,37 @@ func TestDBATenantInADecimalCurrencySellsInIt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListMyPurchases: %v", err)
 	}
-	if len(library.Purchases) != 1 {
-		t.Fatalf("purchases = %d, want only the one paid in USD", len(library.Purchases))
+	currencies := map[string]int32{}
+	for _, purchase := range library.Purchases {
+		currencies[purchase.Currency] = purchase.PriceAtPurchase
 	}
-	if got := library.Purchases[0]; got.PriceAtPurchase != 499 || got.Currency != "USD" {
-		t.Fatalf("purchase = %d %s, want 499 USD", got.PriceAtPurchase, got.Currency)
+	if len(currencies) != 2 || currencies["USD"] != 499 || currencies["JPY"] != 499 {
+		t.Fatalf("library = %v, want 499 in USD and 499 in JPY", currencies)
 	}
 
-	refundedAmount := func() int32 {
+	now := time.Now().UTC()
+	month := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	totals, err := dbmodels.New(pg.DB).GetRoyaltySalesTotalsForPeriod(ctx, dbmodels.GetRoyaltySalesTotalsForPeriodParams{
+		TenantID: tenant.ID,
+		Currency: "USD",
+		StartsAt: month,
+		EndsAt:   month.AddDate(0, 1, 0),
+	})
+	if err != nil {
+		t.Fatalf("GetRoyaltySalesTotalsForPeriod: %v", err)
+	}
+	if totals.TotalGross != 499 {
+		t.Fatalf("USD gross = %d, want the one sale paid in USD", totals.TotalGross)
+	}
+
+	refundedAmount := func(sessionID string) int32 {
 		t.Helper()
 		var amount int32
-		if err := pg.DB.QueryRowContext(ctx, `SELECT COALESCE(refunded_amount, 0) FROM purchases WHERE tenant_id = $1`, tenant.ID).Scan(&amount); err != nil {
+		if err := pg.DB.QueryRowContext(ctx, `
+			SELECT COALESCE(refunded_amount, 0)
+			FROM purchases
+			WHERE tenant_id = $1 AND provider_checkout_id = $2
+		`, tenant.ID, sessionID).Scan(&amount); err != nil {
 			t.Fatalf("read refunded amount: %v", err)
 		}
 		return amount
@@ -139,15 +163,33 @@ func TestDBATenantInADecimalCurrencySellsInIt(t *testing.T) {
 	if err := deliver("charge.refunded", refundOf("cs_usd", "usd", 200)); err != nil {
 		t.Fatalf("partial refund in USD: %v", err)
 	}
-	if got := refundedAmount(); got != 200 {
+	if got := refundedAmount("cs_usd"); got != 200 {
 		t.Fatalf("refunded amount = %d, want the 200 cents refunded", got)
 	}
-	// An amount in another currency is not comparable to the price, so the
-	// refund is recorded as one of the whole of it.
-	if err := deliver("charge.refunded", refundOf("cs_usd", "jpy", 300)); err != nil {
-		t.Fatalf("refund in JPY: %v", err)
+	if err := deliver("charge.refunded", refundOf("cs_usd_yen", "jpy", 200)); err != nil {
+		t.Fatalf("partial refund in JPY: %v", err)
 	}
-	if got := refundedAmount(); got != 499 {
+	if got := refundedAmount("cs_usd_yen"); got != 200 {
+		t.Fatalf("refunded amount = %d, want the 200 yen refunded on the purchase paid in yen", got)
+	}
+	// An amount in another currency than its purchase's is not comparable to
+	// the price, so the refund is recorded as one of the whole of it.
+	if err := deliver("charge.refunded", refundOf("cs_usd", "eur", 300)); err != nil {
+		t.Fatalf("refund in EUR: %v", err)
+	}
+	if got := refundedAmount("cs_usd"); got != 499 {
 		t.Fatalf("refunded amount = %d, want the whole 499 for a refund in another currency", got)
+	}
+
+	// A refund held for a purchase not here yet is applied by the same rule
+	// once the purchase arrives.
+	if err := deliver("charge.refunded", refundOf("cs_held", "eur", 100)); err != nil {
+		t.Fatalf("early refund in EUR: %v", err)
+	}
+	if err := deliver("checkout.session.completed", paidSession("cs_held", "usd")); err != nil {
+		t.Fatalf("checkout after its refund: %v", err)
+	}
+	if got := refundedAmount("cs_held"); got != 499 {
+		t.Fatalf("refunded amount = %d, want the whole 499 for a held refund in another currency", got)
 	}
 }

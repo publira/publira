@@ -13,27 +13,40 @@ FROM platform_config
 WHERE singleton = TRUE
 FOR UPDATE;
 
+-- name: GetPlatformDefaultCurrency :one
+-- The currency of every tenant that has not saved payment settings. The one
+-- column the tenant-facing roles may read of this row, so it has a query of
+-- its own rather than GetPlatformConfig's whole row.
+SELECT default_currency
+FROM platform_config
+WHERE singleton = TRUE
+LIMIT 1;
+
 -- name: InsertPlatformSettings :one
--- Creates the settings row with the platform default time zone and locale.
+-- Creates the settings row with the platform default time zone, locale, and
+-- currency.
 -- No ON CONFLICT clause: LockPlatformConfig has nothing to lock when the row is
 -- absent, so a losing racer must fail on the primary key rather than overwrite
 -- the row the winner just created.
-INSERT INTO platform_config (singleton, default_timezone, default_locale, updated_at)
+INSERT INTO platform_config (singleton, default_timezone, default_locale, default_currency, updated_at)
 VALUES (
         TRUE,
         sqlc.arg('default_timezone'),
         sqlc.arg('default_locale'),
+        sqlc.arg('default_currency'),
         NOW()
     )
 RETURNING *;
 
 -- name: UpdatePlatformSettings :one
--- Writes the platform default time zone and locale over the existing row. The
+-- Writes the platform default time zone, locale, and currency over the
+-- existing row. The
 -- revision moves with every write, which is what makes a save based on an
 -- earlier read detectable.
 UPDATE platform_config
 SET default_timezone = sqlc.arg('default_timezone'),
     default_locale = sqlc.arg('default_locale'),
+    default_currency = sqlc.arg('default_currency'),
     revision = revision + 1,
     updated_at = NOW()
 WHERE singleton = TRUE

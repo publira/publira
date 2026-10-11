@@ -6789,8 +6789,9 @@ type MyPurchase struct {
 	// Empty when this purchase does not expire.
 	ExpiresAt string `protobuf:"bytes,6,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	IsActive  bool   `protobuf:"varint,7,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
-	// The ISO 4217 code, in capitals, of the tenant currency price_at_purchase is
-	// in.
+	// The ISO 4217 code, in capitals, of the currency price_at_purchase is in:
+	// the one the reader paid in, which is the tenant's unless the payment was
+	// started before the tenant changed it.
 	Currency      string `protobuf:"bytes,8,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

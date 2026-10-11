@@ -220,16 +220,16 @@ export type TenantPaymentSettings = Message<"publira.admin.v1.TenantPaymentSetti
 
   /**
    * The ISO 4217 code, in capitals, of the currency the tenant sells in, and
-   * stores every price and amount in the minor unit of. JPY before any is
-   * saved.
+   * stores every price in the minor unit of. The platform's default currency
+   * before any is saved.
    *
    * @generated from field: string currency = 9;
    */
   currency: string;
 
   /**
-   * True once the tenant has a purchase, every amount of which is in currency,
-   * so that UpdateTenantPaymentSettings refuses to change it.
+   * True once the tenant has a purchase, so that UpdateTenantPaymentSettings
+   * refuses to change currency.
    *
    * @generated from field: bool currency_locked = 10;
    */

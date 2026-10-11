@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-10-10
+updated: 2026-10-11
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -17,7 +17,7 @@ Everything here under **Integrations** › **Payments** is for a **Tenant admin*
 
 An episode's **Price** and **Reading period** are first entered on the form that creates it:
 
-- **Price** is a whole number of yen. `0` makes the episode free; any other value makes it a paid episode.
+- **Price** is a whole number in the smallest unit of the tenant's currency: yen for a tenant that sells in JPY, cents for one that sells in USD. `0` makes the episode free; any other value makes it a paid episode.
 - **Reading period** is how many hours a purchase keeps the episode open. `0` keeps it open with no end.
 
 ![The Price and Reading period fields of the Create episode form.](./selling-episodes-price-and-reading-period.png)
@@ -53,7 +53,7 @@ A tenant takes payment on the site through one provider at a time, chosen under 
 | Stripe | The payment methods turned on for your account in the Stripe Dashboard, such as cards and konbini. An episode bought with a method that is paid later, such as konbini, opens once the payment arrives. |
 | PAY.JP | Cards, with 3-D Secure authentication on every payment. |
 
-Payments are taken in yen with either provider.
+Payments are taken in the tenant's currency: the one its payment settings were saved with, or the platform's default currency, set by the install's operators, before they are saved. PAY.JP charges in yen only, so it can be chosen only by a tenant that sells in JPY. The currency cannot change once the tenant has a purchase, since every price and every sale is an amount in it.
 
 The status beside the form says where the setup stands:
 

@@ -4,6 +4,8 @@ package platformconfig
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -12,6 +14,33 @@ import (
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
+
+// DefaultCurrency is the currency of a platform that has saved no settings,
+// and the one platform_config.default_currency starts on, as tenanttz.Default
+// is for the time zone.
+const DefaultCurrency = "USD"
+
+// CurrencyQuerier reads the one column of the settings row the tenant-facing
+// roles may read.
+type CurrencyQuerier interface {
+	GetPlatformDefaultCurrency(ctx context.Context) (string, error)
+}
+
+// Currency returns the currency of every tenant that has saved no payment
+// settings of its own: the platform's, or [DefaultCurrency] while it has
+// saved no settings. Unlike the time zone, a row that cannot be read is an
+// error rather than the constant, since a price read in the wrong currency is
+// charged at the wrong amount.
+func Currency(ctx context.Context, q CurrencyQuerier) (string, error) {
+	currency, err := q.GetPlatformDefaultCurrency(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
+		return DefaultCurrency, nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("read platform default currency: %w", err)
+	}
+	return currency, nil
+}
 
 // Querier is the minimal DB interface required to read the settings row.
 type Querier interface {

@@ -329,7 +329,7 @@ func (x *UpdateRoyaltyConfigResponse) GetConfig() *RoyaltyConfig {
 
 // The figures of one month: its own sales, and what its lines pay out.
 // Amounts are integers in the minor unit of the tenant currency, which
-// AdminAuthService.GetTenant answers.
+// AdminAuthService.GetTenant answers, and count only the sales paid in it.
 type RoyaltyStatementTotals struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// What the month sold, each sale counted once however many creators it is

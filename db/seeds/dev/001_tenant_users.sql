@@ -48,12 +48,14 @@ SET copyright_text = EXCLUDED.copyright_text,
 -- operator, so a platform bootstrapped through the setup screen always has one;
 -- this seed inserts the operator directly, and without this a seeded platform
 -- would be in a state real bootstrap cannot produce — set up, yet with no saved
--- display language for the console to open in.
-INSERT INTO platform_config (singleton, default_timezone, default_locale)
-VALUES (TRUE, 'UTC', 'en')
+-- display language for the console to open in. The seeded catalog is priced
+-- in yen, so the tenants that save no payment settings sell in JPY.
+INSERT INTO platform_config (singleton, default_timezone, default_locale, default_currency)
+VALUES (TRUE, 'UTC', 'en', 'JPY')
 ON CONFLICT (singleton) DO UPDATE
 SET default_timezone = EXCLUDED.default_timezone,
     default_locale = EXCLUDED.default_locale,
+    default_currency = EXCLUDED.default_currency,
     updated_at = NOW();
 
 WITH platform_user_seed AS (

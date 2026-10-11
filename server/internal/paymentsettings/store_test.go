@@ -232,8 +232,8 @@ func TestStoreGetPublicMissingRow(t *testing.T) {
 	if cfg.Provider != "" || cfg.Enabled || cfg.Ready || len(cfg.Fields) != 0 || cfg.CurrencyLocked {
 		t.Fatalf("missing row config = %+v, want empty", cfg)
 	}
-	if cfg.Currency != DefaultCurrency {
-		t.Fatalf("currency = %q, want %q", cfg.Currency, DefaultCurrency)
+	if cfg.Currency != testPlatformCurrency {
+		t.Fatalf("currency = %q, want the platform's %q", cfg.Currency, testPlatformCurrency)
 	}
 	if cfg.TenantID != tenantID {
 		t.Fatalf("tenant id = %s, want %s", cfg.TenantID, tenantID)
@@ -306,8 +306,8 @@ func TestStoreKeepsTheCurrencyARequestDoesNotName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Upsert: %v", err)
 	}
-	if first.Currency != DefaultCurrency {
-		t.Fatalf("first save currency = %q, want %q", first.Currency, DefaultCurrency)
+	if first.Currency != testPlatformCurrency {
+		t.Fatalf("first save currency = %q, want %q", first.Currency, testPlatformCurrency)
 	}
 
 	input := stripeInput(true)
@@ -346,6 +346,31 @@ func TestStoreKeepsTheCurrencyARequestDoesNotName(t *testing.T) {
 	}
 }
 
+// A tenant that has saved no settings sells in the platform's currency, and a
+// first save naming none stores that one, which a later change of the
+// platform's no longer reaches.
+func TestStoreFollowsThePlatformCurrencyUntilOneIsSaved(t *testing.T) {
+	queries := newMemoryPaymentQueries()
+	queries.platformCurrency = "EUR"
+	store := newTestStore(t, queries, &memoryAuditQueries{}, &bytes.Buffer{})
+	tenantID := uuid.Must(uuid.NewV7())
+
+	if got, err := store.Currency(context.Background(), tenantID); err != nil || got != "EUR" {
+		t.Fatalf("Currency before any settings = %q, %v, want the platform's EUR", got, err)
+	}
+	saved, err := store.Upsert(context.Background(), tenantID, stripeInput(false), AuditMeta{})
+	if err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	if saved.Currency != "EUR" {
+		t.Fatalf("first save currency = %q, want the platform's EUR", saved.Currency)
+	}
+	queries.platformCurrency = "GBP"
+	if got, err := store.Currency(context.Background(), tenantID); err != nil || got != "EUR" {
+		t.Fatalf("Currency after the platform's changed = %q, %v, want the saved EUR", got, err)
+	}
+}
+
 func TestStoreRefusesACurrencyChangeOnceTheTenantHasAPurchase(t *testing.T) {
 	queries := newMemoryPaymentQueries()
 	store := newTestStore(t, queries, &memoryAuditQueries{}, &bytes.Buffer{})
@@ -369,12 +394,12 @@ func TestStoreRefusesACurrencyChangeOnceTheTenantHasAPurchase(t *testing.T) {
 	if _, err := store.Upsert(context.Background(), tenantID, input, AuditMeta{}); !errors.Is(err, ErrCurrencyLocked) {
 		t.Fatalf("Upsert error = %v, want ErrCurrencyLocked", err)
 	}
-	if got, _ := store.Currency(context.Background(), tenantID); got != DefaultCurrency {
-		t.Fatalf("currency = %q after a refused change, want %q", got, DefaultCurrency)
+	if got, _ := store.Currency(context.Background(), tenantID); got != testPlatformCurrency {
+		t.Fatalf("currency = %q after a refused change, want %q", got, testPlatformCurrency)
 	}
 
 	// Naming the stored currency again changes nothing, so it is no change.
-	input.Currency = DefaultCurrency
+	input.Currency = testPlatformCurrency
 	saved, err := store.Upsert(context.Background(), tenantID, input, AuditMeta{})
 	if err != nil {
 		t.Fatalf("Upsert with the stored currency: %v", err)

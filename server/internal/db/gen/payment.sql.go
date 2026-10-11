@@ -19,7 +19,8 @@ WITH held AS (
     SELECT r.tenant_id,
         r.provider,
         r.provider_payment_id,
-        r.refunded_amount
+        r.refunded_amount,
+        r.currency
     FROM unapplied_refunds r
     WHERE r.tenant_id = $1
         AND r.provider = $2::text
@@ -29,7 +30,12 @@ refund AS (
     SELECT p.id,
         GREATEST(
             COALESCE(p.refunded_amount, 0),
-            COALESCE(held.refunded_amount, p.price_at_purchase)
+            COALESCE(
+                CASE
+                    WHEN held.currency = p.currency THEN held.refunded_amount
+                END,
+                p.price_at_purchase
+            )
         ) AS amount
     FROM purchases p
         JOIN held ON held.tenant_id = p.tenant_id
@@ -44,7 +50,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency
 `
 
 type ApplyUnappliedRefundToPurchaseParams struct {
@@ -79,6 +85,7 @@ func (q *Queries) ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyU
 		&i.StoreTransactionID,
 		&i.IsTest,
 		&i.Provider,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -94,7 +101,8 @@ INSERT INTO purchases (
     provider,
     provider_checkout_id,
     provider_payment_id,
-    is_test
+    is_test,
+    currency
 )
 VALUES (
     $1::uuid,
@@ -106,10 +114,11 @@ VALUES (
     $7::text,
     $8::text,
     $9::text,
-    $10::boolean
+    $10::boolean,
+    $11::text
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency
 `
 
 type CreatePurchaseFromProviderCheckoutParams struct {
@@ -123,6 +132,7 @@ type CreatePurchaseFromProviderCheckoutParams struct {
 	ProviderCheckoutID string         `json:"provider_checkout_id"`
 	ProviderPaymentID  sql.NullString `json:"provider_payment_id"`
 	IsTest             bool           `json:"is_test"`
+	Currency           string         `json:"currency"`
 }
 
 // Every checkout the provider reports paid is a purchase of its own, even for a
@@ -141,6 +151,7 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 		arg.ProviderCheckoutID,
 		arg.ProviderPaymentID,
 		arg.IsTest,
+		arg.Currency,
 	)
 	var i Purchase
 	err := row.Scan(
@@ -159,6 +170,7 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 		&i.StoreTransactionID,
 		&i.IsTest,
 		&i.Provider,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -274,29 +286,39 @@ INSERT INTO unapplied_refunds (
     tenant_id,
     provider,
     provider_payment_id,
-    refunded_amount
+    refunded_amount,
+    currency
 )
 VALUES (
     $1,
     $2::text,
     $3::text,
-    $4::integer
+    $4::integer,
+    $5::text
 )
 ON CONFLICT (tenant_id, provider, provider_payment_id) DO
 UPDATE
 SET refunded_amount = CASE
         WHEN unapplied_refunds.refunded_amount IS NULL
-            OR EXCLUDED.refunded_amount IS NULL THEN NULL
+            OR EXCLUDED.refunded_amount IS NULL
+            OR unapplied_refunds.currency <> EXCLUDED.currency THEN NULL
         ELSE GREATEST(unapplied_refunds.refunded_amount, EXCLUDED.refunded_amount)
+    END,
+    currency = CASE
+        WHEN unapplied_refunds.refunded_amount IS NULL
+            OR EXCLUDED.refunded_amount IS NULL
+            OR unapplied_refunds.currency <> EXCLUDED.currency THEN NULL
+        ELSE EXCLUDED.currency
     END,
     received_at = NOW()
 `
 
 type HoldUnappliedRefundParams struct {
-	TenantID          uuid.UUID     `json:"tenant_id"`
-	Provider          string        `json:"provider"`
-	ProviderPaymentID string        `json:"provider_payment_id"`
-	RefundedAmount    sql.NullInt32 `json:"refunded_amount"`
+	TenantID          uuid.UUID      `json:"tenant_id"`
+	Provider          string         `json:"provider"`
+	ProviderPaymentID string         `json:"provider_payment_id"`
+	RefundedAmount    sql.NullInt32  `json:"refunded_amount"`
+	Currency          sql.NullString `json:"currency"`
 }
 
 // Keeps a refund whose purchase is not here yet, so the notification that
@@ -304,15 +326,17 @@ type HoldUnappliedRefundParams struct {
 // identity, so a repeated delivery updates the row rather than adding one.
 //
 // A NULL amount means the event reported none, which is applied as a refund of
-// the whole price; it therefore outranks any number on a later merge, and
-// between two numbers the larger wins, because the provider reports the total
-// refunded so far.
+// the whole price; it therefore outranks any number on a later merge, as two
+// amounts in different currencies do, since neither can be added to the
+// other, and between two numbers in one currency the larger wins, because the
+// provider reports the total refunded so far.
 func (q *Queries) HoldUnappliedRefund(ctx context.Context, arg HoldUnappliedRefundParams) error {
 	_, err := q.db.ExecContext(ctx, HoldUnappliedRefund,
 		arg.TenantID,
 		arg.Provider,
 		arg.ProviderPaymentID,
 		arg.RefundedAmount,
+		arg.Currency,
 	)
 	return err
 }
@@ -320,6 +344,7 @@ func (q *Queries) HoldUnappliedRefund(ctx context.Context, arg HoldUnappliedRefu
 const ListMyPurchasesAsc = `-- name: ListMyPurchasesAsc :many
 SELECT p.id,
     p.price_at_purchase,
+    p.currency,
     p.expires_at,
     p.refunded_at,
     p.purchased_at,
@@ -379,6 +404,7 @@ type ListMyPurchasesAscParams struct {
 type ListMyPurchasesAscRow struct {
 	ID                uuid.UUID    `json:"id"`
 	PriceAtPurchase   int32        `json:"price_at_purchase"`
+	Currency          string       `json:"currency"`
 	ExpiresAt         sql.NullTime `json:"expires_at"`
 	RefundedAt        sql.NullTime `json:"refunded_at"`
 	PurchasedAt       time.Time    `json:"purchased_at"`
@@ -411,6 +437,7 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 		if err := rows.Scan(
 			&i.ID,
 			&i.PriceAtPurchase,
+			&i.Currency,
 			&i.ExpiresAt,
 			&i.RefundedAt,
 			&i.PurchasedAt,
@@ -438,6 +465,7 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 const ListMyPurchasesDesc = `-- name: ListMyPurchasesDesc :many
 SELECT p.id,
     p.price_at_purchase,
+    p.currency,
     p.expires_at,
     p.refunded_at,
     p.purchased_at,
@@ -497,6 +525,7 @@ type ListMyPurchasesDescParams struct {
 type ListMyPurchasesDescRow struct {
 	ID                uuid.UUID    `json:"id"`
 	PriceAtPurchase   int32        `json:"price_at_purchase"`
+	Currency          string       `json:"currency"`
 	ExpiresAt         sql.NullTime `json:"expires_at"`
 	RefundedAt        sql.NullTime `json:"refunded_at"`
 	PurchasedAt       time.Time    `json:"purchased_at"`
@@ -533,6 +562,7 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 		if err := rows.Scan(
 			&i.ID,
 			&i.PriceAtPurchase,
+			&i.Currency,
 			&i.ExpiresAt,
 			&i.RefundedAt,
 			&i.PurchasedAt,
@@ -562,12 +592,17 @@ WITH refund AS (
     SELECT p.id,
         GREATEST(
             COALESCE(p.refunded_amount, 0),
-            COALESCE($1::integer, p.price_at_purchase)
+            COALESCE(
+                CASE
+                    WHEN $1::text = p.currency THEN $2::integer
+                END,
+                p.price_at_purchase
+            )
         ) AS amount
     FROM purchases p
-    WHERE p.tenant_id = $2
-        AND p.provider = $3::text
-        AND p.provider_payment_id = $4::text
+    WHERE p.tenant_id = $3
+        AND p.provider = $4::text
+        AND p.provider_payment_id = $5::text
 )
 UPDATE purchases p
 SET refunded_amount = refund.amount,
@@ -577,14 +612,15 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency
 `
 
 type RecordRefundOnPurchaseParams struct {
-	RefundedAmount    sql.NullInt32 `json:"refunded_amount"`
-	TenantID          uuid.UUID     `json:"tenant_id"`
-	Provider          string        `json:"provider"`
-	ProviderPaymentID string        `json:"provider_payment_id"`
+	Currency          sql.NullString `json:"currency"`
+	RefundedAmount    sql.NullInt32  `json:"refunded_amount"`
+	TenantID          uuid.UUID      `json:"tenant_id"`
+	Provider          string         `json:"provider"`
+	ProviderPaymentID string         `json:"provider_payment_id"`
 }
 
 // Records what the provider has refunded against one purchase, matched by the
@@ -594,12 +630,14 @@ type RecordRefundOnPurchaseParams struct {
 //
 // The amount the provider reports is cumulative over every refund against the
 // payment, so GREATEST keeps an out-of-order delivery from walking it back, and
-// an event that reports no amount at all is recorded as a refund of the whole
-// price. refunded_at follows from the amount rather than from the event:
+// an event that reports no amount at all, or one in a currency other than the
+// purchase's, which says nothing comparable to its price, is recorded as a
+// refund of the whole price. refunded_at follows from the amount rather than from the event:
 // it is set once the refunded total reaches what was paid, and a repeated
 // delivery of the same refund leaves the instant already stored.
 func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOnPurchaseParams) (Purchase, error) {
 	row := q.db.QueryRowContext(ctx, RecordRefundOnPurchase,
+		arg.Currency,
 		arg.RefundedAmount,
 		arg.TenantID,
 		arg.Provider,
@@ -622,6 +660,7 @@ func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOn
 		&i.StoreTransactionID,
 		&i.IsTest,
 		&i.Provider,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -652,8 +691,8 @@ SELECT EXISTS (
     )
 `
 
-// Whether any purchase, from a provider's checkout or a store, test ones
-// included, is recorded in the tenant's currency.
+// Whether the tenant has any purchase, from a provider's checkout or a store,
+// test ones included, which keeps the tenant currency from changing.
 func (q *Queries) TenantHasPurchases(ctx context.Context, tenantID uuid.UUID) (bool, error) {
 	row := q.db.QueryRowContext(ctx, TenantHasPurchases, tenantID)
 	var exists bool

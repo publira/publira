@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/secretupdate"
 )
 
@@ -26,6 +27,27 @@ type PaymentQuerier interface {
 	GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (dbmodels.TenantPaymentConfig, error)
 	UpsertTenantPaymentConfig(ctx context.Context, arg dbmodels.UpsertTenantPaymentConfigParams) (dbmodels.TenantPaymentConfig, error)
 	TenantHasPurchases(ctx context.Context, tenantID uuid.UUID) (bool, error)
+	GetPlatformDefaultCurrency(ctx context.Context) (string, error)
+}
+
+// CurrencyQuerier is what [TenantCurrency] reads.
+type CurrencyQuerier interface {
+	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (dbmodels.TenantPaymentConfig, error)
+	platformconfig.CurrencyQuerier
+}
+
+// TenantCurrency answers the currency tenantID sells in: the one its payment
+// settings store, whether or not they are enabled, or the platform's default
+// when it has saved none.
+func TenantCurrency(ctx context.Context, q CurrencyQuerier, tenantID uuid.UUID) (string, error) {
+	row, err := q.GetTenantPaymentConfigByTenantID(ctx, tenantID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return platformconfig.Currency(ctx, q)
+	}
+	if err != nil {
+		return "", fmt.Errorf("read tenant payment settings: %w", err)
+	}
+	return row.Currency, nil
 }
 
 type Store struct {
@@ -58,8 +80,8 @@ type storedFields struct {
 }
 
 // GetPublic returns the non-secret configuration for tenantID. A missing row
-// is an empty disabled config with no provider, in [DefaultCurrency], not an
-// error.
+// is an empty disabled config with no provider, in the platform's default
+// currency, not an error.
 func (s *Store) GetPublic(ctx context.Context, tenantID uuid.UUID) (PublicConfig, error) {
 	row, ok, err := s.loadRow(ctx, tenantID)
 	if err != nil {
@@ -70,7 +92,11 @@ func (s *Store) GetPublic(ctx context.Context, tenantID uuid.UUID) (PublicConfig
 		return PublicConfig{}, err
 	}
 	if !ok {
-		return PublicConfig{TenantID: tenantID, Currency: DefaultCurrency, CurrencyLocked: locked}, nil
+		currency, err := platformconfig.Currency(ctx, s.queries)
+		if err != nil {
+			return PublicConfig{}, err
+		}
+		return PublicConfig{TenantID: tenantID, Currency: currency, CurrencyLocked: locked}, nil
 	}
 	stored, err := decodeStoredFields(row)
 	if err != nil {
@@ -81,15 +107,9 @@ func (s *Store) GetPublic(ctx context.Context, tenantID uuid.UUID) (PublicConfig
 	return config, nil
 }
 
-// Currency answers the currency tenantID sells in: the one its payment
-// settings store, or [DefaultCurrency] when it has none, whether or not they
-// are enabled.
+// Currency answers the currency tenantID sells in, as [TenantCurrency] does.
 func (s *Store) Currency(ctx context.Context, tenantID uuid.UUID) (string, error) {
-	row, ok, err := s.loadRow(ctx, tenantID)
-	if err != nil {
-		return "", err
-	}
-	return currentCurrency(row, ok), nil
+	return TenantCurrency(ctx, s.queries, tenantID)
 }
 
 // Upsert encrypts replaced fields, persists the row, and records a tenant
@@ -106,7 +126,7 @@ func (s *Store) Upsert(ctx context.Context, tenantID uuid.UUID, input UpdateInpu
 	if err != nil {
 		return PublicConfig{}, err
 	}
-	currency, locked, err := s.resolveCurrency(ctx, tenantID, existing, found, input.Currency)
+	currency, currencyChanged, locked, err := s.resolveCurrency(ctx, tenantID, existing, found, input.Currency)
 	if err != nil {
 		return PublicConfig{}, err
 	}
@@ -191,7 +211,7 @@ func (s *Store) Upsert(ctx context.Context, tenantID uuid.UUID, input UpdateInpu
 		return PublicConfig{}, err
 	}
 
-	if previous := currentCurrency(existing, found); currency != previous {
+	if currencyChanged {
 		touched = append(touched, "currency")
 	}
 	s.recordUpdate(ctx, tenantID, audit, auditlog.OutcomeSuccess, touchedReason(touched))
@@ -200,33 +220,30 @@ func (s *Store) Upsert(ctx context.Context, tenantID uuid.UUID, input UpdateInpu
 	return config, nil
 }
 
-// resolveCurrency answers the currency an update stores, and whether the
-// tenant's purchases lock it: the one requested, or the stored one when the
-// request names none. A change is refused once the tenant has a purchase, since
-// every amount it recorded is an amount in the stored currency.
-func (s *Store) resolveCurrency(ctx context.Context, tenantID uuid.UUID, existing dbmodels.TenantPaymentConfig, found bool, requested string) (string, bool, error) {
-	current := currentCurrency(existing, found)
-	locked, err := s.currencyLocked(ctx, tenantID)
-	if err != nil {
-		return "", false, err
-	}
-	currency := strings.ToUpper(strings.TrimSpace(requested))
-	if currency == "" {
-		return current, locked, nil
-	}
-	if currency != current && locked {
-		return "", false, fmt.Errorf("%w: %s is stored", ErrCurrencyLocked, current)
-	}
-	return currency, locked, nil
-}
-
-// currentCurrency answers the currency stored in existing, or
-// [DefaultCurrency] when nothing was found.
-func currentCurrency(existing dbmodels.TenantPaymentConfig, found bool) string {
+// resolveCurrency answers the currency an update stores, whether that changes
+// the one the tenant sells in, and whether the tenant's purchases lock it. It
+// is the one requested, or the current one when the request names none, which
+// before any is saved is the platform's default. A change is refused once the
+// tenant has a purchase, since its prices and the amounts it recorded are
+// amounts in the current currency.
+func (s *Store) resolveCurrency(ctx context.Context, tenantID uuid.UUID, existing dbmodels.TenantPaymentConfig, found bool, requested string) (currency string, changed, locked bool, err error) {
+	current := existing.Currency
 	if !found {
-		return DefaultCurrency
+		if current, err = platformconfig.Currency(ctx, s.queries); err != nil {
+			return "", false, false, err
+		}
 	}
-	return existing.Currency
+	if locked, err = s.currencyLocked(ctx, tenantID); err != nil {
+		return "", false, false, err
+	}
+	currency = strings.ToUpper(strings.TrimSpace(requested))
+	if currency == "" || currency == current {
+		return current, false, locked, nil
+	}
+	if locked {
+		return "", false, false, fmt.Errorf("%w: %s is stored", ErrCurrencyLocked, current)
+	}
+	return currency, true, locked, nil
 }
 
 func (s *Store) currencyLocked(ctx context.Context, tenantID uuid.UUID) (bool, error) {

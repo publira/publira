@@ -84,13 +84,15 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 // operator MFA challenges it purges. The object store and the search engine hold
 // their secret encrypted under keys the database does not have. The storefront also
 // reads the Web Push settings, but only the columns that publish the public
-// key, which TestPublicRoleReadsOnlyThePublishedWebPushColumns holds it to, and
+// key, which TestPublicRoleReadsOnlyThePublishedWebPushColumns holds it to,
 // the tenant console the platform relay's from address and nothing else of
-// it, which TestAdminRoleReadsOnlyThePlatformSMTPFromAddress holds it to.
+// it, which TestAdminRoleReadsOnlyThePlatformSMTPFromAddress holds it to, and
+// all three the platform's default currency and nothing else of its settings,
+// which TestTenantRolesReadOnlyThePlatformDefaultCurrency holds them to.
 var readablePlatformTables = map[string][]string{
-	"publira_public":        {"platform_policy_config", "platform_webpush_config"},
-	"publira_admin":         {"platform_policy_config", "platform_retention_config", "platform_smtp_config", "platform_storage_config"},
-	"publira_content_stats": {"platform_retention_config", "platform_search_config", "platform_storage_config", "platform_user_mfa_used_challenges"},
+	"publira_public":        {"platform_config", "platform_policy_config", "platform_webpush_config"},
+	"publira_admin":         {"platform_config", "platform_policy_config", "platform_retention_config", "platform_smtp_config", "platform_storage_config"},
+	"publira_content_stats": {"platform_config", "platform_retention_config", "platform_search_config", "platform_storage_config", "platform_user_mfa_used_challenges"},
 }
 
 // purgeablePlatformTables are, per role, the platform tables it deletes from:
@@ -187,6 +189,35 @@ func TestAdminRoleReadsOnlyThePlatformSMTPFromAddress(t *testing.T) {
 	}
 	assertRefused(t, ctx, admin, "publira_admin", "SELECT * FROM platform_smtp_config")
 	assertRefused(t, ctx, admin, "publira_admin", "UPDATE platform_smtp_config SET from_address = 'attacker@example.com'")
+}
+
+// A tenant that has saved no payment settings sells in the platform's default
+// currency, which the storefront, the tenant console, and the royalty close all
+// resolve, so their grant names that column rather than the table.
+func TestTenantRolesReadOnlyThePlatformDefaultCurrency(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	for role, conn := range map[string]*sql.DB{
+		"publira_public":        pg.OpenPublicDB(t),
+		"publira_admin":         pg.OpenAdminDB(t),
+		"publira_content_stats": pg.OpenContentStatsDB(t),
+	} {
+		var count int
+		if err := conn.QueryRowContext(ctx,
+			"SELECT count(*) FROM platform_config WHERE singleton AND default_currency <> ''",
+		).Scan(&count); err != nil {
+			t.Fatalf("read the platform default currency as %s: %v", role, err)
+		}
+		for _, column := range []string{"default_timezone", "default_locale", "revision"} {
+			assertRefused(t, ctx, conn, role, fmt.Sprintf("SELECT %s FROM platform_config", column))
+		}
+		assertRefused(t, ctx, conn, role, "SELECT * FROM platform_config")
+		assertRefused(t, ctx, conn, role, "UPDATE platform_config SET default_currency = 'EUR'")
+	}
 }
 
 const outboxDBRole = "publira_outbox"

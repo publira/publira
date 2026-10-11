@@ -42,7 +42,7 @@ message UpdateRoyaltyConfigResponse {
 
 // The figures of one month: its own sales, and what its lines pay out.
 // Amounts are integers in the minor unit of the tenant currency, which
-// AdminAuthService.GetTenant answers.
+// AdminAuthService.GetTenant answers, and count only the sales paid in it.
 message RoyaltyStatementTotals {
   // What the month sold, each sale counted once however many creators it is
   // credited to. A fully refunded sale is not a sale.

@@ -44,8 +44,8 @@ func TestPurchaseTestFlagNeedsAStoreOrAProvider(t *testing.T) {
 				Status:   testutil.EpisodeStatusPublished,
 			})
 			_, err := pg.DB.ExecContext(ctx, `
-				INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, is_test`+tt.columns+`)
-				VALUES ($1, $2, $3, $4, 500, true`+tt.values+`)
+				INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, currency, is_test`+tt.columns+`)
+				VALUES ($1, $2, $3, $4, 500, 'JPY', true`+tt.values+`)
 			`, uuid.Must(uuid.NewV7()), tenant.ID, reader.ID, episode.ID)
 			if tt.wantErr {
 				if !isCheckViolation(err) || checkName(err) != "purchases_store_transaction_check" {
@@ -82,8 +82,8 @@ func TestProviderTestPurchasesBecomeSalesOnRollback(t *testing.T) {
 
 	purchaseID := uuid.Must(uuid.NewV7())
 	if _, err := pg.DB.ExecContext(ctx, `
-		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, provider, provider_checkout_id, is_test)
-		VALUES ($1, $2, $3, $4, 500, 'stripe', 'cs_test_rollback', true)
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, provider, provider_checkout_id, is_test, currency)
+		VALUES ($1, $2, $3, $4, 500, 'stripe', 'cs_test_rollback', true, 'JPY')
 	`, purchaseID, tenant.ID, reader.ID, episode.ID); err != nil {
 		t.Fatalf("insert test provider purchase: %v", err)
 	}

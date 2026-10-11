@@ -26,7 +26,7 @@ A new order reaches the site as soon as it is saved.
 Choose **Create** on the episode list and fill in:
 
 - **Title**: the episode's title, such as `Episode 1 — A beginning morning`. It can be [changed later](#changing-the-title).
-- **Price**: a whole number of yen. `0` makes the episode free.
+- **Price**: a whole number in the smallest unit of the tenant's currency: yen for a tenant that sells in JPY, cents for one that sells in USD. `0` makes the episode free.
 - **Reading period**: how many hours a purchase keeps the episode open. `0` keeps it open with no end. It starts at the series' [Reading period](./1-series.md#reading-period).
 - **Publication date and time**: when the episode is published, read in the tenant's time zone. Leave it empty to create a draft. A time that has already passed publishes the episode as soon as it is created.
 - **Shown on** and **Sold on**: where the episode can be found and bought, as [Shown on and Sold on](#shown-on-and-sold-on) describes. Both start by following the series.
@@ -45,7 +45,7 @@ Choose **Create episode**. The episode is created with the Authors credited on t
 
 ## Changing the price and reading period
 
-**Price and reading period**, on the episode's edit screen, holds the two values the episode is sold on, with the same rules as when it was created: **Price** is a whole number of yen, `0` making the episode free, and **Reading period** is a number of hours, `0` keeping a purchase open with no end. Change either and choose **Update price and reading period**. The site and the app sell the episode on the new values as soon as they are saved.
+**Price and reading period**, on the episode's edit screen, holds the two values the episode is sold on, with the same rules as when it was created: **Price** is a whole number in the smallest unit of the tenant's currency, `0` making the episode free, and **Reading period** is a number of hours, `0` keeping a purchase open with no end. Change either and choose **Update price and reading period**. The site and the app sell the episode on the new values as soon as they are saved.
 
 ![The Price and reading period section of an episode: the Price and Reading period fields holding the episode's values, and Update price and reading period.](./episodes-price-and-reading-period.png)
 

@@ -54,8 +54,8 @@ func seedPlayTenant(t *testing.T, pg *testutil.PostgresEnv, encryptor *secretcry
 	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: publicID[:8] + "EP01", Price: 300})
 	reader := pg.SeedEndUser(t, tenant.ID, publicID[:8]+"USR1", "reader@"+strings.ToLower(publicID)+".example.com", "Reader")
 	if _, err := pg.DB.ExecContext(ctx, `
-		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, store, store_transaction_id)
-		VALUES ($1, $2, $3, $4, 300, 'google_play', $5)
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, store, store_transaction_id, currency)
+		VALUES ($1, $2, $3, $4, 300, 'google_play', $5, 'JPY')
 	`, uuid.New(), tenant.ID, reader.ID, episode.ID, token); err != nil {
 		t.Fatalf("insert play purchase: %v", err)
 	}

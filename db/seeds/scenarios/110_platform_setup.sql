@@ -26,11 +26,12 @@ WHERE actor_platform_user_id IN (
 DELETE FROM platform_users
 WHERE email = 'setup-operator@example.com';
 
-INSERT INTO platform_config (singleton, default_timezone, default_locale)
-VALUES (TRUE, 'UTC', 'en')
+INSERT INTO platform_config (singleton, default_timezone, default_locale, default_currency)
+VALUES (TRUE, 'UTC', 'en', 'JPY')
 ON CONFLICT (singleton) DO UPDATE
 SET default_timezone = EXCLUDED.default_timezone,
     default_locale = EXCLUDED.default_locale,
+    default_currency = EXCLUDED.default_currency,
     updated_at = NOW();
 
 WITH platform_user_seed AS (

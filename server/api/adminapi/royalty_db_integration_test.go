@@ -77,9 +77,9 @@ func (e *adminDBEnv) seedSale(t *testing.T, f royaltyFixture, episodeID uuid.UUI
 	t.Helper()
 
 	if _, err := e.PG.DB.ExecContext(context.Background(), `
-		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at, refunded_amount, refunded_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-	`, uuid.Must(uuid.NewV7()), f.admin.Tenant.ID, f.reader.ID, episodeID, sale.price, sale.purchasedAt, sale.refundedAmount, sale.refundedAt); err != nil {
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at, refunded_amount, refunded_at, currency)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`, uuid.Must(uuid.NewV7()), f.admin.Tenant.ID, f.reader.ID, episodeID, sale.price, sale.purchasedAt, sale.refundedAmount, sale.refundedAt, e.PG.TenantCurrency(t, f.admin.Tenant.ID)); err != nil {
 		t.Fatalf("insert sale of episode %s: %v", episodeID, err)
 	}
 }

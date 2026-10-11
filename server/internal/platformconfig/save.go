@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
+	"strings"
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -20,6 +22,7 @@ import (
 const (
 	FieldDefaultTimezone  = "default_timezone"
 	FieldDefaultLocale    = "default_locale"
+	FieldDefaultCurrency  = "default_currency"
 	FieldExpectedRevision = "expected_revision"
 )
 
@@ -30,12 +33,19 @@ var (
 	ErrConflict = errors.New("platform settings have changed since they were read")
 
 	errNegativeRevision = errors.New("expected_revision must not be negative")
+	errInvalidCurrency  = errors.New("default_currency must be an ISO 4217 code of three letters")
+
+	currencyPattern = regexp.MustCompile(`^[A-Z]{3}$`)
 )
 
-// SaveParams replaces the platform default time zone and locale.
+// SaveParams replaces the platform default time zone, locale, and currency.
 type SaveParams struct {
 	DefaultTimezone string
 	DefaultLocale   string
+	// DefaultCurrency is the ISO 4217 code of the currency every tenant that
+	// has saved no payment settings sells in. Empty keeps the stored one, which
+	// is [DefaultCurrency] before any is saved.
+	DefaultCurrency string
 	// ExpectedRevision is the revision the settings were read at, 0 when none
 	// were saved. Nil saves over whatever is stored, for a caller that read
 	// nothing.
@@ -53,10 +63,14 @@ func (p SaveParams) Validate() (SaveParams, error) {
 	if err != nil {
 		return SaveParams{}, &fielderr.Invalid{Field: FieldDefaultLocale, Err: err}
 	}
+	currency := strings.ToUpper(strings.TrimSpace(p.DefaultCurrency))
+	if currency != "" && !currencyPattern.MatchString(currency) {
+		return SaveParams{}, &fielderr.Invalid{Field: FieldDefaultCurrency, Err: errInvalidCurrency}
+	}
 	if p.ExpectedRevision != nil && *p.ExpectedRevision < 0 {
 		return SaveParams{}, &fielderr.Invalid{Field: FieldExpectedRevision, Err: errNegativeRevision}
 	}
-	return SaveParams{DefaultTimezone: timezone, DefaultLocale: defaultLocale, ExpectedRevision: p.ExpectedRevision}, nil
+	return SaveParams{DefaultTimezone: timezone, DefaultLocale: defaultLocale, DefaultCurrency: currency, ExpectedRevision: p.ExpectedRevision}, nil
 }
 
 // Save writes p in one transaction on db, with its entry filed under actor.
@@ -101,9 +115,14 @@ func write(ctx context.Context, q *dbmodels.Queries, p SaveParams) (dbmodels.Pla
 		if p.ExpectedRevision != nil && *p.ExpectedRevision != 0 {
 			return dbmodels.PlatformConfig{}, false, ErrConflict
 		}
+		currency := p.DefaultCurrency
+		if currency == "" {
+			currency = DefaultCurrency
+		}
 		inserted, err := q.InsertPlatformSettings(ctx, dbmodels.InsertPlatformSettingsParams{
 			DefaultTimezone: p.DefaultTimezone,
 			DefaultLocale:   p.DefaultLocale,
+			DefaultCurrency: currency,
 		})
 		// Two first saves both find nothing to lock; the primary key settles
 		// which one wins.
@@ -121,12 +140,16 @@ func write(ctx context.Context, q *dbmodels.Queries, p SaveParams) (dbmodels.Pla
 	if p.ExpectedRevision != nil && *p.ExpectedRevision != current.Revision {
 		return dbmodels.PlatformConfig{}, false, ErrConflict
 	}
-	if current.DefaultTimezone == p.DefaultTimezone && current.DefaultLocale == p.DefaultLocale {
+	if p.DefaultCurrency == "" {
+		p.DefaultCurrency = current.DefaultCurrency
+	}
+	if current.DefaultTimezone == p.DefaultTimezone && current.DefaultLocale == p.DefaultLocale && current.DefaultCurrency == p.DefaultCurrency {
 		return current, false, nil
 	}
 	updated, err := q.UpdatePlatformSettings(ctx, dbmodels.UpdatePlatformSettingsParams{
 		DefaultTimezone: p.DefaultTimezone,
 		DefaultLocale:   p.DefaultLocale,
+		DefaultCurrency: p.DefaultCurrency,
 	})
 	if err != nil {
 		return dbmodels.PlatformConfig{}, false, fmt.Errorf("update platform settings: %w", err)

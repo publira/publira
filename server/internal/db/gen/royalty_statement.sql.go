@@ -68,12 +68,14 @@ FROM purchases p
 WHERE p.tenant_id = $1
     AND p.refunded_at IS NULL
     AND NOT p.is_test
-    AND p.purchased_at >= $2::timestamptz
-    AND p.purchased_at < $3::timestamptz
+    AND p.currency = $2::text
+    AND p.purchased_at >= $3::timestamptz
+    AND p.purchased_at < $4::timestamptz
 `
 
 type GetRoyaltySalesTotalsForPeriodParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
+	Currency string    `json:"currency"`
 	StartsAt time.Time `json:"starts_at"`
 	EndsAt   time.Time `json:"ends_at"`
 }
@@ -84,10 +86,15 @@ type GetRoyaltySalesTotalsForPeriodRow struct {
 }
 
 // Totals the month's sales once each, however many creators a sale is
-// credited to. The month and the refund rule are those of
+// credited to. The month, the refund rule, and the currency are those of
 // ListRoyaltyLinesForPeriod.
 func (q *Queries) GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoyaltySalesTotalsForPeriodParams) (GetRoyaltySalesTotalsForPeriodRow, error) {
-	row := q.db.QueryRowContext(ctx, GetRoyaltySalesTotalsForPeriod, arg.TenantID, arg.StartsAt, arg.EndsAt)
+	row := q.db.QueryRowContext(ctx, GetRoyaltySalesTotalsForPeriod,
+		arg.TenantID,
+		arg.Currency,
+		arg.StartsAt,
+		arg.EndsAt,
+	)
 	var i GetRoyaltySalesTotalsForPeriodRow
 	err := row.Scan(&i.TotalGross, &i.TotalRefunded)
 	return i, err
@@ -313,8 +320,9 @@ LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id
 WHERE p.tenant_id = $1
     AND p.refunded_at IS NULL
     AND NOT p.is_test
-    AND p.purchased_at >= $2::timestamptz
-    AND p.purchased_at < $3::timestamptz
+    AND p.currency = $2::text
+    AND p.purchased_at >= $3::timestamptz
+    AND p.purchased_at < $4::timestamptz
 GROUP BY
     s.id, s.public_id, s.title,
     e.id, e.public_id, e.title, e.order_index,
@@ -326,6 +334,7 @@ ORDER BY s.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec
 
 type ListRoyaltyLinesForPeriodParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
+	Currency string    `json:"currency"`
 	StartsAt time.Time `json:"starts_at"`
 	EndsAt   time.Time `json:"ends_at"`
 }
@@ -358,10 +367,17 @@ type ListRoyaltyLinesForPeriodRow struct {
 // fully refunded sale is not a sale; a partial refund stays a sale and is
 // carried as refunded_amount. A test purchase, from a store's sandbox or a
 // payment provider's test mode, paid the tenant nothing and is not a sale
-// either. The payout is floored per line over the month's sum, which
-// keeps the rounding loss to one minor unit of the tenant currency per line.
+// either, and neither is one paid in a currency other than the one asked
+// for, the tenant's: its price cannot be added to theirs. The payout is
+// floored per line over the month's sum, which keeps the rounding loss to one
+// minor unit of the currency per line.
 func (q *Queries) ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListRoyaltyLinesForPeriod, arg.TenantID, arg.StartsAt, arg.EndsAt)
+	rows, err := q.db.QueryContext(ctx, ListRoyaltyLinesForPeriod,
+		arg.TenantID,
+		arg.Currency,
+		arg.StartsAt,
+		arg.EndsAt,
+	)
 	if err != nil {
 		return nil, err
 	}

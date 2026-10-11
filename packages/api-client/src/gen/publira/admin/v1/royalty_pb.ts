@@ -129,7 +129,7 @@ export const UpdateRoyaltyConfigResponseSchema: GenMessage<UpdateRoyaltyConfigRe
 /**
  * The figures of one month: its own sales, and what its lines pay out.
  * Amounts are integers in the minor unit of the tenant currency, which
- * AdminAuthService.GetTenant answers.
+ * AdminAuthService.GetTenant answers, and count only the sales paid in it.
  *
  * @generated from message publira.admin.v1.RoyaltyStatementTotals
  */

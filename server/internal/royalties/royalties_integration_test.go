@@ -49,9 +49,9 @@ func (f royaltyTenant) setTimeZone(t *testing.T, timeZone string) {
 func (f royaltyTenant) sell(t *testing.T, purchasedAt time.Time) {
 	t.Helper()
 	if _, err := f.pg.DB.ExecContext(context.Background(), `
-		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at)
-		VALUES ($1, $2, $3, $4, 500, $5)
-	`, uuid.Must(uuid.NewV7()), f.id, f.reader, f.episode, purchasedAt); err != nil {
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at, currency)
+		VALUES ($1, $2, $3, $4, 500, $5, $6)
+	`, uuid.Must(uuid.NewV7()), f.id, f.reader, f.episode, purchasedAt, f.pg.TenantCurrency(t, f.id)); err != nil {
 		t.Fatalf("insert sale at %s: %v", purchasedAt.Format(time.RFC3339), err)
 	}
 }

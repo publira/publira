@@ -35,13 +35,26 @@ type memoryPaymentQueries struct {
 	byTenant map[uuid.UUID]dbmodels.TenantPaymentConfig
 	// purchased holds the tenants that have a purchase.
 	purchased map[uuid.UUID]bool
+	// platformCurrency is the platform's default currency.
+	platformCurrency string
 }
+
+// testPlatformCurrency is the default currency of the platform the memory
+// queries answer for.
+const testPlatformCurrency = "JPY"
 
 func newMemoryPaymentQueries() *memoryPaymentQueries {
 	return &memoryPaymentQueries{
-		byTenant:  make(map[uuid.UUID]dbmodels.TenantPaymentConfig),
-		purchased: make(map[uuid.UUID]bool),
+		byTenant:         make(map[uuid.UUID]dbmodels.TenantPaymentConfig),
+		purchased:        make(map[uuid.UUID]bool),
+		platformCurrency: testPlatformCurrency,
 	}
+}
+
+func (m *memoryPaymentQueries) GetPlatformDefaultCurrency(context.Context) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.platformCurrency, nil
 }
 
 func (m *memoryPaymentQueries) TenantHasPurchases(_ context.Context, tenantID uuid.UUID) (bool, error) {

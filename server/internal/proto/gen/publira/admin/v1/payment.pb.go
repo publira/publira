@@ -355,11 +355,11 @@ type TenantPaymentSettings struct {
 	// One entry per field the provider declares, in its declared order.
 	Fields []*PaymentCredentialFieldState `protobuf:"bytes,8,rep,name=fields,proto3" json:"fields,omitempty"`
 	// The ISO 4217 code, in capitals, of the currency the tenant sells in, and
-	// stores every price and amount in the minor unit of. JPY before any is
-	// saved.
+	// stores every price in the minor unit of. The platform's default currency
+	// before any is saved.
 	Currency string `protobuf:"bytes,9,opt,name=currency,proto3" json:"currency,omitempty"`
-	// True once the tenant has a purchase, every amount of which is in currency,
-	// so that UpdateTenantPaymentSettings refuses to change it.
+	// True once the tenant has a purchase, so that UpdateTenantPaymentSettings
+	// refuses to change currency.
 	CurrencyLocked bool `protobuf:"varint,10,opt,name=currency_locked,json=currencyLocked,proto3" json:"currency_locked,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache

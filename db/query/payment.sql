@@ -32,8 +32,8 @@ SET provider = EXCLUDED.provider,
 RETURNING *;
 
 -- name: TenantHasPurchases :one
--- Whether any purchase, from a provider's checkout or a store, test ones
--- included, is recorded in the tenant's currency.
+-- Whether the tenant has any purchase, from a provider's checkout or a store,
+-- test ones included, which keeps the tenant currency from changing.
 SELECT EXISTS (
         SELECT 1
         FROM purchases
@@ -86,6 +86,7 @@ SELECT EXISTS (
 -- there, as it is left out of the catalog.
 SELECT p.id,
     p.price_at_purchase,
+    p.currency,
     p.expires_at,
     p.refunded_at,
     p.purchased_at,
@@ -134,6 +135,7 @@ LIMIT sqlc.arg('limit');
 -- name: ListMyPurchasesAsc :many
 SELECT p.id,
     p.price_at_purchase,
+    p.currency,
     p.expires_at,
     p.refunded_at,
     p.purchased_at,
@@ -194,7 +196,8 @@ INSERT INTO purchases (
     provider,
     provider_checkout_id,
     provider_payment_id,
-    is_test
+    is_test,
+    currency
 )
 VALUES (
     sqlc.arg('id')::uuid,
@@ -206,7 +209,8 @@ VALUES (
     sqlc.arg('provider')::text,
     sqlc.arg('provider_checkout_id')::text,
     sqlc.narg('provider_payment_id')::text,
-    sqlc.arg('is_test')::boolean
+    sqlc.arg('is_test')::boolean,
+    sqlc.arg('currency')::text
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
 RETURNING *;
@@ -219,15 +223,21 @@ RETURNING *;
 --
 -- The amount the provider reports is cumulative over every refund against the
 -- payment, so GREATEST keeps an out-of-order delivery from walking it back, and
--- an event that reports no amount at all is recorded as a refund of the whole
--- price. refunded_at follows from the amount rather than from the event:
+-- an event that reports no amount at all, or one in a currency other than the
+-- purchase's, which says nothing comparable to its price, is recorded as a
+-- refund of the whole price. refunded_at follows from the amount rather than from the event:
 -- it is set once the refunded total reaches what was paid, and a repeated
 -- delivery of the same refund leaves the instant already stored.
 WITH refund AS (
     SELECT p.id,
         GREATEST(
             COALESCE(p.refunded_amount, 0),
-            COALESCE(sqlc.narg('refunded_amount')::integer, p.price_at_purchase)
+            COALESCE(
+                CASE
+                    WHEN sqlc.narg('currency')::text = p.currency THEN sqlc.narg('refunded_amount')::integer
+                END,
+                p.price_at_purchase
+            )
         ) AS amount
     FROM purchases p
     WHERE p.tenant_id = sqlc.arg('tenant_id')
@@ -250,27 +260,37 @@ RETURNING p.*;
 -- identity, so a repeated delivery updates the row rather than adding one.
 --
 -- A NULL amount means the event reported none, which is applied as a refund of
--- the whole price; it therefore outranks any number on a later merge, and
--- between two numbers the larger wins, because the provider reports the total
--- refunded so far.
+-- the whole price; it therefore outranks any number on a later merge, as two
+-- amounts in different currencies do, since neither can be added to the
+-- other, and between two numbers in one currency the larger wins, because the
+-- provider reports the total refunded so far.
 INSERT INTO unapplied_refunds (
     tenant_id,
     provider,
     provider_payment_id,
-    refunded_amount
+    refunded_amount,
+    currency
 )
 VALUES (
     sqlc.arg('tenant_id'),
     sqlc.arg('provider')::text,
     sqlc.arg('provider_payment_id')::text,
-    sqlc.narg('refunded_amount')::integer
+    sqlc.narg('refunded_amount')::integer,
+    sqlc.narg('currency')::text
 )
 ON CONFLICT (tenant_id, provider, provider_payment_id) DO
 UPDATE
 SET refunded_amount = CASE
         WHEN unapplied_refunds.refunded_amount IS NULL
-            OR EXCLUDED.refunded_amount IS NULL THEN NULL
+            OR EXCLUDED.refunded_amount IS NULL
+            OR unapplied_refunds.currency <> EXCLUDED.currency THEN NULL
         ELSE GREATEST(unapplied_refunds.refunded_amount, EXCLUDED.refunded_amount)
+    END,
+    currency = CASE
+        WHEN unapplied_refunds.refunded_amount IS NULL
+            OR EXCLUDED.refunded_amount IS NULL
+            OR unapplied_refunds.currency <> EXCLUDED.currency THEN NULL
+        ELSE EXCLUDED.currency
     END,
     received_at = NOW();
 
@@ -286,7 +306,8 @@ WITH held AS (
     SELECT r.tenant_id,
         r.provider,
         r.provider_payment_id,
-        r.refunded_amount
+        r.refunded_amount,
+        r.currency
     FROM unapplied_refunds r
     WHERE r.tenant_id = sqlc.arg('tenant_id')
         AND r.provider = sqlc.arg('provider')::text
@@ -296,7 +317,12 @@ refund AS (
     SELECT p.id,
         GREATEST(
             COALESCE(p.refunded_amount, 0),
-            COALESCE(held.refunded_amount, p.price_at_purchase)
+            COALESCE(
+                CASE
+                    WHEN held.currency = p.currency THEN held.refunded_amount
+                END,
+                p.price_at_purchase
+            )
         ) AS amount
     FROM purchases p
         JOIN held ON held.tenant_id = p.tenant_id

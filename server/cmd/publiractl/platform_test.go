@@ -41,10 +41,10 @@ func TestPlatformSetSavesTheDefaultsNewTenantsStartOn(t *testing.T) {
 	pg.Reset(t)
 	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
 
-	if got := mustPlatformCommand(t, "show"); got != "No platform defaults are saved, so new tenants start on UTC\n" {
+	if got := mustPlatformCommand(t, "show"); got != "No platform defaults are saved, so new tenants start on UTC and sell in USD\n" {
 		t.Fatalf("show before a save = %q", got)
 	}
-	if got := mustPlatformCommand(t, "set", "--default-locale", "en", "--default-timezone", "Asia/Tokyo"); got != "Saved the platform defaults en and Asia/Tokyo, revision 1\n" {
+	if got := mustPlatformCommand(t, "set", "--default-locale", "en", "--default-timezone", "Asia/Tokyo"); got != "Saved the platform defaults en, Asia/Tokyo, and USD, revision 1\n" {
 		t.Fatalf("set = %q", got)
 	}
 
@@ -74,8 +74,10 @@ func TestPlatformSetSavesTheDefaultsNewTenantsStartOn(t *testing.T) {
 	if timezone, defaultLocale, revision := storedPlatformConfig(t, pg); timezone != "Asia/Tokyo" || defaultLocale != "ja" || revision != 2 {
 		t.Fatalf("stored = %s, %s, revision %d; want Asia/Tokyo, ja, revision 2", timezone, defaultLocale, revision)
 	}
+	// The currency is stored in capitals whatever case it is given in.
+	mustPlatformCommand(t, "set", "--default-currency", "eur")
 	show := mustPlatformCommand(t, "show")
-	for _, want := range []string{"Default locale:     ja\n", "Default time zone:  Asia/Tokyo\n", "Revision:           2\n"} {
+	for _, want := range []string{"Default locale:     ja\n", "Default time zone:  Asia/Tokyo\n", "Default currency:   EUR\n", "Revision:           3\n"} {
 		if !strings.Contains(show, want) {
 			t.Fatalf("show = \n%s\nwant a line %q", show, want)
 		}
@@ -93,7 +95,8 @@ func TestPlatformSetNamesTheRefusedFlag(t *testing.T) {
 		args []string
 		want string
 	}{
-		{name: "nothing given", args: []string{"set"}, want: "publiractl: no value was given; name --default-locale, --default-timezone, or both\n"},
+		{name: "nothing given", args: []string{"set"}, want: "publiractl: no value was given; name at least one of --default-locale, --default-timezone, and --default-currency\n"},
+		{name: "currency that is no code", args: []string{"set", "--default-locale", "en", "--default-currency", "EURO"}, want: "publiractl: --default-currency: default_currency must be an ISO 4217 code of three letters\n"},
 		{name: "no locale saved or given", args: []string{"set", "--default-timezone", "Asia/Tokyo"}, want: "publiractl: --default-locale: default_locale must be a supported locale\n"},
 		{name: "unsupported locale", args: []string{"set", "--default-locale", "fr"}, want: "publiractl: --default-locale: default_locale must be a supported locale\n"},
 		{name: "unknown time zone", args: []string{"set", "--default-locale", "en", "--default-timezone", "Mars/Olympus_Mons"}, want: "publiractl: --default-timezone: timezone must be a valid IANA time zone name\n"},

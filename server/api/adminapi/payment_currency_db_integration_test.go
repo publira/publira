@@ -9,6 +9,7 @@ import (
 
 	"github.com/publira/publira/server/internal/paymentprovider/payjp"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
+	"github.com/publira/publira/server/internal/platformconfig"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -36,8 +37,9 @@ func dbTenantCurrency(t *testing.T, env *adminDBEnv, tenant adminDBTenant) strin
 	return resp.Tenant.Currency
 }
 
-// A tenant sells in JPY until it saves another currency its provider charges
-// in, and keeps that currency once a purchase has been recorded in it.
+// A tenant sells in the platform's default currency until it saves one its
+// provider charges in, and keeps that currency once a purchase has been
+// recorded in it.
 func TestDBTenantCurrencyIsSavedUntilATenantHasAPurchase(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
@@ -50,16 +52,30 @@ func TestDBTenantCurrencyIsSavedUntilATenantHasAPurchase(t *testing.T) {
 		PublishedAt: time.Now().Add(-time.Hour),
 	})
 
-	if got := dbTenantCurrency(t, env, tenant); got != "JPY" {
-		t.Fatalf("currency before any settings = %q, want JPY", got)
+	if got := dbTenantCurrency(t, env, tenant); got != platformconfig.DefaultCurrency {
+		t.Fatalf("currency on a platform with no settings = %q, want %q", got, platformconfig.DefaultCurrency)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO platform_config (singleton, default_locale, default_currency) VALUES (TRUE, 'en', 'EUR')
+	`); err != nil {
+		t.Fatalf("save the platform default currency: %v", err)
+	}
+	if got := dbTenantCurrency(t, env, tenant); got != "EUR" {
+		t.Fatalf("currency before any settings = %q, want the platform's EUR", got)
 	}
 
-	settings, err := updateDBPaymentCurrency(env, tenant, stripe.ID, "USD")
+	settings, err := updateDBPaymentCurrency(env, tenant, stripe.ID, "")
 	if err != nil {
+		t.Fatalf("save Stripe naming no currency: %v", err)
+	}
+	if settings.Currency != "EUR" || settings.CurrencyLocked {
+		t.Fatalf("settings currency = %q locked %v, want an unlocked EUR from the platform", settings.Currency, settings.CurrencyLocked)
+	}
+	if settings, err = updateDBPaymentCurrency(env, tenant, stripe.ID, "USD"); err != nil {
 		t.Fatalf("save USD with Stripe: %v", err)
 	}
-	if settings.Currency != "USD" || settings.CurrencyLocked {
-		t.Fatalf("settings currency = %q locked %v, want an unlocked USD", settings.Currency, settings.CurrencyLocked)
+	if settings.Currency != "USD" {
+		t.Fatalf("settings currency = %q, want USD", settings.Currency)
 	}
 	if got := dbTenantCurrency(t, env, tenant); got != "USD" {
 		t.Fatalf("currency = %q, want USD", got)
