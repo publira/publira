@@ -14,21 +14,26 @@ import (
 //
 // On stop it calls Shutdown against a deadline of [ShutdownTimeout]
 // so in-flight requests can finish. A server that has not drained
-// by then is Close'd so the process still exits. Hooks then run in
-// order against the same deadline — leftover time is theirs, not a
-// second ShutdownTimeout. Typical hooks close the database pool;
-// a telemetry flush belongs here once that work lands. Callers that
-// still defer db.Close keep that as a safety net for the paths that
-// never reach Serve; Close on *sql.DB is a no-op the second time.
-func Serve(ctx context.Context, logger *slog.Logger, servers []*http.Server, hooks ...func(context.Context) error) error {
+// by then is Close'd so the process still exits. Each of stops starts
+// at that same moment, beside the drain and against the same deadline:
+// it is for work no request feeds, such as a job queue, which would
+// otherwise begin to stop only once the slowest request had finished
+// and find the deadline mostly spent. Serve waits for every stop
+// before the hooks run. Hooks then run in order against the same
+// deadline — leftover time is theirs, not a second ShutdownTimeout —
+// and are for what the requests feed: an audit log flush, a telemetry
+// flush, the database pools. Callers that still defer db.Close keep
+// that as a safety net for the paths that never reach Serve; Close on
+// *sql.DB is a no-op the second time.
+func Serve(ctx context.Context, logger *slog.Logger, servers []*http.Server, stops []func(context.Context) error, hooks ...func(context.Context) error) error {
 	starts := make([]func() error, len(servers))
 	for i, srv := range servers {
 		starts[i] = srv.ListenAndServe
 	}
-	return run(ctx, logger, ShutdownTimeout, servers, starts, hooks)
+	return run(ctx, logger, ShutdownTimeout, servers, starts, stops, hooks)
 }
 
-func run(ctx context.Context, logger *slog.Logger, timeout time.Duration, servers []*http.Server, starts []func() error, hooks []func(context.Context) error) error {
+func run(ctx context.Context, logger *slog.Logger, timeout time.Duration, servers []*http.Server, starts []func() error, stops, hooks []func(context.Context) error) error {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -90,6 +95,21 @@ func run(ctx context.Context, logger *slog.Logger, timeout time.Duration, server
 	shutdownCtx, cancel := context.WithDeadline(context.Background(), deadline)
 	defer cancel()
 
+	var stopWG sync.WaitGroup
+	for _, stop := range stops {
+		if stop == nil {
+			continue
+		}
+		stopWG.Add(1)
+		go func(stop func(context.Context) error) {
+			defer stopWG.Done()
+			if err := stop(shutdownCtx); err != nil {
+				logger.Error("shutdown stop failed", "error", err)
+				setErr(err)
+			}
+		}(stop)
+	}
+
 	var shutdownWG sync.WaitGroup
 	for _, srv := range servers {
 		if srv == nil {
@@ -110,6 +130,7 @@ func run(ctx context.Context, logger *slog.Logger, timeout time.Duration, server
 	shutdownWG.Wait()
 	<-done
 	drainErrs(serveErrs, setErr)
+	stopWG.Wait()
 
 	hookCtx, hookCancel := context.WithDeadline(context.Background(), deadline)
 	defer hookCancel()

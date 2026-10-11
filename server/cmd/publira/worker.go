@@ -207,7 +207,7 @@ func buildWorker(deps shared) (_ half, err error) {
 
 	return half{
 		listeners: []listener{{name: "worker", server: httpserver.New(addr, mux)}},
-		drain:     []func(context.Context) error{worker.Stop},
+		stop:      []func(context.Context) error{worker.Stop},
 		close: func() error {
 			return closePools(pools)
 		},

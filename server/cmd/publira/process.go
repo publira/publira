@@ -45,8 +45,15 @@ type shared struct {
 // hosts it.
 type half struct {
 	listeners []listener
-	// drain runs once every listener has stopped, before the telemetry is
-	// flushed, so the spans of the work it finishes go out with that flush.
+	// stop begins the moment the process starts stopping, beside the
+	// listeners' drain, for work no request feeds: the River client. Waiting
+	// for the slowest request first would leave it what that request had not
+	// spent of the deadline, which in a process that also serves the API may
+	// be nothing.
+	stop []func(context.Context) error
+	// drain runs once every listener has stopped, for work the requests feed,
+	// and before the telemetry is flushed, so the spans of the work it
+	// finishes go out with that flush.
 	drain []func(context.Context) error
 	// close releases the pools and whatever else the half opened. It is the
 	// process's last hook, and the cleanup when a half built after it fails.
@@ -134,12 +141,13 @@ func serve(command string, h hosted) int {
 	}
 
 	var servers []*http.Server
-	var hooks []func(context.Context) error
+	var stops, hooks []func(context.Context) error
 	for _, built := range halves {
 		for _, l := range built.listeners {
 			logger.Info("starting "+l.name, "addr", l.server.Addr)
 			servers = append(servers, l.server)
 		}
+		stops = append(stops, built.stop...)
 		hooks = append(hooks, built.drain...)
 	}
 	hooks = append(hooks, shutdownTracing, shutdownMetrics, func(context.Context) error {
@@ -149,7 +157,7 @@ func serve(command string, h hosted) int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if err := httpserver.Serve(ctx, logger, servers, hooks...); err != nil {
+	if err := httpserver.Serve(ctx, logger, servers, stops, hooks...); err != nil {
 		logger.Error(command+" failed", "error", err)
 		return 1
 	}

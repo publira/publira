@@ -19,8 +19,9 @@
 //     object bytes to the client. Per-route deadlines belong on the
 //     handler once those paths have explicit budgets.
 //   - ShutdownTimeout is the single deadline Serve uses after the process
-//     is asked to stop: first drain in-flight requests, then run hooks
-//     with whatever time remains. It is not a request deadline — handlers
+//     is asked to stop: first drain in-flight requests while the stops
+//     run beside them, then run hooks with whatever time remains. It is
+//     not a request deadline — handlers
 //     still have no WriteTimeout — and it is not two stacked 30s windows.
 //     Idle keep-alives are not in-flight work; Shutdown closes them
 //     immediately and does not wait IdleTimeout.
@@ -43,7 +44,8 @@ const (
 
 	// ShutdownTimeout is the total time Serve spends after the caller
 	// cancels the serve context (SIGINT / SIGTERM): first draining
-	// in-flight requests, then running hooks on the leftover time.
+	// in-flight requests while the stops run beside them, then running
+	// hooks on the leftover time.
 	// 30s is longer than a single image-processing pass (~15s) and
 	// matches the common container stop grace period. Orchestrators
 	// should allow a little more than this before SIGKILL so Close

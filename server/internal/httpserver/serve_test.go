@@ -195,7 +195,7 @@ func TestServeReturnsListenError(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- Serve(ctx, discardLogger(), []*http.Server{srv})
+		errCh <- Serve(ctx, discardLogger(), []*http.Server{srv}, nil)
 	}()
 
 	select {
@@ -234,7 +234,7 @@ func TestServeStopsEveryListener(t *testing.T) {
 		errCh <- run(ctx, discardLogger(), 2*time.Second, []*http.Server{srv1, srv2}, []func() error{
 			func() error { return srv1.Serve(ln1) },
 			func() error { return srv2.Serve(ln2) },
-		}, nil)
+		}, nil, nil)
 	}()
 
 	for _, addr := range []string{ln1.Addr().String(), ln2.Addr().String()} {
@@ -338,7 +338,99 @@ func TestServeReportsHookError(t *testing.T) {
 	}
 }
 
+// A stop begins while a request is still draining, rather than after it, and
+// the hooks wait for it to return.
+func TestServeStartsStopsBesideTheDrain(t *testing.T) {
+	t.Parallel()
+
+	var (
+		mu    sync.Mutex
+		steps []string
+	)
+	record := func(step string) {
+		mu.Lock()
+		steps = append(steps, step)
+		mu.Unlock()
+	}
+
+	started := make(chan struct{})
+	release := make(chan struct{})
+	stopped := make(chan struct{})
+	addr, cancel, errCh := startTestServeWithStops(t, 2*time.Second, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		close(started)
+		<-release
+		record("handler")
+		w.WriteHeader(http.StatusNoContent)
+	}), []func(context.Context) error{func(context.Context) error {
+		record("stop")
+		close(stopped)
+		return nil
+	}}, func(context.Context) error {
+		record("hook")
+		return nil
+	})
+	defer cancel()
+
+	go func() {
+		resp, err := http.Get("http://" + addr + "/")
+		if err != nil {
+			t.Errorf("GET: %v", err)
+			return
+		}
+		_ = resp.Body.Close()
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("handler did not start")
+	}
+
+	cancel()
+	select {
+	case <-stopped:
+	case <-time.After(2 * time.Second):
+		t.Fatal("stop did not begin while the request was draining")
+	}
+	close(release)
+
+	if err := waitServe(t, errCh); err != nil {
+		t.Fatalf("Serve: %v", err)
+	}
+
+	mu.Lock()
+	got := append([]string(nil), steps...)
+	mu.Unlock()
+	want := []string{"stop", "handler", "hook"}
+	if len(got) != len(want) {
+		t.Fatalf("steps = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("steps = %v, want %v", got, want)
+		}
+	}
+}
+
+func TestServeReportsStopError(t *testing.T) {
+	t.Parallel()
+
+	stopErr := errors.New("queue did not stop")
+	_, cancel, errCh := startTestServeWithStops(t, 2*time.Second, http.NotFoundHandler(), []func(context.Context) error{
+		func(context.Context) error { return stopErr },
+	})
+	cancel()
+	if err := waitServe(t, errCh); !errors.Is(err, stopErr) {
+		t.Fatalf("Serve = %v, want %v", err, stopErr)
+	}
+}
+
 func startTestServe(t *testing.T, timeout time.Duration, handler http.Handler, hooks ...func(context.Context) error) (addr string, cancel context.CancelFunc, errCh <-chan error) {
+	t.Helper()
+	return startTestServeWithStops(t, timeout, handler, nil, hooks...)
+}
+
+func startTestServeWithStops(t *testing.T, timeout time.Duration, handler http.Handler, stops []func(context.Context) error, hooks ...func(context.Context) error) (addr string, cancel context.CancelFunc, errCh <-chan error) {
 	t.Helper()
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -351,7 +443,7 @@ func startTestServe(t *testing.T, timeout time.Duration, handler http.Handler, h
 	go func() {
 		ch <- run(ctx, discardLogger(), timeout, []*http.Server{srv}, []func() error{
 			func() error { return srv.Serve(ln) },
-		}, hooks)
+		}, stops, hooks)
 	}()
 	t.Cleanup(cancel)
 	return ln.Addr().String(), cancel, ch
