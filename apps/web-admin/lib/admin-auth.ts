@@ -359,6 +359,75 @@ export const isAdminSessionValid = async (
   return result.ok;
 };
 
+/**
+ * The tag {@link getTenantAdminInvitationState} carries, which accepting an
+ * invitation clears.
+ */
+export const tenantAdminInvitationCacheTag = (tenantId: string): string =>
+  `tenant-admin-invitation-${tenantId}`;
+
+/**
+ * What the cached invitation read hands its exported caller: the invitation,
+ * and whether its failure is one no screen copy describes. A `"use cache"`
+ * scope must not throw — the fill would fail the whole request — so the scope
+ * classifies the failure and the caller, outside it, throws the unexpected one.
+ */
+interface CachedTenantAdminInvitationState {
+  invitation: TenantAdminInvitationState | null;
+  unexpected: boolean;
+}
+
+/**
+ * The token is the invitee's credential, so the answer is about whoever holds
+ * the link and is cached for that browser alone. Called uncached, the read
+ * reached the transport's `Date.now()` in the prerender Cache Components
+ * spawns from the request, which refuses it; in a `"use cache: private"` scope
+ * that prerender finds the answer already filled in, and with `stale` under 30
+ * seconds it leaves the answer out rather than keeping it for a prefetch, so an
+ * invitation accepted, cancelled, or expired since is read again on the next
+ * visit.
+ */
+const getTenantAdminInvitationStateForToken = async (
+  tenantId: string,
+  token: string
+): Promise<CachedTenantAdminInvitationState> => {
+  "use cache: private";
+  cacheLife({ stale: 0 });
+  cacheTag(tenantAdminInvitationCacheTag(tenantId));
+
+  try {
+    const response = await apiClient.auth.getTenantAdminInvitationState({
+      tenant: { tenantId },
+      token,
+    });
+
+    return {
+      invitation: {
+        accountExists: response.accountExists,
+        email: response.email,
+        expiresAt: response.expiresAt,
+        role: response.role,
+        status: response.status,
+      },
+      unexpected: false,
+    };
+  } catch (error) {
+    // No session header is sent here — the invitation link is followed while
+    // logged out. `unauthenticated` would therefore mean the auth wiring or the
+    // API contract broke, not that the invitation is unknown, so it must not be
+    // flattened into "no such invitation".
+    if (isMissingResourceRpcError(error)) {
+      return { invitation: null, unexpected: false };
+    }
+    dropFailedCacheEntry();
+    return { invitation: null, unexpected: true };
+  }
+};
+
+/**
+ * The invitation the link's token stands for, or `null` when there is none. A
+ * failure no screen copy describes reaches the error boundary.
+ */
 export const getTenantAdminInvitationState = async (
   tenantId: string,
   token: string
@@ -368,29 +437,12 @@ export const getTenantAdminInvitationState = async (
     return null;
   }
 
-  try {
-    const response = await apiClient.auth.getTenantAdminInvitationState({
-      tenant: { tenantId },
-      token: normalizedToken,
-    });
-
-    return {
-      accountExists: response.accountExists,
-      email: response.email,
-      expiresAt: response.expiresAt,
-      role: response.role,
-      status: response.status,
-    };
-  } catch (error) {
-    // No session header is sent here — the invitation link is followed while
-    // logged out. `unauthenticated` would therefore mean the auth wiring or the
-    // API contract broke, not that the invitation is unknown, so it must not be
-    // flattened into "no such invitation".
-    if (isMissingResourceRpcError(error)) {
-      return null;
-    }
-    throw error;
+  const { invitation, unexpected } =
+    await getTenantAdminInvitationStateForToken(tenantId, normalizedToken);
+  if (unexpected) {
+    throw new Error("The invitation could not be read.");
   }
+  return invitation;
 };
 
 export const acceptTenantAdminInvitation = async (

@@ -4,11 +4,15 @@ import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
-import { acceptTenantAdminInvitation } from "#lib/admin-auth";
+import {
+  acceptTenantAdminInvitation,
+  tenantAdminInvitationCacheTag,
+} from "#lib/admin-auth";
 import { inviteTokenFormSchema, tenantIdFormSchema } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
 import { optionalTrimmedString } from "#lib/form-schemas";
@@ -98,5 +102,6 @@ export const acceptInviteAction = async (
     return { message: result.message, ok: false };
   }
 
+  updateTag(tenantAdminInvitationCacheTag(tenantId));
   redirect(buildLoginPath(email));
 };

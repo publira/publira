@@ -12,6 +12,7 @@ import {
   isTenantEditorRole,
   loginAdmin,
   requestAdminPasswordReset,
+  tenantAdminInvitationCacheTag,
 } from "./admin-auth";
 import { ADMIN_SESSION_CACHE_TAG } from "./admin-auth-shared";
 import { getMessagesFor } from "./messages";
@@ -435,6 +436,57 @@ describe("tenant admin invitation", () => {
       role: "tenant_editor",
       status: "pending",
     });
+  });
+
+  it("reads the invitation in a private cache scope kept out of prefetches", async () => {
+    mockGetTenantAdminInvitationState.mockResolvedValueOnce({
+      accountExists: false,
+      email: "invitee@example.com",
+      expiresAt: "2026-03-31T00:00:00Z",
+      role: "tenant_admin",
+      status: "pending",
+    });
+
+    await getTenantAdminInvitationState("tenant_001", " token_001 ");
+
+    expect(mockGetTenantAdminInvitationState).toHaveBeenCalledWith({
+      tenant: { tenantId: "tenant_001" },
+      token: "token_001",
+    });
+    expect(mockCacheLife).toHaveBeenCalledWith({ stale: 0 });
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      tenantAdminInvitationCacheTag("tenant_001")
+    );
+    expect(mockCacheLife).not.toHaveBeenCalledWith(droppedEntry);
+  });
+
+  it("answers no invitation for a token the API does not know", async () => {
+    mockGetTenantAdminInvitationState.mockRejectedValueOnce(
+      new ConnectError("invitation not found", Code.NotFound)
+    );
+
+    await expect(
+      getTenantAdminInvitationState("tenant_001", "token_001")
+    ).resolves.toBeNull();
+    expect(mockCacheLife).not.toHaveBeenCalledWith(droppedEntry);
+  });
+
+  it("throws an unexpected failure outside the cache scope, with the entry dropped", async () => {
+    mockGetTenantAdminInvitationState.mockRejectedValueOnce(
+      new ConnectError("session missing", Code.Unauthenticated)
+    );
+
+    await expect(
+      getTenantAdminInvitationState("tenant_001", "token_001")
+    ).rejects.toThrow("The invitation could not be read.");
+    expect(mockCacheLife).toHaveBeenCalledWith(droppedEntry);
+  });
+
+  it("skips the API for an empty token", async () => {
+    await expect(
+      getTenantAdminInvitationState("tenant_001", "  ")
+    ).resolves.toBeNull();
+    expect(mockGetTenantAdminInvitationState).not.toHaveBeenCalled();
   });
 
   it("accepts an invitation", async () => {
