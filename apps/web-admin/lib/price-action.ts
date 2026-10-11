@@ -23,9 +23,15 @@ export type TenantPriceResult =
  * in as the API answers it now, never one the form claims. Without that
  * currency no price can be read, and the Action says so instead of storing a
  * number in a currency nobody chose.
+ *
+ * `formCurrency` is the currency the form showed the price in. A form opened
+ * before the tenant's currency changed was typed in the old one, and reading
+ * its number in the new one would store a price the operator never set, so it
+ * is refused until the page is reloaded.
  */
 export const parseTenantPrice = async (
   raw: string,
+  formCurrency: string,
   tenantId: string,
   locale: Locale
 ): Promise<TenantPriceResult> => {
@@ -36,6 +42,12 @@ export const parseTenantPrice = async (
   if (!currency) {
     return {
       message: t("admin.series.episodes.currency_unavailable"),
+      ok: false,
+    };
+  }
+  if (formCurrency !== currency) {
+    return {
+      message: t("admin.series.episodes.currency_changed"),
       ok: false,
     };
   }

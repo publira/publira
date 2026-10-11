@@ -335,6 +335,8 @@ const pricingFormSchema = async (locale: Locale) => {
   return base.extend({
     // Read once the tenant's currency is known.
     price: rawPriceFormSchema,
+    // The currency the form showed the price in.
+    priceCurrency: rawPriceFormSchema,
     readingPeriodHours: nonNegativeIntFormSchema(
       t("admin.series.episodes.validation.reading_period_invalid")
     ),
@@ -352,6 +354,7 @@ export const updateEpisodePricingAction = async (
     toFormDataInput(formData, {
       ...hiddenFormFields,
       price: "value",
+      priceCurrency: { kind: "value", name: "price_currency" },
       readingPeriodHours: { kind: "value", name: "reading_period_hours" },
     })
   );
@@ -363,6 +366,7 @@ export const updateEpisodePricingAction = async (
     episodeId,
     episodePublicId,
     price,
+    priceCurrency,
     readingPeriodHours,
     seriesPublicId,
     tenantId,
@@ -371,7 +375,12 @@ export const updateEpisodePricingAction = async (
   if (mismatch) {
     return { message: mismatch, ok: false };
   }
-  const parsedPrice = await parseTenantPrice(price, tenantId, locale);
+  const parsedPrice = await parseTenantPrice(
+    price,
+    priceCurrency,
+    tenantId,
+    locale
+  );
   if (!parsedPrice.ok) {
     return { message: parsedPrice.message, ok: false };
   }

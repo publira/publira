@@ -1929,6 +1929,7 @@
             "free_window_missing": "未指定要刪除的免費閱讀期間。"
           }
         },
+        "currency_changed": "開啟此表單後，租戶的貨幣已變更。請重新載入頁面並重新輸入價格。",
         "currency_unavailable": "無法讀取租戶的貨幣，目前無法輸入價格。"
       },
       "status": {

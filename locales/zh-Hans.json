@@ -1929,6 +1929,7 @@
             "free_window_missing": "未指定要删除的免费阅读期。"
           }
         },
+        "currency_changed": "打开此表单后，租户的货币已更改。请重新加载页面并重新输入价格。",
         "currency_unavailable": "无法读取租户的货币，目前无法输入价格。"
       },
       "status": {

@@ -68,6 +68,8 @@ const createEpisodeSchema = async (locale: Locale) => {
     }),
     // Read once the tenant's currency is known.
     price: rawPriceFormSchema,
+    // The currency the form showed the price in.
+    priceCurrency: rawPriceFormSchema,
     publishAt: optionalTrimmedString(),
     // The empty value is the episode following its series.
     purchaseAvailability: z.enum(PURCHASE_AVAILABILITY_OVERRIDES, {
@@ -155,6 +157,7 @@ export const createEpisodeAction = async (
     toFormDataInput(formData, {
       availability: "value",
       price: "value",
+      priceCurrency: { kind: "value", name: "price_currency" },
       publishAt: { kind: "value", name: "publish_at" },
       purchaseAvailability: { kind: "value", name: "purchase_availability" },
       readingPeriodHours: { kind: "value", name: "reading_period_hours" },
@@ -170,6 +173,7 @@ export const createEpisodeAction = async (
 
   const price = await parseTenantPrice(
     parsed.data.price,
+    parsed.data.priceCurrency,
     parsed.data.tenantId,
     locale
   );

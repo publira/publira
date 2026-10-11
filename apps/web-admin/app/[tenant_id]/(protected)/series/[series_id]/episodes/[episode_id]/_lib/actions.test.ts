@@ -827,7 +827,11 @@ describe("episode actions", () => {
       const { updateEpisodePricingAction } = await import("./actions");
       await updateEpisodePricingAction(
         null,
-        layoutFormData({ price: "120", reading_period_hours: "72" })
+        layoutFormData({
+          price: "120",
+          price_currency: "JPY",
+          reading_period_hours: "72",
+        })
       );
 
       expect(mockUpdateEpisodePricing).toHaveBeenCalledWith(
@@ -879,10 +883,35 @@ describe("episode actions", () => {
       const { updateEpisodePricingAction } = await import("./actions");
       const result = await updateEpisodePricingAction(
         null,
-        layoutFormData({ price, reading_period_hours: readingPeriodHours })
+        layoutFormData({
+          price,
+          price_currency: "JPY",
+          reading_period_hours: readingPeriodHours,
+        })
       );
 
       expect(result).toEqual({ message, ok: false });
+      expect(mockUpdateEpisodePricing).not.toHaveBeenCalled();
+    });
+
+    // The form was opened while the tenant sold in another currency, so the
+    // number in it is an amount of that currency.
+    it("refuses a price typed in the currency the tenant sold in before", async () => {
+      const { updateEpisodePricingAction } = await import("./actions");
+      const result = await updateEpisodePricingAction(
+        null,
+        layoutFormData({
+          price: "5.00",
+          price_currency: "USD",
+          reading_period_hours: "72",
+        })
+      );
+
+      expect(result).toEqual({
+        message:
+          "The tenant's currency changed after this form was opened. Reload the page and enter the price again.",
+        ok: false,
+      });
       expect(mockUpdateEpisodePricing).not.toHaveBeenCalled();
     });
 
@@ -896,7 +925,11 @@ describe("episode actions", () => {
       const { updateEpisodePricingAction } = await import("./actions");
       const result = await updateEpisodePricingAction(
         null,
-        layoutFormData({ price: "100", reading_period_hours: "0" })
+        layoutFormData({
+          price: "100",
+          price_currency: "JPY",
+          reading_period_hours: "0",
+        })
       );
 
       expect(result).toEqual({

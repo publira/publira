@@ -100,6 +100,7 @@ const createEpisodeFormData = (): FormData => {
   formData.set("series_public_id", "SERIES001");
   formData.set("title", "Episode title");
   formData.set("price", "0");
+  formData.set("price_currency", "JPY");
   formData.set("reading_period_hours", "24");
   formData.set("availability", "");
   formData.set("purchase_availability", "");
@@ -134,6 +135,24 @@ describe("episode create actions", () => {
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?created=1"
     );
+  });
+
+  // The form was opened while the tenant sold in another currency, so the
+  // number in it is an amount of that currency.
+  it("refuses a price typed in the currency the tenant sold in before", async () => {
+    const { createEpisodeAction } = await import("./actions");
+    const formData = createEpisodeFormData();
+    formData.set("price", "5.00");
+    formData.set("price_currency", "USD");
+
+    const result = await createEpisodeAction(null, formData);
+
+    expect(result).toMatchObject({
+      message:
+        "The tenant's currency changed after this form was opened. Reload the page and enter the price again.",
+      ok: false,
+    });
+    expect(mockCreateEpisode).not.toHaveBeenCalled();
   });
 
   it("sends the empty availability as following the series", async () => {

@@ -99,6 +99,7 @@ export const EpisodePricingForm = ({
               step={priceInputStep(currency)}
               type="number"
             />
+            <input name="price_currency" type="hidden" value={currency} />
             <FieldDescription>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message

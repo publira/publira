@@ -1929,6 +1929,7 @@
             "free_window_missing": "The free reading period to delete is missing."
           }
         },
+        "currency_changed": "The tenant's currency changed after this form was opened. Reload the page and enter the price again.",
         "currency_unavailable": "The tenant's currency could not be read, so a price cannot be entered right now."
       },
       "status": {
