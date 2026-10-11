@@ -184,8 +184,8 @@ func (r *setupRun) run(ctx context.Context) error {
 	if err := tenantorigin.CheckEnv(); err != nil {
 		return err
 	}
-	// SMTP always stores a password, so a run that could not encrypt one
-	// stops here with nothing written.
+	// A credential any step takes is encrypted before it is saved, so a run
+	// that could not encrypt one stops here, before an earlier step commits.
 	secrets, err := r.env.secretManager()
 	if err != nil {
 		return err
@@ -592,9 +592,10 @@ func (r *setupRun) smtpStep(ctx context.Context) error {
 	if settings.Encryption, err = r.value("encryption", "SMTP encryption (tls, starttls, none)", flags.smtp.Encryption, base.Encryption, true); err != nil {
 		return err
 	}
-	if settings.Username, err = r.value("username", "SMTP username", flags.smtp.Username, base.Username, true); err != nil {
+	if settings.Username, err = r.value("username", "SMTP username (blank sends without signing in)", flags.smtp.Username, base.Username, false); err != nil {
 		return err
 	}
+	settings.Username = strings.TrimSpace(settings.Username)
 	if settings.FromAddress, err = r.value("from-address", "Address mail is sent from", flags.smtp.FromAddress, base.FromAddress, true); err != nil {
 		return err
 	}
@@ -609,7 +610,14 @@ func (r *setupRun) smtpStep(ctx context.Context) error {
 	if err := params.Validate(); err != nil {
 		return nameSMTP(err)
 	}
-	if password.given() || !found || !platformsmtp.HasPassword(stored) {
+	// Without a username the worker sends without authenticating, so there is
+	// no password to ask for, and a saved one is cleared.
+	switch {
+	case settings.Username == "" && password.given():
+		return nameSMTP(&fielderr.Invalid{Field: emailsettings.FieldUsername, Err: emailsettings.ErrPasswordWithoutUsername})
+	case settings.Username == "":
+		params.PasswordMode = secretupdate.Clear
+	case password.given() || !found || !platformsmtp.HasPassword(stored):
 		if params.Password, err = r.readSecret(password); err != nil {
 			return err
 		}
