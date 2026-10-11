@@ -86,7 +86,7 @@ export type ListNotificationsRequest = Message<"publira.v1.ListNotificationsRequ
   /**
    * The client making the read. Unspecified is answered as the web storefront.
    * A notification about an episode is listed only on the surfaces the episode
-   * was shown on when it was published.
+   * was shown on when the notification was written.
    *
    * @generated from field: publira.types.v1.ClientSurface surface = 4;
    */

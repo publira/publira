@@ -171,7 +171,7 @@ type ListNotificationsRequest struct {
 	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
 	// A notification about an episode is listed only on the surfaces the episode
-	// was shown on when it was published.
+	// was shown on when the notification was written.
 	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
