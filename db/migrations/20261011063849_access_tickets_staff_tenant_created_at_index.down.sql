@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_access_tickets_staff_tenant_created_at;

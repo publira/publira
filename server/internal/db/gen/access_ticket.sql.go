@@ -94,14 +94,14 @@ SELECT at.id,
     at.revoked_at,
     at.note,
     at.created_by_user_id,
-    at.created_at,
-    at.source
+    at.created_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
     AND at.id = $2
+    AND at.source = 'staff'
 LIMIT 1
 `
 
@@ -128,9 +128,11 @@ type GetAccessTicketForTenantRow struct {
 	Note            sql.NullString `json:"note"`
 	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
 	CreatedAt       time.Time      `json:"created_at"`
-	Source          string         `json:"source"`
 }
 
+// The console handles only the tickets staff issued. A wait-for-free ticket is
+// one the reader took themselves, so the console neither lists it nor revokes
+// it, and looking one up here finds nothing.
 func (q *Queries) GetAccessTicketForTenant(ctx context.Context, arg GetAccessTicketForTenantParams) (GetAccessTicketForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, GetAccessTicketForTenant, arg.TenantID, arg.ID)
 	var i GetAccessTicketForTenantRow
@@ -152,7 +154,6 @@ func (q *Queries) GetAccessTicketForTenant(ctx context.Context, arg GetAccessTic
 		&i.Note,
 		&i.CreatedByUserID,
 		&i.CreatedAt,
-		&i.Source,
 	)
 	return i, err
 }
@@ -226,13 +227,13 @@ SELECT at.id,
     at.revoked_at,
     at.note,
     at.created_by_user_id,
-    at.created_at,
-    at.source
+    at.created_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
+    AND at.source = 'staff'
     AND (
         $2::uuid IS NULL
         OR at.user_id = $2::uuid
@@ -296,7 +297,6 @@ type ListAccessTicketsForTenantAscRow struct {
 	Note            sql.NullString `json:"note"`
 	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
 	CreatedAt       time.Time      `json:"created_at"`
-	Source          string         `json:"source"`
 }
 
 func (q *Queries) ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error) {
@@ -335,7 +335,6 @@ func (q *Queries) ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAcc
 			&i.Note,
 			&i.CreatedByUserID,
 			&i.CreatedAt,
-			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -367,13 +366,13 @@ SELECT at.id,
     at.revoked_at,
     at.note,
     at.created_by_user_id,
-    at.created_at,
-    at.source
+    at.created_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
+    AND at.source = 'staff'
     AND (
         $2::uuid IS NULL
         OR at.user_id = $2::uuid
@@ -437,14 +436,13 @@ type ListAccessTicketsForTenantDescRow struct {
 	Note            sql.NullString `json:"note"`
 	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
 	CreatedAt       time.Time      `json:"created_at"`
-	Source          string         `json:"source"`
 }
 
 // Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
-// query; backward uses ASC so idx_access_tickets_tenant_created_at can be
+// query; backward uses ASC so idx_access_tickets_staff_tenant_created_at can be
 // scanned in reverse. The handler flips ASC rows back into display order.
 // id is a UUIDv7, so the order stays unique even when created_at ties.
-// cursor rules: proto/README.md.
+// cursor rules: proto/README.md. Staff tickets only, as GetAccessTicketForTenant.
 func (q *Queries) ListAccessTicketsForTenantDesc(ctx context.Context, arg ListAccessTicketsForTenantDescParams) ([]ListAccessTicketsForTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListAccessTicketsForTenantDesc,
 		arg.TenantID,
@@ -481,7 +479,6 @@ func (q *Queries) ListAccessTicketsForTenantDesc(ctx context.Context, arg ListAc
 			&i.Note,
 			&i.CreatedByUserID,
 			&i.CreatedAt,
-			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -502,6 +499,7 @@ SET revoked_at = NOW()
 WHERE tenant_id = $1
     AND id = $2
     AND revoked_at IS NULL
+    AND source = 'staff'
 RETURNING id,
     tenant_id,
     public_id,
@@ -520,6 +518,8 @@ type RevokeAccessTicketForTenantParams struct {
 	ID       uuid.UUID `json:"id"`
 }
 
+// Staff tickets only, as GetAccessTicketForTenant: revoking a wait-for-free
+// ticket would take away a read the reader was entitled to.
 func (q *Queries) RevokeAccessTicketForTenant(ctx context.Context, arg RevokeAccessTicketForTenantParams) (AccessTicket, error) {
 	row := q.db.QueryRowContext(ctx, RevokeAccessTicketForTenant, arg.TenantID, arg.ID)
 	var i AccessTicket

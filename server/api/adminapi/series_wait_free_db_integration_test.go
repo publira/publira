@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect/v2"
@@ -130,7 +131,7 @@ func TestDBUpdateSeriesWaitFreeSettingsRefusals(t *testing.T) {
 
 // A reader's wait-for-free ticket on an episode is theirs, not one staff
 // issued: IssueAccessTicket neither hands it back as the existing ticket nor
-// collides with it, and the list tells the two apart.
+// collides with it, the list leaves it out, and it cannot be revoked.
 func TestDBIssueAccessTicketBesideAWaitFreeTicket(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
@@ -139,10 +140,11 @@ func TestDBIssueAccessTicketBesideAWaitFreeTicket(t *testing.T) {
 	episodeID := env.episodeID(t, episodePublicID)
 	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
 
+	waitFreeTicketID := uuid.Must(uuid.NewV7())
 	if _, err := env.PG.DB.ExecContext(context.Background(), `
 		INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id, expires_at, source)
 		VALUES ($1, $2, 'TICKETWAIT01', $3, $4, NOW() + INTERVAL '72 hours', 'wait_free')
-	`, uuid.Must(uuid.NewV7()), tenant.Tenant.ID, episodeID, reader.ID); err != nil {
+	`, waitFreeTicketID, tenant.Tenant.ID, episodeID, reader.ID); err != nil {
 		t.Fatalf("seed wait-free ticket: %v", err)
 	}
 
@@ -155,22 +157,35 @@ func TestDBIssueAccessTicketBesideAWaitFreeTicket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("IssueAccessTicket: %v", err)
 	}
-	if issued.Ticket.PublicId == "TICKETWAIT01" || issued.Ticket.Source != "staff" {
-		t.Fatalf("issued ticket = %s (%s), want a new staff ticket", issued.Ticket.PublicId, issued.Ticket.Source)
+	if issued.Ticket.PublicId == "TICKETWAIT01" {
+		t.Fatalf("issued ticket = %s, want a new staff ticket", issued.Ticket.PublicId)
 	}
 
-	listed, err := client.ListAccessTickets(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListAccessTicketsRequest{
-		Tenant:          tenant.tenantContext(),
-		EpisodePublicId: episodePublicID,
+	for _, req := range []*publiraadminv1.ListAccessTicketsRequest{
+		{Tenant: tenant.tenantContext()},
+		{Tenant: tenant.tenantContext(), EpisodePublicId: episodePublicID},
+		{Tenant: tenant.tenantContext(), UserPublicId: "ENDUSERA0001", ActiveOnly: true},
+	} {
+		listed, err := client.ListAccessTickets(testutil.WithBearer(context.Background(), tenant.token()), req)
+		if err != nil {
+			t.Fatalf("ListAccessTickets(%v): %v", req, err)
+		}
+		if got := ticketPublicIDs(listed.Tickets); !slices.Equal(got, []string{issued.Ticket.PublicId}) {
+			t.Fatalf("ListAccessTickets(%v) = %v, want only the staff ticket %s", req, got, issued.Ticket.PublicId)
+		}
+	}
+
+	_, err = client.RevokeAccessTicket(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.RevokeAccessTicketRequest{
+		Tenant:         tenant.tenantContext(),
+		AccessTicketId: waitFreeTicketID.String(),
 	})
-	if err != nil {
-		t.Fatalf("ListAccessTickets: %v", err)
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("RevokeAccessTicket of the wait-free ticket: code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
-	sources := map[string]string{}
-	for _, ticket := range listed.Tickets {
-		sources[ticket.PublicId] = ticket.Source
+	if got := env.countRows(t, "SELECT count(*) FROM access_tickets WHERE id = $1 AND revoked_at IS NULL", waitFreeTicketID); got != 1 {
+		t.Fatalf("unrevoked wait-free tickets = %d, want 1", got)
 	}
-	if len(sources) != 2 || sources["TICKETWAIT01"] != "wait_free" || sources[issued.Ticket.PublicId] != "staff" {
-		t.Fatalf("listed sources = %v, want the wait-free ticket and the staff one", sources)
+	if got := env.countRows(t, "SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND action = 'access_ticket_revoked'", tenant.Tenant.ID); got != 0 {
+		t.Fatalf("revocation audit rows = %d, want none", got)
 	}
 }

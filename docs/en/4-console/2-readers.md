@@ -216,11 +216,13 @@ A reader and an episode have one ticket from the staff at a time:
 
 ### Reading the list
 
+The list holds the tickets the staff issued, and only those. The tickets readers take themselves through [**Free if you wait**](./4-selling-episodes.md#free-reading-periods-and-free-if-you-wait) are not in it and cannot be revoked here: each is a free read the reader was entitled to by the series' rule, not something the staff gave out, and a staff ticket for the same reader and episode is issued beside it rather than replacing it.
+
 The list shows each ticket's **Status**, **User**, **Episode**, **Note**, **Expires**, and **Created**, newest first, twenty to a page. **Status** is **Active**, **Expired**, or **Revoked**, and the filter's **Active only** leaves out both the expired and the revoked. **User public_id** and **Episode public_id** take a whole public ID, copied from the reader's page or the episode's address in the console; part of an ID or a name finds nothing.
 
 ![The Access tickets list: Issue a ticket at the top, the User public_id, Episode public_id, and Status filters, and an active ticket with its user, episode, note, expiry, and creation time, and Revoke.](./readers-access-tickets.png)
 
-The list also holds the tickets readers take themselves through **Free if you wait**, looking like the staff's and with a **Revoke** button of their own ([#3817](https://github.com/publira/publira/issues/3817)). Revoking one takes away a free read the reader was entitled to, so revoke only a ticket you know the staff issued: one with a note, or with an **Access ticket issued** entry in the audit log. Issuing and revoking are recorded there as **Access ticket issued** and **Access ticket revoked**.
+Issuing and revoking are recorded in the audit log as **Access ticket issued** and **Access ticket revoked**.
 
 ## How the community limits apply
 
