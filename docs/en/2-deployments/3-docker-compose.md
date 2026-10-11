@@ -31,7 +31,7 @@ The project name is fixed as `publira-deploy`, so the volumes keep their names a
 
 You need:
 
-- **A host with Docker Engine and the Compose plugin**, `docker compose`.
+- **A host with Docker Engine and the Compose plugin**, `docker compose`, on `linux/amd64` or `linux/arm64`, the two platforms the images are published for. On any other, the first pull fails with `no matching manifest`, and the host runs images built for it instead, as [The images](#the-images) describes.
 - **A checkout of the repository at the release you install**, such as a clone checked out at that release's tag. The Compose file is not self-contained: it mounts the proxy's routing from `infra/proxy/`, so keep the whole checkout rather than copying `infra/deploy/` out of it. Every command on this page runs from `infra/deploy/`.
 - **Access from the host to `ghcr.io`**, where every release publishes its images. `docker compose` pulls them the first time a command needs them, without signing in, so nothing is built on the host.
 - **An SMTP account**, which `publiractl setup` asks for: its host, port, encryption, user name and password, and the address mail is sent from.
@@ -59,7 +59,7 @@ PUBLIRA_IMAGE_TAG=0.1.0
 
 Every image runs that one tag, and it has to match the checkout: `publiractl` carries the migrations of its release, the processes expect the schema of theirs, and the proxy runs the routing of the checkout.
 
-If you change the code, build the images yourself from the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) instead, and set both variables to where they are: the address of the registry you push them to, such as `registry.example.com/publira`, and your own tag, or `publira` and `local` for the images `task docker:verify:full` builds on the host itself.
+If you change the code, or the host is on neither `linux/amd64` nor `linux/arm64`, build the images yourself from the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) instead, and set both variables to where they are: the address of the registry you push them to, such as `registry.example.com/publira`, and your own tag, or `publira` and `local` for the images `task docker:verify:full` builds on the host itself.
 
 ### The edge port and the tenant URL scheme
 

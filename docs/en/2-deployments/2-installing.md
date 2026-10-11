@@ -11,9 +11,9 @@ It describes the smallest install, the one in the [Overview](./1-overview.md): `
 
 ## Before you start
 
-Every release publishes its images to the GitHub Container Registry as `ghcr.io/publira/<name>:<tag>`, under the release's tag, such as `0.1.0`: `publira`, `publiractl`, `web-storefront`, and `web-admin`, plus `web-platform` and `email-renderer` for the optional processes. They are public, so your hosts pull them without signing in, and nothing has to be built. The examples here name them `ghcr.io/publira/<name>:<tag>`; write the tag of the release you are installing in place of `<tag>`. [Releases](./7-releases.md) says how the tags are numbered.
+Every release publishes its images to the GitHub Container Registry as `ghcr.io/publira/<name>:<tag>`, under the release's tag, such as `0.1.0`: `publira`, `publiractl`, `web-storefront`, and `web-admin`, plus `web-platform` and `email-renderer` for the optional processes. They are public, so your hosts pull them without signing in, and nothing has to be built. Each one is published for `linux/amd64` and `linux/arm64`; a host on any other platform finds no image to pull. The examples here name them `ghcr.io/publira/<name>:<tag>`; write the tag of the release you are installing in place of `<tag>`. [Releases](./7-releases.md) says how the tags are numbered.
 
-An install that changes the code builds its own images instead, from the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) at the commit it runs, pushes them where its hosts pull from, and names them in place of the published ones throughout.
+An install that changes the code, or runs on another platform, builds its own images instead, from the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) at the commit it runs, pushes them where its hosts pull from, and names them in place of the published ones throughout.
 
 Every `publiractl` step runs the `publiractl` image of the release you are installing. It carries the migrations and the role definitions of that release, so an image from another release would apply a schema the processes do not expect.
 
