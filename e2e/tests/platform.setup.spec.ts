@@ -5,6 +5,9 @@ import { applyScenarioSql, emptyPlatformOperators, querySql } from "../src/db";
 import { expectDocumentLocale } from "../src/locale";
 import {
   PLATFORM_SETUP_SCENARIO,
+  SETUP_DEFAULT_CURRENCY_CODE,
+  SETUP_DEFAULT_CURRENCY_LABEL,
+  SETUP_LOCKED_OUT_CURRENCY_LABEL,
   SETUP_DEFAULT_LOCALE_CODE,
   SETUP_DEFAULT_LOCALE_LABEL,
   SETUP_OPERATOR,
@@ -24,6 +27,9 @@ const passwordInput = (page: Page): Locator =>
 
 const savedDefaultLocale = (): string =>
   querySql("SELECT default_locale FROM platform_config WHERE singleton");
+
+const savedDefaultCurrency = (): string =>
+  querySql("SELECT default_currency FROM platform_config WHERE singleton");
 
 /**
  * Platform Console initial setup: `/setup` → `CreateInitialUser` → the console.
@@ -59,7 +65,7 @@ test.describe("web-platform initial setup", () => {
     applyScenarioSql(PLATFORM_SETUP_SCENARIO);
   });
 
-  test("the form creates the first operator and saves the language it chose", async ({
+  test("the form creates the first operator and saves the language and currency it chose, refusing a currency the lock keeps", async ({
     page,
   }) => {
     const response = await page.goto(platformUrl("/setup"));
@@ -76,8 +82,16 @@ test.describe("web-platform initial setup", () => {
 
     // The selector opens on what the browser asked for: there is no saved
     // language yet, which is the whole reason this screen chooses one.
-    const localeSelect = page.getByRole("combobox");
+    const localeSelect = page.getByRole("combobox", {
+      name: /^Default language/u,
+    });
     await expect(localeSelect).toHaveText("English");
+    // Emptying the operators deleted the settings row too, so there is no
+    // saved currency to start on and the field waits for a choice.
+    const currencyInput = page.getByRole("combobox", {
+      name: /^Default currency/u,
+    });
+    await expect(currencyInput).toHaveValue("");
 
     await page
       .getByRole("textbox", { name: /^Full name/u })
@@ -94,12 +108,31 @@ test.describe("web-platform initial setup", () => {
     await page
       .getByRole("option", { exact: true, name: SETUP_DEFAULT_LOCALE_LABEL })
       .click();
+    const chooseCurrency = async (label: string): Promise<void> => {
+      await currencyInput.fill(label);
+      await page.getByRole("option", { exact: true, name: label }).click();
+      await expect(currencyInput).toHaveValue(label);
+    };
+
+    // The seeded tenants have purchases and no payment settings of their
+    // own, so the currency they sell in — USD, now that the settings row is
+    // gone — cannot change, and the server refuses the whole setup.
+    await chooseCurrency(SETUP_LOCKED_OUT_CURRENCY_LABEL);
+    await page.getByRole("button", { name: "Create administrator" }).click();
+    await expect(
+      page.getByText(
+        /^A tenant that sells in the saved default currency has had a purchase/u
+      )
+    ).toBeVisible();
+
+    await chooseCurrency(SETUP_DEFAULT_CURRENCY_LABEL);
     await page.getByRole("button", { name: "Create administrator" }).click();
 
     await page.waitForURL(
       (url) => url.pathname === "/login" && url.search === "?setup=done"
     );
     expect(savedDefaultLocale()).toBe(SETUP_DEFAULT_LOCALE_CODE);
+    expect(savedDefaultCurrency()).toBe(SETUP_DEFAULT_CURRENCY_CODE);
 
     // A fresh document rather than the Action's client-side redirect: `<html
     // lang>` is written by the inline script in the root layout, which only runs

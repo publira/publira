@@ -39,6 +39,7 @@ export {
   currencyDisplayName,
   currencyFractionDigits,
   formatPrice,
+  listSupportedCurrencies,
   type FormatPercentOptions,
   type FormatPriceOptions,
 } from "./format-number";

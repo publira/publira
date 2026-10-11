@@ -4,6 +4,7 @@ import {
   isRpcError,
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
+  rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
@@ -156,6 +157,12 @@ export type SetupResult =
     };
 
 export interface CreateInitialUserInput {
+  /**
+   * ISO 4217 code of the platform default currency the operator chose on the
+   * setup form. Absent keeps the stored one, which is how a locked currency is
+   * left as it is.
+   */
+  defaultCurrency?: string;
   /** Platform default language the operator chose on the setup form. */
   defaultLocale: Locale;
   email: string;
@@ -166,6 +173,7 @@ export interface CreateInitialUserInput {
 }
 
 export const createInitialUser = async ({
+  defaultCurrency,
   defaultLocale,
   email,
   locale,
@@ -175,6 +183,7 @@ export const createInitialUser = async ({
   try {
     await apiClient.setup.createInitialUser(
       {
+        defaultCurrency: defaultCurrency ?? "",
         defaultLocale,
         email,
         name,
@@ -195,6 +204,15 @@ export const createInitialUser = async ({
         locale,
         overrides: {
           conflict: t("platform.auth.errors.setup_already_completed"),
+          // The list offers the runtime's currencies, which the server's table
+          // can lag behind; every other field it refuses keeps the shared copy.
+          ...(rpcErrorHasFieldViolation(error, "default_currency")
+            ? { "invalid-argument": t("platform.settings.currency_invalid") }
+            : {}),
+          // `failed_precondition` is only ever the currency lock: a tenant
+          // that sells in the stored currency had a purchase after the
+          // screen offered it as changeable.
+          precondition: t("platform.auth.errors.setup_currency_locked"),
         },
       }),
       ok: false,

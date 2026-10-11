@@ -4,6 +4,7 @@ const {
   mockAssertSameOrigin,
   mockGetPlatformLocale,
   mockResolveAccessToken,
+  mockUpdatePlatformDefaultCurrency,
   mockUpdatePlatformDefaultLocale,
   mockUpdatePlatformDefaultTimezone,
   mockUpdateTag,
@@ -11,6 +12,7 @@ const {
   mockAssertSameOrigin: vi.fn(),
   mockGetPlatformLocale: vi.fn(),
   mockResolveAccessToken: vi.fn(),
+  mockUpdatePlatformDefaultCurrency: vi.fn(),
   mockUpdatePlatformDefaultLocale: vi.fn(),
   mockUpdatePlatformDefaultTimezone: vi.fn(),
   mockUpdateTag: vi.fn(),
@@ -44,6 +46,7 @@ vi.mock("#lib/setup-status", () => ({
 
 vi.mock("#lib/platform-settings", () => ({
   platformSettingsCacheTag: "platform:settings",
+  updatePlatformDefaultCurrency: mockUpdatePlatformDefaultCurrency,
   updatePlatformDefaultLocale: mockUpdatePlatformDefaultLocale,
   updatePlatformDefaultTimezone: mockUpdatePlatformDefaultTimezone,
 }));
@@ -57,6 +60,14 @@ const timezoneFormData = (defaultTimezone: string): FormData => {
 const localeFormData = (defaultLocale: string): FormData => {
   const formData = new FormData();
   formData.set("default_locale", defaultLocale);
+  return formData;
+};
+
+const currencyFormData = (defaultCurrency?: string): FormData => {
+  const formData = new FormData();
+  if (defaultCurrency !== undefined) {
+    formData.set("default_currency", defaultCurrency);
+  }
   return formData;
 };
 
@@ -277,6 +288,74 @@ describe("updatePlatformDefaultLocaleAction", () => {
       message: "Could not save the default language. Please try again later.",
       ok: false,
     });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("updatePlatformDefaultCurrencyAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockResolveAccessToken.mockResolvedValue("session-token");
+    mockGetPlatformLocale.mockResolvedValue("en");
+  });
+
+  it("saves the chosen currency and updates cache tags", async () => {
+    mockUpdatePlatformDefaultCurrency.mockResolvedValueOnce({
+      defaultCurrency: "EUR",
+      ok: true,
+    });
+
+    const { updatePlatformDefaultCurrencyAction } = await import("./actions");
+
+    const result = await updatePlatformDefaultCurrencyAction(
+      null,
+      currencyFormData("EUR")
+    );
+
+    expect(result).toEqual({
+      message: "Default currency saved.",
+      ok: true,
+    });
+    expect(mockUpdatePlatformDefaultCurrency).toHaveBeenCalledWith("EUR", "en");
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:settings");
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:audit-logs");
+  });
+
+  it.each([
+    ["no currency at all", undefined],
+    ["an empty choice", ""],
+    ["something that is not a code", "dollars"],
+  ])("refuses %s before calling the API", async (_case, value) => {
+    const { updatePlatformDefaultCurrencyAction } = await import("./actions");
+
+    const result = await updatePlatformDefaultCurrencyAction(
+      null,
+      currencyFormData(value)
+    );
+
+    expect(result).toEqual({
+      message: "Select a currency.",
+      ok: false,
+    });
+    expect(mockUpdatePlatformDefaultCurrency).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("returns the refusal and keeps the cache when the save fails", async () => {
+    mockUpdatePlatformDefaultCurrency.mockResolvedValueOnce({
+      message: "locked",
+      ok: false,
+    });
+
+    const { updatePlatformDefaultCurrencyAction } = await import("./actions");
+
+    const result = await updatePlatformDefaultCurrencyAction(
+      null,
+      currencyFormData("EUR")
+    );
+
+    expect(result).toEqual({ message: "locked", ok: false });
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });
