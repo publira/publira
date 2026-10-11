@@ -244,6 +244,10 @@ const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
 
   const { price, readingPeriodHours } = episodeResult.episode;
 
+  // The price input is uncontrolled, so a refresh that brings another
+  // currency, from an image upload or a reorder on this screen, would keep the
+  // amount typed in the old one beside the new currency the form sends with it.
+  // The currency is in the key so that the form starts over in it instead.
   return (
     <EpisodePricingForm
       action={updateEpisodePricingAction}
@@ -252,7 +256,7 @@ const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
       episodePublicId={context.episodeId}
       initialPrice={price}
       initialReadingPeriodHours={readingPeriodHours}
-      key={`${context.episodeId}:pricing:${price}:${readingPeriodHours}`}
+      key={`${context.episodeId}:pricing:${currency}:${price}:${readingPeriodHours}`}
       seriesPublicId={context.seriesId}
       tenantId={context.tenantId}
     />
