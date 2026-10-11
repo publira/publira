@@ -69,7 +69,7 @@ type CreateContactMessageParams struct {
 //	  -> contact_messages_pkey
 //	GetContactMessageAssignableStaffForTenant
 //	  -> users_tenant_id_id_key, then tenant_user_roles_user_id_role_key
-//	ListTenantStaffContactRecipients
+//	ListTenantAdminContactRecipients
 //	  -> tenant_user_roles_tenant_id_user_id_key, then users_tenant_id_id_key
 //
 // One message as the public API stores it. The sender is nullable because a
@@ -556,25 +556,29 @@ func (q *Queries) ListContactMessagesByCreatedAtDesc(ctx context.Context, arg Li
 	return items, nil
 }
 
-const ListTenantStaffContactRecipients = `-- name: ListTenantStaffContactRecipients :many
+const ListTenantAdminContactRecipients = `-- name: ListTenantAdminContactRecipients :many
 SELECT DISTINCT u.email
 FROM tenant_user_roles tur
     JOIN users u ON u.tenant_id = tur.tenant_id
         AND u.id = tur.user_id
 WHERE tur.tenant_id = $1::uuid
+    AND tur.role = 'tenant_admin'
     AND (u.status)::text = 'active'
 ORDER BY u.email
 `
 
-// Who the mail announcing a message goes to: every member of staff the tenant
-// has, with the address their own account is reached at.
+// Who the mail announcing a message goes to: every active tenant_admin of the
+// tenant, with the address their own account is reached at. The inbox is
+// theirs alone, so an editor or an auditor is not mailed a message, and the
+// reader's address and words in it, that they could not open or answer.
 //
-// Suspended and inactive accounts are left out. A tenant whose staff were all
-// deactivated is a tenant nobody can be mailed at, which the worker reports
-// rather than working around: sending to an account that cannot sign in would
-// announce a message to somebody who cannot read it.
-func (q *Queries) ListTenantStaffContactRecipients(ctx context.Context, tenantID uuid.UUID) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, ListTenantStaffContactRecipients, tenantID)
+// Suspended and inactive accounts are left out. A tenant with no active
+// tenant_admin is a tenant nobody can be mailed at, which the worker reports
+// rather than working around: sending to an account that cannot sign in, or
+// cannot open the inbox, would announce a message to somebody who cannot read
+// it.
+func (q *Queries) ListTenantAdminContactRecipients(ctx context.Context, tenantID uuid.UUID) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, ListTenantAdminContactRecipients, tenantID)
 	if err != nil {
 		return nil, err
 	}

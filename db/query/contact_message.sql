@@ -21,7 +21,7 @@
 --     -> contact_messages_pkey
 --   GetContactMessageAssignableStaffForTenant
 --     -> users_tenant_id_id_key, then tenant_user_roles_user_id_role_key
---   ListTenantStaffContactRecipients
+--   ListTenantAdminContactRecipients
 --     -> tenant_user_roles_tenant_id_user_id_key, then users_tenant_id_id_key
 
 -- name: CreateContactMessage :one
@@ -270,18 +270,22 @@ WHERE u.tenant_id = sqlc.arg('tenant_id')::uuid
             AND tur.role = 'tenant_admin'
     );
 
--- name: ListTenantStaffContactRecipients :many
--- Who the mail announcing a message goes to: every member of staff the tenant
--- has, with the address their own account is reached at.
+-- name: ListTenantAdminContactRecipients :many
+-- Who the mail announcing a message goes to: every active tenant_admin of the
+-- tenant, with the address their own account is reached at. The inbox is
+-- theirs alone, so an editor or an auditor is not mailed a message, and the
+-- reader's address and words in it, that they could not open or answer.
 --
--- Suspended and inactive accounts are left out. A tenant whose staff were all
--- deactivated is a tenant nobody can be mailed at, which the worker reports
--- rather than working around: sending to an account that cannot sign in would
--- announce a message to somebody who cannot read it.
+-- Suspended and inactive accounts are left out. A tenant with no active
+-- tenant_admin is a tenant nobody can be mailed at, which the worker reports
+-- rather than working around: sending to an account that cannot sign in, or
+-- cannot open the inbox, would announce a message to somebody who cannot read
+-- it.
 SELECT DISTINCT u.email
 FROM tenant_user_roles tur
     JOIN users u ON u.tenant_id = tur.tenant_id
         AND u.id = tur.user_id
 WHERE tur.tenant_id = sqlc.arg('tenant_id')::uuid
+    AND tur.role = 'tenant_admin'
     AND (u.status)::text = 'active'
 ORDER BY u.email;

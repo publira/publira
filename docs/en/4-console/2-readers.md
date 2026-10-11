@@ -143,7 +143,7 @@ Approving, removing, restoring, and purging comments, and upholding and dismissi
 
 Readers write to the site from **Contact**, linked at the foot of every page of the site and in the app, signed in or not. They give the email address an answer should go to, an optional subject of up to 200 characters, and a message of up to 4000. A signed-in reader's address is filled in for them and can be changed.
 
-A new message is mailed to every active member of the staff at their account's address, with the reader's address, the subject, and the whole message. That includes Editors and Auditors, who cannot open **Contact messages** ([#3816](https://github.com/publira/publira/issues/3816)). The console itself shows no count or notification for a new message, so check **Contact messages** or keep an eye on that mail.
+A new message is mailed to every active Tenant admin at their account's address, with the reader's address, the subject, and the whole message. Editors and Auditors are not mailed, since they cannot open **Contact messages**, and neither is a suspended account. A tenant with no active Tenant admin sends the mail to nobody; the message still waits in **Contact messages**. The console itself shows no count or notification for a new message, so check **Contact messages** or keep an eye on that mail.
 
 **Contact messages** lists the messages newest first, twenty to a page, with **Subject**, **From**, **Reply to**, **Status**, **Assignee**, and **Received**. **From** names the reader's account when they were signed in, and reads **Guest** otherwise. **Status** follows from the message, and is never set by hand:
 
@@ -177,7 +177,7 @@ The console does not show whether the mail was delivered. If the mail settings a
 Where a reader's reply goes depends on whether the **Inbound email** section of **Integrations** › **Email** is **Ready**, which [Readers' replies to contact messages](./3-setup/6-email.md#readers-replies-to-contact-messages) walks through setting up:
 
 - **Until it is Ready**, the answer's reply address is your own account's email address. The reader's reply arrives in your own mailbox. It is not recorded in the console, and the message stays **Handled**: answer from your mail, or from the console again.
-- **Once it is Ready**, the reply address is one of the site's own, made for that message. The reader's reply is recorded under **Answers and replies** as "Reply from" their address, the message is reopened, and the staff are mailed as for a new message.
+- **Once it is Ready**, the reply address is one of the site's own, made for that message. The reader's reply is recorded under **Answers and replies** as "Reply from" their address, the message is reopened, and the Tenant admins are mailed as for a new message.
 
 The hint under **Answer** always describes the first case ([#3802](https://github.com/publira/publira/issues/3802)).
 
