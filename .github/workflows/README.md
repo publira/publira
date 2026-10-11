@@ -87,7 +87,7 @@ A pull request that already carries a `size/*` label is left alone and the run l
 | Displayed job | Trigger | Purpose |
 | --- | --- | --- |
 | `Check upgrade notes` | `pull_request_target`: `opened`, `edited`, `reopened`, `synchronize` | Fail a pull request whose diff makes a change an operator may have to act on while its Upgrade notes section is empty or missing. |
-| `Check version` | A pushed tag of the form `1.2.3` or `1.2.3-rc.1` | Fail a tag whose commit carries any other version in a `package.json`, naming each such file. See [Cutting a release](#cutting-a-release). |
+| `Check version` | A pushed tag of the form `v1.2.3` or `v1.2.3-rc.1` | Fail a tag whose commit carries any other version in a `package.json`, naming each such file. See [Cutting a release](#cutting-a-release). |
 | `Images` | The same tag, once `Check version` succeeds | Run [`release-images.yml`](./release-images.yml): push the release's images. See [Release images](#release-images). |
 | `Publish release` | The same tag, once `Images` succeeds | Publish the GitHub Release of the tag, its notes opening with the Upgrade notes section. |
 
@@ -115,15 +115,17 @@ git commit --allow-empty -am "chore(release): 1.1.0"
 gh pr create --title "chore(release): 1.1.0"
 ```
 
-Every release has one, even when every file already carries the number and the commit is empty, as it is for `0.1.0`, so the tag always goes on the commit that merges a release pull request. Once the pull request merges, tag the commit that merged it and push the tag; the workflow pushes the release's images and then creates the release. Do not create the release by hand first: a release that already exists has its notes replaced.
+Every release has one, even when every file already carries the number and the commit is empty, as it is for `0.1.0`, so the tag always goes on the commit that merges a release pull request. Once the pull request merges, tag the commit that merged it with the version behind a `v`, and push the tag; the workflow pushes the release's images and then creates the release. Do not create the release by hand first: a release that already exists has its notes replaced.
 
 ```bash
 git fetch origin
-git tag -a 1.1.0 -m 1.1.0 <merge commit>
-git push origin 1.1.0
+git tag -a v1.1.0 -m v1.1.0 <merge commit>
+git push origin v1.1.0
 ```
 
-`Check version` runs `node scripts/release-version.ts check` with the tag first, and a tag whose commit carries any other version in any of those files is refused before `Images` starts, so it pushes nothing to `ghcr.io` and publishes no Release; the job's log names each file that does not match. A prerelease such as `1.1.0-rc.1` is held to the same rule, so it gets a release commit of its own. A refused tag is deleted, locally and with `git push origin :refs/tags/<tag>`, and pushed again on the right commit.
+The `v` belongs to the Git tag alone. The workflow takes it off and uses the bare number everywhere else: in the check against the `package.json` files, in the image tags, and in the version linked into the Go binaries. A tag without the `v` starts no release.
+
+`Check version` runs `node scripts/release-version.ts check` with that number first, and a tag whose commit carries any other version in any of those files is refused before `Images` starts, so it pushes nothing to `ghcr.io` and publishes no Release; the job's log names each file that does not match. A prerelease such as `v1.1.0-rc.1` is held to the same rule, so it gets a release commit of its own. A refused tag is deleted, locally and with `git push origin :refs/tags/<tag>`, and pushed again on the right commit.
 
 The notes cover the commits since the nearest earlier release tag the new one descends from, skipping prereleases unless the new tag is one. They open with **Upgrade notes**, holding the section of every pull request in that range that says more than `None.`, under the pull request's title, or a sentence saying no change asks anything. The list GitHub generates of every pull request in the range follows, and gives way to a comparison link when the two together would not fit in a release. The first release has no earlier one to upgrade from, so its Upgrade notes say so, and it has no list.
 
@@ -136,7 +138,7 @@ The notes cover the commits since the nearest earlier release tag the new one de
 | `Images / Build / <name> (<arch>)` | Build one image for one architecture from the tagged commit, and push it by digest, untagged. |
 | `Images / Publish` | Tag each image's two digests as one multi-architecture image, then read every tag back signed out. |
 
-It pushes `ghcr.io/publira/<name>:<tag>` for `publira`, `publiractl`, `web-storefront`, `web-admin`, `web-platform`, and `email-renderer`, the names [`infra/deploy/compose.yaml`](../../infra/deploy/compose.yaml) composes, so `PUBLIRA_IMAGE_REGISTRY=ghcr.io/publira` and `PUBLIRA_IMAGE_TAG=<tag>` run a release unedited. Each image is built with the arguments `task docker:verify:full` gives it, the Go images with `VERSION` set to the tag, for `linux/amd64` and `linux/arm64` on a runner of each architecture, and is labelled with `org.opencontainers.image.source`, `.version`, and `.revision`. It is pushed under the exact tag and no other: no `latest`, no `1.2`. No signature, SBOM, or provenance attestation is published.
+It pushes `ghcr.io/publira/<name>:<version>`, the version being the Git tag without its `v` (`1.2.3` for `v1.2.3`), for `publira`, `publiractl`, `web-storefront`, `web-admin`, `web-platform`, and `email-renderer`, the names [`infra/deploy/compose.yaml`](../../infra/deploy/compose.yaml) composes, so `PUBLIRA_IMAGE_REGISTRY=ghcr.io/publira` and `PUBLIRA_IMAGE_TAG=<version>` run a release unedited. `Release notes` passes the version in as the `version` input. Each image is built with the arguments `task docker:verify:full` gives it, the Go images with `VERSION` set to the version, for `linux/amd64` and `linux/arm64` on a runner of each architecture, and is labelled with `org.opencontainers.image.source`, `.version`, and `.revision`. It is pushed under the exact version and no other: no `latest`, no `1.2`. No signature, SBOM, or provenance attestation is published.
 
 The jobs hold `packages: write` through `GITHUB_TOKEN` and no other secret. A package a workflow creates can start out private, and `GITHUB_TOKEN` cannot change its visibility, so `Images / Publish` fails naming each package it cannot read signed out. An organization owner makes that package public under its **Package settings**, and re-running the failed jobs publishes the Release.
 

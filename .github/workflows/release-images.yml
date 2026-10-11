@@ -1,23 +1,28 @@
 name: Release images
 
 # The images of a release, built from the tagged commit and pushed to
-# ghcr.io/publira under the tag and nothing else. An upgrade runs `db migrate`
-# and `db roles` from the new release's publiractl before the processes move,
-# so no reference may ever start pointing at a newer release by itself: there
-# is no `latest` and no `1.2`.
+# ghcr.io/publira under its version, the Git tag without its `v`, and nothing
+# else. An upgrade runs `db migrate` and `db roles` from the new release's
+# publiractl before the processes move, so no reference may ever start pointing
+# at a newer release by itself: there is no `latest` and no `1.2`.
 #
 # Release notes calls this before it publishes the Release, so the notes of a
 # Release never name a tag that cannot be pulled yet.
 
 on:
   workflow_call:
+    inputs:
+      version:
+        description: The release's version, the Git tag without its `v`
+        required: true
+        type: string
 
 permissions: {}
 
 env:
   REGISTRY: ghcr.io/publira
   SOURCE: ${{ github.server_url }}/${{ github.repository }}
-  TAG: ${{ github.ref_name }}
+  TAG: ${{ inputs.version }}
 
 jobs:
   build:

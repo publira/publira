@@ -32,7 +32,7 @@ The project name is fixed as `publira-deploy`, so the volumes keep their names a
 You need:
 
 - **A host with Docker Engine and the Compose plugin**, `docker compose`, on `linux/amd64` or `linux/arm64`, the two platforms the images are published for. On any other, the first pull fails with `no matching manifest`, and the host runs images built for it instead, as [The images](#the-images) describes.
-- **A checkout of the repository at the release you install**, such as a clone checked out at that release's tag. The Compose file is not self-contained: it mounts the proxy's routing from `infra/proxy/`, so keep the whole checkout rather than copying `infra/deploy/` out of it. Every command on this page runs from `infra/deploy/`.
+- **A checkout of the repository at the release you install**, such as a clone checked out at that release's tag, such as `v0.1.0`. The Compose file is not self-contained: it mounts the proxy's routing from `infra/proxy/`, so keep the whole checkout rather than copying `infra/deploy/` out of it. Every command on this page runs from `infra/deploy/`.
 - **Access from the host to `ghcr.io`**, where every release publishes its images. `docker compose` pulls them the first time a command needs them, without signing in, so nothing is built on the host.
 - **An SMTP account**, which `publiractl setup` asks for: its host, port, encryption, user name and password, and the address mail is sent from.
 - **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the host.
@@ -51,7 +51,7 @@ chmod 600 .env
 
 ### The images
 
-`PUBLIRA_IMAGE_REGISTRY` and `PUBLIRA_IMAGE_TAG` name the images, as `<registry>/<name>:<tag>`. The example's registry, `ghcr.io/publira`, is where every release publishes them; keep it. Set the tag to the release your checkout is at, such as `0.1.0`:
+`PUBLIRA_IMAGE_REGISTRY` and `PUBLIRA_IMAGE_TAG` name the images, as `<registry>/<name>:<tag>`. The example's registry, `ghcr.io/publira`, is where every release publishes them; keep it. Set the tag to the version of the release your checkout is at, which is its Git tag without the `v`, such as `0.1.0` for a checkout at `v0.1.0`:
 
 ```text
 PUBLIRA_IMAGE_TAG=0.1.0
