@@ -735,11 +735,18 @@ func (s *adminServer) CreateEpisode(
 
 // recordEpisodePublication writes down, in the transaction that publishes the
 // episode, what the scheduled publication job would have written in its own:
-// the sync of the series' search document, and the notice to the episode's
-// followers, which the worker writes because this connection cannot see them.
-// The drop of the caches that list the episode and its series is the caller's
-// to record with the rest of its write.
+// the announcement the episode owes while its series is not public, the sync
+// of the series' search document, and the notice to the episode's followers,
+// which the worker writes because this connection cannot see them. The drop of
+// the caches that list the episode and its series is the caller's to record
+// with the rest of its write.
 func recordEpisodePublication(txCtx context.Context, q Querier, tenantID, seriesID, episodeID uuid.UUID) error {
+	if err := q.OweEpisodeAnnouncementWhileSeriesHidden(txCtx, dbmodels.OweEpisodeAnnouncementWhileSeriesHiddenParams{
+		TenantID:  tenantID,
+		EpisodeID: episodeID,
+	}); err != nil {
+		return fmt.Errorf("record the announcement the episode owes: %w", err)
+	}
 	payload, err := json.Marshal(outbox.EpisodePublishedNotificationPayload{
 		TenantID:  tenantID.String(),
 		EpisodeID: episodeID.String(),

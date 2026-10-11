@@ -326,6 +326,7 @@ type EpisodeListing struct {
 	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
 	PublishedAt        sql.NullTime  `json:"published_at"`
 	TenantID           uuid.UUID     `json:"tenant_id"`
+	AnnouncementOwed   bool          `json:"announcement_owed"`
 }
 
 type EpisodePurchaseAvailability struct {

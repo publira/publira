@@ -94,6 +94,9 @@ func TestPublishSuccessNotifiesEachFollowerOnce(t *testing.T) {
 		t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
 	}
 	assertFollowerPublishedNotifications(t, pg, env, env.follower.ID, episodeFollower.ID, env.admin.ID)
+	if announcementOwed(t, pg, env.episode.ID) {
+		t.Fatal("an episode published into a public series owes an announcement")
+	}
 
 	r.RunOnce(ctx)
 	if err := r.notifyFollowersOfPublish(ctx, dbmodels.New(pg.DB), env.readyRow()); err != nil {
@@ -189,14 +192,20 @@ func TestPublishNotifiesNoFollowerOfAnEpisodeReadersCannotOpen(t *testing.T) {
 		series string
 		// episode runs after series; empty leaves the episode as seeded.
 		episode string
+		// owed is whether the publication leaves the announcement owed for
+		// when the series is published: only a series that is not public
+		// owes one.
+		owed bool
 	}{
 		{
 			name:   "series without a publication date",
 			series: "UPDATE series SET is_published = false, published_at = NULL WHERE id = $1",
+			owed:   true,
 		},
 		{
 			name:   "series publication still ahead",
 			series: "UPDATE series SET published_at = NOW() + interval '1 day' WHERE id = $1",
+			owed:   true,
 		},
 		{
 			// The episode's own Shown on narrows its series' and never widens
@@ -232,6 +241,9 @@ func TestPublishNotifiesNoFollowerOfAnEpisodeReadersCannotOpen(t *testing.T) {
 			assertPublishedUsers(t, pg, env.admin.ID)
 			if events := listMemberPushEvents(t, pg); len(events) != 0 {
 				t.Fatalf("member push events = %d, want 0", len(events))
+			}
+			if got := announcementOwed(t, pg, env.episode.ID); got != tc.owed {
+				t.Fatalf("announcement owed = %v, want %v", got, tc.owed)
 			}
 		})
 	}
@@ -728,6 +740,17 @@ func listingStatus(t *testing.T, pg *testutil.PostgresEnv, episodeID uuid.UUID) 
 		t.Fatalf("listing status: %v", err)
 	}
 	return status
+}
+
+func announcementOwed(t *testing.T, pg *testutil.PostgresEnv, episodeID uuid.UUID) bool {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var owed bool
+	if err := pg.DB.QueryRowContext(ctx, `SELECT announcement_owed FROM episode_listings WHERE episode_id = $1`, episodeID).Scan(&owed); err != nil {
+		t.Fatalf("listing announcement_owed: %v", err)
+	}
+	return owed
 }
 
 func assertFollowerPublishedNotifications(t *testing.T, pg *testutil.PostgresEnv, env publishTestEnv, recipientIDs ...uuid.UUID) {

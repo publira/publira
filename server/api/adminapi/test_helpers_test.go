@@ -497,6 +497,14 @@ func expectCatalogIndexSync(mock sqlmock.Sqlmock, tenantID uuid.UUID, kind strin
 	}
 }
 
+// expectSeriesPublicationUpdate expects the save of a series' publication,
+// answering whether that save is the one that makes the series public.
+func expectSeriesPublicationUpdate(mock sqlmock.Sqlmock, seriesID uuid.UUID, appliesPublication bool) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateSeriesPublication)).
+		WithArgs(seriesID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"applies_publication"}).AddRow(appliesPublication))
+}
+
 func expectPublicIDAttempt(mock sqlmock.Sqlmock) {
 	mock.ExpectExec("^SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
 }

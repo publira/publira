@@ -110,6 +110,9 @@ type Querier interface {
 	// The ticker job's write. It is what makes a boundary stop being due, so a run
 	// that was down over one still catches up instead of collecting it.
 	ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error
+	// The episodes RedateEpisodesForSeriesPublication answered, once their
+	// announcements are queued: the outbox owns them from there.
+	ClearEpisodeAnnouncementsOwed(ctx context.Context, arg ClearEpisodeAnnouncementsOwedParams) error
 	ConsumeStorePurchaseIntent(ctx context.Context, arg ConsumeStorePurchaseIntentParams) error
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
@@ -1325,9 +1328,10 @@ type Querier interface {
 	// because its own Shown on and its series' do not overlap. The
 	// notification links to the episode, and a follower of a credited creator
 	// would otherwise be sent to a page that answers 404. The gate names no
-	// follower, so the planner checks it once rather than per row. Such an
-	// episode is not announced when its series is published later either (#4044).
-	// The surfaces it is announced on are ListPublishedEpisodeSurfaces's to say.
+	// follower, so the planner checks it once rather than per row. An episode
+	// held back because its series was not public is announced once the series
+	// is, through RedateEpisodesForSeriesPublication. The surfaces it is
+	// announced on are ListPublishedEpisodeSurfaces's to say.
 	//
 	// Keyset paging on user_id, because the result grows with the tenant's
 	// readership and the caller writes one row per recipient. The cursor is
@@ -2391,6 +2395,17 @@ type Querier interface {
 	// no row. The no-op update is what makes the existing row come back, with the
 	// terms it was first opened on.
 	OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurchaseIntentParams) (StorePurchaseIntent, error)
+	// Run in the transaction that publishes the episode, by the scheduled
+	// publication job and by the console alike: an episode published while its
+	// series is not public owes its followers the announcement the fan-out cannot
+	// make yet, and publishing the series later makes it. Recorded with the
+	// publication rather than by the fan-out that drains after it, so a series
+	// published in between still finds the debt.
+	//
+	// Only a series that is not public owes one. An episode published into a
+	// public series but shown on no surface is not announced later when it is
+	// shown, so it owes nothing.
+	OweEpisodeAnnouncementWhileSeriesHidden(ctx context.Context, arg OweEpisodeAnnouncementWhileSeriesHiddenParams) error
 	// Projects one comment's publication as the analytics event for that comment.
 	// episode_comments stays the source of truth: the author, the episode and the
 	// moment the comment became public are copied from the row, and the owning
@@ -2530,6 +2545,21 @@ type Querier interface {
 	// holding a secret, and only they pay for the reclaim. A crash loop costs
 	// these rows no retry budget.
 	RecoverStaleProcessingOutboxEvents(ctx context.Context, staleBefore time.Time) ([]OutboxEvent, error)
+	// The episodes a series becoming public owes an announcement: published while
+	// no reader could open them, so their followers were never told, and open to a
+	// reader now. Each is dated from the series' publication instant, because no
+	// reader could open it before then, unless its own publication came later
+	// still, as it does under a series saved with an instant in the past.
+	//
+	// The answer is the episodes the caller queues an announcement for, with the
+	// instant that names this publication of the series; the caller then clears
+	// what they owed with ClearEpisodeAnnouncementsOwed. Until it does, a second
+	// run dates them to the same instant and answers them again, so a caller that
+	// failed in between is retried in full. An episode already announced while the
+	// series was public before owes nothing, so it is not among them and keeps its
+	// date. A series that is not public yet answers no row, and the
+	// apply-series-publications job asks again once its instant has passed.
+	RedateEpisodesForSeriesPublication(ctx context.Context, arg RedateEpisodesForSeriesPublicationParams) ([]RedateEpisodesForSeriesPublicationRow, error)
 	// Recomputes the counter from the reports themselves, in the transaction that
 	// just changed one of them.
 	//
@@ -2674,6 +2704,9 @@ type Querier interface {
 	UpdateEpisodeOrderIndexByIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByIDForTenantAndSeriesParams) error
 	// NULL gives a purchase of the episode no expiry.
 	UpdateEpisodePricingByIDForTenant(ctx context.Context, arg UpdateEpisodePricingByIDForTenantParams) (int64, error)
+	// Taking the episode off the site settles what it owed: no reader can open it,
+	// and the publication that puts it back owes its own announcement if its
+	// series is still not public then.
 	UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error
 	// NULL returns the episode to following its series.
 	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error
@@ -2719,7 +2752,14 @@ type Querier interface {
 	// The save drops the site caches itself when the instant it stores has already
 	// passed, so it marks that drop done here; an instant still ahead is left for
 	// the apply-series-publications batch to drop once it passes.
-	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error
+	//
+	// applies_publication answers whether this save is the one that makes the
+	// series public: it was not public, or its instant had passed without the
+	// batch applying it yet, and the instant stored now has passed. The caller
+	// then does what the batch would have done, since the batch will not list the
+	// series any more. The old row is read through the self-join, which sees it as
+	// it was before this statement.
+	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) (bool, error)
 	// A resend passes the role the invitation already grants; inviting the same
 	// address again passes the role that invitation asks for.
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)

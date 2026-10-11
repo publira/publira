@@ -42,6 +42,17 @@ func EpisodePublishedIdempotencyKey(episodeID uuid.UUID) string {
 	return EventTypeEpisodePublishedNotification + ":" + episodeID.String()
 }
 
+// SeriesPublicationIdempotencyKey is the outbox key for the announcement of an
+// episode published while its series was not public, queued when the series
+// becomes public. It names the series' publication instant beside the episode,
+// because the console's own event for the episode may already hold
+// [EpisodePublishedIdempotencyKey], drained while no reader could open it, and
+// a series taken down and published again before the event drained still owes
+// the announcement at its new instant.
+func SeriesPublicationIdempotencyKey(episodeID uuid.UUID, seriesPublishedAt time.Time) string {
+	return EpisodePublishedIdempotencyKey(episodeID) + ":series:" + seriesPublishedAt.UTC().Format(time.RFC3339Nano)
+}
+
 // EpisodePublishedNotificationPayload is the JSON body of the event. What the
 // notification says is read when it drains, so it names the episode it is
 // about and nothing else.
@@ -88,6 +99,13 @@ type EpisodeFollowerQuerier interface {
 // Each notification is filed for the surfaces the episode is shown on, so one
 // shown on the app alone is listed in the app's inbox and pushed to the app,
 // and neither listed on the site nor sent as a Web Push.
+//
+// The publication that runs this records, in its own transaction, the
+// announcement an episode of a series that is not public owes, and
+// [QueueSeriesPublicationAnnouncements] queues it once the series is public.
+// The fan-out leaves that record alone: it drains after the publication, and a
+// series published in between has to find the debt where the publication left
+// it.
 //
 // The recipients arrive a page at a time and the rows are written as each page
 // lands. The notification and the push both key on the episode, so a second
@@ -162,6 +180,76 @@ func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publi
 		return nil
 	}
 	return enqueueEpisodePublishedPush(ctx, q, publication, subjectKey)
+}
+
+// SeriesPublicationQuerier is the statements
+// [QueueSeriesPublicationAnnouncements] runs.
+type SeriesPublicationQuerier interface {
+	RedateEpisodesForSeriesPublication(ctx context.Context, arg dbmodels.RedateEpisodesForSeriesPublicationParams) ([]dbmodels.RedateEpisodesForSeriesPublicationRow, error)
+	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
+	ClearEpisodeAnnouncementsOwed(ctx context.Context, arg dbmodels.ClearEpisodeAnnouncementsOwedParams) error
+}
+
+// QueueSeriesPublicationAnnouncements is what a series becoming public owes
+// the episodes published while it was not: each is dated from the series'
+// publication instant, and its announcement is queued as the event the console
+// queues for an episode it publishes at once, for the same handler to fan out.
+// What they owed is cleared only once every announcement is queued, so a call
+// that fails part way leaves them owed and is repeated in full; the events key
+// on the series' instant, so a repeat queues nothing twice. It answers how
+// many episodes it queued.
+//
+// It runs on the querier of the write that made the series public, or of the
+// apply-series-publications job once a scheduled instant has passed, so the
+// new dates reach the caches that write drops. An episode whose followers were
+// already told about it owes nothing and is not among them, and a series that
+// is not public yet queues nothing.
+func QueueSeriesPublicationAnnouncements(ctx context.Context, q SeriesPublicationQuerier, tenantID, seriesID uuid.UUID) (int, error) {
+	episodes, err := q.RedateEpisodesForSeriesPublication(ctx, dbmodels.RedateEpisodesForSeriesPublicationParams{
+		TenantID: tenantID,
+		SeriesID: seriesID,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("redate episodes for series publication: %w", err)
+	}
+	for _, episode := range episodes {
+		payload, err := json.Marshal(EpisodePublishedNotificationPayload{
+			TenantID:  tenantID.String(),
+			EpisodeID: episode.EpisodeID.String(),
+		})
+		if err != nil {
+			return 0, fmt.Errorf("encode episode published notification payload: %w", err)
+		}
+		eventID, err := uuid.NewV7()
+		if err != nil {
+			return 0, fmt.Errorf("allocate outbox event id: %w", err)
+		}
+		_, err = q.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+			ID:             eventID,
+			TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+			EventType:      EventTypeEpisodePublishedNotification,
+			Payload:        payload,
+			IdempotencyKey: SeriesPublicationIdempotencyKey(episode.EpisodeID, episode.SeriesPublishedAt),
+			AvailableAt:    time.Now().UTC(),
+		})
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return 0, fmt.Errorf("queue announcement of episode %s: %w", episode.EpisodeID, err)
+		}
+	}
+	if len(episodes) == 0 {
+		return 0, nil
+	}
+	episodeIDs := make([]uuid.UUID, 0, len(episodes))
+	for _, episode := range episodes {
+		episodeIDs = append(episodeIDs, episode.EpisodeID)
+	}
+	if err := q.ClearEpisodeAnnouncementsOwed(ctx, dbmodels.ClearEpisodeAnnouncementsOwedParams{
+		TenantID:   tenantID,
+		EpisodeIds: episodeIDs,
+	}); err != nil {
+		return 0, fmt.Errorf("clear the announcements the episodes owed: %w", err)
+	}
+	return len(episodes), nil
 }
 
 // notificationAvailability is the notifications.availability that shows a

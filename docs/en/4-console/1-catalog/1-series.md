@@ -2,7 +2,7 @@
 title: Series
 description: Create a series, decide when and where it is shown, and set its age rating, reading direction, comments, cover image, and Free if you wait.
 published: 2026-10-07
-updated: 2026-10-10
+updated: 2026-10-11
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
@@ -42,6 +42,8 @@ Choose **Create series**. The form is the same one the series is edited with lat
 - **A time in the future**: the series stays hidden until then. `publira worker` looks for series whose time has passed once a minute and refreshes the site's cached pages, so its lists and its top page include it within about a minute of that time.
 
 Clearing the field later takes a public series off the site again, with its episodes. This is the only way to withdraw a series, since a series cannot be deleted.
+
+When a hidden series becomes public, for the first time or again, the episodes published while it was hidden are announced to the readers following them, the series, or an Author credited on them, and are dated from the moment the series became public. An episode announced while the series was public before keeps its date and is not announced again. [Episodes](./2-episodes.md#when-a-scheduled-episode-appears) describes who is told.
 
 ### Shown on and Sold on
 
