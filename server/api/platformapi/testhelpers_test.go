@@ -148,6 +148,13 @@ func platformConfigRow(defaultTimezone, defaultLocale string, revision int64, no
 // testPlatformCurrency is the default currency platformConfigRow stores.
 const testPlatformCurrency = "JPY"
 
+// expectDefaultCurrencyLock expects the read of whether a tenant that sells in
+// the default currency has a purchase, and answers it with locked.
+func expectDefaultCurrencyLock(mock sqlmock.Sqlmock, locked bool) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.PlatformCurrencyHasSales)).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(locked))
+}
+
 // expectPlatformConfigLookup expects the read of the platform settings row and
 // answers it with the given default time zone and locale.
 func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLocale string, now time.Time) {

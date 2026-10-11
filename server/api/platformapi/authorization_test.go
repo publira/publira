@@ -107,6 +107,7 @@ func TestPlatformAuditorCanReadPlatformSettings(t *testing.T) {
 	expectIntegrationAuth(mock, uuid.Nil, uuid.Must(uuid.NewV7()), auth.RolePlatformAuditor, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformConfig)).
 		WillReturnRows(platformConfigRow("UTC", "ja", 1, now))
+	expectDefaultCurrencyLock(mock, false)
 
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	resp, err := client.GetPlatformSettings(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.GetPlatformSettingsRequest{})

@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/setup.proto.
  */
 export const file_publira_platform_v1_setup: GenFile = /*@__PURE__*/
-  fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL3NldHVwLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIhkKF0NoZWNrU2V0dXBTdGF0dXNSZXF1ZXN0IksKGENoZWNrU2V0dXBTdGF0dXNSZXNwb25zZRIXCg9zZXR1cF9jb21wbGV0ZWQYASABKAgSFgoOZGVmYXVsdF9sb2NhbGUYAiABKAkiYQoYQ3JlYXRlSW5pdGlhbFVzZXJSZXF1ZXN0EgwKBG5hbWUYASABKAkSDQoFZW1haWwYAiABKAkSEAoIcGFzc3dvcmQYAyABKAkSFgoOZGVmYXVsdF9sb2NhbGUYBCABKAkiGwoZQ3JlYXRlSW5pdGlhbFVzZXJSZXNwb25zZTL/AQoUUGxhdGZvcm1TZXR1cFNlcnZpY2UScQoQQ2hlY2tTZXR1cFN0YXR1cxIsLnB1YmxpcmEucGxhdGZvcm0udjEuQ2hlY2tTZXR1cFN0YXR1c1JlcXVlc3QaLS5wdWJsaXJhLnBsYXRmb3JtLnYxLkNoZWNrU2V0dXBTdGF0dXNSZXNwb25zZSIAEnQKEUNyZWF0ZUluaXRpYWxVc2VyEi0ucHVibGlyYS5wbGF0Zm9ybS52MS5DcmVhdGVJbml0aWFsVXNlclJlcXVlc3QaLi5wdWJsaXJhLnBsYXRmb3JtLnYxLkNyZWF0ZUluaXRpYWxVc2VyUmVzcG9uc2UiAEJdWltnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM");
+  fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL3NldHVwLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIhkKF0NoZWNrU2V0dXBTdGF0dXNSZXF1ZXN0IksKGENoZWNrU2V0dXBTdGF0dXNSZXNwb25zZRIXCg9zZXR1cF9jb21wbGV0ZWQYASABKAgSFgoOZGVmYXVsdF9sb2NhbGUYAiABKAkiewoYQ3JlYXRlSW5pdGlhbFVzZXJSZXF1ZXN0EgwKBG5hbWUYASABKAkSDQoFZW1haWwYAiABKAkSEAoIcGFzc3dvcmQYAyABKAkSFgoOZGVmYXVsdF9sb2NhbGUYBCABKAkSGAoQZGVmYXVsdF9jdXJyZW5jeRgFIAEoCSIbChlDcmVhdGVJbml0aWFsVXNlclJlc3BvbnNlMv8BChRQbGF0Zm9ybVNldHVwU2VydmljZRJxChBDaGVja1NldHVwU3RhdHVzEiwucHVibGlyYS5wbGF0Zm9ybS52MS5DaGVja1NldHVwU3RhdHVzUmVxdWVzdBotLnB1YmxpcmEucGxhdGZvcm0udjEuQ2hlY2tTZXR1cFN0YXR1c1Jlc3BvbnNlIgASdAoRQ3JlYXRlSW5pdGlhbFVzZXISLS5wdWJsaXJhLnBsYXRmb3JtLnYxLkNyZWF0ZUluaXRpYWxVc2VyUmVxdWVzdBouLnB1YmxpcmEucGxhdGZvcm0udjEuQ3JlYXRlSW5pdGlhbFVzZXJSZXNwb25zZSIAQl1aW2dpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw");
 
 /**
  * Request to check the platform setup status.
@@ -91,6 +91,17 @@ export type CreateInitialUserRequest = Message<"publira.platform.v1.CreateInitia
    * @generated from field: string default_locale = 4;
    */
   defaultLocale: string;
+
+  /**
+   * ISO 4217 code of the currency every tenant that has saved no payment
+   * settings of its own sells in, as UpdatePlatformSettingsRequest takes it:
+   * three letters that name no currency are INVALID_ARGUMENT and create
+   * nothing. Empty keeps the stored currency, which is USD on a platform that
+   * has saved none.
+   *
+   * @generated from field: string default_currency = 5;
+   */
+  defaultCurrency: string;
 };
 
 /**

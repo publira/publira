@@ -163,16 +163,24 @@ func TestCreateInitialUserSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "platform_super_admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "role", "created_at", "platform_user_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), "platform_super_admin", now, userID))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertPlatformDefaultLocale)).
-		WithArgs("en").
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.PlatformCurrencyHasSales)).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantIDsInDefaultCurrency)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertPlatformSettings)).
+		WithArgs("UTC", "en", "JPY").
 		WillReturnRows(platformConfigRow("UTC", "en", 1, now))
 	mock.ExpectCommit()
 
+	// The currency is stored in capitals whatever case it is given in.
 	_, err := server.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
-		Name:          "Admin User",
-		Email:         "admin@example.com",
-		Password:      "secure-password-123",
-		DefaultLocale: "en",
+		Name:            "Admin User",
+		Email:           "admin@example.com",
+		Password:        "secure-password-123",
+		DefaultLocale:   "en",
+		DefaultCurrency: "jpy",
 	})
 	if err != nil {
 		t.Fatalf("CreateInitialUser: %v", err)
@@ -251,6 +259,12 @@ func TestCreateInitialUserInvalidInput(t *testing.T) {
 		}},
 		{"unsupported_locale", func() *publirasplatformv1.CreateInitialUserRequest {
 			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: "pass", DefaultLocale: "fr"}
+		}},
+		{"currency_that_is_no_code", func() *publirasplatformv1.CreateInitialUserRequest {
+			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: "pass", DefaultLocale: "en", DefaultCurrency: "EURO"}
+		}},
+		{"code_that_names_no_currency", func() *publirasplatformv1.CreateInitialUserRequest {
+			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: "pass", DefaultLocale: "en", DefaultCurrency: "ABC"}
 		}},
 	}
 

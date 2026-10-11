@@ -208,33 +208,3 @@ func (q *Queries) UpdatePlatformSettings(ctx context.Context, arg UpdatePlatform
 	)
 	return i, err
 }
-
-const UpsertPlatformDefaultLocale = `-- name: UpsertPlatformDefaultLocale :one
-INSERT INTO platform_config (singleton, default_locale, updated_at)
-VALUES (TRUE, $1, NOW()) ON CONFLICT (singleton) DO
-UPDATE
-SET default_locale = EXCLUDED.default_locale,
-    revision = platform_config.revision + 1,
-    updated_at = NOW()
-RETURNING singleton, default_timezone, default_locale, created_at, updated_at, revision, default_currency
-`
-
-// Stores only the default locale chosen during initial setup. No time zone has
-// been chosen at that point, so a new row leaves it to the column DEFAULT and
-// an existing row keeps the value it already has. The ON CONFLICT branch lets
-// setup finish on a platform whose settings row outlived its operators;
-// LockPlatformInitialSetup, not this statement, keeps two setups apart.
-func (q *Queries) UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error) {
-	row := q.db.QueryRowContext(ctx, UpsertPlatformDefaultLocale, defaultLocale)
-	var i PlatformConfig
-	err := row.Scan(
-		&i.Singleton,
-		&i.DefaultTimezone,
-		&i.DefaultLocale,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Revision,
-		&i.DefaultCurrency,
-	)
-	return i, err
-}

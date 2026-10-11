@@ -79,17 +79,3 @@ SET default_timezone = sqlc.arg('default_timezone'),
     updated_at = NOW()
 WHERE singleton = TRUE
 RETURNING *;
-
--- name: UpsertPlatformDefaultLocale :one
--- Stores only the default locale chosen during initial setup. No time zone has
--- been chosen at that point, so a new row leaves it to the column DEFAULT and
--- an existing row keeps the value it already has. The ON CONFLICT branch lets
--- setup finish on a platform whose settings row outlived its operators;
--- LockPlatformInitialSetup, not this statement, keeps two setups apart.
-INSERT INTO platform_config (singleton, default_locale, updated_at)
-VALUES (TRUE, sqlc.arg('default_locale'), NOW()) ON CONFLICT (singleton) DO
-UPDATE
-SET default_locale = EXCLUDED.default_locale,
-    revision = platform_config.revision + 1,
-    updated_at = NOW()
-RETURNING *;
