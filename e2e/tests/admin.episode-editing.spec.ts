@@ -160,7 +160,12 @@ test.describe("admin episode editing", () => {
     await expect(
       page.getByText("Price and reading period updated.")
     ).toBeVisible();
-    await expect(page).toHaveURL(new RegExp(`/episodes/${episodeId}\\?`, "u"));
+    // The redirect carries `?pricing_updated=1`, but the toast that query
+    // raises also removes it, so by the time the toast is visible the query
+    // may be gone: only the path says where the save landed.
+    await expect(page).toHaveURL(
+      (url) => url.pathname === `/series/${seriesId}/episodes/${episodeId}`
+    );
     await expect(fields.price).toHaveValue("120");
     await expect(fields.readingPeriodHours).toHaveValue("0");
 
