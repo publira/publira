@@ -44,6 +44,7 @@ describe("SetupForm currency", () => {
     mockGetPlatformCurrencyForSetup.mockResolvedValue({
       defaultCurrency: "JPY",
       defaultCurrencyLocked: false,
+      state: "saved",
     });
 
     const { container } = render(await SetupForm());
@@ -60,6 +61,7 @@ describe("SetupForm currency", () => {
     mockGetPlatformCurrencyForSetup.mockResolvedValue({
       defaultCurrency: "JPY",
       defaultCurrencyLocked: true,
+      state: "saved",
     });
 
     const { container } = render(await SetupForm());
@@ -72,13 +74,25 @@ describe("SetupForm currency", () => {
     ).toBeDefined();
   });
 
-  it("waits for a choice when there is no saved currency to read", async () => {
-    mockGetPlatformCurrencyForSetup.mockResolvedValue(null);
+  it("waits for a choice when the platform has saved no settings", async () => {
+    mockGetPlatformCurrencyForSetup.mockResolvedValue({ state: "none" });
 
     const { container } = render(await SetupForm());
 
     expect(currencyInput().value).toBe("");
     expect(currencyInput().disabled).toBe(false);
     expect(postedCurrency(container)?.value).toBe("");
+  });
+
+  it("keeps a currency it could not read, and says so beside the field", async () => {
+    mockGetPlatformCurrencyForSetup.mockResolvedValue({ state: "failed" });
+
+    const { container } = render(await SetupForm());
+
+    expect(currencyInput().disabled).toBe(true);
+    expect(postedCurrency(container)).toBeNull();
+    expect(
+      screen.getByText("platform.auth.setup.default_currency_load_failed")
+    ).toBeDefined();
   });
 });

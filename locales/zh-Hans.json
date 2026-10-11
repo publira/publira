@@ -4894,6 +4894,7 @@
         "default_currency_empty": "没有匹配的货币。",
         "default_currency_help": "在租户管理员于支付设置中选择货币之前，各租户以此货币销售，价格也以此货币输入和显示。此类租户产生购买后将无法更改。",
         "default_currency_label": "默认货币",
+        "default_currency_load_failed": "无法读取已保存的默认货币，因此初始设置将保持其不变。登录后请在常规设置中更改。",
         "default_currency_locked": "这是安装时保存的货币。以此货币销售的租户已有购买记录，因此无法更改。",
         "default_currency_placeholder": "搜索货币",
         "default_locale_help": "此控制台会以您在这里选择的语言启动。每位运营人员之后都可以切换自己的显示语言，每个租户也会在创建时选择自己的默认语言。",

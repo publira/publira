@@ -4894,6 +4894,7 @@
         "default_currency_empty": "일치하는 통화가 없습니다.",
         "default_currency_help": "테넌트 관리자가 결제 설정에서 통화를 선택하기 전까지 각 테넌트는 이 통화로 판매하며, 가격도 이 통화로 입력하고 표시합니다. 그런 테넌트에 구매가 생기면 변경할 수 없습니다.",
         "default_currency_label": "기본 통화",
+        "default_currency_load_failed": "저장된 기본 통화를 불러오지 못해 설정에서는 변경하지 않고 그대로 유지합니다. 로그인한 뒤 일반 설정에서 변경해 주세요.",
         "default_currency_locked": "설치할 때 저장된 통화입니다. 이 통화로 판매하는 테넌트에 이미 구매가 있으므로 변경할 수 없습니다.",
         "default_currency_placeholder": "통화 검색",
         "default_locale_help": "여기에서 고른 언어로 이 콘솔이 표시됩니다. 운영자별 표시 언어는 나중에 바꿀 수 있고, 테넌트의 기본 언어는 테넌트를 만들 때 선택합니다.",

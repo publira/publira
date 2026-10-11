@@ -4894,6 +4894,7 @@
         "default_currency_empty": "No matching currencies.",
         "default_currency_help": "Every tenant sells in this currency until its administrators choose one in Payment settings, and its prices are entered and shown in it. It cannot change once such a tenant has a purchase.",
         "default_currency_label": "Default currency",
+        "default_currency_load_failed": "The saved default currency could not be read, so setup keeps it as it is. Change it in General settings once you have signed in.",
         "default_currency_locked": "This is the currency saved when the install was set up. A tenant that sells in it already has a purchase, so it cannot change.",
         "default_currency_placeholder": "Search for a currency",
         "default_locale_help": "This console starts in the language you pick here. Each operator can switch their own display language later, and each tenant picks its own default language when it is created.",

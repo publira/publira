@@ -453,52 +453,88 @@ export const updatePlatformDefaultCurrency = async (
   }
 };
 
-/** The stored default currency, as the initial setup screen offers it. */
-export interface PlatformCurrencyForSetup {
+/**
+ * What the initial setup screen knows about the stored default currency:
+ *
+ * - `saved`: the currency `publiractl setup` saved, and whether it is locked
+ * - `none`: the platform has saved no settings at all, so there is nothing to
+ *   keep and the operator chooses one
+ * - `failed`: settings are saved but could not be read, so the screen cannot
+ *   say which currency it would be replacing
+ */
+export type PlatformCurrencyForSetup =
+  | { defaultCurrency: string; defaultCurrencyLocked: boolean; state: "saved" }
+  | { state: "failed" }
+  | { state: "none" };
+
+const readStoredCurrency = async (): Promise<{
   defaultCurrency: string;
   defaultCurrencyLocked: boolean;
-}
+} | null> => {
+  try {
+    const response = await apiClient.settings.getPlatformSettings(
+      {},
+      withServiceHeaders()
+    );
+    const defaultCurrency = response.settings?.defaultCurrency.trim();
+    return defaultCurrency
+      ? {
+          defaultCurrency,
+          defaultCurrencyLocked:
+            response.settings?.defaultCurrencyLocked ?? false,
+        }
+      : null;
+  } catch {
+    // Called inside a `"use cache"` scope, which cannot rethrow; the caller
+    // works out what a missing answer means.
+    return null;
+  }
+};
 
 /**
- * The currency `publiractl setup` saved, for the initial setup screen to start
- * on, or `null` when there is none to read.
+ * Whether the platform has a settings row, as `CheckSetupStatus` tells it: it
+ * answers no language only when there is none. `null` when it cannot be asked.
+ */
+const hasSavedSettings = async (): Promise<boolean | null> => {
+  try {
+    const status = await apiClient.setup.checkSetupStatus({});
+    return status.defaultLocale.trim() !== "";
+  } catch {
+    // Inside a `"use cache"` scope, as above.
+    return null;
+  }
+};
+
+/**
+ * The stored default currency, for the initial setup screen to start on.
  *
  * `CreateInitialUser` saves the currency it is sent over the stored one, and a
  * tenant that has saved no payment settings has its prices read in it, so a
  * screen that started on a currency of its own would reprice that tenant for
  * an operator who only confirmed the form. A locked one is sent as nothing,
- * which keeps it.
+ * which keeps it, and so is one that could not be read.
+ *
+ * `GetPlatformSettings` fails both on a platform that has saved no settings,
+ * which is the ordinary state before setup, and on an outage, so a failure is
+ * told apart by `CheckSetupStatus` before it is taken for the first.
  *
  * Read without a session, since the screen has none: it renders only while the
  * platform has no operator, and the currency is no secret — every tenant's
  * public site prices in it.
  */
 export const getPlatformCurrencyForSetup =
-  async (): Promise<PlatformCurrencyForSetup | null> => {
+  async (): Promise<PlatformCurrencyForSetup> => {
     "use cache";
     cacheLife(SHARED_READ_CACHE_LIFE);
     cacheTag(platformSettingsCacheTag);
 
-    try {
-      const response = await apiClient.settings.getPlatformSettings(
-        {},
-        withServiceHeaders()
-      );
-      const defaultCurrency = response.settings?.defaultCurrency.trim();
-      if (!defaultCurrency) {
-        dropFailedCacheEntry();
-        return null;
-      }
-      return {
-        defaultCurrency,
-        defaultCurrencyLocked:
-          response.settings?.defaultCurrencyLocked ?? false,
-      };
-    } catch {
-      // A `"use cache"` scope cannot rethrow. A platform that has saved no
-      // settings at all has none to read either, and the screen asks for a
-      // currency with nothing chosen in both cases.
-      dropFailedCacheEntry();
-      return null;
+    const stored = await readStoredCurrency();
+    if (stored) {
+      return { ...stored, state: "saved" };
     }
+    if ((await hasSavedSettings()) === false) {
+      return { state: "none" };
+    }
+    dropFailedCacheEntry();
+    return { state: "failed" };
   };

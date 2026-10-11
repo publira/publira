@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockCacheLife,
   mockCacheTag,
+  mockCheckSetupStatusApi,
   mockGetPlatformLocale,
   mockGetPlatformSettingsApi,
   mockResolveAccessToken,
@@ -12,6 +13,7 @@ const {
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
+  mockCheckSetupStatusApi: vi.fn(),
   mockGetPlatformLocale: vi.fn(),
   mockGetPlatformSettingsApi: vi.fn(),
   mockResolveAccessToken: vi.fn(),
@@ -38,6 +40,9 @@ vi.mock("./api-client", () => ({
     settings: {
       getPlatformSettings: mockGetPlatformSettingsApi,
       updatePlatformSettings: mockUpdatePlatformSettingsApi,
+    },
+    setup: {
+      checkSetupStatus: mockCheckSetupStatusApi,
     },
   },
   buildSessionHeaders: (sessionId: string) => ({
@@ -578,24 +583,65 @@ describe("platform-settings", () => {
       await expect(getPlatformCurrencyForSetup()).resolves.toEqual({
         defaultCurrency: "JPY",
         defaultCurrencyLocked: true,
+        state: "saved",
       });
       expect(mockVerifyPlatformSession).not.toHaveBeenCalled();
       expect(mockGetPlatformSettingsApi).toHaveBeenCalledWith(
         {},
         { headers: { Authorization: "Bearer service-token" } }
       );
+      expect(mockCheckSetupStatusApi).not.toHaveBeenCalled();
       expect(mockCacheTag).toHaveBeenCalledWith("platform:settings");
     });
 
-    it("answers nothing when there are no settings to read", async () => {
+    it("answers that nothing is saved when the platform has no settings row", async () => {
       mockGetPlatformSettingsApi.mockRejectedValueOnce(
         new ConnectError("failed to read platform settings", Code.Internal)
+      );
+      mockCheckSetupStatusApi.mockResolvedValueOnce({
+        defaultLocale: "",
+        setupCompleted: false,
+      });
+
+      const { getPlatformCurrencyForSetup } =
+        await import("./platform-settings");
+
+      await expect(getPlatformCurrencyForSetup()).resolves.toEqual({
+        state: "none",
+      });
+    });
+
+    it("reports a failed read when settings are saved but cannot be read", async () => {
+      mockGetPlatformSettingsApi.mockRejectedValueOnce(
+        new ConnectError("platform api unavailable", Code.Unavailable)
+      );
+      mockCheckSetupStatusApi.mockResolvedValueOnce({
+        defaultLocale: "en",
+        setupCompleted: false,
+      });
+
+      const { getPlatformCurrencyForSetup } =
+        await import("./platform-settings");
+
+      await expect(getPlatformCurrencyForSetup()).resolves.toEqual({
+        state: "failed",
+      });
+    });
+
+    it("reports a failed read when neither read answers", async () => {
+      mockGetPlatformSettingsApi.mockRejectedValueOnce(
+        new ConnectError("platform api unavailable", Code.Unavailable)
+      );
+      mockCheckSetupStatusApi.mockRejectedValueOnce(
+        new ConnectError("platform api unavailable", Code.Unavailable)
       );
 
       const { getPlatformCurrencyForSetup } =
         await import("./platform-settings");
 
-      await expect(getPlatformCurrencyForSetup()).resolves.toBeNull();
+      await expect(getPlatformCurrencyForSetup()).resolves.toEqual({
+        state: "failed",
+      });
     });
   });
 });

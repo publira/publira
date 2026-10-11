@@ -14,6 +14,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
+import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import {
   PasswordInput,
@@ -43,8 +44,13 @@ export const SetupForm = async () => {
   ]);
   const t = await getMessagesFor(initialDefaultLocale);
   // The currency starts on the one `publiractl setup` saved, so confirming
-  // the form keeps it; with none to read, the operator chooses one.
-  const currencyLocked = storedCurrency?.defaultCurrencyLocked ?? false;
+  // the form keeps it; on a platform with no settings, the operator chooses
+  // one. A locked currency, or one that could not be read, is not offered for
+  // change at all: the field posts nothing, which keeps what is stored.
+  const savedCurrency =
+    storedCurrency.state === "saved" ? storedCurrency : undefined;
+  const currencyLocked = savedCurrency?.defaultCurrencyLocked ?? false;
+  const currencyUnread = storedCurrency.state === "failed";
   const localeItems = getLocales().map((value) => ({
     label: getLocaleLabel(value),
     value,
@@ -161,11 +167,11 @@ export const SetupForm = async () => {
         </FieldLabel>
         <FieldContent>
           <CurrencyCombobox
-            disabled={currencyLocked}
-            initialCurrency={storedCurrency?.defaultCurrency ?? ""}
+            disabled={currencyLocked || currencyUnread}
+            initialCurrency={savedCurrency?.defaultCurrency ?? ""}
             items={currencyItems(
               initialDefaultLocale,
-              storedCurrency?.defaultCurrency
+              savedCurrency?.defaultCurrency
             )}
             name="default_currency"
             placeholder={t("platform.auth.setup.default_currency_placeholder")}
@@ -188,6 +194,13 @@ export const SetupForm = async () => {
               )}
             </Suspense>
           </FieldDescription>
+          {currencyUnread ? (
+            <FormMessage variant="destructive">
+              <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+                <SetupMessage message="platform.auth.setup.default_currency_load_failed" />
+              </Suspense>
+            </FormMessage>
+          ) : null}
         </FieldContent>
       </Field>
 
