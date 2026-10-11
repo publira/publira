@@ -124,7 +124,7 @@ func (e contactMessageEnv) handler(mailer internalsmtp.RenderedSender) outbox.Ha
 	})
 }
 
-func TestContactMessageStaffEmailReachesEveryActiveStaffAccount(t *testing.T) {
+func TestContactMessageStaffEmailReachesEveryActiveTenantAdmin(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -138,7 +138,11 @@ func TestContactMessageStaffEmailReachesEveryActiveStaffAccount(t *testing.T) {
 	env.pg.SeedTenantAdmin(t, env.tenantID, "OUTBOXSTF02", "second@aoto.example.com", "Second")
 	// A reader of the same tenant holds no staff role and hears nothing.
 	env.pg.SeedEndUser(t, env.tenantID, "OUTBOXRDR01", "reader@aoto.example.com", "Reader")
-	// A staff account that was deactivated cannot sign in to work the message,
+	// An editor and an auditor cannot open the inbox, so they are not mailed a
+	// message they could neither read in the console nor answer.
+	env.pg.SeedTenantUser(t, env.tenantID, "OUTBOXEDT01", "editor@aoto.example.com", "Editor", "tenant_editor")
+	env.pg.SeedTenantUser(t, env.tenantID, "OUTBOXAUD01", "auditor@aoto.example.com", "Auditor", "tenant_auditor")
+	// A tenant admin that was deactivated cannot sign in to work the message,
 	// so it is not one of the people told about it either.
 	suspended := env.pg.SeedTenantAdmin(t, env.tenantID, "OUTBOXSTF03", "gone@aoto.example.com", "Gone")
 	if _, err := env.pg.DB.ExecContext(ctx, `UPDATE users SET status = 'suspended' WHERE id = $1`, suspended.ID); err != nil {
@@ -194,8 +198,9 @@ func TestContactMessageStaffEmailPutsAMultiLineSubjectOnOneLine(t *testing.T) {
 	}
 }
 
-// A tenant whose staff were all deactivated has nobody to tell, and a retry
-// would find the same empty list. The message itself is stored and waiting.
+// A tenant with no active tenant admin has nobody to tell, even when it has
+// editors and auditors, and a retry would find the same empty list. The
+// message itself is stored and waiting.
 func TestContactMessageStaffEmailCompletesWithNobodyToTell(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -205,13 +210,15 @@ func TestContactMessageStaffEmailCompletesWithNobodyToTell(t *testing.T) {
 		ReplyToEmail: "reader@example.test",
 		Body:         "Is anybody there?",
 	})
+	env.pg.SeedTenantUser(t, env.tenantID, "OUTBOXEDT02", "editor@aoto.example.com", "Editor", "tenant_editor")
+	env.pg.SeedTenantUser(t, env.tenantID, "OUTBOXAUD02", "auditor@aoto.example.com", "Auditor", "tenant_auditor")
 
 	mailer := &recordingMailer{}
 	if err := env.handler(mailer)(ctx, env.event(t)); err != nil {
 		t.Fatalf("contact message staff email handler: %v", err)
 	}
 	if len(mailer.sent) != 0 {
-		t.Fatalf("mailed %d recipients on a tenant with no staff", len(mailer.sent))
+		t.Fatalf("mailed %v on a tenant with no tenant admin", mailer.recipients())
 	}
 }
 

@@ -15,7 +15,7 @@ With the tenant's own server turned on, it sends every mail the tenant sends:
 
 - To readers: the sign-up confirmation, password resets and the notice that a password changed, email address change confirmations and the notice that an address changed, and the notice that someone tried to sign up with an address that already has an account.
 - Replies to readers' contact messages.
-- To staff: invitations to new Tenant admins, the console's password resets and email address changes, and the notice of a new contact message.
+- To staff: invitations to new Tenant admins, the console's password resets and email address changes, and the notice of a new contact message, which goes to the Tenant admins.
 
 The tenant sends no purchase receipts. Announcements and other notices reach readers on the site and in the app, not by mail.
 

@@ -22,7 +22,7 @@ import (
 // in through the contact form.
 //
 // It is drained here rather than sent by the RPC that stored the message: the
-// recipients are every member of staff the tenant has, and a reader waiting for
+// recipients are every tenant admin the tenant has, and a reader waiting for
 // their message to be accepted must not wait on a send per person or watch the
 // submission fail because a mail server did.
 const EventTypeContactMessageStaffEmail = "contact_message_staff_email"
@@ -53,10 +53,11 @@ func ContactMessageReplyStaffEmailIdempotencyKey(entryID uuid.UUID) string {
 	return EventTypeContactMessageStaffEmail + ":entry:" + entryID.String()
 }
 
-// NewContactMessageStaffEmailHandler sends one tenant's staff the message a
-// reader addressed to them, or the reply a reader mailed back to an answer,
-// which is announced with the same mail: it is the reader writing in again,
-// and the message it reopened is waiting for staff as a new one would.
+// NewContactMessageStaffEmailHandler sends one tenant's admins, the staff who
+// can open the inbox, the message a reader addressed to them, or the reply a
+// reader mailed back to an answer, which is announced with the same mail: it
+// is the reader writing in again, and the message it reopened is waiting for
+// them as a new one would.
 //
 // Every recipient gets the same mail, so it is composed once and delivered per
 // address. A send that fails partway fails the event, and the retry mails the
@@ -117,16 +118,16 @@ func NewContactMessageStaffEmailHandler(cfg EmailHandlerConfig) Handler {
 			return Permanent(fmt.Errorf("resolve default locale of tenant %s: %w", tenantID, err))
 		}
 
-		recipients, err := queries.ListTenantStaffContactRecipients(ctx, tenantID)
+		recipients, err := queries.ListTenantAdminContactRecipients(ctx, tenantID)
 		if err != nil {
-			return fmt.Errorf("list tenant staff: %w", err)
+			return fmt.Errorf("list tenant admins: %w", err)
 		}
 		if len(recipients) == 0 {
-			// A tenant whose staff accounts were all deactivated has nobody to
-			// tell. Completing is the honest answer: a retry would find the same
-			// empty list, and the message itself is stored and waiting in the
-			// console for whoever takes the tenant over.
-			logContactMessage(ctx, cfg, event, "no staff to mail about a contact message")
+			// A tenant with no active tenant admin has nobody who could open the
+			// message. Completing is the honest answer: a retry would find the
+			// same empty list, and the message itself is stored and waiting in
+			// the console for whoever takes the tenant over.
+			logContactMessage(ctx, cfg, event, "no tenant admin to mail about a contact message")
 			return nil
 		}
 
