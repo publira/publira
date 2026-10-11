@@ -1552,7 +1552,7 @@ jobs:
         run: task deploy:check
 
       # Every image the Compose file references, built into the local image
-      # store under the names .env.example gives them.
+      # store as publira/<name>:local, the names the smoke test runs.
       - name: Build / Images
         run: task docker:verify:full
 

@@ -44,7 +44,7 @@ Keep every key the list holds, including one you rotated away from while a value
 - **Valkey** holds the image conversion cache, the rate limit counters, and the web apps' cache. Every entry in it is either rebuilt from the database and the bucket or expires on its own, so an install starts on an empty Valkey without losing anything.
 - **The search engine's index**, when the search runs on OpenSearch or Elasticsearch, is built from the database, and [rebuilt](#5-rebuild-the-search-index) after a restore.
 - **The other secrets** can each be replaced. A role password is set again with `publiractl db roles`, and a new access token signing key or web app session key signs everyone out once. The cache revalidation token and the web service token only have to agree between the processes that share them. Keeping all of them in your secret store beside the encryption keys still saves you that work.
-- **The images of the processes** are rebuilt or pulled for the release you run. Write down which release that is with every backup: a database backup restores onto the schema of the release it was taken on.
+- **The images of the processes** are pulled again for the release you run, or rebuilt if you build your own. Write down which release that is with every backup: a database backup restores onto the schema of the release it was taken on.
 
 ## Take a backup
 

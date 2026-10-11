@@ -2,6 +2,7 @@
 title: Installing
 description: Bring an empty install into service, from the services it depends on to the first sign-in to the tenant console.
 published: 2026-10-06
+updated: 2026-10-11
 ---
 
 This page takes an install from nothing to a tenant console its first administrator signs in to. It follows the order the steps have to run in and explains what each one decides; the full list of variables each process reads, and every flag of `publiractl`, stay in the reference linked from each step.
@@ -10,7 +11,9 @@ It describes the smallest install, the one in the [Overview](./1-overview.md): `
 
 ## Before you start
 
-Build the images from the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) and push them where your hosts pull from. The examples here name them `publira/<name>:local`, the tags `task docker:verify:full` produces; use your own registry and tag in their place.
+Every release publishes its images to the GitHub Container Registry as `ghcr.io/publira/<name>:<tag>`, under the release's tag, such as `0.1.0`: `publira`, `publiractl`, `web-storefront`, and `web-admin`, plus `web-platform` and `email-renderer` for the optional processes. They are public, so your hosts pull them without signing in, and nothing has to be built. Each one is published for `linux/amd64` and `linux/arm64`; a host on any other platform finds no image to pull. The examples here name them `ghcr.io/publira/<name>:<tag>`; write the tag of the release you are installing in place of `<tag>`. [Releases](./7-releases.md) says how the tags are numbered.
+
+An install that changes the code, or runs on another platform, builds its own images instead, from the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) at the commit it runs, pushes them where its hosts pull from, and names them in place of the published ones throughout.
 
 Every `publiractl` step runs the `publiractl` image of the release you are installing. It carries the migrations and the role definitions of that release, so an image from another release would apply a schema the processes do not expect.
 
@@ -63,7 +66,7 @@ The split is what keeps one tenant's data away from another's. The two roles tha
 Run `db migrate` on the superuser connection. It creates the schema, and exits without changing anything when there is nothing to apply.
 
 ```bash
-docker run --rm -e PUBLIRA_DB_URL publira/publiractl:local db migrate
+docker run --rm -e PUBLIRA_DB_URL ghcr.io/publira/publiractl:<tag> db migrate
 ```
 
 `PUBLIRA_DB_URL` is the superuser connection, such as `postgres://postgres:<password>@db.internal:5432/publira?sslmode=require`.
@@ -73,7 +76,7 @@ docker run --rm -e PUBLIRA_DB_URL publira/publiractl:local db migrate
 Run `db roles` on the same connection, giving each role the password you generated for it. It grants on the tables the migrations created, which is why it runs second.
 
 ```bash
-docker run --rm -e PUBLIRA_DB_URL -v /run/secrets:/run/secrets:ro publira/publiractl:local db roles \
+docker run --rm -e PUBLIRA_DB_URL -v /run/secrets:/run/secrets:ro ghcr.io/publira/publiractl:<tag> db roles \
   --public-password-file /run/secrets/publira-public-db-password \
   --admin-password-file /run/secrets/publira-admin-db-password \
   --platform-password-file /run/secrets/publira-platform-db-password \
@@ -86,7 +89,7 @@ Running it again changes nothing but the passwords it is given, so it is also ho
 
 ### 3. Start the four processes
 
-Start `publira server`, `publira worker`, `web-storefront`, and `web-admin` with the variables in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables). Each connection URL names its role and the password `db roles` gave it, such as `postgres://publira_public:<password>@db.internal:5432/publira?sslmode=require` for `PUBLIRA_PUBLIC_DB_URL`. Set every one of them: a connection URL left unset falls back to a development URL, not to another of your variables, and fails to sign in.
+Start `publira server`, `publira worker`, `web-storefront`, and `web-admin` from the images of the same release — `ghcr.io/publira/publira:<tag>` for the first two, with `worker` as the container argument of the second, and `ghcr.io/publira/web-storefront:<tag>` and `ghcr.io/publira/web-admin:<tag>` — with the variables in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables). Each connection URL names its role and the password `db roles` gave it, such as `postgres://publira_public:<password>@db.internal:5432/publira?sslmode=require` for `PUBLIRA_PUBLIC_DB_URL`. Set every one of them: a connection URL left unset falls back to a development URL, not to another of your variables, and fails to sign in.
 
 `publira worker` creates the tables of its job queue when it starts, so it needs no step of its own. `publira server` and `publira worker` each report one check per database login in `GET /readyz`, so a role whose password does not match is named there.
 
@@ -108,7 +111,7 @@ It connects as `publira_platform`, and seals the credentials it saves with the e
 docker run --rm -it \
   -e PUBLIRA_PLATFORM_DB_URL \
   -e PUBLIRA_SECRET_ENCRYPTION_KEYS -e PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID \
-  publira/publiractl:local setup
+  ghcr.io/publira/publiractl:<tag> setup
 ```
 
 On a terminal it asks for every value. The same run can be made unattended, from a CI job or an init container, with every value given as a flag; that form is in the [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#setup). The links it prints are built on `PUBLIRA_TENANT_URL_SCHEME`, the scheme readers' browsers reach the tenant on, which is `https` unless set. It describes the public address, not how the proxy reaches the processes, so a plain HTTP hop behind the TLS terminator does not change it. Set it to `http` only when browsers really open the tenant over HTTP, and then on `publiractl` and the processes alike.

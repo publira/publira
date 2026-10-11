@@ -27,11 +27,11 @@ Only a minor release names any of these. A patch release asks nothing beyond rep
 
 ### Get the images of the new release
 
-Build or pull every image of the new release, and push them where your hosts pull from, before you change anything. The time between applying the migrations and restarting the processes is then only the time the processes take to start.
+Pull every image of the new release, `ghcr.io/publira/<name>:<new tag>`, onto the hosts that run it before you change anything. The time between applying the migrations and restarting the processes is then only the time the processes take to start. If your install runs images you build yourself, build the new release's from its tag, with your changes carried onto it, and push them where your hosts pull from.
 
 Every image has to come from the same release. `publiractl` carries the migrations and the role definitions of its release, each process expects the schema of its own, and the web apps call the API of the `publira server` they were released with.
 
-The examples on this page name the images `publira/<name>:<new tag>`; put your own registry in front.
+The examples on this page name the published images, such as `ghcr.io/publira/publiractl:<new tag>`; an install that builds its own names those instead.
 
 ### Decide whether to stop the processes first
 
@@ -63,7 +63,7 @@ pg_dump --format=custom --file=publira-before-upgrade.dump --dbname="$PUBLIRA_DB
 ### 2. Apply the migrations
 
 ```bash
-docker run --rm -e PUBLIRA_DB_URL publira/publiractl:<new tag> db migrate
+docker run --rm -e PUBLIRA_DB_URL ghcr.io/publira/publiractl:<new tag> db migrate
 ```
 
 It logs the version it starts from and, when it is done, the version it ended at:
@@ -80,7 +80,7 @@ The migrations run before the new processes start because the processes do not c
 ### 3. Bring the roles up to date
 
 ```bash
-docker run --rm -e PUBLIRA_DB_URL publira/publiractl:<new tag> db roles
+docker run --rm -e PUBLIRA_DB_URL ghcr.io/publira/publiractl:<new tag> db roles
 ```
 
 Without flags, every role keeps its password, and the command only brings the roles to what the new release defines: the grants on the tables the migrations just created, and whatever else the release changed in what a role may reach. It prints one line per role, `publira_public: kept its password` and so on. Skipped, it leaves the new processes failing with a permission error on every table the release added.
@@ -99,7 +99,7 @@ Replace `publira server`, `publira worker`, `web-storefront`, and `web-admin` wi
 - `db version` reports the newest migration of the release, and no dirty state:
 
   ```bash
-  docker run --rm -e PUBLIRA_DB_URL publira/publiractl:<new tag> db version
+  docker run --rm -e PUBLIRA_DB_URL ghcr.io/publira/publiractl:<new tag> db version
   ```
 
   ```text
@@ -201,9 +201,12 @@ Then set `PUBLIRA_IMAGE_TAG` in `.env` to the new tag.
 
 ```bash
 docker compose pull
+docker compose pull publiractl
 ```
 
-If you build the images on the host rather than pull them from a registry, build them again from the new checkout instead, with `task docker:verify:full`.
+The first command pulls the images of every process the install runs, at the tag you just set; the second pulls `publiractl`, which the first leaves out because it is never kept running. Nothing is built.
+
+If your install runs images you build yourself, build the new release's from the new checkout instead, with your changes carried onto it, and push them where `PUBLIRA_IMAGE_REGISTRY` points; images built on the host itself with `task docker:verify:full` need no push.
 
 ### 3. Back up the database
 

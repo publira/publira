@@ -2,7 +2,7 @@
 title: Docker Compose
 description: Run a whole install on one host with the Compose file in the repository, from filling in its .env to the first sign-in to the tenant console.
 published: 2026-10-06
-updated: 2026-10-07
+updated: 2026-10-11
 ---
 
 The repository ships a Compose file that runs a whole install on one host: the services Publira depends on, the four processes, and a reverse proxy in front of them, already wired together. It is the shortest way to a working install, and this page takes you from an empty host to the first sign-in to the tenant console.
@@ -31,9 +31,9 @@ The project name is fixed as `publira-deploy`, so the volumes keep their names a
 
 You need:
 
-- **A host with Docker Engine and the Compose plugin**, `docker compose`.
+- **A host with Docker Engine and the Compose plugin**, `docker compose`, on `linux/amd64` or `linux/arm64`, the two platforms the images are published for. On any other, the first pull fails with `no matching manifest`, and the host runs images built for it instead, as [The images](#the-images) describes.
 - **A checkout of the repository at the release you install**, such as a clone checked out at that release's tag. The Compose file is not self-contained: it mounts the proxy's routing from `infra/proxy/`, so keep the whole checkout rather than copying `infra/deploy/` out of it. Every command on this page runs from `infra/deploy/`.
-- **The images of that release**, `publira`, `publiractl`, `web-storefront`, and `web-admin`, plus `web-platform` and `email-renderer` if you will run them. Build them from the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) and push them to a registry the host can pull from, or build them on the host itself: `task docker:verify:full` builds them all as `publira/<name>:local`.
+- **Access from the host to `ghcr.io`**, where every release publishes its images. `docker compose` pulls them the first time a command needs them, without signing in, so nothing is built on the host.
 - **An SMTP account**, which `publiractl setup` asks for: its host, port, encryption, user name and password, and the address mail is sent from.
 - **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the host.
 
@@ -51,7 +51,15 @@ chmod 600 .env
 
 ### The images
 
-`PUBLIRA_IMAGE_REGISTRY` and `PUBLIRA_IMAGE_TAG` name the images, as `<registry>/<name>:<tag>`. Every image runs the same tag, so set the tag of the release your checkout is at: `publiractl` carries the migrations of its release, and the processes expect the schema of theirs. The example's values, `publira` and `local`, name the images `task docker:verify:full` builds; for images in your own registry, set its address, such as `registry.example.com/publira`, and the release's tag.
+`PUBLIRA_IMAGE_REGISTRY` and `PUBLIRA_IMAGE_TAG` name the images, as `<registry>/<name>:<tag>`. The example's registry, `ghcr.io/publira`, is where every release publishes them; keep it. Set the tag to the release your checkout is at, such as `0.1.0`:
+
+```text
+PUBLIRA_IMAGE_TAG=0.1.0
+```
+
+Every image runs that one tag, and it has to match the checkout: `publiractl` carries the migrations of its release, the processes expect the schema of theirs, and the proxy runs the routing of the checkout.
+
+If you change the code, or the host is on neither `linux/amd64` nor `linux/arm64`, build the images yourself from the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) instead, and set both variables to where they are: the address of the registry you push them to, such as `registry.example.com/publira`, and your own tag, or `publira` and `local` for the images `task docker:verify:full` builds on the host itself.
 
 ### The edge port and the tenant URL scheme
 
@@ -88,7 +96,7 @@ The database passwords go into connection URLs unescaped, which is why they are 
 
 ### What stops `docker compose`
 
-Every value above is required. While one of them is empty, every `docker compose` command, `run` included, stops before it starts anything and names the variable:
+Every value above is required, `PUBLIRA_IMAGE_TAG` among them. While one of them is empty, every `docker compose` command, `run` included, stops before it starts anything and names the variable:
 
 ```text
 error while interpolating services.postgres.environment.POSTGRES_PASSWORD: required variable PUBLIRA_POSTGRES_PASSWORD is missing a value
@@ -134,7 +142,7 @@ docker compose run --rm publiractl db roles \
   --content-stats-password-file /run/secrets/content-stats-db-password
 ```
 
-The first command starts PostgreSQL, waits until it accepts connections, and creates the schema. The second creates the six roles, and prints one line per role as it does. The files under `/run/secrets/` are the role passwords from `.env`, which the Compose file hands the `publiractl` container as files, so they never appear on a command line.
+The first command pulls the images it needs, starts PostgreSQL, waits until it accepts connections, and creates the schema. The second creates the six roles, and prints one line per role as it does. The files under `/run/secrets/` are the role passwords from `.env`, which the Compose file hands the `publiractl` container as files, so they never appear on a command line.
 
 ### 2. Start the install
 
