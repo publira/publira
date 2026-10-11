@@ -35,13 +35,31 @@ const manifest = (name: string, version?: string): string =>
 
 describe("isReleaseVersion", () => {
   it("accepts a release and a prerelease", () => {
-    for (const version of ["0.1.0", "1.12.0", "0.2.0-rc.1", "2.0.0-beta"]) {
+    for (const version of [
+      "0.1.0",
+      "1.12.0",
+      "0.2.0-rc.1",
+      "2.0.0-beta",
+      "1.2.3-0",
+      "1.2.3-rc.0.10",
+      "1.2.3-0a",
+      "1.2.3--01",
+    ]) {
       assert.equal(isReleaseVersion(version), true, version);
     }
   });
 
   it("refuses what a release tag cannot be", () => {
-    for (const version of ["v0.1.0", "0.1", "01.0.0", "0.1.0+build.1", ""]) {
+    for (const version of [
+      "v0.1.0",
+      "0.1",
+      "01.0.0",
+      "0.1.0+build.1",
+      "1.2.3-01",
+      "1.2.3-alpha.01",
+      "1.2.3-rc..1",
+      "",
+    ]) {
       assert.equal(isReleaseVersion(version), false, version);
     }
   });

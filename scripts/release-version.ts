@@ -17,11 +17,19 @@ import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
 /**
+ * A prerelease identifier as SemVer allows it: a number has no leading zero,
+ * and anything with a letter or a hyphen in it is not a number.
+ */
+const PRERELEASE_IDENTIFIER = String.raw`(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)`;
+
+/**
  * A version that is also a release tag: SemVer without build metadata, which
  * an image tag cannot carry.
  */
-const RELEASE_VERSION =
-  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
+const RELEASE_VERSION = new RegExp(
+  String.raw`^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-${PRERELEASE_IDENTIFIER}(?:\.${PRERELEASE_IDENTIFIER})*)?$`,
+  "u"
+);
 
 export const isReleaseVersion = (version: string): boolean =>
   RELEASE_VERSION.test(version);
