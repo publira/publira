@@ -1,15 +1,19 @@
 "use client";
 
-import { formatYen } from "@publira/utils";
-
 import { useAdminLocale } from "#components/admin-locale-context";
 import { useClientMessages } from "#components/client-message";
+import { formatTenantAmount } from "#lib/price";
 
-/** An episode's status and price, as one line of its row in the list. */
+/**
+ * An episode's status and price, as one line of its row in the list. The price
+ * is a dash while the tenant's currency could not be read.
+ */
 export const EpisodeStatusPrice = ({
+  currency,
   price,
   status,
 }: {
+  currency: string | null;
   price: number;
   status: string;
 }) => {
@@ -26,7 +30,7 @@ export const EpisodeStatusPrice = ({
   }
 
   return t("admin.series.episodes.status_price", {
-    price: formatYen(price, { locale }),
+    price: formatTenantAmount(price, { currency, locale }),
     status: statusLabel,
   });
 };

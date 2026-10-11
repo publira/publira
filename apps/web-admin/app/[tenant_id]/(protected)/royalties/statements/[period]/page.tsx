@@ -216,7 +216,11 @@ const StatementContent = async ({
             </LinkButton>
           </AdminSectionActions>
         </AdminSectionHeader>
-        <RoyaltyFigures locale={locale} totals={statement.totals} />
+        <RoyaltyFigures
+          currency={statement.currency}
+          locale={locale}
+          totals={statement.totals}
+        />
       </AdminSection>
 
       <AdminSection>
@@ -254,7 +258,11 @@ const StatementContent = async ({
             </EmptyStateHeading>
           </CursorPageEmptyState>
         ) : (
-          <RoyaltyLinesTable lines={result.lines} locale={locale} />
+          <RoyaltyLinesTable
+            currency={statement.currency}
+            lines={result.lines}
+            locale={locale}
+          />
         )}
         {result.lines.length > 0 || hasPageLinks ? (
           <PaginationFooter>

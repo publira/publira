@@ -69,7 +69,7 @@ A share is between 0 and 100 percent, with up to two decimal places, and the sha
 
 For each credit, a month's payout is:
 
-> (the episode's sales in the month − the refunds on those sales) × the share, rounded down to the smallest unit of the tenant's currency
+> (the episode's sales in the month − the refunds on those sales) × the share, rounded down to the smallest unit of the tenant's currency, such as a yen or a cent
 
 The sales of a month are:
 

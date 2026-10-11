@@ -114,6 +114,7 @@ const SettingsPaymentForm = async () => {
           : emptyTenantPaymentSettings
       }
       loadErrorMessage={loadErrorMessage}
+      locale={locale}
       providers={providersResult.ok ? providersResult.providers : []}
       tenantId={tenantId}
       webhookOrigin={

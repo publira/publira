@@ -50,6 +50,7 @@ import {
 import { listEpisodes } from "#lib/episode";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { getTenantCurrency } from "#lib/public-api";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -193,11 +194,12 @@ const SeriesEpisodesData = async ({
 
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
-  const [seriesResult, timeZone, t, canEdit] = await Promise.all([
+  const [seriesResult, timeZone, t, canEdit, currency] = await Promise.all([
     getSeries({ publicId: series_id }),
     getTenantDisplayTimeZone(tenantId),
     getMessagesFor(locale),
     isSignedInTenantEditor(tenantId),
+    getTenantCurrency(tenantId),
   ]);
 
   if (!seriesResult.ok) {
@@ -294,6 +296,7 @@ const SeriesEpisodesData = async ({
         ) : null}
         <EpisodesSortableList
           canEdit={canEdit}
+          currency={currency}
           episodes={result.episodes}
           reorderAction={reorderEpisodesAction}
           seriesAvailability={seriesResult.series.availability}

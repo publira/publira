@@ -17,7 +17,7 @@ Everything here under **Integrations** › **Payments** is for a **Tenant admin*
 
 An episode's **Price** and **Reading period** are first entered on the form that creates it:
 
-- **Price** is a whole number in the smallest unit of the tenant's currency: yen for a tenant that sells in JPY, cents for one that sells in USD. `0` makes the episode free; any other value makes it a paid episode.
+- **Price** is entered in the tenant's currency, which the field names, with no more decimal places than the currency has: `500` for 500 yen, `4.99` for 4.99 US dollars. `0` makes the episode free; any other value makes it a paid episode.
 - **Reading period** is how many hours a purchase keeps the episode open. `0` keeps it open with no end.
 
 ![The Price and Reading period fields of the Create episode form.](./selling-episodes-price-and-reading-period.png)
@@ -53,7 +53,7 @@ A tenant takes payment on the site through one provider at a time, chosen under 
 | Stripe | The payment methods turned on for your account in the Stripe Dashboard, such as cards and konbini. An episode bought with a method that is paid later, such as konbini, opens once the payment arrives. |
 | PAY.JP | Cards, with 3-D Secure authentication on every payment. |
 
-Payments are taken in the tenant's currency: the one its payment settings were saved with, or the platform's default currency, set by the install's operators, before they are saved. PAY.JP charges in yen only, so it can be chosen only by a tenant that sells in JPY. The currency cannot change once the tenant has a purchase, since every price and every sale is an amount in it.
+Payments are taken in the tenant's currency, chosen under **Currency** in the same form: every price is entered and shown in it, on the site and in the app as in the console. **Currency** offers the currencies the chosen provider charges in — PAY.JP charges in yen only — and starts on the platform's default currency, which the install's operators set, until the settings are saved. Choose it before the first sale: once the tenant has a purchase, every price and every sale is an amount in that currency, so **Currency** can no longer be changed.
 
 The status beside the form says where the setup stands:
 

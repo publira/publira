@@ -36,6 +36,11 @@ interface EpisodesSortableListProps {
    * view its episode.
    */
   canEdit: boolean;
+  /**
+   * The currency each episode's price is shown in, the tenant's. `null` when
+   * it could not be read, and no price is shown.
+   */
+  currency: string | null;
   /** The series the reorder is sent for. */
   seriesId: string;
   /** The series as the URL names it, for the links to each episode. */
@@ -56,6 +61,7 @@ const episodeId = (episode: EpisodeItem): string => episode.id;
 
 export const EpisodesSortableList = ({
   canEdit,
+  currency,
   seriesId,
   seriesPublicId,
   seriesAvailability = DEFAULT_SURFACE_AVAILABILITY,
@@ -216,6 +222,7 @@ export const EpisodesSortableList = ({
               </div>
               <p className="text-xs text-muted-foreground">
                 <EpisodeStatusPrice
+                  currency={currency}
                   price={episode.price}
                   status={episode.status}
                 />

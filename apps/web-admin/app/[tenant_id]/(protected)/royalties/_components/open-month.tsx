@@ -11,7 +11,6 @@ import {
   formatDateTime,
   formatPlainDate,
   formatPlainYearMonth,
-  formatYen,
 } from "@publira/utils";
 import { Suspense } from "react";
 
@@ -25,6 +24,7 @@ import {
   AdminSectionTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import { formatTenantAmount } from "#lib/price";
 import type { RoyaltyTotals } from "#lib/royalties";
 import type { RoyaltyLine } from "#lib/royalty-lines";
 import type { RoyaltyCloseState } from "#lib/royalty-period";
@@ -35,6 +35,11 @@ import { RoyaltyLinesTable } from "./royalty-lines-table";
 
 interface OpenMonthProps {
   closeState: RoyaltyCloseState;
+  /**
+   * The currency every amount is in, the statement's or the preview's.
+   * `null` when the API answered none, and each amount is then a dash.
+   */
+  currency: string | null;
   /** RFC 3339 instant the month stops counting sales at, exclusive. */
   endsAt: string;
   lines: RoyaltyLine[];
@@ -50,13 +55,14 @@ interface OpenMonthProps {
 /** What happens to the month next, and the close button when it is a person's. */
 const CloseStatus = ({
   closeState,
+  currency,
   locale,
   period,
   tenantId,
   totals,
 }: Pick<
   OpenMonthProps,
-  "closeState" | "locale" | "period" | "tenantId" | "totals"
+  "closeState" | "currency" | "locale" | "period" | "tenantId" | "totals"
 >) => {
   switch (closeState.kind) {
     case "automatic": {
@@ -99,7 +105,12 @@ const CloseStatus = ({
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message
                   message="admin.royalties.close.confirm_description"
-                  values={{ payout: formatYen(totals.payout, { locale }) }}
+                  values={{
+                    payout: formatTenantAmount(totals.payout, {
+                      currency,
+                      locale,
+                    }),
+                  }}
                 />
               </Suspense>
             }
@@ -132,6 +143,7 @@ const CloseStatus = ({
  */
 export const OpenMonth = ({
   closeState,
+  currency,
   endsAt,
   lines,
   locale,
@@ -179,9 +191,10 @@ export const OpenMonth = ({
           </Button>
         </AdminSectionActions>
       </AdminSectionHeader>
-      <RoyaltyFigures locale={locale} totals={totals} />
+      <RoyaltyFigures currency={currency} locale={locale} totals={totals} />
       <CloseStatus
         closeState={closeState}
+        currency={currency}
         locale={locale}
         period={period}
         tenantId={tenantId}
@@ -220,7 +233,7 @@ export const OpenMonth = ({
           </EmptyStateHeading>
         </EmptyState>
       ) : (
-        <RoyaltyLinesTable lines={lines} locale={locale} />
+        <RoyaltyLinesTable currency={currency} lines={lines} locale={locale} />
       )}
     </AdminSection>
   </AdminSections>

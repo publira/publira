@@ -36,12 +36,11 @@ export {
 } from "./format-date-time";
 export {
   formatPercent,
+  currencyDisplayName,
   currencyFractionDigits,
   formatPrice,
-  formatYen,
   type FormatPercentOptions,
   type FormatPriceOptions,
-  type FormatYenOptions,
 } from "./format-number";
 export {
   formatDuration,

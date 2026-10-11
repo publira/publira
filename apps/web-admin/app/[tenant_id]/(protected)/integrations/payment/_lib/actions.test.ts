@@ -76,6 +76,7 @@ const storedPaymentSettings = {
 };
 
 const stripe = {
+  currencies: ["JPY", "USD"],
   displayName: "Stripe",
   fields: [
     { name: "secret_key", public: false, required: true, secret: true },
@@ -86,6 +87,7 @@ const stripe = {
 };
 
 const examplePay = {
+  currencies: ["JPY"],
   displayName: "Example Pay",
   fields: [
     { name: "secret_key", public: false, required: true, secret: true },
@@ -147,6 +149,7 @@ describe("updateTenantPaymentSettingsAction", () => {
     );
     expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith(
       {
+        currency: "",
         enabled: true,
         fields: [
           { mode: 2, name: "secret_key", value: "sk_test_51NEW" },
@@ -187,6 +190,7 @@ describe("updateTenantPaymentSettingsAction", () => {
     expect(result?.ok).toBe(true);
     expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith(
       {
+        currency: "",
         enabled: true,
         fields: [
           { mode: 1, name: "secret_key", value: "" },
@@ -226,6 +230,7 @@ describe("updateTenantPaymentSettingsAction", () => {
 
     expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith(
       {
+        currency: "",
         enabled: true,
         fields: [
           { mode: 2, name: "secret_key", value: "sk_test_EXAMPLE" },
@@ -285,6 +290,53 @@ describe("updateTenantPaymentSettingsAction", () => {
     );
 
     expect(result?.ok).toBe(true);
+  });
+
+  it("saves the currency the provider charges in, then drops the tenant read prices are shown from", async () => {
+    mockUpdateTenantPaymentSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: storedPaymentSettings,
+    });
+
+    const { updateTenantPaymentSettingsAction } = await import("./actions");
+
+    const result = await updateTenantPaymentSettingsAction(
+      null,
+      textFormData({
+        credential_secret_key_mode: "replace",
+        credential_webhook_secret_mode: "replace",
+        currency: "USD",
+        provider: "stripe",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result?.ok).toBe(true);
+    expect(mockUpdateTenantPaymentSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ currency: "USD", provider: "stripe" }),
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
+  });
+
+  it("refuses a currency the provider does not charge in", async () => {
+    const { updateTenantPaymentSettingsAction } = await import("./actions");
+
+    const result = await updateTenantPaymentSettingsAction(
+      null,
+      textFormData({
+        currency: "USD",
+        provider: "examplepay",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      fieldErrors: { currency: "Choose a currency the provider charges in." },
+      message: expect.any(String),
+      ok: false,
+    });
+    expect(mockUpdateTenantPaymentSettings).not.toHaveBeenCalled();
   });
 
   it("refuses a provider the server does not register", async () => {

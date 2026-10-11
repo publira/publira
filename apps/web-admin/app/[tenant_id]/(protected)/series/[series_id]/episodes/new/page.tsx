@@ -36,6 +36,7 @@ import {
 } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { getTenantCurrency } from "#lib/public-api";
 import { resolvePurchaseAvailability } from "#lib/purchase-availability";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
@@ -110,11 +111,13 @@ const NewEpisodeFormData = async ({
     getTenantId(),
   ]);
   const locale = await getLocale(tenantId);
-  const [timeZone, seriesResult, purchaseSettingsResult] = await Promise.all([
-    getTenantDisplayTimeZone(tenantId),
-    getSeries({ publicId: seriesId }),
-    getTenantPurchaseSettings(tenantId, locale),
-  ]);
+  const [timeZone, seriesResult, purchaseSettingsResult, currency] =
+    await Promise.all([
+      getTenantDisplayTimeZone(tenantId),
+      getSeries({ publicId: seriesId }),
+      getTenantPurchaseSettings(tenantId, locale),
+      getTenantCurrency(tenantId),
+    ]);
   await redirectToLoginIfSessionRejected(purchaseSettingsResult);
 
   if (!seriesResult.ok) {
@@ -135,9 +138,24 @@ const NewEpisodeFormData = async ({
     );
   }
 
+  // A price entered in no currency is a number nobody can read, so the form
+  // waits for the tenant's.
+  if (!currency) {
+    return (
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Message message="admin.series.episodes.currency_unavailable" />
+          </SectionErrorTitle>
+        </SectionErrorHeading>
+      </SectionError>
+    );
+  }
+
   return (
     <EpisodeForm
       action={createEpisodeAction}
+      currency={currency}
       seriesAvailability={seriesResult.series.availability}
       seriesId={seriesResult.series.id}
       seriesPurchaseAvailability={

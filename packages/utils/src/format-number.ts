@@ -57,33 +57,6 @@ export const formatPercent = (
     options.fractionDigits ?? 1
   ).format(ratio);
 
-export interface FormatYenOptions {
-  /** UI locale the amount is worded in: the grouping separator differs. */
-  locale: Locale;
-}
-
-const yenFormatterCache = new Map<string, Intl.NumberFormat>();
-
-/**
- * Format a whole-yen amount (`1500`) as currency (`¥1,500`). Amounts the API
- * sends are integers in JPY, so no fraction digits are shown.
- */
-export const formatYen = (
-  amount: number,
-  options: FormatYenOptions
-): string => {
-  const intlLocale = toIntlLocale(options.locale);
-  let formatter = yenFormatterCache.get(intlLocale);
-  if (!formatter) {
-    formatter = new Intl.NumberFormat(intlLocale, {
-      currency: "JPY",
-      style: "currency",
-    });
-    yenFormatterCache.set(intlLocale, formatter);
-  }
-  return formatter.format(amount);
-};
-
 export interface FormatPriceOptions {
   /** ISO 4217 code of the currency the amount is in, as the API names it. */
   currency: string;
@@ -119,6 +92,29 @@ const getPriceFormatter = (
 export const currencyFractionDigits = (currency: string): number =>
   getPriceFormatter("en", currency).resolvedOptions().maximumFractionDigits ??
   0;
+
+const currencyNamesCache = new Map<string, Intl.DisplayNames>();
+
+/**
+ * The name of `currency` in the UI locale, such as `US Dollar`, for a list an
+ * operator chooses a currency from. A code the runtime has no name for is its
+ * own name.
+ */
+export const currencyDisplayName = (
+  currency: string,
+  options: { locale: Locale }
+): string => {
+  const intlLocale = toIntlLocale(options.locale);
+  let names = currencyNamesCache.get(intlLocale);
+  if (!names) {
+    names = new Intl.DisplayNames(intlLocale, {
+      fallback: "code",
+      type: "currency",
+    });
+    currencyNamesCache.set(intlLocale, names);
+  }
+  return names.of(currency) ?? currency;
+};
 
 /**
  * Format an amount the API sends — an integer in the minor unit of

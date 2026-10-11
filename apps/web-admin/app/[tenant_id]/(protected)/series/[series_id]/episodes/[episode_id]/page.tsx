@@ -49,6 +49,7 @@ import {
 import { listEpisodeFreeWindows } from "#lib/episode-free-window";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { getTenantCurrency } from "#lib/public-api";
 import { resolvePurchaseAvailability } from "#lib/purchase-availability";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
@@ -216,7 +217,10 @@ const EpisodeTitleSection = async ({ params }: EditEpisodeSectionProps) => {
 
 const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
-  const episodeResult = await loadEpisode(context);
+  const [episodeResult, currency] = await Promise.all([
+    loadEpisode(context),
+    getTenantCurrency(context.tenantId),
+  ]);
 
   if (!episodeResult.ok) {
     return (
@@ -227,16 +231,32 @@ const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
     );
   }
 
+  // A price shown or entered in no currency is a number nobody can read.
+  if (!currency) {
+    const t = await getMessagesFor(context.locale);
+    return (
+      <EpisodeSectionError
+        message={t("admin.series.episodes.currency_unavailable")}
+        title={<Message message="admin.series.episodes.pricing.error" />}
+      />
+    );
+  }
+
   const { price, readingPeriodHours } = episodeResult.episode;
 
+  // The price input is uncontrolled, so a refresh that brings another
+  // currency, from an image upload or a reorder on this screen, would keep the
+  // amount typed in the old one beside the new currency the form sends with it.
+  // The currency is in the key so that the form starts over in it instead.
   return (
     <EpisodePricingForm
       action={updateEpisodePricingAction}
+      currency={currency}
       episodeId={episodeResult.episode.id}
       episodePublicId={context.episodeId}
       initialPrice={price}
       initialReadingPeriodHours={readingPeriodHours}
-      key={`${context.episodeId}:pricing:${price}:${readingPeriodHours}`}
+      key={`${context.episodeId}:pricing:${currency}:${price}:${readingPeriodHours}`}
       seriesPublicId={context.seriesId}
       tenantId={context.tenantId}
     />

@@ -1739,7 +1739,7 @@
           "title": "タイトル",
           "title_placeholder": "例: 第1話 はじまりの朝",
           "price": "価格",
-          "price_description": "0を指定すると無料で公開されます。",
+          "price_description": "{$currency}で入力します。0を指定すると無料で公開されます。",
           "reading_period": "閲覧可能期間",
           "reading_period_description": "単位は時間です。0を指定すると無制限で閲覧できます。シリーズの閲覧可能期間が初期値で、作成したときの値はシリーズの期間を後から変更しても変わりません。",
           "publish_at": "公開日時",
@@ -1748,7 +1748,7 @@
         "validation": {
           "creator_credits_invalid": "著者のクレジットには著者と役割の両方が必要です。",
           "episode_missing": "エピソードIDが見つかりません。",
-          "price_invalid": "価格は0以上の整数で入力してください。",
+          "price_invalid": "価格は0以上で、通貨の小数点以下の桁数を超えないように入力してください。",
           "reading_period_invalid": "閲覧可能期間は0以上の整数で入力してください。",
           "series_missing": "シリーズIDが見つかりません。",
           "tenant_missing": "テナントIDが見つかりません。",
@@ -1928,7 +1928,9 @@
             "first_count_invalid": "話数は1から{$max}までで入力してください。",
             "free_window_missing": "削除する無料公開期間が指定されていません。"
           }
-        }
+        },
+        "currency_changed": "このフォームを開いた後にテナントの通貨が変わりました。ページを再読み込みして、価格を入力し直してください。",
+        "currency_unavailable": "テナントの通貨を読み込めなかったため、いまは価格を入力できません。"
       },
       "status": {
         "ongoing": "連載中",
@@ -2536,8 +2538,12 @@
         },
         "validation": {
           "field_required": "決済を有効にするには、この値を入力してください。",
-          "provider_invalid": "決済プロバイダを選んでください。"
-        }
+          "provider_invalid": "決済プロバイダを選んでください。",
+          "currency_invalid": "プロバイダが請求できる通貨を選んでください。"
+        },
+        "currency": "通貨",
+        "currency_description": "読者にはこの通貨で請求し、すべての価格をこの通貨で入力・表示します。選んだプロバイダが請求できる通貨だけを選べます。",
+        "currency_locked": "このテナントには購入があるため、通貨は変更できません。価格と売上はすべてこの通貨の金額です。"
       },
       "purchase": {
         "title": "販売先",

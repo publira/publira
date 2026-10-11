@@ -57,6 +57,7 @@ const renderBothForms = async () => {
   const [first, second] = await Promise.all([
     EpisodeForm({
       action,
+      currency: "JPY",
       seriesId: "SERIES001-ID",
       seriesPublicId: "SERIES001",
       seriesReadingPeriodHours: 0,
@@ -65,6 +66,7 @@ const renderBothForms = async () => {
     }),
     EpisodeForm({
       action,
+      currency: "JPY",
       seriesId: "SERIES002-ID",
       seriesPublicId: "SERIES002",
       seriesReadingPeriodHours: 0,
@@ -123,6 +125,7 @@ it("finds each input by its role and label", async () => {
 it("creates an episode that follows its series unless told otherwise", async () => {
   await renderForm({
     action,
+    currency: "JPY",
     seriesAvailability: "app",
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
@@ -147,6 +150,7 @@ it("creates an episode that follows its series unless told otherwise", async () 
 it("creates an episode sold where its series is unless told otherwise", async () => {
   await renderForm({
     action,
+    currency: "JPY",
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
     seriesPurchaseAvailability: "web",
@@ -171,6 +175,7 @@ it("creates an episode sold where its series is unless told otherwise", async ()
 it("starts the reading period at the series' period", async () => {
   await renderForm({
     action,
+    currency: "JPY",
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
     seriesReadingPeriodHours: 72,
@@ -188,6 +193,7 @@ it("starts the reading period at the series' period", async () => {
 it("says that a publication time already passed publishes the episode as it is created", async () => {
   await renderForm({
     action,
+    currency: "JPY",
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
     seriesReadingPeriodHours: 0,
@@ -220,6 +226,7 @@ it("closes every field while the save is in flight", async () => {
 
   await renderForm({
     action: pendingAction,
+    currency: "JPY",
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
     seriesReadingPeriodHours: 0,
@@ -274,6 +281,7 @@ it("keeps what was entered when the Action refuses the submission", async () => 
 
   await renderForm({
     action: refuse,
+    currency: "JPY",
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
     seriesReadingPeriodHours: 0,

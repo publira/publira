@@ -14,6 +14,8 @@ export interface PaymentProvider {
   fields: PaymentCredentialField[];
   /** The storefront path the provider's notifications are received on. */
   webhookPath: string;
+  /** ISO 4217 codes of the currencies the provider charges in. */
+  currencies: string[];
 }
 
 export interface PaymentCredentialFieldState {
@@ -30,9 +32,18 @@ export interface TenantPaymentSettings {
   /** One entry per field the stored provider declares. */
   fields: PaymentCredentialFieldState[];
   ready: boolean;
+  /**
+   * ISO 4217 code of the currency the tenant sells in, the platform's default
+   * before one is saved. Empty only while the settings could not be read.
+   */
+  currency: string;
+  /** Whether the tenant has a purchase, which keeps the currency as it is. */
+  currencyLocked: boolean;
 }
 
 export const emptyTenantPaymentSettings: TenantPaymentSettings = {
+  currency: "",
+  currencyLocked: false,
   enabled: false,
   fields: [],
   provider: "",

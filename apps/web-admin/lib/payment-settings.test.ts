@@ -45,6 +45,8 @@ vi.mock("./api", () => ({
 }));
 
 const rpcSettings = {
+  currency: "USD",
+  currencyLocked: true,
   enabled: true,
   fields: [
     {
@@ -65,6 +67,8 @@ const rpcSettings = {
 };
 
 const publicSettings = {
+  currency: "USD",
+  currencyLocked: true,
   enabled: true,
   fields: [
     { configured: true, hint: "sk_test_••••••••KLMN", name: "secret_key" },
@@ -76,6 +80,7 @@ const publicSettings = {
 
 const rpcProviders = [
   {
+    currencies: ["JPY"],
     displayName: "Example Pay",
     fields: [
       { name: "secret_key", public: false, required: true, secret: true },
@@ -86,6 +91,7 @@ const rpcProviders = [
     webhookPath: "/api/v1/webhook/payment/examplepay",
   },
   {
+    currencies: ["JPY", "USD"],
     displayName: "Stripe",
     fields: [
       { name: "secret_key", public: false, required: true, secret: true },
@@ -123,7 +129,8 @@ describe("payment-settings", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:payment-settings"
     );
-    expect(mockCacheLife).not.toHaveBeenCalled();
+    // The inherited currency and its lock change without this app.
+    expect(mockCacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
   });
 
   it("keeps a plaintext secret in the response out of the settings meant for the screen", async () => {
@@ -234,6 +241,7 @@ describe("payment-settings", () => {
 
     const result = await updateTenantPaymentSettings(
       {
+        currency: "",
         enabled: true,
         fields: [
           {
@@ -258,6 +266,7 @@ describe("payment-settings", () => {
     expect(JSON.stringify(result)).not.toContain(leakedWebhookSecret);
     expect(mockUpdateTenantPaymentSettingsApi).toHaveBeenCalledWith(
       {
+        currency: "",
         enabled: true,
         fields: [
           {
@@ -290,6 +299,7 @@ describe("payment-settings", () => {
 
     const result = await updateTenantPaymentSettings(
       {
+        currency: "",
         enabled: true,
         fields: [
           { mode: SECRET_UPDATE_MODE_UNCHANGED, name: "secret_key", value: "" },
@@ -321,6 +331,7 @@ describe("payment-settings", () => {
 
     const result = await updateTenantPaymentSettings(
       {
+        currency: "",
         enabled: false,
         fields: [
           { mode: SECRET_UPDATE_MODE_UNCHANGED, name: "secret_key", value: "" },

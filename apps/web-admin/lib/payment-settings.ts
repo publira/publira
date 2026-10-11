@@ -9,7 +9,7 @@ import {
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
   isUnauthenticatedError,
@@ -46,6 +46,8 @@ export interface UpdateTenantPaymentSettingsInput {
   provider: string;
   enabled: boolean;
   fields: PaymentCredentialFieldUpdate[];
+  /** The currency to sell in; empty keeps the stored one. */
+  currency: string;
 }
 
 export type TenantPaymentSettingsResult =
@@ -105,7 +107,7 @@ const parseErrorMessage = (
  */
 type RawTenantPaymentSettings = Pick<
   RpcTenantPaymentSettings,
-  "enabled" | "fields" | "provider" | "ready"
+  "currency" | "currencyLocked" | "enabled" | "fields" | "provider" | "ready"
 >;
 
 type RawFieldState = Pick<
@@ -115,7 +117,7 @@ type RawFieldState = Pick<
 
 type RawPaymentProvider = Pick<
   RpcPaymentProvider,
-  "displayName" | "fields" | "id" | "webhookPath"
+  "currencies" | "displayName" | "fields" | "id" | "webhookPath"
 >;
 
 type RawCredentialField = Pick<
@@ -126,6 +128,8 @@ type RawCredentialField = Pick<
 const toTenantPaymentSettings = (
   settings?: RawTenantPaymentSettings
 ): TenantPaymentSettings => ({
+  currency: settings?.currency?.trim() ?? "",
+  currencyLocked: Boolean(settings?.currencyLocked),
   enabled: Boolean(settings?.enabled),
   fields: (settings?.fields ?? []).map((field: RawFieldState) => ({
     configured: Boolean(field.configured),
@@ -137,6 +141,7 @@ const toTenantPaymentSettings = (
 });
 
 const toPaymentProvider = (provider: RawPaymentProvider): PaymentProvider => ({
+  currencies: [...(provider.currencies ?? [])],
   displayName: provider.displayName?.trim() || provider.id,
   fields: (provider.fields ?? []).map((field: RawCredentialField) => ({
     name: field.name,
@@ -165,6 +170,12 @@ const getTenantPaymentSettingsForSession = async (
   sessionId: string
 ): Promise<TenantPaymentSettingsResult> => {
   "use cache: private";
+  // The currency of a tenant that has saved no settings is the platform's
+  // default, which publira server and publiractl change without this app, and
+  // the currency locks once a reader buys on the storefront, so the entry is
+  // refetched once it is a minute old rather than kept for the default quarter
+  // of an hour.
+  cacheLife("minutes");
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
@@ -321,6 +332,7 @@ export const updateTenantPaymentSettings = async (
     const response =
       await apiClient.paymentSettings.updateTenantPaymentSettings(
         {
+          currency: input.currency,
           enabled: input.enabled,
           fields: input.fields,
           provider: input.provider,

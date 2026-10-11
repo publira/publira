@@ -8,6 +8,8 @@ import type { TenantTheme } from "@publira/utils/theme-css-variables";
 import { LRUCache } from "lru-cache";
 import { cacheLife, cacheTag } from "next/cache";
 
+import { readCurrency } from "./price";
+
 /**
  * The public API, which the console reads for the few things the admin API
  * cannot answer: the tenant chrome below, resolved before there is a session,
@@ -19,6 +21,13 @@ export const publicApiClient = createPublicApiClient({
 });
 
 interface TenantPublicInfo {
+  /**
+   * ISO 4217 code of the currency the tenant sells in, which every price and
+   * amount the console shows or takes is an integer in the minor unit of.
+   * `GetTenant` answers it as never empty, so `null` only for a response that
+   * is not one.
+   */
+  currency: string | null;
   /**
    * The tenant's stored default locale. `GetTenant` documents it as never
    * empty and resolves it against the platform default first, so `null` means
@@ -77,6 +86,7 @@ export const getTenantPublicInfo = async (
     });
 
     return {
+      currency: readCurrency(response.currency),
       defaultLocale: parseLocale(response.defaultLocale.trim()) ?? null,
       name: response.tenantName?.trim() || null,
       theme: resolveTenantThemeColors(response.theme),
@@ -95,6 +105,22 @@ export const getTenantPublicInfo = async (
     }
     return null;
   }
+};
+
+/**
+ * The currency the tenant sells in, or `null` when it cannot be read. A price
+ * shown or entered without it would be a number in no currency, so a screen
+ * that has `null` says the amount is unavailable rather than guessing one. The
+ * read carries `tenant:<id>:site`, which the admin API revalidates when the
+ * payment settings are saved, and the payment settings Action drops as well,
+ * and which a change of the platform's default currency drops for every
+ * tenant that sells in it.
+ */
+export const getTenantCurrency = async (
+  tenantId: string
+): Promise<string | null> => {
+  const info = await getTenantPublicInfo(tenantId);
+  return info?.currency ?? null;
 };
 
 export const getTenantName = async (

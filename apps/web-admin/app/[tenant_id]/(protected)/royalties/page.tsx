@@ -124,6 +124,7 @@ const PreviewContent = ({
     return (
       <OpenMonth
         closeState={royaltyCloseState(period, policy, zone)}
+        currency={preview.currency}
         endsAt={preview.endsAt}
         lines={preview.lines}
         locale={locale}

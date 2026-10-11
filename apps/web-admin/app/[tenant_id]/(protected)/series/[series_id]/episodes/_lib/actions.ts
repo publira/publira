@@ -39,6 +39,7 @@ import {
 } from "#lib/form-schemas";
 import { toFreeWindowPeriod } from "#lib/free-window-period";
 import { getMessagesFor } from "#lib/messages";
+import { parseTenantPrice, rawPriceFormSchema } from "#lib/price-action";
 import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -65,9 +66,10 @@ const createEpisodeSchema = async (locale: Locale) => {
     availability: z.enum(EPISODE_AVAILABILITY_OVERRIDES, {
       error: t("admin.series.episodes.validation.availability_invalid"),
     }),
-    price: nonNegativeIntFormSchema(
-      t("admin.series.episodes.validation.price_invalid")
-    ),
+    // Read once the tenant's currency is known.
+    price: rawPriceFormSchema,
+    // The currency the form showed the price in.
+    priceCurrency: rawPriceFormSchema,
     publishAt: optionalTrimmedString(),
     // The empty value is the episode following its series.
     purchaseAvailability: z.enum(PURCHASE_AVAILABILITY_OVERRIDES, {
@@ -155,6 +157,7 @@ export const createEpisodeAction = async (
     toFormDataInput(formData, {
       availability: "value",
       price: "value",
+      priceCurrency: { kind: "value", name: "price_currency" },
       publishAt: { kind: "value", name: "publish_at" },
       purchaseAvailability: { kind: "value", name: "purchase_availability" },
       readingPeriodHours: { kind: "value", name: "reading_period_hours" },
@@ -166,6 +169,16 @@ export const createEpisodeAction = async (
   );
   if (!parsed.success) {
     return toCreateFailure(toFormErrorMessage(parsed.error, { locale }));
+  }
+
+  const price = await parseTenantPrice(
+    parsed.data.price,
+    parsed.data.priceCurrency,
+    parsed.data.tenantId,
+    locale
+  );
+  if (!price.ok) {
+    return toCreateFailure(price.message);
   }
 
   const scheduledAt = await toScheduledAt(
@@ -184,7 +197,8 @@ export const createEpisodeAction = async (
     createEpisode(
       {
         availability: parsed.data.availability,
-        price: parsed.data.price,
+        currency: price.currency,
+        price: price.value,
         publishAt: scheduledAt.value,
         purchaseAvailability: parsed.data.purchaseAvailability,
         readingPeriodHours: parsed.data.readingPeriodHours,

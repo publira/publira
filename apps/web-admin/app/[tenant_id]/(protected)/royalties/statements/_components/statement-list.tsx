@@ -20,11 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import {
-  formatDateTime,
-  formatPlainYearMonth,
-  formatYen,
-} from "@publira/utils";
+import { formatDateTime, formatPlainYearMonth } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -39,6 +35,7 @@ import {
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
+import { formatTenantAmount } from "#lib/price";
 import type { RoyaltyStatementSummary } from "#lib/royalties";
 import { royaltyStatementCsvPath } from "#lib/royalty-period";
 
@@ -159,13 +156,22 @@ export const StatementList = async ({
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatYen(statement.totals.gross, { locale })}
+                  {formatTenantAmount(statement.totals.gross, {
+                    currency: statement.currency,
+                    locale,
+                  })}
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatYen(statement.totals.refunded, { locale })}
+                  {formatTenantAmount(statement.totals.refunded, {
+                    currency: statement.currency,
+                    locale,
+                  })}
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatYen(statement.totals.payout, { locale })}
+                  {formatTenantAmount(statement.totals.payout, {
+                    currency: statement.currency,
+                    locale,
+                  })}
                 </TableCell>
                 <TableCell className="text-right">
                   <LinkButton

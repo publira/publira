@@ -1739,7 +1739,7 @@
           "title": "標題",
           "title_placeholder": "範例：第1章 — 開始的早晨",
           "price": "價格",
-          "price_description": "設為0即可免費發布。",
+          "price_description": "以{$currency}輸入。設為0即可免費發布。",
           "reading_period": "閱讀期限",
           "reading_period_description": "請填寫小時數。設為0表示不限期閱讀。初始值為系列的閱讀期限，建立時的值不會因之後修改系列的期限而改變。",
           "publish_at": "發布日期與時間",
@@ -1748,7 +1748,7 @@
         "validation": {
           "creator_credits_invalid": "每筆作者署名都需要作者和角色。",
           "episode_missing": "缺少章節ID。",
-          "price_invalid": "價格必須是非負整數。",
+          "price_invalid": "價格必須不小於0，且小數位數不得超過該貨幣的位數。",
           "reading_period_invalid": "閱讀期限必須是非負整數。",
           "series_missing": "缺少系列ID。",
           "tenant_missing": "缺少租戶ID。",
@@ -1928,7 +1928,9 @@
             "first_count_invalid": "請輸入1到{$max}之間的話數。",
             "free_window_missing": "未指定要刪除的免費閱讀期間。"
           }
-        }
+        },
+        "currency_changed": "開啟此表單後，租戶的貨幣已變更。請重新載入頁面並重新輸入價格。",
+        "currency_unavailable": "無法讀取租戶的貨幣，目前無法輸入價格。"
       },
       "status": {
         "ongoing": "連載中",
@@ -2536,8 +2538,12 @@
         },
         "validation": {
           "field_required": "若要啟用付款，請輸入此值。",
-          "provider_invalid": "請選擇付款服務商。"
-        }
+          "provider_invalid": "請選擇付款服務商。",
+          "currency_invalid": "請選擇服務商支援收費的貨幣。"
+        },
+        "currency": "貨幣",
+        "currency_description": "向讀者以此貨幣收費，所有價格皆以此貨幣輸入與顯示。只能選擇所選服務商支援收費的貨幣。",
+        "currency_locked": "此租戶已有購買紀錄，因此無法變更貨幣。所有價格與銷售額皆以此貨幣計。"
       },
       "purchase": {
         "title": "販售位置",

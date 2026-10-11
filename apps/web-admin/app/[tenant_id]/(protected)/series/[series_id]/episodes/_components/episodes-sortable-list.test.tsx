@@ -63,6 +63,7 @@ const renderList = (canEdit: boolean) =>
       <EpisodeSelectionProvider>
         <EpisodesSortableList
           canEdit={canEdit}
+          currency="JPY"
           episodes={episodes}
           reorderAction={vi.fn()}
           seriesId="SERIES001-ID"

@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/i18n";
 import {
   ActionForm,
   ActionFormFieldError,
@@ -16,7 +17,9 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { currencyDisplayName } from "@publira/utils";
 import { Suspense } from "react";
 
 import {
@@ -214,10 +217,62 @@ const PaymentCredentialDescription = ({
   return null;
 };
 
+/**
+ * The currency the tenant sells in, chosen among those `provider` charges in.
+ * It starts on the saved currency where the provider charges in it, and on the
+ * first it declares otherwise, which a save to a provider that cannot charge
+ * in the saved one then asks for. Once a purchase locks it the select is
+ * disabled, so the form posts no currency and the stored one is kept.
+ */
+const PaymentCurrencyField = ({
+  locale,
+  provider,
+  settings,
+}: {
+  locale: Locale;
+  provider: PaymentProvider;
+  settings: TenantPaymentSettings;
+}) => (
+  <Field>
+    <FieldLabel>
+      <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+        <Message message="admin.settings.payment.currency" />
+      </Suspense>
+    </FieldLabel>
+    <FieldContent>
+      <Select
+        defaultValue={
+          provider.currencies.includes(settings.currency)
+            ? settings.currency
+            : provider.currencies[0]
+        }
+        disabled={settings.currencyLocked}
+        items={provider.currencies.map((currency) => ({
+          label: `${currencyDisplayName(currency, { locale })} (${currency})`,
+          value: currency,
+        }))}
+        name="currency"
+      />
+      <ActionFormFieldError name="currency" />
+      <FieldDescription>
+        <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+          {settings.currencyLocked ? (
+            <Message message="admin.settings.payment.currency_locked" />
+          ) : (
+            <Message message="admin.settings.payment.currency_description" />
+          )}
+        </Suspense>
+      </FieldDescription>
+    </FieldContent>
+  </Field>
+);
+
 interface TenantPaymentSettingsFormProps {
   canEdit: boolean;
   initialSettings: TenantPaymentSettings;
   loadErrorMessage?: string;
+  /** The operator's locale, which the currencies are named in. */
+  locale: Locale;
   providers: PaymentProvider[];
   tenantId: string;
   /** The storefront origin, when the tenant's domain is known. */
@@ -228,6 +283,7 @@ export const TenantPaymentSettingsForm = ({
   canEdit,
   initialSettings: settings,
   loadErrorMessage,
+  locale,
   providers,
   tenantId,
   webhookOrigin,
@@ -293,6 +349,8 @@ export const TenantPaymentSettingsForm = ({
           disabled={fieldsDisabled}
           key={[
             settings.provider,
+            settings.currency,
+            settings.currencyLocked,
             settings.enabled,
             settings.ready,
             ...settings.fields.map(
@@ -329,6 +387,16 @@ export const TenantPaymentSettingsForm = ({
                 </ProviderChangeNotice>
               </FieldContent>
             </Field>
+
+            {providers.map((provider) => (
+              <ProviderPanel key={provider.id} provider={provider.id}>
+                <PaymentCurrencyField
+                  locale={locale}
+                  provider={provider}
+                  settings={settings}
+                />
+              </ProviderPanel>
+            ))}
 
             <ProviderEnabled initialEnabled={settings.enabled}>
               <Field>

@@ -60,6 +60,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
+vi.mock("#lib/public-api", () => ({
+  getTenantCurrency: () => Promise.resolve("JPY"),
+}));
+
 vi.mock("#lib/dashboard", () => ({
   tenantDashboardCacheTag: (tenantId: string) => `tenant:${tenantId}:dashboard`,
 }));
@@ -823,11 +827,16 @@ describe("episode actions", () => {
       const { updateEpisodePricingAction } = await import("./actions");
       await updateEpisodePricingAction(
         null,
-        layoutFormData({ price: "120", reading_period_hours: "72" })
+        layoutFormData({
+          price: "120",
+          price_currency: "JPY",
+          reading_period_hours: "72",
+        })
       );
 
       expect(mockUpdateEpisodePricing).toHaveBeenCalledWith(
         {
+          currency: "JPY",
           episodeId: "018f0e6a-4000-7000-8000-000000000001",
           price: 120,
           readingPeriodHours: 72,
@@ -844,14 +853,26 @@ describe("episode actions", () => {
       );
     });
 
-    // The new-episode form's rules, which stop at what an int32 field carries.
+    // The new-episode form's rules, which stop at what an int32 field carries
+    // and at the decimal places of the tenant's currency.
     it.each([
-      ["a negative price", "-1", "72", "Price must be a non-negative integer."],
+      [
+        "a negative price",
+        "-1",
+        "72",
+        "Price must be 0 or more, with no more decimal places than the currency has.",
+      ],
       [
         "a price past an int32",
         "2147483648",
         "72",
-        "Price must be a non-negative integer.",
+        "Price must be 0 or more, with no more decimal places than the currency has.",
+      ],
+      [
+        "a fraction of a yen",
+        "100.5",
+        "72",
+        "Price must be 0 or more, with no more decimal places than the currency has.",
       ],
       [
         "a reading period that is not a whole number",
@@ -863,10 +884,35 @@ describe("episode actions", () => {
       const { updateEpisodePricingAction } = await import("./actions");
       const result = await updateEpisodePricingAction(
         null,
-        layoutFormData({ price, reading_period_hours: readingPeriodHours })
+        layoutFormData({
+          price,
+          price_currency: "JPY",
+          reading_period_hours: readingPeriodHours,
+        })
       );
 
       expect(result).toEqual({ message, ok: false });
+      expect(mockUpdateEpisodePricing).not.toHaveBeenCalled();
+    });
+
+    // The form was opened while the tenant sold in another currency, so the
+    // number in it is an amount of that currency.
+    it("refuses a price typed in the currency the tenant sold in before", async () => {
+      const { updateEpisodePricingAction } = await import("./actions");
+      const result = await updateEpisodePricingAction(
+        null,
+        layoutFormData({
+          price: "5.00",
+          price_currency: "USD",
+          reading_period_hours: "72",
+        })
+      );
+
+      expect(result).toEqual({
+        message:
+          "The tenant's currency changed after this form was opened. Reload the page and enter the price again.",
+        ok: false,
+      });
       expect(mockUpdateEpisodePricing).not.toHaveBeenCalled();
     });
 
@@ -880,7 +926,11 @@ describe("episode actions", () => {
       const { updateEpisodePricingAction } = await import("./actions");
       const result = await updateEpisodePricingAction(
         null,
-        layoutFormData({ price: "100", reading_period_hours: "0" })
+        layoutFormData({
+          price: "100",
+          price_currency: "JPY",
+          reading_period_hours: "0",
+        })
       );
 
       expect(result).toEqual({

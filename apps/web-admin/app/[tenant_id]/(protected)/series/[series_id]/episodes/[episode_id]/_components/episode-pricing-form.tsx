@@ -25,12 +25,19 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { MAX_INT32 } from "#lib/int32";
+import {
+  maxPriceInputValue,
+  priceInputStep,
+  toPriceInputValue,
+} from "#lib/price";
 
 interface EpisodePricingFormProps {
   action: (
     prevState: FormActionState,
     formData: FormData
   ) => Promise<FormActionState>;
+  /** ISO 4217 code of the currency the price is entered in, the tenant's. */
+  currency: string;
   episodeId: string;
   episodePublicId: string;
   /**
@@ -46,6 +53,7 @@ interface EpisodePricingFormProps {
 
 export const EpisodePricingForm = ({
   action,
+  currency,
   episodeId,
   episodePublicId,
   initialPrice,
@@ -83,16 +91,21 @@ export const EpisodePricingForm = ({
           </FieldLabel>
           <FieldContent>
             <Input
-              defaultValue={initialPrice}
-              max={MAX_INT32}
+              defaultValue={toPriceInputValue(initialPrice, currency)}
+              max={maxPriceInputValue(currency)}
               min={0}
               name="price"
               required
+              step={priceInputStep(currency)}
               type="number"
             />
+            <input name="price_currency" type="hidden" value={currency} />
             <FieldDescription>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                <Message message="admin.series.episodes.form.price_description" />
+                <Message
+                  message="admin.series.episodes.form.price_description"
+                  values={{ currency }}
+                />
               </Suspense>
             </FieldDescription>
           </FieldContent>

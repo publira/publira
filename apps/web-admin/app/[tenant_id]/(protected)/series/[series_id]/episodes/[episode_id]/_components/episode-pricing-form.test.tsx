@@ -30,11 +30,13 @@ const renderForm = (
   action: (
     prevState: FormActionState,
     formData: FormData
-  ) => Promise<FormActionState> = () => Promise.resolve(null)
+  ) => Promise<FormActionState> = () => Promise.resolve(null),
+  currency = "JPY"
 ) =>
   render(
     <EpisodePricingForm
       action={action}
+      currency={currency}
       episodeId="EP001-ID"
       episodePublicId="EP001"
       initialPrice={100}
@@ -57,6 +59,14 @@ afterEach(() => {
 });
 
 describe("EpisodePricingForm", () => {
+  it("enters the price in the tenant's currency, with its decimal places", () => {
+    renderForm(undefined, "USD");
+
+    expect(priceInput().value).toBe("1.00");
+    expect(priceInput().step).toBe("0.01");
+    expect(screen.getByText(/^In USD\./u)).toBeDefined();
+  });
+
   it("opens on the price and reading period the episode is sold on", () => {
     renderForm();
 
