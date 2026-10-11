@@ -157,6 +157,7 @@ var codesMissingFromParseISO = map[string]bool{
 	"UYW": true, // Uruguayan unidad previsional
 	"VED": true, // Venezuelan bolívar digital
 	"VES": true, // Venezuelan bolívar soberano
+	"XAD": true, // Arab Accounting Dinar
 	"XCG": true, // Caribbean guilder
 	"ZWG": true, // Zimbabwe Gold
 }

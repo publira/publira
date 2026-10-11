@@ -31,7 +31,7 @@ func TestValidateReadsTheDefaultCurrencyAsAnISOCode(t *testing.T) {
 }
 
 // currentISO4217Codes is ISO 4217 List One as the maintenance agency
-// publishes it, funds and precious metals included.
+// published it on 2026-09-17, funds and precious metals included.
 var currentISO4217Codes = strings.Fields(`
 	AED AFN ALL AMD AOA ARS AUD AWG AZN BAM BBD BDT BHD BIF BMD BND BOB BOV BRL
 	BSD BTN BWP BYN BZD CAD CDF CHE CHF CHW CLF CLP CNY COP COU CRC CUP CVE CZK
@@ -41,8 +41,8 @@ var currentISO4217Codes = strings.Fields(`
 	MXN MXV MYR MZN NAD NGN NIO NOK NPR NZD OMR PAB PEN PGK PHP PKR PLN PYG QAR
 	RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SOS SRD SSP STN SVC SYP SZL
 	THB TJS TMT TND TOP TRY TTD TWD TZS UAH UGX USD USN UYI UYU UYW UZS VED VES
-	VND VUV WST XAF XAG XAU XBA XBB XBC XBD XCD XCG XDR XOF XPD XPF XPT XSU XTS
-	XUA XXX YER ZAR ZMW ZWG
+	VND VUV WST XAD XAF XAG XAU XBA XBB XBC XBD XCD XCG XDR XOF XPD XPF XPT XSU
+	XTS XUA XXX YER ZAR ZMW ZWG
 `)
 
 // Every current code is saved, the ones newer than golang.org/x/text's table
