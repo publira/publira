@@ -16,6 +16,7 @@ import type {
   ContactMessageEntryItem,
   ContactMessageItem,
 } from "../../contact-message-types";
+import type { ContactMessageReplyRoute } from "./contact-message-reply-form";
 import { ContactMessageReplyForm } from "./contact-message-reply-form";
 
 interface ContactMessageExchangeProps {
@@ -24,6 +25,8 @@ interface ContactMessageExchangeProps {
     "entries" | "entryCount" | "id" | "publicId" | "replyToEmail"
   >;
   locale: Locale;
+  /** Passed to {@link ContactMessageReplyForm} for its hint. */
+  replyRoute: ContactMessageReplyRoute;
   tenantId: string;
   timeZone: string;
 }
@@ -66,6 +69,7 @@ const ContactMessageEntryAuthor = ({
 export const ContactMessageExchange = ({
   contactMessage,
   locale,
+  replyRoute,
   tenantId,
   timeZone,
 }: ContactMessageExchangeProps) => (
@@ -123,6 +127,7 @@ export const ContactMessageExchange = ({
 
     <ContactMessageReplyForm
       contactMessage={contactMessage}
+      replyRoute={replyRoute}
       tenantId={tenantId}
     />
   </AdminSection>

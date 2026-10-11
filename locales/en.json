@@ -754,7 +754,7 @@
       },
       "reply": {
         "label": "Answer",
-        "hint": "The answer is mailed to {$email} and marks the message handled. When the reader writes back, the reply reaches your own account's email address. Up to {$count} characters.",
+        "hint": ".input {$reply_route :string}\n.match $reply_route\ninbound {{The answer is mailed to {$email} and marks the message handled. When the reader writes back, the reply appears under this message. Up to {$count} characters.}}\nstaff {{The answer is mailed to {$email} and marks the message handled. When the reader writes back, the reply reaches your own account's email address. Up to {$count} characters.}}\n* {{The answer is mailed to {$email} and marks the message handled. Up to {$count} characters.}}",
         "submit": "Send answer",
         "sending": "Sending…",
         "sent": "The answer has been saved and will be mailed to the reader.",

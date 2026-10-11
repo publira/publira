@@ -55,6 +55,7 @@ const renderExchange = (entries: ContactMessageEntryItem[]) =>
         replyToEmail: "reader@example.com",
       }}
       locale="en"
+      replyRoute="staff"
       tenantId="TENANT001"
       timeZone="Asia/Seoul"
     />

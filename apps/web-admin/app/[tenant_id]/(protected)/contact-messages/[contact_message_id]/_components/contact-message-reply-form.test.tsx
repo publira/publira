@@ -64,10 +64,27 @@ afterEach(() => {
 });
 
 describe("ContactMessageReplyForm", () => {
-  it("says where the answer goes, where the reader's reply comes back, and how long it may be", () => {
+  it("says the reader's reply comes back under the message once inbound email is ready", () => {
     render(
       <ContactMessageReplyForm
         contactMessage={contactMessage}
+        replyRoute="inbound"
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(
+      screen.getByText(
+        "The answer is mailed to reader@example.com and marks the message handled. When the reader writes back, the reply appears under this message. Up to 4000 characters."
+      )
+    ).toBeTruthy();
+  });
+
+  it("says the reader's reply reaches the answering staff member's own address while inbound email is not ready", () => {
+    render(
+      <ContactMessageReplyForm
+        contactMessage={contactMessage}
+        replyRoute="staff"
         tenantId="TENANT001"
       />
     );
@@ -79,11 +96,28 @@ describe("ContactMessageReplyForm", () => {
     ).toBeTruthy();
   });
 
+  it("names no mailbox for the reader's reply when the inbound email settings could not be read", () => {
+    render(
+      <ContactMessageReplyForm
+        contactMessage={contactMessage}
+        replyRoute="unknown"
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(
+      screen.getByText(
+        "The answer is mailed to reader@example.com and marks the message handled. Up to 4000 characters."
+      )
+    ).toBeTruthy();
+  });
+
   it("sends the answer for the message it sits under", async () => {
     reply.mockResolvedValue(null);
     render(
       <ContactMessageReplyForm
         contactMessage={contactMessage}
+        replyRoute="staff"
         tenantId="TENANT001"
       />
     );
@@ -116,6 +150,7 @@ describe("ContactMessageReplyForm", () => {
     render(
       <ContactMessageReplyForm
         contactMessage={contactMessage}
+        replyRoute="staff"
         tenantId="TENANT001"
       />
     );
@@ -142,6 +177,7 @@ describe("ContactMessageReplyForm", () => {
     render(
       <ContactMessageReplyForm
         contactMessage={contactMessage}
+        replyRoute="staff"
         tenantId="TENANT001"
       />
     );
@@ -162,6 +198,7 @@ describe("ContactMessageReplyForm", () => {
     const { rerender } = render(
       <ContactMessageReplyForm
         contactMessage={contactMessage}
+        replyRoute="staff"
         tenantId="TENANT001"
       />
     );
@@ -170,6 +207,7 @@ describe("ContactMessageReplyForm", () => {
     rerender(
       <ContactMessageReplyForm
         contactMessage={{ ...contactMessage, entryCount: 1 }}
+        replyRoute="staff"
         tenantId="TENANT001"
       />
     );

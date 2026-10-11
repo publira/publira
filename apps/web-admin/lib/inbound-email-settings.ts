@@ -59,6 +59,10 @@ export type TenantInboundEmailSettingsResult =
       requiresSignIn?: boolean;
     };
 
+export type TenantInboundEmailReadinessResult =
+  | { ok: true; ready: boolean }
+  | { ok: false; message: string; requiresSignIn: boolean };
+
 export type UpdateTenantInboundEmailSettingsResult =
   | { ok: true; settings: TenantInboundEmailSettings }
   | {
@@ -250,6 +254,54 @@ export const getTenantInboundEmailSettings = async (
       await getAccessToken()
     )
   );
+
+/**
+ * Whether the tenant's inbound email is ready now, read outside any cache.
+ *
+ * `publira worker` reads the settings afresh when it mails an answer and names
+ * the `Reply-To` from them, so a screen telling staff where the reader's reply
+ * will come back has to read them as fresh. The private entry of
+ * {@link getTenantInboundEmailSettings} lives in the router cache of the
+ * browser that filled it, and `updateTag` from another administrator's save
+ * never reaches it.
+ */
+export const getTenantInboundEmailReadiness = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantInboundEmailReadinessResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: !sessionId,
+    };
+  }
+
+  try {
+    const response =
+      await apiClient.inboundEmailSettings.getTenantInboundEmailSettings(
+        { tenant: { tenantId: normalizedTenantId } },
+        withSessionHeaders(sessionId)
+      );
+    return { ok: true, ready: Boolean(response.settings?.ready) };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: parseErrorMessage(
+        error,
+        t("admin.settings.inbound_email.load_failed"),
+        locale
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
 
 const listInboundEmailProvidersForSession = async (
   tenantId: string,
