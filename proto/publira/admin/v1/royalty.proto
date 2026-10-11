@@ -41,8 +41,8 @@ message UpdateRoyaltyConfigResponse {
 }
 
 // The figures of one month: its own sales, and what its lines pay out.
-// Amounts are integers in the minor unit of the tenant currency, which
-// AdminAuthService.GetTenant answers, and count only the sales paid in it.
+// Amounts are integers in the minor unit of the currency of the statement or
+// preview they belong to, and count only the sales paid in it.
 message RoyaltyStatementTotals {
   // What the month sold, each sale counted once however many creators it is
   // credited to. A fully refunded sale is not a sale.
@@ -66,6 +66,9 @@ message RoyaltyStatement {
   string closed_by_user_public_id = 4;
   string closed_by_user_name = 5;
   RoyaltyStatementTotals totals = 6;
+  // The ISO 4217 code the totals and lines are in: the tenant's at close. A
+  // statement keeps it after the tenant's changes.
+  string currency = 7;
 }
 
 // One creator's credit on one episode for one role, with that episode's sales
@@ -89,7 +92,7 @@ message RoyaltyStatementLine {
   // The credit's share in basis points (10000 is all of it), as applied.
   int32 share_bps = 13;
   // (gross_amount - refunded_amount) * share_bps / 10000, floored to the minor
-  // unit of the tenant currency.
+  // unit of the statement's currency.
   int64 payout_amount = 14;
 }
 
@@ -112,6 +115,9 @@ message PreviewRoyaltyStatementResponse {
   // close leaves no hour counted twice and none left out.
   string starts_at = 5;
   string ends_at = 6;
+  // The ISO 4217 code the totals and lines are in: the tenant's current one,
+  // which closing the month now would record.
+  string currency = 7;
 }
 
 message CloseRoyaltyStatementRequest {
@@ -180,13 +186,14 @@ message ExportRoyaltyStatementResponse {
   //   episode_id        the episode's ID, as closed
   //   episode_title     as closed
   //   sale_count        integer
-  //   gross_amount      an integer in the tenant currency's minor unit, no
-  //                     currency symbol
-  //   refunded_amount   an integer in the tenant currency's minor unit, no
-  //                     currency symbol
+  //   gross_amount      an integer in the minor unit of currency, no currency
+  //                     symbol
+  //   refunded_amount   an integer in the minor unit of currency, no currency
+  //                     symbol
   //   share_percent     the share with two decimals, 12.50 for 1250 bps
-  //   payout_amount     an integer in the tenant currency's minor unit, no
-  //                     currency symbol
+  //   payout_amount     an integer in the minor unit of currency, no currency
+  //                     symbol
+  //   currency          the statement's ISO 4217 code, the same on every row
   //
   // The IDs are the rows' internal IDs, not their public IDs, and they stay
   // on the line after the row is deleted.

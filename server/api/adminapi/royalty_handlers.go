@@ -210,6 +210,7 @@ func (s *adminServer) PreviewRoyaltyStatement(
 	return &publiraadminv1.PreviewRoyaltyStatementResponse{
 		Period:   royalties.FormatPeriod(month.Period),
 		TimeZone: month.TimeZone,
+		Currency: computation.Currency,
 		StartsAt: computation.Bounds.Start.UTC().Format(time.RFC3339),
 		EndsAt:   computation.Bounds.End.UTC().Format(time.RFC3339),
 		Totals: &publiraadminv1.RoyaltyStatementTotals{
@@ -499,7 +500,7 @@ func (s *adminServer) ExportRoyaltyStatement(
 		return nil, s.internalDBError(ctx, "failed to list royalty statement lines", err, "tenant_id", tenant.ID.String(), "period", periodKey)
 	}
 
-	body := royaltyStatementCSV(periodKey, lines)
+	body := royaltyStatementCSV(periodKey, header.Currency, lines)
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID: tenant.ID, ActorUserID: sessionCtx.User.ID, ActorRole: sessionCtx.Role,
 		Action: "royalty_statement_exported", TargetType: "royalty_statement", TargetID: periodKey,
@@ -510,7 +511,7 @@ func (s *adminServer) ExportRoyaltyStatement(
 
 // royaltyStatementCSV writes the columns ExportRoyaltyStatementResponse
 // documents, in that order.
-func royaltyStatementCSV(period string, lines []dbmodels.RoyaltyStatementLine) []byte {
+func royaltyStatementCSV(period, currency string, lines []dbmodels.RoyaltyStatementLine) []byte {
 	w := csvexport.New(
 		"period",
 		"creator_id", "creator_name",
@@ -518,6 +519,7 @@ func royaltyStatementCSV(period string, lines []dbmodels.RoyaltyStatementLine) [
 		"series_id", "series_title",
 		"episode_id", "episode_title",
 		"sale_count", "gross_amount", "refunded_amount", "share_percent", "payout_amount",
+		"currency",
 	)
 	for _, line := range lines {
 		w.Row(
@@ -531,6 +533,7 @@ func royaltyStatementCSV(period string, lines []dbmodels.RoyaltyStatementLine) [
 			strconv.FormatInt(line.RefundedAmount, 10),
 			fmt.Sprintf("%d.%02d", line.ShareBps/100, line.ShareBps%100),
 			strconv.FormatInt(line.PayoutAmount, 10),
+			currency,
 		)
 	}
 	return w.Bytes()
@@ -557,6 +560,7 @@ func royaltyStatementOf(row dbmodels.ListRoyaltyStatementsDescRow) dbmodels.Roya
 		EndsAt:         row.EndsAt,
 		ClosedAt:       row.ClosedAt,
 		ClosedByUserID: row.ClosedByUserID,
+		Currency:       row.Currency,
 		TotalGross:     row.TotalGross,
 		TotalRefunded:  row.TotalRefunded,
 		TotalPayout:    row.TotalPayout,
@@ -570,6 +574,7 @@ func royaltyStatementToProto(statement dbmodels.RoyaltyStatement, closedByPublic
 		ClosedAt:             statement.ClosedAt.UTC().Format(time.RFC3339),
 		ClosedByUserPublicId: closedByPublicID,
 		ClosedByUserName:     closedByName,
+		Currency:             statement.Currency,
 		Totals: &publiraadminv1.RoyaltyStatementTotals{
 			Gross:    statement.TotalGross,
 			Refunded: statement.TotalRefunded,

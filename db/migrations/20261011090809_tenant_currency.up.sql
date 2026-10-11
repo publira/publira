@@ -67,3 +67,14 @@ SET currency = 'JPY'
 WHERE refunded_amount IS NOT NULL;
 ALTER TABLE ONLY unapplied_refunds
     ADD CONSTRAINT unapplied_refunds_currency_check CHECK (((currency ~ '^[A-Z]{3}$'::text) AND (refunded_amount IS NOT NULL)) OR ((currency IS NULL) AND (refunded_amount IS NULL)));
+
+-- COLUMN: royalty_statements currency
+-- The currency the statement's totals and lines are in: the tenant's when the
+-- month was closed, and the only sales it counts are those paid in it. A
+-- statement never changes after its close, so it keeps the currency it was
+-- closed in rather than taking the tenant's later one.
+ALTER TABLE ONLY royalty_statements
+    ADD COLUMN currency character(3) DEFAULT 'JPY'::bpchar NOT NULL,
+    ADD CONSTRAINT royalty_statements_currency_check CHECK ((currency ~ '^[A-Z]{3}$'::text));
+ALTER TABLE ONLY royalty_statements
+    ALTER COLUMN currency DROP DEFAULT;

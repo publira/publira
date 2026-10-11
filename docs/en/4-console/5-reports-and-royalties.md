@@ -76,7 +76,7 @@ The sales of a month are:
 - Purchases of the episode on the site, through Stripe or PAY.JP, at the price the reader paid.
 - Purchases in the tenant's app through the App Store or Google Play, at the episode's price. The store's commission is not taken off.
 
-Every amount is in the tenant's currency. A purchase paid in another currency, which happens only when a reader completes a payment started before the tenant changed its currency, opens the episode but is not a sale on the statement.
+Every amount is in the tenant's currency, and a closed statement keeps the currency it was closed in. A purchase paid in another currency, which happens only when a reader completes a payment started before the tenant changed its currency, opens the episode but is not a sale on the statement.
 
 Nothing else is a sale. Access tickets, **Free if you wait**, free reading periods, and an Author reading their own episode open an episode without one. A purchase from the App Store sandbox or a Play license tester, and one made with Stripe's or PAY.JP's test keys, is a test and is left out.
 
@@ -146,10 +146,11 @@ The file is named `royalties-<tenant>-<YYYY-MM>.csv`. It is UTF-8, with a byte o
 | `series_id`, `series_title` | The series |
 | `episode_id`, `episode_title` | The episode |
 | `sale_count` | The number of sales |
-| `gross_amount` | The sales, in the smallest unit of the tenant's currency: yen for JPY, cents for USD |
+| `gross_amount` | The sales, in the smallest unit of the statement's currency: yen for JPY, cents for USD |
 | `refunded_amount` | The refunds on them, in the same unit |
 | `share_percent` | The share, with two decimals, such as `12.50` |
 | `payout_amount` | The payout, in the same unit |
+| `currency` | The statement's currency, such as `USD`: the tenant's when the month was closed, and the only one whose sales it counts |
 
 Names are as they were at the close, and the IDs keep a line tied to its Author and episode across renames. A cell that a spreadsheet would read as a formula is written so that it stays text. A statement downloads the same file every time, and each download is recorded in **Audit logs** as **Royalty statement CSV downloaded**.
 

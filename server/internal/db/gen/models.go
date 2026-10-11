@@ -782,6 +782,7 @@ type RoyaltyStatement struct {
 	TotalPayout    int64         `json:"total_payout"`
 	StartsAt       time.Time     `json:"starts_at"`
 	EndsAt         time.Time     `json:"ends_at"`
+	Currency       string        `json:"currency"`
 }
 
 type RoyaltyStatementLine struct {

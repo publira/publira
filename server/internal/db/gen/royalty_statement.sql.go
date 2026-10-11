@@ -102,7 +102,7 @@ func (q *Queries) GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoy
 
 const GetRoyaltyStatementByPeriod = `-- name: GetRoyaltyStatementByPeriod :one
 SELECT
-    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at,
+    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at, rs.currency,
     u.public_id AS closed_by_user_public_id,
     u.name AS closed_by_user_name
 FROM royalty_statements rs
@@ -128,6 +128,7 @@ type GetRoyaltyStatementByPeriodRow struct {
 	TotalPayout          int64          `json:"total_payout"`
 	StartsAt             time.Time      `json:"starts_at"`
 	EndsAt               time.Time      `json:"ends_at"`
+	Currency             string         `json:"currency"`
 	ClosedByUserPublicID sql.NullString `json:"closed_by_user_public_id"`
 	ClosedByUserName     sql.NullString `json:"closed_by_user_name"`
 }
@@ -147,6 +148,7 @@ func (q *Queries) GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyalt
 		&i.TotalPayout,
 		&i.StartsAt,
 		&i.EndsAt,
+		&i.Currency,
 		&i.ClosedByUserPublicID,
 		&i.ClosedByUserName,
 	)
@@ -162,6 +164,7 @@ INSERT INTO royalty_statements (
     starts_at,
     ends_at,
     closed_by_user_id,
+    currency,
     total_gross,
     total_refunded,
     total_payout
@@ -175,9 +178,10 @@ INSERT INTO royalty_statements (
     $7,
     $8,
     $9,
-    $10
+    $10,
+    $11
 )
-RETURNING id, tenant_id, period, time_zone, closed_at, closed_by_user_id, total_gross, total_refunded, total_payout, starts_at, ends_at
+RETURNING id, tenant_id, period, time_zone, closed_at, closed_by_user_id, total_gross, total_refunded, total_payout, starts_at, ends_at, currency
 `
 
 type InsertRoyaltyStatementParams struct {
@@ -188,6 +192,7 @@ type InsertRoyaltyStatementParams struct {
 	StartsAt       time.Time     `json:"starts_at"`
 	EndsAt         time.Time     `json:"ends_at"`
 	ClosedByUserID uuid.NullUUID `json:"closed_by_user_id"`
+	Currency       string        `json:"currency"`
 	TotalGross     int64         `json:"total_gross"`
 	TotalRefunded  int64         `json:"total_refunded"`
 	TotalPayout    int64         `json:"total_payout"`
@@ -203,6 +208,7 @@ func (q *Queries) InsertRoyaltyStatement(ctx context.Context, arg InsertRoyaltyS
 		arg.StartsAt,
 		arg.EndsAt,
 		arg.ClosedByUserID,
+		arg.Currency,
 		arg.TotalGross,
 		arg.TotalRefunded,
 		arg.TotalPayout,
@@ -220,6 +226,7 @@ func (q *Queries) InsertRoyaltyStatement(ctx context.Context, arg InsertRoyaltyS
 		&i.TotalPayout,
 		&i.StartsAt,
 		&i.EndsAt,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -711,7 +718,7 @@ func (q *Queries) ListRoyaltyStatementPeriodsFrom(ctx context.Context, arg ListR
 
 const ListRoyaltyStatementsAsc = `-- name: ListRoyaltyStatementsAsc :many
 SELECT
-    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at,
+    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at, rs.currency,
     u.public_id AS closed_by_user_public_id,
     u.name AS closed_by_user_name
 FROM royalty_statements rs
@@ -740,6 +747,7 @@ type ListRoyaltyStatementsAscRow struct {
 	TotalPayout          int64          `json:"total_payout"`
 	StartsAt             time.Time      `json:"starts_at"`
 	EndsAt               time.Time      `json:"ends_at"`
+	Currency             string         `json:"currency"`
 	ClosedByUserPublicID sql.NullString `json:"closed_by_user_public_id"`
 	ClosedByUserName     sql.NullString `json:"closed_by_user_name"`
 }
@@ -766,6 +774,7 @@ func (q *Queries) ListRoyaltyStatementsAsc(ctx context.Context, arg ListRoyaltyS
 			&i.TotalPayout,
 			&i.StartsAt,
 			&i.EndsAt,
+			&i.Currency,
 			&i.ClosedByUserPublicID,
 			&i.ClosedByUserName,
 		); err != nil {
@@ -784,7 +793,7 @@ func (q *Queries) ListRoyaltyStatementsAsc(ctx context.Context, arg ListRoyaltyS
 
 const ListRoyaltyStatementsDesc = `-- name: ListRoyaltyStatementsDesc :many
 SELECT
-    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at,
+    rs.id, rs.tenant_id, rs.period, rs.time_zone, rs.closed_at, rs.closed_by_user_id, rs.total_gross, rs.total_refunded, rs.total_payout, rs.starts_at, rs.ends_at, rs.currency,
     u.public_id AS closed_by_user_public_id,
     u.name AS closed_by_user_name
 FROM royalty_statements rs
@@ -817,6 +826,7 @@ type ListRoyaltyStatementsDescRow struct {
 	TotalPayout          int64          `json:"total_payout"`
 	StartsAt             time.Time      `json:"starts_at"`
 	EndsAt               time.Time      `json:"ends_at"`
+	Currency             string         `json:"currency"`
 	ClosedByUserPublicID sql.NullString `json:"closed_by_user_public_id"`
 	ClosedByUserName     sql.NullString `json:"closed_by_user_name"`
 }
@@ -849,6 +859,7 @@ func (q *Queries) ListRoyaltyStatementsDesc(ctx context.Context, arg ListRoyalty
 			&i.TotalPayout,
 			&i.StartsAt,
 			&i.EndsAt,
+			&i.Currency,
 			&i.ClosedByUserPublicID,
 			&i.ClosedByUserName,
 		); err != nil {

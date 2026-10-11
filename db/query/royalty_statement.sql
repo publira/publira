@@ -101,6 +101,7 @@ INSERT INTO royalty_statements (
     starts_at,
     ends_at,
     closed_by_user_id,
+    currency,
     total_gross,
     total_refunded,
     total_payout
@@ -112,6 +113,7 @@ INSERT INTO royalty_statements (
     sqlc.arg('starts_at'),
     sqlc.arg('ends_at'),
     sqlc.narg('closed_by_user_id'),
+    sqlc.arg('currency'),
     sqlc.arg('total_gross'),
     sqlc.arg('total_refunded'),
     sqlc.arg('total_payout')

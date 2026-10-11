@@ -92,8 +92,11 @@ type Totals struct {
 // Computation is a month computed from the sales as they stand.
 type Computation struct {
 	Bounds Bounds
-	Totals Totals
-	Lines  []dbmodels.ListRoyaltyLinesForPeriodRow
+	// Currency is the one Totals and Lines are in, the tenant's, and the only
+	// one whose sales they count.
+	Currency string
+	Totals   Totals
+	Lines    []dbmodels.ListRoyaltyLinesForPeriodRow
 }
 
 // PreviewStatement computes a month that is not closed, exactly as closing it
@@ -206,6 +209,7 @@ func closeStatementOnce(
 		StartsAt:       bounds.Start,
 		EndsAt:         bounds.End,
 		ClosedByUserID: closedBy,
+		Currency:       computation.Currency,
 		TotalGross:     computation.Totals.Gross,
 		TotalRefunded:  computation.Totals.Refunded,
 		TotalPayout:    computation.Totals.Payout,
@@ -272,7 +276,7 @@ func compute(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID,
 	for _, line := range lines {
 		totals.Payout += line.PayoutAmount
 	}
-	return Computation{Bounds: bounds, Totals: totals, Lines: lines}, nil
+	return Computation{Bounds: bounds, Currency: currency, Totals: totals, Lines: lines}, nil
 }
 
 // statementLine is one element of the JSON array InsertRoyaltyStatementLines

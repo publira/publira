@@ -1,3 +1,6 @@
+ALTER TABLE ONLY royalty_statements
+    DROP COLUMN currency;
+
 ALTER TABLE ONLY unapplied_refunds
     DROP COLUMN currency;
 

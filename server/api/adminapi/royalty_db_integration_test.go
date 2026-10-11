@@ -633,13 +633,14 @@ func TestDBAdminExportRoyaltyStatementWritesTheClosedLines(t *testing.T) {
 		refundedAmount: sql.NullInt32{Int32: 100, Valid: true},
 	})
 	env.closeRoyalties(t, f.admin, "2026-07")
+	currency := env.PG.TenantCurrency(t, f.admin.Tenant.ID)
 
 	want := "\xEF\xBB\xBF" +
-		"period,creator_id,creator_name,role_id,role_name,series_id,series_title,episode_id,episode_title,sale_count,gross_amount,refunded_amount,share_percent,payout_amount\r\n" +
+		"period,creator_id,creator_name,role_id,role_name,series_id,series_title,episode_id,episode_title,sale_count,gross_amount,refunded_amount,share_percent,payout_amount,currency\r\n" +
 		"2026-07," + artist.ID.String() + `,"Kim, ""Ink"" Lee",` + role.ID.String() + ",Artist," + f.series.ID.String() + ",星の図書館," +
-		f.episode.ID.String() + `,"第1話, ""はじまり""",2,1000,100,12.50,112` + "\r\n" +
+		f.episode.ID.String() + `,"第1話, ""はじまり""",2,1000,100,12.50,112,` + currency + "\r\n" +
 		"2026-07," + guest.ID.String() + ",Guest,,," + f.series.ID.String() + ",星の図書館," +
-		f.episode.ID.String() + `,"第1話, ""はじまり""",2,1000,100,0.00,0` + "\r\n"
+		f.episode.ID.String() + `,"第1話, ""はじまり""",2,1000,100,0.00,0,` + currency + "\r\n"
 	if got := env.exportRoyalties(t, f.admin, "2026-07"); got != want {
 		t.Fatalf("csv =\n%q\nwant\n%q", got, want)
 	}
@@ -689,7 +690,7 @@ func TestDBAdminExportRoyaltyStatementRefusesOpenMonthsAndOtherCallers(t *testin
 		t.Fatalf("export by an editor error = %v, want permission_denied", err)
 	}
 	// A month with no sales closes into a header alone.
-	if got := env.exportRoyalties(t, f.admin, "2026-07"); got != "\xEF\xBB\xBFperiod,creator_id,creator_name,role_id,role_name,series_id,series_title,episode_id,episode_title,sale_count,gross_amount,refunded_amount,share_percent,payout_amount\r\n" {
+	if got := env.exportRoyalties(t, f.admin, "2026-07"); got != "\xEF\xBB\xBFperiod,creator_id,creator_name,role_id,role_name,series_id,series_title,episode_id,episode_title,sale_count,gross_amount,refunded_amount,share_percent,payout_amount,currency\r\n" {
 		t.Fatalf("csv of a month with no sales = %q, want the header row alone", got)
 	}
 }
