@@ -64,6 +64,14 @@ func expectTenantHasPurchases(mock sqlmock.Sqlmock, tenantID uuid.UUID, has bool
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(has))
 }
 
+// expectTenantCurrencyLock is the lock a save of the payment settings holds
+// the tenant currency under before it reads it.
+func expectTenantCurrencyLock(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.LockTenantCurrency)).
+		WithArgs(tenantID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
 func newPaymentAdminServer(t *testing.T, logs *bytes.Buffer) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Helper()
 	disableRevalidationUnlessRecorded(t)
@@ -330,6 +338,7 @@ func TestUpdateTenantPaymentSettingsRejectsEnableWithoutSecrets(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 	mock.ExpectBegin()
+	expectTenantCurrencyLock(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
@@ -391,6 +400,7 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 	mock.ExpectBegin()
+	expectTenantCurrencyLock(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
@@ -460,6 +470,7 @@ func TestUpdateTenantPaymentSettingsRefusesACurrencyChangeOnceTheTenantHasAPurch
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 	mock.ExpectBegin()
+	expectTenantCurrencyLock(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(addPaymentConfigRow(t, sqlmock.NewRows(tenantPaymentColumns()), tenantID, true,
@@ -489,6 +500,7 @@ func TestUpdateTenantPaymentSettingsRefusesACurrencyTheProviderDoesNotDeclare(t 
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 	mock.ExpectBegin()
+	expectTenantCurrencyLock(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
