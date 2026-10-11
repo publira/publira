@@ -3,8 +3,9 @@
 #
 # Every value comes from `.env` beside this file, which `.env.example` lists;
 # a required one left empty stops `docker compose` before anything starts. The
-# images are referenced, never built: `task docker:verify:full` builds them as
-# `publira/<name>:local`, and a deployment pulls them from its own registry.
+# images are referenced, never built: a deployment pulls the ones every release
+# publishes to ghcr.io/publira, or names its own, such as the
+# `publira/<name>:local` that `task docker:verify:full` builds.
 #
 # `name:` is fixed, unlike the root compose.yaml, since a host runs one install
 # whose volumes keep their names across every command; `publira` would share

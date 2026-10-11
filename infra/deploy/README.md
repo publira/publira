@@ -2,7 +2,7 @@
 
 What a Publira install is made of, which environment variables each of its processes reads, and the order an empty install is brought into service in. It describes the minimal install, which runs no Platform Console: one publisher's site and console, operated from [`publiractl`](../../server/cmd/publiractl/README.md). How the parts are hosted — a Compose file, a Helm chart, a set of systemd units — is the operator's choice. [Running it with Docker Compose](#running-it-with-docker-compose) describes the Compose file beside this README, which runs the whole install on one host.
 
-The images are built from [`infra/docker/`](../docker/README.md), and the reverse proxy is configured from [`infra/proxy/`](../proxy/README.md).
+Every release publishes its images as `ghcr.io/publira/<name>:<tag>`, built from [`infra/docker/`](../docker/README.md) at the release's tag; an install that changes the code builds its own from there. The reverse proxy is configured from [`infra/proxy/`](../proxy/README.md).
 
 ## What an install runs
 
@@ -90,13 +90,13 @@ Before the first step, provision the dependency services: a PostgreSQL database 
 1. **Apply the migrations** with the publiractl image of the release being installed:
 
    ```bash
-   docker run --rm -e PUBLIRA_DB_URL publira/publiractl:local db migrate
+   docker run --rm -e PUBLIRA_DB_URL ghcr.io/publira/publiractl:<tag> db migrate
    ```
 
 2. **Create the roles** the processes connect as, on the same connection, giving each its password. The flags and what the command applies are in [`publiractl`](../../server/cmd/publiractl/README.md#db):
 
    ```bash
-   docker run --rm -e PUBLIRA_DB_URL -v /run/secrets:/run/secrets:ro publira/publiractl:local db roles \
+   docker run --rm -e PUBLIRA_DB_URL -v /run/secrets:/run/secrets:ro ghcr.io/publira/publiractl:<tag> db roles \
      --public-password-file /run/secrets/publira-public-db-password \
      --admin-password-file /run/secrets/publira-admin-db-password \
      --platform-password-file /run/secrets/publira-platform-db-password \
@@ -113,7 +113,7 @@ Before the first step, provision the dependency services: a PostgreSQL database 
    docker run --rm -it \
      -e PUBLIRA_PLATFORM_DB_URL \
      -e PUBLIRA_SECRET_ENCRYPTION_KEYS -e PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID \
-     publira/publiractl:local setup
+     ghcr.io/publira/publiractl:<tag> setup
    ```
 
    Its summary names the tenant site and the tenant console, and prints the administrator's password when it generated one.
@@ -132,7 +132,7 @@ On every later release, run `db migrate` and then `db roles` with that release's
 | [`.env.example`](.env.example) | Every variable `compose.yaml` reads. Copy it to `.env` beside it and fill in every empty value; a required one left empty stops `docker compose` before anything starts |
 | [`services.yaml`](services.yaml) | Traefik's backend addresses, naming the Compose services. The routing is [`routes.yaml`](../proxy/traefik/dynamic/routes.yaml), mounted as it stands |
 
-The images are `${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}`, where `<name>` is `publira`, `publiractl`, `web-storefront`, `web-admin`, `web-platform`, or `email-renderer`; `task docker:verify:full` builds them all as `publira/<name>:local`. The edge publishes plain HTTP on `127.0.0.1:${PUBLIRA_EDGE_PORT}`, which whatever terminates TLS on the host forwards to, and routes the hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` and no others. `PUBLIRA_EDGE_TRUSTED_PROXIES` lists, separated by commas, the addresses the edge trusts to name the client address in `X-Forwarded-For`: the gateway of the install's Docker network, which a terminator on the host reaches it from. Empty, it trusts none, and records every request with the terminator's address. `PUBLIRA_TENANT_URL_SCHEME` is the scheme of tenant links. Empty means https.
+The images are `${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}`, where `<name>` is `publira`, `publiractl`, `web-storefront`, `web-admin`, `web-platform`, or `email-renderer`. `.env.example` sets the registry to `ghcr.io/publira`, where every release publishes them, and leaves the tag to be set to the release the checkout is at; images built from changed code take their own registry and tag, and `task docker:verify:full` builds them all as `publira/<name>:local`. The edge publishes plain HTTP on `127.0.0.1:${PUBLIRA_EDGE_PORT}`, which whatever terminates TLS on the host forwards to, and routes the hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` and no others. `PUBLIRA_EDGE_TRUSTED_PROXIES` lists, separated by commas, the addresses the edge trusts to name the client address in `X-Forwarded-For`: the gateway of the install's Docker network, which a terminator on the host reaches it from. Empty, it trusts none, and records every request with the terminator's address. `PUBLIRA_TENANT_URL_SCHEME` is the scheme of tenant links. Empty means https.
 
 The optional processes run when `COMPOSE_PROFILES` names them — `web-platform`, `email-renderer`, or both, comma-separated — together with the variables `.env.example` lists under each.
 
@@ -162,7 +162,7 @@ docker compose run --rm publiractl setup \
 
 The `publiractl` service carries each role's password from `.env` in `/run/secrets/`, and the RustFS secret key as `rustfs-secret-key`. `setup` asks for the rest on the terminal.
 
-On every later release, check out its tag, set `PUBLIRA_IMAGE_TAG`, then run `docker compose pull`, `db migrate`, `db roles` with no flags, `docker compose up -d`, and `docker compose restart proxy`, which mounts the routing as single files that a checkout replaces. [Upgrading](../../docs/en/2-deployments/5-upgrading.md#on-the-docker-compose-install) is the full procedure.
+On every later release, check out its tag, set `PUBLIRA_IMAGE_TAG`, then run `docker compose pull` followed by `docker compose pull publiractl`, which the first leaves out since it sits in a profile of its own, then `db migrate`, `db roles` with no flags, `docker compose up -d`, and `docker compose restart proxy`, which mounts the routing as single files that a checkout replaces. [Upgrading](../../docs/en/2-deployments/5-upgrading.md#on-the-docker-compose-install) is the full procedure.
 
 The install's state is the two volumes, `postgres-data` and `rustfs-data`, and the encryption keys in `.env`; Valkey keeps nothing. [Backup and restore](../../docs/en/2-deployments/6-backup-and-restore.md#on-the-docker-compose-install) backs them up and brings them back on an empty host.
 
