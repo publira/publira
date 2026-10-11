@@ -2,12 +2,12 @@
 title: Platform defaults and policies
 description: Choose the defaults, security limits, community limits, and retention periods every tenant inherits, and what a tenant can change for itself.
 published: 2026-10-06
-updated: 2026-10-09
+updated: 2026-10-11
 ---
 
-An install runs on a handful of settings that no tenant owns: the language and time zone new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
+An install runs on a handful of settings that no tenant owns: the language, time zone, and currency new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
 
-Every policy and retention value has a built-in default, and an install that saves none runs on those. So does the default time zone, which is `UTC` until one is saved. The default language has none: `publiractl setup` saved one, and the Platform Console's setup screen replaced it with the language its first operator chose. The range and the built-in default of each value are in the `publiractl` reference, under [`policy`](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#policy) and [Retention periods](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#retention-periods); this page does not repeat them.
+Every policy and retention value has a built-in default, and an install that saves none runs on those. So do the default time zone, which is `UTC` until one is saved, and the default currency, which is `USD` on an install set up with this release and `JPY` on one that was running before it. The default language has none: `publiractl setup` saved one, and the Platform Console's setup screen replaced it with the language its first operator chose. The range and the built-in default of each value are in the `publiractl` reference, under [`policy`](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#policy) and [Retention periods](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#retention-periods); this page does not repeat them.
 
 ## Where the settings are
 
@@ -16,6 +16,7 @@ Each group can be set from the Platform Console or from `publiractl`, run the wa
 | Group | Platform Console | `publiractl` |
 | --- | --- | --- |
 | The default language and time zone | **General**, under **Platform** | `platform set`, `platform show` |
+| The default currency | — | `platform set`, `platform show` |
 | Two-step verification, the sign-in, password, purchase, ticket, and mail limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
 | The comment, report, rating, contact, and viewer limits | **Community**, under **Policies** | `policy set`, `policy show` |
 | How long expiring records are kept | **Retention**, under **Policies** | `retention set`, `retention show` |
@@ -38,10 +39,12 @@ Until a policy is saved, the **Setup status** card on the Platform Console's das
 
 **Default time zone** is the time zone a new tenant starts on when it is created without one, and the one the Platform Console shows and counts dates in. A tenant keeps the time zone it was created on, so changing the default moves only tenants created afterwards. A tenant's administrators change its time zone from the tenant console.
 
+**Default currency** is the currency every tenant whose administrators have not saved **Payment settings** sells in, so it is the currency that tenant's prices are entered and shown in. A tenant that saves its payment settings keeps the currency saved there, and the default no longer reaches it. It is set from the command line only, as an ISO 4217 code such as `EUR`, and cannot change once a tenant that sells in it has sold anything: `publiractl` refuses the change until each such tenant has saved its payment settings with a currency of its own.
+
 From the command line:
 
 ```bash
-publiractl platform set --default-locale en --default-timezone America/New_York
+publiractl platform set --default-locale en --default-timezone America/New_York --default-currency USD
 ```
 
 ## Security

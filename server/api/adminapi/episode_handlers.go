@@ -24,6 +24,7 @@ import (
 	"github.com/publira/publira/server/internal/episodeimages"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/publicid"
@@ -655,6 +656,9 @@ func (s *adminServer) CreateEpisode(
 		publishedAt = sql.NullTime{Time: now, Valid: true}
 	case scheduledAt.Valid:
 		status = "scheduled"
+	}
+	if err := s.checkPriceCurrency(ctx, q, tenant.ID, req.Price, req.Currency); err != nil {
+		return nil, err
 	}
 	listing, err := q.UpsertEpisodeListing(ctx, dbmodels.UpsertEpisodeListingParams{
 		EpisodeID:          base.ID,
@@ -1315,6 +1319,9 @@ func (s *adminServer) UpdateEpisodePricing(
 	var updated dbmodels.GetEpisodeByIDForTenantRow
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
 		q := s.queriesFor(txCtx)
+		if err := s.checkPriceCurrency(txCtx, q, tenant.ID, req.Price, req.Currency); err != nil {
+			return nil, err
+		}
 		rows, err := q.UpdateEpisodePricingByIDForTenant(txCtx, dbmodels.UpdateEpisodePricingByIDForTenantParams{
 			TenantID:           tenant.ID,
 			EpisodeID:          episodeID,
@@ -1351,6 +1358,24 @@ func (s *adminServer) UpdateEpisodePricing(
 	}
 	s.recordEpisodeUpdated(ctx, tenant.ID, updated.PublicID)
 	return &publiraadminv1.UpdateEpisodePricingResponse{Episode: mapped}, nil
+}
+
+// checkPriceCurrency refuses a price above zero entered in a currency the
+// tenant no longer sells in, and holds off a change of its currency until q's
+// transaction ends. A free episode is free in every currency, so a price of
+// zero is not checked.
+func (s *adminServer) checkPriceCurrency(ctx context.Context, q paymentsettings.PriceCurrencyQuerier, tenantID uuid.UUID, price int32, currency string) error {
+	if price == 0 {
+		return nil
+	}
+	err := paymentsettings.CheckPriceCurrency(ctx, q, tenantID, currency)
+	if errors.Is(err, paymentsettings.ErrPriceCurrencyChanged) {
+		return rpcerrors.NewFieldViolationError(connect.CodeFailedPrecondition, err, "currency")
+	}
+	if err != nil {
+		return s.internalDBError(ctx, "failed to check the currency of the price", err, "tenant_id", tenantID.String())
+	}
+	return nil
 }
 
 func (s *adminServer) UpdateEpisodeLayout(

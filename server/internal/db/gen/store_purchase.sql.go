@@ -23,7 +23,7 @@ WHERE r.tenant_id = p.tenant_id
     AND r.store_transaction_id = p.store_transaction_id
     AND p.tenant_id = $1
     AND p.id = $2
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency
 `
 
 type ApplyUnappliedStoreRefundToPurchaseParams struct {
@@ -53,6 +53,7 @@ func (q *Queries) ApplyUnappliedStoreRefundToPurchase(ctx context.Context, arg A
 		&i.StoreTransactionID,
 		&i.IsTest,
 		&i.Provider,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -85,7 +86,8 @@ INSERT INTO purchases (
     expires_at,
     store,
     store_transaction_id,
-    is_test
+    is_test,
+    currency
 )
 VALUES (
     $1,
@@ -96,10 +98,11 @@ VALUES (
     $6,
     $7::text,
     $8::text,
-    $9
+    $9,
+    $10
 )
 ON CONFLICT (tenant_id, store, store_transaction_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency
 `
 
 type CreateStorePurchaseParams struct {
@@ -112,6 +115,7 @@ type CreateStorePurchaseParams struct {
 	Store              string       `json:"store"`
 	StoreTransactionID string       `json:"store_transaction_id"`
 	IsTest             bool         `json:"is_test"`
+	Currency           string       `json:"currency"`
 }
 
 // Records a verified store transaction. A transaction is sold once, so a
@@ -127,6 +131,7 @@ func (q *Queries) CreateStorePurchase(ctx context.Context, arg CreateStorePurcha
 		arg.Store,
 		arg.StoreTransactionID,
 		arg.IsTest,
+		arg.Currency,
 	)
 	var i Purchase
 	err := row.Scan(
@@ -145,6 +150,7 @@ func (q *Queries) CreateStorePurchase(ctx context.Context, arg CreateStorePurcha
 		&i.StoreTransactionID,
 		&i.IsTest,
 		&i.Provider,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -152,6 +158,7 @@ func (q *Queries) CreateStorePurchase(ctx context.Context, arg CreateStorePurcha
 const GetMyPurchase = `-- name: GetMyPurchase :one
 SELECT p.id,
     p.price_at_purchase,
+    p.currency,
     p.expires_at,
     p.refunded_at,
     p.purchased_at,
@@ -177,6 +184,7 @@ type GetMyPurchaseParams struct {
 type GetMyPurchaseRow struct {
 	ID                uuid.UUID    `json:"id"`
 	PriceAtPurchase   int32        `json:"price_at_purchase"`
+	Currency          string       `json:"currency"`
 	ExpiresAt         sql.NullTime `json:"expires_at"`
 	RefundedAt        sql.NullTime `json:"refunded_at"`
 	PurchasedAt       time.Time    `json:"purchased_at"`
@@ -194,6 +202,7 @@ func (q *Queries) GetMyPurchase(ctx context.Context, arg GetMyPurchaseParams) (G
 	err := row.Scan(
 		&i.ID,
 		&i.PriceAtPurchase,
+		&i.Currency,
 		&i.ExpiresAt,
 		&i.RefundedAt,
 		&i.PurchasedAt,
@@ -207,7 +216,7 @@ func (q *Queries) GetMyPurchase(ctx context.Context, arg GetMyPurchaseParams) (G
 }
 
 const GetStorePurchaseByTransaction = `-- name: GetStorePurchaseByTransaction :one
-SELECT id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider
+SELECT id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency
 FROM purchases
 WHERE tenant_id = $1
     AND store = $2::text
@@ -239,6 +248,7 @@ func (q *Queries) GetStorePurchaseByTransaction(ctx context.Context, arg GetStor
 		&i.StoreTransactionID,
 		&i.IsTest,
 		&i.Provider,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -271,7 +281,7 @@ func (q *Queries) HoldUnappliedStoreRefund(ctx context.Context, arg HoldUnapplie
 }
 
 const LockStorePurchaseIntent = `-- name: LockStorePurchaseIntent :one
-SELECT id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at
+SELECT id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency
 FROM store_purchase_intents
 WHERE tenant_id = $1
     AND id = $2
@@ -299,6 +309,7 @@ func (q *Queries) LockStorePurchaseIntent(ctx context.Context, arg LockStorePurc
 		&i.ReadingPeriodHours,
 		&i.CreatedAt,
 		&i.ConsumedAt,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -337,7 +348,8 @@ INSERT INTO store_purchase_intents (
     episode_id,
     price,
     product_id,
-    reading_period_hours
+    reading_period_hours,
+    currency
 )
 VALUES (
     $1,
@@ -346,12 +358,13 @@ VALUES (
     $4,
     $5,
     $6,
-    $7
+    $7,
+    $8
 )
 ON CONFLICT (tenant_id, user_id, episode_id, product_id) WHERE consumed_at IS NULL DO
 UPDATE
 SET product_id = EXCLUDED.product_id
-RETURNING id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at
+RETURNING id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency
 `
 
 type OpenStorePurchaseIntentParams struct {
@@ -362,6 +375,7 @@ type OpenStorePurchaseIntentParams struct {
 	Price              int32         `json:"price"`
 	ProductID          string        `json:"product_id"`
 	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	Currency           string        `json:"currency"`
 }
 
 // Opens the reader's intent to buy an episode as a store product, or answers
@@ -377,6 +391,7 @@ func (q *Queries) OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurc
 		arg.Price,
 		arg.ProductID,
 		arg.ReadingPeriodHours,
+		arg.Currency,
 	)
 	var i StorePurchaseIntent
 	err := row.Scan(
@@ -389,6 +404,7 @@ func (q *Queries) OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurc
 		&i.ReadingPeriodHours,
 		&i.CreatedAt,
 		&i.ConsumedAt,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -400,7 +416,7 @@ SET refunded_amount = price_at_purchase,
 WHERE tenant_id = $1
     AND store = $2::text
     AND store_transaction_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency
 `
 
 type RecordStoreRefundOnPurchaseParams struct {
@@ -432,6 +448,7 @@ func (q *Queries) RecordStoreRefundOnPurchase(ctx context.Context, arg RecordSto
 		&i.StoreTransactionID,
 		&i.IsTest,
 		&i.Provider,
+		&i.Currency,
 	)
 	return i, err
 }

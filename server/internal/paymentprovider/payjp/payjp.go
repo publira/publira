@@ -48,6 +48,9 @@ const (
 	EventRefundCreated            = "refund.created"
 	EventRefundUpdated            = "refund.updated"
 
+	// currency is the one currency PAY.JP charges in.
+	currency = "JPY"
+
 	// refundPageSize is the most refunds one list request answers.
 	refundPageSize = 100
 )
@@ -92,6 +95,7 @@ func (*Provider) Declaration() paymentprovider.Declaration {
 			{Name: FieldWebhookToken, Secret: true, Required: true},
 		},
 		SignatureHeader: WebhookTokenHeader,
+		Currencies:      []string{currency},
 	}
 }
 
@@ -123,7 +127,7 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 		CancelUrl:  &req.CancelURL,
 		LineItems: &[]payjpv2.LineItemRequest{{
 			PriceData: &payjpv2.PriceDataRequest{
-				Currency:    payjpv2.CurrencyJpy,
+				Currency:    payjpv2.Currency(strings.ToLower(req.Purchase.Currency)),
 				ProductData: &payjpv2.ProductDataRequest{Name: req.EpisodeTitle},
 				UnitAmount:  int(req.Purchase.Price),
 			},
@@ -252,9 +256,10 @@ func (p *Provider) purchaseCompletedEvent(ctx context.Context, credentials payme
 	default:
 		return paymentprovider.Ignored{ID: event.ID, Type: event.Type}, nil
 	}
-	if flow.Currency != payjpv2.CurrencyJpy || flow.AmountReceived == nil || *flow.AmountReceived != int(purchase.Price) {
-		return nil, errors.New("payment flow was not paid in JPY for the purchase's price")
+	if flow.AmountReceived == nil || *flow.AmountReceived != int(purchase.Price) {
+		return nil, errors.New("payment flow was not paid the purchase's price")
 	}
+	purchase.Currency = strings.ToUpper(string(flow.Currency))
 	return paymentprovider.PurchaseCompleted{
 		ID:         event.ID,
 		CheckoutID: session.ID,
@@ -288,8 +293,9 @@ func (p *Provider) refundedEvent(ctx context.Context, credentials paymentprovide
 		ID:             event.ID,
 		PaymentID:      refund.PaymentFlowID,
 		AmountRefunded: total,
-		// Every Checkout Session this provider starts charges in yen.
-		Currency: "JPY",
+		// A refund names no currency, and is in the payment's, which is the
+		// one PAY.JP charges in.
+		Currency: currency,
 	}, nil
 }
 

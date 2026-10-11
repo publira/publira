@@ -43,6 +43,7 @@ func TestRecordRefundWaitsForTheConfirmationOfTheSameTransaction(t *testing.T) {
 		UserID:             reader.ID,
 		EpisodeID:          episode.ID,
 		PriceAtPurchase:    300,
+		Currency:           "JPY",
 		Store:              storepurchase.StoreAppStore,
 		StoreTransactionID: transactionID,
 	})

@@ -9,6 +9,7 @@ import (
 	"maps"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 
 	stripego "github.com/stripe/stripe-go/v87"
@@ -91,6 +92,7 @@ func (Fixture) CheckoutCompleted(t testing.TB, credentials paymentprovider.Crede
 		"id":              checkout.CheckoutID,
 		"amount_subtotal": checkout.Purchase.Price,
 		"amount_total":    checkout.Purchase.Price,
+		"currency":        strings.ToLower(checkout.Purchase.Currency),
 		"livemode":        !checkout.Test,
 		"payment_intent":  checkout.PaymentID,
 		"metadata":        PurchaseMetadata(checkout.Purchase),
@@ -101,6 +103,7 @@ func (Fixture) Refunded(t testing.TB, credentials paymentprovider.Credentials, r
 	t.Helper()
 	return recorded(t, credentials, "charge.refunded.json", map[string]any{
 		"amount_refunded": refund.AmountRefunded,
+		"currency":        strings.ToLower(refund.Currency),
 		"payment_intent":  refund.PaymentID,
 	})
 }

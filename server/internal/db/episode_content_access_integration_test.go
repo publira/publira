@@ -120,8 +120,8 @@ func mustInsertPurchase(
 		expires = *expiresAt
 	}
 	_, err = db.ExecContext(ctx, `
-		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, expires_at)
-		VALUES ($1, $2, $3, $4, 500, $5)
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, expires_at, currency)
+		VALUES ($1, $2, $3, $4, 500, $5, 'JPY')
 	`, id, tenantID, userID, episodeID, expires)
 	if err != nil {
 		t.Fatalf("insert purchase: %v", err)

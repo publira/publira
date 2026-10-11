@@ -16,6 +16,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/paymentsettings"
 )
 
 const periodLayout = "2006-01"
@@ -91,8 +92,11 @@ type Totals struct {
 // Computation is a month computed from the sales as they stand.
 type Computation struct {
 	Bounds Bounds
-	Totals Totals
-	Lines  []dbmodels.ListRoyaltyLinesForPeriodRow
+	// Currency is the one Totals and Lines are in, the tenant's, and the only
+	// one whose sales they count.
+	Currency string
+	Totals   Totals
+	Lines    []dbmodels.ListRoyaltyLinesForPeriodRow
 }
 
 // PreviewStatement computes a month that is not closed, exactly as closing it
@@ -205,6 +209,7 @@ func closeStatementOnce(
 		StartsAt:       bounds.Start,
 		EndsAt:         bounds.End,
 		ClosedByUserID: closedBy,
+		Currency:       computation.Currency,
 		TotalGross:     computation.Totals.Gross,
 		TotalRefunded:  computation.Totals.Refunded,
 		TotalPayout:    computation.Totals.Payout,
@@ -242,8 +247,15 @@ func closeStatementOnce(
 }
 
 func compute(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID, bounds Bounds) (Computation, error) {
+	// A statement is in the tenant currency, and a sale paid in another, by a
+	// checkout started before the tenant changed it, is not one of its sales.
+	currency, err := paymentsettings.TenantCurrency(ctx, queries, tenantID)
+	if err != nil {
+		return Computation{}, fmt.Errorf("resolve tenant currency: %w", err)
+	}
 	lines, err := queries.ListRoyaltyLinesForPeriod(ctx, dbmodels.ListRoyaltyLinesForPeriodParams{
 		TenantID: tenantID,
+		Currency: currency,
 		StartsAt: bounds.Start,
 		EndsAt:   bounds.End,
 	})
@@ -252,6 +264,7 @@ func compute(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID,
 	}
 	sales, err := queries.GetRoyaltySalesTotalsForPeriod(ctx, dbmodels.GetRoyaltySalesTotalsForPeriodParams{
 		TenantID: tenantID,
+		Currency: currency,
 		StartsAt: bounds.Start,
 		EndsAt:   bounds.End,
 	})
@@ -263,7 +276,7 @@ func compute(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID,
 	for _, line := range lines {
 		totals.Payout += line.PayoutAmount
 	}
-	return Computation{Bounds: bounds, Totals: totals, Lines: lines}, nil
+	return Computation{Bounds: bounds, Currency: currency, Totals: totals, Lines: lines}, nil
 }
 
 // statementLine is one element of the JSON array InsertRoyaltyStatementLines

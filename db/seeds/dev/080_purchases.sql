@@ -32,6 +32,7 @@ INSERT INTO purchases (
     user_id,
     episode_id,
     price_at_purchase,
+    currency,
     purchased_at,
     expires_at
 )
@@ -41,6 +42,7 @@ SELECT
     scope.user_id,
     scope.episode_id,
     500,
+    'JPY',
     ps.purchased_at,
     ps.expires_at
 FROM scope
@@ -49,5 +51,6 @@ ON CONFLICT (id) DO UPDATE
 SET user_id = EXCLUDED.user_id,
     episode_id = EXCLUDED.episode_id,
     price_at_purchase = EXCLUDED.price_at_purchase,
+    currency = EXCLUDED.currency,
     purchased_at = EXCLUDED.purchased_at,
     expires_at = EXCLUDED.expires_at;

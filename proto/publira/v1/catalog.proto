@@ -1506,11 +1506,16 @@ message MyPurchase {
   string id = 1;
   publira.types.v1.Episode episode = 2;
   publira.types.v1.Series series = 3;
+  // What the reader paid, in the minor unit of currency.
   int32 price_at_purchase = 4;
   string purchased_at = 5;
   // Empty when this purchase does not expire.
   string expires_at = 6;
   bool is_active = 7;
+  // The ISO 4217 code, in capitals, of the currency price_at_purchase is in:
+  // the one the reader paid in, which is the tenant's unless the payment was
+  // started before the tenant changed it.
+  string currency = 8;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

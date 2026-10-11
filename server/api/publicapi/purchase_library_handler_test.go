@@ -35,6 +35,7 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 		WillReturnRows(purchaseRows().AddRow(
 			purchaseID,
 			int32(500),
+			"USD",
 			now.Add(time.Hour),
 			nil,
 			now,
@@ -64,8 +65,8 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 	if purchase.Episode.GetPublicId() != "EPISODE001" || purchase.Series.GetPublicId() != "SERIES001" {
 		t.Fatalf("purchase item = %+v, want episode and series public IDs", purchase)
 	}
-	if purchase.PriceAtPurchase != 500 {
-		t.Fatalf("price_at_purchase = %d, want 500", purchase.PriceAtPurchase)
+	if purchase.PriceAtPurchase != 500 || purchase.Currency != "USD" {
+		t.Fatalf("price_at_purchase = %d %s, want 500 USD", purchase.PriceAtPurchase, purchase.Currency)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -86,6 +87,7 @@ func TestPurchaseListReportsARefundedPurchaseAsInactive(t *testing.T) {
 		WillReturnRows(purchaseRows().AddRow(
 			purchaseID,
 			int32(500),
+			"JPY",
 			nil,
 			now.Add(-time.Hour),
 			now.Add(-2*time.Hour),
@@ -317,7 +319,7 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 
 func purchaseRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "price_at_purchase", "expires_at", "refunded_at", "purchased_at", "episode_id", "episode_public_id", "episode_title", "episode_order_index", "series_id", "series_public_id", "series_title",
+		"id", "price_at_purchase", "currency", "expires_at", "refunded_at", "purchased_at", "episode_id", "episode_public_id", "episode_title", "episode_order_index", "series_id", "series_public_id", "series_title",
 	})
 }
 
@@ -325,6 +327,7 @@ func addPurchaseRow(rows *sqlmock.Rows, id uuid.UUID, purchasedAt time.Time) *sq
 	return rows.AddRow(
 		id,
 		int32(500),
+		"JPY",
 		nil,
 		nil,
 		purchasedAt,

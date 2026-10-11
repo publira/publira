@@ -1442,11 +1442,15 @@ func (x *AdminAuthServiceGetTenantRequest) GetTenant() *v1.TenantContext {
 }
 
 type AdminAuthServiceTenant struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Domain        string                 `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty"`
-	AdminDomain   string                 `protobuf:"bytes,4,opt,name=admin_domain,json=adminDomain,proto3" json:"admin_domain,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	PublicId    string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Domain      string                 `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty"`
+	AdminDomain string                 `protobuf:"bytes,4,opt,name=admin_domain,json=adminDomain,proto3" json:"admin_domain,omitempty"`
+	// The ISO 4217 code, in capitals, of the currency the tenant sells in. Every
+	// price and amount the console reads and writes is an integer in its minor
+	// unit, so a price of 500 is 500 yen in JPY and 5.00 dollars in USD.
+	Currency      string `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1505,6 +1509,13 @@ func (x *AdminAuthServiceTenant) GetDomain() string {
 func (x *AdminAuthServiceTenant) GetAdminDomain() string {
 	if x != nil {
 		return x.AdminDomain
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceTenant) GetCurrency() string {
+	if x != nil {
+		return x.Currency
 	}
 	return ""
 }
@@ -2343,12 +2354,13 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12%\n" +
 	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"[\n" +
 	" AdminAuthServiceGetTenantRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\x84\x01\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xa0\x01\n" +
 	"\x16AdminAuthServiceTenant\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
 	"\x06domain\x18\x03 \x01(\tR\x06domain\x12!\n" +
-	"\fadmin_domain\x18\x04 \x01(\tR\vadminDomain\"e\n" +
+	"\fadmin_domain\x18\x04 \x01(\tR\vadminDomain\x12\x1a\n" +
+	"\bcurrency\x18\x05 \x01(\tR\bcurrency\"e\n" +
 	"!AdminAuthServiceGetTenantResponse\x12@\n" +
 	"\x06tenant\x18\x01 \x01(\v2(.publira.admin.v1.AdminAuthServiceTenantR\x06tenant\"a\n" +
 	"&AdminAuthServiceGetTenantConfigRequest\x127\n" +

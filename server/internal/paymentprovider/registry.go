@@ -10,6 +10,9 @@ import (
 // route.
 var idPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`)
 
+// currencyPattern is the shape of an ISO 4217 code as a tenant stores it.
+var currencyPattern = regexp.MustCompile(`^[A-Z]{3}$`)
+
 // Registry is the set of providers a tenant may choose from, keyed by id.
 type Registry struct {
 	providers map[string]Provider
@@ -17,8 +20,9 @@ type Registry struct {
 }
 
 // NewRegistry registers providers, and panics on an id that is malformed or
-// registered twice, or on a field declared twice or both secret and public:
-// each is a programming error in the provider list.
+// registered twice, on a field declared twice or both secret and public, or on
+// a provider that declares no currency, a currency twice, or a code that is not
+// three capital letters: each is a programming error in the provider list.
 func NewRegistry(providers ...Provider) *Registry {
 	r := &Registry{providers: make(map[string]Provider, len(providers))}
 	for _, provider := range providers {
@@ -38,6 +42,20 @@ func NewRegistry(providers ...Provider) *Registry {
 			if field.Secret && field.Public {
 				panic(fmt.Sprintf("paymentprovider: provider %q declares field %q both secret and public", id, field.Name))
 			}
+		}
+		currencies := provider.Declaration().Currencies
+		if len(currencies) == 0 {
+			panic(fmt.Sprintf("paymentprovider: provider %q declares no currency", id))
+		}
+		declared := make(map[string]bool, len(currencies))
+		for _, currency := range currencies {
+			if !currencyPattern.MatchString(currency) {
+				panic(fmt.Sprintf("paymentprovider: provider %q declares currency %q, which is not an ISO 4217 code in capitals", id, currency))
+			}
+			if declared[currency] {
+				panic(fmt.Sprintf("paymentprovider: provider %q declares currency %q twice", id, currency))
+			}
+			declared[currency] = true
 		}
 		r.providers[id] = provider
 		r.ids = append(r.ids, id)

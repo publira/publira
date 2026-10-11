@@ -18,6 +18,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/paymentsettings"
+	"github.com/publira/publira/server/internal/platformconfig"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -222,7 +223,7 @@ func TestDBListTenantStoreProductsNamesOneProductPerAppPrice(t *testing.T) {
 		t.Fatalf("products = %v, want %v", got, want)
 	}
 	for i, w := range want {
-		if got[i].ProductId != w.productID || got[i].Price != w.price || got[i].EpisodeCount != w.count {
+		if got[i].ProductId != w.productID || got[i].Price != w.price || got[i].EpisodeCount != w.count || got[i].Currency != platformconfig.DefaultCurrency {
 			t.Fatalf("products[%d] = %v, want %+v", i, got[i], w)
 		}
 	}

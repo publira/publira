@@ -118,12 +118,17 @@ func (s *apiServer) StartStorePurchase(
 		return nil, connect.NewError(connect.CodeAlreadyExists, "episode is already purchased")
 	}
 
+	currency, err := s.tenantCurrency(ctx, queries, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
 	intent, err := queries.OpenStorePurchaseIntent(ctx, dbmodels.OpenStorePurchaseIntentParams{
 		ID:        uuid.Must(uuid.NewV7()),
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
 		EpisodeID: episode.ID,
 		Price:     episode.Price,
+		Currency:  currency,
 		ProductID: storeproduct.ProductID(episode.Price),
 		// The terms the payment sheet opens on, which the purchase keeps however
 		// long the confirmation takes to arrive.
@@ -281,6 +286,7 @@ func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, u
 	return purchaseItemFromRow(purchasePageRow{
 		id:                row.ID,
 		priceAtPurchase:   row.PriceAtPurchase,
+		currency:          row.Currency,
 		expiresAt:         row.ExpiresAt,
 		refundedAt:        row.RefundedAt,
 		purchasedAt:       row.PurchasedAt,
@@ -457,6 +463,7 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 		UserID:             userID,
 		EpisodeID:          intent.EpisodeID,
 		PriceAtPurchase:    intent.Price,
+		Currency:           intent.Currency,
 		ExpiresAt:          expiresAt,
 		Store:              transaction.store,
 		StoreTransactionID: transaction.transactionID,

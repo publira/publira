@@ -328,7 +328,8 @@ func (x *UpdateRoyaltyConfigResponse) GetConfig() *RoyaltyConfig {
 }
 
 // The figures of one month: its own sales, and what its lines pay out.
-// Amounts are whole yen.
+// Amounts are integers in the minor unit of the currency of the statement or
+// preview they belong to, and count only the sales paid in it.
 type RoyaltyStatementTotals struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// What the month sold, each sale counted once however many creators it is
@@ -407,8 +408,11 @@ type RoyaltyStatement struct {
 	ClosedByUserPublicId string                  `protobuf:"bytes,4,opt,name=closed_by_user_public_id,json=closedByUserPublicId,proto3" json:"closed_by_user_public_id,omitempty"`
 	ClosedByUserName     string                  `protobuf:"bytes,5,opt,name=closed_by_user_name,json=closedByUserName,proto3" json:"closed_by_user_name,omitempty"`
 	Totals               *RoyaltyStatementTotals `protobuf:"bytes,6,opt,name=totals,proto3" json:"totals,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// The ISO 4217 code the totals and lines are in: the tenant's at close. A
+	// statement keeps it after the tenant's changes.
+	Currency      string `protobuf:"bytes,7,opt,name=currency,proto3" json:"currency,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RoyaltyStatement) Reset() {
@@ -483,6 +487,13 @@ func (x *RoyaltyStatement) GetTotals() *RoyaltyStatementTotals {
 	return nil
 }
 
+func (x *RoyaltyStatement) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
 // One creator's credit on one episode for one role, with that episode's sales
 // in the month. Names are as they stood at close; a public ID is empty once the
 // row it named has been deleted.
@@ -504,7 +515,8 @@ type RoyaltyStatementLine struct {
 	RefundedAmount int64  `protobuf:"varint,12,opt,name=refunded_amount,json=refundedAmount,proto3" json:"refunded_amount,omitempty"`
 	// The credit's share in basis points (10000 is all of it), as applied.
 	ShareBps int32 `protobuf:"varint,13,opt,name=share_bps,json=shareBps,proto3" json:"share_bps,omitempty"`
-	// (gross_amount - refunded_amount) * share_bps / 10000, floored to whole yen.
+	// (gross_amount - refunded_amount) * share_bps / 10000, floored to the minor
+	// unit of the statement's currency.
 	PayoutAmount  int64 `protobuf:"varint,14,opt,name=payout_amount,json=payoutAmount,proto3" json:"payout_amount,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -703,8 +715,11 @@ type PreviewRoyaltyStatementResponse struct {
 	// closed: the month then starts where the statement before it ended and ends
 	// where the statement after it started, so that a zone changed since that
 	// close leaves no hour counted twice and none left out.
-	StartsAt      string `protobuf:"bytes,5,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
-	EndsAt        string `protobuf:"bytes,6,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
+	StartsAt string `protobuf:"bytes,5,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
+	EndsAt   string `protobuf:"bytes,6,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
+	// The ISO 4217 code the totals and lines are in: the tenant's current one,
+	// which closing the month now would record.
+	Currency      string `protobuf:"bytes,7,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -777,6 +792,13 @@ func (x *PreviewRoyaltyStatementResponse) GetStartsAt() string {
 func (x *PreviewRoyaltyStatementResponse) GetEndsAt() string {
 	if x != nil {
 		return x.EndsAt
+	}
+	return ""
+}
+
+func (x *PreviewRoyaltyStatementResponse) GetCurrency() string {
+	if x != nil {
+		return x.Currency
 	}
 	return ""
 }
@@ -1212,10 +1234,14 @@ type ExportRoyaltyStatementResponse struct {
 	//	episode_id        the episode's ID, as closed
 	//	episode_title     as closed
 	//	sale_count        integer
-	//	gross_amount      whole yen, no currency symbol
-	//	refunded_amount   whole yen, no currency symbol
+	//	gross_amount      an integer in the minor unit of currency, no currency
+	//	                  symbol
+	//	refunded_amount   an integer in the minor unit of currency, no currency
+	//	                  symbol
 	//	share_percent     the share with two decimals, 12.50 for 1250 bps
-	//	payout_amount     whole yen, no currency symbol
+	//	payout_amount     an integer in the minor unit of currency, no currency
+	//	                  symbol
+	//	currency          the statement's ISO 4217 code, the same on every row
 	//
 	// The IDs are the rows' internal IDs, not their public IDs, and they stay
 	// on the line after the row is deleted.
@@ -1287,14 +1313,15 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\x16RoyaltyStatementTotals\x12\x14\n" +
 	"\x05gross\x18\x01 \x01(\x03R\x05gross\x12\x1a\n" +
 	"\brefunded\x18\x02 \x01(\x03R\brefunded\x12\x16\n" +
-	"\x06payout\x18\x03 \x01(\x03R\x06payout\"\x8d\x02\n" +
+	"\x06payout\x18\x03 \x01(\x03R\x06payout\"\xa9\x02\n" +
 	"\x10RoyaltyStatement\x12\x16\n" +
 	"\x06period\x18\x01 \x01(\tR\x06period\x12\x1b\n" +
 	"\ttime_zone\x18\x02 \x01(\tR\btimeZone\x12\x1b\n" +
 	"\tclosed_at\x18\x03 \x01(\tR\bclosedAt\x126\n" +
 	"\x18closed_by_user_public_id\x18\x04 \x01(\tR\x14closedByUserPublicId\x12-\n" +
 	"\x13closed_by_user_name\x18\x05 \x01(\tR\x10closedByUserName\x12@\n" +
-	"\x06totals\x18\x06 \x01(\v2(.publira.admin.v1.RoyaltyStatementTotalsR\x06totals\"\x94\x04\n" +
+	"\x06totals\x18\x06 \x01(\v2(.publira.admin.v1.RoyaltyStatementTotalsR\x06totals\x12\x1a\n" +
+	"\bcurrency\x18\a \x01(\tR\bcurrency\"\x94\x04\n" +
 	"\x14RoyaltyStatementLine\x12\x1f\n" +
 	"\vline_number\x18\x01 \x01(\x05R\n" +
 	"lineNumber\x12*\n" +
@@ -1315,14 +1342,15 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\rpayout_amount\x18\x0e \x01(\x03R\fpayoutAmount\"q\n" +
 	"\x1ePreviewRoyaltyStatementRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
-	"\x06period\x18\x02 \x01(\tR\x06period\"\x8c\x02\n" +
+	"\x06period\x18\x02 \x01(\tR\x06period\"\xa8\x02\n" +
 	"\x1fPreviewRoyaltyStatementResponse\x12\x16\n" +
 	"\x06period\x18\x01 \x01(\tR\x06period\x12\x1b\n" +
 	"\ttime_zone\x18\x02 \x01(\tR\btimeZone\x12@\n" +
 	"\x06totals\x18\x03 \x01(\v2(.publira.admin.v1.RoyaltyStatementTotalsR\x06totals\x12<\n" +
 	"\x05lines\x18\x04 \x03(\v2&.publira.admin.v1.RoyaltyStatementLineR\x05lines\x12\x1b\n" +
 	"\tstarts_at\x18\x05 \x01(\tR\bstartsAt\x12\x17\n" +
-	"\aends_at\x18\x06 \x01(\tR\x06endsAt\"o\n" +
+	"\aends_at\x18\x06 \x01(\tR\x06endsAt\x12\x1a\n" +
+	"\bcurrency\x18\a \x01(\tR\bcurrency\"o\n" +
 	"\x1cCloseRoyaltyStatementRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06period\x18\x02 \x01(\tR\x06period\"a\n" +

@@ -15,6 +15,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/platformconfig"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
@@ -92,7 +93,7 @@ func expectPlatformSettingsWrite(
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
 		WillReturnRows(platformConfigRow("Europe/Berlin", "ja", storedRevision, now))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSettings)).
-		WithArgs(timezone, defaultLocale).
+		WithArgs(timezone, defaultLocale, testPlatformCurrency).
 		WillReturnRows(platformConfigRow(timezone, defaultLocale, storedRevision+1, now))
 	expectOperatorAuditLogInsert(mock)
 	mock.ExpectCommit()
@@ -122,6 +123,78 @@ func TestUpdatePlatformSettingsPersistsTimezone(t *testing.T) {
 	// the screen can save again without reading first.
 	if resp.Settings.Revision != 4 {
 		t.Fatalf("revision = %d, want 4", resp.Settings.Revision)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestUpdatePlatformSettingsPersistsTheDefaultCurrency(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now()
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
+		WillReturnRows(platformConfigRow("UTC", "en", 2, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.PlatformCurrencyHasSales)).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantIDsInDefaultCurrency)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSettings)).
+		WithArgs("UTC", "en", "EUR").
+		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "UTC", "en", now, now, int64(3), "EUR"))
+	expectOperatorAuditLogInsert(mock)
+	mock.ExpectCommit()
+
+	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
+		DefaultTimezone: "UTC",
+		DefaultLocale:   "en",
+		// The code is stored in capitals whatever case it arrives in.
+		DefaultCurrency:  " eur ",
+		ExpectedRevision: 2,
+	})
+	if err != nil {
+		t.Fatalf("UpdatePlatformSettings: %v", err)
+	}
+	if resp.Settings.DefaultCurrency != "EUR" {
+		t.Fatalf("default_currency = %q, want EUR", resp.Settings.DefaultCurrency)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+// A tenant that sells in the default currency without payment settings of its
+// own has its prices and its sales in it, so the default holds once one of
+// them has sold.
+func TestUpdatePlatformSettingsRefusesToChangeADefaultCurrencyATenantHasSoldIn(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now()
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
+		WillReturnRows(platformConfigRow("UTC", "en", 2, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.PlatformCurrencyHasSales)).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectRollback()
+
+	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
+		DefaultTimezone:  "UTC",
+		DefaultLocale:    "en",
+		DefaultCurrency:  "EUR",
+		ExpectedRevision: 2,
+	})
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("UpdatePlatformSettings code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestUpdatePlatformSettingsRefusesADefaultCurrencyThatIsNoCode(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+
+	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
+		DefaultTimezone:  "UTC",
+		DefaultLocale:    "en",
+		DefaultCurrency:  "EURO",
+		ExpectedRevision: 2,
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdatePlatformSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -272,7 +345,7 @@ func TestUpdatePlatformSettingsWritesTimezoneAndLocaleAtomically(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
 		WillReturnRows(platformConfigRow("Europe/Berlin", "ja", 1, now))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSettings)).
-		WithArgs("America/Los_Angeles", "en").
+		WithArgs("America/Los_Angeles", "en", testPlatformCurrency).
 		WillReturnError(errors.New(`pq: could not serialize access`))
 	mock.ExpectRollback()
 
@@ -321,7 +394,7 @@ func TestUpdatePlatformSettingsCreatesTheRowForRevisionZero(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).WillReturnError(sql.ErrNoRows)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertPlatformSettings)).
-		WithArgs("America/Los_Angeles", "en").
+		WithArgs("America/Los_Angeles", "en", platformconfig.DefaultCurrency).
 		WillReturnRows(platformConfigRow("America/Los_Angeles", "en", 1, now))
 	expectOperatorAuditLogInsert(mock)
 	mock.ExpectCommit()
@@ -368,7 +441,7 @@ func TestUpdatePlatformSettingsReportsALostInsertRaceAsAConflict(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).WillReturnError(sql.ErrNoRows)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertPlatformSettings)).
-		WithArgs("America/Los_Angeles", "en").
+		WithArgs("America/Los_Angeles", "en", platformconfig.DefaultCurrency).
 		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "platform_config_pkey"})
 	mock.ExpectRollback()
 

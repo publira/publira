@@ -27,6 +27,7 @@ INSERT INTO royalty_statements (
     ends_at,
     closed_at,
     closed_by_user_id,
+    currency,
     total_gross,
     total_refunded,
     total_payout
@@ -40,6 +41,7 @@ SELECT
     TIMESTAMPTZ '2026-01-01 00:00:00+00',
     TIMESTAMPTZ '2026-01-05 10:00:00+00',
     u.id,
+    'JPY',
     4000,
     0,
     2000

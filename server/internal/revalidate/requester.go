@@ -136,6 +136,14 @@ func (r *Requester) Record(
 	return record(ctx, q, tenantID, normalizedTags, time.Now().UTC())
 }
 
+// RecordSiteDrop writes down, on q, that the site cache entry of tenantID is
+// owed a drop now: the entry the web apps keep the tenant's public settings
+// in, tagged `tenant:<id>:site`. It is for a platform-wide write that changes
+// what tenants' sites show, which has no [Requester] to hand.
+func RecordSiteDrop(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID) error {
+	return RecordDeferred(ctx, q, tenantID, []string{fmt.Sprintf("tenant:%s:site", tenantID)}, time.Now())
+}
+
 // RecordDeferred writes tags down as owed by tenantID on q, for the outbox
 // worker to send once availableAt has passed, and attempts nothing itself.
 //

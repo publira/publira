@@ -637,6 +637,10 @@ type Querier interface {
 	// the same answer as a signed-in reader and the site caches it once per tenant.
 	GetPinnedAnnouncementForTenant(ctx context.Context, tenantID uuid.UUID) (Announcement, error)
 	GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
+	// The currency of every tenant that has not saved payment settings. The one
+	// column the tenant-facing roles may read of this row, so it has a query of
+	// its own rather than GetPlatformConfig's whole row.
+	GetPlatformDefaultCurrency(ctx context.Context) (string, error)
 	GetPlatformOperatorByID(ctx context.Context, id uuid.UUID) (GetPlatformOperatorByIDRow, error)
 	GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error)
 	// Returns no rows when the platform has never saved its policy, which the
@@ -753,7 +757,7 @@ type Querier interface {
 	// closes leaves no hour in neither month and none in both.
 	GetRoyaltyMonthBounds(ctx context.Context, arg GetRoyaltyMonthBoundsParams) (GetRoyaltyMonthBoundsRow, error)
 	// Totals the month's sales once each, however many creators a sale is
-	// credited to. The month and the refund rule are those of
+	// credited to. The month, the refund rule, and the currency are those of
 	// ListRoyaltyLinesForPeriod.
 	GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoyaltySalesTotalsForPeriodParams) (GetRoyaltySalesTotalsForPeriodRow, error)
 	GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyaltyStatementByPeriodParams) (GetRoyaltyStatementByPeriodRow, error)
@@ -931,9 +935,10 @@ type Querier interface {
 	// identity, so a repeated delivery updates the row rather than adding one.
 	//
 	// A NULL amount means the event reported none, which is applied as a refund of
-	// the whole price; it therefore outranks any number on a later merge, and
-	// between two numbers the larger wins, because the provider reports the total
-	// refunded so far.
+	// the whole price; it therefore outranks any number on a later merge, as two
+	// amounts in different currencies do, since neither can be added to the
+	// other, and between two numbers in one currency the larger wins, because the
+	// provider reports the total refunded so far.
 	HoldUnappliedRefund(ctx context.Context, arg HoldUnappliedRefundParams) error
 	HoldUnappliedStoreRefund(ctx context.Context, arg HoldUnappliedStoreRefundParams) error
 	// An entry can land after its actor's account is gone: the async recorder
@@ -1041,7 +1046,8 @@ type Querier interface {
 	// index built asks for; otherwise the search stays on the SQL engine an absent
 	// row stood for.
 	InsertPlatformSearchConfig(ctx context.Context, arg InsertPlatformSearchConfigParams) (PlatformSearchConfig, error)
-	// Creates the settings row with the platform default time zone and locale.
+	// Creates the settings row with the platform default time zone, locale, and
+	// currency.
 	// No ON CONFLICT clause: LockPlatformConfig has nothing to lock when the row is
 	// absent, so a losing racer must fail on the primary key rather than overwrite
 	// the row the winner just created.
@@ -1979,8 +1985,10 @@ type Querier interface {
 	// fully refunded sale is not a sale; a partial refund stays a sale and is
 	// carried as refunded_amount. A test purchase, from a store's sandbox or a
 	// payment provider's test mode, paid the tenant nothing and is not a sale
-	// either. The payout is floored per line over the month's sum, which
-	// keeps the rounding loss to one yen per line.
+	// either, and neither is one paid in a currency other than the one asked
+	// for, the tenant's: its price cannot be added to theirs. The payout is
+	// floored per line over the month's sum, which keeps the rounding loss to one
+	// minor unit of the currency per line.
 	ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error)
 	// The lines of a statement in the order they were closed in, with the public
 	// IDs of the catalog rows that still exist.
@@ -2058,6 +2066,10 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error)
 	ListTenantEmailRejectionEntries(ctx context.Context, tenantID uuid.UUID) ([]string, error)
+	// Every tenant that sells in the platform's default currency, having saved no
+	// payment settings of its own, and whose site therefore shows its prices in
+	// it. Read as publira_platform, which bypasses RLS.
+	ListTenantIDsInDefaultCurrency(ctx context.Context) ([]uuid.UUID, error)
 	// The theme carries the icon and the logo together, so both images' variants
 	// are read in one statement rather than one query per slot.
 	ListTenantImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListTenantImageVariantsByImageIDsRow, error)
@@ -2271,6 +2283,16 @@ type Querier interface {
 	// store that can sell: the store settings and the app association. A tenant
 	// with no row has nothing to lock and cannot be on the store route either.
 	LockTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
+	// Serializes, for the rest of the caller's transaction, a change of the
+	// currency a tenant sells in against every write of a price checked against
+	// it, which takes LockTenantCurrencyShared. The check and the write then see
+	// the same currency, so a change cannot commit between them and leave a price
+	// typed in one currency stored as an amount of another.
+	LockTenantCurrency(ctx context.Context, tenantID uuid.UUID) error
+	// Holds off, for the rest of the caller's transaction, a change of the
+	// tenant's currency (LockTenantCurrency), while letting other price writes of
+	// the same tenant go on.
+	LockTenantCurrencyShared(ctx context.Context, tenantID uuid.UUID) error
 	// Lock the tenant row so concurrent tenant branding image uploads and deletes
 	// (icon, logo) serialize. The following read of the current image must be a
 	// separate statement: READ COMMITTED freezes its snapshot at statement start,
@@ -2412,6 +2434,11 @@ type Querier interface {
 	// public series but shown on no surface is not announced later when it is
 	// shown, so it owes nothing.
 	OweEpisodeAnnouncementWhileSeriesHidden(ctx context.Context, arg OweEpisodeAnnouncementWhileSeriesHiddenParams) error
+	// Whether a tenant that sells in the platform's default currency, having saved
+	// no payment settings of its own, has a purchase, test ones included. Its
+	// prices and the amounts it recorded are amounts in that currency, so the
+	// default cannot change under it.
+	PlatformCurrencyHasSales(ctx context.Context) (bool, error)
 	// Projects one comment's publication as the analytics event for that comment.
 	// episode_comments stays the source of truth: the author, the episode and the
 	// moment the comment became public are copied from the row, and the owning
@@ -2523,8 +2550,9 @@ type Querier interface {
 	//
 	// The amount the provider reports is cumulative over every refund against the
 	// payment, so GREATEST keeps an out-of-order delivery from walking it back, and
-	// an event that reports no amount at all is recorded as a refund of the whole
-	// price. refunded_at follows from the amount rather than from the event:
+	// an event that reports no amount at all, or one in a currency other than the
+	// purchase's, which says nothing comparable to its price, is recorded as a
+	// refund of the whole price. refunded_at follows from the amount rather than from the event:
 	// it is set once the refunded total reaches what was paid, and a repeated
 	// delivery of the same refund leaves the instant already stored.
 	RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOnPurchaseParams) (Purchase, error)
@@ -2678,6 +2706,9 @@ type Querier interface {
 	// verified claim to it. The password goes: whoever set it never proved the
 	// address was theirs, and could otherwise sign in beside its owner.
 	TakeOverUnverifiedUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	// Whether the tenant has any purchase, from a provider's checkout or a store,
+	// test ones included, which keeps the tenant currency from changing.
+	TenantHasPurchases(ctx context.Context, tenantID uuid.UUID) (bool, error)
 	// Records that the eye-catch changed after one of its ratios was replaced.
 	TouchGenreImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
@@ -2740,7 +2771,8 @@ type Querier interface {
 	// saved configuration in the same write; otherwise it stays where it is until
 	// the worker has built the index the save names.
 	UpdatePlatformSearchConfig(ctx context.Context, arg UpdatePlatformSearchConfigParams) (PlatformSearchConfig, error)
-	// Writes the platform default time zone and locale over the existing row. The
+	// Writes the platform default time zone, locale, and currency over the
+	// existing row. The
 	// revision moves with every write, which is what makes a save based on an
 	// earlier read detectable.
 	UpdatePlatformSettings(ctx context.Context, arg UpdatePlatformSettingsParams) (PlatformConfig, error)

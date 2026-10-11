@@ -54,6 +54,7 @@ func (e *storePurchaseEnv) royaltyGross(t *testing.T) int64 {
 	month := time.Date(time.Now().UTC().Year(), time.Now().UTC().Month(), 1, 0, 0, 0, 0, time.UTC)
 	totals, err := dbmodels.New(e.pg.DB).GetRoyaltySalesTotalsForPeriod(context.Background(), dbmodels.GetRoyaltySalesTotalsForPeriodParams{
 		TenantID: e.tenant.ID,
+		Currency: storeTestCurrency(t, e.pg, e.tenant.ID),
 		StartsAt: month,
 		EndsAt:   month.AddDate(0, 1, 0),
 	})

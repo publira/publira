@@ -6779,15 +6779,20 @@ func (x *StartEpisodeCheckoutResponse) GetCheckoutUrl() string {
 // One purchase belonging to the signed-in reader. `is_active` is evaluated by
 // the API at read time: a purchase without an expiry is always active.
 type MyPurchase struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Episode         *v1.Episode            `protobuf:"bytes,2,opt,name=episode,proto3" json:"episode,omitempty"`
-	Series          *v1.Series             `protobuf:"bytes,3,opt,name=series,proto3" json:"series,omitempty"`
-	PriceAtPurchase int32                  `protobuf:"varint,4,opt,name=price_at_purchase,json=priceAtPurchase,proto3" json:"price_at_purchase,omitempty"`
-	PurchasedAt     string                 `protobuf:"bytes,5,opt,name=purchased_at,json=purchasedAt,proto3" json:"purchased_at,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Episode *v1.Episode            `protobuf:"bytes,2,opt,name=episode,proto3" json:"episode,omitempty"`
+	Series  *v1.Series             `protobuf:"bytes,3,opt,name=series,proto3" json:"series,omitempty"`
+	// What the reader paid, in the minor unit of currency.
+	PriceAtPurchase int32  `protobuf:"varint,4,opt,name=price_at_purchase,json=priceAtPurchase,proto3" json:"price_at_purchase,omitempty"`
+	PurchasedAt     string `protobuf:"bytes,5,opt,name=purchased_at,json=purchasedAt,proto3" json:"purchased_at,omitempty"`
 	// Empty when this purchase does not expire.
-	ExpiresAt     string `protobuf:"bytes,6,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	IsActive      bool   `protobuf:"varint,7,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
+	ExpiresAt string `protobuf:"bytes,6,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	IsActive  bool   `protobuf:"varint,7,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
+	// The ISO 4217 code, in capitals, of the currency price_at_purchase is in:
+	// the one the reader paid in, which is the tenant's unless the payment was
+	// started before the tenant changed it.
+	Currency      string `protobuf:"bytes,8,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6869,6 +6874,13 @@ func (x *MyPurchase) GetIsActive() bool {
 		return x.IsActive
 	}
 	return false
+}
+
+func (x *MyPurchase) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -8211,7 +8223,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"CLIENT_WEB\x10\x01\x12\x11\n" +
 	"\rCLIENT_MOBILE\x10\x02J\x04\b\x02\x10\x03R\x11episode_public_id\"A\n" +
 	"\x1cStartEpisodeCheckoutResponse\x12!\n" +
-	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\x8e\x02\n" +
+	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xaa\x02\n" +
 	"\n" +
 	"MyPurchase\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x123\n" +
@@ -8221,7 +8233,8 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\fpurchased_at\x18\x05 \x01(\tR\vpurchasedAt\x12\x1d\n" +
 	"\n" +
 	"expires_at\x18\x06 \x01(\tR\texpiresAt\x12\x1b\n" +
-	"\tis_active\x18\a \x01(\bR\bisActive\"\xb8\x01\n" +
+	"\tis_active\x18\a \x01(\bR\bisActive\x12\x1a\n" +
+	"\bcurrency\x18\b \x01(\tR\bcurrency\"\xb8\x01\n" +
 	"\x16ListMyPurchasesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +

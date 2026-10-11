@@ -171,6 +171,10 @@ message AdminAuthServiceTenant {
   string name = 2;
   string domain = 3;
   string admin_domain = 4;
+  // The ISO 4217 code, in capitals, of the currency the tenant sells in. Every
+  // price and amount the console reads and writes is an integer in its minor
+  // unit, so a price of 500 is 500 yen in JPY and 5.00 dollars in USD.
+  string currency = 5;
 }
 
 message AdminAuthServiceGetTenantResponse {

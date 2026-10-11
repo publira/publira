@@ -101,6 +101,11 @@ message GetTenantResponse {
   // then.
   TenantAppleSignIn apple_sign_in = 21;
   TenantGoogleSignIn google_sign_in = 22;
+  // The ISO 4217 code, in capitals, of the currency the tenant sells in. Every
+  // price the catalog answers is an integer in its minor unit, so a price of
+  // 500 is 500 yen in JPY and 5.00 dollars in USD. Never empty: a tenant that
+  // has saved no payment settings sells in the platform's default currency.
+  string currency = 23;
 }
 
 // How a client signs a reader in with Apple. The iOS app signs in with its own

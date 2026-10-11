@@ -101,7 +101,7 @@ func TestRoyaltyStatementCloseCatchesUpMissedMonths(t *testing.T) {
 		t.Fatalf("set share: %v", err)
 	}
 	reader := pg.SeedEndUser(t, tenant, "ROYALTYMRD01", "reader@royaltymiss1.example.com", "Reader")
-	seedRoyaltySale(t, pg.DB, tenant, reader.ID, episode.ID, 500, time.Date(2026, time.July, 20, 12, 0, 0, 0, royaltySeoul))
+	seedRoyaltySale(t, pg, tenant, reader.ID, episode.ID, 500, time.Date(2026, time.July, 20, 12, 0, 0, 0, royaltySeoul))
 
 	// July was closed by hand before its close day.
 	admin := pg.SeedTenantAdmin(t, tenant, "ROYALTYMAD01", "admin@royaltymiss1.example.com", "Admin")
@@ -157,7 +157,7 @@ func TestRoyaltyStatementCloseStartsWhereTheClosedMonthEnded(t *testing.T) {
 		Status:   testutil.EpisodeStatusPublished,
 	})
 	reader := pg.SeedEndUser(t, tenant, "ROYALTYZRD01", "reader@royaltyzone1.example.com", "Reader")
-	seedRoyaltySale(t, pg.DB, tenant, reader.ID, episode.ID, 500, time.Date(2026, time.March, 31, 20, 0, 0, 0, time.UTC))
+	seedRoyaltySale(t, pg, tenant, reader.ID, episode.ID, 500, time.Date(2026, time.March, 31, 20, 0, 0, 0, time.UTC))
 
 	job := RoyaltyStatementClose{}
 	deps := Deps{DB: pg.OpenContentStatsDB(t), Logger: discardLogger()}
@@ -230,12 +230,13 @@ func setAutomaticClose(t *testing.T, db *sql.DB, tenantID uuid.UUID, closeDay in
 	}
 }
 
-func seedRoyaltySale(t *testing.T, db *sql.DB, tenantID, userID, episodeID uuid.UUID, price int32, purchasedAt time.Time) {
+func seedRoyaltySale(t *testing.T, pg *testutil.PostgresEnv, tenantID, userID, episodeID uuid.UUID, price int32, purchasedAt time.Time) {
 	t.Helper()
-	if _, err := db.ExecContext(context.Background(), `
-		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, uuid.Must(uuid.NewV7()), tenantID, userID, episodeID, price, purchasedAt); err != nil {
+	currency := pg.TenantCurrency(t, tenantID)
+	if _, err := pg.DB.ExecContext(context.Background(), `
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at, currency)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, uuid.Must(uuid.NewV7()), tenantID, userID, episodeID, price, purchasedAt, currency); err != nil {
 		t.Fatalf("insert sale: %v", err)
 	}
 }

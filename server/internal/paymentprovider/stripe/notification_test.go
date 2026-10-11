@@ -42,6 +42,7 @@ func TestParseNotification(t *testing.T) {
 		ReaderID:  uuid.New(),
 		EpisodeID: uuid.New(),
 		Price:     500,
+		Currency:  "JPY",
 	}
 
 	t.Run("an unpaid completed session is ignored", func(t *testing.T) {
@@ -78,9 +79,17 @@ func TestParseNotification(t *testing.T) {
 		}
 	})
 
-	t.Run("a session paid in another currency fails", func(t *testing.T) {
-		if _, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{"currency": "usd"})); err == nil {
-			t.Fatal("ParseNotification error = nil, want an error")
+	t.Run("a session names the currency it was paid in", func(t *testing.T) {
+		event, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{"currency": "usd"}))
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		completed, ok := event.(paymentprovider.PurchaseCompleted)
+		if !ok {
+			t.Fatalf("event = %T, want PurchaseCompleted", event)
+		}
+		if completed.Purchase.Currency != "USD" {
+			t.Fatalf("currency = %q, want USD", completed.Purchase.Currency)
 		}
 	})
 

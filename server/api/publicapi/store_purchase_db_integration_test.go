@@ -18,6 +18,8 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/googleplay/googleplaytest"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/paymentprovider/providers"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -326,6 +328,35 @@ func TestDBConfirmStorePurchaseRecordsAnAppStoreTransactionOnce(t *testing.T) {
 	}
 }
 
+// An intent keeps the currency it was opened in, as it keeps its price, so a
+// payment sheet opened before the tenant changed its currency becomes a
+// purchase in the currency that price was set in.
+func TestDBConfirmStorePurchaseRecordsTheCurrencyTheIntentWasOpenedIn(t *testing.T) {
+	env := newStorePurchaseEnv(t)
+	ctx := context.Background()
+	store := paymentsettings.New(dbmodels.New(env.pg.DB), newPublicTestEncryptor(t), providers.Registry(), nil, slog.Default())
+	saveCurrency := func(currency string) {
+		t.Helper()
+		if _, err := store.Upsert(ctx, env.tenant.ID, paymentsettings.UpdateInput{Provider: stripe.ID, Currency: currency}, paymentsettings.AuditMeta{}); err != nil {
+			t.Fatalf("save %s: %v", currency, err)
+		}
+	}
+
+	saveCurrency("JPY")
+	intent := env.start(t, env.token)
+	saveCurrency("USD")
+
+	transaction := env.appStoreTransaction("2000000000000009", intent)
+	env.appStore.transactions[transaction.TransactionID] = transaction
+	purchase, err := env.confirmAppStore(t, env.token, transaction)
+	if err != nil {
+		t.Fatalf("ConfirmStorePurchase: %v", err)
+	}
+	if purchase.PriceAtPurchase != 300 || purchase.Currency != "JPY" {
+		t.Fatalf("purchase = %d %s, want the 300 JPY the intent was opened on", purchase.PriceAtPurchase, purchase.Currency)
+	}
+}
+
 func TestDBConfirmStorePurchaseRefusesAnAppStoreTransactionItCannotMatch(t *testing.T) {
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
@@ -433,6 +464,7 @@ func TestDBConfirmStorePurchaseKeepsASandboxPurchaseOffTheRoyaltyStatement(t *te
 		month := time.Date(time.Now().UTC().Year(), time.Now().UTC().Month(), 1, 0, 0, 0, 0, time.UTC)
 		totals, err := dbmodels.New(env.pg.DB).GetRoyaltySalesTotalsForPeriod(context.Background(), dbmodels.GetRoyaltySalesTotalsForPeriodParams{
 			TenantID: env.tenant.ID,
+			Currency: storeTestCurrency(t, env.pg, env.tenant.ID),
 			StartsAt: month,
 			EndsAt:   month.AddDate(0, 1, 0),
 		})
@@ -616,4 +648,16 @@ func TestDBConfirmStorePurchaseChargesTheReaderBeforeAskingTheStore(t *testing.T
 	if env.appStore.calls != 1 {
 		t.Fatalf("the App Store was asked %d times, want only by the confirmation within the allowance", env.appStore.calls)
 	}
+}
+
+// storeTestCurrency answers the currency the tenant's store purchases are
+// recorded in: its own, which for a tenant with no payment settings is the
+// platform's.
+func storeTestCurrency(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID) string {
+	t.Helper()
+	currency, err := paymentsettings.TenantCurrency(context.Background(), dbmodels.New(pg.DB), tenantID)
+	if err != nil {
+		t.Fatalf("TenantCurrency: %v", err)
+	}
+	return currency
 }

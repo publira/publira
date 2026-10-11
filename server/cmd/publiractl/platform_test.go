@@ -41,10 +41,10 @@ func TestPlatformSetSavesTheDefaultsNewTenantsStartOn(t *testing.T) {
 	pg.Reset(t)
 	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
 
-	if got := mustPlatformCommand(t, "show"); got != "No platform defaults are saved, so new tenants start on UTC\n" {
+	if got := mustPlatformCommand(t, "show"); got != "No platform defaults are saved, so new tenants start on UTC and sell in USD\n" {
 		t.Fatalf("show before a save = %q", got)
 	}
-	if got := mustPlatformCommand(t, "set", "--default-locale", "en", "--default-timezone", "Asia/Tokyo"); got != "Saved the platform defaults en and Asia/Tokyo, revision 1\n" {
+	if got := mustPlatformCommand(t, "set", "--default-locale", "en", "--default-timezone", "Asia/Tokyo"); got != "Saved the platform defaults en, Asia/Tokyo, and USD, revision 1\n" {
 		t.Fatalf("set = %q", got)
 	}
 
@@ -74,11 +74,86 @@ func TestPlatformSetSavesTheDefaultsNewTenantsStartOn(t *testing.T) {
 	if timezone, defaultLocale, revision := storedPlatformConfig(t, pg); timezone != "Asia/Tokyo" || defaultLocale != "ja" || revision != 2 {
 		t.Fatalf("stored = %s, %s, revision %d; want Asia/Tokyo, ja, revision 2", timezone, defaultLocale, revision)
 	}
+	// The currency is stored in capitals whatever case it is given in.
+	mustPlatformCommand(t, "set", "--default-currency", "eur")
 	show := mustPlatformCommand(t, "show")
-	for _, want := range []string{"Default locale:     ja\n", "Default time zone:  Asia/Tokyo\n", "Revision:           2\n"} {
+	for _, want := range []string{"Default locale:     ja\n", "Default time zone:  Asia/Tokyo\n", "Default currency:   EUR\n", "Revision:           3\n"} {
 		if !strings.Contains(show, want) {
 			t.Fatalf("show = \n%s\nwant a line %q", show, want)
 		}
+	}
+}
+
+// A tenant that has saved no payment settings sells in the default currency,
+// so the default holds once such a tenant has sold anything, and moves again
+// once every tenant that has sold has a currency of its own.
+func TestPlatformSetKeepsTheDefaultCurrencyATenantHasSoldIn(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+
+	mustPlatformCommand(t, "set", "--default-locale", "en", "--default-currency", "JPY")
+	tenant := pg.SeedTenant(t, "CURRENCYTNT1", "currency.example.com", "Currency Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "CURRENCYSR01"})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "CURRENCYEP01", Price: 500})
+	reader := pg.SeedEndUser(t, tenant.ID, "CURRENCYUS01", "reader@currency.example.com", "Reader")
+	pg.SeedPurchase(t, tenant.ID, reader.ID, episode.ID, 500)
+
+	code, _, stderr := platformCommand(t, "set", "--default-currency", "EUR")
+	if code != 1 || stderr != "publiractl: the default currency cannot change while a tenant that sells in it has a purchase: JPY is stored\n" {
+		t.Fatalf("exit code = %d, stderr = %q, want the change refused", code, stderr)
+	}
+
+	if _, err := pg.DB.ExecContext(context.Background(), `
+		INSERT INTO tenant_payment_config (tenant_id, provider, currency) VALUES ($1, 'stripe', 'JPY')
+	`, tenant.ID); err != nil {
+		t.Fatalf("save the tenant's own currency: %v", err)
+	}
+	mustPlatformCommand(t, "set", "--default-currency", "EUR")
+}
+
+// The web apps cache a tenant's currency with the rest of its public settings,
+// so a change of the default owes a drop of that entry to every tenant that
+// sells in the default, and to no other. A save that keeps the currency owes
+// none.
+func TestPlatformSetOwesTheSitesInTheDefaultCurrencyADrop(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+
+	inherits := pg.SeedTenant(t, "INHERITSTNT1", "inherits.example.com", "Inherits")
+	own := pg.SeedTenant(t, "OWNCURRENCY1", "own.example.com", "Own Currency")
+	if _, err := pg.DB.ExecContext(context.Background(), `
+		INSERT INTO tenant_payment_config (tenant_id, provider, currency) VALUES ($1, 'stripe', 'JPY')
+	`, own.ID); err != nil {
+		t.Fatalf("save the tenant's own currency: %v", err)
+	}
+	drops := func(tenantID string) int {
+		t.Helper()
+		var count int
+		if err := pg.DB.QueryRowContext(context.Background(), `
+			SELECT COUNT(*)
+			FROM outbox_events
+			WHERE event_type = 'next_cache_revalidation'
+				AND tenant_id = $1::uuid
+				AND payload->'tags' = jsonb_build_array('tenant:' || $1 || ':site')
+		`, tenantID).Scan(&count); err != nil {
+			t.Fatalf("count the drops owed to %s: %v", tenantID, err)
+		}
+		return count
+	}
+
+	mustPlatformCommand(t, "set", "--default-locale", "en", "--default-currency", "EUR")
+	if got := drops(inherits.ID.String()); got != 1 {
+		t.Fatalf("drops owed to the tenant in the default currency = %d, want 1", got)
+	}
+	if got := drops(own.ID.String()); got != 0 {
+		t.Fatalf("drops owed to the tenant with its own currency = %d, want 0", got)
+	}
+
+	mustPlatformCommand(t, "set", "--default-locale", "ja")
+	if got := drops(inherits.ID.String()); got != 1 {
+		t.Fatalf("drops after a save that keeps the currency = %d, want still 1", got)
 	}
 }
 
@@ -93,7 +168,8 @@ func TestPlatformSetNamesTheRefusedFlag(t *testing.T) {
 		args []string
 		want string
 	}{
-		{name: "nothing given", args: []string{"set"}, want: "publiractl: no value was given; name --default-locale, --default-timezone, or both\n"},
+		{name: "nothing given", args: []string{"set"}, want: "publiractl: no value was given; name at least one of --default-locale, --default-timezone, and --default-currency\n"},
+		{name: "currency that is no code", args: []string{"set", "--default-locale", "en", "--default-currency", "EURO"}, want: "publiractl: --default-currency: default_currency must be an ISO 4217 currency code\n"},
 		{name: "no locale saved or given", args: []string{"set", "--default-timezone", "Asia/Tokyo"}, want: "publiractl: --default-locale: default_locale must be a supported locale\n"},
 		{name: "unsupported locale", args: []string{"set", "--default-locale", "fr"}, want: "publiractl: --default-locale: default_locale must be a supported locale\n"},
 		{name: "unknown time zone", args: []string{"set", "--default-locale", "en", "--default-timezone", "Mars/Olympus_Mons"}, want: "publiractl: --default-timezone: timezone must be a valid IANA time zone name\n"},

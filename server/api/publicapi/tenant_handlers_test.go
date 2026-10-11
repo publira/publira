@@ -19,6 +19,7 @@ import (
 
 	"github.com/publira/publira/server/internal/ageverification"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -136,10 +137,29 @@ func expectSignInProvidersUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) 
 		WillReturnError(sql.ErrNoRows)
 }
 
+// expectPaymentsUnavailable answers the payment settings of a tenant that has
+// saved none, and so sells in JPY.
 func expectPaymentsUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectTenantCurrency(mock, tenantID, "")
+}
+
+// expectTenantCurrency answers the payment settings GetTenant reads the
+// currency from: a disabled Stripe row in currency, or none when currency is
+// empty, which leaves the tenant on the platform's JPY.
+func expectTenantCurrency(mock sqlmock.Sqlmock, tenantID uuid.UUID, currency string) {
+	query := mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).WithArgs(tenantID)
+	if currency == "" {
+		query.WillReturnError(sql.ErrNoRows)
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformDefaultCurrency)).
+			WillReturnRows(sqlmock.NewRows([]string{"default_currency"}).AddRow("JPY"))
+		return
+	}
+	now := time.Now()
+	query.WillReturnRows(sqlmock.NewRows(publicPaymentColumns()).
+		AddRow(tenantID, stripe.ID, false, now, now, []byte("{}"), []byte("{}"), currency))
 }
 
 func TestGetTenantIncludesTheme(t *testing.T) {
@@ -532,6 +552,7 @@ func TestGetTenantReportsWhetherPaymentsCanBeAccepted(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	expectTenantCurrency(env.mock, tenantID, "JPY")
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
@@ -548,6 +569,9 @@ func TestGetTenantReportsWhetherPaymentsCanBeAccepted(t *testing.T) {
 	if !resp.AcceptsPayments {
 		t.Fatal("accepts_payments = false, want true")
 	}
+	if resp.Currency != "JPY" {
+		t.Fatalf("currency = %q, want JPY", resp.Currency)
+	}
 	assertPublicExpectations(t, env.mock)
 }
 
@@ -562,6 +586,7 @@ func TestGetTenantDoesNotAcceptPaymentsWithUndecryptableSettings(t *testing.T) {
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(stripePaymentConfigRow(t, tenantID, "enc:invalid", "enc:invalid", "********", "********", now))
+	expectTenantCurrency(env.mock, tenantID, "JPY")
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).

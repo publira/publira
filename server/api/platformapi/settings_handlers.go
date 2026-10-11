@@ -10,6 +10,7 @@ import (
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
@@ -23,6 +24,7 @@ func platformSettingsFromConfig(config dbmodels.PlatformConfig) (*publirasplatfo
 		DefaultTimezone: tenanttz.Resolve(config.DefaultTimezone, nil),
 		DefaultLocale:   defaultLocale,
 		Revision:        config.Revision,
+		DefaultCurrency: config.DefaultCurrency,
 	}, nil
 }
 
@@ -57,7 +59,7 @@ func (s *platformServer) platformSettingsError(ctx context.Context, err error) e
 	if connectErr := rpcerrors.FromFieldError(err); connectErr != nil {
 		return connectErr
 	}
-	if errors.Is(err, platformconfig.ErrConflict) {
+	if errors.Is(err, platformconfig.ErrConflict) || errors.Is(err, platformconfig.ErrDefaultCurrencyLocked) {
 		return connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)
 	}
 	return s.internalDBError(ctx, "failed to save platform settings", err)
@@ -71,6 +73,7 @@ func (s *platformServer) UpdatePlatformSettings(
 	params := platformconfig.SaveParams{
 		DefaultTimezone:  req.GetDefaultTimezone(),
 		DefaultLocale:    req.GetDefaultLocale(),
+		DefaultCurrency:  req.GetDefaultCurrency(),
 		ExpectedRevision: &expectedRevision,
 	}
 	if _, err := params.Validate(); err != nil {
@@ -81,7 +84,7 @@ func (s *platformServer) UpdatePlatformSettings(
 		return nil, err
 	}
 
-	updated, err := platformconfig.Save(ctx, s.db, s.logger, actor, params)
+	updated, err := platformconfig.Save(ctx, s.db, s.logger, actor, params, revalidate.RecordSiteDrop)
 	if err != nil {
 		return nil, s.platformSettingsError(ctx, err)
 	}

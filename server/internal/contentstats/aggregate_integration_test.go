@@ -413,8 +413,8 @@ func TestRunLeavesAStoreTestPurchaseUncounted(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if _, err := pg.DB.ExecContext(ctx, `
-		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at, store, store_transaction_id, is_test)
-		VALUES ($1, $2, $3, $4, 300, $5, 'app_store', '2000000000000001', true)
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at, store, store_transaction_id, is_test, currency)
+		VALUES ($1, $2, $3, $4, 300, $5, 'app_store', '2000000000000001', true, 'JPY')
 	`, uuid.New(), tenant.ID, reviewer.ID, episode.ID, statDate.Add(11*time.Hour)); err != nil {
 		t.Fatalf("insert test purchase: %v", err)
 	}
@@ -692,8 +692,8 @@ func insertPurchase(t *testing.T, db *sql.DB, tenantID, userID, episodeID uuid.U
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if _, err := db.ExecContext(ctx, `
-		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at)
-		VALUES ($1, $2, $3, $4, 100, $5)
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at, currency)
+		VALUES ($1, $2, $3, $4, 100, $5, 'JPY')
 	`, uuid.Must(uuid.NewV7()), tenantID, userID, episodeID, purchasedAt); err != nil {
 		t.Fatalf("insert purchase: %v", err)
 	}

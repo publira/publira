@@ -106,7 +106,10 @@ type PaymentProvider struct {
 	Fields      []*PaymentCredentialField `protobuf:"bytes,3,rep,name=fields,proto3" json:"fields,omitempty"`
 	// The path on the tenant's storefront the provider's notifications are
 	// received on, such as "/api/v1/webhook/payment/stripe".
-	WebhookPath   string `protobuf:"bytes,4,opt,name=webhook_path,json=webhookPath,proto3" json:"webhook_path,omitempty"`
+	WebhookPath string `protobuf:"bytes,4,opt,name=webhook_path,json=webhookPath,proto3" json:"webhook_path,omitempty"`
+	// The ISO 4217 codes, in capitals, of the currencies the provider can charge
+	// in, in its declared order. A tenant may sell only in one of them.
+	Currencies    []string `protobuf:"bytes,5,rep,name=currencies,proto3" json:"currencies,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -167,6 +170,13 @@ func (x *PaymentProvider) GetWebhookPath() string {
 		return x.WebhookPath
 	}
 	return ""
+}
+
+func (x *PaymentProvider) GetCurrencies() []string {
+	if x != nil {
+		return x.Currencies
+	}
+	return nil
 }
 
 type ListPaymentProvidersRequest struct {
@@ -343,9 +353,16 @@ type TenantPaymentSettings struct {
 	// Checkout and Webhook use this tenant's settings only when ready.
 	Ready bool `protobuf:"varint,7,opt,name=ready,proto3" json:"ready,omitempty"`
 	// One entry per field the provider declares, in its declared order.
-	Fields        []*PaymentCredentialFieldState `protobuf:"bytes,8,rep,name=fields,proto3" json:"fields,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Fields []*PaymentCredentialFieldState `protobuf:"bytes,8,rep,name=fields,proto3" json:"fields,omitempty"`
+	// The ISO 4217 code, in capitals, of the currency the tenant sells in, and
+	// stores every price in the minor unit of. The platform's default currency
+	// before any is saved.
+	Currency string `protobuf:"bytes,9,opt,name=currency,proto3" json:"currency,omitempty"`
+	// True once the tenant has a purchase, so that UpdateTenantPaymentSettings
+	// refuses to change currency.
+	CurrencyLocked bool `protobuf:"varint,10,opt,name=currency_locked,json=currencyLocked,proto3" json:"currency_locked,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TenantPaymentSettings) Reset() {
@@ -404,6 +421,20 @@ func (x *TenantPaymentSettings) GetFields() []*PaymentCredentialFieldState {
 		return x.Fields
 	}
 	return nil
+}
+
+func (x *TenantPaymentSettings) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *TenantPaymentSettings) GetCurrencyLocked() bool {
+	if x != nil {
+		return x.CurrencyLocked
+	}
+	return false
 }
 
 type GetTenantPaymentSettingsRequest struct {
@@ -562,9 +593,14 @@ type UpdateTenantPaymentSettingsRequest struct {
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// A registered provider id. Choosing a provider other than the stored one
 	// clears every field stored for the previous one.
-	Provider      string                          `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
-	Enabled       bool                            `protobuf:"varint,3,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	Fields        []*PaymentCredentialFieldUpdate `protobuf:"bytes,8,rep,name=fields,proto3" json:"fields,omitempty"`
+	Provider string                          `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
+	Enabled  bool                            `protobuf:"varint,3,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Fields   []*PaymentCredentialFieldUpdate `protobuf:"bytes,8,rep,name=fields,proto3" json:"fields,omitempty"`
+	// The ISO 4217 code of the currency to sell in, which has to be one the
+	// provider declares; anything else is invalid_argument, whether named here
+	// or kept. Empty keeps the stored currency. A change is failed_precondition
+	// once currency_locked is true.
+	Currency      string `protobuf:"bytes,9,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -625,6 +661,13 @@ func (x *UpdateTenantPaymentSettingsRequest) GetFields() []*PaymentCredentialFie
 		return x.Fields
 	}
 	return nil
+}
+
+func (x *UpdateTenantPaymentSettingsRequest) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
 }
 
 type UpdateTenantPaymentSettingsResponse struct {
@@ -1275,10 +1318,12 @@ type TenantStoreProduct struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The same ID in both stores, derived from the price.
 	ProductId string `protobuf:"bytes,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	// The price in JPY.
+	// The price in the minor unit of currency.
 	Price int32 `protobuf:"varint,2,opt,name=price,proto3" json:"price,omitempty"`
 	// How many episodes sell at this price, drafts and scheduled ones included.
-	EpisodeCount  int32 `protobuf:"varint,3,opt,name=episode_count,json=episodeCount,proto3" json:"episode_count,omitempty"`
+	EpisodeCount int32 `protobuf:"varint,3,opt,name=episode_count,json=episodeCount,proto3" json:"episode_count,omitempty"`
+	// The ISO 4217 code, in capitals, of the tenant currency price is in.
+	Currency      string `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1332,6 +1377,13 @@ func (x *TenantStoreProduct) GetEpisodeCount() int32 {
 		return x.EpisodeCount
 	}
 	return 0
+}
+
+func (x *TenantStoreProduct) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
 }
 
 type ListTenantStoreProductsRequest struct {
@@ -1432,12 +1484,15 @@ const file_publira_admin_v1_payment_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06secret\x18\x02 \x01(\bR\x06secret\x12\x16\n" +
 	"\x06public\x18\x03 \x01(\bR\x06public\x12\x1a\n" +
-	"\brequired\x18\x04 \x01(\bR\brequired\"\xa9\x01\n" +
+	"\brequired\x18\x04 \x01(\bR\brequired\"\xc9\x01\n" +
 	"\x0fPaymentProvider\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12@\n" +
 	"\x06fields\x18\x03 \x03(\v2(.publira.admin.v1.PaymentCredentialFieldR\x06fields\x12!\n" +
-	"\fwebhook_path\x18\x04 \x01(\tR\vwebhookPath\"V\n" +
+	"\fwebhook_path\x18\x04 \x01(\tR\vwebhookPath\x12\x1e\n" +
+	"\n" +
+	"currencies\x18\x05 \x03(\tR\n" +
+	"currencies\"V\n" +
 	"\x1bListPaymentProvidersRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"_\n" +
 	"\x1cListPaymentProvidersResponse\x12?\n" +
@@ -1448,12 +1503,15 @@ const file_publira_admin_v1_payment_proto_rawDesc = "" +
 	"configured\x18\x02 \x01(\bR\n" +
 	"configured\x12\x12\n" +
 	"\x04hint\x18\x03 \x01(\tR\x04hint\x12!\n" +
-	"\fpublic_value\x18\x04 \x01(\tR\vpublicValue\"\x9a\x02\n" +
+	"\fpublic_value\x18\x04 \x01(\tR\vpublicValue\"\xdf\x02\n" +
 	"\x15TenantPaymentSettings\x12\x1a\n" +
 	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x12\x14\n" +
 	"\x05ready\x18\a \x01(\bR\x05ready\x12E\n" +
-	"\x06fields\x18\b \x03(\v2-.publira.admin.v1.PaymentCredentialFieldStateR\x06fieldsJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x15secret_key_configuredR\x19webhook_secret_configuredR\x0fsecret_key_hintR\x13webhook_secret_hint\"Z\n" +
+	"\x06fields\x18\b \x03(\v2-.publira.admin.v1.PaymentCredentialFieldStateR\x06fields\x12\x1a\n" +
+	"\bcurrency\x18\t \x01(\tR\bcurrency\x12'\n" +
+	"\x0fcurrency_locked\x18\n" +
+	" \x01(\bR\x0ecurrencyLockedJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x15secret_key_configuredR\x19webhook_secret_configuredR\x0fsecret_key_hintR\x13webhook_secret_hint\"Z\n" +
 	"\x1fGetTenantPaymentSettingsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"g\n" +
 	" GetTenantPaymentSettingsResponse\x12C\n" +
@@ -1461,12 +1519,13 @@ const file_publira_admin_v1_payment_proto_rawDesc = "" +
 	"\x1cPaymentCredentialFieldUpdate\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x126\n" +
 	"\x04mode\x18\x02 \x01(\x0e2\".publira.admin.v1.SecretUpdateModeR\x04mode\x12\x14\n" +
-	"\x05value\x18\x03 \x01(\tR\x05value\"\xc3\x02\n" +
+	"\x05value\x18\x03 \x01(\tR\x05value\"\xdf\x02\n" +
 	"\"UpdateTenantPaymentSettingsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1a\n" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x18\n" +
 	"\aenabled\x18\x03 \x01(\bR\aenabled\x12F\n" +
-	"\x06fields\x18\b \x03(\v2..publira.admin.v1.PaymentCredentialFieldUpdateR\x06fieldsJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\x16secret_key_update_modeR\n" +
+	"\x06fields\x18\b \x03(\v2..publira.admin.v1.PaymentCredentialFieldUpdateR\x06fields\x12\x1a\n" +
+	"\bcurrency\x18\t \x01(\tR\bcurrencyJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\x16secret_key_update_modeR\n" +
 	"secret_keyR\x1awebhook_secret_update_modeR\x0ewebhook_secret\"j\n" +
 	"#UpdateTenantPaymentSettingsResponse\x12C\n" +
 	"\bsettings\x18\x01 \x01(\v2'.publira.admin.v1.TenantPaymentSettingsR\bsettings\"\x90\x02\n" +
@@ -1512,12 +1571,13 @@ const file_publira_admin_v1_payment_proto_rawDesc = "" +
 	"\vgoogle_play\x18\x04 \x01(\v21.publira.admin.v1.GooglePlayPaymentSettingsUpdateR\n" +
 	"googlePlay\"t\n" +
 	"(UpdateTenantStorePaymentSettingsResponse\x12H\n" +
-	"\bsettings\x18\x01 \x01(\v2,.publira.admin.v1.TenantStorePaymentSettingsR\bsettings\"n\n" +
+	"\bsettings\x18\x01 \x01(\v2,.publira.admin.v1.TenantStorePaymentSettingsR\bsettings\"\x8a\x01\n" +
 	"\x12TenantStoreProduct\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\tR\tproductId\x12\x14\n" +
 	"\x05price\x18\x02 \x01(\x05R\x05price\x12#\n" +
-	"\repisode_count\x18\x03 \x01(\x05R\fepisodeCount\"Y\n" +
+	"\repisode_count\x18\x03 \x01(\x05R\fepisodeCount\x12\x1a\n" +
+	"\bcurrency\x18\x04 \x01(\tR\bcurrency\"Y\n" +
 	"\x1eListTenantStoreProductsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"c\n" +
 	"\x1fListTenantStoreProductsResponse\x12@\n" +

@@ -83,8 +83,8 @@ func seedEveryColumn(t *testing.T, pg *testutil.PostgresEnv, sealer *secretcrypt
 
 	exec(t, db, `INSERT INTO tenant_smtp_config (tenant_id, password_encrypted) VALUES ($1, $2)`,
 		tenant.ID, seal(t, sealer, "tenant-smtp-password"))
-	exec(t, db, `INSERT INTO tenant_payment_config (tenant_id, provider, credentials_encrypted, credential_hints)
-		VALUES ($1, 'stripe', $2, '{"secret_key": "sk_…1234"}')`, tenant.ID, sealedJSON(t, map[string]any{
+	exec(t, db, `INSERT INTO tenant_payment_config (tenant_id, provider, currency, credentials_encrypted, credential_hints)
+		VALUES ($1, 'stripe', 'JPY', $2, '{"secret_key": "sk_…1234"}')`, tenant.ID, sealedJSON(t, map[string]any{
 		"secret_key":     seal(t, sealer, "sk_test_1234"),
 		"webhook_secret": seal(t, sealer, "whsec_1234"),
 	}))

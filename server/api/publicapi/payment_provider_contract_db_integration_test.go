@@ -61,7 +61,7 @@ type contractHarness struct {
 	tenants   int
 }
 
-func (h *contractHarness) NewTenant(t *testing.T, provider paymentprovider.Provider, credentials paymentprovider.Credentials) paymentprovidertest.Tenant {
+func (h *contractHarness) NewTenant(t *testing.T, provider paymentprovider.Provider, credentials paymentprovider.Credentials, currency string) paymentprovidertest.Tenant {
 	t.Helper()
 	h.tenants++
 	n := h.tenants
@@ -87,6 +87,7 @@ func (h *contractHarness) NewTenant(t *testing.T, provider paymentprovider.Provi
 	if _, err := store.Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
 		Provider: provider.Declaration().ID,
 		Enabled:  true,
+		Currency: currency,
 		Fields:   fields,
 	}, paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert payment settings: %v", err)
@@ -100,6 +101,7 @@ func (h *contractHarness) NewTenant(t *testing.T, provider paymentprovider.Provi
 			ReaderID:  reader.ID,
 			EpisodeID: episode.ID,
 			Price:     500,
+			Currency:  currency,
 		},
 	}
 }
@@ -161,6 +163,7 @@ func (c *contractTenant) SalesGross(t *testing.T) int64 {
 	month := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	totals, err := dbmodels.New(c.harness.pg.DB).GetRoyaltySalesTotalsForPeriod(context.Background(), dbmodels.GetRoyaltySalesTotalsForPeriodParams{
 		TenantID: c.purchase.TenantID,
+		Currency: c.purchase.Currency,
 		StartsAt: month,
 		EndsAt:   month.AddDate(0, 1, 0),
 	})

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -43,6 +44,11 @@ type Declaration struct {
 	// SignatureHeader is the request header the provider signs or
 	// authenticates its notifications with.
 	SignatureHeader string
+	// Currencies are the ISO 4217 codes, in capitals, of the currencies the
+	// provider can charge in, each in the unit ISO 4217 gives as its minor
+	// unit, which is the unit a price is stored in. A tenant may sell only in
+	// one of them.
+	Currencies []string
 }
 
 // Credentials are a tenant's credential values keyed by [Field.Name].
@@ -70,6 +76,11 @@ func (d Declaration) Field(name string) (Field, bool) {
 	return Field{}, false
 }
 
+// Charges reports whether d can charge in currency.
+func (d Declaration) Charges(currency string) bool {
+	return slices.Contains(d.Currencies, currency)
+}
+
 // WebhookPath answers the path on a tenant's storefront that receives the
 // notifications of the provider id names. apps/web-storefront serves it.
 func WebhookPath(id string) string {
@@ -93,8 +104,14 @@ type Purchase struct {
 	TenantID  uuid.UUID
 	ReaderID  uuid.UUID
 	EpisodeID uuid.UUID
-	// Price is the episode's price in yen at the time of checkout.
+	// Price is the episode's price at the time of checkout, in the minor unit
+	// of Currency.
 	Price int32
+	// Currency is the ISO 4217 code, in capitals, of the tenant currency the
+	// checkout charges in. A provider reads it back from the payment it
+	// confirms rather than from anything the checkout carried, so it names the
+	// currency the reader actually paid in.
+	Currency string
 	// ReadingPeriodHours limits how long the purchase opens the episode; zero
 	// means it does not expire.
 	ReadingPeriodHours int32
@@ -142,10 +159,10 @@ type PurchaseCompleted struct {
 type Refunded struct {
 	ID        string
 	PaymentID string
-	// AmountRefunded is the total refunded so far in the currency's minor
-	// unit, which for JPY is the yen.
+	// AmountRefunded is the total refunded so far in the minor unit of
+	// Currency.
 	AmountRefunded int64
-	// Currency is the ISO 4217 code of AmountRefunded, upper case.
+	// Currency is the ISO 4217 code of AmountRefunded, in capitals.
 	Currency string
 }
 

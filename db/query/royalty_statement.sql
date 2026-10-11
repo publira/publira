@@ -34,8 +34,10 @@ SELECT
 -- fully refunded sale is not a sale; a partial refund stays a sale and is
 -- carried as refunded_amount. A test purchase, from a store's sandbox or a
 -- payment provider's test mode, paid the tenant nothing and is not a sale
--- either. The payout is floored per line over the month's sum, which
--- keeps the rounding loss to one yen per line.
+-- either, and neither is one paid in a currency other than the one asked
+-- for, the tenant's: its price cannot be added to theirs. The payout is
+-- floored per line over the month's sum, which keeps the rounding loss to one
+-- minor unit of the currency per line.
 SELECT
     ec.creator_id,
     c.public_id AS creator_public_id,
@@ -63,6 +65,7 @@ LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.refunded_at IS NULL
     AND NOT p.is_test
+    AND p.currency = sqlc.arg('currency')::text
     AND p.purchased_at >= sqlc.arg('starts_at')::timestamptz
     AND p.purchased_at < sqlc.arg('ends_at')::timestamptz
 GROUP BY
@@ -75,7 +78,7 @@ ORDER BY s.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec
 
 -- name: GetRoyaltySalesTotalsForPeriod :one
 -- Totals the month's sales once each, however many creators a sale is
--- credited to. The month and the refund rule are those of
+-- credited to. The month, the refund rule, and the currency are those of
 -- ListRoyaltyLinesForPeriod.
 SELECT
     COALESCE(sum(p.price_at_purchase), 0)::bigint AS total_gross,
@@ -84,6 +87,7 @@ FROM purchases p
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.refunded_at IS NULL
     AND NOT p.is_test
+    AND p.currency = sqlc.arg('currency')::text
     AND p.purchased_at >= sqlc.arg('starts_at')::timestamptz
     AND p.purchased_at < sqlc.arg('ends_at')::timestamptz;
 
@@ -97,6 +101,7 @@ INSERT INTO royalty_statements (
     starts_at,
     ends_at,
     closed_by_user_id,
+    currency,
     total_gross,
     total_refunded,
     total_payout
@@ -108,6 +113,7 @@ INSERT INTO royalty_statements (
     sqlc.arg('starts_at'),
     sqlc.arg('ends_at'),
     sqlc.narg('closed_by_user_id'),
+    sqlc.arg('currency'),
     sqlc.arg('total_gross'),
     sqlc.arg('total_refunded'),
     sqlc.arg('total_payout')

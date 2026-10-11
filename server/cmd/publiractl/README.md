@@ -142,7 +142,7 @@ go -C server run ./cmd/publiractl platform show
 
 | Command | RPC | What it does |
 | --- | --- | --- |
-| `platform set` | `UpdatePlatformSettings` | Saves `--default-locale` and `--default-timezone`, keeping the stored value of a flag left out. With nothing saved, `--default-locale` is required and the time zone is `UTC` unless given. Saving what is already saved changes nothing and files nothing |
+| `platform set` | `UpdatePlatformSettings` | Saves `--default-locale`, `--default-timezone`, and `--default-currency`, an ISO 4217 code, keeping the stored value of a flag left out. With nothing saved, `--default-locale` is required, the time zone is `UTC`, and the currency `USD` unless given. A currency change is refused while a tenant that has saved no payment settings has a purchase. Saving what is already saved changes nothing and files nothing |
 | `platform show` | `GetPlatformSettings` | Prints the saved defaults |
 
 A tenant keeps the time zone it was created on; changing the default moves only the tenants created afterwards.

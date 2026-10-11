@@ -135,14 +135,18 @@ func integrationTenantColumns() []string {
 }
 
 func platformConfigColumns() []string {
-	return []string{"singleton", "default_timezone", "default_locale", "created_at", "updated_at", "revision"}
+	return []string{"singleton", "default_timezone", "default_locale", "created_at", "updated_at", "revision", "default_currency"}
 }
 
-// platformConfigRow answers a settings row read with the given values. The
-// revision is the version a save states it is based on.
+// platformConfigRow answers a settings row read with the given values, in
+// testPlatformCurrency. The revision is the version a save states it is based
+// on.
 func platformConfigRow(defaultTimezone, defaultLocale string, revision int64, now time.Time) *sqlmock.Rows {
-	return sqlmock.NewRows(platformConfigColumns()).AddRow(true, defaultTimezone, defaultLocale, now, now, revision)
+	return sqlmock.NewRows(platformConfigColumns()).AddRow(true, defaultTimezone, defaultLocale, now, now, revision, testPlatformCurrency)
 }
+
+// testPlatformCurrency is the default currency platformConfigRow stores.
+const testPlatformCurrency = "JPY"
 
 // expectPlatformConfigLookup expects the read of the platform settings row and
 // answers it with the given default time zone and locale.

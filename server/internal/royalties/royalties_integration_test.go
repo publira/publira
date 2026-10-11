@@ -49,9 +49,9 @@ func (f royaltyTenant) setTimeZone(t *testing.T, timeZone string) {
 func (f royaltyTenant) sell(t *testing.T, purchasedAt time.Time) {
 	t.Helper()
 	if _, err := f.pg.DB.ExecContext(context.Background(), `
-		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at)
-		VALUES ($1, $2, $3, $4, 500, $5)
-	`, uuid.Must(uuid.NewV7()), f.id, f.reader, f.episode, purchasedAt); err != nil {
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at, currency)
+		VALUES ($1, $2, $3, $4, 500, $5, $6)
+	`, uuid.Must(uuid.NewV7()), f.id, f.reader, f.episode, purchasedAt, f.pg.TenantCurrency(t, f.id)); err != nil {
 		t.Fatalf("insert sale at %s: %v", purchasedAt.Format(time.RFC3339), err)
 	}
 }
@@ -242,5 +242,50 @@ func TestDBAdjacentMonthsClosedAtOnceShareTheirBoundary(t *testing.T) {
 	assertBounds(t, "March", Bounds{Start: march.StartsAt, End: march.EndsAt}, utc(2026, time.February, 28, 15), april.StartsAt)
 	if march.TotalGross+april.TotalGross != 500 || march.TotalGross != 500 {
 		t.Fatalf("March gross = %d and April gross = %d, want the sale in March alone", march.TotalGross, april.TotalGross)
+	}
+}
+
+// A statement is in the currency the tenant sold in when it was closed, and
+// keeps it once the tenant sells in another: its totals are amounts of that
+// currency, which the tenant's later one would misstate. A month still open
+// counts only the sales paid in the tenant's currency as it is now.
+func TestDBStatementKeepsTheCurrencyItWasClosedIn(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	ctx := context.Background()
+	f := seedRoyaltyTenant(t, pg, "ROYALCURRY", "UTC")
+	closedIn := pg.TenantCurrency(t, f.id)
+	f.sell(t, utc(2026, time.July, 10, 0))
+	f.sell(t, utc(2026, time.August, 10, 0))
+	statement := f.close(t, f.month("2026-07", "UTC"), utc(2026, time.August, 1, 0))
+	if statement.Currency != closedIn || statement.TotalGross != 500 {
+		t.Fatalf("July closed in %s with gross %d, want %s with 500", statement.Currency, statement.TotalGross, closedIn)
+	}
+
+	changedTo := "EUR"
+	if closedIn == changedTo {
+		changedTo = "GBP"
+	}
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO platform_config (singleton, default_locale, default_currency)
+		VALUES (TRUE, 'en', $1)
+		ON CONFLICT (singleton) DO UPDATE SET default_currency = EXCLUDED.default_currency
+	`, changedTo); err != nil {
+		t.Fatalf("change the platform default currency to %s: %v", changedTo, err)
+	}
+
+	stored, err := dbmodels.New(pg.DB).GetRoyaltyStatementByPeriod(ctx, dbmodels.GetRoyaltyStatementByPeriodParams{
+		TenantID: f.id,
+		Period:   statement.Period,
+	})
+	if err != nil {
+		t.Fatalf("read July: %v", err)
+	}
+	if stored.Currency != closedIn {
+		t.Fatalf("July reads as %s after the change, want %s as closed", stored.Currency, closedIn)
+	}
+	august := f.preview(t, f.month("2026-08", "UTC"), utc(2026, time.September, 1, 0))
+	if august.Currency != changedTo || august.Totals.Gross != 0 {
+		t.Fatalf("August previews in %s with gross %d, want %s with no sale in it", august.Currency, august.Totals.Gross, changedTo)
 	}
 }

@@ -8,6 +8,7 @@ package paymentprovidertest
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -25,9 +26,12 @@ type Checkout struct {
 	Test bool
 }
 
-// Refund is a refund a fixture signs a notification for, in yen.
+// Refund is a refund a fixture signs a notification for.
 type Refund struct {
 	PaymentID string
+	// Currency is the ISO 4217 code of the payment the refund is on, in
+	// capitals.
+	Currency string
 	// AmountRefunded is the total refunded on the payment once this refund
 	// has gone through, so a later Refund on the same payment adds to an
 	// earlier one.
@@ -49,15 +53,53 @@ type Fixture interface {
 	// makes its payment one the provider's API reports as paid, in the mode
 	// the checkout names.
 	CheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, checkout Checkout) ([]byte, http.Header)
-	// Refunded answers the notification of a refund in yen, and makes the
-	// refund part of what the provider's API reports for the payment.
+	// Refunded answers the notification of a refund, and makes the refund part
+	// of what the provider's API reports for the payment.
 	Refunded(t testing.TB, credentials paymentprovider.Credentials, refund Refund) ([]byte, http.Header)
 	// Unrelated answers a notification the purchase flow has no use for.
 	Unrelated(t testing.TB, credentials paymentprovider.Credentials) ([]byte, http.Header)
 }
 
-// RunParse checks that the fixture's provider reads its notifications.
+// contractCurrencies are the currencies the contract charges in, where the
+// provider declares them: one without decimals and one with two, so that a
+// provider is seen to carry the amount in the minor unit either way.
+var contractCurrencies = []string{"JPY", "USD"}
+
+// Currencies answers the currencies the contract runs a provider in: those of
+// contractCurrencies it declares, or else the first it declares.
+func Currencies(declaration paymentprovider.Declaration) []string {
+	var currencies []string
+	for _, currency := range contractCurrencies {
+		if declaration.Charges(currency) {
+			currencies = append(currencies, currency)
+		}
+	}
+	if len(currencies) == 0 && len(declaration.Currencies) > 0 {
+		currencies = append(currencies, declaration.Currencies[0])
+	}
+	return currencies
+}
+
+// RunParse checks that the fixture's provider reads its notifications, in
+// every currency [Currencies] answers for it.
 func RunParse(t *testing.T, fixture Fixture) {
+	t.Run("the declaration names the signature header and required fields", func(t *testing.T) {
+		declaration := fixture.Provider().Declaration()
+		if declaration.SignatureHeader == "" {
+			t.Fatal("SignatureHeader is empty")
+		}
+		if missing := declaration.Missing(fixture.Credentials()); len(missing) > 0 {
+			t.Fatalf("fixture credentials miss required fields %v", missing)
+		}
+	})
+	for _, currency := range Currencies(fixture.Provider().Declaration()) {
+		t.Run(currency, func(t *testing.T) {
+			runParse(t, fixture, currency)
+		})
+	}
+}
+
+func runParse(t *testing.T, fixture Fixture, currency string) {
 	provider := fixture.Provider()
 	credentials := fixture.Credentials()
 	checkout := Checkout{
@@ -68,6 +110,7 @@ func RunParse(t *testing.T, fixture Fixture) {
 			ReaderID:           uuid.New(),
 			EpisodeID:          uuid.New(),
 			Price:              500,
+			Currency:           currency,
 			ReadingPeriodHours: 72,
 		},
 	}
@@ -110,8 +153,8 @@ func RunParse(t *testing.T, fixture Fixture) {
 		}
 	})
 
-	t.Run("a refund names its payment and amount", func(t *testing.T) {
-		payload, headers := fixture.Refunded(t, credentials, Refund{PaymentID: checkout.PaymentID, AmountRefunded: 200})
+	t.Run("a refund names its payment, amount, and currency", func(t *testing.T) {
+		payload, headers := fixture.Refunded(t, credentials, Refund{PaymentID: checkout.PaymentID, Currency: currency, AmountRefunded: 200})
 		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
 		if err != nil {
 			t.Fatalf("ParseNotification: %v", err)
@@ -120,8 +163,8 @@ func RunParse(t *testing.T, fixture Fixture) {
 		if !ok {
 			t.Fatalf("event = %T, want Refunded", event)
 		}
-		if refunded.PaymentID != checkout.PaymentID || refunded.AmountRefunded != 200 || refunded.Currency != "JPY" {
-			t.Fatalf("refund = %+v, want payment %q, 200 JPY", refunded, checkout.PaymentID)
+		if refunded.PaymentID != checkout.PaymentID || refunded.AmountRefunded != 200 || refunded.Currency != currency {
+			t.Fatalf("refund = %+v, want payment %q, 200 %s", refunded, checkout.PaymentID, currency)
 		}
 	})
 
@@ -149,23 +192,14 @@ func RunParse(t *testing.T, fixture Fixture) {
 			t.Fatalf("ParseNotification error = %v, want ErrInvalidSignature", err)
 		}
 	})
-
-	t.Run("the declaration names the signature header and required fields", func(t *testing.T) {
-		declaration := provider.Declaration()
-		if declaration.SignatureHeader == "" {
-			t.Fatal("SignatureHeader is empty")
-		}
-		if missing := declaration.Missing(credentials); len(missing) > 0 {
-			t.Fatalf("fixture credentials miss required fields %v", missing)
-		}
-	})
 }
 
 // Harness is the purchase flow a provider's notifications are delivered to.
 type Harness interface {
-	// NewTenant answers a new tenant that takes payments through provider
-	// with credentials, with one reader and one episode priced at 500 yen.
-	NewTenant(t *testing.T, provider paymentprovider.Provider, credentials paymentprovider.Credentials) Tenant
+	// NewTenant answers a new tenant that sells in currency and takes payments
+	// through provider with credentials, with one reader and one episode
+	// priced at 500 in the currency's minor unit.
+	NewTenant(t *testing.T, provider paymentprovider.Provider, credentials paymentprovider.Credentials, currency string) Tenant
 }
 
 // Tenant is one tenant of a [Harness].
@@ -191,16 +225,33 @@ type Tenant interface {
 	HeldRefunds(t *testing.T) int
 }
 
-// Run checks the purchase flow against the fixture's notifications.
+// Run checks the purchase flow against the fixture's notifications, for a
+// tenant in every currency [Currencies] answers for the provider.
 func Run(t *testing.T, harness Harness, fixture Fixture) {
+	for _, currency := range Currencies(fixture.Provider().Declaration()) {
+		t.Run(currency, func(t *testing.T) {
+			run(t, harness, fixture, currency)
+		})
+	}
+}
+
+func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	provider := fixture.Provider()
 	credentials := fixture.Credentials()
+	newTenant := func(t *testing.T, credentials paymentprovider.Credentials) Tenant {
+		return harness.NewTenant(t, provider, credentials, currency)
+	}
+	// A provider's ids are unique across tenants, so each currency's run names
+	// checkouts and payments of its own.
+	id := func(name string) string {
+		return name + "_" + strings.ToLower(currency)
+	}
 
 	t.Run("a completed checkout creates one purchase however often it is delivered", func(t *testing.T) {
-		tenant := harness.NewTenant(t, provider, credentials)
+		tenant := newTenant(t, credentials)
 		payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{
-			CheckoutID: "checkout_redelivered",
-			PaymentID:  "payment_redelivered",
+			CheckoutID: id("checkout_redelivered"),
+			PaymentID:  id("payment_redelivered"),
 			Purchase:   tenant.Purchase(),
 		})
 		for delivery := range 3 {
@@ -214,10 +265,10 @@ func Run(t *testing.T, harness Harness, fixture Fixture) {
 	})
 
 	t.Run("a live-mode checkout opens the episode and is a sale", func(t *testing.T) {
-		tenant := harness.NewTenant(t, provider, credentials)
+		tenant := newTenant(t, credentials)
 		payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{
-			CheckoutID: "checkout_live",
-			PaymentID:  "payment_live",
+			CheckoutID: id("checkout_live"),
+			PaymentID:  id("payment_live"),
 			Purchase:   tenant.Purchase(),
 		})
 		if err := tenant.Deliver(t, payload, headers); err != nil {
@@ -235,10 +286,10 @@ func Run(t *testing.T, harness Harness, fixture Fixture) {
 	})
 
 	t.Run("a test-mode checkout opens the episode and is no sale", func(t *testing.T) {
-		tenant := harness.NewTenant(t, provider, credentials)
+		tenant := newTenant(t, credentials)
 		payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{
-			CheckoutID: "checkout_test_mode",
-			PaymentID:  "payment_test_mode",
+			CheckoutID: id("checkout_test_mode"),
+			PaymentID:  id("payment_test_mode"),
 			Purchase:   tenant.Purchase(),
 			Test:       true,
 		})
@@ -257,8 +308,8 @@ func Run(t *testing.T, harness Harness, fixture Fixture) {
 	})
 
 	t.Run("a refund before its purchase is held and applied later", func(t *testing.T) {
-		tenant := harness.NewTenant(t, provider, credentials)
-		refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: "payment_early", AmountRefunded: 500})
+		tenant := newTenant(t, credentials)
+		refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: id("payment_early"), Currency: currency, AmountRefunded: 500})
 		if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
 			t.Fatalf("refund: %v", err)
 		}
@@ -266,8 +317,8 @@ func Run(t *testing.T, harness Harness, fixture Fixture) {
 			t.Fatalf("held refunds = %d, want 1", got)
 		}
 		checkout, checkoutHeaders := fixture.CheckoutCompleted(t, credentials, Checkout{
-			CheckoutID: "checkout_early",
-			PaymentID:  "payment_early",
+			CheckoutID: id("checkout_early"),
+			PaymentID:  id("payment_early"),
 			Purchase:   tenant.Purchase(),
 		})
 		if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
@@ -282,17 +333,17 @@ func Run(t *testing.T, harness Harness, fixture Fixture) {
 	})
 
 	t.Run("partial refunds close the purchase once they reach its price", func(t *testing.T) {
-		tenant := harness.NewTenant(t, provider, credentials)
+		tenant := newTenant(t, credentials)
 		checkout, checkoutHeaders := fixture.CheckoutCompleted(t, credentials, Checkout{
-			CheckoutID: "checkout_partial",
-			PaymentID:  "payment_partial",
+			CheckoutID: id("checkout_partial"),
+			PaymentID:  id("payment_partial"),
 			Purchase:   tenant.Purchase(),
 		})
 		if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
 			t.Fatalf("checkout: %v", err)
 		}
 		for _, total := range []int64{200, 500} {
-			refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: "payment_partial", AmountRefunded: total})
+			refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: id("payment_partial"), Currency: currency, AmountRefunded: total})
 			if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
 				t.Fatalf("refund to %d: %v", total, err)
 			}
@@ -303,10 +354,10 @@ func Run(t *testing.T, harness Harness, fixture Fixture) {
 	})
 
 	t.Run("a notification with a bad signature is refused", func(t *testing.T) {
-		tenant := harness.NewTenant(t, provider, credentials)
+		tenant := newTenant(t, credentials)
 		payload, headers := fixture.CheckoutCompleted(t, fixture.OtherCredentials(), Checkout{
-			CheckoutID: "checkout_forged",
-			PaymentID:  "payment_forged",
+			CheckoutID: id("checkout_forged"),
+			PaymentID:  id("payment_forged"),
 			Purchase:   tenant.Purchase(),
 		})
 		if err := tenant.Deliver(t, payload, headers); err == nil {
@@ -318,11 +369,11 @@ func Run(t *testing.T, harness Harness, fixture Fixture) {
 	})
 
 	t.Run("a checkout naming another tenant creates nothing", func(t *testing.T) {
-		tenant := harness.NewTenant(t, provider, credentials)
-		other := harness.NewTenant(t, provider, fixture.OtherCredentials())
+		tenant := newTenant(t, credentials)
+		other := newTenant(t, fixture.OtherCredentials())
 		payload, headers := fixture.CheckoutCompleted(t, credentials, Checkout{
-			CheckoutID: "checkout_crossed",
-			PaymentID:  "payment_crossed",
+			CheckoutID: id("checkout_crossed"),
+			PaymentID:  id("payment_crossed"),
 			Purchase:   other.Purchase(),
 		})
 		if err := tenant.Deliver(t, payload, headers); err == nil {

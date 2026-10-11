@@ -10,7 +10,8 @@ INSERT INTO store_purchase_intents (
     episode_id,
     price,
     product_id,
-    reading_period_hours
+    reading_period_hours,
+    currency
 )
 VALUES (
     sqlc.arg('id'),
@@ -19,7 +20,8 @@ VALUES (
     sqlc.arg('episode_id'),
     sqlc.arg('price'),
     sqlc.arg('product_id'),
-    sqlc.narg('reading_period_hours')
+    sqlc.narg('reading_period_hours'),
+    sqlc.arg('currency')
 )
 ON CONFLICT (tenant_id, user_id, episode_id, product_id) WHERE consumed_at IS NULL DO
 UPDATE
@@ -62,7 +64,8 @@ INSERT INTO purchases (
     expires_at,
     store,
     store_transaction_id,
-    is_test
+    is_test,
+    currency
 )
 VALUES (
     sqlc.arg('id'),
@@ -73,7 +76,8 @@ VALUES (
     sqlc.narg('expires_at'),
     sqlc.arg('store')::text,
     sqlc.arg('store_transaction_id')::text,
-    sqlc.arg('is_test')
+    sqlc.arg('is_test'),
+    sqlc.arg('currency')
 )
 ON CONFLICT (tenant_id, store, store_transaction_id) DO NOTHING
 RETURNING *;
@@ -82,6 +86,7 @@ RETURNING *;
 -- One purchase of the reader's, shaped as the library lists it.
 SELECT p.id,
     p.price_at_purchase,
+    p.currency,
     p.expires_at,
     p.refunded_at,
     p.purchased_at,

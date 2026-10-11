@@ -33,10 +33,38 @@ func testEncryptor(t *testing.T) *secretcrypto.Manager {
 type memoryPaymentQueries struct {
 	mu       sync.Mutex
 	byTenant map[uuid.UUID]dbmodels.TenantPaymentConfig
+	// purchased holds the tenants that have a purchase.
+	purchased map[uuid.UUID]bool
+	// platformCurrency is the platform's default currency.
+	platformCurrency string
 }
 
+// testPlatformCurrency is the default currency of the platform the memory
+// queries answer for.
+const testPlatformCurrency = "JPY"
+
 func newMemoryPaymentQueries() *memoryPaymentQueries {
-	return &memoryPaymentQueries{byTenant: make(map[uuid.UUID]dbmodels.TenantPaymentConfig)}
+	return &memoryPaymentQueries{
+		byTenant:         make(map[uuid.UUID]dbmodels.TenantPaymentConfig),
+		purchased:        make(map[uuid.UUID]bool),
+		platformCurrency: testPlatformCurrency,
+	}
+}
+
+func (m *memoryPaymentQueries) GetPlatformDefaultCurrency(context.Context) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.platformCurrency, nil
+}
+
+func (*memoryPaymentQueries) LockTenantCurrency(context.Context, uuid.UUID) error {
+	return nil
+}
+
+func (m *memoryPaymentQueries) TenantHasPurchases(_ context.Context, tenantID uuid.UUID) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.purchased[tenantID], nil
 }
 
 func (m *memoryPaymentQueries) GetTenantPaymentConfigByTenantID(_ context.Context, tenantID uuid.UUID) (dbmodels.TenantPaymentConfig, error) {
@@ -69,6 +97,7 @@ func (m *memoryPaymentQueries) UpsertTenantPaymentConfig(_ context.Context, arg 
 		Enabled:              arg.Enabled,
 		CredentialsEncrypted: arg.CredentialsEncrypted,
 		CredentialHints:      arg.CredentialHints,
+		Currency:             arg.Currency,
 		CreatedAt:            existing.CreatedAt,
 		UpdatedAt:            existing.UpdatedAt,
 	}
@@ -141,6 +170,7 @@ func testRegistry() *paymentprovider.Registry {
 				{Name: cardPublishableKey, Public: true, Required: true},
 				{Name: cardShopID},
 			},
+			Currencies: []string{"JPY"},
 		}},
 	)
 }
