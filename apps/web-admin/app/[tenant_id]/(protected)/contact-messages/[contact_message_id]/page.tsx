@@ -45,6 +45,8 @@ import {
   getContactMessage,
   listContactMessageAssignees,
 } from "#lib/contact-message";
+import { getTenantInboundEmailSettings } from "#lib/inbound-email-settings";
+import type { TenantInboundEmailSettingsResult } from "#lib/inbound-email-settings";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
@@ -53,6 +55,7 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { ContactMessageAssignment } from "./_components/contact-message-assignment";
 import { ContactMessageDetail } from "./_components/contact-message-detail";
 import { ContactMessageExchange } from "./_components/contact-message-exchange";
+import type { ContactMessageReplyRoute } from "./_components/contact-message-reply-form";
 import { ContactMessageStaffNote } from "./_components/contact-message-staff-note";
 
 type ContactMessageDetailPageProps =
@@ -80,6 +83,15 @@ const contactMessageParamsSchema = z.object({
   contact_message_id: routeParamString(),
 });
 
+const contactMessageReplyRoute = (
+  result: TenantInboundEmailSettingsResult
+): ContactMessageReplyRoute => {
+  if (!result.ok) {
+    return "unknown";
+  }
+  return result.settings.ready ? "inbound" : "staff";
+};
+
 const DetailSkeleton = () => (
   <AdminSection>
     <SkeletonLine className="h-5 w-24" />
@@ -99,11 +111,18 @@ const ContactMessageDetailContent = async ({
   }
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const [result, timeZone, assigneesResult, currentUser] = await Promise.all([
+  const [
+    result,
+    timeZone,
+    assigneesResult,
+    currentUser,
+    inboundEmailSettingsResult,
+  ] = await Promise.all([
     getContactMessage(tenantId, locale, parsedParams.contact_message_id),
     getTenantDisplayTimeZone(tenantId),
     listContactMessageAssignees(tenantId, locale),
     verifyAdminSession(tenantId),
+    getTenantInboundEmailSettings(tenantId, locale),
   ]);
 
   if (!result.ok) {
@@ -139,7 +158,10 @@ const ContactMessageDetailContent = async ({
     );
   }
 
-  await redirectToLoginIfSessionRejected(assigneesResult);
+  await redirectToLoginIfSessionRejected(
+    assigneesResult,
+    inboundEmailSettingsResult
+  );
 
   return (
     <AdminSections>
@@ -152,6 +174,7 @@ const ContactMessageDetailContent = async ({
       <ContactMessageExchange
         contactMessage={result.contactMessage}
         locale={locale}
+        replyRoute={contactMessageReplyRoute(inboundEmailSettingsResult)}
         tenantId={tenantId}
         timeZone={timeZone}
       />

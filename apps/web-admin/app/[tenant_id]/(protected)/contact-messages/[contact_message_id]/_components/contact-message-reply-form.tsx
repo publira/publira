@@ -21,24 +21,33 @@ import type { ContactMessageItem } from "../../contact-message-types";
 import { CONTACT_MESSAGE_REPLY_MAX_LENGTH } from "../../contact-message-types";
 import { replyToContactMessageAction } from "../_lib/actions";
 
+/**
+ * Where the reader's reply to an answer comes back: under the message once the
+ * tenant's inbound email is ready, because the answer's `Reply-To` is then the
+ * message's own address on the inbound domain, and to the account address of
+ * whoever answered otherwise. `unknown` is settings that could not be read,
+ * for which the hint names neither, since either could send staff to the wrong
+ * mailbox.
+ */
+export type ContactMessageReplyRoute = "inbound" | "staff" | "unknown";
+
 interface ContactMessageReplyFormProps {
   contactMessage: Pick<
     ContactMessageItem,
     "entryCount" | "id" | "publicId" | "replyToEmail"
   >;
+  replyRoute: ContactMessageReplyRoute;
   tenantId: string;
 }
 
 /**
  * The answer a member of staff sends from the console, under the exchange it
- * joins.
- *
- * The reader's reply comes back to the account address of whoever answered,
- * because that is the `Reply-To` the API gives the mail, so the hint says so
- * rather than leaving staff to guess which mailbox to watch.
+ * joins, with a hint that says where the reader's reply will come back rather
+ * than leaving staff to guess which mailbox to watch.
  */
 export const ContactMessageReplyForm = ({
   contactMessage,
+  replyRoute,
   tenantId,
 }: ContactMessageReplyFormProps) => (
   <ActionForm
@@ -73,6 +82,7 @@ export const ContactMessageReplyForm = ({
                 values={{
                   count: String(CONTACT_MESSAGE_REPLY_MAX_LENGTH),
                   email: contactMessage.replyToEmail,
+                  reply_route: replyRoute,
                 }}
               />
             </Suspense>

@@ -179,7 +179,7 @@ Where a reader's reply goes depends on whether the **Inbound email** section of 
 - **Until it is Ready**, the answer's reply address is your own account's email address. The reader's reply arrives in your own mailbox. It is not recorded in the console, and the message stays **Handled**: answer from your mail, or from the console again.
 - **Once it is Ready**, the reply address is one of the site's own, made for that message. The reader's reply is recorded under **Answers and replies** as "Reply from" their address, the message is reopened, and the Tenant admins are mailed as for a new message.
 
-The hint under **Answer** always describes the first case ([#3802](https://github.com/publira/publira/issues/3802)).
+The hint under **Answer** says which of the two applies to the tenant.
 
 ### Keeping track
 
