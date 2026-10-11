@@ -748,7 +748,11 @@ func TestAdminMfaConfirmsAConcurrentEnrollmentOnce(t *testing.T) {
 	errs := make([]error, len(codes))
 	for i, code := range codes {
 		wg.Go(func() {
-			responses[i], errs[i] = env.authClient().ConfirmMfaEnrollment(signedIn, &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest{
+			// A context of its own per call: connect resets the CallInfo a
+			// client context carries at the start of every call, so two calls
+			// sharing signedIn would write its header maps at once.
+			ctx := testutil.WithBearer(context.Background(), tenant.token())
+			responses[i], errs[i] = env.authClient().ConfirmMfaEnrollment(ctx, &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest{
 				Tenant: tenant.tenantContext(),
 				Code:   code,
 			})
