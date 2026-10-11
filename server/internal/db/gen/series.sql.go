@@ -568,14 +568,11 @@ SELECT s.id,
                 )
             FROM episodes e
                 JOIN episode_listings el ON el.episode_id = e.id
-                JOIN episode_surfaces es ON es.episode_id = e.id
+                JOIN published_episode_surfaces pes ON pes.episode_id = e.id
                 JOIN episode_purchase_availability epa ON epa.episode_id = e.id
                 LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
             WHERE e.series_id = s.id
-                AND es.surface = $1::text
-                AND el.status = 'published'
-                AND el.published_at IS NOT NULL
-                AND el.published_at <= NOW()
+                AND pes.surface = $1::text
         ),
         '[]'
     )::jsonb AS episodes

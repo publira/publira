@@ -165,42 +165,25 @@ SELECT e.id,
     (
         SELECT COUNT(*)
         FROM episodes later
-            JOIN episode_listings ll ON ll.episode_id = later.id
         WHERE later.series_id = e.series_id
             AND (later.order_index, later.id) > (e.order_index, e.id)
-            AND ll.status = 'published'
-            AND ll.published_at IS NOT NULL
-            AND ll.published_at <= NOW()
             AND EXISTS (
                 SELECT 1
-                FROM episode_surfaces les
-                WHERE les.episode_id = later.id
-                    AND les.surface = $1::text
+                FROM published_episode_surfaces lpes
+                WHERE lpes.episode_id = later.id
+                    AND lpes.surface = $1::text
             )
     )::int4 AS later_episode_count
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
-    JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $2
     AND e.id = $3
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
     AND EXISTS (
         SELECT 1
-        FROM series_surfaces ss
-        WHERE ss.series_id = s.id
-            AND ss.surface = $1::text
-    )
-    AND EXISTS (
-        SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = $1::text
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = $1::text
     )
 LIMIT 1
 `
@@ -278,21 +261,17 @@ SELECT at.episode_id,
     at.expires_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
-    JOIN episode_listings el ON el.episode_id = e.id
 WHERE at.tenant_id = $1
     AND at.user_id = $2
     AND e.series_id = $3
     AND at.source = 'wait_free'
     AND at.revoked_at IS NULL
     AND at.expires_at > NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
     AND EXISTS (
         SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = $4::text
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = $4::text
     )
 ORDER BY at.expires_at ASC,
     at.id ASC

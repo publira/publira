@@ -278,8 +278,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		isPublished := publicAccess.IsPublished.Valid && publicAccess.IsPublished.Bool
-		if !isPublished || !publicAccess.HasPublicAccess {
+		if !publicAccess.IsPublished || !publicAccess.HasPublicAccess {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
@@ -428,8 +427,7 @@ func (h *Handler) grantedEpisodeImage(
 	if claims.EpisodeID != "" && claims.EpisodeID != access.EpisodeID.String() {
 		return nil, nil
 	}
-	isPublished := access.IsPublished.Valid && access.IsPublished.Bool
-	if !isPublished || !access.HasAccess {
+	if !access.IsPublished || !access.HasAccess {
 		return nil, nil
 	}
 	// The token names the reader, so the rule is checked against the account it

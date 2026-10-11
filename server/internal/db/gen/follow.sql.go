@@ -279,23 +279,15 @@ FROM (
     FROM series_follows sf
         JOIN episodes e ON e.tenant_id = sf.tenant_id
             AND e.series_id = sf.series_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
     WHERE sf.tenant_id = $1
         AND sf.user_id = $2
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = $3::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = $3::text
         )
     UNION
     SELECT e.series_id,
@@ -309,23 +301,15 @@ FROM (
             AND ec.creator_id = cf.creator_id
         JOIN episodes e ON e.tenant_id = ec.tenant_id
             AND e.id = ec.episode_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
     WHERE cf.tenant_id = $1
         AND cf.user_id = $2
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = $3::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = $3::text
         )
 ) AS updates
 WHERE $4::timestamptz IS NULL
@@ -423,23 +407,15 @@ FROM (
     FROM series_follows sf
         JOIN episodes e ON e.tenant_id = sf.tenant_id
             AND e.series_id = sf.series_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
     WHERE sf.tenant_id = $1
         AND sf.user_id = $2
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = $3::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = $3::text
         )
     UNION
     SELECT e.series_id,
@@ -453,23 +429,15 @@ FROM (
             AND ec.creator_id = cf.creator_id
         JOIN episodes e ON e.tenant_id = ec.tenant_id
             AND e.id = ec.episode_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
     WHERE cf.tenant_id = $1
         AND cf.user_id = $2
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = $3::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = $3::text
         )
 ) AS updates
 WHERE $4::timestamptz IS NULL
@@ -523,8 +491,8 @@ type ListMyFollowUpdatesDescRow struct {
 // so a member who follows both a series and one of its creators sees the
 // episode once.
 //
-// Publication is re-checked on both the series and the listing, and the
-// calling surface on the episode, so the list never names something the
+// Publication and the calling surface are re-checked through
+// published_episode_surfaces, so the list never names something the
 // storefront has taken down or the surface may not show; that is the same rule
 // ListMyEpisodeReads applies to a history entry.
 //
@@ -636,23 +604,13 @@ const ListPublishedEpisodeFollowTargetPublicIDsByIDs = `-- name: ListPublishedEp
 SELECT e.id,
     e.public_id
 FROM episodes e
-    JOIN series s ON s.tenant_id = e.tenant_id
-        AND s.id = e.series_id
-    JOIN episode_listings el ON el.tenant_id = e.tenant_id
-        AND el.episode_id = e.id
 WHERE e.tenant_id = $1
     AND e.id = ANY($2::uuid [])
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
     AND EXISTS (
         SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = $3::text
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = $3::text
     )
 `
 
@@ -754,23 +712,13 @@ FROM (
     FROM episode_follows ef
         JOIN episodes e ON e.tenant_id = ef.tenant_id
             AND e.id = ef.episode_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
-        JOIN episode_listings el ON el.tenant_id = e.tenant_id
-            AND el.episode_id = e.id
     WHERE ef.tenant_id = $1
         AND ef.user_id = $2
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = $3::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = $3::text
         )
     UNION ALL
     SELECT 'creator'::text AS target_type,
@@ -902,23 +850,13 @@ FROM (
     FROM episode_follows ef
         JOIN episodes e ON e.tenant_id = ef.tenant_id
             AND e.id = ef.episode_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
-        JOIN episode_listings el ON el.tenant_id = e.tenant_id
-            AND el.episode_id = e.id
     WHERE ef.tenant_id = $1
         AND ef.user_id = $2
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = $3::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = $3::text
         )
     UNION ALL
     SELECT 'creator'::text AS target_type,
@@ -1097,24 +1035,14 @@ SELECT EXISTS (
     FROM episode_follows ef
         JOIN episodes e ON e.tenant_id = ef.tenant_id
             AND e.id = ef.episode_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
-        JOIN episode_listings el ON el.tenant_id = e.tenant_id
-            AND el.episode_id = e.id
     WHERE ef.tenant_id = $1
         AND ef.user_id = $2
         AND ef.episode_id = $3
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = $4::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = $4::text
         )
 ) AS follows_published_episode
 `

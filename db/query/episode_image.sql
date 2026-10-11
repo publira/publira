@@ -73,13 +73,13 @@ SELECT ei.id,
     ei.episode_id,
     eiv.object_key,
     eiv.content_type,
-    (
-        s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
+    -- Whether a reader can open the episode on any surface. image-server
+    -- serves both and is told neither, so a page is withheld only from an
+    -- episode that published_episode_surfaces opens nowhere.
+    EXISTS (
+        SELECT 1
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
     ) AS is_published,
     reader_may_open_episode(s.tenant_id, sqlc.arg('user_id')::uuid, e.id) AS has_access,
     -- The two halves of the tenant's age rule, handed back rather than decided
@@ -99,7 +99,6 @@ JOIN LATERAL (
 ) eiv ON true
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
-    JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN tenant_config tc ON tc.tenant_id = s.tenant_id
 WHERE ei.id = sqlc.arg('id')
@@ -133,13 +132,11 @@ SELECT ei.id,
     ei.episode_id,
     eiv.object_key,
     eiv.content_type,
-    (
-        s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
+    -- On any surface, for the reason GetEpisodeImageAccessByIDForUser gives.
+    EXISTS (
+        SELECT 1
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
     ) AS is_published,
     (fe.episode_id IS NOT NULL)::boolean AS has_public_access,
     -- When the body is public only because a window is open, this is the
@@ -161,7 +158,6 @@ JOIN LATERAL (
 ) eiv ON true
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
-    JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN tenant_config tc ON tc.tenant_id = s.tenant_id
     LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
@@ -214,13 +210,11 @@ SELECT ei.id,
     ei.episode_id,
     eiv.object_key,
     eiv.content_type,
-    (
-        s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
+    -- On any surface, for the reason GetEpisodeImageAccessByIDForUser gives.
+    EXISTS (
+        SELECT 1
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
     ) AS is_published
 FROM episode_images ei
 JOIN LATERAL (
@@ -232,7 +226,6 @@ JOIN LATERAL (
 ) eiv ON true
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
-    JOIN episode_listings el ON el.episode_id = e.id
 WHERE ei.id = sqlc.arg('id')
     AND s.tenant_id = sqlc.arg('tenant_id')
     AND ei.id IN (

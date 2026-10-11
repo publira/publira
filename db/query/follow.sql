@@ -64,23 +64,13 @@ FROM (
     FROM episode_follows ef
         JOIN episodes e ON e.tenant_id = ef.tenant_id
             AND e.id = ef.episode_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
-        JOIN episode_listings el ON el.tenant_id = e.tenant_id
-            AND el.episode_id = e.id
     WHERE ef.tenant_id = sqlc.arg('tenant_id')
         AND ef.user_id = sqlc.arg('user_id')
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = sqlc.arg('surface')::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = sqlc.arg('surface')::text
         )
     UNION ALL
     SELECT 'creator'::text AS target_type,
@@ -162,23 +152,13 @@ FROM (
     FROM episode_follows ef
         JOIN episodes e ON e.tenant_id = ef.tenant_id
             AND e.id = ef.episode_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
-        JOIN episode_listings el ON el.tenant_id = e.tenant_id
-            AND el.episode_id = e.id
     WHERE ef.tenant_id = sqlc.arg('tenant_id')
         AND ef.user_id = sqlc.arg('user_id')
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = sqlc.arg('surface')::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = sqlc.arg('surface')::text
         )
     UNION ALL
     SELECT 'creator'::text AS target_type,
@@ -253,23 +233,13 @@ LIMIT sqlc.arg('limit');
 SELECT e.id,
     e.public_id
 FROM episodes e
-    JOIN series s ON s.tenant_id = e.tenant_id
-        AND s.id = e.series_id
-    JOIN episode_listings el ON el.tenant_id = e.tenant_id
-        AND el.episode_id = e.id
 WHERE e.tenant_id = sqlc.arg('tenant_id')
     AND e.id = ANY(sqlc.arg('ids')::uuid [])
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
     AND EXISTS (
         SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = sqlc.arg('surface')::text
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = sqlc.arg('surface')::text
     );
 
 -- name: ListPublishedCreatorFollowTargetPublicIDsByIDs :many
@@ -320,24 +290,14 @@ SELECT EXISTS (
     FROM episode_follows ef
         JOIN episodes e ON e.tenant_id = ef.tenant_id
             AND e.id = ef.episode_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
-        JOIN episode_listings el ON el.tenant_id = e.tenant_id
-            AND el.episode_id = e.id
     WHERE ef.tenant_id = sqlc.arg('tenant_id')
         AND ef.user_id = sqlc.arg('user_id')
         AND ef.episode_id = sqlc.arg('episode_id')
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = sqlc.arg('surface')::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = sqlc.arg('surface')::text
         )
 ) AS follows_published_episode;
 
@@ -465,8 +425,8 @@ LIMIT sqlc.arg('limit');
 -- so a member who follows both a series and one of its creators sees the
 -- episode once.
 --
--- Publication is re-checked on both the series and the listing, and the
--- calling surface on the episode, so the list never names something the
+-- Publication and the calling surface are re-checked through
+-- published_episode_surfaces, so the list never names something the
 -- storefront has taken down or the surface may not show; that is the same rule
 -- ListMyEpisodeReads applies to a history entry.
 --
@@ -493,23 +453,15 @@ FROM (
     FROM series_follows sf
         JOIN episodes e ON e.tenant_id = sf.tenant_id
             AND e.series_id = sf.series_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
     WHERE sf.tenant_id = sqlc.arg('tenant_id')
         AND sf.user_id = sqlc.arg('user_id')
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = sqlc.arg('surface')::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = sqlc.arg('surface')::text
         )
     UNION
     SELECT e.series_id,
@@ -523,23 +475,15 @@ FROM (
             AND ec.creator_id = cf.creator_id
         JOIN episodes e ON e.tenant_id = ec.tenant_id
             AND e.id = ec.episode_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
     WHERE cf.tenant_id = sqlc.arg('tenant_id')
         AND cf.user_id = sqlc.arg('user_id')
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = sqlc.arg('surface')::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = sqlc.arg('surface')::text
         )
 ) AS updates
 WHERE sqlc.narg('cursor_published_at')::timestamptz IS NULL
@@ -579,23 +523,15 @@ FROM (
     FROM series_follows sf
         JOIN episodes e ON e.tenant_id = sf.tenant_id
             AND e.series_id = sf.series_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
     WHERE sf.tenant_id = sqlc.arg('tenant_id')
         AND sf.user_id = sqlc.arg('user_id')
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = sqlc.arg('surface')::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = sqlc.arg('surface')::text
         )
     UNION
     SELECT e.series_id,
@@ -609,23 +545,15 @@ FROM (
             AND ec.creator_id = cf.creator_id
         JOIN episodes e ON e.tenant_id = ec.tenant_id
             AND e.id = ec.episode_id
-        JOIN series s ON s.tenant_id = e.tenant_id
-            AND s.id = e.series_id
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
     WHERE cf.tenant_id = sqlc.arg('tenant_id')
         AND cf.user_id = sqlc.arg('user_id')
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = sqlc.arg('surface')::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = sqlc.arg('surface')::text
         )
 ) AS updates
 WHERE sqlc.narg('cursor_published_at')::timestamptz IS NULL

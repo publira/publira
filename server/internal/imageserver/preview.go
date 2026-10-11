@@ -71,7 +71,7 @@ func (h *Handler) handleGetEpisodePreviewImage(w http.ResponseWriter, r *http.Re
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	if !page.IsPublished.Valid || !page.IsPublished.Bool {
+	if !page.IsPublished {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}

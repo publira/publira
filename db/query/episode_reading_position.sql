@@ -24,21 +24,13 @@ WITH readable AS (
             WHERE ei.episode_id = e.id
         )::integer AS page_count
     FROM episodes e
-        JOIN series s ON s.id = e.series_id
-        JOIN episode_listings el ON el.episode_id = e.id
-    WHERE s.tenant_id = sqlc.arg('tenant_id')
+    WHERE e.tenant_id = sqlc.arg('tenant_id')
         AND e.id = sqlc.arg('episode_id')
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = sqlc.arg('surface')::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = sqlc.arg('surface')::text
         )
         AND reader_may_open_episode(sqlc.arg('tenant_id'), sqlc.arg('user_id')::uuid, e.id)
     LIMIT 1
@@ -78,22 +70,14 @@ SELECT e.public_id AS episode_public_id,
     rp.updated_at
 FROM episode_reading_positions rp
     JOIN episodes e ON e.id = rp.episode_id
-    JOIN series s ON s.id = e.series_id
-    JOIN episode_listings el ON el.episode_id = e.id
 WHERE rp.tenant_id = sqlc.arg('tenant_id')
     AND rp.user_id = sqlc.arg('user_id')
     AND e.id = sqlc.arg('episode_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
     AND EXISTS (
         SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = sqlc.arg('surface')::text
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = sqlc.arg('surface')::text
     )
     AND reader_may_open_episode(sqlc.arg('tenant_id'), sqlc.arg('user_id')::uuid, e.id)
 LIMIT 1;
@@ -131,23 +115,16 @@ SELECT e.id AS episode_id,
     ) AS is_finished
 FROM episode_reading_positions rp
     JOIN episodes e ON e.id = rp.episode_id
-    JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
 WHERE rp.tenant_id = sqlc.arg('tenant_id')
     AND rp.user_id = sqlc.arg('user_id')
-    AND s.id = sqlc.arg('series_id')
-    AND s.is_published = true
-    AND s.published_at IS NOT NULL
-    AND s.published_at <= NOW()
-    AND el.status = 'published'
-    AND el.published_at IS NOT NULL
-    AND el.published_at <= NOW()
+    AND e.series_id = sqlc.arg('series_id')
     AND EXISTS (
         SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = sqlc.arg('surface')::text
+        FROM published_episode_surfaces pes
+        WHERE pes.episode_id = e.id
+            AND pes.surface = sqlc.arg('surface')::text
     )
     AND reader_may_open_episode(sqlc.arg('tenant_id'), sqlc.arg('user_id')::uuid, e.id)
 ORDER BY rp.updated_at DESC,
@@ -206,20 +183,12 @@ touched_episodes AS (
         MAX(t.activity_at)::timestamptz AS activity_at
     FROM touched t
         JOIN episodes e ON e.id = t.episode_id
-        JOIN series s ON s.id = e.series_id
-        JOIN episode_listings el ON el.episode_id = e.id
     WHERE e.tenant_id = sqlc.arg('tenant_id')
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = sqlc.arg('surface')::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = sqlc.arg('surface')::text
         )
     GROUP BY e.series_id,
         e.id,
@@ -250,18 +219,14 @@ continue_from AS (
             ELSE (
                 SELECT n.id
                 FROM episodes n
-                    JOIN episode_listings nl ON nl.episode_id = n.id
                 WHERE n.tenant_id = sqlc.arg('tenant_id')
                     AND n.series_id = ce.series_id
                     AND (n.order_index, n.id) > (ce.order_index, ce.episode_id)
-                    AND nl.status = 'published'
-                    AND nl.published_at IS NOT NULL
-                    AND nl.published_at <= NOW()
                     AND EXISTS (
                         SELECT 1
-                        FROM episode_surfaces es
-                        WHERE es.episode_id = n.id
-                            AND es.surface = sqlc.arg('surface')::text
+                        FROM published_episode_surfaces pes
+                        WHERE pes.episode_id = n.id
+                            AND pes.surface = sqlc.arg('surface')::text
                     )
                     AND NOT EXISTS (
                         SELECT 1
@@ -343,20 +308,12 @@ touched_episodes AS (
         MAX(t.activity_at)::timestamptz AS activity_at
     FROM touched t
         JOIN episodes e ON e.id = t.episode_id
-        JOIN series s ON s.id = e.series_id
-        JOIN episode_listings el ON el.episode_id = e.id
     WHERE e.tenant_id = sqlc.arg('tenant_id')
-        AND s.is_published = true
-        AND s.published_at IS NOT NULL
-        AND s.published_at <= NOW()
-        AND el.status = 'published'
-        AND el.published_at IS NOT NULL
-        AND el.published_at <= NOW()
         AND EXISTS (
             SELECT 1
-            FROM episode_surfaces es
-            WHERE es.episode_id = e.id
-                AND es.surface = sqlc.arg('surface')::text
+            FROM published_episode_surfaces pes
+            WHERE pes.episode_id = e.id
+                AND pes.surface = sqlc.arg('surface')::text
         )
     GROUP BY e.series_id,
         e.id,
@@ -387,18 +344,14 @@ continue_from AS (
             ELSE (
                 SELECT n.id
                 FROM episodes n
-                    JOIN episode_listings nl ON nl.episode_id = n.id
                 WHERE n.tenant_id = sqlc.arg('tenant_id')
                     AND n.series_id = ce.series_id
                     AND (n.order_index, n.id) > (ce.order_index, ce.episode_id)
-                    AND nl.status = 'published'
-                    AND nl.published_at IS NOT NULL
-                    AND nl.published_at <= NOW()
                     AND EXISTS (
                         SELECT 1
-                        FROM episode_surfaces es
-                        WHERE es.episode_id = n.id
-                            AND es.surface = sqlc.arg('surface')::text
+                        FROM published_episode_surfaces pes
+                        WHERE pes.episode_id = n.id
+                            AND pes.surface = sqlc.arg('surface')::text
                     )
                     AND NOT EXISTS (
                         SELECT 1
