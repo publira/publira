@@ -8,7 +8,14 @@ import "publira/types/v1/types.proto";
 
 // AdminAccessTicket is a user-bound viewing grant for a single episode.
 // Distinct from purchases (payment); issued and revoked by tenant admins.
+// Only the tickets staff issued are AdminAccessTickets: a reader's
+// wait-for-free ticket is theirs, and no RPC here lists or revokes one.
 message AdminAccessTicket {
+  // Removed when wait-for-free tickets left this service: every ticket it
+  // returns is one staff issued.
+  reserved 15;
+  reserved "source";
+
   string public_id = 1;
   string episode_public_id = 2;
   string episode_title = 3;
@@ -26,10 +33,6 @@ message AdminAccessTicket {
   // active | expired | revoked
   string status = 13;
   string id = 14;
-  // staff | wait_free. A wait_free ticket is one the reader opened by using a
-  // wait-for-free ticket on the series, and IssueAccessTicket neither returns
-  // one as an existing ticket nor is blocked by it.
-  string source = 15;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

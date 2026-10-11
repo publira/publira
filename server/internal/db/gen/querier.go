@@ -420,6 +420,9 @@ type Querier interface {
 	// the second updates nothing. Affecting no row is therefore an enrollment
 	// another request has already confirmed.
 	EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (int64, error)
+	// The console handles only the tickets staff issued. A wait-for-free ticket is
+	// one the reader took themselves, so the console neither lists it nor revokes
+	// it, and looking one up here finds nothing.
 	GetAccessTicketForTenant(ctx context.Context, arg GetAccessTicketForTenantParams) (GetAccessTicketForTenantRow, error)
 	// Return the first tenant that matches admin_domain, or the admin.{domain}
 	// fallback, keeping the order of the candidate host names.
@@ -1086,10 +1089,10 @@ type Querier interface {
 	InsertTenantRetentionSettings(ctx context.Context, arg InsertTenantRetentionSettingsParams) (TenantRetentionSetting, error)
 	ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error)
 	// Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
-	// query; backward uses ASC so idx_access_tickets_tenant_created_at can be
+	// query; backward uses ASC so idx_access_tickets_staff_tenant_created_at can be
 	// scanned in reverse. The handler flips ASC rows back into display order.
 	// id is a UUIDv7, so the order stays unique even when created_at ties.
-	// cursor rules: proto/README.md.
+	// cursor rules: proto/README.md. Staff tickets only, as GetAccessTicketForTenant.
 	ListAccessTicketsForTenantDesc(ctx context.Context, arg ListAccessTicketsForTenantDescParams) ([]ListAccessTicketsForTenantDescRow, error)
 	// Display data for the published series, narrowed by tenant id and by the
 	// surface the caller names.
@@ -2599,6 +2602,8 @@ type Querier interface {
 	// It is due at once and charges no attempt: the retry budget is for
 	// failures, and an event large enough to need many runs is not failing.
 	ResumeOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
+	// Staff tickets only, as GetAccessTicketForTenant: revoking a wait-for-free
+	// ticket would take away a read the reader was entitled to.
 	RevokeAccessTicketForTenant(ctx context.Context, arg RevokeAccessTicketForTenantParams) (AccessTicket, error)
 	// Stores where the reader stopped, after checking publication and body access
 	// in the same statement, so a viewer that saves on its way out cannot write a

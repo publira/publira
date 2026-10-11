@@ -23,6 +23,9 @@ RETURNING id,
     source;
 
 -- name: GetAccessTicketForTenant :one
+-- The console handles only the tickets staff issued. A wait-for-free ticket is
+-- one the reader took themselves, so the console neither lists it nor revokes
+-- it, and looking one up here finds nothing.
 SELECT at.id,
     at.tenant_id,
     at.public_id,
@@ -39,21 +42,21 @@ SELECT at.id,
     at.revoked_at,
     at.note,
     at.created_by_user_id,
-    at.created_at,
-    at.source
+    at.created_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
     AND at.id = $2
+    AND at.source = 'staff'
 LIMIT 1;
 
 -- Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
--- query; backward uses ASC so idx_access_tickets_tenant_created_at can be
+-- query; backward uses ASC so idx_access_tickets_staff_tenant_created_at can be
 -- scanned in reverse. The handler flips ASC rows back into display order.
 -- id is a UUIDv7, so the order stays unique even when created_at ties.
--- cursor rules: proto/README.md.
+-- cursor rules: proto/README.md. Staff tickets only, as GetAccessTicketForTenant.
 -- name: ListAccessTicketsForTenantDesc :many
 SELECT at.id,
     at.tenant_id,
@@ -71,13 +74,13 @@ SELECT at.id,
     at.revoked_at,
     at.note,
     at.created_by_user_id,
-    at.created_at,
-    at.source
+    at.created_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = sqlc.arg('tenant_id')
+    AND at.source = 'staff'
     AND (
         sqlc.narg('user_id')::uuid IS NULL
         OR at.user_id = sqlc.narg('user_id')::uuid
@@ -128,13 +131,13 @@ SELECT at.id,
     at.revoked_at,
     at.note,
     at.created_by_user_id,
-    at.created_at,
-    at.source
+    at.created_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = sqlc.arg('tenant_id')
+    AND at.source = 'staff'
     AND (
         sqlc.narg('user_id')::uuid IS NULL
         OR at.user_id = sqlc.narg('user_id')::uuid
@@ -169,11 +172,14 @@ ORDER BY at.created_at ASC,
 LIMIT sqlc.arg('limit');
 
 -- name: RevokeAccessTicketForTenant :one
+-- Staff tickets only, as GetAccessTicketForTenant: revoking a wait-for-free
+-- ticket would take away a read the reader was entitled to.
 UPDATE access_tickets
 SET revoked_at = NOW()
 WHERE tenant_id = $1
     AND id = $2
     AND revoked_at IS NULL
+    AND source = 'staff'
 RETURNING id,
     tenant_id,
     public_id,
