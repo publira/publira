@@ -112,6 +112,51 @@ func TestPlatformSetKeepsTheDefaultCurrencyATenantHasSoldIn(t *testing.T) {
 	mustPlatformCommand(t, "set", "--default-currency", "EUR")
 }
 
+// The web apps cache a tenant's currency with the rest of its public settings,
+// so a change of the default owes a drop of that entry to every tenant that
+// sells in the default, and to no other. A save that keeps the currency owes
+// none.
+func TestPlatformSetOwesTheSitesInTheDefaultCurrencyADrop(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+
+	inherits := pg.SeedTenant(t, "INHERITSTNT1", "inherits.example.com", "Inherits")
+	own := pg.SeedTenant(t, "OWNCURRENCY1", "own.example.com", "Own Currency")
+	if _, err := pg.DB.ExecContext(context.Background(), `
+		INSERT INTO tenant_payment_config (tenant_id, provider, currency) VALUES ($1, 'stripe', 'JPY')
+	`, own.ID); err != nil {
+		t.Fatalf("save the tenant's own currency: %v", err)
+	}
+	drops := func(tenantID string) int {
+		t.Helper()
+		var count int
+		if err := pg.DB.QueryRowContext(context.Background(), `
+			SELECT COUNT(*)
+			FROM outbox_events
+			WHERE event_type = 'next_cache_revalidation'
+				AND tenant_id = $1::uuid
+				AND payload->'tags' = jsonb_build_array('tenant:' || $1 || ':site')
+		`, tenantID).Scan(&count); err != nil {
+			t.Fatalf("count the drops owed to %s: %v", tenantID, err)
+		}
+		return count
+	}
+
+	mustPlatformCommand(t, "set", "--default-locale", "en", "--default-currency", "EUR")
+	if got := drops(inherits.ID.String()); got != 1 {
+		t.Fatalf("drops owed to the tenant in the default currency = %d, want 1", got)
+	}
+	if got := drops(own.ID.String()); got != 0 {
+		t.Fatalf("drops owed to the tenant with its own currency = %d, want 0", got)
+	}
+
+	mustPlatformCommand(t, "set", "--default-locale", "ja")
+	if got := drops(inherits.ID.String()); got != 1 {
+		t.Fatalf("drops after a save that keeps the currency = %d, want still 1", got)
+	}
+}
+
 // A refusal names its flag, and nothing is written.
 func TestPlatformSetNamesTheRefusedFlag(t *testing.T) {
 	pg := testutil.StartPostgres(t)

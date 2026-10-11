@@ -135,6 +135,8 @@ func TestUpdatePlatformSettingsPersistsTheDefaultCurrency(t *testing.T) {
 		WillReturnRows(platformConfigRow("UTC", "en", 2, now))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.PlatformCurrencyHasSales)).
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantIDsInDefaultCurrency)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSettings)).
 		WithArgs("UTC", "en", "EUR").
 		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "UTC", "en", now, now, int64(3), "EUR"))

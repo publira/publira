@@ -2066,6 +2066,10 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error)
 	ListTenantEmailRejectionEntries(ctx context.Context, tenantID uuid.UUID) ([]string, error)
+	// Every tenant that sells in the platform's default currency, having saved no
+	// payment settings of its own, and whose site therefore shows its prices in
+	// it. Read as publira_platform, which bypasses RLS.
+	ListTenantIDsInDefaultCurrency(ctx context.Context) ([]uuid.UUID, error)
 	// The theme carries the icon and the logo together, so both images' variants
 	// are read in one statement rather than one query per slot.
 	ListTenantImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListTenantImageVariantsByImageIDsRow, error)

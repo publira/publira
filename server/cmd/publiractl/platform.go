@@ -12,6 +12,7 @@ import (
 	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -76,7 +77,7 @@ func setupPlatformSet(f *commandFlags) func(context.Context, *commandEnv) error 
 		if given["default-currency"] {
 			params.DefaultCurrency = *defaultCurrency
 		}
-		saved, err := platformconfig.Save(ctx, db, env.logger, auditlog.SystemPlatformActor, params)
+		saved, err := platformconfig.Save(ctx, db, env.logger, auditlog.SystemPlatformActor, params, revalidate.RecordSiteDrop)
 		if err != nil {
 			return platformError(err)
 		}

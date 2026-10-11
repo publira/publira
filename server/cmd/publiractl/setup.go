@@ -25,6 +25,7 @@ import (
 	"github.com/publira/publira/server/internal/platformsmtp"
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/platformtenants"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/secretupdate"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
@@ -327,7 +328,7 @@ func (r *setupRun) platformStep(ctx context.Context) error {
 	if params.DefaultTimezone, err = r.value("default-timezone", "Default time zone", r.flags.defaultTimezone, defTimezone, true); err != nil {
 		return err
 	}
-	saved, err := platformconfig.Save(ctx, r.db, r.env.logger, auditlog.SystemPlatformActor, params)
+	saved, err := platformconfig.Save(ctx, r.db, r.env.logger, auditlog.SystemPlatformActor, params, revalidate.RecordSiteDrop)
 	if err != nil {
 		return named(err, platformFlags)
 	}

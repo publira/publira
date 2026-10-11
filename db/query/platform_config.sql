@@ -37,6 +37,19 @@ SELECT EXISTS (
             )
     );
 
+-- name: ListTenantIDsInDefaultCurrency :many
+-- Every tenant that sells in the platform's default currency, having saved no
+-- payment settings of its own, and whose site therefore shows its prices in
+-- it. Read as publira_platform, which bypasses RLS.
+SELECT t.id
+FROM tenants t
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM tenant_payment_config c
+        WHERE c.tenant_id = t.id
+    )
+ORDER BY t.id;
+
 -- name: InsertPlatformSettings :one
 -- Creates the settings row with the platform default time zone, locale, and
 -- currency.

@@ -7,6 +7,8 @@ package dbmodels
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const GetPlatformConfig = `-- name: GetPlatformConfig :one
@@ -84,6 +86,43 @@ func (q *Queries) InsertPlatformSettings(ctx context.Context, arg InsertPlatform
 		&i.DefaultCurrency,
 	)
 	return i, err
+}
+
+const ListTenantIDsInDefaultCurrency = `-- name: ListTenantIDsInDefaultCurrency :many
+SELECT t.id
+FROM tenants t
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM tenant_payment_config c
+        WHERE c.tenant_id = t.id
+    )
+ORDER BY t.id
+`
+
+// Every tenant that sells in the platform's default currency, having saved no
+// payment settings of its own, and whose site therefore shows its prices in
+// it. Read as publira_platform, which bypasses RLS.
+func (q *Queries) ListTenantIDsInDefaultCurrency(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, ListTenantIDsInDefaultCurrency)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const LockPlatformConfig = `-- name: LockPlatformConfig :one

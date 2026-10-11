@@ -10,6 +10,7 @@ import (
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
@@ -83,7 +84,7 @@ func (s *platformServer) UpdatePlatformSettings(
 		return nil, err
 	}
 
-	updated, err := platformconfig.Save(ctx, s.db, s.logger, actor, params)
+	updated, err := platformconfig.Save(ctx, s.db, s.logger, actor, params, revalidate.RecordSiteDrop)
 	if err != nil {
 		return nil, s.platformSettingsError(ctx, err)
 	}

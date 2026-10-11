@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/google/uuid"
 	"golang.org/x/text/currency"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -56,6 +57,12 @@ type SaveParams struct {
 	ExpectedRevision *int64
 }
 
+// SiteRevalidator records on q, inside the transaction of a save, that the
+// site cache entry of tenantID is owed a drop. Every caller passes
+// [revalidate.RecordSiteDrop]; it is handed in rather than imported because
+// the outbox that function writes to reads this package's defaults.
+type SiteRevalidator func(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID) error
+
 // Validate normalizes p, or refuses it with a [*fielderr.Invalid], without
 // reading anything.
 func (p SaveParams) Validate() (SaveParams, error) {
@@ -99,8 +106,9 @@ func normalizeCurrency(value string) (string, error) {
 // Save writes p in one transaction on db, with its entry filed under actor.
 // The row is locked first, so the revision it compares against cannot change
 // between the comparison and the write. A save that changes no stored value
-// writes nothing and files nothing.
-func Save(ctx context.Context, db *sql.DB, logger *slog.Logger, actor auditlog.PlatformActor, p SaveParams) (dbmodels.PlatformConfig, error) {
+// writes nothing and files nothing. A save that changes the default currency
+// records with revalidateSite a drop for each tenant that sells in it.
+func Save(ctx context.Context, db *sql.DB, logger *slog.Logger, actor auditlog.PlatformActor, p SaveParams, revalidateSite SiteRevalidator) (dbmodels.PlatformConfig, error) {
 	p, err := p.Validate()
 	if err != nil {
 		return dbmodels.PlatformConfig{}, err
@@ -112,7 +120,7 @@ func Save(ctx context.Context, db *sql.DB, logger *slog.Logger, actor auditlog.P
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
-	saved, changed, err := write(ctx, q, p)
+	saved, changed, err := write(ctx, q, p, revalidateSite)
 	if err != nil || !changed {
 		return saved, err
 	}
@@ -130,7 +138,7 @@ func Save(ctx context.Context, db *sql.DB, logger *slog.Logger, actor auditlog.P
 	return saved, nil
 }
 
-func write(ctx context.Context, q *dbmodels.Queries, p SaveParams) (dbmodels.PlatformConfig, bool, error) {
+func write(ctx context.Context, q *dbmodels.Queries, p SaveParams, revalidateSite SiteRevalidator) (dbmodels.PlatformConfig, bool, error) {
 	current, err := q.LockPlatformConfig(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Any revision but zero was read from a row that has since been
@@ -142,7 +150,7 @@ func write(ctx context.Context, q *dbmodels.Queries, p SaveParams) (dbmodels.Pla
 		if defaultCurrency == "" {
 			defaultCurrency = DefaultCurrency
 		}
-		if err := refuseLockedCurrencyChange(ctx, q, DefaultCurrency, defaultCurrency); err != nil {
+		if err := prepareCurrencyChange(ctx, q, DefaultCurrency, defaultCurrency, revalidateSite); err != nil {
 			return dbmodels.PlatformConfig{}, false, err
 		}
 		inserted, err := q.InsertPlatformSettings(ctx, dbmodels.InsertPlatformSettingsParams{
@@ -172,7 +180,7 @@ func write(ctx context.Context, q *dbmodels.Queries, p SaveParams) (dbmodels.Pla
 	if current.DefaultTimezone == p.DefaultTimezone && current.DefaultLocale == p.DefaultLocale && current.DefaultCurrency == p.DefaultCurrency {
 		return current, false, nil
 	}
-	if err := refuseLockedCurrencyChange(ctx, q, current.DefaultCurrency, p.DefaultCurrency); err != nil {
+	if err := prepareCurrencyChange(ctx, q, current.DefaultCurrency, p.DefaultCurrency, revalidateSite); err != nil {
 		return dbmodels.PlatformConfig{}, false, err
 	}
 	updated, err := q.UpdatePlatformSettings(ctx, dbmodels.UpdatePlatformSettingsParams{
@@ -186,10 +194,16 @@ func write(ctx context.Context, q *dbmodels.Queries, p SaveParams) (dbmodels.Pla
 	return updated, true, nil
 }
 
-// refuseLockedCurrencyChange answers [ErrDefaultCurrencyLocked] for a change
-// from current to next while a tenant that sells in the default currency has a
+// prepareCurrencyChange answers [ErrDefaultCurrencyLocked] for a change from
+// current to next while a tenant that sells in the default currency has a
 // purchase.
-func refuseLockedCurrencyChange(ctx context.Context, q *dbmodels.Queries, current, next string) error {
+//
+// A change it lets through owes every tenant that sells in the default
+// currency a drop of its site cache entry, recorded with revalidateSite so
+// that it commits with the change: the web apps cache the tenant's currency
+// with the rest of its public settings, and until the entry goes they show
+// and read its prices as amounts in the currency it no longer sells in.
+func prepareCurrencyChange(ctx context.Context, q *dbmodels.Queries, current, next string, revalidateSite SiteRevalidator) error {
 	if current == next {
 		return nil
 	}
@@ -199,6 +213,15 @@ func refuseLockedCurrencyChange(ctx context.Context, q *dbmodels.Queries, curren
 	}
 	if locked {
 		return fmt.Errorf("%w: %s is stored", ErrDefaultCurrencyLocked, current)
+	}
+	tenantIDs, err := q.ListTenantIDsInDefaultCurrency(ctx)
+	if err != nil {
+		return fmt.Errorf("list tenants in the default currency: %w", err)
+	}
+	for _, tenantID := range tenantIDs {
+		if err := revalidateSite(ctx, q, tenantID); err != nil {
+			return fmt.Errorf("record the site revalidation of tenant %s: %w", tenantID, err)
+		}
 	}
 	return nil
 }
