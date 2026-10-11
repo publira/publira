@@ -94,11 +94,7 @@ func (s *platformServer) UpdatePlatformSettings(
 	if err != nil {
 		return nil, s.platformSettingsError(ctx, err)
 	}
-	currencyLocked, err := platformconfig.CurrencyLocked(ctx, s.queriesFor(ctx))
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to read whether the default currency is locked", err)
-	}
-	settings, err := platformSettingsFromConfig(updated, currencyLocked)
+	settings, err := platformSettingsFromConfig(updated.PlatformConfig, updated.CurrencyLocked)
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to resolve platform settings", err)
 	}

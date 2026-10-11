@@ -143,26 +143,43 @@ func normalizeCurrency(value string) (string, error) {
 	return unit.String(), nil
 }
 
+// Saved is the settings row a save leaves stored.
+type Saved struct {
+	dbmodels.PlatformConfig
+	// CurrencyLocked reports whether a save that changes DefaultCurrency is
+	// refused with [ErrDefaultCurrencyLocked]. It is read inside the save's
+	// transaction, so a save that commits always has it to answer.
+	CurrencyLocked bool
+}
+
 // Save writes p in one transaction on db, with its entry filed under actor.
 // The row is locked first, so the revision it compares against cannot change
 // between the comparison and the write. A save that changes no stored value
 // writes nothing and files nothing. A save that changes the default currency
 // records with revalidateSite a drop for each tenant that sells in it.
-func Save(ctx context.Context, db *sql.DB, logger *slog.Logger, actor auditlog.PlatformActor, p SaveParams, revalidateSite SiteRevalidator) (dbmodels.PlatformConfig, error) {
+func Save(ctx context.Context, db *sql.DB, logger *slog.Logger, actor auditlog.PlatformActor, p SaveParams, revalidateSite SiteRevalidator) (Saved, error) {
 	p, err := p.Validate()
 	if err != nil {
-		return dbmodels.PlatformConfig{}, err
+		return Saved{}, err
 	}
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return dbmodels.PlatformConfig{}, fmt.Errorf("begin: %w", err)
+		return Saved{}, fmt.Errorf("begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
-	saved, changed, err := write(ctx, q, p, revalidateSite)
-	if err != nil || !changed {
-		return saved, err
+	config, changed, err := write(ctx, q, p, revalidateSite)
+	if err != nil {
+		return Saved{}, err
+	}
+	locked, err := CurrencyLocked(ctx, q)
+	if err != nil {
+		return Saved{}, err
+	}
+	saved := Saved{PlatformConfig: config, CurrencyLocked: locked}
+	if !changed {
+		return saved, nil
 	}
 	if err := auditlog.WritePlatform(ctx, q, logger, actor.Entry(auditlog.PlatformEntry{
 		Action:     "platform_settings_updated",
@@ -170,10 +187,10 @@ func Save(ctx context.Context, db *sql.DB, logger *slog.Logger, actor auditlog.P
 		TargetID:   "platform",
 		Outcome:    auditlog.OutcomeSuccess,
 	})); err != nil {
-		return dbmodels.PlatformConfig{}, fmt.Errorf("audit platform_settings_updated: %w", err)
+		return Saved{}, fmt.Errorf("audit platform_settings_updated: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
-		return dbmodels.PlatformConfig{}, fmt.Errorf("commit: %w", err)
+		return Saved{}, fmt.Errorf("commit: %w", err)
 	}
 	return saved, nil
 }

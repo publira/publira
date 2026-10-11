@@ -337,7 +337,7 @@ func (r *setupRun) platformStep(ctx context.Context) error {
 		return named(err, platformFlags)
 	}
 	r.platformLocale, r.platformTimezone = saved.DefaultLocale, saved.DefaultTimezone
-	r.done("Platform defaults", outcome(found, stored.Revision, saved.Revision), platformDefaultsDetail(saved))
+	r.done("Platform defaults", outcome(found, stored.Revision, saved.Revision), platformDefaultsDetail(saved.PlatformConfig))
 	return nil
 }
 

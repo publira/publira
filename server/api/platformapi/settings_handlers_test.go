@@ -102,8 +102,8 @@ func TestGetPlatformSettingsFailsOnAnUnsupportedStoredLocale(t *testing.T) {
 }
 
 // expectPlatformSettingsWrite expects the whole save: the settings row locked
-// for update, the write over it, its audit entry, and the commit that ends the
-// transaction.
+// for update, the write over it, the read of whether the default currency is
+// locked, its audit entry, and the commit that ends the transaction.
 func expectPlatformSettingsWrite(
 	mock sqlmock.Sqlmock,
 	storedRevision int64,
@@ -116,9 +116,9 @@ func expectPlatformSettingsWrite(
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSettings)).
 		WithArgs(timezone, defaultLocale, testPlatformCurrency).
 		WillReturnRows(platformConfigRow(timezone, defaultLocale, storedRevision+1, now))
+	expectDefaultCurrencyLock(mock, false)
 	expectOperatorAuditLogInsert(mock)
 	mock.ExpectCommit()
-	expectDefaultCurrencyLock(mock, false)
 }
 
 func TestUpdatePlatformSettingsPersistsTimezone(t *testing.T) {
@@ -162,9 +162,9 @@ func TestUpdatePlatformSettingsPersistsTheDefaultCurrency(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSettings)).
 		WithArgs("UTC", "en", "EUR").
 		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "UTC", "en", now, now, int64(3), "EUR"))
+	expectDefaultCurrencyLock(mock, false)
 	expectOperatorAuditLogInsert(mock)
 	mock.ExpectCommit()
-	expectDefaultCurrencyLock(mock, false)
 
 	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: "UTC",
@@ -361,6 +361,34 @@ func TestUpdatePlatformSettingsRejectsMissingLocale(t *testing.T) {
 	}
 }
 
+// The answer to whether the default currency is locked is read inside the
+// save's transaction. A save that cannot read it commits nothing, so a client
+// is never told a save failed that was in fact committed, and its retry with
+// the same revision goes through.
+func TestUpdatePlatformSettingsCommitsNothingWhenTheLockCannotBeRead(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now()
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
+		WillReturnRows(platformConfigRow("Europe/Berlin", "ja", 1, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSettings)).
+		WithArgs("America/Los_Angeles", "ja", testPlatformCurrency).
+		WillReturnRows(platformConfigRow("America/Los_Angeles", "ja", 2, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.PlatformCurrencyHasSales)).
+		WillReturnError(errors.New("connection reset by peer"))
+	mock.ExpectRollback()
+
+	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
+		DefaultTimezone:  "America/Los_Angeles",
+		DefaultLocale:    "ja",
+		ExpectedRevision: 1,
+	})
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("UpdatePlatformSettings code = %v, want internal (err=%v)", connect.CodeOf(err), err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
 func TestUpdatePlatformSettingsWritesTimezoneAndLocaleAtomically(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -419,9 +447,9 @@ func TestUpdatePlatformSettingsCreatesTheRowForRevisionZero(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertPlatformSettings)).
 		WithArgs("America/Los_Angeles", "en", platformconfig.DefaultCurrency).
 		WillReturnRows(platformConfigRow("America/Los_Angeles", "en", 1, now))
+	expectDefaultCurrencyLock(mock, false)
 	expectOperatorAuditLogInsert(mock)
 	mock.ExpectCommit()
-	expectDefaultCurrencyLock(mock, false)
 
 	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  "America/Los_Angeles",
@@ -502,10 +530,10 @@ func TestUpdatePlatformSettingsLeavesAnUnchangedRowAlone(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformConfig)).
 		WillReturnRows(platformConfigRow("Europe/Berlin", "ja", 5, time.Now()))
-	mock.ExpectRollback()
 	// A save that keeps the currency is not refused for it, and still answers
 	// whether one that changes it would be.
 	expectDefaultCurrencyLock(mock, true)
+	mock.ExpectRollback()
 
 	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), &publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone:  " Europe/Berlin ",
