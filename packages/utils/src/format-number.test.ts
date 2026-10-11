@@ -5,6 +5,7 @@ import {
   currencyFractionDigits,
   formatPercent,
   formatPrice,
+  listSupportedCurrencies,
 } from "./format-number";
 
 describe("formatPercent", () => {
@@ -70,5 +71,15 @@ describe("currencyDisplayName", () => {
   it("names a currency in the UI locale", () => {
     expect(currencyDisplayName("USD", { locale: "en" })).toBe("US Dollar");
     expect(currencyDisplayName("JPY", { locale: "ja" })).toBe("日本円");
+  });
+});
+
+describe("listSupportedCurrencies", () => {
+  it("lists the runtime's ISO 4217 codes in order of code", () => {
+    const currencies = listSupportedCurrencies();
+
+    expect(currencies).toContain("JPY");
+    expect(currencies).toContain("USD");
+    expect(currencies).toEqual(currencies.toSorted());
   });
 });

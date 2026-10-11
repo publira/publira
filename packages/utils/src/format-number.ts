@@ -116,6 +116,22 @@ export const currencyDisplayName = (
   return names.of(currency) ?? currency;
 };
 
+let cachedCurrencies: readonly string[] | undefined;
+
+/**
+ * ISO 4217 codes of the currencies the runtime knows, sorted by code, for a
+ * list an operator chooses one from. It is the option list rather than the
+ * definition of a valid value: the Go server decides what it stores, and a
+ * code listed here can still be refused there.
+ *
+ * Memoized, as `listSupportedTimeZones` is: the list changes only with the
+ * runtime's ICU data.
+ */
+export const listSupportedCurrencies = (): readonly string[] => {
+  cachedCurrencies ??= Intl.supportedValuesOf("currency").toSorted();
+  return cachedCurrencies;
+};
+
 /**
  * Format an amount the API sends — an integer in the minor unit of
  * `currency` — as that currency: `500` is `¥500` in JPY and `$5.00` in USD.
