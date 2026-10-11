@@ -114,23 +114,20 @@ func TestEpisodePublishedNotificationReachesTheFollowersInTheDatabase(t *testing
 		t.Fatalf("notifications after redelivery = %d, want 2", notifications)
 	}
 
-	if !episodeAnnounced(t, ctx, pg, published.ID) {
-		t.Error("the published episode is not marked announced")
-	}
-	if episodeAnnounced(t, ctx, pg, draft.ID) {
-		t.Error("the draft episode is marked announced")
+	if announcementOwed(t, ctx, pg, published.ID) {
+		t.Error("the announced episode still owes its announcement")
 	}
 }
 
-func episodeAnnounced(t *testing.T, ctx context.Context, pg *testutil.PostgresEnv, episodeID uuid.UUID) bool {
+func announcementOwed(t *testing.T, ctx context.Context, pg *testutil.PostgresEnv, episodeID uuid.UUID) bool {
 	t.Helper()
-	var announced bool
+	var owed bool
 	if err := pg.DB.QueryRowContext(ctx,
-		"SELECT announced_at IS NOT NULL FROM episode_listings WHERE episode_id = $1", episodeID,
-	).Scan(&announced); err != nil {
+		"SELECT announcement_owed FROM episode_listings WHERE episode_id = $1", episodeID,
+	).Scan(&owed); err != nil {
 		t.Fatalf("read episode listing: %v", err)
 	}
-	return announced
+	return owed
 }
 
 // A credited creator can be followed through another series that is public,
@@ -221,10 +218,10 @@ func TestEpisodePublishedNotificationReachesNobodyWhileReadersCannotOpenTheEpiso
 	if pushes != 0 {
 		t.Fatalf("member push events = %d, want 0", pushes)
 	}
-	// Each is still owed its announcement, for when a reader can open it.
+	// Each still owes its announcement, for when a reader can open it.
 	for _, episodeID := range episodes {
-		if episodeAnnounced(t, ctx, pg, episodeID) {
-			t.Errorf("episode %s is marked announced while no reader can open it", episodeID)
+		if !announcementOwed(t, ctx, pg, episodeID) {
+			t.Errorf("episode %s owes no announcement while no reader can open it", episodeID)
 		}
 	}
 }

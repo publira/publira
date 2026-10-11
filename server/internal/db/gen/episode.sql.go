@@ -1754,7 +1754,7 @@ SET price = EXCLUDED.price,
     status = EXCLUDED.status,
     scheduled_at = EXCLUDED.scheduled_at,
     published_at = EXCLUDED.published_at
-RETURNING episode_id, price, reading_period_hours, status, scheduled_at, published_at, tenant_id, announced_at
+RETURNING episode_id, price, reading_period_hours, status, scheduled_at, published_at, tenant_id, announcement_owed
 `
 
 type UpsertEpisodeListingParams struct {
@@ -1786,7 +1786,7 @@ func (q *Queries) UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeLis
 		&i.ScheduledAt,
 		&i.PublishedAt,
 		&i.TenantID,
-		&i.AnnouncedAt,
+		&i.AnnouncementOwed,
 	)
 	return i, err
 }

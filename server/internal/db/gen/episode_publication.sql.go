@@ -154,36 +154,6 @@ func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) 
 	return items, nil
 }
 
-const MarkEpisodeAnnounced = `-- name: MarkEpisodeAnnounced :exec
-UPDATE episode_listings el
-SET announced_at = NOW()
-WHERE el.tenant_id = $1
-    AND el.episode_id = $2
-    AND el.announced_at IS NULL
-    AND EXISTS (
-        SELECT 1
-        FROM published_episode_surfaces pes
-        WHERE pes.tenant_id = $1
-            AND pes.episode_id = $2
-    )
-`
-
-type MarkEpisodeAnnouncedParams struct {
-	TenantID  uuid.UUID `json:"tenant_id"`
-	EpisodeID uuid.UUID `json:"episode_id"`
-}
-
-// The follower fan-out's record that it told the episode's followers, written
-// only when a reader can open the episode now: the same rule
-// ListEpisodeFollowerIDs gates the fan-out on, read from the same view. An
-// episode the fan-out answered nobody for is left unannounced, so publishing
-// its series later announces it then. A second fan-out over the same episode
-// keeps the first one's time.
-func (q *Queries) MarkEpisodeAnnounced(ctx context.Context, arg MarkEpisodeAnnouncedParams) error {
-	_, err := q.db.ExecContext(ctx, MarkEpisodeAnnounced, arg.TenantID, arg.EpisodeID)
-	return err
-}
-
 const MarkEpisodePublished = `-- name: MarkEpisodePublished :execrows
 UPDATE episode_listings
 SET status = 'published',
@@ -237,6 +207,33 @@ func (q *Queries) PublishEpisodeNowByIDForTenant(ctx context.Context, arg Publis
 	return result.RowsAffected()
 }
 
+const RecordEpisodeAnnouncement = `-- name: RecordEpisodeAnnouncement :exec
+UPDATE episode_listings el
+SET announcement_owed = NOT EXISTS (
+        SELECT 1
+        FROM published_episode_surfaces pes
+        WHERE pes.tenant_id = $1
+            AND pes.episode_id = $2
+    )
+WHERE el.tenant_id = $1
+    AND el.episode_id = $2
+`
+
+type RecordEpisodeAnnouncementParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// The follower fan-out's record of what it could announce, read from the
+// view ListEpisodeFollowerIDs gates the fan-out on: an episode no reader can
+// open now owes its followers the announcement the fan-out could not make, and
+// publishing its series later makes it then; one a reader can open owes
+// nothing any more.
+func (q *Queries) RecordEpisodeAnnouncement(ctx context.Context, arg RecordEpisodeAnnouncementParams) error {
+	_, err := q.db.ExecContext(ctx, RecordEpisodeAnnouncement, arg.TenantID, arg.EpisodeID)
+	return err
+}
+
 const RedateEpisodesForSeriesPublication = `-- name: RedateEpisodesForSeriesPublication :many
 UPDATE episode_listings el
 SET published_at = GREATEST(el.published_at, s.published_at)
@@ -244,7 +241,7 @@ FROM series s
 WHERE s.tenant_id = $1
     AND s.id = $2
     AND el.tenant_id = s.tenant_id
-    AND el.announced_at IS NULL
+    AND el.announcement_owed
     AND el.episode_id IN (
         SELECT pes.episode_id
         FROM published_episode_surfaces pes
@@ -266,15 +263,16 @@ type RedateEpisodesForSeriesPublicationRow struct {
 }
 
 // The episodes a series becoming public owes an announcement: published while
-// it was not, so their followers were never told, and open to a reader now.
-// Each is dated from the series' publication instant, because no reader could
-// open it before then, unless its own publication came later still, as it
-// does under a series saved with an instant in the past.
+// no reader could open them, so their followers were never told, and open to a
+// reader now. Each is dated from the series' publication instant, because no
+// reader could open it before then, unless its own publication came later
+// still, as it does under a series saved with an instant in the past.
 //
 // The answer is the episodes the caller queues an announcement for, with the
 // instant that names this publication of the series. An episode already
-// announced while the series was public before is not among them and keeps
-// its date. A series that is not public yet answers no row, and the
+// announced while the series was public before owes nothing, so it is not
+// among them and keeps its date; the fan-out that announces one of these
+// clears what it owed. A series that is not public yet answers no row, and the
 // apply-series-publications job asks again once its instant has passed.
 func (q *Queries) RedateEpisodesForSeriesPublication(ctx context.Context, arg RedateEpisodesForSeriesPublicationParams) ([]RedateEpisodesForSeriesPublicationRow, error) {
 	rows, err := q.db.QueryContext(ctx, RedateEpisodesForSeriesPublication, arg.TenantID, arg.SeriesID)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"slices"
 	"testing"
 	"time"
@@ -16,10 +17,12 @@ import (
 )
 
 // A series taken private and given a new episode is published again by its
-// scheduled instant arriving. The new episode is dated from that instant and
-// announced, once, to the followers of the episode, the series, and its
-// credited Author; the episode announced while the series was public before
-// keeps its date and is not announced again.
+// scheduled instant arriving. The new episode, which the console's fan-out
+// could not announce while the series was private, is dated from that instant
+// and announced, once, to the followers of the episode, the series, and its
+// credited Author. The episode announced while the series was public before
+// owes nothing, as does any listing written outside the fan-out, so it keeps
+// its date and is not announced again.
 func TestRunOnceAnnouncesTheEpisodesAddedWhileTheSeriesWasPrivate(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -29,14 +32,10 @@ func TestRunOnceAnnouncesTheEpisodesAddedWhileTheSeriesWasPrivate(t *testing.T) 
 
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	tenant := pg.SeedTenant(t, "TENANTREPUB1", "republish.example.com", "Republish Tenant")
-	publishedAt := now.Add(-time.Minute)
-	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESREPUB1", Title: "Republished Series", Published: true, PublishedAt: publishedAt})
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESREPUB1", Title: "Republished Series"})
 	earlier := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
 		PublicID: "EPISODEREP01", Title: "Announced Before", Status: testutil.EpisodeStatusPublished, PublishedAt: now.Add(-48 * time.Hour),
 	})
-	if _, err := pg.DB.ExecContext(ctx, "UPDATE episode_listings SET announced_at = published_at WHERE episode_id = $1", earlier.ID); err != nil {
-		t.Fatalf("mark announced: %v", err)
-	}
 	added := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
 		PublicID: "EPISODEREP02", Title: "Added While Private", Status: testutil.EpisodeStatusPublished, PublishedAt: now.Add(-2 * time.Hour),
 	})
@@ -62,8 +61,24 @@ func TestRunOnceAnnouncesTheEpisodesAddedWhileTheSeriesWasPrivate(t *testing.T) 
 		}
 	}
 
-	// The logins the job and the handler run as in production, so a statement
-	// either one was never granted fails here.
+	// The handler runs as the login it runs as in production, so a statement
+	// it was never granted fails here. The console publishes the new episode
+	// while the series is private, and its fan-out reaches nobody.
+	handler := outbox.NewEpisodePublishedNotificationHandler(outbox.EpisodePublishedNotificationHandlerConfig{DB: pg.OpenOutboxDB(t)})
+	if err := handler(ctx, consolePublicationEvent(t, tenant.ID, added.ID)); err != nil {
+		t.Fatalf("console publication handler: %v", err)
+	}
+	if got := countNotifications(t, ctx, pg); got != 0 {
+		t.Fatalf("notifications while the series is private = %d, want 0", got)
+	}
+
+	// The series' scheduled instant passes.
+	publishedAt := now.Add(-time.Minute)
+	if _, err := pg.DB.ExecContext(ctx, "UPDATE series SET is_published = true, published_at = $2 WHERE id = $1", series.ID, publishedAt); err != nil {
+		t.Fatalf("publish series: %v", err)
+	}
+
+	// The job runs as its own login too.
 	ticker := dbmodels.New(pg.OpenTickerDB(t))
 	runner := New(ticker, nil, nil)
 	runner.RunOnce(ctx)
@@ -95,7 +110,6 @@ func TestRunOnceAnnouncesTheEpisodesAddedWhileTheSeriesWasPrivate(t *testing.T) 
 		t.Errorf("catalog index sync events = %d, want one for the series' new latest episode", syncs)
 	}
 
-	handler := outbox.NewEpisodePublishedNotificationHandler(outbox.EpisodePublishedNotificationHandlerConfig{DB: pg.OpenOutboxDB(t)})
 	if err := handler(ctx, event); err != nil {
 		t.Fatalf("announcement handler: %v", err)
 	}
@@ -149,4 +163,28 @@ func listingPublishedAt(t *testing.T, ctx context.Context, pg *testutil.Postgres
 		t.Fatalf("read episode listing: %v", err)
 	}
 	return publishedAt.Time
+}
+
+func consolePublicationEvent(t *testing.T, tenantID, episodeID uuid.UUID) dbmodels.OutboxEvent {
+	t.Helper()
+	payload, err := json.Marshal(outbox.EpisodePublishedNotificationPayload{TenantID: tenantID.String(), EpisodeID: episodeID.String()})
+	if err != nil {
+		t.Fatalf("encode payload: %v", err)
+	}
+	return dbmodels.OutboxEvent{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType:      outbox.EventTypeEpisodePublishedNotification,
+		Payload:        payload,
+		IdempotencyKey: outbox.EpisodePublishedIdempotencyKey(episodeID),
+	}
+}
+
+func countNotifications(t *testing.T, ctx context.Context, pg *testutil.PostgresEnv) int {
+	t.Helper()
+	var count int
+	if err := pg.DB.QueryRowContext(ctx, "SELECT count(*) FROM notifications").Scan(&count); err != nil {
+		t.Fatalf("count notifications: %v", err)
+	}
+	return count
 }

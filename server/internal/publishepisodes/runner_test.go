@@ -94,8 +94,8 @@ func TestPublishSuccessNotifiesEachFollowerOnce(t *testing.T) {
 		t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
 	}
 	assertFollowerPublishedNotifications(t, pg, env, env.follower.ID, episodeFollower.ID, env.admin.ID)
-	if !episodeAnnounced(t, pg, env.episode.ID) {
-		t.Fatal("the published episode is not marked announced")
+	if announcementOwed(t, pg, env.episode.ID) {
+		t.Fatal("the announced episode still owes its announcement")
 	}
 
 	r.RunOnce(ctx)
@@ -236,8 +236,8 @@ func TestPublishNotifiesNoFollowerOfAnEpisodeReadersCannotOpen(t *testing.T) {
 			if events := listMemberPushEvents(t, pg); len(events) != 0 {
 				t.Fatalf("member push events = %d, want 0", len(events))
 			}
-			if episodeAnnounced(t, pg, env.episode.ID) {
-				t.Fatal("an episode no reader can open is marked announced, want it still owed")
+			if !announcementOwed(t, pg, env.episode.ID) {
+				t.Fatal("an episode no reader can open owes no announcement, want it owed for when one can")
 			}
 		})
 	}
@@ -736,15 +736,15 @@ func listingStatus(t *testing.T, pg *testutil.PostgresEnv, episodeID uuid.UUID) 
 	return status
 }
 
-func episodeAnnounced(t *testing.T, pg *testutil.PostgresEnv, episodeID uuid.UUID) bool {
+func announcementOwed(t *testing.T, pg *testutil.PostgresEnv, episodeID uuid.UUID) bool {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	var announced bool
-	if err := pg.DB.QueryRowContext(ctx, `SELECT announced_at IS NOT NULL FROM episode_listings WHERE episode_id = $1`, episodeID).Scan(&announced); err != nil {
-		t.Fatalf("listing announced_at: %v", err)
+	var owed bool
+	if err := pg.DB.QueryRowContext(ctx, `SELECT announcement_owed FROM episode_listings WHERE episode_id = $1`, episodeID).Scan(&owed); err != nil {
+		t.Fatalf("listing announcement_owed: %v", err)
 	}
-	return announced
+	return owed
 }
 
 func assertFollowerPublishedNotifications(t *testing.T, pg *testutil.PostgresEnv, env publishTestEnv, recipientIDs ...uuid.UUID) {

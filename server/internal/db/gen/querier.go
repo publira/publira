@@ -2301,13 +2301,6 @@ type Querier interface {
 	// Upserts, so marking an already-read announcement refreshes read_at instead
 	// of failing. The SELECT confines the insert to the caller's own tenant.
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
-	// The follower fan-out's record that it told the episode's followers, written
-	// only when a reader can open the episode now: the same rule
-	// ListEpisodeFollowerIDs gates the fan-out on, read from the same view. An
-	// episode the fan-out answered nobody for is left unannounced, so publishing
-	// its series later announces it then. A second fan-out over the same episode
-	// keeps the first one's time.
-	MarkEpisodeAnnounced(ctx context.Context, arg MarkEpisodeAnnouncedParams) error
 	MarkEpisodeFreeWindowEndRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkEpisodeFreeWindowStartRevalidated(ctx context.Context, id uuid.UUID) error
 	// The scheduled publication job's promotion of an episode it listed as due.
@@ -2489,6 +2482,12 @@ type Querier interface {
 	// events before purged_before. It never moves the mark back, so a run under a
 	// period that was lengthened since cannot hide what an earlier run deleted.
 	RecordContentEventPurge(ctx context.Context, arg RecordContentEventPurgeParams) error
+	// The follower fan-out's record of what it could announce, read from the
+	// view ListEpisodeFollowerIDs gates the fan-out on: an episode no reader can
+	// open now owes its followers the announcement the fan-out could not make, and
+	// publishing its series later makes it then; one a reader can open owes
+	// nothing any more.
+	RecordEpisodeAnnouncement(ctx context.Context, arg RecordEpisodeAnnouncementParams) error
 	// RecordEpisodeReadProjection moves a tenant's projection instant forward, and
 	// starts the chain for a tenant it has not seen yet: every link is placed on
 	// start_through, so the first day each one rebuilds is the day after it.
@@ -2539,15 +2538,16 @@ type Querier interface {
 	// these rows no retry budget.
 	RecoverStaleProcessingOutboxEvents(ctx context.Context, staleBefore time.Time) ([]OutboxEvent, error)
 	// The episodes a series becoming public owes an announcement: published while
-	// it was not, so their followers were never told, and open to a reader now.
-	// Each is dated from the series' publication instant, because no reader could
-	// open it before then, unless its own publication came later still, as it
-	// does under a series saved with an instant in the past.
+	// no reader could open them, so their followers were never told, and open to a
+	// reader now. Each is dated from the series' publication instant, because no
+	// reader could open it before then, unless its own publication came later
+	// still, as it does under a series saved with an instant in the past.
 	//
 	// The answer is the episodes the caller queues an announcement for, with the
 	// instant that names this publication of the series. An episode already
-	// announced while the series was public before is not among them and keeps
-	// its date. A series that is not public yet answers no row, and the
+	// announced while the series was public before owes nothing, so it is not
+	// among them and keeps its date; the fan-out that announces one of these
+	// clears what it owed. A series that is not public yet answers no row, and the
 	// apply-series-publications job asks again once its instant has passed.
 	RedateEpisodesForSeriesPublication(ctx context.Context, arg RedateEpisodesForSeriesPublicationParams) ([]RedateEpisodesForSeriesPublicationRow, error)
 	// Recomputes the counter from the reports themselves, in the transaction that

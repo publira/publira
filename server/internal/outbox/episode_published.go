@@ -86,7 +86,7 @@ type EpisodeFollowerQuerier interface {
 	ListEpisodeFollowerIDs(ctx context.Context, arg dbmodels.ListEpisodeFollowerIDsParams) ([]uuid.UUID, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
-	MarkEpisodeAnnounced(ctx context.Context, arg dbmodels.MarkEpisodeAnnouncedParams) error
+	RecordEpisodeAnnouncement(ctx context.Context, arg dbmodels.RecordEpisodeAnnouncementParams) error
 }
 
 // NotifyEpisodeFollowers writes one notification per reader who asked to hear
@@ -101,10 +101,10 @@ type EpisodeFollowerQuerier interface {
 // shown on the app alone is listed in the app's inbox and pushed to the app,
 // and neither listed on the site nor sent as a Web Push.
 //
-// The episode is then marked announced, under the same rule, whether or not
-// anyone follows it. One the fan-out answered nobody for because its series
-// was not public stays unannounced, and [QueueSeriesPublicationAnnouncements]
-// queues its announcement once the series is.
+// The listing then records, under the same rule and whether or not anyone
+// follows the episode, whether the announcement is still owed. One the fan-out
+// answered nobody for because its series was not public owes it, and
+// [QueueSeriesPublicationAnnouncements] queues it once the series is.
 //
 // The recipients arrive a page at a time and the rows are written as each page
 // lands. The notification and the push both key on the episode, so a second
@@ -180,13 +180,13 @@ func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publi
 			return err
 		}
 	}
-	// Marked last, so a run that fails before this point leaves the episode
-	// owed and its retry writes the rows it had not reached.
-	if err := q.MarkEpisodeAnnounced(ctx, dbmodels.MarkEpisodeAnnouncedParams{
+	// Recorded last, so a run that fails before this point leaves what was
+	// owed as it was and its retry writes the rows it had not reached.
+	if err := q.RecordEpisodeAnnouncement(ctx, dbmodels.RecordEpisodeAnnouncementParams{
 		TenantID:  publication.TenantID,
 		EpisodeID: publication.EpisodeID,
 	}); err != nil {
-		return fmt.Errorf("mark episode announced: %w", err)
+		return fmt.Errorf("record episode announcement: %w", err)
 	}
 	return nil
 }
@@ -207,8 +207,8 @@ type SeriesPublicationQuerier interface {
 // It runs on the querier of the write that made the series public, or of the
 // apply-series-publications job once a scheduled instant has passed, so the
 // new dates reach the caches that write drops. An episode whose followers were
-// already told about it is not among them, and a series that is not public yet
-// queues nothing.
+// already told about it owes nothing and is not among them, and a series that
+// is not public yet queues nothing.
 func QueueSeriesPublicationAnnouncements(ctx context.Context, q SeriesPublicationQuerier, tenantID, seriesID uuid.UUID) (int, error) {
 	episodes, err := q.RedateEpisodesForSeriesPublication(ctx, dbmodels.RedateEpisodesForSeriesPublicationParams{
 		TenantID: tenantID,

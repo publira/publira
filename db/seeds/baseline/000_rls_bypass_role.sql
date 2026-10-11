@@ -371,8 +371,8 @@ GRANT SELECT ON
 TO publira_ticker;
 
 -- Writes: the listing a publish promotes, a series publication dates, or the
--- fan-out marks announced, the window boundary a drop answers for, and the
--- rows the fan-out files. SELECT rides along on the last three
+-- fan-out records an announcement on, the window boundary a drop answers for,
+-- and the rows the fan-out files. SELECT rides along on the last three
 -- because each insert is an ON CONFLICT DO NOTHING with a RETURNING clause.
 GRANT UPDATE ON episode_listings, episode_free_windows TO publira_ticker;
 -- The pinned flag is the one column expire-pinned-announcements writes, and an

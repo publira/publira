@@ -13,20 +13,29 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func episodeListingDates(t *testing.T, ctx context.Context, db *sql.DB, episodeID uuid.UUID) (publishedAt, announcedAt sql.NullTime) {
+func episodeListing(t *testing.T, ctx context.Context, db *sql.DB, episodeID uuid.UUID) (publishedAt sql.NullTime, owed bool) {
 	t.Helper()
 	if err := db.QueryRowContext(ctx,
-		"SELECT published_at, announced_at FROM episode_listings WHERE episode_id = $1", episodeID,
-	).Scan(&publishedAt, &announcedAt); err != nil {
+		"SELECT published_at, announcement_owed FROM episode_listings WHERE episode_id = $1", episodeID,
+	).Scan(&publishedAt, &owed); err != nil {
 		t.Fatalf("read episode listing: %v", err)
 	}
-	return publishedAt, announcedAt
+	return publishedAt, owed
 }
 
-// The fan-out marks an episode announced only when a reader can open it, so one
-// held back because its series was not public is still owed when the series
-// is published.
-func TestMarkEpisodeAnnouncedOnlyForAnEpisodeReadersCanOpen(t *testing.T) {
+func oweAnnouncement(t *testing.T, ctx context.Context, db *sql.DB, episodeIDs ...uuid.UUID) {
+	t.Helper()
+	for _, episodeID := range episodeIDs {
+		if _, err := db.ExecContext(ctx, "UPDATE episode_listings SET announcement_owed = true WHERE episode_id = $1", episodeID); err != nil {
+			t.Fatalf("owe announcement: %v", err)
+		}
+	}
+}
+
+// The fan-out records an episode no reader can open as owing its announcement,
+// so publishing its series later makes it, and one a reader can open as owing
+// nothing.
+func TestRecordEpisodeAnnouncementOwesItOnlyForAnEpisodeReadersCannotOpen(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -40,26 +49,31 @@ func TestMarkEpisodeAnnouncedOnlyForAnEpisodeReadersCanOpen(t *testing.T) {
 	open := pg.SeedEpisode(t, tenant.ID, public.ID, testutil.EpisodeSeed{PublicID: "EPISODEOPN01", Title: "Open", Status: testutil.EpisodeStatusPublished})
 	held := pg.SeedEpisode(t, tenant.ID, hidden.ID, testutil.EpisodeSeed{PublicID: "EPISODEHLD01", Title: "Held", Status: testutil.EpisodeStatusPublished})
 
-	for _, episodeID := range []uuid.UUID{open.ID, held.ID} {
-		if err := q.MarkEpisodeAnnounced(ctx, dbmodels.MarkEpisodeAnnouncedParams{TenantID: tenant.ID, EpisodeID: episodeID}); err != nil {
-			t.Fatalf("MarkEpisodeAnnounced: %v", err)
+	record := func(episodeID uuid.UUID) {
+		t.Helper()
+		if err := q.RecordEpisodeAnnouncement(ctx, dbmodels.RecordEpisodeAnnouncementParams{TenantID: tenant.ID, EpisodeID: episodeID}); err != nil {
+			t.Fatalf("RecordEpisodeAnnouncement: %v", err)
 		}
 	}
+	record(open.ID)
+	record(held.ID)
 
-	_, openAnnouncedAt := episodeListingDates(t, ctx, pg.DB, open.ID)
-	if !openAnnouncedAt.Valid {
-		t.Error("an episode readers can open is not marked announced")
+	if _, owed := episodeListing(t, ctx, pg.DB, open.ID); owed {
+		t.Error("an episode readers can open owes its announcement")
 	}
-	if _, heldAnnouncedAt := episodeListingDates(t, ctx, pg.DB, held.ID); heldAnnouncedAt.Valid {
-		t.Error("an episode of a series that is not public is marked announced")
+	if _, owed := episodeListing(t, ctx, pg.DB, held.ID); !owed {
+		t.Error("an episode of a series that is not public owes no announcement")
 	}
 
-	// A second fan-out keeps the time of the first.
-	if err := q.MarkEpisodeAnnounced(ctx, dbmodels.MarkEpisodeAnnouncedParams{TenantID: tenant.ID, EpisodeID: open.ID}); err != nil {
-		t.Fatalf("MarkEpisodeAnnounced again: %v", err)
+	// The fan-out over it once the series is public settles what it owed.
+	if _, err := q.UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
+		ID: hidden.ID, PublishedAt: sql.NullTime{Time: time.Now().Add(-time.Minute), Valid: true},
+	}); err != nil {
+		t.Fatalf("UpdateSeriesPublication: %v", err)
 	}
-	if _, again := episodeListingDates(t, ctx, pg.DB, open.ID); again != openAnnouncedAt {
-		t.Errorf("announced_at after a second fan-out = %v, want the first one's %v", again, openAnnouncedAt)
+	record(held.ID)
+	if _, owed := episodeListing(t, ctx, pg.DB, held.ID); owed {
+		t.Error("an episode announced once its series was public still owes its announcement")
 	}
 }
 
@@ -79,12 +93,10 @@ func TestRedateEpisodesForSeriesPublication(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRED001", Title: "Republished", Availability: "web"})
 
+	// Announced while the series was public before, so it owes nothing.
 	announced := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
 		PublicID: "EPISODEANN01", Title: "Announced", Status: testutil.EpisodeStatusPublished, PublishedAt: now.Add(-3 * time.Hour),
 	})
-	if _, err := pg.DB.ExecContext(ctx, "UPDATE episode_listings SET announced_at = published_at WHERE episode_id = $1", announced.ID); err != nil {
-		t.Fatalf("mark announced: %v", err)
-	}
 	added := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
 		PublicID: "EPISODEADD01", Title: "Added while hidden", Status: testutil.EpisodeStatusPublished, PublishedAt: now.Add(-2 * time.Hour),
 	})
@@ -94,6 +106,7 @@ func TestRedateEpisodesForSeriesPublication(t *testing.T) {
 		PublicID: "EPISODENOW01", Title: "Shown nowhere", Status: testutil.EpisodeStatusPublished, PublishedAt: now.Add(-2 * time.Hour), Availability: "app",
 	})
 	draft := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEDRF01", Title: "Draft"})
+	oweAnnouncement(t, ctx, pg.DB, added.ID, nowhere.ID)
 
 	redate := func() []dbmodels.RedateEpisodesForSeriesPublicationRow {
 		t.Helper()
@@ -126,7 +139,7 @@ func TestRedateEpisodesForSeriesPublication(t *testing.T) {
 		t.Fatalf("redated %+v, want only the episode added while the series was hidden %+v", rows, want)
 	}
 
-	if got, _ := episodeListingDates(t, ctx, pg.DB, added.ID); !got.Valid || !got.Time.Equal(publishedAt) {
+	if got, _ := episodeListing(t, ctx, pg.DB, added.ID); !got.Valid || !got.Time.Equal(publishedAt) {
 		t.Errorf("published_at of the episode added while hidden = %v, want the series' instant %v", got, publishedAt)
 	}
 	for _, untouched := range []struct {
@@ -138,7 +151,7 @@ func TestRedateEpisodesForSeriesPublication(t *testing.T) {
 		{name: "shown nowhere", id: nowhere.ID, want: sql.NullTime{Time: now.Add(-2 * time.Hour), Valid: true}},
 		{name: "draft", id: draft.ID},
 	} {
-		got, _ := episodeListingDates(t, ctx, pg.DB, untouched.id)
+		got, _ := episodeListing(t, ctx, pg.DB, untouched.id)
 		if got.Valid != untouched.want.Valid || !got.Time.Equal(untouched.want.Time) {
 			t.Errorf("published_at of the %s episode = %v, want it left at %v", untouched.name, got, untouched.want)
 		}
@@ -163,6 +176,7 @@ func TestRedateEpisodesForSeriesPublicationKeepsALaterEpisodeDate(t *testing.T) 
 	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
 		PublicID: "EPISODEBAK01", Title: "Later", Status: testutil.EpisodeStatusPublished, PublishedAt: episodePublishedAt,
 	})
+	oweAnnouncement(t, ctx, pg.DB, episode.ID)
 
 	if _, err := q.UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
 		ID: series.ID, PublishedAt: sql.NullTime{Time: now.Add(-24 * time.Hour), Valid: true},
@@ -176,7 +190,7 @@ func TestRedateEpisodesForSeriesPublicationKeepsALaterEpisodeDate(t *testing.T) 
 	if len(rows) != 1 || rows[0].EpisodeID != episode.ID {
 		t.Fatalf("redated %+v, want the episode named for its announcement", rows)
 	}
-	if got, _ := episodeListingDates(t, ctx, pg.DB, episode.ID); !got.Time.Equal(episodePublishedAt) {
+	if got, _ := episodeListing(t, ctx, pg.DB, episode.ID); !got.Time.Equal(episodePublishedAt) {
 		t.Errorf("published_at = %v, want the episode's own %v", got.Time, episodePublishedAt)
 	}
 }

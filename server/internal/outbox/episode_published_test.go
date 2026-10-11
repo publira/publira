@@ -73,9 +73,9 @@ func TestEpisodePublishedNotificationWritesOneRowPerFollowerAndOnePush(t *testin
 	if !push.TenantID.Valid || push.TenantID.UUID != tenantID {
 		t.Fatalf("push tenant_id = %v, want %s", push.TenantID, tenantID)
 	}
-	wantMarked := []dbmodels.MarkEpisodeAnnouncedParams{{TenantID: tenantID, EpisodeID: episodeID}}
-	if !slices.Equal(queries.marked, wantMarked) {
-		t.Fatalf("episodes marked announced = %+v, want %+v", queries.marked, wantMarked)
+	wantRecorded := []dbmodels.RecordEpisodeAnnouncementParams{{TenantID: tenantID, EpisodeID: episodeID}}
+	if !slices.Equal(queries.recorded, wantRecorded) {
+		t.Fatalf("announcements recorded = %+v, want %+v", queries.recorded, wantRecorded)
 	}
 }
 
@@ -144,19 +144,20 @@ func TestEpisodePublishedNotificationQueuesNoPushWithoutFollowers(t *testing.T) 
 	if len(queries.created) != 0 || len(queries.outbox) != 0 {
 		t.Fatalf("notifications, outbox events = %d, %d, want 0, 0", len(queries.created), len(queries.outbox))
 	}
-	// Nobody follows it, and the episode was still announced: publishing its
-	// series again has nothing left to tell anyone about it.
-	if len(queries.marked) != 1 {
-		t.Fatalf("episodes marked announced = %d, want 1", len(queries.marked))
+	// Nobody follows it, and what it owes is still recorded: whether its
+	// series is published later has to know.
+	if len(queries.recorded) != 1 {
+		t.Fatalf("announcements recorded = %d, want 1", len(queries.recorded))
 	}
 }
 
-// The mark comes last, so a fan-out that could not record it is retried in
-// full rather than leaving an episode marked whose rows were not all written.
-func TestEpisodePublishedNotificationRetriesAFailedMark(t *testing.T) {
+// The record comes last, so a fan-out that could not write it is retried in
+// full rather than leaving an episode owing nothing whose rows were not all
+// written.
+func TestEpisodePublishedNotificationRetriesAFailedRecord(t *testing.T) {
 	episodeID := uuid.New()
 	queries := newStubEpisodePublishedQuerier(episodeID, uuid.New())
-	queries.markErr = errors.New("connection reset")
+	queries.recordErr = errors.New("connection reset")
 
 	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
 	err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID))
@@ -173,8 +174,8 @@ func TestEpisodePublishedNotificationCompletesForAnEpisodeNoLongerPublished(t *t
 	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), uuid.New())); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
-	if len(queries.created) != 0 || len(queries.outbox) != 0 || len(queries.marked) != 0 {
-		t.Fatalf("notifications, outbox events, marks = %d, %d, %d, want 0, 0, 0", len(queries.created), len(queries.outbox), len(queries.marked))
+	if len(queries.created) != 0 || len(queries.outbox) != 0 || len(queries.recorded) != 0 {
+		t.Fatalf("notifications, outbox events, records = %d, %d, %d, want 0, 0, 0", len(queries.created), len(queries.outbox), len(queries.recorded))
 	}
 }
 
@@ -234,8 +235,8 @@ type stubEpisodePublishedQuerier struct {
 	listCalls int
 	created   []dbmodels.CreateNotificationParams
 	outbox    []dbmodels.InsertOutboxEventParams
-	marked    []dbmodels.MarkEpisodeAnnouncedParams
-	markErr   error
+	recorded  []dbmodels.RecordEpisodeAnnouncementParams
+	recordErr error
 }
 
 func newStubEpisodePublishedQuerier(episodeID uuid.UUID, followers ...uuid.UUID) *stubEpisodePublishedQuerier {
@@ -306,13 +307,13 @@ func (s *stubEpisodePublishedQuerier) InsertOutboxEvent(
 	return dbmodels.OutboxEvent{}, nil
 }
 
-func (s *stubEpisodePublishedQuerier) MarkEpisodeAnnounced(
+func (s *stubEpisodePublishedQuerier) RecordEpisodeAnnouncement(
 	_ context.Context,
-	arg dbmodels.MarkEpisodeAnnouncedParams,
+	arg dbmodels.RecordEpisodeAnnouncementParams,
 ) error {
-	if s.markErr != nil {
-		return s.markErr
+	if s.recordErr != nil {
+		return s.recordErr
 	}
-	s.marked = append(s.marked, arg)
+	s.recorded = append(s.recorded, arg)
 	return nil
 }
