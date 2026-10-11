@@ -166,6 +166,9 @@ export const issueAccessTicketAction = async (
   // names that ticket instead of reporting a new grant. An expired one still
   // occupies the unique slot until it is revoked.
   if (!result.created) {
+    // The message sends the operator to the list to revoke the named ticket,
+    // and a list cached before another operator issued it would not show it.
+    updateTag(accessTicketsCacheTag(parsed.data.tenantId));
     return {
       message: await existingTicketMessage(
         result.ticket.publicId,

@@ -107,7 +107,8 @@ describe("issueAccessTicketAction", () => {
         "The same user and episode already have an active ticket (TICKET000001). Its expiry and note were left as they were; to change them, revoke it from the list and issue a new one.",
       ok: false,
     });
-    expect(mockUpdateTag).not.toHaveBeenCalled();
+    // The message points at the list, which has to show the named ticket.
+    expect(mockUpdateTag).toHaveBeenCalledWith("access-tickets-TENANT001");
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 

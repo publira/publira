@@ -2,7 +2,7 @@
 title: Readers, comments, and contact messages
 description: Find and act on a reader's account, moderate comments and their reports, answer contact messages, and open a paid episode to a reader with an access ticket.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-11
 ---
 
 The **Readers** group of the console is where the staff deal with the people who read the site: their accounts, the comments they leave on episodes, the messages they send through the contact form, and the access tickets that open a paid episode to one of them without payment. What is done here reaches a reader directly, sometimes without a way back, so each section below says what an action does before saying how to take it.
