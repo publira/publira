@@ -223,6 +223,18 @@ describe("scan", () => {
     assert.deepEqual(await findings(), []);
   });
 
+  it("reports a tree for a locale other than en", async () => {
+    await write("docs/ja/1-getting-started.md");
+    await write("docs/README.md", "# Documentation\n");
+
+    const reported = await scan(repository);
+    assert.deepEqual(
+      reported.map((finding) => finding.file),
+      ["docs/ja"]
+    );
+    assert.match(reported[0]?.message ?? "", /English alone until 1\.0\.0/u);
+  });
+
   it("reports a name that is not <n>-<slug>", async () => {
     await write("docs/en/getting-started.md");
     await write("docs/en/3-Upgrading.md");

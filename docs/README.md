@@ -4,6 +4,16 @@
 
 The pages live here, beside the code they describe, so that a change to a behaviour and the change to its documentation land in the same pull request, and a release tag carries the documentation of that release. Which kind of text belongs here and which stays in a `README.md` is stated in [`AGENTS.md`](../AGENTS.md#user-documentation-docsen).
 
+## Languages
+
+Until 1.0.0 the documentation is written in English alone: `docs/en/` is the only tree under `docs/`, and a pull request that adds another — `docs/ja/` or any other locale — is not accepted.
+
+Throughout 0.x a minor release can still change the behaviour a page describes, and every such change rewrites the English page in the same pull request. A translation kept beside it would have to follow each of those changes, and a copy that nothing checks drifts from its original without anyone noticing, which is why the repository keeps none.
+
+The documentation is translated from 1.0.0 on, Japanese first and the other locales the UI ships after it. The English page is the source every translation follows. How a translated page records which English page it follows, and how a stale one is found, is decided together with the first translation.
+
+`node scripts/check-docs.ts` fails on any directory under `docs/` other than `en/`, so the rule is enforced rather than remembered; the first translation lifts that check.
+
 ## Layout and URLs
 
 ```text
