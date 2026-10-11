@@ -172,7 +172,9 @@ jobs:
               # scripts/ is outside the pnpm workspace, so `pnpm test` cannot
               # reach it; this job runs its `node --test` suite as well.
               - 'scripts/*.ts'
-              - 'package.json'
+              # Every package.json, wherever it is added, so the suite holds
+              # its version to the root's in the pull request that adds it.
+              - '**/package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'turbo.jsonc'

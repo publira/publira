@@ -106,7 +106,7 @@ The check fails while the section is empty when the diff:
 
 ### Cutting a release
 
-A release is cut from a release commit, which sets `version` in every `package.json` the repository tracks, the root included, to the release's number and changes nothing else. [`scripts/release-version.ts`](../../scripts/release-version.ts) makes it, and its behaviour is covered by `scripts/release-version.test.ts`. `mobile/pubspec.yaml` is not one of them: the app's version is given at build time with `--build-name`. The commit lands through a pull request like any other change:
+A release is cut from a release commit, which sets `version` in every `package.json` the repository tracks, the root included, to the release's number and changes nothing else. [`scripts/release-version.ts`](../../scripts/release-version.ts) makes it, and its behaviour is covered by `scripts/release-version.test.ts`. Between releases every `package.json` keeps the root's version: a package added with any other, copied from a sibling or from anywhere else, fails `Test / TypeScript` in the pull request that adds it, so the release commit never meets a file left behind. `mobile/pubspec.yaml` is not one of them: the app's version is given at build time with `--build-name`. The commit lands through a pull request like any other change:
 
 ```bash
 git switch -c release/1.1.0 origin/main
