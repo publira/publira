@@ -15,7 +15,11 @@ class FakePurchaseRepository implements PurchaseRepository {
     this.checkoutFailure,
     this.pages = const [],
     this.route = AppPurchaseRoute.externalCheckout,
+    this.tenantCurrency = 'JPY',
   });
+
+  /// What [currency] answers.
+  String tenantCurrency;
 
   /// What [appPurchaseRoute] answers.
   AppPurchaseRoute route;
@@ -84,6 +88,9 @@ class FakePurchaseRepository implements PurchaseRepository {
 
   @override
   Future<bool> acceptsPayments() async => payments;
+
+  @override
+  Future<String> currency() async => tenantCurrency;
 
   @override
   Future<Map<String, EpisodeAccess>> seriesEpisodeAccess(

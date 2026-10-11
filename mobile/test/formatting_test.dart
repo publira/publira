@@ -17,6 +17,14 @@ void main() {
     expect(AppMessages.forLocale(const Locale('en'))!.formatInteger(0), '0');
   });
 
+  test('a price is written in its currency from its minor unit', () {
+    final en = AppMessages.forLocale(const Locale('en'))!;
+    expect(en.formatPrice(500, 'JPY'), '¥500');
+    expect(en.formatPrice(1234567, 'JPY'), '¥1,234,567');
+    expect(en.formatPrice(499, 'USD'), r'$4.99');
+    expect(en.formatPrice(500, 'USD'), r'$5.00');
+  });
+
   test('a byte count takes the largest unit that keeps it whole', () {
     final en = AppMessages.forLocale(const Locale('en'))!;
     expect(en.formatByteSize(0), '0 B');

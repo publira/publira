@@ -71,6 +71,13 @@ abstract class PurchaseRepository {
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
   Future<AppPurchaseRoute> appPurchaseRoute();
 
+  /// The ISO 4217 code of the currency the tenant sells in, which every price
+  /// the app shows is an integer in the minor unit of.
+  ///
+  /// Throws [PurchaseFailure] on a transport or unexpected server error, and
+  /// for an answer that names no currency.
+  Future<String> currency();
+
   /// What the reader in front of the app may do with each published episode
   /// of the series [seriesInternalId] names, keyed by episode public id.
   ///

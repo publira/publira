@@ -18,6 +18,7 @@ class EpisodeEndPanel extends StatelessWidget {
     required this.detail,
     required this.nextSavedOffline,
     required this.acceptsPayments,
+    required this.currency,
     required this.onOpenNext,
     required this.onOpenComments,
     required this.onBackToSeries,
@@ -33,6 +34,10 @@ class EpisodeEndPanel extends StatelessWidget {
   /// Whether the tenant takes payments. Only then is a next episode sold on
   /// the website alone worded as sold there rather than by its price.
   final bool acceptsPayments;
+
+  /// The ISO 4217 code of the currency a next episode's price is shown in, the
+  /// tenant's, or `null` while it could not be read, when no price is shown.
+  final String? currency;
 
   /// Opens the episode the reader took. It is handed the neighbour this panel
   /// drew rather than reading it again, so the offer and what it opens cannot
@@ -69,6 +74,7 @@ class EpisodeEndPanel extends StatelessWidget {
                 episode: next,
                 savedOffline: nextSavedOffline,
                 acceptsPayments: acceptsPayments,
+                currency: currency,
                 onOpen: () => onOpenNext(next),
               ),
             const SizedBox(height: 24),
@@ -117,12 +123,14 @@ class _UpNext extends StatelessWidget {
     required this.episode,
     required this.savedOffline,
     required this.acceptsPayments,
+    required this.currency,
     required this.onOpen,
   });
 
   final EpisodeNeighbor episode;
   final bool savedOffline;
   final bool acceptsPayments;
+  final String? currency;
   final VoidCallback onOpen;
 
   @override
@@ -132,14 +140,17 @@ class _UpNext extends StatelessWidget {
     // What it costs is what it costs again once a free window closes, so the
     // price is shown by whether the body is public right now rather than by
     // the number.
-    final String price;
+    final String? price;
     if (episode.isFree) {
       price = messages.commonFree;
     } else if (acceptsPayments &&
         episode.purchaseSurface == EpisodePurchaseSurface.web) {
       price = messages.purchaseSoldOnWeb;
+    } else if (currency case final currency?) {
+      price = messages.formatPrice(episode.price, currency);
     } else {
-      price = '¥${messages.formatInteger(episode.price)}';
+      // A number in no currency is no price.
+      price = null;
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -169,15 +180,17 @@ class _UpNext extends StatelessWidget {
                           color: Colors.white70,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Flexible(
-                        child: AutospacedText(
-                          price,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: Colors.white,
+                      if (price != null) ...[
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: AutospacedText(
+                            price,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                       if (savedOffline) ...[
                         const SizedBox(width: 12),
                         Icon(

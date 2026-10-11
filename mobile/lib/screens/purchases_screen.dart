@@ -281,9 +281,10 @@ class _PurchaseRow extends StatelessWidget {
         messages.purchasesPurchasedAt(
           date: messages.formatDateTime(purchasedAt),
         ),
-      messages.purchasesPrice(
-        price: '¥${messages.formatInteger(purchase.price)}',
-      ),
+      if (purchase.currency.isNotEmpty)
+        messages.purchasesPrice(
+          price: messages.formatPrice(purchase.price, purchase.currency),
+        ),
       if (expiresAt == null)
         messages.purchasesNoExpiry
       else if (purchase.isActive)

@@ -49,6 +49,27 @@ void main() {
     await server.close();
   });
 
+  test('the tenant names the currency it sells in', () async {
+    expect(await repository().currency(), 'JPY');
+
+    server.currency = 'USD';
+    expect(await repository().currency(), 'USD');
+  });
+
+  test('an answer that names no currency is a failure', () async {
+    server.currency = '';
+    await expectLater(
+      repository().currency(),
+      throwsA(
+        isA<PurchaseFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          PurchaseFailureKind.unexpected,
+        ),
+      ),
+    );
+  });
+
   test('a tenant takes payments only when it says so', () async {
     expect(await repository().acceptsPayments(), isFalse);
 
@@ -293,6 +314,7 @@ void main() {
       },
       'series': {'publicId': seriesId, 'title': 'Seed Series 001'},
       'priceAtPurchase': 500,
+      'currency': 'USD',
       'purchasedAt': '2026-01-10T12:00:00Z',
       if (expiresAt.isNotEmpty) 'expiresAt': expiresAt,
       // protojson omits a false.
@@ -315,6 +337,8 @@ void main() {
       expect(page.nextToken, isEmpty);
       final [active, expired] = page.purchases;
       expect(active.id, 'purchase-active');
+      expect(active.price, 500);
+      expect(active.currency, 'USD');
       expect(active.isActive, isTrue);
       expect(active.expiresAt, isNull);
       expect(active.seriesId, seriesId);

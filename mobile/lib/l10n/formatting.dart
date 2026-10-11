@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:intl/intl.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/series_item.dart';
@@ -12,6 +14,17 @@ extension AppMessagesFormatting on AppMessages {
   /// [value] with the digit grouping of this locale — `1,234` under `en-US`.
   String formatInteger(int value) =>
       NumberFormat.decimalPattern(intlLocale).format(value);
+
+  /// [amount], an integer in the minor unit of [currency] the way the API
+  /// sends every price, written as that currency in this locale — `500` is
+  /// `¥500` in JPY and `$5.00` in USD under `en-US`.
+  String formatPrice(int amount, String currency) {
+    final format = NumberFormat.simpleCurrency(
+      locale: intlLocale,
+      name: currency,
+    );
+    return format.format(amount / pow(10, format.decimalDigits ?? 0));
+  }
 
   /// [bytes] in the largest binary unit that keeps the number at one or more,
   /// with one decimal place from a megabyte up — `12.3 MB` under `en-US`.

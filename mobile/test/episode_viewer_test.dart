@@ -33,6 +33,7 @@ import 'support/fake_screen_captures.dart';
 import 'support/fake_tenant_brand.dart';
 import 'support/pump_until.dart';
 import 'support/tap.dart';
+import 'support/fake_purchase.dart';
 
 void main() {
   final seriesId = fixtureSeries.first.id;
@@ -117,6 +118,10 @@ void main() {
         offline: offline,
         screenCaptures: screenCaptures,
         tenantBrand: tenantBrand,
+        // A tenant that sells nothing in the app still prices its episodes,
+        // in the currency the purchases read answers.
+        purchases: FakePurchaseRepository(payments: false),
+        checkoutLauncher: FakeCheckoutLauncher(),
       ),
     );
     await tester.pump();
