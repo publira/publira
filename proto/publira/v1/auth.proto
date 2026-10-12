@@ -96,6 +96,35 @@ message UnlinkIdentityRequest {
 
 message UnlinkIdentityResponse {}
 
+message LinkIdentityRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  IdentityProvider provider = 2;
+  // A fresh sign-in to the provider account to link, issued to one of the
+  // client IDs GetTenant answers for a provider the tenant offers, and checked
+  // as LoginWithIdTokenRequest checks it. Whatever address the token carries,
+  // verified or not, is only recorded: the session names the account, so a
+  // provider account under another address links as well as one under the
+  // account's own. A token that does not verify is invalid_argument on
+  // id_token, and a nonce used before is invalid_argument on nonce, so a
+  // client does not mistake either for the end of its session.
+  string id_token = 3;
+  string nonce = 4;
+  // As in LoginWithIdTokenRequest: Apple only, and optional.
+  string authorization_code = 5;
+  string redirect_uri = 6;
+}
+
+// Answered once the provider account is linked to the caller's account, which
+// LoginWithIdToken signs in to with it from then on. A refusal is
+// failed_precondition with an ErrorInfo reason a client can tell apart:
+// IDENTITY_LINKED_TO_ANOTHER_ACCOUNT where the provider account signs in to
+// another reader already, and PROVIDER_ALREADY_LINKED where the caller has an
+// account of this provider linked, this one or another. A suspended account
+// holds no session, so it is refused unauthenticated before either.
+message LinkIdentityResponse {
+  LinkedIdentity identity = 1;
+}
+
 message CreateUserRequest {
   publira.types.v1.TenantContext tenant = 1;
   string name = 2;
@@ -433,6 +462,7 @@ service AuthService {
   rpc LoginWithIdToken(LoginWithIdTokenRequest) returns (LoginWithIdTokenResponse) {}
   rpc ListMyIdentities(ListMyIdentitiesRequest) returns (ListMyIdentitiesResponse) {}
   rpc UnlinkIdentity(UnlinkIdentityRequest) returns (UnlinkIdentityResponse) {}
+  rpc LinkIdentity(LinkIdentityRequest) returns (LinkIdentityResponse) {}
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
   rpc VerifyUserEmail(VerifyUserEmailRequest) returns (VerifyUserEmailResponse) {}
   rpc RequestEmailVerification(RequestEmailVerificationRequest) returns (RequestEmailVerificationResponse) {}

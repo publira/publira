@@ -25,7 +25,10 @@ const (
 	ReasonArchiveInvalidEPUBSpine = "ARCHIVE_INVALID_EPUB_SPINE"
 	ReasonArchiveInvalidPath      = "ARCHIVE_INVALID_PATH"
 	ReasonCreatorRoleInUse        = "CREATOR_ROLE_IN_USE"
-	ReasonInvitationCanceled      = "INVITATION_CANCELED"
+	// ReasonIdentityLinkedToAnotherAccount refuses linking a provider account
+	// that signs in to another reader of the tenant.
+	ReasonIdentityLinkedToAnotherAccount = "IDENTITY_LINKED_TO_ANOTHER_ACCOUNT"
+	ReasonInvitationCanceled             = "INVITATION_CANCELED"
 	// ReasonLegalPageAgreementRequired refuses a signed-in reader who has not
 	// agreed to a version of the tenant's terms of service or privacy policy
 	// that the tenant has asked every reader to agree to.
@@ -38,6 +41,9 @@ const (
 	// ReasonOwnAccount refuses an administrator suspending or deleting the
 	// account they are signed in with.
 	ReasonOwnAccount = "OWN_ACCOUNT"
+	// ReasonProviderAlreadyLinked refuses linking a provider account to a
+	// reader who has an account of that provider linked already.
+	ReasonProviderAlreadyLinked = "PROVIDER_ALREADY_LINKED"
 	// ReasonReaderCreditedOnEpisode refuses buying or rating an episode that
 	// credits a creator the reader's account is linked to.
 	ReasonReaderCreditedOnEpisode = "READER_CREDITED_ON_EPISODE"

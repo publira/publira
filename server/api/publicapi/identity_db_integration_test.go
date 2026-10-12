@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/signin/signintest"
@@ -684,5 +685,164 @@ func TestDBGetTenantAnswersTheProvidersReadersCanSignInWith(t *testing.T) {
 	}
 	if resp.AppleSignIn.GetServicesId() != identityServicesID || resp.GoogleSignIn.GetWebClientId() != identityWebClientID {
 		t.Fatalf("providers = %v / %v", resp.AppleSignIn, resp.GoogleSignIn)
+	}
+}
+
+// passwordSession signs in to a seeded reader with the password.
+func (e *identityDBEnv) passwordSession(t *testing.T, email string) string {
+	t.Helper()
+	resp, err := e.authClient().Login(context.Background(), &publirav1.LoginRequest{
+		Tenant:   tenantContext(e.tenant),
+		Email:    email,
+		Password: testutil.SeededPassword,
+	})
+	if err != nil {
+		t.Fatalf("Login as %s: %v", email, err)
+	}
+	return resp.AccessToken.Token
+}
+
+func (e *identityDBEnv) link(session string, provider publirav1.IdentityProvider, idToken, nonce string, edit ...func(*publirav1.LinkIdentityRequest)) (*publirav1.LinkIdentityResponse, error) {
+	req := &publirav1.LinkIdentityRequest{
+		Tenant:   tenantContext(e.tenant),
+		Provider: provider,
+		IdToken:  idToken,
+		Nonce:    nonce,
+	}
+	for _, apply := range edit {
+		apply(req)
+	}
+	return e.authClient().LinkIdentity(testutil.WithBearer(context.Background(), session), req)
+}
+
+// A reader who signed up with their address links an Apple account that hides
+// it, and that Apple account signs in to the same account from then on rather
+// than opening a second one.
+func TestDBLinkIdentityLinksAProviderAccountUnderAnotherAddress(t *testing.T) {
+	env := newIdentityDBEnv(t)
+	env.enableProviders(t)
+	member := env.PG.SeedEndUser(t, env.tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	session := env.passwordSession(t, member.Email)
+	apple := publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE
+
+	linked, err := env.link(session, apple, env.appleToken(t, "apple-subject", "relay@privaterelay.appleid.com", "nonce-1"), "nonce-1",
+		func(req *publirav1.LinkIdentityRequest) {
+			req.AuthorizationCode = "apple-code"
+			req.RedirectUri = "https://tenant-a.example.com/auth/apple/callback"
+		})
+	if err != nil {
+		t.Fatalf("LinkIdentity: %v", err)
+	}
+	if linked.Identity.Provider != apple || linked.Identity.Email != "relay@privaterelay.appleid.com" || linked.Identity.LinkedAt == "" {
+		t.Fatalf("linked identity = %+v, want the apple account and the address its token carried", linked.Identity)
+	}
+	env.processAppleEvents(t)
+	exchanges := env.appleTokens.Exchanges()
+	if len(exchanges) != 1 || exchanges[0].Code != "apple-code" || exchanges[0].RedirectURI != "https://tenant-a.example.com/auth/apple/callback" {
+		t.Fatalf("exchanges = %+v, want the code the link carried", exchanges)
+	}
+
+	signedIn := env.mustSignIn(t, apple, env.appleToken(t, "apple-subject", "relay@privaterelay.appleid.com", "nonce-2"), "nonce-2")
+	if signedIn.AccountCreated || signedIn.User.PublicId != member.PublicID {
+		t.Fatalf("sign-in after the link = %+v, want the account %s", signedIn, member.PublicID)
+	}
+	listed, err := env.authClient().ListMyIdentities(testutil.WithBearer(context.Background(), session), &publirav1.ListMyIdentitiesRequest{Tenant: tenantContext(env.tenant)})
+	if err != nil {
+		t.Fatalf("ListMyIdentities: %v", err)
+	}
+	if !listed.HasPassword || len(listed.Identities) != 1 || listed.Identities[0].Provider != apple {
+		t.Fatalf("ListMyIdentities = %+v, want the apple link beside the password", listed)
+	}
+}
+
+// Each refusal is one a client can tell apart, none of them ends the session,
+// and none spends the nonce, so the reader can retry the same sign-in once
+// the cause is gone.
+func TestDBLinkIdentityRefusesWhatASignInWouldRefuse(t *testing.T) {
+	env := newIdentityDBEnv(t)
+	env.enableProviders(t)
+	google := publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE
+	member := env.PG.SeedEndUser(t, env.tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	session := env.passwordSession(t, member.Email)
+	// Another reader signs in with google-other.
+	env.mustSignIn(t, google, env.googleToken(t, "google-other", "other@example.com", "nonce-other"), "nonce-other")
+
+	_, err := env.link(session, google, env.googleToken(t, "google-other", "other@example.com", "nonce-1"), "nonce-1")
+	if reason, _ := errorInfoReason(err); connect.CodeOf(err) != connect.CodeFailedPrecondition || reason != rpcerrors.ReasonIdentityLinkedToAnotherAccount {
+		t.Fatalf("linking another reader's provider account = %v (reason %q), want failed_precondition %s", err, reason, rpcerrors.ReasonIdentityLinkedToAnotherAccount)
+	}
+
+	// The refusal left nonce-1 unspent.
+	if _, err := env.link(session, google, env.googleToken(t, "google-subject", "elsewhere@example.com", "nonce-1"), "nonce-1"); err != nil {
+		t.Fatalf("LinkIdentity: %v", err)
+	}
+	for _, tc := range []struct {
+		name    string
+		subject string
+	}{
+		{"the provider account linked already", "google-subject"},
+		{"a second account of the provider", "google-second"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := env.link(session, google, env.googleToken(t, tc.subject, "elsewhere@example.com", "nonce-2"), "nonce-2")
+			if reason, _ := errorInfoReason(err); connect.CodeOf(err) != connect.CodeFailedPrecondition || reason != rpcerrors.ReasonProviderAlreadyLinked {
+				t.Fatalf("LinkIdentity = %v (reason %q), want failed_precondition %s", err, reason, rpcerrors.ReasonProviderAlreadyLinked)
+			}
+		})
+	}
+
+	apple := publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE
+	_, err = env.link(session, apple, env.appleToken(t, "apple-subject", "relay@privaterelay.appleid.com", "nonce-1"), "nonce-1")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("linking with a spent nonce code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	assertPublicBadRequestField(t, err, "nonce")
+	_, err = env.link(session, apple, env.google.Sign(t, signintest.Token{
+		Issuer:   signin.AppleIssuer,
+		Subject:  "apple-subject",
+		Audience: identityServicesID,
+		Nonce:    "nonce-3",
+	}), "nonce-3")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("linking with a token signed by another key code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	assertPublicBadRequestField(t, err, "id_token")
+	_, err = env.link(session, google, env.googleToken(t, "google-subject", "elsewhere@example.com", "nonce-4"), "nonce-4",
+		func(req *publirav1.LinkIdentityRequest) { req.AuthorizationCode = "google-code" })
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("linking google with an authorization code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+
+	env.saveSignInSettings(t, signin.UpdateInput{
+		Apple:  signin.AppleUpdate{Enabled: false, ServicesID: identityServicesID, TeamID: "TEAM123456", KeyID: "KEY1234567"},
+		Google: signin.GoogleUpdate{Enabled: true, WebClientID: identityWebClientID},
+	})
+	_, err = env.link(session, apple, env.appleToken(t, "apple-subject", "relay@privaterelay.appleid.com", "nonce-5"), "nonce-5")
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("linking a provider the tenant switched off code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
+	}
+
+	if _, err := env.authClient().GetMe(testutil.WithBearer(context.Background(), session), &publirav1.GetMeRequest{Tenant: tenantContext(env.tenant)}); err != nil {
+		t.Fatalf("GetMe after the refused links: %v", err)
+	}
+}
+
+func TestDBLinkIdentityRefusesASuspendedAccount(t *testing.T) {
+	env := newIdentityDBEnv(t)
+	env.enableProviders(t)
+	member := env.PG.SeedEndUser(t, env.tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	session := env.passwordSession(t, member.Email)
+	if _, err := env.PG.DB.ExecContext(context.Background(), `UPDATE users SET status = 'suspended' WHERE id = $1`, member.ID); err != nil {
+		t.Fatalf("suspend the account: %v", err)
+	}
+
+	google := publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE
+	_, err := env.link(session, google, env.googleToken(t, "google-subject", "elsewhere@example.com", "nonce-1"), "nonce-1")
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("linking to a suspended account code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+	// Nothing was linked, so the provider account opens an account of its own.
+	if resp := env.mustSignIn(t, google, env.googleToken(t, "google-subject", "elsewhere@example.com", "nonce-1"), "nonce-1"); !resp.AccountCreated {
+		t.Fatalf("sign-in after the refused link = %+v, want a new account", resp)
 	}
 }
