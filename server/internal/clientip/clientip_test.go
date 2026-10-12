@@ -189,6 +189,92 @@ func TestMiddlewareStoresTheClientAddress(t *testing.T) {
 	}
 }
 
+func TestHost(t *testing.T) {
+	tests := []struct {
+		name          string
+		peer          string
+		host          string
+		forwarded     []string
+		forwardedHost []string
+		want          string
+	}{
+		// X-Forwarded-Host
+		{name: "X-Forwarded-Host from a trusted proxy", peer: "10.0.0.2:41000", host: "web-storefront:3000", forwardedHost: []string{"shop.example:3080"}, want: "shop.example:3080"},
+		{name: "the rightmost X-Forwarded-Host is the one the nearest hop wrote", peer: "10.0.0.2:41000", host: "web-storefront:3000", forwardedHost: []string{"b.example, a.example"}, want: "a.example"},
+		{name: "repeated X-Forwarded-Host lines are one list", peer: "10.0.0.2:41000", host: "web-storefront:3000", forwardedHost: []string{"b.example", "a.example, "}, want: "a.example"},
+		{name: "X-Forwarded-Host from a peer outside the trusted proxies is ignored", peer: "192.0.2.5:41000", host: "a.example", forwardedHost: []string{"b.example"}, want: "a.example"},
+		{name: "a peer that is not an address is not trusted", peer: "@", host: "a.example", forwardedHost: []string{"b.example"}, want: "a.example"},
+
+		// Forwarded
+		{name: "Forwarded's host= from a trusted proxy", peer: "10.0.0.2:41000", host: "web-storefront:3000", forwarded: []string{"for=203.0.113.10;host=shop.example:3080"}, want: "shop.example:3080"},
+		{name: "the rightmost host= across elements and lines", peer: "10.0.0.2:41000", host: "web-storefront:3000", forwarded: []string{"host=b.example", `for=203.0.113.10;host="a.example:3080", for=10.0.0.3`}, want: "a.example:3080"},
+		{name: "a quoted host= keeps a comma and a semicolon inside it", peer: "10.0.0.2:41000", host: "web-storefront:3000", forwarded: []string{`host="a,b;c.example"`}, want: "a,b;c.example"},
+		{name: "Forwarded from a peer outside the trusted proxies is ignored", peer: "192.0.2.5:41000", host: "a.example", forwarded: []string{"host=b.example"}, want: "a.example"},
+
+		// Both
+		{name: "Forwarded's host= is read ahead of X-Forwarded-Host", peer: "10.0.0.2:41000", host: "web-storefront:3000", forwarded: []string{"host=a.example"}, forwardedHost: []string{"b.example"}, want: "a.example"},
+		{name: "X-Forwarded-Host is read when Forwarded names no host=", peer: "10.0.0.2:41000", host: "web-storefront:3000", forwarded: []string{"for=203.0.113.10"}, forwardedHost: []string{"a.example"}, want: "a.example"},
+
+		// No header
+		{name: "Host when nothing is forwarded", peer: "10.0.0.2:41000", host: "a.example:3080", want: "a.example:3080"},
+	}
+	resolver := New(Config{TrustedProxies: DefaultTrustedProxies})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/images/x", nil)
+			req.RemoteAddr = tt.peer
+			req.Host = tt.host
+			for _, v := range tt.forwarded {
+				req.Header.Add("Forwarded", v)
+			}
+			for _, v := range tt.forwardedHost {
+				req.Header.Add("X-Forwarded-Host", v)
+			}
+			if got := resolver.Host(req); got != tt.want {
+				t.Fatalf("Host() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHostIgnoresForwardedWhenTurnedOff(t *testing.T) {
+	resolver := New(Config{TrustedProxies: DefaultTrustedProxies, IgnoreForwarded: true})
+	req := httptest.NewRequest(http.MethodGet, "/images/x", nil)
+	req.RemoteAddr = "10.0.0.2:41000"
+	req.Host = "web-storefront:3000"
+	req.Header.Set("Forwarded", "host=b.example")
+	req.Header.Set("X-Forwarded-Host", "a.example")
+
+	if got := resolver.Host(req); got != "a.example" {
+		t.Fatalf("Host() = %q, want X-Forwarded-Host's value", got)
+	}
+}
+
+func TestMiddlewareStoresTheHost(t *testing.T) {
+	var (
+		got string
+		ok  bool
+	)
+	handler := New(Config{TrustedProxies: DefaultTrustedProxies}).Middleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		got, ok = HostFromContext(r.Context())
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/images/x", nil)
+	req.RemoteAddr = "10.0.0.2:41000"
+	req.Host = "web-storefront:3000"
+	req.Header.Set("X-Forwarded-Host", "shop.example")
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+
+	if !ok || got != "shop.example" {
+		t.Fatalf("HostFromContext() = %q, %v, want the forwarded host", got, ok)
+	}
+}
+
+func TestHostFromContextIsAbsentOutsideTheMiddleware(t *testing.T) {
+	if got, ok := HostFromContext(t.Context()); ok {
+		t.Fatalf("HostFromContext() = %q, true, want nothing", got)
+	}
+}
+
 func TestFromContextIsEmptyOutsideTheMiddleware(t *testing.T) {
 	if got := FromContext(t.Context()); got != "" {
 		t.Fatalf("FromContext() = %q, want empty", got)
