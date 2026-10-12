@@ -9,12 +9,9 @@ import { storefrontPath } from "../src/urls";
  * usable and the copy never says which of "absent", "unpublished" or "another
  * tenant's" applies.
  *
- * The status depends on when the route can tell. Series detail and a published
- * page find their record from the path alone, so `notFound()` runs while the
- * route is prerendered and the response carries HTTP 404. The other routes
- * await `searchParams` before the lookup, so it runs at request time, after
- * the shell has been committed with a 200. What the reader sees is the same
- * either way.
+ * Every route finds its record from the path alone, before it reads
+ * `searchParams`, so `notFound()` runs while the route is prerendered and the
+ * response carries HTTP 404 for crawlers and link checkers.
  */
 test.describe("web-storefront catalog not found", () => {
   test("a missing series shows the not-found page with the site UI intact", async ({
@@ -45,7 +42,7 @@ test.describe("web-storefront catalog not found", () => {
       )
     );
 
-    expect(response?.status(), await page.content()).toBe(200);
+    expect(response?.status(), await page.content()).toBe(404);
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
@@ -58,7 +55,7 @@ test.describe("web-storefront catalog not found", () => {
       )
     );
 
-    expect(response?.status(), await page.content()).toBe(200);
+    expect(response?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(SEED_TENANT.series.freeEpisodeTitle)
     ).toHaveCount(0);
@@ -80,7 +77,7 @@ test.describe("web-storefront catalog not found", () => {
       storefrontPath(`/labels/${MISSING_PUBLIC_ID}`)
     );
 
-    expect(response?.status(), await page.content()).toBe(200);
+    expect(response?.status(), await page.content()).toBe(404);
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
@@ -91,7 +88,7 @@ test.describe("web-storefront catalog not found", () => {
       storefrontPath(`/genres/${MISSING_PUBLIC_ID}`)
     );
 
-    expect(response?.status(), await page.content()).toBe(200);
+    expect(response?.status(), await page.content()).toBe(404);
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
@@ -107,7 +104,7 @@ test.describe("web-storefront catalog not found", () => {
   }) => {
     const response = await page.goto(storefrontPath("/tags/no-such-tag"));
 
-    expect(response?.status(), await page.content()).toBe(200);
+    expect(response?.status(), await page.content()).toBe(404);
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();
@@ -118,7 +115,7 @@ test.describe("web-storefront catalog not found", () => {
       storefrontPath(`/creators/${MISSING_PUBLIC_ID}`)
     );
 
-    expect(response?.status(), await page.content()).toBe(200);
+    expect(response?.status(), await page.content()).toBe(404);
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();

@@ -47,7 +47,8 @@ type LabelDetailPageProps =
 /**
  * `"use cache"` keys on the serialized arguments, so metadata and the page
  * body have to pass the same `{ limit, token }` or one request fills two
- * entries and hits the RPC twice.
+ * entries and hits the RPC twice. Both look the label up on its first page,
+ * which needs nothing but the path.
  */
 const loadPublishedLabelDetail = (
   tenantId: string,
@@ -66,19 +67,20 @@ export const generateStaticParams = () =>
 
 export const generateMetadata = async ({
   params,
-  searchParams,
 }: LabelDetailPageProps): Promise<Metadata> => {
-  const [{ label_id }, tenantId, resolvedSearchParams, locale] =
-    await Promise.all([params, getTenantId(), searchParams, getLocale()]);
+  const [{ label_id }, tenantId, locale] = await Promise.all([
+    params,
+    getTenantId(),
+    getLocale(),
+  ]);
 
   guardPlaceholders({ label_id });
 
   const labelId = parseLabelDetailParams({ label_id });
-  const { token } = parseLabelDetailSearchParams(resolvedSearchParams);
 
   const [result, t, alternates] = await Promise.all([
     labelId
-      ? loadPublishedLabelDetail(tenantId, labelId, locale, token)
+      ? loadPublishedLabelDetail(tenantId, labelId, locale, "")
       : { ok: true as const, value: null },
     getMessagesFor(locale),
     tenantLocaleAlternates(tenantId, locale, `/labels/${label_id}`),
@@ -234,27 +236,45 @@ const LabelDetailContent = async ({
   params,
   searchParams,
 }: LabelDetailPageProps) => {
-  const [{ label_id }, tenantId, resolvedSearchParams, locale] =
-    await Promise.all([params, getTenantId(), searchParams, getLocale()]);
+  const [{ label_id }, tenantId, locale] = await Promise.all([
+    params,
+    getTenantId(),
+    getLocale(),
+  ]);
 
   guardPlaceholders({ label_id });
 
   const labelId = parseLabelDetailParams({ label_id });
-  const { token } = parseLabelDetailSearchParams(resolvedSearchParams);
 
   if (!labelId) {
     notFound();
   }
 
-  // A failed read is a value, not a throw: a `"use cache"` fill that throws
-  // fails the whole request, so neither this page nor any boundary would get
-  // to render anything.
-  const result = await loadPublishedLabelDetail(
+  // The label is looked up from the path alone, before `searchParams` is
+  // awaited: a `notFound()` that runs while the route is prerendered answers
+  // 404, and one behind request data streams into a response already sent
+  // with 200. A failed read is a value, not a throw: a `"use cache"` fill that
+  // throws fails the whole request, so neither this page nor any boundary
+  // would get to render anything.
+  const firstPage = await loadPublishedLabelDetail(
     tenantId,
     labelId,
     locale,
-    token
+    ""
   );
+
+  if (!firstPage.ok) {
+    return <PageLoadError description={firstPage.message} />;
+  }
+
+  if (!firstPage.value) {
+    notFound();
+  }
+
+  const { token } = parseLabelDetailSearchParams(await searchParams);
+  const result = token
+    ? await loadPublishedLabelDetail(tenantId, labelId, locale, token)
+    : firstPage;
 
   if (!result.ok) {
     return <PageLoadError description={result.message} />;

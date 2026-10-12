@@ -280,21 +280,26 @@ const TagDetailContent = async ({
   params,
   searchParams,
 }: TagDetailPageProps) => {
-  const [{ tag_slug }, tenantId, resolvedSearchParams, locale] =
-    await Promise.all([params, getTenantId(), searchParams, getLocale()]);
+  const [{ tag_slug }, tenantId, locale] = await Promise.all([
+    params,
+    getTenantId(),
+    getLocale(),
+  ]);
 
   guardPlaceholders({ tag_slug });
 
   const tagSlug = parseTagDetailParams({ tag_slug });
-  const query = parseTagDetailSearchParams(resolvedSearchParams);
 
   if (!tagSlug) {
     notFound();
   }
 
-  // A failed read is a value, not a throw: a `"use cache"` fill that throws
-  // fails the whole request, so neither this page nor any boundary would get
-  // to render anything.
+  // The tag is looked up from the path alone, before `searchParams` is
+  // awaited: a `notFound()` that runs while the route is prerendered answers
+  // 404, and one behind request data streams into a response already sent
+  // with 200. A failed read is a value, not a throw: a `"use cache"` fill that
+  // throws fails the whole request, so neither this page nor any boundary
+  // would get to render anything.
   const result = await findPublishedTagBySlug(tenantId, tagSlug, locale);
 
   if (!result.ok) {
@@ -306,6 +311,8 @@ const TagDetailContent = async ({
   if (!tag) {
     notFound();
   }
+
+  const query = parseTagDetailSearchParams(await searchParams);
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">

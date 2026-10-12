@@ -330,21 +330,26 @@ const GenreDetailContent = async ({
   params,
   searchParams,
 }: GenreDetailPageProps) => {
-  const [{ genre_id }, tenantId, resolvedSearchParams, locale] =
-    await Promise.all([params, getTenantId(), searchParams, getLocale()]);
+  const [{ genre_id }, tenantId, locale] = await Promise.all([
+    params,
+    getTenantId(),
+    getLocale(),
+  ]);
 
   guardPlaceholders({ genre_id });
 
   const genreId = parseGenreDetailParams({ genre_id });
-  const query = parseGenreDetailSearchParams(resolvedSearchParams);
 
   if (!genreId) {
     notFound();
   }
 
-  // A failed read is a value, not a throw: a `"use cache"` fill that throws
-  // fails the whole request, so neither this page nor any boundary would get
-  // to render anything.
+  // The genre is looked up from the path alone, before `searchParams` is
+  // awaited: a `notFound()` that runs while the route is prerendered answers
+  // 404, and one behind request data streams into a response already sent
+  // with 200. A failed read is a value, not a throw: a `"use cache"` fill that
+  // throws fails the whole request, so neither this page nor any boundary
+  // would get to render anything.
   const genres = await listPublishedGenres(tenantId, locale);
 
   if (!genres.ok) {
@@ -356,6 +361,8 @@ const GenreDetailContent = async ({
   if (!genre) {
     notFound();
   }
+
+  const query = parseGenreDetailSearchParams(await searchParams);
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10">

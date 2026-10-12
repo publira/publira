@@ -247,10 +247,9 @@ const fromSeriesRead = (
 const EpisodeContent = async (
   props: PageProps<"/[tenant_id]/[locale]/series/[series_id]/episodes/[episode_id]">
 ) => {
-  const [rawParams, tenantId, searchParams, locale] = await Promise.all([
+  const [rawParams, tenantId, locale] = await Promise.all([
     props.params,
     getTenantId(),
-    props.searchParams,
     getLocale(),
   ]);
   const parsedParams = parseRouteParams(episodeDetailParamsSchema, rawParams);
@@ -258,17 +257,14 @@ const EpisodeContent = async (
     notFound();
   }
   const { episode_id, series_id } = parsedParams;
-  const purchaseSearchParams = parsePurchaseSearchParams(searchParams);
-  const commentSearchParams = parseCommentSearchParams(searchParams);
-  const checkoutSessionId =
-    purchaseSearchParams.checkout === "success"
-      ? purchaseSearchParams.session_id
-      : "";
 
   // Missing / unpublished / other-series / other-tenant episodes resolve to
-  // `null`, and the public site must not tell those apart. A failed read is a
-  // value as well: a `"use cache"` fill that throws fails the whole request,
-  // so nothing downstream would get to render.
+  // `null`, and the public site must not tell those apart. The lookup needs
+  // the path alone and runs before `searchParams` is awaited: a `notFound()`
+  // that runs while the route is prerendered answers 404, and one behind
+  // request data streams into a response already sent with 200. A failed read
+  // is a value as well: a `"use cache"` fill that throws fails the whole
+  // request, so nothing downstream would get to render.
   //
   // The catalog is awaited here for one string: the body section names itself
   // as a landmark, and an `aria-label` cannot be a node. Everything else on
@@ -287,6 +283,14 @@ const EpisodeContent = async (
   if (!result.value) {
     notFound();
   }
+
+  const searchParams = await props.searchParams;
+  const purchaseSearchParams = parsePurchaseSearchParams(searchParams);
+  const commentSearchParams = parseCommentSearchParams(searchParams);
+  const checkoutSessionId =
+    purchaseSearchParams.checkout === "success"
+      ? purchaseSearchParams.session_id
+      : "";
 
   const {
     access,

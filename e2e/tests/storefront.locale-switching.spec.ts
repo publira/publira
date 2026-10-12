@@ -216,9 +216,7 @@ test.describe("web-storefront locale in the URL", () => {
     page,
   }) => {
     // `/fr` is not a locale, so nothing strips it: the path is looked up as a
-    // published page slug under the tenant default and no page owns it. The
-    // response is HTTP 200 for the reason `catalog.not-found.spec.ts` records —
-    // the record is read inside `<Suspense>`, after the shell has committed.
+    // published page slug under the tenant default and no page owns it.
     await page.goto(localeStorefrontPath("fr", "/series"));
 
     await expect(
