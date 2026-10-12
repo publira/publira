@@ -381,6 +381,26 @@ describe("TenantEmailSettingsForm", () => {
     );
   });
 
+  // The box opened again is empty, whatever it held before the change was
+  // cancelled, so saving it as it is removes the stored password.
+  it("forgets a password typed before the change was cancelled", async () => {
+    const saveAction = refusedSave();
+    await renderForm(storedSettings(), { saveAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    fireEvent.change(passwordBox(), { target: { value: "abandoned" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel the change" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await screen.findByText("Could not save.");
+    const formData = saveAction.mock.calls[0]?.[1];
+    expect(formData?.get("password")).toBe("");
+    expect(formData?.get("password_update_mode")).toBe(
+      String(SECRET_UPDATE_MODE_CLEAR)
+    );
+  });
+
   it("explains under the username what leaving it blank means", async () => {
     await renderForm(storedSettings());
 

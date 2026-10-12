@@ -165,8 +165,17 @@ export const SmtpPassword = ({
     : initialHasStoredPassword;
   const [isEditing, setIsEditing] = useState(!initialHasStoredPassword);
   const [hasEntry, setHasEntry] = useState(false);
+  // Opening or closing the box remounts it empty, so what it held goes too.
   const context = useMemo(
-    () => ({ hasStoredPassword, isEditing, setHasEntry, setIsEditing }),
+    () => ({
+      hasStoredPassword,
+      isEditing,
+      setHasEntry,
+      setIsEditing: (editing: boolean) => {
+        setIsEditing(editing);
+        setHasEntry(false);
+      },
+    }),
     [hasStoredPassword, isEditing]
   );
 
