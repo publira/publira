@@ -250,6 +250,16 @@ class FakeAuthRepository implements AuthRepository {
   /// Thrown by [readLinkedIdentities].
   AuthFailure? identitiesFailure;
 
+  /// Held open by a test that needs to act while [readLinkedIdentities] is in
+  /// flight.
+  Completer<void>? identitiesGate;
+
+  /// The credentials [linkIdentity] was asked to link, in order.
+  final linkCredentials = <ProviderCredential>[];
+
+  /// Thrown by [linkIdentity] in place of linking, standing in for a refusal.
+  AuthFailure? linkFailure;
+
   /// The credentials [deleteAccountWithProvider] was confirmed with.
   final deletionCredentials = <ProviderCredential>[];
 
@@ -294,6 +304,7 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<LinkedIdentities> readLinkedIdentities(AuthSession session) async {
+    await identitiesGate?.future;
     final failure = identitiesFailure;
     if (failure != null) {
       throw failure;
@@ -312,6 +323,25 @@ class FakeAuthRepository implements AuthRepository {
     identities = [
       for (final identity in identities)
         if (identity.provider != provider) identity,
+    ];
+  }
+
+  @override
+  Future<void> linkIdentity(
+    AuthSession session,
+    ProviderCredential credential,
+  ) async {
+    linkCredentials.add(credential);
+    final failure = linkFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    identities = [
+      ...identities,
+      LinkedIdentity(
+        provider: credential.provider,
+        email: 'linked@${credential.provider.name}.example',
+      ),
     ];
   }
 

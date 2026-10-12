@@ -761,6 +761,10 @@ class ConnectFixtureServer {
   /// wire name, as `ListMyIdentities` reports them.
   final memberIdentities = <String, FixtureIdToken>{};
 
+  /// The subjects of provider accounts that sign in to another reader, which
+  /// `LinkIdentity` refuses to link to the member.
+  final otherReaderSubjects = <String>{};
+
   /// Whether the member's account has a password, which an account a
   /// provider sign-in created does not.
   var memberHasPassword = true;
@@ -1403,6 +1407,11 @@ class ConnectFixtureServer {
       }
       memberIdentities.remove(provider);
       await _write(request, HttpStatus.ok, const <String, Object?>{});
+      return;
+    }
+
+    if (path.endsWith('/LinkIdentity')) {
+      await _writeLinkIdentity(request, body);
       return;
     }
 
@@ -2784,6 +2793,78 @@ class ConnectFixtureServer {
       },
       'accessToken': _accessToken(signedUpAccessToken),
       'accountCreated': true,
+    });
+  }
+
+  /// `LinkIdentity` as the API answers it, in the API's order: a token it
+  /// cannot verify, and a nonce already spent, are `invalid_argument` on the
+  /// field at fault rather than `unauthenticated`, which would read as an
+  /// ended session; a provider account another reader signs in with, and a
+  /// provider the member already has an account of, are refused with the
+  /// ErrorInfo reason that says which.
+  Future<void> _writeLinkIdentity(
+    HttpRequest request,
+    Map<String, Object?> body,
+  ) async {
+    if (!await _writeUnlessAuthorized(request)) {
+      return;
+    }
+    final provider = _trimmed(body['provider']);
+    final nonce = _trimmed(body['nonce']);
+    final token = idTokens[_trimmed(body['idToken'])];
+    if (token == null || token.provider != provider || token.nonce != nonce) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'invalid_argument',
+        'message': 'invalid ID token',
+        'details': [badRequestDetail('id_token')],
+      });
+      return;
+    }
+    final enabled = switch (provider) {
+      'IDENTITY_PROVIDER_APPLE' => appleSignIn != null,
+      'IDENTITY_PROVIDER_GOOGLE' => googleSignIn != null,
+      _ => false,
+    };
+    if (!enabled) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'failed_precondition',
+        'message': 'the tenant does not sign readers in with this provider',
+      });
+      return;
+    }
+    if (otherReaderSubjects.contains(token.subject)) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'failed_precondition',
+        'message': 'the provider account signs in to another account',
+        'details': [errorInfoDetail('IDENTITY_LINKED_TO_ANOTHER_ACCOUNT')],
+      });
+      return;
+    }
+    final linked = memberIdentities[provider];
+    if (linked != null) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'failed_precondition',
+        'message': 'the account already has an account of this provider',
+        'details': [errorInfoDetail('PROVIDER_ALREADY_LINKED')],
+      });
+      return;
+    }
+    if (spentNonces.contains(nonce)) {
+      await _write(request, HttpStatus.badRequest, {
+        'code': 'invalid_argument',
+        'message': 'the nonce has been used',
+        'details': [badRequestDetail('nonce')],
+      });
+      return;
+    }
+    spentNonces.add(nonce);
+    memberIdentities[provider] = token;
+    await _write(request, HttpStatus.ok, {
+      'identity': {
+        'provider': provider,
+        'email': token.email,
+        'linkedAt': '2026-01-02T03:04:05Z',
+      },
     });
   }
 

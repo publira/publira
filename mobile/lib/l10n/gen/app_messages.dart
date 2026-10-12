@@ -1689,6 +1689,42 @@ final class AppMessages {
     return _format('mobile.linked_accounts.last');
   }
 
+  /// `mobile.linked_accounts.link`
+  String get linkedAccountsLink {
+    return _format('mobile.linked_accounts.link');
+  }
+
+  /// `mobile.linked_accounts.link_already_linked`
+  String linkedAccountsLinkAlreadyLinked({required String provider}) {
+    return _format('mobile.linked_accounts.link_already_linked', {
+      'provider': provider,
+    });
+  }
+
+  /// `mobile.linked_accounts.link_another_account`
+  String linkedAccountsLinkAnotherAccount({required String provider}) {
+    return _format('mobile.linked_accounts.link_another_account', {
+      'provider': provider,
+    });
+  }
+
+  /// `mobile.linked_accounts.link_failed`
+  String get linkedAccountsLinkFailed {
+    return _format('mobile.linked_accounts.link_failed');
+  }
+
+  /// `mobile.linked_accounts.link_unverified`
+  String linkedAccountsLinkUnverified({required String provider}) {
+    return _format('mobile.linked_accounts.link_unverified', {
+      'provider': provider,
+    });
+  }
+
+  /// `mobile.linked_accounts.linked`
+  String linkedAccountsLinked({required String provider}) {
+    return _format('mobile.linked_accounts.linked', {'provider': provider});
+  }
+
   /// `mobile.linked_accounts.linked_at`
   String linkedAccountsLinkedAt({required String date}) {
     return _format('mobile.linked_accounts.linked_at', {'date': date});
@@ -1697,6 +1733,11 @@ final class AppMessages {
   /// `mobile.linked_accounts.load_failed`
   String get linkedAccountsLoadFailed {
     return _format('mobile.linked_accounts.load_failed');
+  }
+
+  /// `mobile.linked_accounts.not_linked`
+  String get linkedAccountsNotLinked {
+    return _format('mobile.linked_accounts.not_linked');
   }
 
   /// `mobile.linked_accounts.title`
@@ -3299,8 +3340,19 @@ const _jaSources = <String, String>{
   'mobile.linked_accounts.description': 'サインインに使えるAppleとGoogleのアカウントです。',
   'mobile.linked_accounts.empty': '連携しているAppleやGoogleのアカウントはありません。',
   'mobile.linked_accounts.last': 'このアカウントにはパスワードがないため、最後の連携アカウントは解除できません。',
+  'mobile.linked_accounts.link': '連携する',
+  'mobile.linked_accounts.link_already_linked':
+      'このアカウントにはすでに{\$provider}のアカウントが連携されています。別のアカウントを連携するには、先に連携を解除してください。',
+  'mobile.linked_accounts.link_another_account':
+      'この{\$provider}アカウントは別のアカウントに連携されています。先にそちらのアカウントで連携を解除してください。',
+  'mobile.linked_accounts.link_failed': '連携できませんでした。しばらくしてからもう一度お試しください。',
+  'mobile.linked_accounts.link_unverified':
+      '{\$provider}でのサインインを確認できませんでした。もう一度お試しください。',
+  'mobile.linked_accounts.linked':
+      '{\$provider}アカウントを連携しました。今後は{\$provider}でもサインインできます。',
   'mobile.linked_accounts.linked_at': '{\$date}に連携',
   'mobile.linked_accounts.load_failed': '連携アカウントを読み込めませんでした。',
+  'mobile.linked_accounts.not_linked': '未連携',
   'mobile.linked_accounts.title': '連携アカウント',
   'mobile.linked_accounts.unlink': '連携を解除',
   'mobile.linked_accounts.unlink_failed': '連携を解除できませんでした。しばらくしてからもう一度お試しください。',
@@ -3992,8 +4044,20 @@ const _enSources = <String, String>{
   'mobile.linked_accounts.empty': 'No Apple or Google account is linked.',
   'mobile.linked_accounts.last':
       'Your account has no password, so the last linked account stays linked.',
+  'mobile.linked_accounts.link': 'Link',
+  'mobile.linked_accounts.link_already_linked':
+      'Your account already has a {\$provider} account linked. Unlink it first to link another one.',
+  'mobile.linked_accounts.link_another_account':
+      'This {\$provider} account is already linked to another account. Unlink it from that account first.',
+  'mobile.linked_accounts.link_failed':
+      'Could not link the account. Try again later.',
+  'mobile.linked_accounts.link_unverified':
+      'Could not confirm your sign-in with {\$provider}. Try again.',
+  'mobile.linked_accounts.linked':
+      'Your {\$provider} account was linked. You can now sign in with it.',
   'mobile.linked_accounts.linked_at': 'Linked on {\$date}',
   'mobile.linked_accounts.load_failed': 'Could not load your linked accounts.',
+  'mobile.linked_accounts.not_linked': 'Not linked',
   'mobile.linked_accounts.title': 'Linked accounts',
   'mobile.linked_accounts.unlink': 'Unlink',
   'mobile.linked_accounts.unlink_failed':
@@ -4653,8 +4717,19 @@ const _koSources = <String, String>{
   'mobile.linked_accounts.description': '로그인에 사용할 수 있는 Apple 및 Google 계정입니다.',
   'mobile.linked_accounts.empty': '연결된 Apple 또는 Google 계정이 없습니다.',
   'mobile.linked_accounts.last': '이 계정에는 비밀번호가 없어 마지막으로 연결된 계정은 해제할 수 없습니다.',
+  'mobile.linked_accounts.link': '연결',
+  'mobile.linked_accounts.link_already_linked':
+      '이 계정에는 이미 {\$provider} 계정이 연결되어 있습니다. 다른 계정을 연결하려면 먼저 연결을 해제해 주세요.',
+  'mobile.linked_accounts.link_another_account':
+      '이 {\$provider} 계정은 다른 계정에 연결되어 있습니다. 먼저 해당 계정에서 연결을 해제해 주세요.',
+  'mobile.linked_accounts.link_failed': '계정을 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.linked_accounts.link_unverified':
+      '{\$provider} 로그인을 확인하지 못했습니다. 다시 시도해 주세요.',
+  'mobile.linked_accounts.linked':
+      '{\$provider} 계정을 연결했습니다. 이제 {\$provider}로 로그인할 수 있습니다.',
   'mobile.linked_accounts.linked_at': '{\$date}에 연결됨',
   'mobile.linked_accounts.load_failed': '연결된 계정을 불러오지 못했습니다.',
+  'mobile.linked_accounts.not_linked': '연결되지 않음',
   'mobile.linked_accounts.title': '연결된 계정',
   'mobile.linked_accounts.unlink': '연결 해제',
   'mobile.linked_accounts.unlink_failed': '연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요.',
@@ -5253,8 +5328,17 @@ const _zhHansSources = <String, String>{
   'mobile.linked_accounts.description': '可用于登录的Apple和Google账户。',
   'mobile.linked_accounts.empty': '没有关联的Apple或Google账户。',
   'mobile.linked_accounts.last': '您的账户没有密码，因此无法解除最后一个关联的账户。',
+  'mobile.linked_accounts.link': '关联',
+  'mobile.linked_accounts.link_already_linked':
+      '您的账户已关联了一个{\$provider}账户。如需关联其他账户，请先解除现有关联。',
+  'mobile.linked_accounts.link_another_account':
+      '此{\$provider}账户已关联到另一个账户。请先在该账户中解除关联。',
+  'mobile.linked_accounts.link_failed': '无法关联账户。请稍后重试。',
+  'mobile.linked_accounts.link_unverified': '无法确认您的{\$provider}登录。请重试。',
+  'mobile.linked_accounts.linked': '已关联{\$provider}账户。现在也可以使用{\$provider}登录。',
   'mobile.linked_accounts.linked_at': '关联于{\$date}',
   'mobile.linked_accounts.load_failed': '无法加载关联账户。',
+  'mobile.linked_accounts.not_linked': '未关联',
   'mobile.linked_accounts.title': '关联账户',
   'mobile.linked_accounts.unlink': '解除关联',
   'mobile.linked_accounts.unlink_failed': '无法解除关联。请稍后重试。',
@@ -5826,8 +5910,17 @@ const _zhHantSources = <String, String>{
   'mobile.linked_accounts.description': '可用於登入的Apple和Google帳戶。',
   'mobile.linked_accounts.empty': '沒有已連結的Apple或Google帳戶。',
   'mobile.linked_accounts.last': '您的帳戶沒有密碼，因此無法解除最後一個已連結的帳戶。',
+  'mobile.linked_accounts.link': '連結',
+  'mobile.linked_accounts.link_already_linked':
+      '您的帳戶已連結一個{\$provider}帳戶。如需連結其他帳戶，請先解除現有連結。',
+  'mobile.linked_accounts.link_another_account':
+      '此{\$provider}帳戶已連結到另一個帳戶。請先在該帳戶中解除連結。',
+  'mobile.linked_accounts.link_failed': '無法連結帳戶。請稍後再試。',
+  'mobile.linked_accounts.link_unverified': '無法確認您的{\$provider}登入。請再試一次。',
+  'mobile.linked_accounts.linked': '已連結{\$provider}帳戶。現在也可以使用{\$provider}登入。',
   'mobile.linked_accounts.linked_at': '連結於{\$date}',
   'mobile.linked_accounts.load_failed': '無法載入已連結的帳戶。',
+  'mobile.linked_accounts.not_linked': '未連結',
   'mobile.linked_accounts.title': '已連結的帳戶',
   'mobile.linked_accounts.unlink': '解除連結',
   'mobile.linked_accounts.unlink_failed': '無法解除連結。請稍後再試。',

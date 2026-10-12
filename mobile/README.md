@@ -368,7 +368,7 @@ The routes only one tab holds:
 | `/account/name` | Account | Renames the account (`AuthService/UpdateMe`) |
 | `/account/email` | Account | Asks to move the account to another address (`AuthService/RequestEmailChange`) |
 | `/account/password` | Account | Replaces the password and keeps this device signed in on the token handed back (`AuthService/ChangePassword`) |
-| `/account/linked-accounts` | Account | The Apple and Google accounts linked to the reader's, each unlinked on its own (`AuthService/ListMyIdentities`, `AuthService/UnlinkIdentity`) |
+| `/account/linked-accounts` | Account | The Apple and Google accounts linked to the reader's, each unlinked on its own, and a link for each provider the device offers that the account has none of (`AuthService/ListMyIdentities`, `AuthService/UnlinkIdentity`, `AuthService/LinkIdentity`) |
 | `/account/delete` | Account | Deletes the account after the password, or a fresh provider sign-in for an account without one, and a second confirmation, then signs out (`AuthService/DeleteMe`) |
 | `/account/contact` | Account | A message to the tenant's staff |
 | `/account/pages` | Account | The pages the storefront's footer lists, each opening `/page/:pageSlug` (`PublicPagesService/ListPublishedPages`) |
@@ -577,7 +577,7 @@ The sign-in screen also offers a button for each provider `GetTenant` answers in
 - On Android, Apple posts its answer to the tenant site's `/api/v1/auth/apple/callback/android`, which redirects it to `intent://callback` for the application ID the request's `state` names — the `dev` flavor only where the site runs in development, and on a production site only with an `error` the app reports as a failed sign-in — and the plugin's `SignInWithAppleCallback` activity, declared in `AndroidManifest.xml` for the `signinwithapple` scheme, hands it to the sign-in. Apple returns only to a Return URL registered on the Services ID, which **Integrations** → **Sign-in** in the tenant console shows beside the site's own
 - The iOS app claims `com.apple.developer.applesignin` in both entitlements files, and registers the reversed `ios.googleSignInClientId` as its URL scheme through `PUBLIRA_GOOGLE_URL_SCHEME` in `App.xcconfig` — its own bundle identifier where the manifest names no Google client
 - A first sign-in that would create an account on a tenant asking consent to its pages is refused with a field violation on `agreed_page_version_ids`, and continues on `/sign-up/continue`, which sends the same token with the consent and an optional birth date
-- **Linked accounts** under the account tab lists the providers linked to the account and unlinks one; an account without a password (`ListMyIdentitiesResponse.has_password`) keeps its last one
+- **Linked accounts** under the account tab lists the providers linked to the account and unlinks one; an account without a password (`ListMyIdentitiesResponse.has_password`) keeps its last one. It links each provider the device offers that the account has none of with a fresh sign-in, whatever address the provider carries (`AuthService/LinkIdentity`)
 - An account without a password confirms an email change and its deletion with a fresh sign-in to a linked provider the device offers (`provider`, `id_token`, and `nonce` on `RequestEmailChangeRequest` and `DeleteMeRequest`), and **Change password** sends it to the password reset to set a first one
 
 ## Sign-up

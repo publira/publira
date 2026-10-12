@@ -287,6 +287,134 @@ void main() {
     expect(server.memberIdentities, isEmpty);
   });
 
+  group('linkIdentity', () {
+    test('links a Google account under another address, which then signs in '
+        'to the same account', () async {
+      await auth.linkIdentity(
+        member,
+        issueGoogleToken(email: 'reader@gmail.example'),
+      );
+
+      final sent = server.requestsTo('LinkIdentity').single.body;
+      expect(sent['provider'], 'IDENTITY_PROVIDER_GOOGLE');
+      expect(sent['idToken'], 'google-id-token-1');
+      expect(sent['nonce'], 'google-nonce-1');
+      expect(sent.containsKey('authorizationCode'), isFalse);
+      expect(
+        server.memberIdentities['IDENTITY_PROVIDER_GOOGLE']?.email,
+        'reader@gmail.example',
+      );
+
+      final session = await auth.signInWithProvider(
+        issueGoogleToken(
+          email: 'reader@gmail.example',
+          idToken: 'google-id-token-2',
+          nonce: 'google-nonce-2',
+        ),
+      );
+      expect(session.userPublicId, ConnectFixtureServer.memberPublicId);
+    });
+
+    test(
+      'sends Apple the code and the redirect its web flow ran with',
+      () async {
+        server.idTokens['apple-id-token'] = const FixtureIdToken(
+          provider: 'IDENTITY_PROVIDER_APPLE',
+          subject: 'apple-subject',
+          email: 'abc123@privaterelay.appleid.com',
+          nonce: 'raw-nonce',
+        );
+
+        await auth.linkIdentity(
+          member,
+          ProviderCredential(
+            provider: IdentityProvider.apple,
+            idToken: 'apple-id-token',
+            nonce: 'raw-nonce',
+            authorizationCode: 'apple-code',
+            redirectUri: appleAndroidRedirectUri('localhost').toString(),
+            name: 'Taylor Reader',
+          ),
+        );
+
+        final sent = server.requestsTo('LinkIdentity').single.body;
+        expect(sent['provider'], 'IDENTITY_PROVIDER_APPLE');
+        expect(sent['authorizationCode'], 'apple-code');
+        expect(
+          sent['redirectUri'],
+          'https://localhost/api/v1/auth/apple/callback/android',
+        );
+        expect(sent.containsKey('name'), isFalse);
+      },
+    );
+
+    test('maps a Google account another reader signs in with to '
+        'linkedToAnotherAccount', () async {
+      server.otherReaderSubjects.add('google-subject-1');
+
+      await expectLater(
+        auth.linkIdentity(member, issueGoogleToken(email: 'a@gmail.example')),
+        failsWith(AuthFailureKind.linkedToAnotherAccount),
+      );
+      expect(server.memberIdentities, isEmpty);
+    });
+
+    test('maps a provider the account already has linked to '
+        'providerAlreadyLinked', () async {
+      server.memberIdentities['IDENTITY_PROVIDER_GOOGLE'] =
+          const FixtureIdToken(
+            provider: 'IDENTITY_PROVIDER_GOOGLE',
+            subject: 'google-subject-0',
+            email: 'member@gmail.example',
+            nonce: '',
+          );
+
+      await expectLater(
+        auth.linkIdentity(member, issueGoogleToken(email: 'b@gmail.example')),
+        failsWith(AuthFailureKind.providerAlreadyLinked),
+      );
+    });
+
+    test('maps a token the API cannot verify, and a nonce already spent, to '
+        'invalidInput', () async {
+      await expectLater(
+        auth.linkIdentity(
+          member,
+          const ProviderCredential(
+            provider: IdentityProvider.google,
+            idToken: 'forged-token',
+            nonce: 'google-nonce-1',
+          ),
+        ),
+        failsWith(AuthFailureKind.invalidInput),
+      );
+
+      server.spentNonces.add('google-nonce-1');
+      await expectLater(
+        auth.linkIdentity(member, issueGoogleToken(email: 'c@gmail.example')),
+        failsWith(AuthFailureKind.invalidInput),
+      );
+    });
+
+    test('maps a provider the tenant turned off to providerRefused', () {
+      server.googleSignIn = null;
+
+      expect(
+        auth.linkIdentity(member, issueGoogleToken(email: 'd@gmail.example')),
+        failsWith(AuthFailureKind.providerRefused),
+      );
+    });
+
+    test('maps a session the API no longer accepts to sessionExpired', () {
+      server.activeAccessToken = 'another-session';
+
+      expect(
+        auth.linkIdentity(member, issueGoogleToken(email: 'e@gmail.example')),
+        failsWith(AuthFailureKind.sessionExpired),
+      );
+    });
+  });
+
   test('deleteAccountWithProvider confirms with a token of the linked '
       'account', () async {
     server
