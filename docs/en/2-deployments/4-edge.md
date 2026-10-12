@@ -78,7 +78,7 @@ Publira records the address of the reader behind every request: with every sign-
 
 - **The hop readers connect to writes the address that connected to it**, in `X-Forwarded-For` or in `Forwarded`, either setting the header to that address or appending the address to what the caller sent. Load balancers and CDNs do one of the two with `X-Forwarded-For` unless told otherwise.
 - **The hops after it keep that address**, passing the header on, with or without the address they were reached from appended. A hop that replaces the header with the address that connected to it records every reader with the address of the hop in front of it.
-- **`PUBLIRA_TRUSTED_PROXIES` covers every hop**: the address each one connects to the next from, which is what the next one appends. Unset, it is the private ranges, which cover a chain that runs on a private network; a hop that connects from a public address, such as a CDN, has to be listed, as [When to set the trusted proxies](#when-to-set-the-trusted-proxies) describes.
+- **`PUBLIRA_TRUSTED_PROXIES` covers every hop whose address reaches `publira server`**: the one that connects to it, and each one whose address a later hop appends after the reader's. A hop that finds the reader's address itself and replaces the header with it, rather than appending to it, leaves the hops in front of it out of the chain, and those need no entry. Unset, it is the private ranges, which cover a chain that runs on a private network; a hop whose public address reaches `publira server`, such as a CDN in front of a load balancer that appends to the header, has to be listed, as [When to set the trusted proxies](#when-to-set-the-trusted-proxies) describes.
 - **A `Forwarded` header the caller sent is not read.** Publira reads `Forwarded` ahead of `X-Forwarded-For`, so a caller's `Forwarded` passed on as it arrived would name the client in place of the address the edge wrote in `X-Forwarded-For`. Either the edge removes `Forwarded` from requests from outside or sets it itself, or `PUBLIRA_FORWARDED_HEADER_ENABLED=false` is set on `publira server`, `web-storefront`, `web-admin`, and `web-platform`. A managed load balancer usually writes `X-Forwarded-For` and passes `Forwarded` on untouched, so it needs the variable.
 
 #### The proxies Publira trusts
@@ -93,7 +93,7 @@ The trusted proxies are `PUBLIRA_TRUSTED_PROXIES` on `publira server`: addresses
 
 #### When to set the trusted proxies
 
-- **A hop connects from a public address**, such as a CDN in front of a load balancer, or a load balancer that reaches the next hop from addresses outside the private ranges. List the ranges the hop connects from, which its provider publishes.
+- **A hop connects from a public address, and the hop after it appends that address** rather than replacing the header, such as a CDN in front of a load balancer, or a load balancer that reaches the next hop from addresses outside the private ranges. List the ranges the hop connects from, which its provider publishes. Only the addresses that reach `publira server` need trusting, and every range listed is one more that could name a reader's address.
 - **The edge or a web app reaches `publira server` from a public address.** Otherwise every request it forwards is recorded with its address.
 - **A private range also reaches readers**, such as an office network that reaches `publira server` without passing the edge. List the addresses of your edge and web apps instead: a trusted range that reaches readers lets any of them name an address of their choosing.
 
@@ -132,7 +132,7 @@ Outside services post to a URL on the tenant's site, under `/api/v1/webhook/`:
 
 ## The sample configurations
 
-The repository ships three sample configurations of a reverse proxy that does everything above: one each for Traefik, nginx, and Caddy. They are examples, not the definition of the edge. The [Docker Compose](./3-docker-compose.md) install runs the Traefik one, and an install that runs a proxy of its own can start from any of them. An edge built from a managed load balancer, an Ingress, or a Gateway follows the requirements above, and needs none of them.
+The repository ships three sample configurations of a reverse proxy that route requests and handle their headers, bodies, and timeouts as above: one each for Traefik, nginx, and Caddy. Two requirements stay with the install that runs one: a TLS listener, which each sample leaves for you to add, and networks that keep the [internal listener](#keep-the-internal-listener-private) out of the proxy's reach, which no proxy configuration can provide. They are examples, not the definition of the edge. The [Docker Compose](./3-docker-compose.md) install runs the Traefik one, and an install that runs a proxy of its own can start from any of them. An edge built from a managed load balancer, an Ingress, or a Gateway follows the requirements above, and needs none of them.
 
 | Proxy | Files | Where the backend addresses go | Obtains certificates itself |
 | --- | --- | --- | --- |
