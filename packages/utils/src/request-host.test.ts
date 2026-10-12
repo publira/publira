@@ -11,32 +11,68 @@ afterEach(() => {
 });
 
 const behindEdge = new Headers({
-  Host: "store.example",
-  "X-Forwarded-Host": "other.example",
+  Forwarded: 'for=192.0.2.1;host="forwarded.example";proto=https',
+  Host: "web-storefront:3000",
+  "X-Forwarded-Host": "x-forwarded.example",
 });
 
 describe("getRequestHost", () => {
   it.each([undefined, "", "true", "TRUE", "1", "t", " true "])(
-    "takes X-Forwarded-Host when the variable is %j",
+    "takes the host= of Forwarded when the variable is %j",
     (value) => {
       if (value !== undefined) {
         vi.stubEnv(FORWARDED_HEADER_ENABLED_ENV, value);
       }
 
-      expect(getRequestHost(behindEdge)).toBe("other.example");
+      expect(getRequestHost(behindEdge)).toBe("forwarded.example");
     }
   );
 
   it.each(["false", "0", "F"])(
-    "takes Host over X-Forwarded-Host when the variable is %j",
+    "takes X-Forwarded-Host and ignores Forwarded when the variable is %j",
     (value) => {
       vi.stubEnv(FORWARDED_HEADER_ENABLED_ENV, value);
 
-      expect(getRequestHost(behindEdge)).toBe("store.example");
+      expect(getRequestHost(behindEdge)).toBe("x-forwarded.example");
     }
   );
 
-  it("takes the value the nearest hop appended", () => {
+  it("takes the rightmost host= across the elements of Forwarded", () => {
+    expect(
+      getRequestHost(
+        new Headers({
+          Forwarded:
+            "for=192.0.2.9;host=first.example, for=192.0.2.1;host=store.example",
+          Host: "web-storefront:3000",
+        })
+      )
+    ).toBe("store.example");
+  });
+
+  it("takes X-Forwarded-Host when Forwarded carries no host=", () => {
+    expect(
+      getRequestHost(
+        new Headers({
+          Forwarded: "for=192.0.2.1",
+          Host: "web-storefront:3000",
+          "X-Forwarded-Host": "store.example",
+        })
+      )
+    ).toBe("store.example");
+  });
+
+  it("does not split a quoted host= at a comma or a semicolon", () => {
+    expect(
+      getRequestHost(
+        new Headers({
+          Forwarded: 'for="[2001:db8::1]:443";HOST="store.example"',
+          Host: "web-storefront:3000",
+        })
+      )
+    ).toBe("store.example");
+  });
+
+  it("takes the X-Forwarded-Host value the nearest hop appended", () => {
     expect(
       getRequestHost(
         new Headers({
@@ -47,7 +83,7 @@ describe("getRequestHost", () => {
     ).toBe("store.example");
   });
 
-  it("falls back to Host when the edge sent no X-Forwarded-Host", () => {
+  it("falls back to Host when the edge described nothing", () => {
     expect(getRequestHost(new Headers({ Host: "store.example" }))).toBe(
       "store.example"
     );
@@ -79,10 +115,15 @@ describe("getTenantDomainCandidates", () => {
     ).toEqual(["shop.example:8443"]);
   });
 
-  it("ignores X-Forwarded-Host when the edge passes a caller's on", () => {
-    vi.stubEnv(FORWARDED_HEADER_ENABLED_ENV, "false");
-
-    expect(getTenantDomainCandidates(behindEdge)).toEqual(["store.example"]);
+  it("normalizes the host the edge named", () => {
+    expect(
+      getTenantDomainCandidates(
+        new Headers({
+          Forwarded: "host=Store.Example:8443",
+          Host: "web-storefront:3000",
+        })
+      )
+    ).toEqual(["store.example:8443"]);
   });
 
   it("returns an empty array when no header is present", () => {

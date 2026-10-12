@@ -88,7 +88,7 @@ The edge **adds** what a backend reads back:
 | `Host`, unrewritten | Tenant resolution in every app |
 | `X-Forwarded-Host` | Tenant resolution, and the CSRF origin check when the public host differs from `Host` |
 | `X-Forwarded-Proto` | The CSRF origin check |
-| `X-Forwarded-For` (Traefik) or `Forwarded` (nginx, Caddy) | The client IP in access tokens and audit log entries |
+| `X-Forwarded-For` (Traefik) or `Forwarded` (nginx, Caddy) | The client IP in access tokens and audit log entries, and, through the `host=` of `Forwarded` ahead of `X-Forwarded-Host`, tenant resolution and the CSRF origin check in the apps |
 
 Each of them is **set**, never appended to. The client is outside the trust boundary, so no value it sent reaches a backend: the apps read `X-Forwarded-Host` and `X-Forwarded-Proto` as they arrive, and `publira server`, which reads the client address header from the right past the proxies its `PUBLIRA_TRUSTED_PROXIES` names, then finds the one address the edge wrote. `Forwarded` carries it as `for=` and the address, quoted and in brackets when it is an IPv6 address.
 

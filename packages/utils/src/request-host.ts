@@ -1,16 +1,10 @@
 type HeadersLike = Pick<Headers, "get">;
 
 /**
- * Turned to `false` for an install whose edge passes on forwarding headers a
- * caller wrote, such as a managed load balancer that leaves a caller's
- * `X-Forwarded-Host` untouched. The web apps then stop reading
- * `X-Forwarded-Host`, and `publira server`, which reads the same variable,
- * stops reading `Forwarded`.
- *
- * Nothing inside Next.js tells which peer a request came from, so this is a
- * statement about the edge rather than a per-request trust check. Left on, a
- * caller behind such an edge picks the tenant a page is rendered for, and the
- * host a form submission's origin is compared with.
+ * Turned to `false` for an install whose edge writes `X-Forwarded-Host` and
+ * passes on a `Forwarded` header the caller sent, as `publira server` reads
+ * the same variable for the client address. The web apps then take the host
+ * from `X-Forwarded-Host` and `Host` alone.
  */
 export const FORWARDED_HEADER_ENABLED_ENV = "PUBLIRA_FORWARDED_HEADER_ENABLED";
 
@@ -34,16 +28,58 @@ const isForwardedHeaderEnabled = (): boolean => {
   );
 };
 
+/** Splits `value` at every `separator` outside a quoted string. */
+const splitUnquoted = (value: string, separator: string): string[] => {
+  const parts: string[] = [];
+  let quoted = false;
+  let escaped = false;
+  let start = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (escaped) {
+      escaped = false;
+    } else if (quoted && character === "\\") {
+      escaped = true;
+    } else if (character === '"') {
+      quoted = !quoted;
+    } else if (!quoted && character === separator) {
+      parts.push(value.slice(start, index));
+      start = index + 1;
+    }
+  }
+  parts.push(value.slice(start));
+  return parts;
+};
+
+const unquote = (value: string): string =>
+  value.length >= 2 && value.startsWith('"') && value.endsWith('"')
+    ? value.slice(1, -1).replaceAll(/\\(?<escaped>.)/gu, "$<escaped>")
+    : value;
+
 /**
- * The rightmost of a comma-separated header's values, the one the nearest hop
- * wrote when an edge appended to rather than replaced the header.
+ * The rightmost `host=` in `Forwarded` (RFC 7239), read across every element
+ * the way `publira server` reads its `for=`.
  */
-const lastHeaderValue = (
-  headers: HeadersLike,
-  name: string
-): string | undefined =>
+const forwardedHost = (headers: HeadersLike): string | undefined => {
+  let host: string | undefined;
+  for (const element of splitUnquoted(headers.get("forwarded") ?? "", ",")) {
+    for (const pair of splitUnquoted(element, ";")) {
+      const separator = pair.indexOf("=");
+      if (
+        separator !== -1 &&
+        pair.slice(0, separator).trim().toLowerCase() === "host"
+      ) {
+        host = unquote(pair.slice(separator + 1).trim()) || host;
+      }
+    }
+  }
+  return host;
+};
+
+/** The rightmost of `X-Forwarded-Host`'s values, the one the nearest hop wrote. */
+const forwardedHostHeader = (headers: HeadersLike): string | undefined =>
   headers
-    .get(name)
+    .get("x-forwarded-host")
     ?.split(",")
     .map((entry) => entry.trim())
     .findLast((entry) => entry.length > 0);
@@ -51,20 +87,15 @@ const lastHeaderValue = (
 /**
  * The host the request was sent to, as the browser named it.
  *
- * That is the `X-Forwarded-Host` the edge wrote, and `Host` when there is
- * none or {@link FORWARDED_HEADER_ENABLED_ENV} is `false`. `null` when the
- * request names no host at all.
+ * That is the `host=` of `Forwarded`, the standard header, unless
+ * {@link FORWARDED_HEADER_ENABLED_ENV} is `false`; then `X-Forwarded-Host`;
+ * then `Host`, for a request no edge described. `null` when the request names
+ * no host at all.
  */
-export const getRequestHost = (headers: HeadersLike): string | null => {
-  if (isForwardedHeaderEnabled()) {
-    const forwarded = lastHeaderValue(headers, "x-forwarded-host");
-    if (forwarded) {
-      return forwarded;
-    }
-  }
-
-  return headers.get("host")?.trim() || null;
-};
+export const getRequestHost = (headers: HeadersLike): string | null =>
+  (isForwardedHeaderEnabled() ? forwardedHost(headers) : undefined) ??
+  forwardedHostHeader(headers) ??
+  (headers.get("host")?.trim() || null);
 
 const normalizeRequestHost = (value: string): string => {
   let host = value.trim().toLowerCase();

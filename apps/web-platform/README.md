@@ -53,9 +53,9 @@ pnpm dev --filter @publira/web-platform
 
 ### Request host
 
-`lib/csrf.ts` compares a form submission's origin with the host the request was sent to (`getRequestHost` in [`@publira/utils/request-host`](../../packages/utils/README.md#subpaths)). That host is the rightmost value of `X-Forwarded-Host`, which the edge sets, and `Host` when there is none.
+`lib/csrf.ts` compares a form submission's origin with the host the request was sent to (`getRequestHost` in [`@publira/utils/request-host`](../../packages/utils/README.md#subpaths)): the rightmost `host=` of `Forwarded`, then the rightmost value of `X-Forwarded-Host`, then `Host`.
 
-- `PUBLIRA_FORWARDED_HEADER_ENABLED` — `false` takes the host from `Host` alone, for an edge that passes on a caller's `X-Forwarded-Host`, as a managed load balancer does; left on behind one, the caller picks the host the origin is compared with. `true` when unset; a value other than `true` or `false` is refused. The app cannot tell which peer sent the header, so the value is a statement about the edge. `publira server` reads the same variable for the `Forwarded` header.
+- `PUBLIRA_FORWARDED_HEADER_ENABLED` — `false` skips `Forwarded`, for an edge that writes `X-Forwarded-Host` and passes on a `Forwarded` header the caller sent. `true` when unset; a value other than `true` or `false` is refused. The same variable as on `publira server`, which reads it for the client address.
 
 ### Server cache (Redis)
 
