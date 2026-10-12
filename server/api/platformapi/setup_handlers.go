@@ -79,16 +79,20 @@ func (s *platformServer) CreateInitialUser(
 	}
 	// The setup screen offers the supported locales and sends the one the
 	// operator picked; there is no stored preference yet to fall back on, so an
-	// absent or unsupported code is rejected rather than guessed at. The
-	// currency is checked as the platform settings save checks it, before
-	// anything is written.
+	// absent or unsupported code is rejected rather than guessed at. The time
+	// zone and the currency are checked as the platform settings save checks
+	// them, before anything is written.
 	defaults, err := platformconfig.InitialParams{
 		DefaultLocale:   req.DefaultLocale,
+		DefaultTimezone: req.DefaultTimezone,
 		DefaultCurrency: req.DefaultCurrency,
 	}.Validate()
 	if err != nil {
 		reason := "invalid_locale"
-		if fielderr.Field(err) == platformconfig.FieldDefaultCurrency {
+		switch fielderr.Field(err) {
+		case platformconfig.FieldDefaultTimezone:
+			reason = "invalid_timezone"
+		case platformconfig.FieldDefaultCurrency:
 			reason = "invalid_currency"
 		}
 		auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", reason)
@@ -169,9 +173,9 @@ func (s *platformServer) CreateInitialUser(
 		return nil, s.internalDBError(ctx, "failed to create initial platform user role", err, "platform_user_id", userID.String())
 	}
 
-	// The chosen locale and currency become the platform defaults in the same
-	// transaction, so a platform that has an administrator always has a
-	// language to render in.
+	// The chosen locale, time zone, and currency become the platform defaults
+	// in the same transaction, so a platform that has an administrator always
+	// has a language to render in.
 	if _, err := platformconfig.SaveInitial(ctx, txq, defaults, revalidate.RecordSiteDrop); err != nil {
 		if errors.Is(err, platformconfig.ErrDefaultCurrencyLocked) {
 			auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "platform_currency_locked")

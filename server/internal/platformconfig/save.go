@@ -85,11 +85,14 @@ func (p SaveParams) Validate() (SaveParams, error) {
 }
 
 // InitialParams are the platform defaults initial setup asks the first
-// operator for. The time zone is not among them: a platform that has saved none
-// starts on [tenanttz.Default], and one whose settings outlived its operators
-// keeps the stored one.
+// operator for.
 type InitialParams struct {
 	DefaultLocale string
+	// DefaultTimezone is the IANA zone every tenant created without one starts
+	// on. Empty keeps the stored one, which is [tenanttz.Default] before any is
+	// saved, so a setup that names none leaves a zone saved before the first
+	// operator existed as it is.
+	DefaultTimezone string
 	// DefaultCurrency is read as [SaveParams.DefaultCurrency] is: empty keeps
 	// the stored one, which is [DefaultCurrency] before any is saved.
 	DefaultCurrency string
@@ -102,11 +105,17 @@ func (p InitialParams) Validate() (InitialParams, error) {
 	if err != nil {
 		return InitialParams{}, &fielderr.Invalid{Field: FieldDefaultLocale, Err: err}
 	}
+	var timezone string
+	if strings.TrimSpace(p.DefaultTimezone) != "" {
+		if timezone, err = tenanttz.Normalize(p.DefaultTimezone); err != nil {
+			return InitialParams{}, &fielderr.Invalid{Field: FieldDefaultTimezone, Err: err}
+		}
+	}
 	defaultCurrency, err := normalizeCurrency(p.DefaultCurrency)
 	if err != nil {
 		return InitialParams{}, &fielderr.Invalid{Field: FieldDefaultCurrency, Err: err}
 	}
-	return InitialParams{DefaultLocale: defaultLocale, DefaultCurrency: defaultCurrency}, nil
+	return InitialParams{DefaultLocale: defaultLocale, DefaultTimezone: timezone, DefaultCurrency: defaultCurrency}, nil
 }
 
 // SaveInitial writes p on q, inside the transaction that creates the first
@@ -120,7 +129,7 @@ func SaveInitial(ctx context.Context, q *dbmodels.Queries, p InitialParams, reva
 	if err != nil {
 		return dbmodels.PlatformConfig{}, err
 	}
-	saved, _, err := write(ctx, q, SaveParams{DefaultLocale: p.DefaultLocale, DefaultCurrency: p.DefaultCurrency}, revalidateSite)
+	saved, _, err := write(ctx, q, SaveParams{DefaultTimezone: p.DefaultTimezone, DefaultLocale: p.DefaultLocale, DefaultCurrency: p.DefaultCurrency}, revalidateSite)
 	return saved, err
 }
 
@@ -217,7 +226,7 @@ func Save(ctx context.Context, db *sql.DB, logger *slog.Logger, actor auditlog.P
 // write saves p over the locked settings row on q, reporting whether it changed
 // anything. An empty DefaultTimezone or DefaultCurrency keeps the stored one,
 // or the constant before any is saved; [SaveParams.Validate] lets only the
-// currency through empty, and [SaveInitial] leaves the time zone so.
+// currency through empty, while [InitialParams.Validate] lets both.
 func write(ctx context.Context, q *dbmodels.Queries, p SaveParams, revalidateSite SiteRevalidator) (dbmodels.PlatformConfig, bool, error) {
 	current, err := q.LockPlatformConfig(ctx)
 	if errors.Is(err, sql.ErrNoRows) {

@@ -37,6 +37,11 @@ message CreateInitialUserRequest {
   // nothing. Empty keeps the stored currency, which is USD on a platform that
   // has saved none.
   string default_currency = 5;
+  // IANA time zone every tenant created without one starts on, as
+  // UpdatePlatformSettingsRequest takes it: a name that is not a usable zone is
+  // INVALID_ARGUMENT and creates nothing. Empty keeps the stored zone, which is
+  // UTC on a platform that has saved none.
+  string default_timezone = 6;
 }
 
 // Response returned after the first operator account is created.
