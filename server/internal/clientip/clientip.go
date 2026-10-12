@@ -10,6 +10,10 @@
 // the way Rails' request.remote_ip finds it instead: the chain the header
 // names, followed by the peer, is walked from the right past every trusted
 // proxy, and the first address that is not one is the client.
+//
+// The host the request was sent to is read under the same trust: the edge
+// names it in Forwarded's host= or in X-Forwarded-Host when it rewrites Host,
+// and only a trusted peer's word for it is taken.
 package clientip
 
 import (
@@ -27,7 +31,8 @@ import (
 const Env = "PUBLIRA_TRUSTED_PROXIES"
 
 // ForwardedEnv names the variable that turns the Forwarded header off, for an
-// install whose proxies pass on a Forwarded header the caller sent.
+// install whose proxies pass on a Forwarded header the caller sent. It turns
+// off the host= that header carries as well as its for=.
 const ForwardedEnv = "PUBLIRA_FORWARDED_HEADER_ENABLED"
 
 // DefaultTrustedProxies are the ranges Rails trusts when
@@ -50,8 +55,9 @@ type Config struct {
 	// TrustedProxies are the addresses and ranges whose forwarded entries are
 	// believed, and no others.
 	TrustedProxies []netip.Prefix
-	// IgnoreForwarded reads the chain from X-Forwarded-For alone, for proxies
-	// that write that header and pass on a Forwarded header the caller sent.
+	// IgnoreForwarded reads the chain from X-Forwarded-For alone, and the host
+	// from X-Forwarded-Host and Host alone, for proxies that write the
+	// X-Forwarded-* headers and pass on a Forwarded header the caller sent.
 	IgnoreForwarded bool
 }
 
@@ -173,6 +179,44 @@ func (r *Resolver) Resolve(header http.Header, remoteAddr string) string {
 	return chain[0].String()
 }
 
+// Host returns the host a request was sent to, port included, as the browser
+// named it.
+//
+// That is the rightmost host= of Forwarded unless [Config.IgnoreForwarded] is
+// set, then the rightmost value of X-Forwarded-Host, and then Host. The
+// rightmost value is the one the nearest hop wrote: a proxy that appends
+// rather than replaces keeps whatever the caller sent to its left. Either
+// header is read only from a trusted peer, since from anyone else it is
+// whatever the caller wrote. A trusted proxy that passes on a caller's header
+// untouched is beyond what this can tell, which is why the edge sets them.
+//
+// The web apps read the host in the same order, so that a request is served
+// as the same tenant by every process it reaches.
+func (r *Resolver) Host(req *http.Request) string {
+	if r.trustsPeer(req.RemoteAddr) {
+		if !r.config.IgnoreForwarded {
+			if host, ok := forwardedHost(req.Header.Values("Forwarded")); ok {
+				return host
+			}
+		}
+		if host, ok := lastValue(req.Header.Values("X-Forwarded-Host")); ok {
+			return host
+		}
+	}
+	return strings.TrimSpace(req.Host)
+}
+
+// trustsPeer reports whether remoteAddr, the peer's host and port, belongs to
+// a trusted proxy.
+func (r *Resolver) trustsPeer(remoteAddr string) bool {
+	host := remoteAddr
+	if h, _, err := net.SplitHostPort(remoteAddr); err == nil {
+		host = h
+	}
+	peer, ok := parseNode(host)
+	return ok && r.trusts(peer)
+}
+
 func (r *Resolver) trusts(addr netip.Addr) bool {
 	for _, prefix := range r.config.TrustedProxies {
 		if prefix.Contains(addr) {
@@ -182,16 +226,27 @@ func (r *Resolver) trusts(addr netip.Addr) bool {
 	return false
 }
 
-// Middleware stores the client address of every request in its context, for
-// [FromContext] to read.
+// Middleware stores the client address and the host of every request in its
+// context, for [FromContext] and [HostFromContext] to read.
 func (r *Resolver) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		ip := r.Resolve(req.Header, req.RemoteAddr)
-		next.ServeHTTP(w, req.WithContext(NewContext(req.Context(), ip)))
+		ctx := NewContext(req.Context(), r.Resolve(req.Header, req.RemoteAddr))
+		ctx = context.WithValue(ctx, hostContextKey{}, r.Host(req))
+		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }
 
 type contextKey struct{}
+
+type hostContextKey struct{}
+
+// HostFromContext returns the host [Resolver.Middleware] determined for the
+// request ctx belongs to, and false for a context that did not pass through
+// it.
+func HostFromContext(ctx context.Context) (string, bool) {
+	host, ok := ctx.Value(hostContextKey{}).(string)
+	return host, ok
+}
 
 // NewContext returns a copy of ctx carrying ip as the client address.
 func NewContext(ctx context.Context, ip string) context.Context {
@@ -239,6 +294,40 @@ func forwardedChain(values []string) (chain []netip.Addr, found bool) {
 	return chain, found
 }
 
+// forwardedHost reads the rightmost host= of the Forwarded lines (RFC 7239),
+// across every element as [forwardedChain] reads for=, and reports whether
+// there was any.
+func forwardedHost(values []string) (host string, found bool) {
+	for _, value := range values {
+		for _, element := range splitUnquoted(value, ',') {
+			for _, pair := range splitUnquoted(element, ';') {
+				name, node, ok := strings.Cut(pair, "=")
+				if !ok || !strings.EqualFold(strings.TrimSpace(name), "host") {
+					continue
+				}
+				if node := unquote(node); node != "" {
+					host, found = node, true
+				}
+			}
+		}
+	}
+	return host, found
+}
+
+// lastValue returns the rightmost non-empty entry of a comma-separated header
+// that may arrive on several lines.
+func lastValue(values []string) (string, bool) {
+	for i := len(values) - 1; i >= 0; i-- {
+		entries := strings.Split(values[i], ",")
+		for j := len(entries) - 1; j >= 0; j-- {
+			if entry := strings.TrimSpace(entries[j]); entry != "" {
+				return entry, true
+			}
+		}
+	}
+	return "", false
+}
+
 // splitUnquoted splits s at every sep outside a quoted string.
 func splitUnquoted(s string, sep byte) []string {
 	var parts []string
@@ -262,10 +351,7 @@ func splitUnquoted(s string, sep byte) []string {
 // parseNode reads one hop of a chain: an address, optionally quoted, with an
 // optional port, and an IPv6 address in brackets when it carries one.
 func parseNode(raw string) (netip.Addr, bool) {
-	node := strings.TrimSpace(raw)
-	if len(node) >= 2 && node[0] == '"' && node[len(node)-1] == '"' {
-		node = strings.ReplaceAll(node[1:len(node)-1], `\`, "")
-	}
+	node := unquote(raw)
 	var (
 		addr netip.Addr
 		err  error
@@ -281,4 +367,14 @@ func parseNode(raw string) (netip.Addr, bool) {
 		return netip.Addr{}, false
 	}
 	return addr.WithZone("").Unmap(), true
+}
+
+// unquote trims a Forwarded value and strips the quotes and escapes of a
+// quoted string.
+func unquote(raw string) string {
+	value := strings.TrimSpace(raw)
+	if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
+		value = strings.ReplaceAll(value[1:len(value)-1], `\`, "")
+	}
+	return value
 }
