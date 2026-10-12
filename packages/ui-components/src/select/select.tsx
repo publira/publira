@@ -57,9 +57,12 @@ export const Select = ({
       items={safeItems}
       onValueChange={handleValueChange}
     >
+      {/* A label that wraps grows the trigger past 40px. `h-fit` rather than
+          `h-auto` keeps a one-line trigger at 40px in a grid or flex row that
+          stretches its items to a taller neighbour. */}
       <BaseSelect.Trigger
         className={cn(
-          "flex h-10 w-full items-center justify-between rounded-control border border-input bg-card px-3 py-2 text-sm text-foreground transition-colors duration-state ease-state focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground",
+          "flex h-fit min-h-10 w-full items-center justify-between gap-2 rounded-control border border-input bg-card px-3 py-2 text-left text-sm text-foreground transition-colors duration-state ease-state focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground",
           className
         )}
         id={id}
