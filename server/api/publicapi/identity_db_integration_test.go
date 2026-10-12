@@ -48,12 +48,18 @@ func newIdentityDBEnv(t *testing.T) *identityDBEnv {
 func newIdentityDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *identityDBEnv {
 	t.Helper()
 
+	return newIdentityDBEnvWithGuards(t, openReaderGuards(), mail)
+}
+
+func newIdentityDBEnvWithGuards(t *testing.T, guards readerGuards, mail *mailguard.Guard) *identityDBEnv {
+	t.Helper()
+
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	db := pg.OpenPublicDB(t)
 	encryptor := newPublicTestEncryptor(t)
 	apple, google := signintest.NewProvider(t), signintest.NewProvider(t)
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), mail, nil)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), guards, mail, nil)
 	server.idTokens = signintest.Verifier(apple, google)
 	httpServer := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(httpServer.Close)
@@ -844,5 +850,36 @@ func TestDBLinkIdentityRefusesASuspendedAccount(t *testing.T) {
 	// Nothing was linked, so the provider account opens an account of its own.
 	if resp := env.mustSignIn(t, google, env.googleToken(t, "google-subject", "elsewhere@example.com", "nonce-1"), "nonce-1"); !resp.AccountCreated {
 		t.Fatalf("sign-in after the refused link = %+v, want a new account", resp)
+	}
+}
+
+// Every link charges the reader's allowance before the token is verified, so a
+// refused link sent again runs out like any other write.
+func TestDBLinkIdentityChargesTheSharedFloodControl(t *testing.T) {
+	env := newIdentityDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.IdentityLink = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
+	}), openMailGuard())
+	env.enableProviders(t)
+	google := publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE
+	member := env.PG.SeedEndUser(t, env.tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	session := env.passwordSession(t, member.Email)
+	env.mustSignIn(t, google, env.googleToken(t, "google-other", "other@example.com", "nonce-other"), "nonce-other")
+
+	for range 2 {
+		_, err := env.link(session, google, env.googleToken(t, "google-other", "other@example.com", "nonce-1"), "nonce-1")
+		if reason, _ := errorInfoReason(err); reason != rpcerrors.ReasonIdentityLinkedToAnotherAccount {
+			t.Fatalf("a refused link within the allowance = %v, want %s", err, rpcerrors.ReasonIdentityLinkedToAnotherAccount)
+		}
+	}
+	_, err := env.link(session, google, env.googleToken(t, "google-subject", "elsewhere@example.com", "nonce-1"), "nonce-1")
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a link past the allowance: code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
+	}
+	listed, err := env.authClient().ListMyIdentities(testutil.WithBearer(context.Background(), session), &publirav1.ListMyIdentitiesRequest{Tenant: tenantContext(env.tenant)})
+	if err != nil {
+		t.Fatalf("ListMyIdentities: %v", err)
+	}
+	if len(listed.Identities) != 0 {
+		t.Fatalf("identities after the refused link = %+v, want none", listed.Identities)
 	}
 }

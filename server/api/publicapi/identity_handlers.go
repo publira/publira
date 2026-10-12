@@ -567,6 +567,11 @@ func (s *apiServer) LinkIdentity(
 	if code != "" && provider != signin.ProviderApple {
 		return fail("invalid_input", rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("only an Apple sign-in carries an authorization code"), "authorization_code"))
 	}
+	// Charged before the token is verified, which is the work a refused link
+	// sent again past the limit would otherwise still cost.
+	if err := s.chargeReaderAction(ctx, actionLinkIdentity, tenant.ID, user.ID); err != nil {
+		return fail("rate_limited", err)
+	}
 
 	claims, err := s.verifyIDToken(ctx, tenant.ID, provider, rawToken, nonce, true)
 	if err != nil {
