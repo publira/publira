@@ -7,11 +7,13 @@ import {
 } from "./webpush-settings";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetPlatformWebPushSettings,
   mockResolveSessionId,
   mockUpdatePlatformWebPushSubject,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetPlatformWebPushSettings: vi.fn(),
   mockResolveSessionId: vi.fn(),
@@ -19,6 +21,7 @@ const {
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -99,6 +102,21 @@ describe("getPlatformWebPushSettings", () => {
       requiresSignIn: true,
     });
     expect(mockGetPlatformWebPushSettings).not.toHaveBeenCalled();
+  });
+
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetPlatformWebPushSettings.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(getPlatformWebPushSettings("en")).rejects.toThrow(Error);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });
 

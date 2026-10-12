@@ -1,6 +1,6 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { MfaChallengeKind } from "@publira/api-client/platform/auth";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getPlatformCurrentOperator,
@@ -49,6 +49,10 @@ vi.mock("./api-client", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   mockResolveSessionId.mockResolvedValue("tok_abc");
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("loginPlatform", () => {
@@ -257,5 +261,28 @@ describe("getPlatformCurrentOperator", () => {
       ok: false,
       requiresSignIn: true,
     });
+  });
+
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an unexpected error only outside the cache scope, and logs its cause there", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {
+      // Asserted below.
+    });
+    const error = new ConnectError("boom", Code.Internal);
+    mockGetMe.mockRejectedValueOnce(error);
+
+    await expect(getPlatformCurrentOperator()).rejects.toThrow(
+      "The signed-in operator could not be read."
+    );
+    expect(mockCacheLife).toHaveBeenLastCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+    expect(warn).toHaveBeenCalledWith(
+      "[web-platform] getPlatformCurrentOperator failed",
+      error
+    );
   });
 });

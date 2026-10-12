@@ -29,7 +29,8 @@ import {
  * ## Which boundary takes an unclassifiable RPC error
  *
  * This one, for everything a page reads. The lib layer already decides what
- * never gets this far: `rethrowUnclassifiedRpcError()` re-throws `internal` /
+ * never gets this far: `rethrowUnclassifiedRpcError()` — or, for a cached read,
+ * its exported caller once outside the cache scope — re-throws `internal` /
  * `unimplemented` and any non-RPC throw, while classified failures become
  * either a message the screen renders inline (`ok: false`) or a `null` the page
  * turns into `notFound()`. So the throws that land here are exactly the ones no

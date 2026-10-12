@@ -26,6 +26,7 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
+import type { CachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import type { PlatformMessageAccessor } from "./messages";
 import { toPlatformSession } from "./platform-session-cookie";
@@ -192,7 +193,7 @@ export const PLATFORM_MFA_STATUS_CACHE_TAG = "platform-mfa-status";
 
 const getPlatformMfaStatusForSession = async (
   token: string
-): Promise<GetPlatformMfaStatusResult> => {
+): Promise<CachedRead<GetPlatformMfaStatusResult>> => {
   "use cache: private";
 
   cacheTag(PLATFORM_MFA_STATUS_CACHE_TAG);
@@ -221,13 +222,30 @@ const getPlatformMfaStatusForSession = async (
       dropFailedCacheEntry();
       return { ok: false, requiresSignIn: true };
     }
-    throw error;
+    // Any other failure is the error screen, thrown by the caller. Only the
+    // verdict crosses the cache boundary, so the cause is logged here, where
+    // the error is still whole.
+    console.warn("[web-platform] getPlatformMfaStatus failed", error);
+    dropFailedCacheEntry();
+    return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
 
+/**
+ * The signed-in operator's second factor, or a rejected session. Any other
+ * failure reaches the error boundary: the account screen has no copy for a
+ * status it could not read.
+ */
 export const getPlatformMfaStatus =
-  async (): Promise<GetPlatformMfaStatusResult> =>
-    getPlatformMfaStatusForSession(await resolveAccessToken());
+  async (): Promise<GetPlatformMfaStatusResult> => {
+    const { unexpected, ...result } = await getPlatformMfaStatusForSession(
+      await resolveAccessToken()
+    );
+    if (unexpected) {
+      throw new Error("The second factor's status could not be read.");
+    }
+    return result;
+  };
 
 export const verifyPlatformMfa = async (
   challengeToken: string,

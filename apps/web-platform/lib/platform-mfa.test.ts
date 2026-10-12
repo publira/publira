@@ -4,7 +4,7 @@ import {
   ErrorInfoSchema,
   RPC_ERROR_REASON,
 } from "@publira/api-client/errors";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getMessagesFor } from "./messages";
 
@@ -59,6 +59,10 @@ beforeEach(() => {
   mockResolveAccessToken.mockResolvedValue("session-token");
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("getPlatformMfaStatus", () => {
   it("returns the MFA status of the signed-in operator under its tag", async () => {
     mockGetMfaStatus.mockResolvedValueOnce({
@@ -110,6 +114,31 @@ describe("getPlatformMfaStatus", () => {
       ok: false,
       requiresSignIn: true,
     });
+  });
+
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws any other failure only outside the cache scope, and logs its cause there", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {
+      // Asserted below.
+    });
+    const error = new ConnectError("boom", Code.Internal);
+    mockGetMfaStatus.mockRejectedValueOnce(error);
+
+    const { getPlatformMfaStatus } = await import("./platform-mfa");
+
+    await expect(getPlatformMfaStatus()).rejects.toThrow(
+      "The second factor's status could not be read."
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+    expect(warn).toHaveBeenCalledWith(
+      "[web-platform] getPlatformMfaStatus failed",
+      error
+    );
   });
 });
 
