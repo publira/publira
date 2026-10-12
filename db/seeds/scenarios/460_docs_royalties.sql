@@ -30,6 +30,7 @@ INSERT INTO royalty_statements (
     currency,
     total_gross,
     total_refunded,
+    total_adjustment,
     total_payout
 )
 SELECT
@@ -43,6 +44,7 @@ SELECT
     u.id,
     'JPY',
     4000,
+    0,
     0,
     2000
 FROM tenants t

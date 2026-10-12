@@ -80,7 +80,19 @@ Every amount is in the tenant's currency, and a closed statement keeps the curre
 
 Nothing else is a sale. Access tickets, **Free if you wait**, free reading periods, and an Author reading their own episode open an episode without one. A purchase from the App Store sandbox or a Play license tester, and one made with Stripe's or PAY.JP's test keys, is a test and is left out.
 
-A purchase that is refunded in full drops out of the month it was bought in. A partial refund leaves the sale in, and its amount is taken off under **Refunded**. Either way the refund counts against the month of the purchase, not the month of the refund, and only while that month is open.
+A purchase that is refunded in full drops out of the month it was bought in. A partial refund leaves the sale in, and its amount is taken off under **Refunded**. Either way, while the month of the purchase is open, the refund counts against that month, not the month of the refund.
+
+### A refund after the close
+
+A refund recorded after the month of the purchase was closed cannot change that statement. It is taken off the next statement closed after it instead, as an adjustment line: a line under the same Author, series, episode, and role as the closed line that counted the sale, naming the closed month it adjusts. An adjustment comes after the month's own lines, and its figures are changes, so they are negative where a line of sales has them positive:
+
+- **Sales** is minus the purchases refunded in full, and **Gross** minus their price.
+- **Refunded** is the change in the refunds of the purchases that are still sales. It is negative when a purchase that was partly refunded at the close has since been refunded in full, since that purchase now leaves through **Gross** instead.
+- **Payout** is what the refund takes off the closed line's payout: the line's payout worked out again, at the share the closed month applied and rounded down as before, over what is left of its sales, less what it was. A share changed since the close, or an Author credited since, changes nothing about it. The closed line and its adjustments together pay what the line would have paid had the refunds come before the close, so nothing once every sale on it is refunded.
+
+Each part of a refund is taken off once. A purchase refunded in part after one close and in full after the next is taken off in two adjustments, the second for what the first did not cover, and the statements together pay nothing for it.
+
+An adjustment is carried only into a month later than the one it adjusts. A month closed out of order, before an earlier one, carries none of that earlier month's refunds; the next month closed after both carries them. When a month's adjustments outweigh its own sales, its **Payout to authors** is negative, and so is an Author's subtotal when their adjustments outweigh their lines of sales.
 
 ### Reading the open month
 
@@ -92,7 +104,7 @@ A purchase that is refunded in full drops out of the month it was bought in. A p
 | --- | --- |
 | **Sales** | Every sale of the month, at its price, including sales of episodes that credit no Author |
 | **Refunds** | The refunds on those sales |
-| **Payout to authors** | What the month owes its Authors, the sum of the lines below. The rest of **Sales** after **Refunds** is the publisher's |
+| **Payout to authors** | What the month owes its Authors, the sum of the lines below, the adjustments for [a refund after the close](#a-refund-after-the-close) included. The rest of **Sales** after **Refunds** and those adjustments is the publisher's |
 
 **Lines by author** groups the month by Author, with a line for each credit on an episode that sold in the month and a **Subtotal** for the Author. Each line gives the **Series**, the **Episode**, the credit's **Role**, the number of **Sales**, the **Gross** amount, the amount **Refunded**, the **Share**, and the **Payout**. An Author credited twice on the same episode, in two roles, has a line for each.
 
@@ -109,7 +121,7 @@ Above the totals the screen says where the month stands:
 Closing a month fixes it as it stands at that moment, and nothing that happens afterwards reaches it. Check, before closing:
 
 - **The credits and shares.** The statement takes each share as it stands when the month is closed, not as it stood when the episode sold. Change a share before the close and the whole month is paid at the new share; change it after, and only the open months are.
-- **The refunds you expect.** A refund recorded after the close is not taken off the closed month, and is not carried into the next one ([#2390](https://github.com/publira/publira/issues/2390)). Wait for a refund you know is coming, or settle it with the Author outside Publira.
+- **The refunds you expect.** A refund recorded after the close is taken off the next statement rather than the closed month, as [A refund after the close](#a-refund-after-the-close) describes, so the Author is paid for the sale first and the payout comes back out of a later month. Wait for a refund you know is coming to have it counted in its own month.
 - **That the month is over.** A sale made late on its last day counts in the tenant's time zone, which may not be yours.
 
 Close the months in order. The console offers the month after the newest statement for this reason, and a month passed over has to be picked with **Month** to be closed later.
@@ -126,7 +138,7 @@ The console then opens the month's **Statement**, which shows **Closed on**, who
 
 ![The statement of December 2025: Closed on, who closed it, and the time zone it was cut in, its totals, Download CSV, and each Author's lines as they stood at the close.](./reports-and-royalties-statement.png)
 
-Once closed, a statement keeps each Author's, series', episode's, and role's name as it was at the close: renaming an Author, editing a share, refunding a purchase, or deleting a credit afterwards leaves it as it is. A closed month cannot be reopened, by staff or by the operator. A mistake found afterwards is corrected outside Publira, in what the tenant pays.
+Once closed, a statement keeps each Author's, series', episode's, and role's name as it was at the close: renaming an Author, editing a share, refunding a purchase, or deleting a credit afterwards leaves it as it is. A refund recorded afterwards is taken off the next statement instead. A closed month cannot be reopened, by staff or by the operator. A mistake found afterwards is corrected outside Publira, in what the tenant pays.
 
 **Closed statements** lists every closed month, newest first, with when it was closed, who closed it, and its totals. A month closed automatically shows `—` under **Closed by**.
 
@@ -151,6 +163,7 @@ The file is named `royalties-<tenant>-<YYYY-MM>.csv`. It is UTF-8, with a byte o
 | `share_percent` | The share, with two decimals, such as `12.50` |
 | `payout_amount` | The payout, in the same unit |
 | `currency` | The statement's currency, such as `USD`: the tenant's when the month was closed, and the only one whose sales it counts |
+| `adjusted_period` | Empty for a line of the month's own sales. On an adjustment, the closed month it takes a refund back from, `YYYY-MM`, and its amounts are the negative changes [A refund after the close](#a-refund-after-the-close) describes |
 
 Names are as they were at the close, and the IDs keep a line tied to its Author and episode across renames. A cell that a spreadsheet would read as a formula is written so that it stays text. A statement downloads the same file every time, and each download is recorded in **Audit logs** as **Royalty statement CSV downloaded**.
 

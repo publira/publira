@@ -73,15 +73,17 @@ type royaltySale struct {
 	refundedAt     sql.NullTime
 }
 
-func (e *adminDBEnv) seedSale(t *testing.T, f royaltyFixture, episodeID uuid.UUID, sale royaltySale) {
+func (e *adminDBEnv) seedSale(t *testing.T, f royaltyFixture, episodeID uuid.UUID, sale royaltySale) uuid.UUID {
 	t.Helper()
 
+	id := uuid.Must(uuid.NewV7())
 	if _, err := e.PG.DB.ExecContext(context.Background(), `
 		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at, refunded_amount, refunded_at, currency)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, uuid.Must(uuid.NewV7()), f.admin.Tenant.ID, f.reader.ID, episodeID, sale.price, sale.purchasedAt, sale.refundedAmount, sale.refundedAt, e.PG.TenantCurrency(t, f.admin.Tenant.ID)); err != nil {
+	`, id, f.admin.Tenant.ID, f.reader.ID, episodeID, sale.price, sale.purchasedAt, sale.refundedAmount, sale.refundedAt, e.PG.TenantCurrency(t, f.admin.Tenant.ID)); err != nil {
 		t.Fatalf("insert sale of episode %s: %v", episodeID, err)
 	}
+	return id
 }
 
 func (e *adminDBEnv) previewRoyalties(t *testing.T, tenant adminDBTenant, period string) *publiraadminv1.PreviewRoyaltyStatementResponse {
@@ -559,6 +561,8 @@ func TestDBRoyaltyStatementCannotBeRewrittenButGoesWithItsTenant(t *testing.T) {
 		"UPDATE royalty_statements SET total_payout = 0 WHERE tenant_id = $1",
 		"UPDATE royalty_statement_lines SET payout_amount = 0, share_bps = 0 WHERE tenant_id = $1",
 		"DELETE FROM royalty_statement_lines WHERE tenant_id = $1",
+		"UPDATE royalty_statement_purchases SET refunded_amount = 500 WHERE tenant_id = $1",
+		"DELETE FROM royalty_statement_purchases WHERE tenant_id = $1",
 		"DELETE FROM royalty_statements WHERE tenant_id = $1",
 	}
 	// Neither the console's own role nor one that bypasses RLS may rewrite a
@@ -636,11 +640,11 @@ func TestDBAdminExportRoyaltyStatementWritesTheClosedLines(t *testing.T) {
 	currency := env.PG.TenantCurrency(t, f.admin.Tenant.ID)
 
 	want := "\xEF\xBB\xBF" +
-		"period,creator_id,creator_name,role_id,role_name,series_id,series_title,episode_id,episode_title,sale_count,gross_amount,refunded_amount,share_percent,payout_amount,currency\r\n" +
+		"period,creator_id,creator_name,role_id,role_name,series_id,series_title,episode_id,episode_title,sale_count,gross_amount,refunded_amount,share_percent,payout_amount,currency,adjusted_period\r\n" +
 		"2026-07," + artist.ID.String() + `,"Kim, ""Ink"" Lee",` + role.ID.String() + ",Artist," + f.series.ID.String() + ",星の図書館," +
-		f.episode.ID.String() + `,"第1話, ""はじまり""",2,1000,100,12.50,112,` + currency + "\r\n" +
+		f.episode.ID.String() + `,"第1話, ""はじまり""",2,1000,100,12.50,112,` + currency + ",\r\n" +
 		"2026-07," + guest.ID.String() + ",Guest,,," + f.series.ID.String() + ",星の図書館," +
-		f.episode.ID.String() + `,"第1話, ""はじまり""",2,1000,100,0.00,0,` + currency + "\r\n"
+		f.episode.ID.String() + `,"第1話, ""はじまり""",2,1000,100,0.00,0,` + currency + ",\r\n"
 	if got := env.exportRoyalties(t, f.admin, "2026-07"); got != want {
 		t.Fatalf("csv =\n%q\nwant\n%q", got, want)
 	}
@@ -690,7 +694,7 @@ func TestDBAdminExportRoyaltyStatementRefusesOpenMonthsAndOtherCallers(t *testin
 		t.Fatalf("export by an editor error = %v, want permission_denied", err)
 	}
 	// A month with no sales closes into a header alone.
-	if got := env.exportRoyalties(t, f.admin, "2026-07"); got != "\xEF\xBB\xBFperiod,creator_id,creator_name,role_id,role_name,series_id,series_title,episode_id,episode_title,sale_count,gross_amount,refunded_amount,share_percent,payout_amount,currency\r\n" {
+	if got := env.exportRoyalties(t, f.admin, "2026-07"); got != "\xEF\xBB\xBFperiod,creator_id,creator_name,role_id,role_name,series_id,series_title,episode_id,episode_title,sale_count,gross_amount,refunded_amount,share_percent,payout_amount,currency,adjusted_period\r\n" {
 		t.Fatalf("csv of a month with no sales = %q, want the header row alone", got)
 	}
 }

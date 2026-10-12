@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/royalty.proto.
  */
 export const file_publira_admin_v1_royalty: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL3JveWFsdHkucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEikAEKDVJveWFsdHlDb25maWcSNgoKY2xvc2VfbW9kZRgBIAEoDjIiLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eUNsb3NlTW9kZRIbCg5hdXRvX2Nsb3NlX2RheRgCIAEoBUgAiAEBEhcKD2F1dG9tYXRpY19zaW5jZRgDIAEoCUIRCg9fYXV0b19jbG9zZV9kYXkiSgoXR2V0Um95YWx0eUNvbmZpZ1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IksKGEdldFJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWcitQEKGlVwZGF0ZVJveWFsdHlDb25maWdSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI2CgpjbG9zZV9tb2RlGAIgASgOMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5Q2xvc2VNb2RlEhsKDmF1dG9fY2xvc2VfZGF5GAMgASgFSACIAQFCEQoPX2F1dG9fY2xvc2VfZGF5Ik4KG1VwZGF0ZVJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWciSQoWUm95YWx0eVN0YXRlbWVudFRvdGFscxINCgVncm9zcxgBIAEoAxIQCghyZWZ1bmRlZBgCIAEoAxIOCgZwYXlvdXQYAyABKAMi0wEKEFJveWFsdHlTdGF0ZW1lbnQSDgoGcGVyaW9kGAEgASgJEhEKCXRpbWVfem9uZRgCIAEoCRIRCgljbG9zZWRfYXQYAyABKAkSIAoYY2xvc2VkX2J5X3VzZXJfcHVibGljX2lkGAQgASgJEhsKE2Nsb3NlZF9ieV91c2VyX25hbWUYBSABKAkSOAoGdG90YWxzGAYgASgLMigucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50VG90YWxzEhAKCGN1cnJlbmN5GAcgASgJItYCChRSb3lhbHR5U3RhdGVtZW50TGluZRITCgtsaW5lX251bWJlchgBIAEoBRIZChFjcmVhdG9yX3B1YmxpY19pZBgCIAEoCRIUCgxjcmVhdG9yX25hbWUYAyABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgEIAEoCRIUCgxzZXJpZXNfdGl0bGUYBSABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYBiABKAkSFQoNZXBpc29kZV90aXRsZRgHIAEoCRIWCg5yb2xlX3B1YmxpY19pZBgIIAEoCRIRCglyb2xlX25hbWUYCSABKAkSEgoKc2FsZV9jb3VudBgKIAEoBRIUCgxncm9zc19hbW91bnQYCyABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAwgASgDEhEKCXNoYXJlX2JwcxgNIAEoBRIVCg1wYXlvdXRfYW1vdW50GA4gASgDImEKHlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGcGVyaW9kGAIgASgJIusBCh9QcmV2aWV3Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEg4KBnBlcmlvZBgBIAEoCRIRCgl0aW1lX3pvbmUYAiABKAkSOAoGdG90YWxzGAMgASgLMigucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50VG90YWxzEjUKBWxpbmVzGAQgAygLMiYucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50TGluZRIRCglzdGFydHNfYXQYBSABKAkSDwoHZW5kc19hdBgGIAEoCRIQCghjdXJyZW5jeRgHIAEoCSJfChxDbG9zZVJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZwZXJpb2QYAiABKAkiVgodQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2USNQoJc3RhdGVtZW50GAEgASgLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50Im0KHExpc3RSb3lhbHR5U3RhdGVtZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAMgASgJIoMBCh1MaXN0Um95YWx0eVN0YXRlbWVudHNSZXNwb25zZRI2CgpzdGF0ZW1lbnRzGAEgAygLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50EhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiewoaR2V0Um95YWx0eVN0YXRlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBnBlcmlvZBgCIAEoCRINCgVsaW1pdBgDIAEoBRINCgV0b2tlbhgEIAEoCSK3AQobR2V0Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEjUKCXN0YXRlbWVudBgBIAEoCzIiLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eVN0YXRlbWVudBI1CgVsaW5lcxgCIAMoCzImLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eVN0YXRlbWVudExpbmUSFgoOcHJldmlvdXNfdG9rZW4YAyABKAkSEgoKbmV4dF90b2tlbhgEIAEoCSJgCh1FeHBvcnRSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGcGVyaW9kGAIgASgJIi0KHkV4cG9ydFJveWFsdHlTdGF0ZW1lbnRSZXNwb25zZRILCgNjc3YYASABKAwqdwoQUm95YWx0eUNsb3NlTW9kZRIiCh5ST1lBTFRZX0NMT1NFX01PREVfVU5TUEVDSUZJRUQQABIdChlST1lBTFRZX0NMT1NFX01PREVfTUFOVUFMEAESIAocUk9ZQUxUWV9DTE9TRV9NT0RFX0FVVE9NQVRJQxACMugGChNBZG1pblJveWFsdHlTZXJ2aWNlEmsKEEdldFJveWFsdHlDb25maWcSKS5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlDb25maWdSZXF1ZXN0GioucHVibGlyYS5hZG1pbi52MS5HZXRSb3lhbHR5Q29uZmlnUmVzcG9uc2UiABJ0ChNVcGRhdGVSb3lhbHR5Q29uZmlnEiwucHVibGlyYS5hZG1pbi52MS5VcGRhdGVSb3lhbHR5Q29uZmlnUmVxdWVzdBotLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlUm95YWx0eUNvbmZpZ1Jlc3BvbnNlIgASgAEKF1ByZXZpZXdSb3lhbHR5U3RhdGVtZW50EjAucHVibGlyYS5hZG1pbi52MS5QcmV2aWV3Um95YWx0eVN0YXRlbWVudFJlcXVlc3QaMS5wdWJsaXJhLmFkbWluLnYxLlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiABJ6ChVDbG9zZVJveWFsdHlTdGF0ZW1lbnQSLi5wdWJsaXJhLmFkbWluLnYxLkNsb3NlUm95YWx0eVN0YXRlbWVudFJlcXVlc3QaLy5wdWJsaXJhLmFkbWluLnYxLkNsb3NlUm95YWx0eVN0YXRlbWVudFJlc3BvbnNlIgASegoVTGlzdFJveWFsdHlTdGF0ZW1lbnRzEi4ucHVibGlyYS5hZG1pbi52MS5MaXN0Um95YWx0eVN0YXRlbWVudHNSZXF1ZXN0Gi8ucHVibGlyYS5hZG1pbi52MS5MaXN0Um95YWx0eVN0YXRlbWVudHNSZXNwb25zZSIAEnQKE0dldFJveWFsdHlTdGF0ZW1lbnQSLC5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5HZXRSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiABJ9ChZFeHBvcnRSb3lhbHR5U3RhdGVtZW50Ei8ucHVibGlyYS5hZG1pbi52MS5FeHBvcnRSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuRXhwb3J0Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL3JveWFsdHkucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEikAEKDVJveWFsdHlDb25maWcSNgoKY2xvc2VfbW9kZRgBIAEoDjIiLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eUNsb3NlTW9kZRIbCg5hdXRvX2Nsb3NlX2RheRgCIAEoBUgAiAEBEhcKD2F1dG9tYXRpY19zaW5jZRgDIAEoCUIRCg9fYXV0b19jbG9zZV9kYXkiSgoXR2V0Um95YWx0eUNvbmZpZ1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IksKGEdldFJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWcitQEKGlVwZGF0ZVJveWFsdHlDb25maWdSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI2CgpjbG9zZV9tb2RlGAIgASgOMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5Q2xvc2VNb2RlEhsKDmF1dG9fY2xvc2VfZGF5GAMgASgFSACIAQFCEQoPX2F1dG9fY2xvc2VfZGF5Ik4KG1VwZGF0ZVJveWFsdHlDb25maWdSZXNwb25zZRIvCgZjb25maWcYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlDb25maWciXQoWUm95YWx0eVN0YXRlbWVudFRvdGFscxINCgVncm9zcxgBIAEoAxIQCghyZWZ1bmRlZBgCIAEoAxIOCgZwYXlvdXQYAyABKAMSEgoKYWRqdXN0bWVudBgEIAEoAyLTAQoQUm95YWx0eVN0YXRlbWVudBIOCgZwZXJpb2QYASABKAkSEQoJdGltZV96b25lGAIgASgJEhEKCWNsb3NlZF9hdBgDIAEoCRIgChhjbG9zZWRfYnlfdXNlcl9wdWJsaWNfaWQYBCABKAkSGwoTY2xvc2VkX2J5X3VzZXJfbmFtZRgFIAEoCRI4CgZ0b3RhbHMYBiABKAsyKC5wdWJsaXJhLmFkbWluLnYxLlJveWFsdHlTdGF0ZW1lbnRUb3RhbHMSEAoIY3VycmVuY3kYByABKAki7wIKFFJveWFsdHlTdGF0ZW1lbnRMaW5lEhMKC2xpbmVfbnVtYmVyGAEgASgFEhkKEWNyZWF0b3JfcHVibGljX2lkGAIgASgJEhQKDGNyZWF0b3JfbmFtZRgDIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAQgASgJEhQKDHNlcmllc190aXRsZRgFIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgGIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAcgASgJEhYKDnJvbGVfcHVibGljX2lkGAggASgJEhEKCXJvbGVfbmFtZRgJIAEoCRISCgpzYWxlX2NvdW50GAogASgFEhQKDGdyb3NzX2Ftb3VudBgLIAEoAxIXCg9yZWZ1bmRlZF9hbW91bnQYDCABKAMSEQoJc2hhcmVfYnBzGA0gASgFEhUKDXBheW91dF9hbW91bnQYDiABKAMSFwoPYWRqdXN0ZWRfcGVyaW9kGA8gASgJImEKHlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGcGVyaW9kGAIgASgJIusBCh9QcmV2aWV3Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEg4KBnBlcmlvZBgBIAEoCRIRCgl0aW1lX3pvbmUYAiABKAkSOAoGdG90YWxzGAMgASgLMigucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50VG90YWxzEjUKBWxpbmVzGAQgAygLMiYucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50TGluZRIRCglzdGFydHNfYXQYBSABKAkSDwoHZW5kc19hdBgGIAEoCRIQCghjdXJyZW5jeRgHIAEoCSJfChxDbG9zZVJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZwZXJpb2QYAiABKAkiVgodQ2xvc2VSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2USNQoJc3RhdGVtZW50GAEgASgLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50Im0KHExpc3RSb3lhbHR5U3RhdGVtZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAMgASgJIoMBCh1MaXN0Um95YWx0eVN0YXRlbWVudHNSZXNwb25zZRI2CgpzdGF0ZW1lbnRzGAEgAygLMiIucHVibGlyYS5hZG1pbi52MS5Sb3lhbHR5U3RhdGVtZW50EhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiewoaR2V0Um95YWx0eVN0YXRlbWVudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBnBlcmlvZBgCIAEoCRINCgVsaW1pdBgDIAEoBRINCgV0b2tlbhgEIAEoCSK3AQobR2V0Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlEjUKCXN0YXRlbWVudBgBIAEoCzIiLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eVN0YXRlbWVudBI1CgVsaW5lcxgCIAMoCzImLnB1YmxpcmEuYWRtaW4udjEuUm95YWx0eVN0YXRlbWVudExpbmUSFgoOcHJldmlvdXNfdG9rZW4YAyABKAkSEgoKbmV4dF90b2tlbhgEIAEoCSJgCh1FeHBvcnRSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGcGVyaW9kGAIgASgJIi0KHkV4cG9ydFJveWFsdHlTdGF0ZW1lbnRSZXNwb25zZRILCgNjc3YYASABKAwqdwoQUm95YWx0eUNsb3NlTW9kZRIiCh5ST1lBTFRZX0NMT1NFX01PREVfVU5TUEVDSUZJRUQQABIdChlST1lBTFRZX0NMT1NFX01PREVfTUFOVUFMEAESIAocUk9ZQUxUWV9DTE9TRV9NT0RFX0FVVE9NQVRJQxACMugGChNBZG1pblJveWFsdHlTZXJ2aWNlEmsKEEdldFJveWFsdHlDb25maWcSKS5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlDb25maWdSZXF1ZXN0GioucHVibGlyYS5hZG1pbi52MS5HZXRSb3lhbHR5Q29uZmlnUmVzcG9uc2UiABJ0ChNVcGRhdGVSb3lhbHR5Q29uZmlnEiwucHVibGlyYS5hZG1pbi52MS5VcGRhdGVSb3lhbHR5Q29uZmlnUmVxdWVzdBotLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlUm95YWx0eUNvbmZpZ1Jlc3BvbnNlIgASgAEKF1ByZXZpZXdSb3lhbHR5U3RhdGVtZW50EjAucHVibGlyYS5hZG1pbi52MS5QcmV2aWV3Um95YWx0eVN0YXRlbWVudFJlcXVlc3QaMS5wdWJsaXJhLmFkbWluLnYxLlByZXZpZXdSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiABJ6ChVDbG9zZVJveWFsdHlTdGF0ZW1lbnQSLi5wdWJsaXJhLmFkbWluLnYxLkNsb3NlUm95YWx0eVN0YXRlbWVudFJlcXVlc3QaLy5wdWJsaXJhLmFkbWluLnYxLkNsb3NlUm95YWx0eVN0YXRlbWVudFJlc3BvbnNlIgASegoVTGlzdFJveWFsdHlTdGF0ZW1lbnRzEi4ucHVibGlyYS5hZG1pbi52MS5MaXN0Um95YWx0eVN0YXRlbWVudHNSZXF1ZXN0Gi8ucHVibGlyYS5hZG1pbi52MS5MaXN0Um95YWx0eVN0YXRlbWVudHNSZXNwb25zZSIAEnQKE0dldFJveWFsdHlTdGF0ZW1lbnQSLC5wdWJsaXJhLmFkbWluLnYxLkdldFJveWFsdHlTdGF0ZW1lbnRSZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5HZXRSb3lhbHR5U3RhdGVtZW50UmVzcG9uc2UiABJ9ChZFeHBvcnRSb3lhbHR5U3RhdGVtZW50Ei8ucHVibGlyYS5hZG1pbi52MS5FeHBvcnRSb3lhbHR5U3RhdGVtZW50UmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuRXhwb3J0Um95YWx0eVN0YXRlbWVudFJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * The tenant's policy for closing completed royalty months.
@@ -127,9 +127,10 @@ export const UpdateRoyaltyConfigResponseSchema: GenMessage<UpdateRoyaltyConfigRe
   messageDesc(file_publira_admin_v1_royalty, 4);
 
 /**
- * The figures of one month: its own sales, and what its lines pay out.
- * Amounts are integers in the minor unit of the currency of the statement or
- * preview they belong to, and count only the sales paid in it.
+ * The figures of one month: its own sales, the refunds it carries of earlier
+ * months' sales, and what its lines pay out. Amounts are integers in the minor
+ * unit of the currency of the statement or preview they belong to, and count
+ * only the sales paid in it.
  *
  * @generated from message publira.admin.v1.RoyaltyStatementTotals
  */
@@ -150,12 +151,22 @@ export type RoyaltyStatementTotals = Message<"publira.admin.v1.RoyaltyStatementT
   refunded: bigint;
 
   /**
-   * The sum of the lines' payouts. The rest of gross net of refunds is the
-   * tenant's own.
+   * The sum of the lines' payouts, the adjustment lines included, so negative
+   * for a month whose refunds of earlier sales outweigh its own. The rest of
+   * gross net of refunds and adjustment is the tenant's own.
    *
    * @generated from field: int64 payout = 3;
    */
   payout: bigint;
+
+  /**
+   * The net sales of earlier closed months that refunds recorded since their
+   * close take back, each sale counted once: zero, or a negative amount. The
+   * adjustment lines carry it to the creators.
+   *
+   * @generated from field: int64 adjustment = 4;
+   */
+  adjustment: bigint;
 };
 
 /**
@@ -228,6 +239,15 @@ export const RoyaltyStatementSchema: GenMessage<RoyaltyStatement> = /*@__PURE__*
  * One creator's credit on one episode for one role, with that episode's sales
  * in the month. Names are as they stood at close; a public ID is empty once the
  * row it named has been deleted.
+ *
+ * A line with adjusted_period set is an adjustment instead: it carries the
+ * refunds recorded since that earlier month was closed on the sales one of its
+ * lines counted, with that line's names and share. Its figures are changes and
+ * never positive: sale_count is minus the sales refunded in full, gross_amount
+ * minus their price, and refunded_amount the change in what is refunded of the
+ * sales counted, negative when a sale partly refunded at close was then
+ * refunded in full. Adjustment lines follow the month's own lines, oldest
+ * adjusted month first.
  *
  * @generated from message publira.admin.v1.RoyaltyStatementLine
  */
@@ -304,12 +324,24 @@ export type RoyaltyStatementLine = Message<"publira.admin.v1.RoyaltyStatementLin
   shareBps: number;
 
   /**
-   * (gross_amount - refunded_amount) * share_bps / 10000, floored to the minor
-   * unit of the statement's currency.
+   * On a line of sales, (gross_amount - refunded_amount) * share_bps / 10000,
+   * floored to the minor unit of the statement's currency. On an adjustment,
+   * what its refunds take off the payout of the line it adjusts: that line's
+   * payout worked out the same way over its net after them, less the same
+   * over its net before them. A line and its adjustments therefore pay
+   * nothing once every sale in the line is refunded.
    *
    * @generated from field: int64 payout_amount = 14;
    */
   payoutAmount: bigint;
+
+  /**
+   * YYYY-MM of the closed month an adjustment line adjusts. Empty for a line
+   * of the month's own sales.
+   *
+   * @generated from field: string adjusted_period = 15;
+   */
+  adjustedPeriod: string;
 };
 
 /**
@@ -365,6 +397,10 @@ export type PreviewRoyaltyStatementResponse = Message<"publira.admin.v1.PreviewR
   totals?: RoyaltyStatementTotals | undefined;
 
   /**
+   * The month's own lines, then the adjustments for the refunds recorded so
+   * far on sales of earlier closed months, which closing the month now would
+   * carry.
+   *
    * @generated from field: repeated publira.admin.v1.RoyaltyStatementLine lines = 4;
    */
   lines: RoyaltyStatementLine[];
@@ -627,6 +663,10 @@ export type ExportRoyaltyStatementResponse = Message<"publira.admin.v1.ExportRoy
    *   payout_amount     an integer in the minor unit of currency, no currency
    *                     symbol
    *   currency          the statement's ISO 4217 code, the same on every row
+   *   adjusted_period   YYYY-MM of the closed month an adjustment line
+   *                     adjusts; empty for a line of the month's own sales.
+   *                     The amounts of an adjustment line are changes, zero
+   *                     or negative, as RoyaltyStatementLine describes
    *
    * The IDs are the rows' internal IDs, not their public IDs, and they stay
    * on the line after the row is deleted.
@@ -716,10 +756,12 @@ export const AdminRoyaltyService: GenService<{
   /**
    * Closes a month into a statement that never changes afterwards: a later
    * edit of a share, a creator or a catalog row, and a refund recorded after
-   * the close, all leave it as it was closed. A closed month is never reopened;
-   * a correction is a manual process outside Publira. already_exists for a
-   * month that is already closed, failed_precondition for a month that is not
-   * over yet.
+   * the close, all leave it as it was closed. A closed month is never reopened.
+   * A refund recorded after a month was closed is carried instead into the
+   * first statement closed after it for a later month, as adjustment lines at
+   * the shares the closed month applied, and each part of a refund is carried
+   * once. already_exists for a month that is already closed,
+   * failed_precondition for a month that is not over yet.
    *
    * Minimum role: tenant_admin.
    *

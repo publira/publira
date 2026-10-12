@@ -46,13 +46,25 @@ func (f royaltyTenant) setTimeZone(t *testing.T, timeZone string) {
 	}
 }
 
-func (f royaltyTenant) sell(t *testing.T, purchasedAt time.Time) {
+func (f royaltyTenant) sell(t *testing.T, purchasedAt time.Time) uuid.UUID {
 	t.Helper()
+	id := uuid.Must(uuid.NewV7())
 	if _, err := f.pg.DB.ExecContext(context.Background(), `
 		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at, currency)
 		VALUES ($1, $2, $3, $4, 500, $5, $6)
-	`, uuid.Must(uuid.NewV7()), f.id, f.reader, f.episode, purchasedAt, f.pg.TenantCurrency(t, f.id)); err != nil {
+	`, id, f.id, f.reader, f.episode, purchasedAt, f.pg.TenantCurrency(t, f.id)); err != nil {
 		t.Fatalf("insert sale at %s: %v", purchasedAt.Format(time.RFC3339), err)
+	}
+	return id
+}
+
+// refundInFull stands in for a refund notification of the whole price.
+func (f royaltyTenant) refundInFull(t *testing.T, purchaseID uuid.UUID) {
+	t.Helper()
+	if _, err := f.pg.DB.ExecContext(context.Background(), `
+		UPDATE purchases SET refunded_amount = price_at_purchase, refunded_at = now() WHERE id = $1
+	`, purchaseID); err != nil {
+		t.Fatalf("refund purchase %s: %v", purchaseID, err)
 	}
 }
 
@@ -287,5 +299,39 @@ func TestDBStatementKeepsTheCurrencyItWasClosedIn(t *testing.T) {
 	august := f.preview(t, f.month("2026-08", "UTC"), utc(2026, time.September, 1, 0))
 	if august.Currency != changedTo || august.Totals.Gross != 0 {
 		t.Fatalf("August previews in %s with gross %d, want %s with no sale in it", august.Currency, august.Totals.Gross, changedTo)
+	}
+}
+
+// Two months closed at once, neither next to the other, would each carry a
+// refund of an earlier month that neither yet sees the other carrying. Here
+// April carries it while February is about to commit: February is rolled
+// back, runs again, finds the refund carried, and carries nothing.
+func TestDBRefundCarriedByTwoClosesAtOnceIsTakenBackOnce(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	f := seedRoyaltyTenant(t, pg, "ROYALTWICE", "UTC")
+	sale := f.sell(t, utc(2026, time.January, 10, 0))
+	now := utc(2026, time.May, 2, 0)
+	f.close(t, f.month("2026-01", "UTC"), now)
+	f.refundInFull(t, sale)
+
+	var april dbmodels.RoyaltyStatement
+	attempts := 0
+	february, err := CloseStatement(context.Background(), pg.DB, f.month("2026-02", "UTC"), uuid.NullUUID{}, now,
+		func(context.Context, *dbmodels.Queries, dbmodels.RoyaltyStatement) error {
+			attempts++
+			if attempts == 1 {
+				april = f.close(t, f.month("2026-04", "UTC"), now)
+			}
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("close February beside April: %v", err)
+	}
+	if attempts != 2 {
+		t.Fatalf("February was written %d times, want twice: once beside an April it could not see, once after", attempts)
+	}
+	if april.TotalAdjustment != -500 || february.TotalAdjustment != 0 {
+		t.Fatalf("April adjustment = %d and February adjustment = %d, want the refund in April alone", april.TotalAdjustment, february.TotalAdjustment)
 	}
 }

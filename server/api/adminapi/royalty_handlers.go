@@ -187,7 +187,7 @@ func (s *adminServer) PreviewRoyaltyStatement(
 			"tenant_id", tenant.ID.String(), "period", req.Period)
 	}
 
-	lines := make([]*publiraadminv1.RoyaltyStatementLine, 0, len(computation.Lines))
+	lines := make([]*publiraadminv1.RoyaltyStatementLine, 0, len(computation.Lines)+len(computation.Adjustments))
 	for i, row := range computation.Lines {
 		lines = append(lines, &publiraadminv1.RoyaltyStatementLine{
 			LineNumber:      int32(i + 1),
@@ -206,6 +206,25 @@ func (s *adminServer) PreviewRoyaltyStatement(
 			PayoutAmount:    row.PayoutAmount,
 		})
 	}
+	for _, row := range computation.Adjustments {
+		lines = append(lines, &publiraadminv1.RoyaltyStatementLine{
+			LineNumber:      int32(len(lines) + 1),
+			CreatorPublicId: row.CreatorPublicID.String,
+			CreatorName:     row.CreatorName,
+			SeriesPublicId:  row.SeriesPublicID.String,
+			SeriesTitle:     row.SeriesTitle,
+			EpisodePublicId: row.EpisodePublicID.String,
+			EpisodeTitle:    row.EpisodeTitle,
+			RolePublicId:    row.RolePublicID.String,
+			RoleName:        row.RoleName.String,
+			SaleCount:       row.SaleCount,
+			GrossAmount:     row.GrossAmount,
+			RefundedAmount:  row.RefundedAmount,
+			ShareBps:        row.ShareBps,
+			PayoutAmount:    row.PayoutAmount,
+			AdjustedPeriod:  royalties.FormatPeriod(row.AdjustedPeriod),
+		})
+	}
 
 	return &publiraadminv1.PreviewRoyaltyStatementResponse{
 		Period:   royalties.FormatPeriod(month.Period),
@@ -214,9 +233,10 @@ func (s *adminServer) PreviewRoyaltyStatement(
 		StartsAt: computation.Bounds.Start.UTC().Format(time.RFC3339),
 		EndsAt:   computation.Bounds.End.UTC().Format(time.RFC3339),
 		Totals: &publiraadminv1.RoyaltyStatementTotals{
-			Gross:    computation.Totals.Gross,
-			Refunded: computation.Totals.Refunded,
-			Payout:   computation.Totals.Payout,
+			Gross:      computation.Totals.Gross,
+			Refunded:   computation.Totals.Refunded,
+			Adjustment: computation.Totals.Adjustment,
+			Payout:     computation.Totals.Payout,
 		},
 		Lines: lines,
 	}, nil
@@ -443,6 +463,7 @@ func (s *adminServer) GetRoyaltyStatement(
 			RefundedAmount:  row.RefundedAmount,
 			ShareBps:        row.ShareBps,
 			PayoutAmount:    row.PayoutAmount,
+			AdjustedPeriod:  nullPeriodString(row.AdjustedPeriod),
 		})
 	}
 
@@ -511,7 +532,7 @@ func (s *adminServer) ExportRoyaltyStatement(
 
 // royaltyStatementCSV writes the columns ExportRoyaltyStatementResponse
 // documents, in that order.
-func royaltyStatementCSV(period, currency string, lines []dbmodels.RoyaltyStatementLine) []byte {
+func royaltyStatementCSV(period, currency string, lines []dbmodels.ListRoyaltyStatementLinesForExportRow) []byte {
 	w := csvexport.New(
 		"period",
 		"creator_id", "creator_name",
@@ -520,6 +541,7 @@ func royaltyStatementCSV(period, currency string, lines []dbmodels.RoyaltyStatem
 		"episode_id", "episode_title",
 		"sale_count", "gross_amount", "refunded_amount", "share_percent", "payout_amount",
 		"currency",
+		"adjusted_period",
 	)
 	for _, line := range lines {
 		w.Row(
@@ -534,6 +556,7 @@ func royaltyStatementCSV(period, currency string, lines []dbmodels.RoyaltyStatem
 			fmt.Sprintf("%d.%02d", line.ShareBps/100, line.ShareBps%100),
 			strconv.FormatInt(line.PayoutAmount, 10),
 			currency,
+			nullPeriodString(line.AdjustedPeriod),
 		)
 	}
 	return w.Bytes()
@@ -546,24 +569,34 @@ func nullUUIDString(id uuid.NullUUID) string {
 	return id.UUID.String()
 }
 
+// nullPeriodString writes the month an adjustment line adjusts, or nothing for
+// a line of the month's own sales.
+func nullPeriodString(period sql.NullTime) string {
+	if !period.Valid {
+		return ""
+	}
+	return royalties.FormatPeriod(period.Time)
+}
+
 func invalidRoyaltyTokenError() error {
 	return connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 }
 
 func royaltyStatementOf(row dbmodels.ListRoyaltyStatementsDescRow) dbmodels.RoyaltyStatement {
 	return dbmodels.RoyaltyStatement{
-		ID:             row.ID,
-		TenantID:       row.TenantID,
-		Period:         row.Period,
-		TimeZone:       row.TimeZone,
-		StartsAt:       row.StartsAt,
-		EndsAt:         row.EndsAt,
-		ClosedAt:       row.ClosedAt,
-		ClosedByUserID: row.ClosedByUserID,
-		Currency:       row.Currency,
-		TotalGross:     row.TotalGross,
-		TotalRefunded:  row.TotalRefunded,
-		TotalPayout:    row.TotalPayout,
+		ID:              row.ID,
+		TenantID:        row.TenantID,
+		Period:          row.Period,
+		TimeZone:        row.TimeZone,
+		StartsAt:        row.StartsAt,
+		EndsAt:          row.EndsAt,
+		ClosedAt:        row.ClosedAt,
+		ClosedByUserID:  row.ClosedByUserID,
+		Currency:        row.Currency,
+		TotalGross:      row.TotalGross,
+		TotalRefunded:   row.TotalRefunded,
+		TotalAdjustment: row.TotalAdjustment,
+		TotalPayout:     row.TotalPayout,
 	}
 }
 
@@ -576,9 +609,10 @@ func royaltyStatementToProto(statement dbmodels.RoyaltyStatement, closedByPublic
 		ClosedByUserName:     closedByName,
 		Currency:             statement.Currency,
 		Totals: &publiraadminv1.RoyaltyStatementTotals{
-			Gross:    statement.TotalGross,
-			Refunded: statement.TotalRefunded,
-			Payout:   statement.TotalPayout,
+			Gross:      statement.TotalGross,
+			Refunded:   statement.TotalRefunded,
+			Adjustment: statement.TotalAdjustment,
+			Payout:     statement.TotalPayout,
 		},
 	}
 }

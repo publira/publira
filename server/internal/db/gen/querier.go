@@ -749,6 +749,9 @@ type Querier interface {
 	GetReportableEpisodeCommentForTenant(ctx context.Context, arg GetReportableEpisodeCommentForTenantParams) (GetReportableEpisodeCommentForTenantRow, error)
 	// Where one episode may be bought, resolved through its series and the tenant.
 	GetResolvedEpisodePurchaseAvailability(ctx context.Context, arg GetResolvedEpisodePurchaseAvailabilityParams) (string, error)
+	// Totals what ListRoyaltyAdjustmentLinesForPeriod takes back, each refunded
+	// sale counted once however many creators it is credited to.
+	GetRoyaltyAdjustmentTotalForPeriod(ctx context.Context, arg GetRoyaltyAdjustmentTotalForPeriodParams) (int64, error)
 	// The instants a tenant month runs between. A month starts where the statement
 	// of the month before it ended, and ends where the statement of the month
 	// after it started; a neighbour not closed yet leaves that bound at the
@@ -1088,6 +1091,12 @@ type Querier interface {
 	// JSON array because several of their columns are nullable, which a typed
 	// array parameter per column cannot carry.
 	InsertRoyaltyStatementLines(ctx context.Context, arg InsertRoyaltyStatementLinesParams) error
+	// Writes down what a statement counted of each purchase: every sale of its
+	// own month, by the rules of ListRoyaltyLinesForPeriod, and the change it
+	// carries of each sale ListRoyaltyAdjustmentLinesForPeriod adjusts. Both
+	// halves read the purchases as they stood before this statement, which is the
+	// snapshot the lines were computed in.
+	InsertRoyaltyStatementPurchases(ctx context.Context, arg InsertRoyaltyStatementPurchasesParams) error
 	InsertTenantCommunityLimitOverrides(ctx context.Context, arg InsertTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)
 	// The entries arrive validated, lowercased, and without duplicates.
 	InsertTenantEmailRejectionEntries(ctx context.Context, arg InsertTenantEmailRejectionEntriesParams) error
@@ -1977,6 +1986,19 @@ type Querier interface {
 	// ListRelatedSeriesIDs walked the other way. It exists only to build a
 	// previous page; the order it describes is the same one.
 	ListRelatedSeriesIDsReversed(ctx context.Context, arg ListRelatedSeriesIDsReversedParams) ([]ListRelatedSeriesIDsReversedRow, error)
+	// Computes the adjustment lines of one tenant month: for each line of a
+	// statement of an earlier month, the refunds recorded on its sales since they
+	// were counted, at the share that line applied and under the names it was
+	// closed with. A credit added or edited since that close changes nothing
+	// here. A sale in another currency than the one asked for was never counted
+	// by a statement in it.
+	//
+	// The payout is what the refunds take off the adjusted line's payout: the
+	// line's net after them times its share, floored as the line was, less the
+	// same over its net before them, which is the line's own net and every
+	// adjustment it has had since. A statement lists these after the month's own
+	// lines, oldest adjusted month first.
+	ListRoyaltyAdjustmentLinesForPeriod(ctx context.Context, arg ListRoyaltyAdjustmentLinesForPeriodParams) ([]ListRoyaltyAdjustmentLinesForPeriodRow, error)
 	// Computes the lines of one tenant month: every credit on an episode sold in
 	// the month, with the month's sales of that episode. It is what a close
 	// writes and what a preview shows, so the two cannot disagree.
@@ -1991,13 +2013,15 @@ type Querier interface {
 	// minor unit of the currency per line.
 	ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error)
 	// The lines of a statement in the order they were closed in, with the public
-	// IDs of the catalog rows that still exist.
+	// IDs of the catalog rows that still exist and the month an adjustment line
+	// adjusts.
 	ListRoyaltyStatementLinesAsc(ctx context.Context, arg ListRoyaltyStatementLinesAscParams) ([]ListRoyaltyStatementLinesAscRow, error)
 	// ListRoyaltyStatementLinesAsc walked backwards, for a previous-page token.
 	ListRoyaltyStatementLinesDesc(ctx context.Context, arg ListRoyaltyStatementLinesDescParams) ([]ListRoyaltyStatementLinesDescRow, error)
 	// Every line of a statement as it was closed, for the CSV export. It reads the
-	// stored columns only, so the export of a closed month never changes.
-	ListRoyaltyStatementLinesForExport(ctx context.Context, arg ListRoyaltyStatementLinesForExportParams) ([]RoyaltyStatementLine, error)
+	// stored columns only, and the period of a statement that is never deleted
+	// while the tenant exists, so the export of a closed month never changes.
+	ListRoyaltyStatementLinesForExport(ctx context.Context, arg ListRoyaltyStatementLinesForExportParams) ([]ListRoyaltyStatementLinesForExportRow, error)
 	// The months of a tenant already closed, from a month on, for the automatic
 	// close to tell which of the months it owes are still open.
 	ListRoyaltyStatementPeriodsFrom(ctx context.Context, arg ListRoyaltyStatementPeriodsFromParams) ([]time.Time, error)

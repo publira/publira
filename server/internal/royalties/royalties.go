@@ -2,6 +2,13 @@
 // and previews a month that is not closed yet. The console's close RPC and the
 // batch's automatic close both go through CloseStatement, so a month is closed
 // by the same rules whoever closes it.
+//
+// A closed statement never changes. A refund recorded after the month of its
+// sale was closed is carried into the next statement closed for a later month
+// instead, as adjustment lines that take off the closed lines' payouts what
+// the refunds take off their net. Each close writes down what it counted of
+// every purchase, so a later close carries only the part of a refund that no
+// statement has counted yet.
 package royalties
 
 import (
@@ -82,11 +89,13 @@ type TxBeginner interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
-// Totals are the month's own sales and what its lines pay out.
+// Totals are the month's own sales, the net sales of earlier months it takes
+// back, and what its lines pay out, its adjustment lines included.
 type Totals struct {
-	Gross    int64
-	Refunded int64
-	Payout   int64
+	Gross      int64
+	Refunded   int64
+	Adjustment int64
+	Payout     int64
 }
 
 // Computation is a month computed from the sales as they stand.
@@ -97,6 +106,10 @@ type Computation struct {
 	Currency string
 	Totals   Totals
 	Lines    []dbmodels.ListRoyaltyLinesForPeriodRow
+	// Adjustments carry the refunds recorded since an earlier month was
+	// closed on the sales its lines counted. A statement lists them after
+	// Lines.
+	Adjustments []dbmodels.ListRoyaltyAdjustmentLinesForPeriodRow
 }
 
 // PreviewStatement computes a month that is not closed, exactly as closing it
@@ -126,7 +139,7 @@ func PreviewStatement(ctx context.Context, db TxBeginner, month Month, now time.
 		return Computation{}, ErrNotStarted
 	}
 
-	computation, err := compute(ctx, queries, month.TenantID, bounds)
+	computation, err := compute(ctx, queries, month, bounds)
 	if err != nil {
 		return Computation{}, err
 	}
@@ -196,23 +209,24 @@ func closeStatementOnce(
 		return dbmodels.RoyaltyStatement{}, ErrNotOver
 	}
 
-	computation, err := compute(ctx, queries, month.TenantID, bounds)
+	computation, err := compute(ctx, queries, month, bounds)
 	if err != nil {
 		return dbmodels.RoyaltyStatement{}, err
 	}
 
 	statement, err := queries.InsertRoyaltyStatement(ctx, dbmodels.InsertRoyaltyStatementParams{
-		ID:             uuid.Must(uuid.NewV7()),
-		TenantID:       month.TenantID,
-		Period:         month.Period,
-		TimeZone:       month.TimeZone,
-		StartsAt:       bounds.Start,
-		EndsAt:         bounds.End,
-		ClosedByUserID: closedBy,
-		Currency:       computation.Currency,
-		TotalGross:     computation.Totals.Gross,
-		TotalRefunded:  computation.Totals.Refunded,
-		TotalPayout:    computation.Totals.Payout,
+		ID:              uuid.Must(uuid.NewV7()),
+		TenantID:        month.TenantID,
+		Period:          month.Period,
+		TimeZone:        month.TimeZone,
+		StartsAt:        bounds.Start,
+		EndsAt:          bounds.End,
+		ClosedByUserID:  closedBy,
+		Currency:        computation.Currency,
+		TotalGross:      computation.Totals.Gross,
+		TotalRefunded:   computation.Totals.Refunded,
+		TotalAdjustment: computation.Totals.Adjustment,
+		TotalPayout:     computation.Totals.Payout,
 	})
 	if err != nil {
 		if dberr.UniqueViolationConstraint(err) == "royalty_statements_tenant_id_period_key" {
@@ -221,8 +235,8 @@ func closeStatementOnce(
 		return dbmodels.RoyaltyStatement{}, fmt.Errorf("insert statement: %w", err)
 	}
 
-	if len(computation.Lines) > 0 {
-		lines, err := statementLinesJSON(computation.Lines)
+	if len(computation.Lines)+len(computation.Adjustments) > 0 {
+		lines, err := statementLinesJSON(computation.Lines, computation.Adjustments)
 		if err != nil {
 			return dbmodels.RoyaltyStatement{}, err
 		}
@@ -233,6 +247,18 @@ func closeStatementOnce(
 		}); err != nil {
 			return dbmodels.RoyaltyStatement{}, fmt.Errorf("insert statement lines: %w", err)
 		}
+	}
+	// Written after the lines were computed, and read in the same snapshot, so
+	// what the statement records having counted is what its lines counted.
+	if err := queries.InsertRoyaltyStatementPurchases(ctx, dbmodels.InsertRoyaltyStatementPurchasesParams{
+		StatementID: statement.ID,
+		TenantID:    month.TenantID,
+		Currency:    computation.Currency,
+		StartsAt:    bounds.Start,
+		EndsAt:      bounds.End,
+		Period:      month.Period,
+	}); err != nil {
+		return dbmodels.RoyaltyStatement{}, fmt.Errorf("record counted purchases: %w", err)
 	}
 
 	if record != nil {
@@ -246,7 +272,8 @@ func closeStatementOnce(
 	return statement, nil
 }
 
-func compute(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID, bounds Bounds) (Computation, error) {
+func compute(ctx context.Context, queries *dbmodels.Queries, month Month, bounds Bounds) (Computation, error) {
+	tenantID := month.TenantID
 	// A statement is in the tenant currency, and a sale paid in another, by a
 	// checkout started before the tenant changed it, is not one of its sales.
 	currency, err := paymentsettings.TenantCurrency(ctx, queries, tenantID)
@@ -271,23 +298,45 @@ func compute(ctx context.Context, queries *dbmodels.Queries, tenantID uuid.UUID,
 	if err != nil {
 		return Computation{}, fmt.Errorf("total sales: %w", err)
 	}
+	// Only a statement of an earlier month carries its refunds forward, so a
+	// month closed out of order leaves a later month's refunds to the next
+	// close after that one.
+	adjustments, err := queries.ListRoyaltyAdjustmentLinesForPeriod(ctx, dbmodels.ListRoyaltyAdjustmentLinesForPeriodParams{
+		TenantID: tenantID,
+		Currency: currency,
+		Period:   month.Period,
+	})
+	if err != nil {
+		return Computation{}, fmt.Errorf("compute adjustment lines: %w", err)
+	}
+	adjustment, err := queries.GetRoyaltyAdjustmentTotalForPeriod(ctx, dbmodels.GetRoyaltyAdjustmentTotalForPeriodParams{
+		TenantID: tenantID,
+		Currency: currency,
+		Period:   month.Period,
+	})
+	if err != nil {
+		return Computation{}, fmt.Errorf("total adjustment: %w", err)
+	}
 
-	totals := Totals{Gross: sales.TotalGross, Refunded: sales.TotalRefunded}
+	totals := Totals{Gross: sales.TotalGross, Refunded: sales.TotalRefunded, Adjustment: adjustment}
 	for _, line := range lines {
 		totals.Payout += line.PayoutAmount
 	}
-	return Computation{Bounds: bounds, Currency: currency, Totals: totals, Lines: lines}, nil
+	for _, line := range adjustments {
+		totals.Payout += line.PayoutAmount
+	}
+	return Computation{Bounds: bounds, Currency: currency, Totals: totals, Lines: lines, Adjustments: adjustments}, nil
 }
 
 // statementLine is one element of the JSON array InsertRoyaltyStatementLines
 // reads, named after the columns it fills.
 type statementLine struct {
 	LineNumber     int32         `json:"line_number"`
-	CreatorID      uuid.UUID     `json:"creator_id"`
+	CreatorID      uuid.NullUUID `json:"creator_id"`
 	CreatorName    string        `json:"creator_name"`
-	SeriesID       uuid.UUID     `json:"series_id"`
+	SeriesID       uuid.NullUUID `json:"series_id"`
 	SeriesTitle    string        `json:"series_title"`
-	EpisodeID      uuid.UUID     `json:"episode_id"`
+	EpisodeID      uuid.NullUUID `json:"episode_id"`
 	EpisodeTitle   string        `json:"episode_title"`
 	RoleID         uuid.NullUUID `json:"role_id"`
 	RoleName       *string       `json:"role_name"`
@@ -296,18 +345,24 @@ type statementLine struct {
 	RefundedAmount int64         `json:"refunded_amount"`
 	ShareBps       int32         `json:"share_bps"`
 	PayoutAmount   int64         `json:"payout_amount"`
+	// AdjustedStatementID and AdjustedLineNumber name the line an adjustment
+	// adjusts, and are set on an adjustment line alone.
+	AdjustedStatementID uuid.NullUUID `json:"adjusted_statement_id"`
+	AdjustedLineNumber  *int32        `json:"adjusted_line_number"`
 }
 
-func statementLinesJSON(rows []dbmodels.ListRoyaltyLinesForPeriodRow) (json.RawMessage, error) {
-	lines := make([]statementLine, 0, len(rows))
+// statementLinesJSON numbers the month's own lines first and its adjustment
+// lines after them.
+func statementLinesJSON(rows []dbmodels.ListRoyaltyLinesForPeriodRow, adjustments []dbmodels.ListRoyaltyAdjustmentLinesForPeriodRow) (json.RawMessage, error) {
+	lines := make([]statementLine, 0, len(rows)+len(adjustments))
 	for i, row := range rows {
 		line := statementLine{
 			LineNumber:     int32(i + 1),
-			CreatorID:      row.CreatorID,
+			CreatorID:      uuid.NullUUID{UUID: row.CreatorID, Valid: true},
 			CreatorName:    row.CreatorName,
-			SeriesID:       row.SeriesID,
+			SeriesID:       uuid.NullUUID{UUID: row.SeriesID, Valid: true},
 			SeriesTitle:    row.SeriesTitle,
-			EpisodeID:      row.EpisodeID,
+			EpisodeID:      uuid.NullUUID{UUID: row.EpisodeID, Valid: true},
 			EpisodeTitle:   row.EpisodeTitle,
 			RoleID:         row.RoleID,
 			SaleCount:      row.SaleCount,
@@ -315,6 +370,29 @@ func statementLinesJSON(rows []dbmodels.ListRoyaltyLinesForPeriodRow) (json.RawM
 			RefundedAmount: row.RefundedAmount,
 			ShareBps:       row.ShareBps,
 			PayoutAmount:   row.PayoutAmount,
+		}
+		if row.RoleName.Valid {
+			line.RoleName = &row.RoleName.String
+		}
+		lines = append(lines, line)
+	}
+	for _, row := range adjustments {
+		line := statementLine{
+			LineNumber:          int32(len(lines) + 1),
+			CreatorID:           row.CreatorID,
+			CreatorName:         row.CreatorName,
+			SeriesID:            row.SeriesID,
+			SeriesTitle:         row.SeriesTitle,
+			EpisodeID:           row.EpisodeID,
+			EpisodeTitle:        row.EpisodeTitle,
+			RoleID:              row.RoleID,
+			SaleCount:           row.SaleCount,
+			GrossAmount:         row.GrossAmount,
+			RefundedAmount:      row.RefundedAmount,
+			ShareBps:            row.ShareBps,
+			PayoutAmount:        row.PayoutAmount,
+			AdjustedStatementID: uuid.NullUUID{UUID: row.AdjustedStatementID, Valid: true},
+			AdjustedLineNumber:  &row.AdjustedLineNumber,
 		}
 		if row.RoleName.Valid {
 			line.RoleName = &row.RoleName.String

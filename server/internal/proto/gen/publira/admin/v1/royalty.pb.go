@@ -327,9 +327,10 @@ func (x *UpdateRoyaltyConfigResponse) GetConfig() *RoyaltyConfig {
 	return nil
 }
 
-// The figures of one month: its own sales, and what its lines pay out.
-// Amounts are integers in the minor unit of the currency of the statement or
-// preview they belong to, and count only the sales paid in it.
+// The figures of one month: its own sales, the refunds it carries of earlier
+// months' sales, and what its lines pay out. Amounts are integers in the minor
+// unit of the currency of the statement or preview they belong to, and count
+// only the sales paid in it.
 type RoyaltyStatementTotals struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// What the month sold, each sale counted once however many creators it is
@@ -337,9 +338,14 @@ type RoyaltyStatementTotals struct {
 	Gross int64 `protobuf:"varint,1,opt,name=gross,proto3" json:"gross,omitempty"`
 	// Partial refunds of the sales in gross.
 	Refunded int64 `protobuf:"varint,2,opt,name=refunded,proto3" json:"refunded,omitempty"`
-	// The sum of the lines' payouts. The rest of gross net of refunds is the
-	// tenant's own.
-	Payout        int64 `protobuf:"varint,3,opt,name=payout,proto3" json:"payout,omitempty"`
+	// The sum of the lines' payouts, the adjustment lines included, so negative
+	// for a month whose refunds of earlier sales outweigh its own. The rest of
+	// gross net of refunds and adjustment is the tenant's own.
+	Payout int64 `protobuf:"varint,3,opt,name=payout,proto3" json:"payout,omitempty"`
+	// The net sales of earlier closed months that refunds recorded since their
+	// close take back, each sale counted once: zero, or a negative amount. The
+	// adjustment lines carry it to the creators.
+	Adjustment    int64 `protobuf:"varint,4,opt,name=adjustment,proto3" json:"adjustment,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -391,6 +397,13 @@ func (x *RoyaltyStatementTotals) GetRefunded() int64 {
 func (x *RoyaltyStatementTotals) GetPayout() int64 {
 	if x != nil {
 		return x.Payout
+	}
+	return 0
+}
+
+func (x *RoyaltyStatementTotals) GetAdjustment() int64 {
+	if x != nil {
+		return x.Adjustment
 	}
 	return 0
 }
@@ -497,6 +510,15 @@ func (x *RoyaltyStatement) GetCurrency() string {
 // One creator's credit on one episode for one role, with that episode's sales
 // in the month. Names are as they stood at close; a public ID is empty once the
 // row it named has been deleted.
+//
+// A line with adjusted_period set is an adjustment instead: it carries the
+// refunds recorded since that earlier month was closed on the sales one of its
+// lines counted, with that line's names and share. Its figures are changes and
+// never positive: sale_count is minus the sales refunded in full, gross_amount
+// minus their price, and refunded_amount the change in what is refunded of the
+// sales counted, negative when a sale partly refunded at close was then
+// refunded in full. Adjustment lines follow the month's own lines, oldest
+// adjusted month first.
 type RoyaltyStatementLine struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Position in the statement, from 1.
@@ -515,11 +537,18 @@ type RoyaltyStatementLine struct {
 	RefundedAmount int64  `protobuf:"varint,12,opt,name=refunded_amount,json=refundedAmount,proto3" json:"refunded_amount,omitempty"`
 	// The credit's share in basis points (10000 is all of it), as applied.
 	ShareBps int32 `protobuf:"varint,13,opt,name=share_bps,json=shareBps,proto3" json:"share_bps,omitempty"`
-	// (gross_amount - refunded_amount) * share_bps / 10000, floored to the minor
-	// unit of the statement's currency.
-	PayoutAmount  int64 `protobuf:"varint,14,opt,name=payout_amount,json=payoutAmount,proto3" json:"payout_amount,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// On a line of sales, (gross_amount - refunded_amount) * share_bps / 10000,
+	// floored to the minor unit of the statement's currency. On an adjustment,
+	// what its refunds take off the payout of the line it adjusts: that line's
+	// payout worked out the same way over its net after them, less the same
+	// over its net before them. A line and its adjustments therefore pay
+	// nothing once every sale in the line is refunded.
+	PayoutAmount int64 `protobuf:"varint,14,opt,name=payout_amount,json=payoutAmount,proto3" json:"payout_amount,omitempty"`
+	// YYYY-MM of the closed month an adjustment line adjusts. Empty for a line
+	// of the month's own sales.
+	AdjustedPeriod string `protobuf:"bytes,15,opt,name=adjusted_period,json=adjustedPeriod,proto3" json:"adjusted_period,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RoyaltyStatementLine) Reset() {
@@ -650,6 +679,13 @@ func (x *RoyaltyStatementLine) GetPayoutAmount() int64 {
 	return 0
 }
 
+func (x *RoyaltyStatementLine) GetAdjustedPeriod() string {
+	if x != nil {
+		return x.AdjustedPeriod
+	}
+	return ""
+}
+
 type PreviewRoyaltyStatementRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -709,7 +745,10 @@ type PreviewRoyaltyStatementResponse struct {
 	// The tenant's current zone, which the month's own midnights are in.
 	TimeZone string                  `protobuf:"bytes,2,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
 	Totals   *RoyaltyStatementTotals `protobuf:"bytes,3,opt,name=totals,proto3" json:"totals,omitempty"`
-	Lines    []*RoyaltyStatementLine `protobuf:"bytes,4,rep,name=lines,proto3" json:"lines,omitempty"`
+	// The month's own lines, then the adjustments for the refunds recorded so
+	// far on sales of earlier closed months, which closing the month now would
+	// carry.
+	Lines []*RoyaltyStatementLine `protobuf:"bytes,4,rep,name=lines,proto3" json:"lines,omitempty"`
 	// RFC 3339 instants of the half-open range the month counts sales in. Each
 	// is the month's own midnight in time_zone unless the month next to it is
 	// closed: the month then starts where the statement before it ended and ends
@@ -1242,6 +1281,10 @@ type ExportRoyaltyStatementResponse struct {
 	//	payout_amount     an integer in the minor unit of currency, no currency
 	//	                  symbol
 	//	currency          the statement's ISO 4217 code, the same on every row
+	//	adjusted_period   YYYY-MM of the closed month an adjustment line
+	//	                  adjusts; empty for a line of the month's own sales.
+	//	                  The amounts of an adjustment line are changes, zero
+	//	                  or negative, as RoyaltyStatementLine describes
 	//
 	// The IDs are the rows' internal IDs, not their public IDs, and they stay
 	// on the line after the row is deleted.
@@ -1309,11 +1352,14 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\x0eauto_close_day\x18\x03 \x01(\x05H\x00R\fautoCloseDay\x88\x01\x01B\x11\n" +
 	"\x0f_auto_close_day\"V\n" +
 	"\x1bUpdateRoyaltyConfigResponse\x127\n" +
-	"\x06config\x18\x01 \x01(\v2\x1f.publira.admin.v1.RoyaltyConfigR\x06config\"b\n" +
+	"\x06config\x18\x01 \x01(\v2\x1f.publira.admin.v1.RoyaltyConfigR\x06config\"\x82\x01\n" +
 	"\x16RoyaltyStatementTotals\x12\x14\n" +
 	"\x05gross\x18\x01 \x01(\x03R\x05gross\x12\x1a\n" +
 	"\brefunded\x18\x02 \x01(\x03R\brefunded\x12\x16\n" +
-	"\x06payout\x18\x03 \x01(\x03R\x06payout\"\xa9\x02\n" +
+	"\x06payout\x18\x03 \x01(\x03R\x06payout\x12\x1e\n" +
+	"\n" +
+	"adjustment\x18\x04 \x01(\x03R\n" +
+	"adjustment\"\xa9\x02\n" +
 	"\x10RoyaltyStatement\x12\x16\n" +
 	"\x06period\x18\x01 \x01(\tR\x06period\x12\x1b\n" +
 	"\ttime_zone\x18\x02 \x01(\tR\btimeZone\x12\x1b\n" +
@@ -1321,7 +1367,7 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\x18closed_by_user_public_id\x18\x04 \x01(\tR\x14closedByUserPublicId\x12-\n" +
 	"\x13closed_by_user_name\x18\x05 \x01(\tR\x10closedByUserName\x12@\n" +
 	"\x06totals\x18\x06 \x01(\v2(.publira.admin.v1.RoyaltyStatementTotalsR\x06totals\x12\x1a\n" +
-	"\bcurrency\x18\a \x01(\tR\bcurrency\"\x94\x04\n" +
+	"\bcurrency\x18\a \x01(\tR\bcurrency\"\xbd\x04\n" +
 	"\x14RoyaltyStatementLine\x12\x1f\n" +
 	"\vline_number\x18\x01 \x01(\x05R\n" +
 	"lineNumber\x12*\n" +
@@ -1339,7 +1385,8 @@ const file_publira_admin_v1_royalty_proto_rawDesc = "" +
 	"\fgross_amount\x18\v \x01(\x03R\vgrossAmount\x12'\n" +
 	"\x0frefunded_amount\x18\f \x01(\x03R\x0erefundedAmount\x12\x1b\n" +
 	"\tshare_bps\x18\r \x01(\x05R\bshareBps\x12#\n" +
-	"\rpayout_amount\x18\x0e \x01(\x03R\fpayoutAmount\"q\n" +
+	"\rpayout_amount\x18\x0e \x01(\x03R\fpayoutAmount\x12'\n" +
+	"\x0fadjusted_period\x18\x0f \x01(\tR\x0eadjustedPeriod\"q\n" +
 	"\x1ePreviewRoyaltyStatementRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06period\x18\x02 \x01(\tR\x06period\"\xa8\x02\n" +
