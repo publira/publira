@@ -144,9 +144,7 @@ func (s *apiServer) GetMyLegalPageAgreements(
 	return noStorePrivateResponse(ctx, &publirav1.GetMyLegalPageAgreementsResponse{TermsPage: terms, PrivacyPage: privacy}), nil
 }
 
-// AgreeToLegalPages records an agreement to each version named. It charges no
-// flood control: a reader can add at most one row per published version of
-// two pages, and agreeing to a version again writes nothing.
+// AgreeToLegalPages records an agreement to each version named.
 func (s *apiServer) AgreeToLegalPages(
 	ctx context.Context,
 	req *publirav1.AgreeToLegalPagesRequest,
@@ -157,6 +155,11 @@ func (s *apiServer) AgreeToLegalPages(
 	}
 	readerLocale, err := readerPageLocale(req.Locale, tenant)
 	if err != nil {
+		return nil, err
+	}
+	// Charged before the versions are read, which is the work an agreement
+	// repeated past the limit would otherwise still cost.
+	if err := s.chargeReaderAction(ctx, actionAgreeToLegalPages, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
 	versionIDs, err := s.legalPageAgreementVersions(ctx, tenant, req.AgreedPageVersionIds)

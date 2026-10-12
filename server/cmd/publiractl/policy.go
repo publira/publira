@@ -59,6 +59,8 @@ var policyFlags = slices.Concat(
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.StorePurchaseConfirmation }),
 	minuteDayFlags("wait_free_ticket_use", "wait-free-ticket-use", "wait-for-free ticket uses by one reader", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.WaitFreeTicketUse }),
+	minuteDayFlags("legal_page_agreement", "legal-page-agreement", "agreements to the terms and privacy policy by one reader", false,
+		func(p *policySettings) *platformpolicy.MinuteDay { return &p.LegalPageAgreement }),
 	minuteDayFlags("login_attempts_per_account", "login-attempts-per-account", "sign-in attempts for one address", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.LoginAttemptsPerAccount }),
 	hourDayFlags("login_attempts_per_source", "login-attempts-per-source", "failed sign-ins from one source", false,
@@ -167,6 +169,7 @@ func setupPolicyShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		fmt.Fprintf(&b, "Password verifications:\t%s\n", perMinute(p.PasswordVerification))
 		fmt.Fprintf(&b, "In-app purchase confirmations per reader:\t%s\n", perMinute(p.StorePurchaseConfirmation))
 		fmt.Fprintf(&b, "Wait-for-free ticket uses per reader:\t%s\n", perMinute(p.WaitFreeTicketUse))
+		fmt.Fprintf(&b, "Terms and privacy policy agreements per reader:\t%s\n", perMinute(p.LegalPageAgreement))
 		fmt.Fprintf(&b, "Sign-in attempts per address:\t%s\n", perMinute(p.LoginAttemptsPerAccount))
 		fmt.Fprintf(&b, "Failed sign-ins per source:\t%s\n", perHour(p.LoginAttemptsPerSource))
 		fmt.Fprintf(&b, "Email requests per address:\t%s\n", perHour(p.MailRequestsPerAddress))

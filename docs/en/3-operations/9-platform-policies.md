@@ -82,6 +82,8 @@ Each limit is a count per minute or per hour, with a second count per day, and t
 
 ![The rate limits on Security: password verifications, email requests per address and per source, in-app purchase confirmations, and wait-for-free ticket uses, each per minute or per hour and per day.](./platform-policies-rate-limits.png)
 
+One more limit of this kind has no field on the Security page yet: the agreements one reader sends to their tenant's terms of service and privacy policy when asked to agree to a revised version, 10 per minute and 50 per day unless set with `publiractl policy set --legal-page-agreement-per-minute` and `--legal-page-agreement-per-day`. Saving the Security page keeps whatever it is set to.
+
 Each invitation counts as one request, including every **Initial admin emails** address on **Create tenant**, which are all counted before the tenant is created: if one is over a limit, no tenant is created and no mail is sent. `publiractl` sends through no form and counts against none of these limits.
 
 The client address is the one `publira server` finds in `Forwarded` or `X-Forwarded-For` by stepping over the proxies it trusts, as [The proxies Publira trusts](../2-deployments/4-reverse-proxy.md#the-proxies-publira-trusts) describes. Readers behind one shared address, such as an office or a mobile carrier's gateway, share its per-source and per-client counts.

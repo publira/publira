@@ -68,6 +68,11 @@ const (
 	// by the series' recharge interval; the budget is for the ones refused,
 	// each of which reads the episode, the rule, and the reader's grants.
 	actionUseWaitFreeTicket readerAction = "wait_free.use"
+	// An agreement to the tenant's terms of service or privacy policy. One sent
+	// twice writes nothing, but each request reads the tenant's legal pages and
+	// the versions it names, and a reader can name every version the pages
+	// have ever published.
+	actionAgreeToLegalPages readerAction = "legal_pages.agree"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -102,6 +107,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionSubmitContactMessageFromClient: hourDayRules(community.ContactMessagePerClient),
 		actionConfirmStorePurchase:           minuteDayRules(policy.StorePurchaseConfirmation),
 		actionUseWaitFreeTicket:              minuteDayRules(policy.WaitFreeTicketUse),
+		actionAgreeToLegalPages:              minuteDayRules(policy.LegalPageAgreement),
 	}
 }
 

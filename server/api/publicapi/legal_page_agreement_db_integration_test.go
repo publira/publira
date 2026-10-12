@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/testutil"
@@ -199,5 +200,38 @@ func TestDBAgreeToLegalPagesRefusesAnythingButTheNamedPages(t *testing.T) {
 	}
 	if count := env.countRows(t, `SELECT count(*) FROM user_page_consents WHERE user_id = $1`, reader.ID); count != 0 {
 		t.Fatalf("consents after refused agreements = %d, want none", count)
+	}
+}
+
+// Every agreement charges the reader's allowance before the versions it names
+// are read, so a reader repeating one runs out like any other writer.
+func TestDBAgreeToLegalPagesChargesTheSharedFloodControl(t *testing.T) {
+	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.LegalPageAgreement = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
+	}))
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	terms := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "tos", Title: "Terms of Service", Published: true})
+	privacy := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
+	nameLegalPages(t, env, tenant.ID, terms.ID, privacy.ID)
+	reader := env.PG.SeedTenantUser(t, tenant.ID, "READERA", "reader@tenant-a.example.com", "Reader", "tenant_member")
+	revised := publishRevision(t, env, tenant.ID, terms, true)
+
+	agree := func(versionID uuid.UUID) error {
+		_, err := env.authClient().AgreeToLegalPages(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reader)), &publirav1.AgreeToLegalPagesRequest{
+			Tenant:               tenantContext(tenant),
+			AgreedPageVersionIds: []string{versionID.String()},
+		})
+		return err
+	}
+	for range 2 {
+		if err := agree(terms.VersionID); err != nil {
+			t.Fatalf("AgreeToLegalPages within the allowance: %v", err)
+		}
+	}
+	if err := agree(revised); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("an agreement past the allowance: code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
+	}
+	if count := env.countRows(t, `SELECT count(*) FROM user_page_consents WHERE user_id = $1 AND page_version_id = $2`, reader.ID, revised); count != 0 {
+		t.Fatalf("consents to the revision past the allowance = %d, want none", count)
 	}
 }

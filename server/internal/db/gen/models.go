@@ -596,6 +596,8 @@ type PlatformPolicyConfig struct {
 	LoginSourceLimitPerHour              int32     `json:"login_source_limit_per_hour"`
 	LoginSourceLimitPerDay               int32     `json:"login_source_limit_per_day"`
 	MfaRequiredForPlatformOperator       bool      `json:"mfa_required_for_platform_operator"`
+	LegalPageAgreementLimitPerMinute     int32     `json:"legal_page_agreement_limit_per_minute"`
+	LegalPageAgreementLimitPerDay        int32     `json:"legal_page_agreement_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {
