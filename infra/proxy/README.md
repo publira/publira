@@ -85,12 +85,12 @@ The edge **adds** what a backend reads back:
 
 | Header | Read by |
 | --- | --- |
-| `Host`, unrewritten | Tenant resolution in every app |
-| `X-Forwarded-Host` | Tenant resolution, and the CSRF origin check when the public host differs from `Host` |
+| `Host`, unrewritten | Tenant resolution, and the CSRF origin check, in every app |
+| `X-Forwarded-Host` | Tenant resolution for `/images` in `publira server`, and in the apps only where `PUBLIRA_X_FORWARDED_HOST_ENABLED` is on |
 | `X-Forwarded-Proto` | The CSRF origin check |
 | `X-Forwarded-For` (Traefik) or `Forwarded` (nginx, Caddy) | The client IP in access tokens and audit log entries |
 
-Each of them is **set**, never appended to. The client is outside the trust boundary, so no value it sent reaches a backend: the apps read `X-Forwarded-Host` and `X-Forwarded-Proto` as they arrive, and `publira server`, which reads the client address header from the right past the proxies its `PUBLIRA_TRUSTED_PROXIES` names, then finds the one address the edge wrote. `Forwarded` carries it as `for=` and the address, quoted and in brackets when it is an IPv6 address.
+Each of them is **set**, never appended to. The client is outside the trust boundary, so no value it sent reaches a backend: what reads `X-Forwarded-Host` and `X-Forwarded-Proto` reads them as they arrive, and `publira server`, which reads the client address header from the right past the proxies its `PUBLIRA_TRUSTED_PROXIES` names, then finds the one address the edge wrote. `Forwarded` carries it as `for=` and the address, quoted and in brackets when it is an IPv6 address.
 
 ### A trusted hop in front
 

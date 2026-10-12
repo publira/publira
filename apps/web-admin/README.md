@@ -48,6 +48,12 @@ pnpm dev --filter @publira/web-admin
 - `PUBLIRA_GRPC_URL` — the internal listener of `publira server`, which every server-side RPC is made on (`http://localhost:8100` when unset)
 - `PUBLIRA_WEB_SERVICE_TOKEN` (required) — the server's `PUBLIRA_WEB_SERVICE_TOKEN`, which the console reads the tenant's catalog with as itself rather than as an operator: genres, creator roles, creators, labels, series, episodes, and the dashboard, each cached once per tenant. The app refuses to start without it. See [Web service credential](../../server/README.md#web-service-credential)
 
+### Request host
+
+`proxy.ts` resolves the tenant from the host the request was sent to, and `lib/csrf.ts` compares a form submission's origin with the same host (`getRequestHost` in [`@publira/utils/request-host`](../../packages/utils/README.md#subpaths)). That host is `Host`.
+
+- `PUBLIRA_X_FORWARDED_HOST_ENABLED` — `true` takes the host from `X-Forwarded-Host` ahead of `Host`, for an edge that rewrites `Host`. Off when unset; a value other than `true` or `false` is refused. The app cannot tell which peer sent the header, so turn it on only when every edge in front of the app overwrites `X-Forwarded-Host` itself: behind one that passes a caller's value on, as a managed load balancer does, the caller picks the tenant.
+
 ### Storefront URLs
 
 The payment webhook URL on Payment settings is the tenant's storefront (`storefrontOrigin` in `lib/storefront-url.ts`).

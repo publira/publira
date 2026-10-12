@@ -101,7 +101,7 @@ An image is `/images/...` on the origin of the page that renders it, and only th
 
 This runs the same routing contract as the Dev Container but does not verify it; [`infra/proxy/README.md`](../infra/proxy/README.md) states the contract and [`routing/`](./routing/README.md) is what checks it.
 
-Host-based URL constants are in `src/urls.ts`. web-storefront resolves the tenant through `Host` / `x-forwarded-host`, port included, and `tenantHost` gives the stored host for a name on the edge; Chromium resolves `*.localhost` to loopback under RFC 6761, so neither DNS registration nor a hosts-file entry is needed. Use non-`localhost` hosts only through the browser (`page.goto`), because Node's `request` fixture uses OS name resolution.
+Host-based URL constants are in `src/urls.ts`. web-storefront resolves the tenant through `Host`, port included, and `tenantHost` gives the stored host for a name on the edge; Chromium resolves `*.localhost` to loopback under RFC 6761, so neither DNS registration nor a hosts-file entry is needed. Use non-`localhost` hosts only through the browser (`page.goto`), because Node's `request` fixture uses OS name resolution.
 
 ## Parallelism and isolation
 

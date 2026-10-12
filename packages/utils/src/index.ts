@@ -49,7 +49,6 @@ export {
   type FormatDurationOptions,
 } from "./format-duration";
 export { formatList, type FormatListOptions } from "./format-list";
-export { getTenantDomainCandidates } from "./tenant-domain";
 export {
   DEFAULT_TENANT_THEME_COLORS,
   DEFAULT_TENANT_THEME_FONT_FAMILIES,

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockForbidden, mockHeaders } = vi.hoisted(() => ({
   mockForbidden: vi.fn(),
@@ -14,6 +14,10 @@ const requestHeaders = (values: Record<string, string>): Headers =>
 describe("assertSameOrigin", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("accepts an Origin that matches Host", async () => {
@@ -44,7 +48,23 @@ describe("assertSameOrigin", () => {
     expect(mockForbidden).not.toHaveBeenCalled();
   });
 
-  it("uses X-Forwarded-Host when a reverse proxy supplies the public host", async () => {
+  it("compares the Origin with Host rather than a caller's X-Forwarded-Host", async () => {
+    mockHeaders.mockResolvedValue(
+      requestHeaders({
+        Host: "reader.example.com",
+        Origin: "https://evil.example",
+        "X-Forwarded-Host": "evil.example",
+      })
+    );
+
+    const { assertSameOrigin } = await import("./csrf");
+    await assertSameOrigin();
+
+    expect(mockForbidden).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses X-Forwarded-Host when the operator says the edge writes it", async () => {
+    vi.stubEnv("PUBLIRA_X_FORWARDED_HOST_ENABLED", "true");
     mockHeaders.mockResolvedValue(
       requestHeaders({
         Host: "web-storefront:3000",

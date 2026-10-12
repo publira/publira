@@ -51,6 +51,12 @@ pnpm dev --filter @publira/web-platform
 - `PUBLIRA_GRPC_URL` — the internal listener of `publira server`, which every server-side RPC is made on (`http://localhost:8100` when unset)
 - `PUBLIRA_WEB_SERVICE_TOKEN` (required) — the server's `PUBLIRA_WEB_SERVICE_TOKEN`, which the console reads platform-level data with as itself rather than as an operator: the tenants and their members and invitations, the platform settings and policies, the email and storage settings, the dashboard, the operators, and the end users, each cached once for every operator. The app refuses to start without it. See [Web service credential](../../server/README.md#web-service-credential)
 
+### Request host
+
+`lib/csrf.ts` compares a form submission's origin with the host the request was sent to (`getRequestHost` in [`@publira/utils/request-host`](../../packages/utils/README.md#subpaths)). That host is `Host`.
+
+- `PUBLIRA_X_FORWARDED_HOST_ENABLED` — `true` takes the host from `X-Forwarded-Host` ahead of `Host`, for an edge that rewrites `Host`. Off when unset; a value other than `true` or `false` is refused. The app cannot tell which peer sent the header, so turn it on only when every edge in front of the app overwrites `X-Forwarded-Host` itself: behind one that passes a caller's value on, as a managed load balancer does, the caller picks the host the origin is compared with.
+
 ### Server cache (Redis)
 
 `next.config.ts` wires `@publira/next-cache-handlers`, as web-storefront does.

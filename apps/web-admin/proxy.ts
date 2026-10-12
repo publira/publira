@@ -1,7 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import { sharedMessage } from "@publira/i18n/catalog";
-import { getTenantDomainCandidates } from "@publira/utils";
 import { isHealthProbePath } from "@publira/utils/health";
+import { getTenantDomainCandidates } from "@publira/utils/request-host";
 import { applyResolvedLocaleCookie } from "@publira/utils/resolved-locale";
 import {
   suspendedTenantLocale,

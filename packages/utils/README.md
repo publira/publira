@@ -8,7 +8,7 @@ The package that provides the shared frontend utilities.
 
 | Import | What it provides |
 | --- | --- |
-| `@publira/utils` | The client-safe barrel: `cn`, the `Temporal` date and time helpers, `formatPercent`, `formatPrice`, `currencyFractionDigits`, and `currencyDisplayName` for an amount in the minor unit of a currency, `listSupportedCurrencies` for a list to choose a currency from, `formatDuration`, the IANA time zone list and its validation, `decodeBase64Url`, the tenant theme tokens and their contrast rules, and `getTenantDomainCandidates` |
+| `@publira/utils` | The client-safe barrel: `cn`, the `Temporal` date and time helpers, `formatPercent`, `formatPrice`, `currencyFractionDigits`, and `currencyDisplayName` for an amount in the minor unit of a currency, `listSupportedCurrencies` for a list to choose a currency from, `formatDuration`, the IANA time zone list and its validation, `decodeBase64Url`, and the tenant theme tokens and their contrast rules |
 | `@publira/utils/cn` | `cn`, the Tailwind-aware className helper, on its own |
 | `@publira/utils/format-date-time` | The tenant-time-zone-aware date and time helpers on their own |
 | `@publira/utils/theme-css-variables` | The tenant theme colors as `--publira-color-*` custom properties, and `DEFAULT_TENANT_THEME_COLORS` |
@@ -24,6 +24,7 @@ The package that provides the shared frontend utilities.
 | `@publira/utils/resolved-locale` | The helper a cookie console's `proxy.ts` publishes its server-resolved display locale to the browser with |
 | `@publira/utils/suspended-tenant` | The `503` page a `proxy.ts` answers a suspended tenant's every path with, and the language it is written in |
 | `@publira/utils/health` | The `/livez` and `/readyz` handlers. Node-only, so it is deliberately outside the barrel |
+| `@publira/utils/request-host` | `getRequestHost`, the host a request was sent to, and `getTenantDomainCandidates`, the stored tenant domains it can match: `Host`, or `X-Forwarded-Host` when `PUBLIRA_X_FORWARDED_HOST_ENABLED` says the edge writes it. Reads the environment, so it is outside the barrel |
 | `@publira/utils/tenant-origin` | `tenantOrigin`, the absolute origin of a tenant host: the scheme from `PUBLIRA_TENANT_URL_SCHEME`, and the host, including any saved port, as given |
 
 ## Usage

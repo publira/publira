@@ -185,8 +185,9 @@ PUBLIRA_ROUTING_TRACE_CONTEXT_HEADERS=(
 # Forwarded headers a caller could send ahead of the edge. echo.ts reports
 # each of them back, so a probe can assert the edge replaced the value rather
 # than passing the caller's through: publira server finds the client IP it
-# records in Forwarded, ahead of X-Forwarded-For, and the CSRF origin check
-# reads X-Forwarded-Host and X-Forwarded-Proto.
+# records in Forwarded, ahead of X-Forwarded-For, and finds the tenant of an
+# image in X-Forwarded-Host, which the apps read too where an install turns it
+# on.
 PUBLIRA_ROUTING_FORGED_FORWARDED_HEADERS=(
   "Forwarded: for=203.0.113.9"
   "X-Forwarded-For: 203.0.113.9"
