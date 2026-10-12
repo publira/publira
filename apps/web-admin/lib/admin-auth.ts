@@ -21,7 +21,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
-import type { CachedRead } from "./cached-read";
+import type { CaughtReadError } from "./cached-read";
+import { rebuildCaughtReadError, toCaughtReadError } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import type { MfaChallengeKindName } from "./mfa-challenge";
 import { getAccessToken } from "./session";
@@ -304,7 +305,7 @@ export const logoutAdmin = async (
 const getAdminCurrentUserForSession = async (
   tenantId: string,
   token: string
-): Promise<CachedRead<GetAdminCurrentUserResult>> => {
+): Promise<GetAdminCurrentUserResult & { failure?: CaughtReadError }> => {
   "use cache: private";
   cacheLife("minutes");
   cacheTag(ADMIN_SESSION_CACHE_TAG);
@@ -344,25 +345,32 @@ const getAdminCurrentUserForSession = async (
     if (isExpectedNullableRpcError(error)) {
       return { ok: false, requiresSignIn: false };
     }
+    // Anything else — an unreachable API included — is the console's error
+    // screen. The scope hands the error over as data and the caller throws
+    // it, so the screen and the log still name what failed.
     dropFailedCacheEntry();
-    return { ok: false, requiresSignIn: false, unexpected: true };
+    return {
+      failure: toCaughtReadError(error),
+      ok: false,
+      requiresSignIn: false,
+    };
   }
 };
 
 /**
  * The signed-in operator, or why there is none. A failure that is neither a
  * rejected session nor an operator this tenant does not show reaches the error
- * boundary.
+ * boundary as the error the API answered.
  */
 export const getAdminCurrentUser = async (
   tenantId: string
 ): Promise<GetAdminCurrentUserResult> => {
-  const { unexpected, ...result } = await getAdminCurrentUserForSession(
+  const { failure, ...result } = await getAdminCurrentUserForSession(
     tenantId,
     await getAccessToken()
   );
-  if (unexpected) {
-    throw new Error("The signed-in operator could not be read.");
+  if (failure) {
+    throw rebuildCaughtReadError(failure);
   }
   return result;
 };

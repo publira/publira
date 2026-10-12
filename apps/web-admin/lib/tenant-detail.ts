@@ -6,7 +6,8 @@ import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
-import type { CachedRead } from "./cached-read";
+import type { CaughtReadError } from "./cached-read";
+import { rebuildCaughtReadError, toCaughtReadError } from "./cached-read";
 import { getAccessToken } from "./session";
 
 export interface TenantDetail {
@@ -42,7 +43,7 @@ export const tenantDetailCacheTag = (tenantId: string): string =>
 const readTenantForSession = async (
   tenantId: string,
   sessionId: string
-): Promise<CachedRead<GetTenantForSessionResult>> => {
+): Promise<GetTenantForSessionResult & { failure?: CaughtReadError }> => {
   "use cache: private";
 
   const normalizedTenantId = tenantId.trim();
@@ -85,20 +86,26 @@ const readTenantForSession = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: false, requiresSignIn: false };
     }
+    // The scope hands any other error over as data and the caller throws it,
+    // so the error screen and the log still name what failed.
     dropFailedCacheEntry();
-    return { ok: false, requiresSignIn: false, unexpected: true };
+    return {
+      failure: toCaughtReadError(error),
+      ok: false,
+      requiresSignIn: false,
+    };
   }
 };
 
 export const getTenantForSession = async (
   tenantId: string
 ): Promise<GetTenantForSessionResult> => {
-  const { unexpected, ...result } = await readTenantForSession(
+  const { failure, ...result } = await readTenantForSession(
     tenantId,
     await getAccessToken()
   );
-  if (unexpected) {
-    throw new Error("The tenant could not be read.");
+  if (failure) {
+    throw rebuildCaughtReadError(failure);
   }
   return result;
 };

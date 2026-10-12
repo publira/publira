@@ -22,7 +22,8 @@ import { cacheTag } from "next/cache";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
-import type { CachedRead } from "./cached-read";
+import type { CaughtReadError } from "./cached-read";
+import { rebuildCaughtReadError, toCaughtReadError } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageAccessor } from "./messages";
 import { getAccessToken } from "./session";
@@ -208,7 +209,7 @@ export const adminMfaStatusCacheTag = (tenantId: string): string =>
 const getAdminMfaStatusForSession = async (
   tenantId: string,
   token: string
-): Promise<CachedRead<GetAdminMfaStatusResult>> => {
+): Promise<GetAdminMfaStatusResult & { failure?: CaughtReadError }> => {
   "use cache: private";
 
   cacheTag(adminMfaStatusCacheTag(tenantId));
@@ -237,8 +238,14 @@ const getAdminMfaStatusForSession = async (
       dropFailedCacheEntry();
       return { ok: false, requiresSignIn: true };
     }
+    // The scope hands any other error over as data and the caller throws it,
+    // so the error screen and the log still name what failed.
     dropFailedCacheEntry();
-    return { ok: false, requiresSignIn: false, unexpected: true };
+    return {
+      failure: toCaughtReadError(error),
+      ok: false,
+      requiresSignIn: false,
+    };
   }
 };
 
@@ -250,12 +257,12 @@ const getAdminMfaStatusForSession = async (
 export const getAdminMfaStatus = async (
   tenantId: string
 ): Promise<GetAdminMfaStatusResult> => {
-  const { unexpected, ...result } = await getAdminMfaStatusForSession(
+  const { failure, ...result } = await getAdminMfaStatusForSession(
     tenantId,
     await getAccessToken()
   );
-  if (unexpected) {
-    throw new Error("The second factor's status could not be read.");
+  if (failure) {
+    throw rebuildCaughtReadError(failure);
   }
   return result;
 };

@@ -93,7 +93,7 @@ describe("getAdminMfaStatus", () => {
 
   // The cache fill itself must not throw, or the request fails before any
   // boundary can render; the exported read throws once outside the scope.
-  it("throws any other error only outside the cache scope", async () => {
+  it("throws any other error as it was answered, only outside the cache scope", async () => {
     mockGetMfaStatus.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
@@ -101,7 +101,7 @@ describe("getAdminMfaStatus", () => {
     const { getAdminMfaStatus } = await import("./admin-mfa");
 
     await expect(getAdminMfaStatus("TENANT001")).rejects.toThrow(
-      "The second factor's status could not be read."
+      new ConnectError("upstream down", Code.Unavailable)
     );
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
