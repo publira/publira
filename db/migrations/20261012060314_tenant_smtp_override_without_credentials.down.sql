@@ -1,5 +1,13 @@
--- Fails while an enabled override names no credentials: such a row has no
--- username or password the earlier constraint could accept.
+-- The schema this returns to has no override without credentials, so one
+-- saved without a username or a password is turned off: the tenant's mail goes
+-- over the platform relay again, and the rest of its settings are kept for when
+-- the override is turned on with credentials.
+UPDATE tenant_smtp_config
+SET smtp_override_enabled = false,
+    updated_at = NOW()
+WHERE smtp_override_enabled
+    AND (username IS NULL OR password_encrypted IS NULL);
+
 ALTER TABLE ONLY tenant_smtp_config
     DROP CONSTRAINT tenant_smtp_config_required_when_enabled;
 
