@@ -26,11 +26,15 @@
 -- records.
 --
 -- The periods end on the tenant's own yesterday as of when this file is
--- applied, and the tenant's daily_rebuild_progress is recorded as having got
--- that far. The worker rebuilds the rankings from the stored signals on its
--- own, so a seeded period older than its last pass would sit behind the empty
--- snapshot that pass writes; recorded this way, its first pass finds nothing
--- to do. No screen shows the periods, so the screenshots do not move with them.
+-- applied, and the tenant's daily_rebuild_progress is recorded one day further,
+-- through its today. The worker rebuilds the rankings from the stored signals on
+-- its own, and the screens read the newest period, so any day it ranks after
+-- these would put the empty snapshot that pass writes in front of them. Recorded
+-- through yesterday, that day is the one the tenant's midnight finishes, and a
+-- run that crosses it loses the chart a few seconds after this file is applied;
+-- recorded through today, the next day the worker owes is the one after, which
+-- no run lasts long enough to reach. No screen shows the periods, so the
+-- screenshots do not move with them.
 --
 -- The cold start — no snapshot, so the module keeps the recommendation shelf —
 -- is the Boundary Tenant of `010_multi_tenant.sql`, which has no signals to rank.
@@ -266,13 +270,15 @@ ON CONFLICT (tenant_id, ranking_key, period_start, period_end, entity_type, algo
 SET items = EXCLUDED.items,
     computed_at = EXCLUDED.computed_at;
 
--- The chain has got as far as the snapshots above, for every link.
+-- The chain has got a day past the snapshots above, for every link: a link may
+-- not get ahead of the one before it, so the content stats are recorded through
+-- today as well.
 INSERT INTO daily_rebuild_progress (
     tenant_id, episode_reads_projected_at, content_stats_through, rankings_through, recommend_features_through
 )
-SELECT t.id, now(), d.yesterday, d.yesterday, d.yesterday
+SELECT t.id, now(), d.today, d.today, d.today
 FROM tenants t
-CROSS JOIN LATERAL (SELECT (now() AT TIME ZONE t.timezone)::date - 1 AS yesterday) d
+CROSS JOIN LATERAL (SELECT (now() AT TIME ZONE t.timezone)::date AS today) d
 WHERE t.public_id = 'SeedTNNTAAA1'
 ON CONFLICT (tenant_id) DO UPDATE
 SET episode_reads_projected_at = GREATEST(daily_rebuild_progress.episode_reads_projected_at, EXCLUDED.episode_reads_projected_at),
