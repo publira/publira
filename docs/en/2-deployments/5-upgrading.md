@@ -2,7 +2,7 @@
 title: Upgrading
 description: Bring a running install to a new release, from the backup before it to the processes of the new release serving.
 published: 2026-10-06
-updated: 2026-10-11
+updated: 2026-10-12
 ---
 
 A release can change the database schema its processes expect, so upgrading an install is more than restarting it on new images. The database goes first: the `publiractl` image of the new release brings the schema and the database roles forward, and only then do the processes of the new release start on it. This page goes through that order, how to check each step, and what to do when a migration fails.
@@ -19,7 +19,7 @@ The notes of a release open with **Upgrade notes**, which names every change in 
 
 - **An environment variable added, renamed, or no longer read.** Set it before the processes of the new release start.
 - **A new database role.** `db roles` needs a password for a role that does not exist yet: generate one as you did at install, and pass it with that role's flag.
-- **A change to the routing.** If you adapted one of the [sample proxy configurations](./4-reverse-proxy.md#choose-a-sample), carry the change into your copy. `git diff <current tag> <new tag> -- infra/proxy/` shows it.
+- **A change to what the edge has to do**, such as a path routed to another process. Make the same change at your edge, as [Edge](./4-edge.md#what-the-edge-has-to-do) states it for the new release. If your edge is adapted from one of the [sample configurations](./4-edge.md#the-sample-configurations), `git diff <current tag> <new tag> -- infra/proxy/` shows the change in the samples, for you to carry into your copy.
 - **A process or a service the install has to run** that it did not run before.
 - **A migration that runs long or locks a busy table**, so that you can choose when to run it.
 

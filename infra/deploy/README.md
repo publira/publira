@@ -2,7 +2,7 @@
 
 What a Publira install is made of, which environment variables each of its processes reads, and the order an empty install is brought into service in. It describes the minimal install, which runs no Platform Console: one publisher's site and console, operated from [`publiractl`](../../server/cmd/publiractl/README.md). How the parts are hosted — a Compose file, a Helm chart, a set of systemd units — is the operator's choice. [Running it with Docker Compose](#running-it-with-docker-compose) describes the Compose file beside this README, which runs the whole install on one host.
 
-Every release publishes its images as `ghcr.io/publira/<name>:<version>`, built from [`infra/docker/`](../docker/README.md) at the release's tag, the version behind a `v` (`v0.1.0` for `0.1.0`); an install that changes the code builds its own from there. The reverse proxy is configured from [`infra/proxy/`](../proxy/README.md).
+Every release publishes its images as `ghcr.io/publira/<name>:<version>`, built from [`infra/docker/`](../docker/README.md) at the release's tag, the version behind a `v` (`v0.1.0` for `0.1.0`); an install that changes the code builds its own from there. What the edge in front of the processes has to do — a managed load balancer, a reverse proxy, or a CDN in front of one — is stated in [Edge](../../docs/en/2-deployments/4-edge.md#what-the-edge-has-to-do); [`infra/proxy/`](../proxy/README.md) holds sample configurations of a reverse proxy that does it.
 
 ## What an install runs
 
@@ -10,9 +10,9 @@ Every release publishes its images as `ghcr.io/publira/<name>:<version>`, built 
 
 | Process | Image | Serves | Reached by |
 | --- | --- | --- | --- |
-| `web-storefront` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-storefront` | The public tenant site | The reverse proxy, on each tenant's domain |
-| `web-admin` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-admin` | The tenant console | The reverse proxy, on each tenant's console host: the one it was given with `--admin-domain`, or `admin.<domain>` without one |
-| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | The public API and image delivery on its edge listener (`:8000`), and every Connect namespace on its internal listener (`:8100`) | The reverse proxy, on `/api` and `/images`; `web-storefront` and `web-admin`, on the internal listener |
+| `web-storefront` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-storefront` | The public tenant site | The edge, on each tenant's domain |
+| `web-admin` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-admin` | The tenant console | The edge, on each tenant's console host: the one it was given with `--admin-domain`, or `admin.<domain>` without one |
+| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | The public API and image delivery on its edge listener (`:8000`), and every Connect namespace on its internal listener (`:8100`) | The edge, on `/api` and `/images`; `web-storefront` and `web-admin`, on the internal listener |
 | `publira worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker` as the container argument | The Outbox drain — mail, push, cache revalidation — and every scheduled job | Nothing; it serves `/livez` and `/readyz` on `:8003` |
 
 Every one of them serves `GET /livez` and `GET /readyz` for the orchestrator's probes.
@@ -23,13 +23,13 @@ An install on one host that will not scale the Go processes apart may run the tw
 | --- | --- | --- | --- |
 | `publira server --with-worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --with-worker` as the container argument | Everything both processes above serve, on the same three listeners (`:8000`, `:8100`, `:8003`) and the same six database logins | What reaches the two processes above |
 
-It reads the variables of both, so it is given the union of the `publira server` and `publira worker` rows below. What it gives up is the process boundary: the server and the worker can no longer be scaled independently, and the process the reverse proxy forwards internet traffic to also holds the worker's logins, `publira_outbox` among them, which owns River's schema. [`publira server --with-worker`](../../server/cmd/publira/README.md#hosting-the-worker---with-worker) has the details. The Compose file beside this README keeps the two services.
+It reads the variables of both, so it is given the union of the `publira server` and `publira worker` rows below. What it gives up is the process boundary: the server and the worker can no longer be scaled independently, and the process the edge forwards internet traffic to also holds the worker's logins, `publira_outbox` among them, which owns River's schema. [`publira server --with-worker`](../../server/cmd/publira/README.md#hosting-the-worker---with-worker) has the details. The Compose file beside this README keeps the two services.
 
 ### Services the processes depend on
 
 | Service | Used by | What it holds |
 | --- | --- | --- |
-| A reverse proxy | Browsers and the mobile app | The routing in [`infra/proxy/README.md`](../proxy/README.md), from one of the sample configurations there, given the install's hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` |
+| The edge: a load balancer, a reverse proxy, or a CDN in front of one | Browsers and the mobile app | The routing, TLS, and request headers [Edge](../../docs/en/2-deployments/4-edge.md#what-the-edge-has-to-do) states. The sample configurations in [`infra/proxy/`](../proxy/README.md) take the install's hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` |
 | PostgreSQL | Every process | Everything the install stores |
 | Valkey, or any Redis-protocol server | `publira server`, `web-storefront`, `web-admin` | The image conversion cache, the rate limit counters, and the Next.js cache |
 | An S3-compatible object store | `publira server`, `publira worker` | Every uploaded image. The bucket is created by the operator; `publiractl` saves where it is |
@@ -44,7 +44,7 @@ The [`infra/docker/publiractl`](../docker/publiractl/Dockerfile) image carries `
 | Process | Image | What it adds | What else it needs |
 | --- | --- | --- | --- |
 | `email-renderer` | [`infra/docker/node`](../docker/node/Dockerfile) with `APP_NAME=email-renderer` | An HTML part in every mail. Without it the worker sends the same mail as `text/plain` | `PUBLIRA_EMAIL_RENDERER_URL` on the worker |
-| `web-platform` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-platform` | The Platform Console: operator accounts, and the tenants, platform settings, dashboard, and audit log in a browser rather than from `publiractl` | Its host in `PUBLIRA_EDGE_PLATFORM_HOSTS` and its upstream on the reverse proxy, `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and the worker, `PUBLIRA_PLATFORM_APP_URL` on the worker, and the same `PUBLIRA_GRPC_URL`, `PUBLIRA_AUTH_SECRET`, and `PNCH_*` variables as the other web apps. Its first operator is created on its `/setup` screen |
+| `web-platform` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-platform` | The Platform Console: operator accounts, and the tenants, platform settings, dashboard, and audit log in a browser rather than from `publiractl` | Its host routed to it at the edge (`PUBLIRA_EDGE_PLATFORM_HOSTS` and its upstream in the sample configurations), `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and the worker, `PUBLIRA_PLATFORM_APP_URL` on the worker, and the same `PUBLIRA_GRPC_URL`, `PUBLIRA_AUTH_SECRET`, and `PNCH_*` variables as the other web apps. Its first operator is created on its `/setup` screen |
 
 ## Environment variables
 
@@ -87,7 +87,7 @@ Each of those connections is a pool of at most `PUBLIRA_DB_MAX_OPEN_CONNS` conne
 
 ## Bringing an install into service
 
-Before the first step, provision the dependency services: a PostgreSQL database with a superuser login, which the first two steps connect as through `PUBLIRA_DB_URL`, a Valkey instance, an empty bucket, and an SMTP account. Point the tenant's domain and `admin.<domain>` at the reverse proxy.
+Before the first step, provision the dependency services: a PostgreSQL database with a superuser login, which the first two steps connect as through `PUBLIRA_DB_URL`, a Valkey instance, an empty bucket, and an SMTP account. Point the tenant's domain and `admin.<domain>` at the edge.
 
 1. **Apply the migrations** with the publiractl image of the release being installed:
 
@@ -120,7 +120,7 @@ Before the first step, provision the dependency services: a PostgreSQL database 
 
    Its summary names the tenant site and the tenant console, and prints the administrator's password when it generated one.
 
-5. **Put the reverse proxy in front** of `web-storefront`, `web-admin`, and the edge listener of `publira server`, with the tenant's domain in `PUBLIRA_EDGE_SITE_HOSTS`, its console host in `PUBLIRA_EDGE_ADMIN_HOSTS`, and TLS for both host names. The administrator signs in to the tenant console at `https://admin.<domain>`.
+5. **Put the edge in front** of `web-storefront`, `web-admin`, and the edge listener of `publira server`, routing the tenant's domain and its console host and terminating TLS for both, as [Edge](../../docs/en/2-deployments/4-edge.md#what-the-edge-has-to-do) states; the sample configurations take the two names in `PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS`. The administrator signs in to the tenant console at `https://admin.<domain>`.
 
 On every later release, run `db migrate` and then `db roles` with that release's publiractl image before its processes start. [Upgrading](../../docs/en/2-deployments/5-upgrading.md) is the full procedure, with the backup before it and what to do when a migration fails.
 

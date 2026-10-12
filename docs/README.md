@@ -57,8 +57,25 @@ A Publira install is made of ...
 | `description` | yes | One sentence for the meta description and the Open Graph card |
 | `published` | yes | `YYYY-MM-DD`, the date the page was first published |
 | `updated` | no | `YYYY-MM-DD`, the date of the last change a reader should notice, never earlier than `published`. Omitted until there is one; a typo fix does not bump it |
+| `redirect_from` | no | The URLs the page was published at before a rename or a move, each the path below the version segment, such as `/deployments/reverse-proxy`. The website redirects each of them to the page, in every version whose tree carries the entry |
 
 No other key is allowed: a misspelt one would otherwise be ignored by both sides.
+
+### Renaming or moving a page
+
+A page's slug, and the slugs of the directories above it, are its URL, so renaming either or moving the page to another directory changes where it is published. Bookmarks, search results, and links from outside the repository still name the old URL, so the page lists it in `redirect_from` in the same pull request:
+
+```markdown
+---
+title: Edge
+description: What the load balancer, proxy, or CDN in front of an install has to do.
+published: 2026-10-06
+redirect_from:
+  - /deployments/reverse-proxy
+---
+```
+
+An entry stays when the page moves again, and the new former URL is added beside it, so every URL the page was ever published at keeps reaching it. An entry may not be the URL of a page the tree has, which the website would serve in place of the redirect, nor one another page lists too. Changing only a number changes no URL, and needs no entry.
 
 The dates are written down rather than derived from `git log`, because the numbered names make renames routine — moving `2-deployments/` to `3-deployments/` would reset a date taken from history — and the website may build from a shallow clone.
 

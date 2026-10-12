@@ -2,7 +2,7 @@
 title: Installing
 description: Bring an empty install into service, from the services it depends on to the first sign-in to the tenant console.
 published: 2026-10-06
-updated: 2026-10-11
+updated: 2026-10-12
 ---
 
 This page takes an install from nothing to a tenant console its first administrator signs in to. It follows the order the steps have to run in and explains what each one decides; the full list of variables each process reads, and every flag of `publiractl`, stay in the reference linked from each step.
@@ -27,7 +27,7 @@ Create these before the first step. Publira creates everything inside them, so e
 - **A Valkey instance**, or any server that speaks the Redis protocol. `publira server`, `web-storefront`, and `web-admin` share it for the image conversion cache, the rate limit counters, and the web apps' cache. A connection that carries a password has to use `rediss://`, with TLS: `publira server` refuses to start on a `redis://` URL with a password in it.
 - **An empty bucket** in an S3-compatible object store, and a credential that can read and write it. Every uploaded image is kept there. `publiractl setup` saves the bucket and the credential, so the processes need nothing else to reach it. If the processes should use a credential from their environment instead, such as an instance role, leave the access key out at setup and give `publira server`, `publira worker`, and `publiractl` the `AWS_*` variables.
 - **An SMTP server**: its host, port, encryption, and the address mail is sent from, and the user name and password to sign in with, unless it relays without credentials, as a local MTA or a relay that trusts the host's address does. Reader sign-up, password reset, and administrator invitations all go through it.
-- **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the reverse proxy. The first serves the tenant's public site and the second its console. If the console belongs on another host name, choose it now: `publiractl setup` takes it as `--admin-domain`.
+- **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the edge in front of the install. The first serves the tenant's public site and the second its console. If the console belongs on another host name, choose it now: `publiractl setup` takes it as `--admin-domain`.
 
 ## Generate the secrets
 
@@ -120,17 +120,15 @@ A run that stops halfway, because a connection test failed for instance, is fini
 
 The summary at the end names the tenant site and the tenant console, and prints the administrator's password when it generated one. That is the only place the generated password appears, so keep it before you close the terminal.
 
-### 5. Put the reverse proxy in front
+### 5. Put the edge in front
 
-Route the two host names to the processes:
+The edge is whatever receives readers' requests and forwards them to the processes: a load balancer your platform manages, a reverse proxy you run, or a chain of them. Route the two host names to the processes:
 
 - `admin.<domain>`, or the console host you chose, to `web-admin`.
 - The tenant's domain to `web-storefront`.
-- `/api` and `/images` on either host to the edge listener of `publira server`, except `/api/v1`, which belongs to the web app the host picked.
+- `/api` and `/images` on either host to the edge listener of `publira server`, port `8000` by default, except `/api/v1`, which belongs to the web app the host picked.
 
-The proxy routes only the host names you list, and answers any other with a 404 of its own. The repository ships sample configurations for Traefik, nginx, and Caddy, which read the lists from environment variables: the tenant's domain goes in `PUBLIRA_EDGE_SITE_HOSTS`, and its console host in `PUBLIRA_EDGE_ADMIN_HOSTS`.
-
-Terminate TLS for both host names at the proxy. [Reverse proxy](./4-reverse-proxy.md) takes one of the samples to HTTPS for these host names.
+Terminate TLS for both host names at the edge. [What the edge has to do](./4-edge.md#what-the-edge-has-to-do) states the rest of what it needs, whatever it is built from: the headers it passes on and the ones it removes, the client address, and the uploads and webhooks it has to let through. The repository's [sample configurations](./4-edge.md#the-sample-configurations) for Traefik, nginx, and Caddy are one way of doing all of it.
 
 ### 6. Sign in
 
@@ -150,7 +148,7 @@ Without `email-renderer`, the worker sends every mail as plain text. Run it, and
 
 - Generate a session key for it the way you did for the other web apps, and set it as its `PUBLIRA_AUTH_SECRET`, at least 32 bytes; without one no operator can sign in. Give it the same `PUBLIRA_GRPC_URL`, `PUBLIRA_WEB_SERVICE_TOKEN`, `PNCH_REDIS_URL`, and `PNCH_REVALIDATE_TOKEN` as `web-admin`.
 - Set `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and `publira worker`, so cache revalidation reaches it, and `PUBLIRA_PLATFORM_APP_URL` on `publira worker`, the address operators open it at, which the links in its mail are built from.
-- Choose a host name for it, such as `platform.example.com`, point it at the reverse proxy, and route it to `web-platform`: in the samples, by listing it in `PUBLIRA_EDGE_PLATFORM_HOSTS`.
+- Choose a host name for it, such as `platform.example.com`, point it at the edge, give the edge a certificate for it, and route it to `web-platform`, with the same paths as the other hosts, as [Routing](./4-edge.md#routing) describes. The sample configurations take it in `PUBLIRA_EDGE_PLATFORM_HOSTS`.
 
 Open it and create its first operator on the setup screen. That operator is separate from the tenant administrator `publiractl setup` created: the Platform Console has accounts of its own, and the screen is offered until the first one exists. The language chosen on that screen becomes the platform's default locale, replacing the one `publiractl setup` saved, and so does the time zone, which the screen starts on your browser's. The screen also asks for the default currency, starting on the one `publiractl setup` saved, so leaving it as it is keeps it. Every other setting stays, and `publiractl` keeps working beside the console.
 

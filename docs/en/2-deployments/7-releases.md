@@ -2,6 +2,7 @@
 title: Releases
 description: What a 0.x version number tells you, what a minor and a patch release may change, and which releases receive fixes.
 published: 2026-10-11
+updated: 2026-10-12
 ---
 
 Publira is released as tags of the repository named `vMAJOR.MINOR.PATCH`, starting at `v0.1.0`. Each one is published with its release notes on the repository's [Releases](https://github.com/publira/publira/releases) page, and its images are pushed under the release's version, the tag without its `v`, and no other tag: `v0.1.0` is pulled as `ghcr.io/publira/<name>:0.1.0`. There is no `latest` and no `0.1`, so an install moves to a new release only when you change the version it runs. This page says what the number of a `0.x` release tells you before you upgrade to it, and which releases receive fixes.
@@ -20,7 +21,7 @@ A minor release may change anything an install depends on:
 - the API between the web apps and `publira server`;
 - the environment variables: one added that a process requires, one renamed, or one no longer read;
 - the database roles: a role added, or what a role may reach;
-- the routing in the [sample proxy configurations](./4-reverse-proxy.md#choose-a-sample);
+- [what the edge has to do](./4-edge.md#what-the-edge-has-to-do), and the sample proxy configurations that do it;
 - the processes and the services an install runs;
 - the search index, which then has to be rebuilt.
 

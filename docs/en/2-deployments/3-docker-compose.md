@@ -202,9 +202,9 @@ Unless you tell it otherwise, the proxy records every request with the address t
 docker network inspect publira-deploy_default --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}'
 ```
 
-Then run `docker compose up -d proxy` to recreate the proxy with it. Several addresses are separated by commas. The network keeps its gateway until it is removed, which `docker compose down` does, so check the value again after one. [A hop in front of the proxy](./4-reverse-proxy.md#a-hop-in-front-of-the-proxy) explains what trusting the terminator means.
+Then run `docker compose up -d proxy` to recreate the proxy with it. Several addresses are separated by commas. The network keeps its gateway until it is removed, which `docker compose down` does, so check the value again after one. [A hop in front of the proxy](./4-edge.md#a-hop-in-front-of-the-proxy) explains what trusting the terminator means.
 
-Any other terminator that does the same works too. When you add a tenant later, [Adding a tenant](./4-reverse-proxy.md#adding-a-tenant) lists what the terminator and the proxy need for its host names.
+Any other terminator that does the same works too. When you add a tenant later, [Adding a tenant](./4-edge.md#adding-a-tenant) lists what the terminator and the proxy need for its host names.
 
 ### 6. Sign in
 
