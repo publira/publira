@@ -789,6 +789,26 @@ The platform console's own tables (`platform_*`) sit outside that split. They ca
 
 River's tables, sequences, enum, and function belong to whichever role created them, and `rivermigrate` alters them in place on a later River release. A database that ran the worker on another connection before it had a role of its own therefore keeps an owner the worker cannot alter, which surfaces as `must be owner of table river_job` at startup the next time River ships a schema change. `db/seeds/baseline/010_river_object_owner.sql` hands those objects to `publira_outbox`; it runs with the rest of the seed and with `publiractl db roles`, so running either again against an existing database is the fix.
 
+### Connection pools
+
+Every pool a process opens is bounded by the same three variables, read at startup by `publira server`, `publira worker`, and `publiractl` alike. A value that is set and invalid stops the process with the variable's name instead of falling back to the default.
+
+| Variable | Default | What it bounds |
+| --- | --- | --- |
+| `PUBLIRA_DB_MAX_OPEN_CONNS` | `10` | The connections one pool holds at once, in use and idle together. At least `2`. A caller past it waits for a connection to be returned |
+| `PUBLIRA_DB_MAX_IDLE_CONNS` | the value of `PUBLIRA_DB_MAX_OPEN_CONNS` | The returned connections a pool keeps open for the next caller, from `0` to `PUBLIRA_DB_MAX_OPEN_CONNS` |
+| `PUBLIRA_DB_CONN_MAX_IDLE_TIME` | `5m` | How long a connection nobody uses is kept before it is closed, as a Go duration. `0` keeps it |
+
+The bound is per pool, not per process. `publira server` and `publira worker` hold three pools each and `publira server --with-worker` holds six, so the database has to accept
+
+```text
+(3 × server processes + 3 × worker processes) × PUBLIRA_DB_MAX_OPEN_CONNS
+```
+
+connections from them, plus one pool for each `publiractl` command running at the same time, inside `max_connections` less the slots PostgreSQL reserves for superusers (`superuser_reserved_connections`, `3` by default). One server and one worker at the defaults use 60 of PostgreSQL's default 100.
+
+A request to `publira.v1` or `publira.admin.v1` holds one connection of its pool from start to end, bound to the tenant it names, and at most `PUBLIRA_DB_MAX_OPEN_CONNS − 1` of them do at once: the last connection is kept for the queries that run outside a tenant, which those same requests make as well. The image routes give their connection back once the image's row is read, before the object is fetched and converted.
+
 ### Local development
 
 `task db:setup` applies `db/seeds/baseline/`, which creates the six login users in the table above without a password, and then `db/seeds/dev/000_role_passwords.sql`, which gives them the development passwords the local defaults above connect with.

@@ -14,6 +14,9 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,9 +44,86 @@ const querySpanName = "db.query"
 // why. Failing in 10s turns that into a startup error with a log line.
 const PingTimeout = 10 * time.Second
 
-// Open opens an instrumented pool for url and verifies it with a ping, so
-// an unreachable database fails at startup instead of on the first query.
+// The variables that bound every pool Open creates. One value applies to
+// each pool in the process rather than to the process as a whole, so what an
+// install needs from the database is the number of pools times the bound:
+// `publira server` and `publira worker` hold three pools each.
+const (
+	maxOpenConnsEnv    = "PUBLIRA_DB_MAX_OPEN_CONNS"
+	maxIdleConnsEnv    = "PUBLIRA_DB_MAX_IDLE_CONNS"
+	connMaxIdleTimeEnv = "PUBLIRA_DB_CONN_MAX_IDLE_TIME"
+)
+
+// defaultMaxOpenConns keeps the six pools of a server and a worker at 60
+// connections together, inside the 100 PostgreSQL allows by default with
+// room left for publiractl and the superuser's reserved slots.
+const defaultMaxOpenConns = 10
+
+// minMaxOpenConns is the smallest bound a pool works at. A holder of one
+// connection may wait for a second — tenantconn pins one per request and
+// leaves at least one free for the rest, and the worker's migration lock is
+// held while River migrates on the same pool — so a pool of one would wait
+// on itself.
+const minMaxOpenConns = 2
+
+// defaultConnMaxIdleTime closes a connection nobody has used for a while,
+// so a pool that grew for a burst gives the database its slots back.
+const defaultConnMaxIdleTime = 5 * time.Minute
+
+// poolLimits bounds one pool.
+type poolLimits struct {
+	// MaxOpenConns is the most connections the pool holds at once,
+	// in use and idle together. A caller over it waits for one to be
+	// returned.
+	MaxOpenConns int
+	// MaxIdleConns is how many returned connections the pool keeps open.
+	MaxIdleConns int
+	// ConnMaxIdleTime closes a connection idle for longer; zero keeps it.
+	ConnMaxIdleTime time.Duration
+}
+
+// limitsFromEnv reads the bound from the environment, filling in the default
+// for every variable that is unset and failing on one that is set and invalid.
+func limitsFromEnv() (poolLimits, error) {
+	limits := poolLimits{
+		MaxOpenConns:    defaultMaxOpenConns,
+		ConnMaxIdleTime: defaultConnMaxIdleTime,
+	}
+	if raw := strings.TrimSpace(os.Getenv(maxOpenConnsEnv)); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < minMaxOpenConns {
+			return poolLimits{}, fmt.Errorf("%s must be a whole number of at least %d, got %q", maxOpenConnsEnv, minMaxOpenConns, raw)
+		}
+		limits.MaxOpenConns = n
+	}
+	// Every connection the pool may open is kept once returned, so a pool
+	// that has grown for a burst serves the next one without reconnecting.
+	limits.MaxIdleConns = limits.MaxOpenConns
+	if raw := strings.TrimSpace(os.Getenv(maxIdleConnsEnv)); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 0 || n > limits.MaxOpenConns {
+			return poolLimits{}, fmt.Errorf("%s must be a whole number from 0 to %s (%d), got %q", maxIdleConnsEnv, maxOpenConnsEnv, limits.MaxOpenConns, raw)
+		}
+		limits.MaxIdleConns = n
+	}
+	if raw := strings.TrimSpace(os.Getenv(connMaxIdleTimeEnv)); raw != "" {
+		d, err := time.ParseDuration(raw)
+		if err != nil || d < 0 {
+			return poolLimits{}, fmt.Errorf("%s must be a Go duration of zero or more, got %q", connMaxIdleTimeEnv, raw)
+		}
+		limits.ConnMaxIdleTime = d
+	}
+	return limits, nil
+}
+
+// Open opens an instrumented pool for url, bounded by [limitsFromEnv], and
+// verifies it with a ping, so an unreachable database fails at startup
+// instead of on the first query.
 func Open(url string) (*sql.DB, error) {
+	limits, err := limitsFromEnv()
+	if err != nil {
+		return nil, err
+	}
 	db, err := otelsql.Open(driverName, url,
 		otelsql.WithAttributes(semconv.DBSystemNamePostgreSQL),
 		otelsql.WithSpanNameFormatter(spanName),
@@ -60,6 +140,9 @@ func Open(url string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	db.SetMaxOpenConns(limits.MaxOpenConns)
+	db.SetMaxIdleConns(limits.MaxIdleConns)
+	db.SetConnMaxIdleTime(limits.ConnMaxIdleTime)
 	ctx, cancel := context.WithTimeout(context.Background(), PingTimeout)
 	defer cancel()
 	if err := db.PingContext(ctx); err != nil {

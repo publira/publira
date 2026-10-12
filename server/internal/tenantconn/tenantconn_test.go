@@ -336,6 +336,113 @@ func assertConnDiscarded(t *testing.T, db *sql.DB, drv *fakeDriver, first *fakeC
 	}
 }
 
+// A bounded pool keeps one connection out of reach of tenant scope, so a
+// request that holds its tenant connection and borrows another from the pool
+// is not waiting on a connection every other request is holding as well.
+func TestAcquireLeavesOneConnectionOfABoundedPoolFree(t *testing.T) {
+	t.Parallel()
+
+	const bound = 3
+	db := openFakeDB(t, newFakeDriver(nil))
+	db.SetMaxOpenConns(bound)
+	db.SetMaxIdleConns(bound)
+
+	cleanups := make([]func(), 0, bound-1)
+	for range bound - 1 {
+		_, cleanup, err := Acquire(context.Background(), db, uuid.Must(uuid.NewV7()), discardLogger())
+		if err != nil {
+			t.Fatalf("Acquire: %v", err)
+		}
+		cleanups = append(cleanups, cleanup)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if _, cleanup, err := Acquire(ctx, db, uuid.Must(uuid.NewV7()), discardLogger()); !errors.Is(err, context.DeadlineExceeded) {
+		cleanup()
+		t.Fatalf("Acquire past %d pinned connections: %v, want it to wait until the deadline", bound-1, err)
+	}
+
+	free, err := db.Conn(context.Background())
+	if err != nil {
+		t.Fatalf("pool-level Conn with every slot pinned: %v", err)
+	}
+	_ = free.Close()
+
+	// Calling a cleanup twice gives back one slot, not two.
+	cleanups[0]()
+	cleanups[0]()
+	_, cleanup, err := Acquire(context.Background(), db, uuid.Must(uuid.NewV7()), discardLogger())
+	if err != nil {
+		t.Fatalf("Acquire after a release: %v", err)
+	}
+	cleanups[0] = cleanup
+	ctx, cancel = context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if _, cleanup, err := Acquire(ctx, db, uuid.Must(uuid.NewV7()), discardLogger()); !errors.Is(err, context.DeadlineExceeded) {
+		cleanup()
+		t.Fatalf("Acquire after a double cleanup: %v, want it to wait: the cleanup freed two slots", err)
+	}
+	for _, cleanup := range cleanups {
+		cleanup()
+	}
+}
+
+// Many more requests than the pool has connections, each holding its tenant
+// connection while it borrows a second from the pool, all finish. Without the
+// slot kept free, every connection ends up pinned by a request waiting for
+// another one, and none of them returns.
+func TestAcquireDoesNotDeadlockRequestsThatBorrowFromThePool(t *testing.T) {
+	t.Parallel()
+
+	const bound = 4
+	db := openFakeDB(t, newFakeDriver(nil))
+	db.SetMaxOpenConns(bound)
+	db.SetMaxIdleConns(bound)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Each request waits, after pinning, until as many requests have pinned
+	// as the pool has connections — the interleaving a burst produces and the
+	// one that deadlocks — or until it is clear that no more of them can.
+	const requests = bound * 4
+	var pinned atomic.Int32
+	allPinned := make(chan struct{})
+	errs := make(chan error, requests)
+	var done sync.WaitGroup
+	for range requests {
+		done.Add(1)
+		go func() {
+			defer done.Done()
+			_, cleanup, err := Acquire(ctx, db, uuid.Must(uuid.NewV7()), discardLogger())
+			if err != nil {
+				errs <- fmt.Errorf("Acquire: %w", err)
+				return
+			}
+			defer cleanup()
+			if pinned.Add(1) == bound {
+				close(allPinned)
+			}
+			select {
+			case <-allPinned:
+			case <-time.After(100 * time.Millisecond):
+			}
+			borrowed, err := db.Conn(ctx)
+			if err != nil {
+				errs <- fmt.Errorf("pool-level Conn while holding a tenant connection: %w", err)
+				return
+			}
+			_ = borrowed.Close()
+		}()
+	}
+	done.Wait()
+	close(errs)
+	for err := range errs {
+		t.Error(err)
+	}
+}
+
 var driverSeq atomic.Int64
 
 func openFakeDB(t *testing.T, drv *fakeDriver) *sql.DB {

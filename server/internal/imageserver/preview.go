@@ -80,6 +80,8 @@ func (h *Handler) handleGetEpisodePreviewImage(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// The row is read; the conversion below runs without the connection.
+	cleanup()
 	h.servePreview(w, r, page.ObjectKey)
 }
 

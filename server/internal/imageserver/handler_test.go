@@ -61,6 +61,8 @@ type stubTenantQueries struct {
 	tenantParams     *dbmodels.GetTenantImageVariantByTypeForTenantParams
 	genre            dbmodels.GetGenreImageVariantByTypeAndWidthForTenantRow
 	genreKey         genreVariantKey
+	series           dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow
+	label            dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow
 	userRef          dbmodels.GetUserByPublicIDForTenantRow
 	userRefErr       error
 	user             dbmodels.User
@@ -130,11 +132,17 @@ type genreVariantKey struct {
 }
 
 func (s stubTenantQueries) GetLabelImageVariantByTypeAndWidthForTenant(context.Context, dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error) {
-	return dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow{}, sql.ErrNoRows
+	if s.label.ObjectKey == "" {
+		return dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow{}, sql.ErrNoRows
+	}
+	return s.label, nil
 }
 
 func (s stubTenantQueries) GetSeriesImageVariantByTypeAndWidthForTenant(context.Context, dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow, error) {
-	return dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow{}, sql.ErrNoRows
+	if s.series.ObjectKey == "" {
+		return dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow{}, sql.ErrNoRows
+	}
+	return s.series, nil
 }
 
 func (s stubTenantQueries) GetEpisodeImageAccessByIDForUser(context.Context, dbmodels.GetEpisodeImageAccessByIDForUserParams) (dbmodels.GetEpisodeImageAccessByIDForUserRow, error) {
