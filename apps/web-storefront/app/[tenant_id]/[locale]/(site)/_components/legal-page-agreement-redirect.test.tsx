@@ -100,7 +100,10 @@ describe("LegalPageAgreementRedirect", () => {
   });
 
   it("forgets an answer once its layout is hidden", async () => {
-    const check = vi.fn(() => Promise.resolve(OWED));
+    const check = vi
+      .fn<() => Promise<string[] | null>>()
+      .mockResolvedValueOnce(OWED)
+      .mockResolvedValueOnce(null);
     const { rerender } = render(gate({ check, exemptPaths: null }));
     navigation.pathname = "/labels";
     await act(async () => {
@@ -121,10 +124,41 @@ describe("LegalPageAgreementRedirect", () => {
     });
     navigation.pathname = "/labels";
     navigation.search = "";
-    act(() => {
+    await act(async () => {
       rerender(gate({ check, exemptPaths: null }));
+      await check.mock.results[1]?.value;
     });
 
     expect(navigation.redirect).not.toHaveBeenCalled();
+  });
+
+  it("asks again when its layout is shown again before the reader agreed", async () => {
+    const check = vi.fn(() => Promise.resolve(OWED));
+    const { rerender } = render(gate({ check, exemptPaths: null }));
+    navigation.pathname = "/labels";
+    await act(async () => {
+      rerender(gate({ check, exemptPaths: null }));
+      await check.mock.results[0]?.value;
+    });
+    navigation.redirect.mockClear();
+
+    // The reader leaves the agreement screen with the browser's back button,
+    // and Next.js shows the layout it kept without rendering it again.
+    navigation.pathname = AGREEMENT_PATH;
+    navigation.search = "returnTo=%2Flabels";
+    act(() => {
+      rerender(gate({ check, exemptPaths: null, mode: "hidden" }));
+    });
+    navigation.pathname = "/labels";
+    navigation.search = "";
+    await act(async () => {
+      rerender(gate({ check, exemptPaths: null }));
+      await check.mock.results[1]?.value;
+    });
+
+    expect(check).toHaveBeenCalledTimes(2);
+    expect(navigation.redirect).toHaveBeenLastCalledWith(
+      "/settings/agreement?returnTo=%2Flabels"
+    );
   });
 });

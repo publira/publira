@@ -39,7 +39,7 @@ export const LegalPageAgreementRedirect = ({
   // oxlint-disable-next-line react/hook-use-state -- it never changes, and a ref cannot be read during render
   const [renderedPage] = useState(page);
   // The page the server was last asked about, which needs no second read.
-  const checkedPage = useRef(page);
+  const checkedPage = useRef<string | null>(page);
   // What the server answered after the last client-side navigation, for the
   // page it was asked about. It is read during render, where `redirect()` has
   // to be called: Next.js does not take one from an Effect.
@@ -69,9 +69,11 @@ export const LegalPageAgreementRedirect = ({
     ask();
     // The answer goes with the Effect that asked for it. Hiding the layout runs
     // this too, so the reader who comes back after agreeing is not sent to
-    // agree again on an answer from before.
+    // agree again on an answer from before, and the layout shown again asks
+    // afresh rather than taking the reader to have agreed.
     return () => {
       current = false;
+      checkedPage.current = null;
       setAnswer(null);
     };
   }, [check, page]);
