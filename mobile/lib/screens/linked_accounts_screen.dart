@@ -173,16 +173,20 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
     await _settle();
   }
 
-  /// Ends a link or an unlink and reads the accounts again, which either may
-  /// have changed whatever the API answered.
+  /// Reads the accounts again after a link or an unlink, which either may
+  /// have changed whatever the API answered, and only then lets the reader
+  /// act on them, so a row the answer has outdated is never pressed.
   Future<void> _settle() async {
+    if (!mounted) {
+      return;
+    }
+    await _load();
     if (!mounted) {
       return;
     }
     setState(() {
       _busy = null;
     });
-    await _load();
   }
 
   @override

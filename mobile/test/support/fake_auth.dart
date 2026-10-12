@@ -250,6 +250,10 @@ class FakeAuthRepository implements AuthRepository {
   /// Thrown by [readLinkedIdentities].
   AuthFailure? identitiesFailure;
 
+  /// Held open by a test that needs to act while [readLinkedIdentities] is in
+  /// flight.
+  Completer<void>? identitiesGate;
+
   /// The credentials [linkIdentity] was asked to link, in order.
   final linkCredentials = <ProviderCredential>[];
 
@@ -300,6 +304,7 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<LinkedIdentities> readLinkedIdentities(AuthSession session) async {
+    await identitiesGate?.future;
     final failure = identitiesFailure;
     if (failure != null) {
       throw failure;

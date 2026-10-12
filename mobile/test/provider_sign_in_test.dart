@@ -473,6 +473,45 @@ void main() {
       expect(find.textContaining('linked@google.example'), findsOneWidget);
     });
 
+    testWidgets('keeps every row still until the accounts are read again', (
+      tester,
+    ) async {
+      await pumpApp(tester, initialLocation: AppRoutes.accountLinkedAccounts);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('linked-account-link-google')),
+      );
+      final reread = repository.identitiesGate = Completer<void>();
+
+      await tester.tap(
+        find.byKey(const ValueKey('linked-account-link-google')),
+      );
+      await pumpUntilFound(
+        tester,
+        find.text(
+          'Your Google account was linked. You can now sign in with it.',
+        ),
+      );
+
+      for (final key in const ['link-google', 'link-apple']) {
+        final button = tester.widget<TextButton>(
+          find.byKey(ValueKey('linked-account-$key')),
+        );
+        expect(button.onPressed, isNull, reason: key);
+      }
+
+      reread.complete();
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('linked-account-unlink-google')),
+      );
+      final unlink = tester.widget<TextButton>(
+        find.byKey(const ValueKey('linked-account-unlink-google')),
+      );
+      expect(unlink.onPressed, isNotNull);
+      expect(repository.linkCredentials, hasLength(1));
+    });
+
     testWidgets('a closed provider sheet links nothing and says nothing', (
       tester,
     ) async {
