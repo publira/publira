@@ -40,6 +40,10 @@ const PlatformPasswordLinkOperatorAdded = "operator_added"
 
 const defaultPlatformAppURL = "http://platform.localhost:3080"
 
+// platformUserStatusActive is the platform_users status of an account that can
+// sign in; a suspended or an inactive one cannot.
+const platformUserStatusActive = "active"
+
 // PlatformPasswordResetEmailPayload names the token row the mail is about and
 // carries the link's secret, which is the one thing the row cannot give back.
 type PlatformPasswordResetEmailPayload struct {
@@ -118,6 +122,14 @@ func NewPlatformPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 		if err != nil {
 			return fmt.Errorf("load platform user: %w", err)
 		}
+		// A reset was asked for by whoever holds the address, so it goes out
+		// whatever the account's status. The mail to an added operator says the
+		// account is ready to use, which stops being true once it is suspended
+		// or deactivated.
+		if payload.Purpose == PlatformPasswordLinkOperatorAdded && operator.Status != platformUserStatusActive {
+			cfg.logDroppedAuthEmail(ctx, event, tokenID.String(), "operator_not_active")
+			return nil
+		}
 		resetURL, err := platformConsoleURL("/confirm-password", payload.Token)
 		if err != nil {
 			return fmt.Errorf("build platform password reset url: %w", err)
@@ -164,6 +176,13 @@ func NewPlatformOperatorRoleGrantedEmailHandler(cfg EmailHandlerConfig) Handler 
 		}
 		if err != nil {
 			return fmt.Errorf("load platform user: %w", err)
+		}
+		// The mail says the account can sign in. A role is only ever replaced,
+		// never taken away, so the account's status is what can make that
+		// untrue between the grant and the delivery.
+		if operator.Status != platformUserStatusActive {
+			cfg.logDroppedAuthEmail(ctx, event, userID.String(), "operator_not_active")
+			return nil
 		}
 
 		delivery, err := resolvePlatformDelivery(ctx, queries, cfg.Encryptor)

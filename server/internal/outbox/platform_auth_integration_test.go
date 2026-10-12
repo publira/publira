@@ -267,6 +267,53 @@ func TestPlatformPasswordResetEmailSendsAnAddedOperatorTheirFirstPasswordLink(t 
 	}
 }
 
+// An operator suspended or deactivated before the mail goes out can no longer
+// use the account the mail says is ready, so the mail is dropped. A reset the
+// address asked for itself still goes out whatever the status.
+func TestPlatformPasswordResetEmailSkipsAnAddedOperatorWhoIsNoLongerActive(t *testing.T) {
+	for _, status := range []string{"suspended", "inactive"} {
+		t.Run(status, func(t *testing.T) {
+			pg, encryptor := newPlatformEmailEnv(t)
+			operator := seedPlatformOperator(t, pg, "PLATOUTBOX12", "new-operator@example.com")
+			setPlatformUserStatus(t, pg, operator.ID, status)
+			addedTokenID := seedPlatformPasswordResetToken(t, pg, operator.ID, "first-token", time.Now().Add(time.Hour))
+
+			renderer := &recordingPlatformRenderer{}
+			mailer := &recordingPlatformMailer{}
+			logger, logs := newAuthEmailDropLogger(t)
+			handler := outbox.NewPlatformPasswordResetEmailHandler(outbox.EmailHandlerConfig{
+				DB: pg.DB, Encryptor: encryptor, Logger: logger, Mailer: mailer, Renderer: renderer,
+			})
+			added := newPlatformOutboxEvent(t, outbox.EventTypePlatformPasswordResetEmail,
+				outbox.PlatformPasswordResetEmailPayload{
+					TokenID: addedTokenID.String(),
+					Token:   "first-token",
+					Purpose: outbox.PlatformPasswordLinkOperatorAdded,
+				},
+				"platform_password_reset_email:"+addedTokenID.String())
+
+			if err := handler(context.Background(), added); err != nil {
+				t.Fatalf("handler: %v", err)
+			}
+			if len(renderer.requests) != 0 || len(mailer.recipients) != 0 {
+				t.Fatalf("rendered %d and sent %d, want neither", len(renderer.requests), len(mailer.recipients))
+			}
+			assertAuthEmailDropLog(t, logs, added, addedTokenID.String(), "operator_not_active")
+
+			resetTokenID := seedPlatformPasswordResetToken(t, pg, operator.ID, "reset-token", time.Now().Add(time.Hour))
+			reset := newPlatformOutboxEvent(t, outbox.EventTypePlatformPasswordResetEmail,
+				outbox.PlatformPasswordResetEmailPayload{TokenID: resetTokenID.String(), Token: "reset-token"},
+				"platform_password_reset_email:"+resetTokenID.String())
+			if err := handler(context.Background(), reset); err != nil {
+				t.Fatalf("handler for a reset: %v", err)
+			}
+			if len(mailer.recipients) != 1 {
+				t.Fatalf("sent %d for a reset, want it delivered", len(mailer.recipients))
+			}
+		})
+	}
+}
+
 // A purpose this worker has no mail for is not sent in a reset mail nobody
 // asked for, and no retry will give it one.
 func TestPlatformPasswordResetEmailRefusesAnUnknownPurpose(t *testing.T) {
@@ -322,6 +369,36 @@ func TestPlatformOperatorRoleGrantedEmailLinksToSignIn(t *testing.T) {
 	}
 	if len(mailer.recipients) != 1 || mailer.recipients[0] != operator.Email {
 		t.Fatalf("recipients = %v, want [%s]", mailer.recipients, operator.Email)
+	}
+}
+
+// The mail says the account can sign in, which a suspension or a deactivation
+// made before it went out has made untrue.
+func TestPlatformOperatorRoleGrantedEmailSkipsAnAccountThatIsNoLongerActive(t *testing.T) {
+	for _, status := range []string{"suspended", "inactive"} {
+		t.Run(status, func(t *testing.T) {
+			pg, encryptor := newPlatformEmailEnv(t)
+			operator := seedPlatformOperator(t, pg, "PLATOUTBOX13", "returning@example.com")
+			setPlatformUserStatus(t, pg, operator.ID, status)
+
+			renderer := &recordingPlatformRenderer{}
+			mailer := &recordingPlatformMailer{}
+			logger, logs := newAuthEmailDropLogger(t)
+			handler := outbox.NewPlatformOperatorRoleGrantedEmailHandler(outbox.EmailHandlerConfig{
+				DB: pg.DB, Encryptor: encryptor, Logger: logger, Mailer: mailer, Renderer: renderer,
+			})
+			event := newPlatformOutboxEvent(t, outbox.EventTypePlatformOperatorRoleGrantedEmail,
+				outbox.PlatformOperatorRoleGrantedEmailPayload{PlatformUserID: operator.ID.String()},
+				"platform_operator_role_granted_email:"+uuid.Must(uuid.NewV7()).String())
+
+			if err := handler(context.Background(), event); err != nil {
+				t.Fatalf("handler: %v", err)
+			}
+			if len(renderer.requests) != 0 || len(mailer.recipients) != 0 {
+				t.Fatalf("rendered %d and sent %d, want neither", len(renderer.requests), len(mailer.recipients))
+			}
+			assertAuthEmailDropLog(t, logs, event, operator.ID.String(), "operator_not_active")
+		})
 	}
 }
 
@@ -610,5 +687,18 @@ func TestWorkerDeliversTenantlessPlatformPasswordResetEmail(t *testing.T) {
 
 	if len(mailer.recipients) != 1 || mailer.recipients[0] != operator.Email {
 		t.Fatalf("recipients = %v, want [%s]", mailer.recipients, operator.Email)
+	}
+}
+
+func setPlatformUserStatus(t *testing.T, pg *testutil.PostgresEnv, userID uuid.UUID, status string) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if _, err := dbmodels.New(pg.DB).UpdatePlatformUserStatusByID(ctx, dbmodels.UpdatePlatformUserStatusByIDParams{
+		ID:     userID,
+		Status: status,
+	}); err != nil {
+		t.Fatalf("UpdatePlatformUserStatusByID: %v", err)
 	}
 }
