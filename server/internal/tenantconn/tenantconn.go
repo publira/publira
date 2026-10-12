@@ -7,6 +7,14 @@
 // connection discarded — before it goes back to database/sql. Pool-level
 // queriers never set the GUC; reusing a connection that still carries a
 // previous tenant would let those paths see the wrong tenant's rows.
+//
+// A connection bound here is held for the whole request, and the request
+// may still borrow another one from the same pool while it holds it — a
+// pool-level querier, a resolver reading the platform's settings. On a
+// bounded pool that is a deadlock waiting for a burst: every connection
+// pinned by a request that is itself waiting for one. Acquire therefore
+// pins at most one fewer connection than the pool may open, so a pool-level
+// borrower always finds one, finishes, and gives it back.
 package tenantconn
 
 import (
@@ -41,24 +49,71 @@ const (
 // the error is logged and the connection is discarded: set_config is
 // session-scoped, so a canceled or timed-out ExecContext may still
 // have applied the GUC, and pool-level queriers would inherit it.
+//
+// On a bounded pool it first waits, under ctx, for one of the slots
+// that keep a connection free for pool-level queriers (see the package
+// documentation). The cleanup may be called more than once.
 func Acquire(ctx context.Context, db *sql.DB, tenantID uuid.UUID, logger *slog.Logger) (*sql.Conn, func(), error) {
 	logger = loggerOrDefault(logger)
 
+	slots := pinSlots(db)
+	if slots != nil {
+		select {
+		case slots <- struct{}{}:
+		case <-ctx.Done():
+			return nil, func() {}, ctx.Err()
+		}
+	}
+	unpin := func() {
+		if slots != nil {
+			<-slots
+		}
+	}
+
 	conn, err := db.Conn(ctx)
 	if err != nil {
+		unpin()
 		return nil, func() {}, err
 	}
 
 	if _, err := conn.ExecContext(ctx, setTenantSQL, tenantID.String()); err != nil {
 		logger.ErrorContext(ctx, "failed to set app.current_tenant_id; discarding connection", "error", err)
 		discard(conn, logger)
+		unpin()
 		return nil, func() {}, err
 	}
 
 	var once sync.Once
 	return conn, func() {
-		once.Do(func() { release(conn, logger, ClearTimeout) })
+		once.Do(func() {
+			release(conn, logger, ClearTimeout)
+			unpin()
+		})
 	}, nil
+}
+
+// slotsByPool holds, per pool, the semaphore Acquire pins a connection
+// under. Pools live as long as the process, so an entry is never removed.
+var slotsByPool sync.Map // map[*sql.DB]chan struct{}
+
+// pinSlots returns the semaphore for db, sized one below the bound the pool
+// was opened with (sqldb.Open sets it), or nil for a pool with no bound,
+// where a borrower never waits and nothing needs to be kept free. A pool of
+// one has no connection to spare and gets no semaphore either; sqldb refuses
+// to open one.
+//
+// The size is read when the pool is first acquired from, so a bound changed
+// with SetMaxOpenConns after that is not followed.
+func pinSlots(db *sql.DB) chan struct{} {
+	maxOpen := db.Stats().MaxOpenConnections
+	if maxOpen <= 1 {
+		return nil
+	}
+	if slots, ok := slotsByPool.Load(db); ok {
+		return slots.(chan struct{})
+	}
+	slots, _ := slotsByPool.LoadOrStore(db, make(chan struct{}, maxOpen-1))
+	return slots.(chan struct{})
 }
 
 // SetUser binds a tenant-scoped request connection to an authenticated member.

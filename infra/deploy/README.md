@@ -83,6 +83,8 @@ The secret encryption keys seal the SMTP password, the object store's access key
 
 Every `*_DB_URL` of `publira server` and the worker falls back to a development URL rather than to another variable, so each one is set, with the password its role was given.
 
+Each of those connections is a pool of at most `PUBLIRA_DB_MAX_OPEN_CONNS` connections, `10` unless set, so one server and one worker open up to 60 against the database. Running more of either, or raising the bound, needs a `max_connections` sized for it: [Connection pools](../../server/README.md#connection-pools) has the arithmetic.
+
 ## Bringing an install into service
 
 Before the first step, provision the dependency services: a PostgreSQL database with a superuser login, which the first two steps connect as through `PUBLIRA_DB_URL`, a Valkey instance, an empty bucket, and an SMTP account. Point the tenant's domain and `admin.<domain>` at the reverse proxy.

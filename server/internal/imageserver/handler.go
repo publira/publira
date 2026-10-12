@@ -107,6 +107,13 @@ type TenantScopedQuerier interface {
 	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 }
 
+// TenantScopedQuerierFactory opens the queries an image route reads its row
+// with, on a connection bound to the tenant. The function it returns gives
+// that connection back and may be called more than once.
+//
+// A route calls it as soon as the row is read, before the object is fetched
+// and converted, which needs nothing from this connection and takes far
+// longer than the read.
 type TenantScopedQuerierFactory interface {
 	ForTenant(ctx context.Context, tenantID uuid.UUID) (TenantScopedQuerier, func(), error)
 }
@@ -322,6 +329,8 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	// The row is read; the conversion below runs without the connection.
+	cleanup()
 	h.serveConverted(w, r, objectKey, contentTypeFromDB, cacheControl, cipher)
 }
 
@@ -582,6 +591,8 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// The row is read; the conversion below runs without the connection.
+	cleanup()
 	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
@@ -637,6 +648,8 @@ func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The row is read; the conversion below runs without the connection.
+	cleanup()
 	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
@@ -692,6 +705,8 @@ func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The row is read; the conversion below runs without the connection.
+	cleanup()
 	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
@@ -747,6 +762,8 @@ func (h *Handler) handleGetGenreImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The row is read; the conversion below runs without the connection.
+	cleanup()
 	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
@@ -802,6 +819,8 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The row is read; the conversion below runs without the connection.
+	cleanup()
 	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
