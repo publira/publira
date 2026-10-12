@@ -301,6 +301,50 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "tenant_admin_invite_accepted",
             },
             {
+              label: t("admin.audit.actions.tenant_site_copy_updated"),
+              value: "tenant_site_copy_updated",
+            },
+            {
+              label: t("admin.audit.actions.tenant_timezone_updated"),
+              value: "tenant_timezone_updated",
+            },
+            {
+              label: t("admin.audit.actions.tenant_default_locale_updated"),
+              value: "tenant_default_locale_updated",
+            },
+            {
+              label: t("admin.audit.actions.tenant_comment_settings_updated"),
+              value: "tenant_comment_settings_updated",
+            },
+            {
+              label: t("admin.audit.actions.tenant_age_verification_updated"),
+              value: "tenant_age_verification_updated",
+            },
+            {
+              label: t("admin.audit.actions.tenant_legal_pages_updated"),
+              value: "tenant_legal_pages_updated",
+            },
+            {
+              label: t("admin.audit.actions.tenant_theme_updated"),
+              value: "tenant_theme_updated",
+            },
+            {
+              label: t("admin.audit.actions.tenant_logo_uploaded"),
+              value: "tenant_logo_uploaded",
+            },
+            {
+              label: t("admin.audit.actions.tenant_logo_deleted"),
+              value: "tenant_logo_deleted",
+            },
+            {
+              label: t("admin.audit.actions.tenant_icon_uploaded"),
+              value: "tenant_icon_uploaded",
+            },
+            {
+              label: t("admin.audit.actions.tenant_icon_deleted"),
+              value: "tenant_icon_deleted",
+            },
+            {
               label: t("admin.audit.actions.tenant_email_settings_updated"),
               value: "tenant_email_settings_updated",
             },
@@ -319,12 +363,22 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "tenant_payment_settings_updated",
             },
             {
+              label: t("admin.audit.actions.tenant_purchase_settings_updated"),
+              value: "tenant_purchase_settings_updated",
+            },
+            {
               label: t("admin.audit.actions.tenant_fcm_credentials_saved"),
               value: "tenant_fcm_credentials_saved",
             },
             {
               label: t("admin.audit.actions.tenant_fcm_credentials_deleted"),
               value: "tenant_fcm_credentials_deleted",
+            },
+            {
+              label: t(
+                "admin.audit.actions.tenant_mobile_app_association_updated"
+              ),
+              value: "tenant_mobile_app_association_updated",
             },
             {
               label: t("admin.audit.actions.tenant_sign_in_settings_updated"),

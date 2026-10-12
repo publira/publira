@@ -293,8 +293,71 @@ const readerActionName = (action: string) => {
   }
 };
 
-/** An action on tenant settings or two-step verification. */
+/** An action on the tenant's settings or its branding. */
 const settingsActionName = (action: string) => {
+  switch (action) {
+    case "tenant_site_copy_updated": {
+      return <Message message="admin.audit.actions.tenant_site_copy_updated" />;
+    }
+    case "tenant_timezone_updated": {
+      return <Message message="admin.audit.actions.tenant_timezone_updated" />;
+    }
+    case "tenant_default_locale_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_default_locale_updated" />
+      );
+    }
+    case "tenant_comment_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_comment_settings_updated" />
+      );
+    }
+    case "tenant_age_verification_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_age_verification_updated" />
+      );
+    }
+    case "tenant_legal_pages_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_legal_pages_updated" />
+      );
+    }
+    case "tenant_theme_updated": {
+      return <Message message="admin.audit.actions.tenant_theme_updated" />;
+    }
+    case "tenant_logo_uploaded": {
+      return <Message message="admin.audit.actions.tenant_logo_uploaded" />;
+    }
+    case "tenant_logo_deleted": {
+      return <Message message="admin.audit.actions.tenant_logo_deleted" />;
+    }
+    case "tenant_icon_uploaded": {
+      return <Message message="admin.audit.actions.tenant_icon_uploaded" />;
+    }
+    case "tenant_icon_deleted": {
+      return <Message message="admin.audit.actions.tenant_icon_deleted" />;
+    }
+    case "tenant_community_limits_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_community_limits_updated" />
+      );
+    }
+    case "tenant_retention_updated": {
+      return <Message message="admin.audit.actions.tenant_retention_updated" />;
+    }
+    case "tenant_email_rejection_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_email_rejection_settings_updated" />
+      );
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
+/** An action on one of the tenant's integrations. */
+const integrationActionName = (action: string) => {
   switch (action) {
     case "tenant_email_settings_updated": {
       return (
@@ -316,6 +379,11 @@ const settingsActionName = (action: string) => {
         <Message message="admin.audit.actions.tenant_payment_settings_updated" />
       );
     }
+    case "tenant_purchase_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_purchase_settings_updated" />
+      );
+    }
     case "tenant_fcm_credentials_saved": {
       return (
         <Message message="admin.audit.actions.tenant_fcm_credentials_saved" />
@@ -326,24 +394,25 @@ const settingsActionName = (action: string) => {
         <Message message="admin.audit.actions.tenant_fcm_credentials_deleted" />
       );
     }
+    case "tenant_mobile_app_association_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_mobile_app_association_updated" />
+      );
+    }
     case "tenant_sign_in_settings_updated": {
       return (
         <Message message="admin.audit.actions.tenant_sign_in_settings_updated" />
       );
     }
-    case "tenant_community_limits_updated": {
-      return (
-        <Message message="admin.audit.actions.tenant_community_limits_updated" />
-      );
+    default: {
+      return null;
     }
-    case "tenant_retention_updated": {
-      return <Message message="admin.audit.actions.tenant_retention_updated" />;
-    }
-    case "tenant_email_rejection_settings_updated": {
-      return (
-        <Message message="admin.audit.actions.tenant_email_rejection_settings_updated" />
-      );
-    }
+  }
+};
+
+/** An action on a member's two-step verification. */
+const mfaActionName = (action: string) => {
+  switch (action) {
     case "admin_mfa_enrolled": {
       return <Message message="admin.audit.actions.admin_mfa_enrolled" />;
     }
@@ -376,7 +445,9 @@ const actionName = (action: string) =>
   siteActionName(action) ??
   contactMessageActionName(action) ??
   readerActionName(action) ??
-  settingsActionName(action);
+  settingsActionName(action) ??
+  integrationActionName(action) ??
+  mfaActionName(action);
 
 /** The name of a catalog, community, or reader target type. */
 const catalogTargetName = (targetType: string) => {
@@ -432,7 +503,54 @@ const catalogTargetName = (targetType: string) => {
   }
 };
 
-/** The name of a tenant setting, royalty, or account target type. */
+/** The name of a tenant setting target type. */
+const settingTargetName = (targetType: string) => {
+  switch (targetType) {
+    case "tenant_age_verification": {
+      return <Message message="admin.audit.targets.tenant_age_verification" />;
+    }
+    case "tenant_branding": {
+      return <Message message="admin.audit.targets.tenant_branding" />;
+    }
+    case "tenant_comment_settings": {
+      return <Message message="admin.audit.targets.tenant_comment_settings" />;
+    }
+    case "tenant_community_limits": {
+      return <Message message="admin.audit.targets.tenant_community_limits" />;
+    }
+    case "tenant_default_locale": {
+      return <Message message="admin.audit.targets.tenant_default_locale" />;
+    }
+    case "tenant_legal_pages": {
+      return <Message message="admin.audit.targets.tenant_legal_pages" />;
+    }
+    case "tenant_mobile_app_association": {
+      return (
+        <Message message="admin.audit.targets.tenant_mobile_app_association" />
+      );
+    }
+    case "tenant_purchase_settings": {
+      return <Message message="admin.audit.targets.tenant_purchase_settings" />;
+    }
+    case "tenant_retention": {
+      return <Message message="admin.audit.targets.tenant_retention" />;
+    }
+    case "tenant_sign_in_settings": {
+      return <Message message="admin.audit.targets.tenant_sign_in_settings" />;
+    }
+    case "tenant_site_copy": {
+      return <Message message="admin.audit.targets.tenant_site_copy" />;
+    }
+    case "tenant_timezone": {
+      return <Message message="admin.audit.targets.tenant_timezone" />;
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
+/** The name of an integration, royalty, or account target type. */
 const tenantTargetName = (targetType: string) => {
   switch (targetType) {
     case "fcm_config": {
@@ -456,15 +574,6 @@ const tenantTargetName = (targetType: string) => {
     case "tenant_admin_invitation": {
       return <Message message="admin.audit.targets.tenant_admin_invitation" />;
     }
-    case "tenant_community_limits": {
-      return <Message message="admin.audit.targets.tenant_community_limits" />;
-    }
-    case "tenant_retention": {
-      return <Message message="admin.audit.targets.tenant_retention" />;
-    }
-    case "tenant_sign_in_settings": {
-      return <Message message="admin.audit.targets.tenant_sign_in_settings" />;
-    }
     case "user": {
       return <Message message="admin.audit.targets.user" />;
     }
@@ -476,7 +585,9 @@ const tenantTargetName = (targetType: string) => {
 
 /** The name of a target type the admin API records, or `null` for any other. */
 const targetTypeName = (targetType: string) =>
-  catalogTargetName(targetType) ?? tenantTargetName(targetType);
+  catalogTargetName(targetType) ??
+  settingTargetName(targetType) ??
+  tenantTargetName(targetType);
 
 const outcomeToneMap = {
   failure: "destructive",
