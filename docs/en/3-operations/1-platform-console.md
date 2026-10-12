@@ -2,7 +2,7 @@
 title: The Platform Console and publiractl
 description: Choose between publiractl and the Platform Console, create the first operator, manage the operators who sign in, and remove a two-step verification an operator lost.
 published: 2026-10-06
-updated: 2026-10-10
+updated: 2026-10-12
 ---
 
 An install is managed from one of two places, and most tasks can be done from either. This page says how they differ, how the Platform Console gets its first operator, and how operators are added and given roles after that.
