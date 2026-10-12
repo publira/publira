@@ -157,6 +157,9 @@ jobs:
               - 'sqlc.yaml'
               - 'buf.yaml'
               - 'buf.gen.yaml'
+              # The images the search-engine integration tests run on.
+              - 'infra/docker/opensearch/**'
+              - 'infra/docker/elasticsearch/**'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
@@ -631,11 +634,33 @@ jobs:
         with:
           packages: libvips-dev pkg-config
 
+      # Five packages start an OpenSearch and an Elasticsearch node of their
+      # own, on images that carry the analysis plugins. Building the images
+      # here, once, keeps the plugin downloads out of every container start,
+      # and a download the network cuts off is tried again.
+      - name: Setup / Search engine images
+        run: |
+          set -euo pipefail
+          for engine in opensearch elasticsearch; do
+            for attempt in 1 2 3; do
+              if docker build -f "infra/docker/${engine}/Dockerfile" -t "publira/${engine}:ci" .; then
+                break
+              fi
+              if [ "${attempt}" = 3 ]; then
+                exit 1
+              fi
+              sleep 10
+            done
+          done
+
       # `-count=1` because the build cache this job saves would otherwise
       # carry the results too, and a later run would report a package that
       # passed on `main` without running its tests.
       - name: Validate / Go Tests
         working-directory: server
+        env:
+          PUBLIRA_TEST_OPENSEARCH_IMAGE: publira/opensearch:ci
+          PUBLIRA_TEST_ELASTICSEARCH_IMAGE: publira/elasticsearch:ci
         run: go test -count=1 ./...
 
       - name: Cache / Save Go build
