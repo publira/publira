@@ -223,9 +223,10 @@ const AuditLogsFilters = async ({
         type="search"
       />
       {/* An action's name runs from two words to a sentence, so the trigger
-          takes the width of the one chosen rather than wrapping it. */}
+          takes the width of the one chosen rather than wrapping it, and grows
+          taller for a name wider than the row. */}
       <Select
-        className="w-auto max-w-full min-w-56 gap-2"
+        className="h-auto min-h-10 w-auto max-w-full min-w-56 gap-2 text-left"
         defaultValue={actionFilter || undefined}
         items={actionItems}
         name="action"
