@@ -17,7 +17,7 @@ const behindEdge = new Headers({
 });
 
 describe("getRequestHost", () => {
-  it.each([undefined, "", "true", "TRUE", "1", "t", " true "])(
+  it.each([undefined, "", "true", "TRUE", "True", "1", "t", "T", " true "])(
     "takes the host= of Forwarded when the variable is %j",
     (value) => {
       if (value !== undefined) {
@@ -28,7 +28,7 @@ describe("getRequestHost", () => {
     }
   );
 
-  it.each(["false", "0", "F"])(
+  it.each(["false", "FALSE", "False", "0", "f", "F"])(
     "takes X-Forwarded-Host and ignores Forwarded when the variable is %j",
     (value) => {
       vi.stubEnv(FORWARDED_HEADER_ENABLED_ENV, value);
@@ -89,13 +89,16 @@ describe("getRequestHost", () => {
     );
   });
 
-  it("refuses a value it cannot read as a boolean", () => {
-    vi.stubEnv(FORWARDED_HEADER_ENABLED_ENV, "yes");
+  it.each(["yes", "on", "tRuE", "fAlse"])(
+    "refuses %j, which Go's strconv.ParseBool cannot read either",
+    (value) => {
+      vi.stubEnv(FORWARDED_HEADER_ENABLED_ENV, value);
 
-    expect(() => getRequestHost(behindEdge)).toThrow(
-      FORWARDED_HEADER_ENABLED_ENV
-    );
-  });
+      expect(() => getRequestHost(behindEdge)).toThrow(
+        FORWARDED_HEADER_ENABLED_ENV
+      );
+    }
+  );
 
   it("returns null when no header names a host", () => {
     expect(getRequestHost(new Headers())).toBeNull();

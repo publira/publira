@@ -8,14 +8,16 @@ type HeadersLike = Pick<Headers, "get">;
  */
 export const FORWARDED_HEADER_ENABLED_ENV = "PUBLIRA_FORWARDED_HEADER_ENABLED";
 
-/** The values Go's `strconv.ParseBool` reads, case-insensitively. */
-const TRUE_VALUES = new Set(["1", "t", "true"]);
-const FALSE_VALUES = new Set(["0", "f", "false"]);
+/**
+ * Exactly the values Go's `strconv.ParseBool` reads, so that a value
+ * `publira server` accepts for the same variable is accepted here too, and
+ * one it refuses is refused.
+ */
+const TRUE_VALUES = new Set(["1", "t", "T", "true", "TRUE", "True"]);
+const FALSE_VALUES = new Set(["0", "f", "F", "false", "FALSE", "False"]);
 
 const isForwardedHeaderEnabled = (): boolean => {
-  const value = (process.env[FORWARDED_HEADER_ENABLED_ENV] ?? "")
-    .trim()
-    .toLowerCase();
+  const value = (process.env[FORWARDED_HEADER_ENABLED_ENV] ?? "").trim();
   if (value === "" || TRUE_VALUES.has(value)) {
     return true;
   }
@@ -24,7 +26,7 @@ const isForwardedHeaderEnabled = (): boolean => {
   }
 
   throw new Error(
-    `${FORWARDED_HEADER_ENABLED_ENV} must be true or false, not ${JSON.stringify(value)}`
+    `${FORWARDED_HEADER_ENABLED_ENV} must be a boolean such as true or false, not ${JSON.stringify(value)}`
   );
 };
 

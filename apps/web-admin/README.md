@@ -52,7 +52,7 @@ pnpm dev --filter @publira/web-admin
 
 `proxy.ts` resolves the tenant from the host the request was sent to, and `lib/csrf.ts` compares a form submission's origin with the same host (`getRequestHost` in [`@publira/utils/request-host`](../../packages/utils/README.md#subpaths)): the rightmost `host=` of `Forwarded`, then the rightmost value of `X-Forwarded-Host`, then `Host`.
 
-- `PUBLIRA_FORWARDED_HEADER_ENABLED` — `false` skips `Forwarded`, for an edge that writes `X-Forwarded-Host` and passes on a `Forwarded` header the caller sent. `true` when unset; a value other than `true` or `false` is refused. The same variable as on `publira server`, which reads it for the client address.
+- `PUBLIRA_FORWARDED_HEADER_ENABLED` — `false` skips `Forwarded`, for an edge that writes `X-Forwarded-Host` and passes on a `Forwarded` header the caller sent. `true` when unset. It takes the values Go's `strconv.ParseBool` reads, as `publira server` does: `true`, `false`, `1`, `0`, `t`, and `f`, in lower, upper, or title case. Anything else is refused. The same variable as on `publira server`, which reads it for the client address.
 
 ### Storefront URLs
 
