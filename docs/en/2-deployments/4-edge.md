@@ -32,11 +32,11 @@ On every one of those hosts, the path then decides whether the web app answers o
 | Path | Process |
 | --- | --- |
 | Starting with `/images` | The edge listener of `publira server`, port `8000` |
-| Starting with `/api/v1` | The web app the host picked |
+| `/api/v1`, or starting with `/api/v1/` | The web app the host picked |
 | `/api`, or starting with `/api/` | The edge listener of `publira server`, port `8000` |
 | Anything else | The web app the host picked |
 
-`/images` is every image a page shows, and `/api` the public API the browser and the mobile app call. `/api/v1` is the exception: it belongs to the web apps, which answer their own endpoints there, the payment and inbound email webhooks among them. An edge that matches the longest prefix first gets the order right without being told it.
+`/images` is every image a page shows, and `/api` the public API the browser and the mobile app call. `/api/v1` is the exception: it belongs to the web apps, which answer their own endpoints there, the payment and inbound email webhooks among them. The exception ends at a `/`, so a path such as `/api/v10` or `/api/v1beta` is not part of it and goes to `publira server` with the rest of `/api`. An edge that matches the longest prefix first gets the order right without being told it.
 
 The web apps listen on port `3000` (`web-storefront`), `4000` (`web-admin`), and `4100` (`web-platform`) in the images as the repository builds them, unless you set their `PORT`.
 
