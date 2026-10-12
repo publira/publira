@@ -16,6 +16,10 @@ vi.mock("@publira/api-client/admin/client", () => ({
   createAdminApiClient: () => mockApi,
 }));
 
+vi.mock("next/cache", () => ({
+  cacheTag: vi.fn(),
+}));
+
 vi.mock("#lib/session", () => ({
   getAccessToken: mockGetAccessToken,
 }));
