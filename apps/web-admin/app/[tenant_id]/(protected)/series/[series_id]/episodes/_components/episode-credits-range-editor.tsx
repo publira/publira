@@ -20,6 +20,7 @@ import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
+import type { ReactNode } from "react";
 import { useId, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
@@ -396,6 +397,24 @@ const EpisodeSelectionFields = ({
   );
 };
 
+/**
+ * The dialog's footer, kept in view while the dialog scrolls under it. A
+ * sticky box stops at the scroll container's padding edge, so `bottom-0`
+ * would leave the popup's `p-5` below it as a strip the scrolled rows show
+ * through. The negative inset carries it down to the popup's edge, and the
+ * negative margin and the padding of the same size keep the buttons where
+ * the popup's own padding would have put them.
+ */
+export const EpisodeCreditsRangeFooter = ({
+  children,
+}: {
+  children: ReactNode;
+}) => (
+  <DialogFooter className="sticky -bottom-5 z-10 -mb-5 border-t border-border bg-card pt-4 pb-5">
+    {children}
+  </DialogFooter>
+);
+
 export interface EpisodeCreditsRangeEditorProps {
   canSubmit: boolean;
   credit: CreditPair;
@@ -598,7 +617,7 @@ export const EpisodeCreditsRangeEditor = ({
         <FormMessage variant="destructive">{errorMessage}</FormMessage>
       ) : null}
 
-      <DialogFooter className="sticky bottom-0 z-10 border-t border-border bg-card pt-4">
+      <EpisodeCreditsRangeFooter>
         <DialogClose
           render={
             <Button type="button" variant="outline">
@@ -614,7 +633,7 @@ export const EpisodeCreditsRangeEditor = ({
             <ClientMessage message="admin.series.episodes.credits.applying" />
           </ActionFormPending>
         </Button>
-      </DialogFooter>
+      </EpisodeCreditsRangeFooter>
     </form>
   );
 };

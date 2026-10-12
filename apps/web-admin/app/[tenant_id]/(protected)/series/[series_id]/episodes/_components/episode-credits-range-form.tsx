@@ -3,7 +3,7 @@
 import { toIntlLocale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
-import { DialogClose, DialogFooter } from "@publira/ui-components/dialog";
+import { DialogClose } from "@publira/ui-components/dialog";
 import { useActionState, useCallback, useMemo, useState } from "react";
 
 import { useAdminLocale } from "#components/admin-locale-context";
@@ -23,6 +23,7 @@ import type {
 } from "../episode-types";
 import {
   EpisodeCreditsRangeEditor,
+  EpisodeCreditsRangeFooter,
   OPERATIONS,
 } from "./episode-credits-range-editor";
 import type {
@@ -268,7 +269,7 @@ export const EpisodeCreditsRangeForm = ({
     return (
       <div className="grid gap-5">
         <EpisodeCreditsRangeResult episodes={episodes} result={state} />
-        <DialogFooter className="sticky bottom-0 z-10 border-t border-border bg-card pt-4">
+        <EpisodeCreditsRangeFooter>
           <DialogClose
             render={
               <Button type="button" variant="outline">
@@ -276,7 +277,7 @@ export const EpisodeCreditsRangeForm = ({
               </Button>
             }
           />
-        </DialogFooter>
+        </EpisodeCreditsRangeFooter>
       </div>
     );
   }
