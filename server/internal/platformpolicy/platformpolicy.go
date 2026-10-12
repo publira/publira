@@ -69,6 +69,10 @@ type Policy struct {
 	// privacy policy one reader may send. Sending one twice writes nothing, so
 	// what this bounds is the reads every request makes.
 	LegalPageAgreement MinuteDay
+	// IdentityLink bounds the provider accounts one reader may ask to link. A
+	// reader keeps one per provider, so what this bounds is the refused ones,
+	// each of which verifies a token and reads the reader's links.
+	IdentityLink MinuteDay
 	// LoginAttemptsPerAccount bounds the passwords tried at sign-in for one
 	// address within its tenant, or within the platform console. A sign-in
 	// whose password is right clears it.
@@ -122,6 +126,7 @@ func Defaults() Policy {
 		StorePurchaseConfirmation: MinuteDay{PerMinute: 10, PerDay: 100},
 		WaitFreeTicketUse:         MinuteDay{PerMinute: 10, PerDay: 100},
 		LegalPageAgreement:        MinuteDay{PerMinute: 10, PerDay: 50},
+		IdentityLink:              MinuteDay{PerMinute: 5, PerDay: 20},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
 	}
@@ -150,6 +155,7 @@ func (p Policy) Validate() error {
 		{"store_purchase_confirmation", "per_minute", p.StorePurchaseConfirmation.PerMinute, p.StorePurchaseConfirmation.PerDay},
 		{"wait_free_ticket_use", "per_minute", p.WaitFreeTicketUse.PerMinute, p.WaitFreeTicketUse.PerDay},
 		{"legal_page_agreement", "per_minute", p.LegalPageAgreement.PerMinute, p.LegalPageAgreement.PerDay},
+		{"identity_link", "per_minute", p.IdentityLink.PerMinute, p.IdentityLink.PerDay},
 		{"login_attempts_per_account", "per_minute", p.LoginAttemptsPerAccount.PerMinute, p.LoginAttemptsPerAccount.PerDay},
 		{"login_attempts_per_source", "per_hour", p.LoginAttemptsPerSource.PerHour, p.LoginAttemptsPerSource.PerDay},
 	} {
@@ -210,6 +216,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 		StorePurchaseConfirmation: MinuteDay{PerMinute: int(config.StorePurchaseConfirmLimitPerMinute), PerDay: int(config.StorePurchaseConfirmLimitPerDay)},
 		WaitFreeTicketUse:         MinuteDay{PerMinute: int(config.WaitFreeTicketUseLimitPerMinute), PerDay: int(config.WaitFreeTicketUseLimitPerDay)},
 		LegalPageAgreement:        MinuteDay{PerMinute: int(config.LegalPageAgreementLimitPerMinute), PerDay: int(config.LegalPageAgreementLimitPerDay)},
+		IdentityLink:              MinuteDay{PerMinute: int(config.IdentityLinkLimitPerMinute), PerDay: int(config.IdentityLinkLimitPerDay)},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: int(config.LoginAccountLimitPerMinute), PerDay: int(config.LoginAccountLimitPerDay)},
 		LoginAttemptsPerSource:    HourDay{PerHour: int(config.LoginSourceLimitPerHour), PerDay: int(config.LoginSourceLimitPerDay)},
 		DisposableEmailDomainsURL: config.DisposableEmailDomainsUrl,
@@ -249,6 +256,8 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		WaitFreeTicketUseLimitPerDay:         int32(policy.WaitFreeTicketUse.PerDay),
 		LegalPageAgreementLimitPerMinute:     int32(policy.LegalPageAgreement.PerMinute),
 		LegalPageAgreementLimitPerDay:        int32(policy.LegalPageAgreement.PerDay),
+		IdentityLinkLimitPerMinute:           int32(policy.IdentityLink.PerMinute),
+		IdentityLinkLimitPerDay:              int32(policy.IdentityLink.PerDay),
 		LoginAccountLimitPerMinute:           int32(policy.LoginAttemptsPerAccount.PerMinute),
 		LoginAccountLimitPerDay:              int32(policy.LoginAttemptsPerAccount.PerDay),
 		LoginSourceLimitPerHour:              int32(policy.LoginAttemptsPerSource.PerHour),

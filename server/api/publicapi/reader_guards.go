@@ -73,6 +73,10 @@ const (
 	// the versions it names, and a reader can name every version the pages
 	// have ever published.
 	actionAgreeToLegalPages readerAction = "legal_pages.agree"
+	// A provider account linked to the reader's account. A reader keeps one per
+	// provider, but a refused link spends no nonce, so the same sign-in can be
+	// sent again, and each one verifies the token and reads the reader's links.
+	actionLinkIdentity readerAction = "identity.link"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -108,6 +112,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionConfirmStorePurchase:           minuteDayRules(policy.StorePurchaseConfirmation),
 		actionUseWaitFreeTicket:              minuteDayRules(policy.WaitFreeTicketUse),
 		actionAgreeToLegalPages:              minuteDayRules(policy.LegalPageAgreement),
+		actionLinkIdentity:                   minuteDayRules(policy.IdentityLink),
 	}
 }
 

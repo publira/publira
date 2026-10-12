@@ -34,6 +34,8 @@ const (
 	AuthServiceListMyIdentitiesProcedure = "/publira.v1.AuthService/ListMyIdentities"
 	// AuthServiceUnlinkIdentityProcedure is the procedure name of the AuthService's UnlinkIdentity RPC.
 	AuthServiceUnlinkIdentityProcedure = "/publira.v1.AuthService/UnlinkIdentity"
+	// AuthServiceLinkIdentityProcedure is the procedure name of the AuthService's LinkIdentity RPC.
+	AuthServiceLinkIdentityProcedure = "/publira.v1.AuthService/LinkIdentity"
 	// AuthServiceCreateUserProcedure is the procedure name of the AuthService's CreateUser RPC.
 	AuthServiceCreateUserProcedure = "/publira.v1.AuthService/CreateUser"
 	// AuthServiceVerifyUserEmailProcedure is the procedure name of the AuthService's VerifyUserEmail
@@ -126,6 +128,13 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("UnlinkIdentity"),
 			Procedure:  AuthServiceUnlinkIdentityProcedure,
+		}
+	})
+	authServiceLinkIdentitySpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("LinkIdentity"),
+			Procedure:  AuthServiceLinkIdentityProcedure,
 		}
 	})
 	authServiceCreateUserSpec = sync.OnceValue(func() connect.Spec {
@@ -297,6 +306,7 @@ type AuthServiceClient interface {
 	LoginWithIdToken(context.Context, *v1.LoginWithIdTokenRequest) (*v1.LoginWithIdTokenResponse, error)
 	ListMyIdentities(context.Context, *v1.ListMyIdentitiesRequest) (*v1.ListMyIdentitiesResponse, error)
 	UnlinkIdentity(context.Context, *v1.UnlinkIdentityRequest) (*v1.UnlinkIdentityResponse, error)
+	LinkIdentity(context.Context, *v1.LinkIdentityRequest) (*v1.LinkIdentityResponse, error)
 	CreateUser(context.Context, *v1.CreateUserRequest) (*v1.CreateUserResponse, error)
 	VerifyUserEmail(context.Context, *v1.VerifyUserEmailRequest) (*v1.VerifyUserEmailResponse, error)
 	RequestEmailVerification(context.Context, *v1.RequestEmailVerificationRequest) (*v1.RequestEmailVerificationResponse, error)
@@ -347,6 +357,7 @@ type AuthServiceHandler interface {
 	LoginWithIdToken(context.Context, *v1.LoginWithIdTokenRequest) (*v1.LoginWithIdTokenResponse, error)
 	ListMyIdentities(context.Context, *v1.ListMyIdentitiesRequest) (*v1.ListMyIdentitiesResponse, error)
 	UnlinkIdentity(context.Context, *v1.UnlinkIdentityRequest) (*v1.UnlinkIdentityResponse, error)
+	LinkIdentity(context.Context, *v1.LinkIdentityRequest) (*v1.LinkIdentityResponse, error)
 	CreateUser(context.Context, *v1.CreateUserRequest) (*v1.CreateUserResponse, error)
 	VerifyUserEmail(context.Context, *v1.VerifyUserEmailRequest) (*v1.VerifyUserEmailResponse, error)
 	RequestEmailVerification(context.Context, *v1.RequestEmailVerificationRequest) (*v1.RequestEmailVerificationResponse, error)
@@ -393,6 +404,7 @@ func RegisterAuthServiceHandler(server *connect.Server, svc AuthServiceHandler) 
 		connect.Method{Spec: authServiceLoginWithIdTokenSpec(), Handler: adapter.loginWithIdToken},
 		connect.Method{Spec: authServiceListMyIdentitiesSpec(), Handler: adapter.listMyIdentities},
 		connect.Method{Spec: authServiceUnlinkIdentitySpec(), Handler: adapter.unlinkIdentity},
+		connect.Method{Spec: authServiceLinkIdentitySpec(), Handler: adapter.linkIdentity},
 		connect.Method{Spec: authServiceCreateUserSpec(), Handler: adapter.createUser},
 		connect.Method{Spec: authServiceVerifyUserEmailSpec(), Handler: adapter.verifyUserEmail},
 		connect.Method{Spec: authServiceRequestEmailVerificationSpec(), Handler: adapter.requestEmailVerification},
@@ -436,6 +448,10 @@ func (UnimplementedAuthServiceHandler) ListMyIdentities(context.Context, *v1.Lis
 
 func (UnimplementedAuthServiceHandler) UnlinkIdentity(context.Context, *v1.UnlinkIdentityRequest) (*v1.UnlinkIdentityResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.UnlinkIdentity is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) LinkIdentity(context.Context, *v1.LinkIdentityRequest) (*v1.LinkIdentityResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.LinkIdentity is not implemented")
 }
 
 func (UnimplementedAuthServiceHandler) CreateUser(context.Context, *v1.CreateUserRequest) (*v1.CreateUserResponse, error) {
@@ -561,6 +577,14 @@ func (c *authServiceClient) ListMyIdentities(ctx context.Context, req *v1.ListMy
 func (c *authServiceClient) UnlinkIdentity(ctx context.Context, req *v1.UnlinkIdentityRequest) (*v1.UnlinkIdentityResponse, error) {
 	var res v1.UnlinkIdentityResponse
 	if err := c.client.CallUnary(ctx, authServiceUnlinkIdentitySpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) LinkIdentity(ctx context.Context, req *v1.LinkIdentityRequest) (*v1.LinkIdentityResponse, error) {
+	var res v1.LinkIdentityResponse
+	if err := c.client.CallUnary(ctx, authServiceLinkIdentitySpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -794,6 +818,18 @@ func (h authServiceHandler) unlinkIdentity(ctx context.Context, _ connect.Spec, 
 		return err
 	}
 	res, err := h.svc.UnlinkIdentity(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) linkIdentity(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.LinkIdentityRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.LinkIdentity(ctx, &req)
 	if err != nil {
 		return err
 	}

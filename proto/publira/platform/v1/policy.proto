@@ -106,6 +106,12 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   MinuteDayLimit legal_page_agreement = 12;
+  // How often one reader may ask AuthService.LinkIdentity to link a provider
+  // account to their account.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  MinuteDayLimit identity_link = 13;
 }
 
 message GetPlatformPolicyRequest {}

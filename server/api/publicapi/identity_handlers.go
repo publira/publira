@@ -535,6 +535,154 @@ func (s *apiServer) UnlinkIdentity(
 	return &publirav1.UnlinkIdentityResponse{}, nil
 }
 
+// LinkIdentity links the provider account a fresh sign-in proves to the
+// caller's account. The session names the account, so unlike a sign-in it
+// does not ask the provider to vouch for the account's address: a reader who
+// hides their address from Apple, or uses another one with Google, links that
+// provider account here rather than opening a second account by signing in.
+func (s *apiServer) LinkIdentity(
+	ctx context.Context,
+	req *publirav1.LinkIdentityRequest,
+) (*publirav1.LinkIdentityResponse, error) {
+	const action = "identity_link"
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
+	if err != nil {
+		auth.AuditEvent(ctx, action, "failure", "", "", "invalid_session")
+		return nil, err
+	}
+	fail := func(reason string, err error) (*publirav1.LinkIdentityResponse, error) {
+		auth.AuditEvent(ctx, action, "failure", tenant.PublicID, user.PublicID, reason)
+		return nil, err
+	}
+	provider, err := identityProviderFromProto(req.Provider)
+	if err != nil {
+		return fail("invalid_provider", err)
+	}
+	rawToken := strings.TrimSpace(req.IdToken)
+	nonce := req.Nonce
+	if rawToken == "" || strings.TrimSpace(nonce) == "" {
+		return fail("invalid_input", connect.NewError(connect.CodeInvalidArgument, "id_token and nonce are required"))
+	}
+	code := strings.TrimSpace(req.AuthorizationCode)
+	if code != "" && provider != signin.ProviderApple {
+		return fail("invalid_input", rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("only an Apple sign-in carries an authorization code"), "authorization_code"))
+	}
+	// Charged before the token is verified, which is the work a refused link
+	// sent again past the limit would otherwise still cost.
+	if err := s.chargeReaderAction(ctx, actionLinkIdentity, tenant.ID, user.ID); err != nil {
+		return fail("rate_limited", err)
+	}
+
+	claims, err := s.verifyIDToken(ctx, tenant.ID, provider, rawToken, nonce, true)
+	if err != nil {
+		switch connect.CodeOf(err) {
+		case connect.CodeUnauthenticated:
+			// Not Unauthenticated: the session is fine, and a client drops a
+			// session it gets Unauthenticated for.
+			return fail("invalid_token", rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid ID token"), "id_token"))
+		case connect.CodeFailedPrecondition:
+			return fail("provider_disabled", err)
+		case connect.CodeUnavailable:
+			return fail("provider_keys_unavailable", err)
+		default:
+			return fail("settings_lookup_failed", err)
+		}
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return fail("transaction_begin_failed", s.internalDBError(ctx, "failed to begin link transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+
+	// Locked so a suspension committed since the session was checked is seen,
+	// and so the refusals below hold until the link is written.
+	locked, err := txq.GetUserByIDForUpdate(ctx, user.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fail("account_gone", invalidSessionError())
+		}
+		return fail("user_lock_failed", s.internalDBError(ctx, "failed to lock the account for a link", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))
+	}
+	if locked.Status != "active" {
+		return fail("account_not_active", invalidSessionError())
+	}
+	existing, err := txq.GetUserIdentityByProviderSubject(ctx, dbmodels.GetUserIdentityByProviderSubjectParams{
+		TenantID: tenant.ID,
+		Provider: provider,
+		Subject:  claims.Subject,
+	})
+	switch {
+	case err == nil && existing.UserID != user.ID:
+		return fail("linked_to_another_reader", rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition,
+			errors.New("the provider account signs in to another account"), rpcerrors.ReasonIdentityLinkedToAnotherAccount))
+	case err == nil:
+		return fail("provider_already_linked", providerAlreadyLinkedError())
+	case !errors.Is(err, sql.ErrNoRows):
+		return fail("identity_lookup_failed", s.internalDBError(ctx, "failed to read the provider account's link", err, "tenant_id", tenant.ID.String()))
+	}
+	_, err = txq.GetUserIdentityForUser(ctx, dbmodels.GetUserIdentityForUserParams{
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+		Provider: provider,
+	})
+	if err == nil {
+		return fail("provider_already_linked", providerAlreadyLinkedError())
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return fail("identity_lookup_failed", s.internalDBError(ctx, "failed to read the account's link", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))
+	}
+
+	// Spent after every refusal above, as a sign-in spends it.
+	if err := spendNonce(ctx, txq, tenant.ID, nonce, claims); err != nil {
+		if errors.Is(err, errNonceReplayed) {
+			return fail("nonce_replayed", confirmationNonceReplayedError())
+		}
+		return fail("nonce_spend_failed", s.internalDBError(ctx, "failed to spend the sign-in nonce", err, "tenant_id", tenant.ID.String()))
+	}
+	identityID, err := uuid.NewV7()
+	if err != nil {
+		return fail("identity_id_failed", s.internalError(ctx, "failed to generate an identity id", err))
+	}
+	identity, err := txq.CreateUserIdentity(ctx, dbmodels.CreateUserIdentityParams{
+		ID:          identityID,
+		TenantID:    tenant.ID,
+		UserID:      user.ID,
+		Provider:    provider,
+		Subject:     claims.Subject,
+		EmailAtLink: claims.Email,
+	})
+	if dberr.IsUniqueViolation(err) {
+		return fail("concurrent_link", connect.NewError(connect.CodeAborted, "another sign-in is linking this account"))
+	}
+	if err != nil {
+		return fail("link_failed", s.internalDBError(ctx, "failed to link the identity", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))
+	}
+	if code != "" {
+		if err := outbox.QueueAppleSignInCodeExchange(ctx, txq, s.encryptor, tenant.ID, identity.ID,
+			signin.HashNonce(nonce), claims.Audience, code, strings.TrimSpace(req.RedirectUri)); err != nil {
+			return fail("code_exchange_enqueue_failed", s.internalError(ctx, "failed to queue the apple code exchange", err, "tenant_id", tenant.ID.String()))
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fail("transaction_commit_failed", s.internalDBError(ctx, "failed to commit link", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))
+	}
+	auth.AuditEvent(ctx, action, "success", tenant.PublicID, user.PublicID, provider)
+	return &publirav1.LinkIdentityResponse{
+		Identity: &publirav1.LinkedIdentity{
+			Provider: identityProviderToProto(identity.Provider),
+			Email:    identity.EmailAtLink,
+			LinkedAt: identity.CreatedAt.UTC().Format(time.RFC3339),
+		},
+	}, nil
+}
+
+func providerAlreadyLinkedError() error {
+	return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition,
+		errors.New("an account of this provider is linked already"), rpcerrors.ReasonProviderAlreadyLinked)
+}
+
 // confirmWithIdentity checks the fresh sign-in an account without a password
 // confirms a step with, and spends its nonce on queries.
 func (s *apiServer) confirmWithIdentity(

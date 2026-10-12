@@ -127,6 +127,7 @@ func openPolicy() platformpolicy.Policy {
 	policy.StorePurchaseConfirmation = open
 	policy.WaitFreeTicketUse = open
 	policy.LegalPageAgreement = open
+	policy.IdentityLink = open
 	return policy
 }
 

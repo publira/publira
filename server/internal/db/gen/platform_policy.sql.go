@@ -10,7 +10,7 @@ import (
 )
 
 const GetPlatformPolicyConfig = `-- name: GetPlatformPolicyConfig :one
-SELECT singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day
+SELECT singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day, identity_link_limit_per_minute, identity_link_limit_per_day
 FROM platform_policy_config
 WHERE singleton = TRUE
 `
@@ -57,6 +57,8 @@ func (q *Queries) GetPlatformPolicyConfig(ctx context.Context) (PlatformPolicyCo
 		&i.MfaRequiredForPlatformOperator,
 		&i.LegalPageAgreementLimitPerMinute,
 		&i.LegalPageAgreementLimitPerDay,
+		&i.IdentityLinkLimitPerMinute,
+		&i.IdentityLinkLimitPerDay,
 	)
 	return i, err
 }
@@ -91,6 +93,8 @@ INSERT INTO platform_policy_config (
         wait_free_ticket_use_limit_per_day,
         legal_page_agreement_limit_per_minute,
         legal_page_agreement_limit_per_day,
+        identity_link_limit_per_minute,
+        identity_link_limit_per_day,
         login_account_limit_per_minute,
         login_account_limit_per_day,
         login_source_limit_per_hour,
@@ -132,9 +136,11 @@ VALUES (
         $30,
         $31,
         $32,
+        $33,
+        $34,
         NOW()
     )
-RETURNING singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day
+RETURNING singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day, identity_link_limit_per_minute, identity_link_limit_per_day
 `
 
 type InsertPlatformPolicyConfigParams struct {
@@ -165,6 +171,8 @@ type InsertPlatformPolicyConfigParams struct {
 	WaitFreeTicketUseLimitPerDay         int32  `json:"wait_free_ticket_use_limit_per_day"`
 	LegalPageAgreementLimitPerMinute     int32  `json:"legal_page_agreement_limit_per_minute"`
 	LegalPageAgreementLimitPerDay        int32  `json:"legal_page_agreement_limit_per_day"`
+	IdentityLinkLimitPerMinute           int32  `json:"identity_link_limit_per_minute"`
+	IdentityLinkLimitPerDay              int32  `json:"identity_link_limit_per_day"`
 	LoginAccountLimitPerMinute           int32  `json:"login_account_limit_per_minute"`
 	LoginAccountLimitPerDay              int32  `json:"login_account_limit_per_day"`
 	LoginSourceLimitPerHour              int32  `json:"login_source_limit_per_hour"`
@@ -204,6 +212,8 @@ func (q *Queries) InsertPlatformPolicyConfig(ctx context.Context, arg InsertPlat
 		arg.WaitFreeTicketUseLimitPerDay,
 		arg.LegalPageAgreementLimitPerMinute,
 		arg.LegalPageAgreementLimitPerDay,
+		arg.IdentityLinkLimitPerMinute,
+		arg.IdentityLinkLimitPerDay,
 		arg.LoginAccountLimitPerMinute,
 		arg.LoginAccountLimitPerDay,
 		arg.LoginSourceLimitPerHour,
@@ -248,12 +258,14 @@ func (q *Queries) InsertPlatformPolicyConfig(ctx context.Context, arg InsertPlat
 		&i.MfaRequiredForPlatformOperator,
 		&i.LegalPageAgreementLimitPerMinute,
 		&i.LegalPageAgreementLimitPerDay,
+		&i.IdentityLinkLimitPerMinute,
+		&i.IdentityLinkLimitPerDay,
 	)
 	return i, err
 }
 
 const LockPlatformPolicyConfig = `-- name: LockPlatformPolicyConfig :one
-SELECT singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day
+SELECT singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day, identity_link_limit_per_minute, identity_link_limit_per_day
 FROM platform_policy_config
 WHERE singleton = TRUE
 FOR UPDATE
@@ -301,6 +313,8 @@ func (q *Queries) LockPlatformPolicyConfig(ctx context.Context) (PlatformPolicyC
 		&i.MfaRequiredForPlatformOperator,
 		&i.LegalPageAgreementLimitPerMinute,
 		&i.LegalPageAgreementLimitPerDay,
+		&i.IdentityLinkLimitPerMinute,
+		&i.IdentityLinkLimitPerDay,
 	)
 	return i, err
 }
@@ -334,15 +348,17 @@ SET mfa_required_for_tenant_admin = $1,
     wait_free_ticket_use_limit_per_day = $25,
     legal_page_agreement_limit_per_minute = $26,
     legal_page_agreement_limit_per_day = $27,
-    login_account_limit_per_minute = $28,
-    login_account_limit_per_day = $29,
-    login_source_limit_per_hour = $30,
-    login_source_limit_per_day = $31,
-    disposable_email_domains_url = $32,
+    identity_link_limit_per_minute = $28,
+    identity_link_limit_per_day = $29,
+    login_account_limit_per_minute = $30,
+    login_account_limit_per_day = $31,
+    login_source_limit_per_hour = $32,
+    login_source_limit_per_day = $33,
+    disposable_email_domains_url = $34,
     revision = revision + 1,
     updated_at = NOW()
 WHERE singleton = TRUE
-RETURNING singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day
+RETURNING singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day, identity_link_limit_per_minute, identity_link_limit_per_day
 `
 
 type UpdatePlatformPolicyConfigParams struct {
@@ -373,6 +389,8 @@ type UpdatePlatformPolicyConfigParams struct {
 	WaitFreeTicketUseLimitPerDay         int32  `json:"wait_free_ticket_use_limit_per_day"`
 	LegalPageAgreementLimitPerMinute     int32  `json:"legal_page_agreement_limit_per_minute"`
 	LegalPageAgreementLimitPerDay        int32  `json:"legal_page_agreement_limit_per_day"`
+	IdentityLinkLimitPerMinute           int32  `json:"identity_link_limit_per_minute"`
+	IdentityLinkLimitPerDay              int32  `json:"identity_link_limit_per_day"`
 	LoginAccountLimitPerMinute           int32  `json:"login_account_limit_per_minute"`
 	LoginAccountLimitPerDay              int32  `json:"login_account_limit_per_day"`
 	LoginSourceLimitPerHour              int32  `json:"login_source_limit_per_hour"`
@@ -411,6 +429,8 @@ func (q *Queries) UpdatePlatformPolicyConfig(ctx context.Context, arg UpdatePlat
 		arg.WaitFreeTicketUseLimitPerDay,
 		arg.LegalPageAgreementLimitPerMinute,
 		arg.LegalPageAgreementLimitPerDay,
+		arg.IdentityLinkLimitPerMinute,
+		arg.IdentityLinkLimitPerDay,
 		arg.LoginAccountLimitPerMinute,
 		arg.LoginAccountLimitPerDay,
 		arg.LoginSourceLimitPerHour,
@@ -455,6 +475,8 @@ func (q *Queries) UpdatePlatformPolicyConfig(ctx context.Context, arg UpdatePlat
 		&i.MfaRequiredForPlatformOperator,
 		&i.LegalPageAgreementLimitPerMinute,
 		&i.LegalPageAgreementLimitPerDay,
+		&i.IdentityLinkLimitPerMinute,
+		&i.IdentityLinkLimitPerDay,
 	)
 	return i, err
 }
