@@ -4133,6 +4133,7 @@
       "older": "更早的评论",
       "own_failed": "无法加载您自己的评论。请稍后再试。",
       "page_empty": "本页没有评论。",
+      "post_duplicate": "您刚刚已发表过这条评论。相同的内容需过一段时间才能再次发表。",
       "post_failed": "无法发表评论。请稍后再试。",
       "posted": "您的评论已发表。",
       "posted_awaiting_approval": "您的评论已提交审核。审核通过后会显示在这里。",

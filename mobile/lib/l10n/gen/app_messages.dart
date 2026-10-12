@@ -828,6 +828,11 @@ final class AppMessages {
     return _format('mobile.comments.page_empty');
   }
 
+  /// `mobile.comments.post_duplicate`
+  String get commentsPostDuplicate {
+    return _format('mobile.comments.post_duplicate');
+  }
+
   /// `mobile.comments.post_failed`
   String get commentsPostFailed {
     return _format('mobile.comments.post_failed');
@@ -3157,6 +3162,8 @@ const _jaSources = <String, String>{
   'mobile.comments.older': '古いコメント',
   'mobile.comments.own_failed': '自分のコメントを読み込めませんでした。時間をおいて再度お試しください。',
   'mobile.comments.page_empty': 'このページにコメントはありません。',
+  'mobile.comments.post_duplicate':
+      'このコメントはさきほど投稿済みです。同じ内容は、しばらく時間をおいてから投稿できます。',
   'mobile.comments.post_failed': 'コメントを投稿できませんでした。時間をおいて再度お試しください。',
   'mobile.comments.posted': 'コメントを投稿しました。',
   'mobile.comments.posted_awaiting_approval': 'コメントを送信しました。運営の承認後に表示されます。',
@@ -3826,6 +3833,8 @@ const _enSources = <String, String>{
   'mobile.comments.own_failed':
       'Could not load your own comments. Please try again later.',
   'mobile.comments.page_empty': 'This page has no comments.',
+  'mobile.comments.post_duplicate':
+      'You have just posted this comment. The same text can be posted again after a while.',
   'mobile.comments.post_failed':
       'Could not post the comment. Please try again later.',
   'mobile.comments.posted': 'Your comment has been posted.',
@@ -4528,6 +4537,7 @@ const _koSources = <String, String>{
   'mobile.comments.older': '이전 댓글',
   'mobile.comments.own_failed': '내 댓글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.comments.page_empty': '이 페이지에는 댓글이 없습니다.',
+  'mobile.comments.post_duplicate': '방금 등록한 댓글입니다. 같은 내용은 잠시 후에 다시 등록할 수 있습니다.',
   'mobile.comments.post_failed': '댓글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.comments.posted': '댓글을 등록했습니다.',
   'mobile.comments.posted_awaiting_approval': '댓글을 보냈습니다. 운영자가 승인하면 여기에 표시됩니다.',
@@ -5153,6 +5163,7 @@ const _zhHansSources = <String, String>{
   'mobile.comments.older': '更早的评论',
   'mobile.comments.own_failed': '无法加载您自己的评论。请稍后再试。',
   'mobile.comments.page_empty': '本页没有评论。',
+  'mobile.comments.post_duplicate': '您刚刚已发表过这条评论。相同的内容需过一段时间才能再次发表。',
   'mobile.comments.post_failed': '无法发表评论。请稍后再试。',
   'mobile.comments.posted': '您的评论已发表。',
   'mobile.comments.posted_awaiting_approval': '您的评论已提交审核。审核通过后会显示在这里。',
@@ -5734,6 +5745,7 @@ const _zhHantSources = <String, String>{
   'mobile.comments.older': '較早的留言',
   'mobile.comments.own_failed': '無法載入您自己的留言。請稍後再試。',
   'mobile.comments.page_empty': '本頁沒有留言。',
+  'mobile.comments.post_duplicate': '您剛剛已發表過這則留言。相同的內容需過一段時間才能再次發表。',
   'mobile.comments.post_failed': '無法發表留言。請稍後再試。',
   'mobile.comments.posted': '您的留言已發表。',
   'mobile.comments.posted_awaiting_approval': '您的留言已送出審核。審核通過後會顯示在這裡。',

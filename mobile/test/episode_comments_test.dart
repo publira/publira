@@ -288,6 +288,29 @@ void main() {
     expect(comments.posted, isEmpty);
   });
 
+  testWidgets('a repeated comment is told it is already posted', (
+    tester,
+  ) async {
+    comments.postFailure = const CommentFailure(CommentFailureKind.duplicate);
+    await pumpComments(tester, session: fakeSession);
+    await pumpUntilRouteSettled(tester, submit);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('comment-body')),
+      'What an episode.',
+    );
+    await tester.tap(submit);
+    await pumpUntilFound(tester, formMessage);
+
+    expect(
+      find.text(
+        'You have just posted this comment. '
+        'The same text can be posted again after a while.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
     'a comment written without a connection fails rather than waits',
     (tester) async {
