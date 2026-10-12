@@ -3105,6 +3105,7 @@
       "totals": {
         "gross": "매출",
         "refunded": "환불",
+        "adjustment": "환불 조정",
         "payout": "작가 지급액"
       },
       "open": {
@@ -3134,6 +3135,7 @@
         "empty_description": "작가가 크레딧된 에피소드가 판매되면 명세가 표시됩니다.",
         "subtotal": "소계",
         "no_role": "—",
+        "adjustment": "{$period}분 환불 조정",
         "columns": {
           "creator": "작가",
           "series": "시리즈",
@@ -3162,6 +3164,7 @@
           "closed_by": "마감한 사람",
           "gross": "매출",
           "refunded": "환불",
+          "adjustment": "조정",
           "payout": "지급액",
           "export": "CSV"
         }

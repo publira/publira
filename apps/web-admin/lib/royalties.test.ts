@@ -42,6 +42,7 @@ const wireLine = {
 };
 
 const mappedLine = {
+  adjustedPeriod: "",
   creatorName: "Aki",
   creatorPublicId: "CR001",
   episodeTitle: "Episode 1",
@@ -55,9 +56,29 @@ const mappedLine = {
   shareBps: 3000,
 };
 
+// An adjustment names the closed month it takes refunds back from.
+const wireAdjustment = {
+  ...wireLine,
+  adjustedPeriod: "2026-07",
+  grossAmount: -500n,
+  lineNumber: 2,
+  payoutAmount: -150n,
+  saleCount: -1,
+};
+
+const mappedAdjustment = {
+  ...mappedLine,
+  adjustedPeriod: "2026-07",
+  grossAmount: -500,
+  lineNumber: 2,
+  payoutAmount: -150,
+  saleCount: -1,
+};
+
 const wireTotals = {
+  adjustment: -500n,
   gross: 5000n,
-  payout: 1500n,
+  payout: 1350n,
   refunded: 0n,
 };
 
@@ -165,7 +186,7 @@ describe("royalties", () => {
     mockApi.previewRoyaltyStatement.mockResolvedValueOnce({
       currency: "USD",
       endsAt: "2026-08-31T15:00:00Z",
-      lines: [wireLine],
+      lines: [wireLine, wireAdjustment],
       period: "2026-08",
       startsAt: "2026-07-31T15:00:00Z",
       timeZone: "Asia/Tokyo",
@@ -177,12 +198,12 @@ describe("royalties", () => {
       {
         currency: "USD",
         endsAt: "2026-08-31T15:00:00Z",
-        lines: [mappedLine],
+        lines: [mappedLine, mappedAdjustment],
         ok: true,
         period: "2026-08",
         startsAt: "2026-07-31T15:00:00Z",
         timeZone: "Asia/Tokyo",
-        totals: { gross: 5000, payout: 1500, refunded: 0 },
+        totals: { adjustment: -500, gross: 5000, payout: 1350, refunded: 0 },
       }
     );
     expect(mockApi.previewRoyaltyStatement).toHaveBeenCalledWith(
@@ -251,7 +272,7 @@ describe("royalties", () => {
         currency: "JPY",
         period: "2026-08",
         timeZone: "Asia/Tokyo",
-        totals: { gross: 5000, payout: 1500, refunded: 0 },
+        totals: { adjustment: -500, gross: 5000, payout: 1350, refunded: 0 },
       },
     });
     expect(mockApi.getRoyaltyStatement).toHaveBeenCalledWith(

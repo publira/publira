@@ -104,9 +104,10 @@ An adjustment is carried only into a month later than the one it adjusts. A mont
 | --- | --- |
 | **Sales** | Every sale of the month, at its price, including sales of episodes that credit no Author |
 | **Refunds** | The refunds on those sales |
-| **Payout to authors** | What the month owes its Authors, the sum of the lines below, the adjustments for [a refund after the close](#a-refund-after-the-close) included. The rest of **Sales** after **Refunds** and those adjustments is the publisher's |
+| **Refund adjustments** | What the month takes back of the sales of closed months refunded since their close, as [A refund after the close](#a-refund-after-the-close) describes, each sale counted once: zero, or a negative amount |
+| **Payout to authors** | What the month owes its Authors, the sum of the lines below, adjustments included. The rest of **Sales** after **Refunds** and **Refund adjustments** is the publisher's |
 
-**Lines by author** groups the month by Author, with a line for each credit on an episode that sold in the month and a **Subtotal** for the Author. Each line gives the **Series**, the **Episode**, the credit's **Role**, the number of **Sales**, the **Gross** amount, the amount **Refunded**, the **Share**, and the **Payout**. An Author credited twice on the same episode, in two roles, has a line for each.
+**Lines by author** groups the month by Author, with a line for each credit on an episode that sold in the month and a **Subtotal** for the Author. Each line gives the **Series**, the **Episode**, the credit's **Role**, the number of **Sales**, the **Gross** amount, the amount **Refunded**, the **Share**, and the **Payout**. An Author credited twice on the same episode, in two roles, has a line for each. An adjustment comes after the month's own lines in its Author's group, says **Refund adjustment for** the closed month under its episode, and counts in the Author's **Subtotal**.
 
 Above the totals the screen says where the month stands:
 
@@ -114,7 +115,7 @@ Above the totals the screen says where the month stands:
 - **This month is over and ready to close.** **Close month** closes it.
 - **This month closes automatically on** a date. The month is closed by `publira worker` on that date, and the console offers no way to close it by hand.
 
-![Royalties showing January 2026: Closed statements and Closing settings at the top, the Month field with Show, the open month's Sales, Refunds, and Payout to authors, This month is over and ready to close with Close month, and Lines by author, with each Author's lines and subtotal.](./reports-and-royalties-open-month.png)
+![Royalties showing January 2026: Closed statements and Closing settings at the top, the Month field with Show, the open month's Sales, Refunds, Refund adjustments, and Payout to authors, This month is over and ready to close with Close month, and Lines by author, with each Author's lines and subtotal.](./reports-and-royalties-open-month.png)
 
 ### Before you close a month
 
@@ -142,7 +143,7 @@ Once closed, a statement keeps each Author's, series', episode's, and role's nam
 
 **Closed statements** lists every closed month, newest first, with when it was closed, who closed it, and its totals. A month closed automatically shows `—` under **Closed by**.
 
-![Closed statements: December 2025, closed on 5 January 2026 by the tenant's admin, with its sales, refunds, and payout to authors, and Download CSV.](./reports-and-royalties-closed-statements.png)
+![Closed statements: December 2025, closed on 5 January 2026 by the tenant's admin, with its sales, refunds, refund adjustments, and payout to authors, and Download CSV.](./reports-and-royalties-closed-statements.png)
 
 ### Exporting a statement as CSV
 

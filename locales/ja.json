@@ -3105,6 +3105,7 @@
       "totals": {
         "gross": "売上",
         "refunded": "返金",
+        "adjustment": "返金の調整",
         "payout": "著者への支払額"
       },
       "open": {
@@ -3134,6 +3135,7 @@
         "empty_description": "著者がクレジットされたエピソードが売れると明細が表示されます。",
         "subtotal": "小計",
         "no_role": "—",
+        "adjustment": "{$period}分の返金の調整",
         "columns": {
           "creator": "著者",
           "series": "シリーズ",
@@ -3162,6 +3164,7 @@
           "closed_by": "締めた人",
           "gross": "売上",
           "refunded": "返金",
+          "adjustment": "調整",
           "payout": "支払額",
           "export": "CSV"
         }

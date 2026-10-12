@@ -3105,6 +3105,7 @@
       "totals": {
         "gross": "销售额",
         "refunded": "退款",
+        "adjustment": "退款调整",
         "payout": "支付给作者"
       },
       "open": {
@@ -3134,6 +3135,7 @@
         "empty_description": "署名作者的话数售出后，将显示明细。",
         "subtotal": "小计",
         "no_role": "—",
+        "adjustment": "{$period}的退款调整",
         "columns": {
           "creator": "作者",
           "series": "系列",
@@ -3162,6 +3164,7 @@
           "closed_by": "结算人",
           "gross": "销售额",
           "refunded": "退款",
+          "adjustment": "调整",
           "payout": "支付额",
           "export": "CSV"
         }

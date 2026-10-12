@@ -3105,6 +3105,7 @@
       "totals": {
         "gross": "Sales",
         "refunded": "Refunds",
+        "adjustment": "Refund adjustments",
         "payout": "Payout to authors"
       },
       "open": {
@@ -3134,6 +3135,7 @@
         "empty_description": "A line appears when an episode credited to an author sells.",
         "subtotal": "Subtotal",
         "no_role": "—",
+        "adjustment": "Refund adjustment for {$period}",
         "columns": {
           "creator": "Author",
           "series": "Series",
@@ -3162,6 +3164,7 @@
           "closed_by": "Closed by",
           "gross": "Sales",
           "refunded": "Refunds",
+          "adjustment": "Adjustments",
           "payout": "Payout",
           "export": "CSV"
         }
