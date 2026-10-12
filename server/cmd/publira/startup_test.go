@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -38,23 +39,22 @@ func TestMain(m *testing.M) {
 func TestServerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
-	edgeAddr := testutil.FreeAddr(t)
-	internalAddr := testutil.FreeAddr(t)
-
 	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
 		"PUBLIRA_PUBLIC_DB_URL":        pg.PublicURL,
 		"PUBLIRA_ADMIN_DB_URL":         pg.AdminURL,
 		"PUBLIRA_PLATFORM_DB_URL":      pg.PlatformURL,
-		"PUBLIRA_PUBLIC_API_ADDR":      edgeAddr,
-		"PUBLIRA_PUBLIC_API_GRPC_ADDR": internalAddr,
+		"PUBLIRA_PUBLIC_API_ADDR":      anyLoopbackPort,
+		"PUBLIRA_PUBLIC_API_GRPC_ADDR": anyLoopbackPort,
 	}, revalidationWithoutPlatformConsole()), "server")
-	p.WaitReady(t, "http://"+edgeAddr+"/readyz")
-	p.WaitReady(t, "http://"+internalAddr+"/readyz")
+	edge := listenerURL(t, p, "server (edge)")
+	internal := listenerURL(t, p, "server (internal)")
+	p.WaitReady(t, edge+"/readyz")
+	p.WaitReady(t, internal+"/readyz")
 
 	// The edge names the public pool alone, under the one name an outsider may
 	// read; the internal listener names every login it serves.
-	assertReadyChecks(t, "http://"+edgeAddr+"/readyz", "db")
-	assertReadyChecks(t, "http://"+internalAddr+"/readyz", "db.public", "db.admin", "db.platform")
+	assertReadyChecks(t, edge+"/readyz", "db")
+	assertReadyChecks(t, internal+"/readyz", "db.public", "db.admin", "db.platform")
 }
 
 // A server serving the edge listener alone answers what the edge forwards and
@@ -66,21 +66,20 @@ func TestServerServesTheEdgeListenerAlone(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	edgeAddr := testutil.FreeAddr(t)
-	internalAddr := testutil.FreeAddr(t)
+	internalAddr := testutil.UnreachableAddr(t)
 
 	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
 		"PUBLIRA_PUBLIC_DB_URL":        pg.PublicURL,
 		"PUBLIRA_ADMIN_DB_URL":         pg.AdminURL,
 		"PUBLIRA_PLATFORM_DB_URL":      unreachablePlatformDBURL,
-		"PUBLIRA_PUBLIC_API_ADDR":      edgeAddr,
+		"PUBLIRA_PUBLIC_API_ADDR":      anyLoopbackPort,
 		"PUBLIRA_PUBLIC_API_GRPC_ADDR": internalAddr,
 	}, revalidationWithoutPlatformConsole()), "server", "--listener", "edge")
-	p.WaitReady(t, "http://"+edgeAddr+"/readyz")
-	assertLive(t, "http://"+edgeAddr+"/livez")
-	assertReadyChecks(t, "http://"+edgeAddr+"/readyz", "db")
+	base := listenerURL(t, p, "server (edge)")
+	p.WaitReady(t, base+"/readyz")
+	assertLive(t, base+"/livez")
+	assertReadyChecks(t, base+"/readyz", "db")
 
-	base := "http://" + edgeAddr
 	assertRouteRegistered(t, base, "/api/publira.v1.CatalogService/ListPublishedSeries", true)
 	assertRouteRegistered(t, base, "/images/creators/media", true)
 	assertRouteRegistered(t, base, "/api/publira.admin.v1.AdminSeriesService/ListSeries", false)
@@ -112,21 +111,20 @@ func TestServerServesTheEdgeListenerAlone(t *testing.T) {
 func TestServerServesTheInternalListenerAlone(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
-	edgeAddr := testutil.FreeAddr(t)
-	internalAddr := testutil.FreeAddr(t)
+	edgeAddr := testutil.UnreachableAddr(t)
 
 	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
 		"PUBLIRA_PUBLIC_DB_URL":        pg.PublicURL,
 		"PUBLIRA_ADMIN_DB_URL":         pg.AdminURL,
 		"PUBLIRA_PLATFORM_DB_URL":      pg.PlatformURL,
 		"PUBLIRA_PUBLIC_API_ADDR":      edgeAddr,
-		"PUBLIRA_PUBLIC_API_GRPC_ADDR": internalAddr,
+		"PUBLIRA_PUBLIC_API_GRPC_ADDR": anyLoopbackPort,
 	}, revalidationWithoutPlatformConsole()), "server", "--listener", "internal")
-	p.WaitReady(t, "http://"+internalAddr+"/readyz")
-	assertLive(t, "http://"+internalAddr+"/livez")
-	assertReadyChecks(t, "http://"+internalAddr+"/readyz", "db.public", "db.admin", "db.platform")
+	base := listenerURL(t, p, "server (internal)")
+	p.WaitReady(t, base+"/readyz")
+	assertLive(t, base+"/livez")
+	assertReadyChecks(t, base+"/readyz", "db.public", "db.admin", "db.platform")
 
-	base := "http://" + internalAddr
 	assertRouteRegistered(t, base, "/publira.v1.CatalogService/ListPublishedSeries", true)
 	assertRouteRegistered(t, base, "/publira.admin.v1.AdminSeriesService/ListSeries", true)
 	assertRouteRegistered(t, base, "/publira.platform.v1.PlatformTenantService/ListTenants", true)
@@ -143,7 +141,10 @@ func TestServerServesTheInternalListenerAlone(t *testing.T) {
 // fails at once.
 const unreachablePlatformDBURL = "postgres://publira_platform:platformpass@127.0.0.1:1/publira?sslmode=disable"
 
-// assertNotListening fails when anything accepts a connection on addr.
+// assertNotListening fails when anything accepts a connection on addr. The
+// address comes from [testutil.UnreachableAddr], whose port no other server can
+// be given, so a process that tried to listen on it anyway would also fail to
+// bind and exit with a non-zero status.
 func assertNotListening(t *testing.T, addr string) {
 	t.Helper()
 
@@ -227,16 +228,16 @@ func TestServerAdmitsTheWebServiceTokenOnlyWhenItIsSet(t *testing.T) {
 func startInternalListener(t *testing.T, pg *testutil.PostgresEnv, env map[string]string) string {
 	t.Helper()
 
-	internalAddr := testutil.FreeAddr(t)
 	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
 		"PUBLIRA_PUBLIC_DB_URL":        pg.PublicURL,
 		"PUBLIRA_ADMIN_DB_URL":         pg.AdminURL,
 		"PUBLIRA_PLATFORM_DB_URL":      pg.PlatformURL,
-		"PUBLIRA_PUBLIC_API_ADDR":      testutil.FreeAddr(t),
-		"PUBLIRA_PUBLIC_API_GRPC_ADDR": internalAddr,
+		"PUBLIRA_PUBLIC_API_ADDR":      anyLoopbackPort,
+		"PUBLIRA_PUBLIC_API_GRPC_ADDR": anyLoopbackPort,
 	}, revalidationWithoutPlatformConsole(), env), "server")
-	p.WaitReady(t, "http://"+internalAddr+"/readyz")
-	return "http://" + internalAddr
+	internal := listenerURL(t, p, "server (internal)")
+	p.WaitReady(t, internal+"/readyz")
+	return internal
 }
 
 // A password in a redis:// URL would cross the network in cleartext, so the
@@ -259,19 +260,18 @@ func TestServerRefusesAPasswordOverPlaintextRedis(t *testing.T) {
 func TestWorkerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
-	addr := testutil.FreeAddr(t)
-
 	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
 		"PUBLIRA_WORKER_DB_URL":        pg.OutboxURL,
 		"PUBLIRA_TICKER_DB_URL":        pg.TickerURL,
 		"PUBLIRA_CONTENT_STATS_DB_URL": pg.ContentStatsURL,
-		"PUBLIRA_WORKER_ADDR":          addr,
+		"PUBLIRA_WORKER_ADDR":          anyLoopbackPort,
 	}, revalidationWithoutPlatformConsole()), "worker")
-	p.WaitReady(t, "http://"+addr+"/readyz")
+	worker := listenerURL(t, p, "worker")
+	p.WaitReady(t, worker+"/readyz")
 
 	// One check per pool: with three logins behind one process, a single "db"
 	// could not say which of them stopped answering.
-	assertReadyChecks(t, "http://"+addr+"/readyz", "db.outbox", "db.ticker", "db.content_stats")
+	assertReadyChecks(t, worker+"/readyz", "db.outbox", "db.ticker", "db.content_stats")
 }
 
 // A server that hosts the worker brings up all three listeners, each with the
@@ -282,29 +282,28 @@ func TestWorkerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 func TestServerWithWorkerServesBothHalvesAndStopsThemTogether(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
-	edgeAddr := testutil.FreeAddr(t)
-	internalAddr := testutil.FreeAddr(t)
-	workerAddr := testutil.FreeAddr(t)
-
 	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
 		"PUBLIRA_PUBLIC_DB_URL":        pg.PublicURL,
 		"PUBLIRA_ADMIN_DB_URL":         pg.AdminURL,
 		"PUBLIRA_PLATFORM_DB_URL":      pg.PlatformURL,
-		"PUBLIRA_PUBLIC_API_ADDR":      edgeAddr,
-		"PUBLIRA_PUBLIC_API_GRPC_ADDR": internalAddr,
+		"PUBLIRA_PUBLIC_API_ADDR":      anyLoopbackPort,
+		"PUBLIRA_PUBLIC_API_GRPC_ADDR": anyLoopbackPort,
 		"PUBLIRA_WORKER_DB_URL":        pg.OutboxURL,
 		"PUBLIRA_TICKER_DB_URL":        pg.TickerURL,
 		"PUBLIRA_CONTENT_STATS_DB_URL": pg.ContentStatsURL,
-		"PUBLIRA_WORKER_ADDR":          workerAddr,
+		"PUBLIRA_WORKER_ADDR":          anyLoopbackPort,
 	}, revalidationWithoutPlatformConsole()), "server", "--with-worker")
-	for _, addr := range []string{edgeAddr, internalAddr, workerAddr} {
-		p.WaitReady(t, "http://"+addr+"/readyz")
-		assertLive(t, "http://"+addr+"/livez")
+	edge := listenerURL(t, p, "server (edge)")
+	internal := listenerURL(t, p, "server (internal)")
+	worker := listenerURL(t, p, "worker")
+	for _, url := range []string{edge, internal, worker} {
+		p.WaitReady(t, url+"/readyz")
+		assertLive(t, url+"/livez")
 	}
 
-	assertReadyChecks(t, "http://"+edgeAddr+"/readyz", "db")
-	assertReadyChecks(t, "http://"+internalAddr+"/readyz", "db.public", "db.admin", "db.platform")
-	assertReadyChecks(t, "http://"+workerAddr+"/readyz", "db.outbox", "db.ticker", "db.content_stats")
+	assertReadyChecks(t, edge+"/readyz", "db")
+	assertReadyChecks(t, internal+"/readyz", "db.public", "db.admin", "db.platform")
+	assertReadyChecks(t, worker+"/readyz", "db.outbox", "db.ticker", "db.content_stats")
 
 	if code := p.Stop(t); code != 0 {
 		t.Fatalf("exit code after SIGTERM = %d, want 0; output:\n%s", code, p.Output())
@@ -322,12 +321,12 @@ func TestServerWithWorkerRefusesToStartWhenTheWorkerCannot(t *testing.T) {
 		"PUBLIRA_PUBLIC_DB_URL":           pg.PublicURL,
 		"PUBLIRA_ADMIN_DB_URL":            pg.AdminURL,
 		"PUBLIRA_PLATFORM_DB_URL":         pg.PlatformURL,
-		"PUBLIRA_PUBLIC_API_ADDR":         testutil.FreeAddr(t),
-		"PUBLIRA_PUBLIC_API_GRPC_ADDR":    testutil.FreeAddr(t),
+		"PUBLIRA_PUBLIC_API_ADDR":         anyLoopbackPort,
+		"PUBLIRA_PUBLIC_API_GRPC_ADDR":    anyLoopbackPort,
 		"PUBLIRA_WORKER_DB_URL":           pg.OutboxURL,
 		"PUBLIRA_TICKER_DB_URL":           pg.TickerURL,
 		"PUBLIRA_CONTENT_STATS_DB_URL":    pg.ContentStatsURL,
-		"PUBLIRA_WORKER_ADDR":             testutil.FreeAddr(t),
+		"PUBLIRA_WORKER_ADDR":             anyLoopbackPort,
 		"PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE": "not-a-number",
 	}, revalidationWithoutPlatformConsole()), "server", "--with-worker")
 	if code != 1 {
@@ -336,6 +335,21 @@ func TestServerWithWorkerRefusesToStartWhenTheWorkerCannot(t *testing.T) {
 	if !strings.Contains(output, "PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE") {
 		t.Fatalf("output does not name PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE:\n%s", output)
 	}
+}
+
+// anyLoopbackPort is the address every listener a test starts is given: the
+// process binds whatever port the kernel picks, and listenerURL reads it back.
+// A port picked by the test and freed before the process binds it can be taken
+// in between by a server of another package's tests, and that server would
+// then answer for the process under test.
+const anyLoopbackPort = "127.0.0.1:0"
+
+// listenerURL waits for p to log the address the listener its startup log
+// calls name has bound, and answers that listener's base URL.
+func listenerURL(t *testing.T, p *testutil.Process, name string) string {
+	t.Helper()
+	m := p.WaitOutput(t, regexp.MustCompile(`msg="starting `+regexp.QuoteMeta(name)+`" addr=(\S+)`))
+	return "http://" + m[1]
 }
 
 // revalidationWithoutPlatformConsole is where a deployment that runs no

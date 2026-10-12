@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"sync"
 	"syscall"
 	"testing"
@@ -73,8 +75,34 @@ func StartMain(t *testing.T, env []string, args ...string) *Process {
 	return p
 }
 
+// WaitOutput waits until the process's output matches re and returns the
+// leftmost match and its submatches, failing the test if the process exits or
+// the deadline passes first.
+func (p *Process) WaitOutput(t *testing.T, re *regexp.Regexp) []string {
+	t.Helper()
+	deadline := time.After(30 * time.Second)
+	for {
+		if m := re.FindStringSubmatch(p.Output()); m != nil {
+			return m
+		}
+		select {
+		case <-p.done:
+			if m := re.FindStringSubmatch(p.Output()); m != nil {
+				return m
+			}
+			t.Fatalf("process exited before its output matched %s: %v", re, p.err)
+		case <-deadline:
+			t.Fatalf("output did not match %s within the deadline", re)
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+}
+
 // WaitReady polls url until it answers 200, failing the test if the process
-// exits or the deadline passes first.
+// exits or the deadline passes first. Any server on url satisfies it, so url
+// has to be an address the process reported binding, never one picked for it
+// in advance: a port free when it was picked can be taken by a test server
+// before the process binds it.
 func (p *Process) WaitReady(t *testing.T, url string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -153,18 +181,33 @@ func mainCommand(t *testing.T, env, args []string) (*exec.Cmd, *syncBuffer) {
 	return cmd, output
 }
 
-// FreeAddr returns a loopback address with a port nothing is listening on.
-func FreeAddr(t *testing.T) string {
+// UnreachableAddr returns a loopback address that refuses every connection
+// for the rest of the test. Its port is bound and never listened on, so the
+// kernel gives it to no other socket until the test ends — not even to a
+// server that binds port 0 in a test running beside this one. A port that was
+// only free a moment ago carries no such promise.
+func UnreachableAddr(t *testing.T) string {
 	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	// ForkLock keeps a child started meanwhile from inheriting the socket
+	// before it is marked close-on-exec.
+	syscall.ForkLock.RLock()
+	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, 0)
+	if err == nil {
+		syscall.CloseOnExec(fd)
+	}
+	syscall.ForkLock.RUnlock()
 	if err != nil {
-		t.Fatalf("reserve a port: %v", err)
+		t.Fatalf("open a socket: %v", err)
 	}
-	addr := l.Addr().String()
-	if err := l.Close(); err != nil {
-		t.Fatalf("release %s: %v", addr, err)
+	t.Cleanup(func() { _ = syscall.Close(fd) })
+	if err := syscall.Bind(fd, &syscall.SockaddrInet4{Addr: [4]byte{127, 0, 0, 1}}); err != nil {
+		t.Fatalf("bind a loopback port: %v", err)
 	}
-	return addr
+	sa, err := syscall.Getsockname(fd)
+	if err != nil {
+		t.Fatalf("read the bound port: %v", err)
+	}
+	return net.JoinHostPort("127.0.0.1", strconv.Itoa(sa.(*syscall.SockaddrInet4).Port))
 }
 
 // DeploymentSecrets returns the bootstrap secrets a standard deployment sets

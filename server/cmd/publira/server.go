@@ -176,7 +176,7 @@ func buildServer(deps shared, l serverListeners) (_ half, err error) {
 		platformAPI := platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder, webServiceToken, login, mail)
 
 		internalAddr := addrFromEnv("PUBLIRA_PUBLIC_API_GRPC_ADDR", defaultInternalAddr)
-		built.listeners = append(built.listeners, listener{name: "server (internal)", server: httpserver.New(internalAddr, internalHandler(clientIPs, publicAPI, adminAPI, platformAPI, pools))})
+		built.listeners = append(built.listeners, httpserver.Listener{Name: "server (internal)", Server: httpserver.New(internalAddr, internalHandler(clientIPs, publicAPI, adminAPI, platformAPI, pools))})
 		built.drain = []func(context.Context) error{adminRecorder.Shutdown, platformRecorder.Shutdown}
 	}
 
@@ -196,7 +196,7 @@ func buildServer(deps shared, l serverListeners) (_ half, err error) {
 		}
 
 		edgeAddr := addrFromEnv("PUBLIRA_PUBLIC_API_ADDR", defaultEdgeAddr)
-		built.listeners = append(built.listeners, listener{name: "server (edge)", server: httpserver.New(edgeAddr, edgeHandler(clientIPs, publicAPI, imageHandler, pools))})
+		built.listeners = append(built.listeners, httpserver.Listener{Name: "server (edge)", Server: httpserver.New(edgeAddr, edgeHandler(clientIPs, publicAPI, imageHandler, pools))})
 		built.close = func() error {
 			return errors.Join(imageHandler.Close(), pools.close())
 		}

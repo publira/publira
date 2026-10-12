@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -46,7 +45,7 @@ type shared struct {
 // half is what the server or the worker contributes to the process that
 // hosts it.
 type half struct {
-	listeners []listener
+	listeners []httpserver.Listener
 	// stop begins the moment the process starts stopping, beside the
 	// listeners' drain, for work no request feeds: the River client. Waiting
 	// for the slowest request first would leave it what that request had not
@@ -60,12 +59,6 @@ type half struct {
 	// close releases the pools and whatever else the half opened. It is the
 	// process's last hook, and the cleanup when a half built after it fails.
 	close func() error
-}
-
-// listener is one http.Server and the name the startup log gives it.
-type listener struct {
-	name   string
-	server *http.Server
 }
 
 // startupError is a failure to build what a process hosts, carrying the
@@ -142,13 +135,10 @@ func serve(command string, h hosted) int {
 		return 1
 	}
 
-	var servers []*http.Server
+	var listeners []httpserver.Listener
 	var stops, hooks []func(context.Context) error
 	for _, built := range halves {
-		for _, l := range built.listeners {
-			logger.Info("starting "+l.name, "addr", l.server.Addr)
-			servers = append(servers, l.server)
-		}
+		listeners = append(listeners, built.listeners...)
 		stops = append(stops, built.stop...)
 		hooks = append(hooks, built.drain...)
 	}
@@ -159,7 +149,7 @@ func serve(command string, h hosted) int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if err := httpserver.Serve(ctx, logger, servers, stops, hooks...); err != nil {
+	if err := httpserver.Serve(ctx, logger, listeners, stops, hooks...); err != nil {
 		logger.Error(command+" failed", "error", err)
 		return 1
 	}

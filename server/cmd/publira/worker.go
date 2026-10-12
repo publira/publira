@@ -206,7 +206,7 @@ func buildWorker(deps shared) (_ half, err error) {
 	addr := addrFromEnv("PUBLIRA_WORKER_ADDR", defaultWorkerAddr)
 
 	return half{
-		listeners: []listener{{name: "worker", server: httpserver.New(addr, mux)}},
+		listeners: []httpserver.Listener{{Name: "worker", Server: httpserver.New(addr, mux)}},
 		stop:      []func(context.Context) error{worker.Stop},
 		close: func() error {
 			return closePools(pools)

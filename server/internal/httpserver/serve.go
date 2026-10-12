@@ -4,13 +4,26 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"sync"
 	"time"
 )
 
+// Listener is one http.Server and the name the startup log gives it.
+type Listener struct {
+	Name   string
+	Server *http.Server
+}
+
 // Serve listens on each server until ctx is cancelled or a listener
 // fails, then stops them together.
+//
+// Every address is bound before any server starts, and the startup log
+// names the address that was bound rather than the one that was asked
+// for: an Addr with port 0 is given whatever port the kernel picks, and
+// the log line is the only place that port is reported. A failure to
+// bind is handled like a server that failed while serving.
 //
 // On stop it calls Shutdown against a deadline of [ShutdownTimeout]
 // so in-flight requests can finish. A server that has not drained
@@ -25,10 +38,26 @@ import (
 // flush, the database pools. Callers that still defer db.Close keep
 // that as a safety net for the paths that never reach Serve; Close on
 // *sql.DB is a no-op the second time.
-func Serve(ctx context.Context, logger *slog.Logger, servers []*http.Server, stops []func(context.Context) error, hooks ...func(context.Context) error) error {
-	starts := make([]func() error, len(servers))
-	for i, srv := range servers {
-		starts[i] = srv.ListenAndServe
+func Serve(ctx context.Context, logger *slog.Logger, listeners []Listener, stops []func(context.Context) error, hooks ...func(context.Context) error) error {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	servers := make([]*http.Server, len(listeners))
+	starts := make([]func() error, len(listeners))
+	for i, l := range listeners {
+		servers[i] = l.Server
+		addr := l.Server.Addr
+		if addr == "" {
+			// What ListenAndServe would have listened on.
+			addr = ":http"
+		}
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			starts[i] = func() error { return err }
+			continue
+		}
+		logger.Info("starting "+l.Name, "addr", ln.Addr().String())
+		starts[i] = func() error { return l.Server.Serve(ln) }
 	}
 	return run(ctx, logger, ShutdownTimeout, servers, starts, stops, hooks)
 }
