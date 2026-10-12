@@ -2,7 +2,7 @@
 title: Reverse proxy
 description: Put a reverse proxy with TLS in front of an install, and change it when a tenant is added.
 published: 2026-10-06
-updated: 2026-10-08
+updated: 2026-10-12
 ---
 
 Every request a browser or the mobile app sends to an install reaches it through one reverse proxy. The proxy picks the process that answers from the host name and the path, terminates TLS, and is where the headers a caller could forge stop. This page takes one of the sample configurations in the repository to a proxy that serves a tenant's site and its console over HTTPS, and says what to change when a tenant is added.
