@@ -1,5 +1,6 @@
 import { isUnauthenticatedRpcError } from "@publira/api-client/errors";
 
+import { resolveAccessToken } from "#lib/api-client";
 import {
   ACCOUNT_DELETION_PATH,
   LEGAL_PAGE_AGREEMENT_PATH,
@@ -22,10 +23,21 @@ import { LegalPageAgreementRedirect } from "./legal-page-agreement-redirect";
  * `withPublicSessionReauth` turns that refusal into the same screen.
  */
 export const LegalPageAgreementGate = async () => {
-  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  // The session is read outside the `try`: while the route prerenders, the
+  // read never settles and rejects once the prerender is complete, which is
+  // React's to handle rather than a failure of this read to report.
+  const [tenantId, locale, accessToken] = await Promise.all([
+    getTenantId(),
+    getLocale(),
+    resolveAccessToken(),
+  ]);
+  if (!accessToken) {
+    return null;
+  }
+
   let owedPages: Awaited<ReturnType<typeof getOwedLegalPages>>;
   try {
-    owedPages = await getOwedLegalPages(tenantId, locale);
+    owedPages = await getOwedLegalPages(tenantId, locale, accessToken);
   } catch (error) {
     // A session the API turned away is the pages' to send to sign-in.
     if (!isUnauthenticatedRpcError(error)) {
