@@ -20,6 +20,8 @@ Every process answers `GET /livez` and `GET /readyz`, so an orchestrator can pro
 
 An install on one host that will never run more than one copy of the server or the worker can run both as one process: `publira server --with-worker` does everything both processes do, on the same three ports, and reads the variables of both. You give up two things. You can no longer scale the server and the worker separately. And the process that faces the internet also holds the worker's three database logins, among them the one that owns the tables of the job queue and may create tables of its own. Keep the two processes apart unless having one fewer to run matters more to you than that.
 
+You can also go the other way and split `publira server` in two, one process per listener: `publira server --listener edge` serves the public API and image delivery to the reverse proxy, and `publira server --listener internal` serves the API the web apps call. The process that faces the internet then signs in to the database only as the storefront's and the tenant console's logins, both confined to one tenant per request, and holds neither the Platform Console's login nor the credential the web apps call the consoles with. Each process can be scaled and probed on its own, and a platform that exposes one port per service, such as Cloud Run, can run both. The [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#long-lived-processes) lists what each one serves and reads.
+
 ## The services it depends on
 
 | Service | Used by | What it holds |

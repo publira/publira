@@ -25,6 +25,15 @@ An install on one host that will not scale the Go processes apart may run the tw
 
 It reads the variables of both, so it is given the union of the `publira server` and `publira worker` rows below. What it gives up is the process boundary: the server and the worker can no longer be scaled independently, and the process the edge forwards internet traffic to also holds the worker's logins, `publira_outbox` among them, which owns River's schema. [`publira server --with-worker`](../../server/cmd/publira/README.md#hosting-the-worker---with-worker) has the details. The Compose file beside this README keeps the two services.
 
+An install that keeps the internet-facing process apart from the one the web apps call, or that runs on a platform exposing one port per workload, may instead run `publira server` as two processes, one per listener:
+
+| Process | Image | Serves | Reached by |
+| --- | --- | --- | --- |
+| `publira server --listener edge` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --listener edge` as the container argument | The public API and image delivery on the edge listener (`:8000`), as `publira_public` and `publira_admin` alone | The reverse proxy, on `/api` and `/images` |
+| `publira server --listener internal` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --listener internal` as the container argument | Every Connect namespace on the internal listener (`:8100`) | `web-storefront` and `web-admin` |
+
+Together they replace the one `publira server` above, and each reads the `publira server` rows below except where a row says otherwise. The edge process holds no `publira_platform` login and no web service credential, serves neither console's API, and can be scaled and probed apart from the internal one. [`--listener`](../../server/cmd/publira/README.md#serving-one-listener---listener) has the details.
+
 ### Services the processes depend on
 
 | Service | Used by | What it holds |
@@ -58,9 +67,9 @@ Each row is one value, set under the name each process reads it by.
 | --- | --- | --- | --- | --- | --- |
 | The secret encryption keys | — | — | `PUBLIRA_SECRET_ENCRYPTION_KEYS`, `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` | the same | the same |
 | The cache revalidation token | `PNCH_REVALIDATE_TOKEN` | `PNCH_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | — |
-| The web service credential, also set on `web-platform` when it runs | — | `PUBLIRA_WEB_SERVICE_TOKEN` | `PUBLIRA_WEB_SERVICE_TOKEN` | — | — |
+| The web service credential, also set on `web-platform` when it runs; not read by `publira server --listener edge` | — | `PUBLIRA_WEB_SERVICE_TOKEN` | `PUBLIRA_WEB_SERVICE_TOKEN` | — | — |
 | The Redis URL | `PNCH_REDIS_URL` | `PNCH_REDIS_URL` | `PUBLIRA_REDIS_URL` | — | — |
-| The `publira_platform` connection | — | — | `PUBLIRA_PLATFORM_DB_URL` | — | `PUBLIRA_PLATFORM_DB_URL` |
+| The `publira_platform` connection, not read by `publira server --listener edge` | — | — | `PUBLIRA_PLATFORM_DB_URL` | — | `PUBLIRA_PLATFORM_DB_URL` |
 | The AWS credential, when the object store is saved without an access key | — | — | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` for a temporary credential | the same | the same |
 
 The secret encryption keys seal the SMTP password, the object store's access key, the Web Push private key, and each tenant's payment and push credentials; a process given other keys cannot read what `publiractl` stored. Their format is in [`server/README.md`](../../server/README.md#secret-encryption-configuration-aes-gcm).
