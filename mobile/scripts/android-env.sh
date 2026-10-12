@@ -9,7 +9,7 @@
 ANDROID_HOME="${ANDROID_HOME:-${HOME}/Android/Sdk}"
 export ANDROID_HOME
 
-# The image `Test / Mobile E2E` boots, which emulator-packages.sh hands to the
+# The image `Test / Mobile E2E` boots, which android-packages.sh hands to the
 # emulator runner in ci.yml.
 readonly ANDROID_SYSTEM_IMAGE='system-images;android-34;default;x86_64'
 # The hardware profile the AVD is created with. The default is the phone

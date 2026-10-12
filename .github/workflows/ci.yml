@@ -206,6 +206,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - 'scripts/setup-flutter.sh'
+              - '.github/actions/flutter-setup/**'
               - '.github/actions/mobile-android-setup/**'
             test_mobile_ios:
               - *docs_excluded
@@ -214,6 +215,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - 'scripts/setup-flutter.sh'
+              - '.github/actions/flutter-setup/**'
             test_mobile_e2e:
               - *docs_excluded
               - 'mobile/**'
@@ -241,6 +243,7 @@ jobs:
               - '.github/actions/apt-install/**'
               - '.github/actions/go-setup/**'
               - 'scripts/setup-flutter.sh'
+              - '.github/actions/flutter-setup/**'
               - '.github/actions/mobile-android-setup/**'
               - '.github/actions/tool-install/**'
             test_e2e:
@@ -773,9 +776,8 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Flutter
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: bash scripts/setup-flutter.sh
+        uses: ./.github/actions/flutter-setup
+        timeout-minutes: 10
 
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
@@ -803,6 +805,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Setup / Flutter
+        uses: ./.github/actions/flutter-setup
+        timeout-minutes: 10
 
       - name: Setup / Android build
         uses: ./.github/actions/mobile-android-setup
@@ -840,9 +846,15 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup / Flutter
+        uses: ./.github/actions/flutter-setup
+        timeout-minutes: 10
+
       - name: Setup / Android build
         id: setup
         uses: ./.github/actions/mobile-android-setup
+        with:
+          emulator: true
 
       - name: Enable KVM
         run: |
@@ -850,16 +862,12 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Setup / Android emulator packages
-        id: emulator-packages
-        run: bash mobile/scripts/emulator-packages.sh
-
       - name: Validate / Mobile E2E
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
-          api-level: ${{ steps.emulator-packages.outputs.api-level }}
-          target: ${{ steps.emulator-packages.outputs.target }}
-          arch: ${{ steps.emulator-packages.outputs.arch }}
+          api-level: ${{ steps.setup.outputs.api-level }}
+          target: ${{ steps.setup.outputs.target }}
+          arch: ${{ steps.setup.outputs.arch }}
           profile: pixel_6
           disable-animations: true
           script: task mobile:test-integration
@@ -959,8 +967,15 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup / Flutter
+        uses: ./.github/actions/flutter-setup
+        timeout-minutes: 10
+
       - name: Setup / Android build
+        id: setup
         uses: ./.github/actions/mobile-android-setup
+        with:
+          emulator: true
 
       # libvips-tools for the libvips the server links: it depends on the
       # library under whatever name the release gives it.
@@ -992,16 +1007,12 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Setup / Android emulator packages
-        id: emulator-packages
-        run: bash mobile/scripts/emulator-packages.sh
-
       - name: Validate / Mobile E2E
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
-          api-level: ${{ steps.emulator-packages.outputs.api-level }}
-          target: ${{ steps.emulator-packages.outputs.target }}
-          arch: ${{ steps.emulator-packages.outputs.arch }}
+          api-level: ${{ steps.setup.outputs.api-level }}
+          target: ${{ steps.setup.outputs.target }}
+          arch: ${{ steps.setup.outputs.arch }}
           profile: pixel_6
           disable-animations: true
           script: task mobile:test-integration -- --plain-name 'live public API'
@@ -1038,9 +1049,8 @@ jobs:
           persist-credentials: false
 
       - name: Setup / Flutter
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: bash scripts/setup-flutter.sh
+        uses: ./.github/actions/flutter-setup
+        timeout-minutes: 10
 
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
