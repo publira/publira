@@ -47,6 +47,7 @@ const line = (
   creatorName: string,
   overrides: Partial<RoyaltyLine> = {}
 ): RoyaltyLine => ({
+  adjustedPeriod: "",
   creatorName,
   creatorPublicId,
   episodeTitle: "Episode 1",
@@ -76,7 +77,7 @@ const lines = [
   }),
 ];
 
-const totals = { gross: 7000, payout: 2950, refunded: 500 };
+const totals = { adjustment: 0, gross: 7000, payout: 2950, refunded: 500 };
 
 afterEach(() => {
   cleanup();
@@ -211,6 +212,41 @@ describe("OpenMonth", () => {
     expect(ben.getByText("—")).toBeDefined();
   });
 
+  it("marks an adjustment with the month it takes refunds back from, and nets it into the subtotal", () => {
+    render(
+      <OpenMonth
+        closeState={{ kind: "ready" }}
+        endsAt="2026-08-31T15:00:00Z"
+        lines={[
+          line(1, "ARTIST", "Aki"),
+          line(2, "ARTIST", "Aki", {
+            adjustedPeriod: "2026-07",
+            grossAmount: -500,
+            payoutAmount: -150,
+            saleCount: -1,
+          }),
+        ]}
+        currency="JPY"
+        locale="en"
+        period="2026-08"
+        startsAt="2026-07-31T15:00:00Z"
+        tenantId="TENANT001"
+        timeZone="UTC"
+        totals={{ adjustment: -500, gross: 5000, payout: 1350, refunded: 0 }}
+      />
+    );
+
+    expect(screen.getByText("-¥500", { selector: "dd" })).toBeDefined();
+    const aki = within(screen.getAllByRole("rowgroup")[1]);
+    const rows = aki.getAllByRole("row");
+    expect(within(rows[1]).queryByText(/Refund adjustment/u)).toBeNull();
+    expect(
+      within(rows[2]).getByText("Refund adjustment for July 2026")
+    ).toBeDefined();
+    expect(within(rows[2]).getByText("-¥150")).toBeDefined();
+    expect(aki.getByText("¥1,350")).toBeDefined();
+  });
+
   it("asks to confirm the period and total payout of a month ready to close", () => {
     render(
       <OpenMonth
@@ -271,7 +307,7 @@ describe("OpenMonth", () => {
         startsAt="2026-07-31T15:00:00Z"
         tenantId="TENANT001"
         timeZone="UTC"
-        totals={{ gross: 0, payout: 0, refunded: 0 }}
+        totals={{ adjustment: 0, gross: 0, payout: 0, refunded: 0 }}
       />
     );
 

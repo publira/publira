@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import { formatPlainYearMonth } from "@publira/utils";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
@@ -33,7 +34,9 @@ const LEADING_COLUMN_COUNT = 7;
 /**
  * The lines grouped by author: a heading row naming the author, their lines,
  * and what those lines pay them. Each group is its own `<tbody>`, so the author
- * row heads exactly the rows under it.
+ * row heads exactly the rows under it. An adjustment names the closed month it
+ * takes refunds back from under its episode, which is what tells its negative
+ * figures from a line of the month's own sales.
  */
 export const RoyaltyLinesTable = ({
   currency,
@@ -102,7 +105,23 @@ export const RoyaltyLinesTable = ({
           {group.lines.map((line) => (
             <TableRow key={line.lineNumber}>
               <TableCell>{line.seriesTitle}</TableCell>
-              <TableCell>{line.episodeTitle}</TableCell>
+              <TableCell>
+                {line.episodeTitle}
+                {line.adjustedPeriod ? (
+                  <span className="block text-xs text-muted-foreground">
+                    <Suspense fallback={<SkeletonLine className="h-3 w-32" />}>
+                      <Message
+                        message="admin.royalties.lines.adjustment"
+                        values={{
+                          period: formatPlainYearMonth(line.adjustedPeriod, {
+                            locale,
+                          }),
+                        }}
+                      />
+                    </Suspense>
+                  </span>
+                ) : null}
+              </TableCell>
               <TableCell>
                 {line.roleName || (
                   <Message message="admin.royalties.lines.no_role" />

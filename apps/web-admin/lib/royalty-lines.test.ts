@@ -9,6 +9,7 @@ const line = (
   creatorName: string,
   payoutAmount: number
 ): RoyaltyLine => ({
+  adjustedPeriod: "",
   creatorName,
   creatorPublicId,
   episodeTitle: `Episode ${lineNumber}`,

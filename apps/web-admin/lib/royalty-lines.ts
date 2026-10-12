@@ -1,6 +1,15 @@
-/** One creator's credit on one episode for one role, with the month's sales. */
+/**
+ * One creator's credit on one episode for one role, with the month's sales, or
+ * an adjustment that takes back the refunds recorded on the sales of a closed
+ * month's line since that month was closed.
+ */
 export interface RoyaltyLine {
   lineNumber: number;
+  /**
+   * `YYYY-MM` of the closed month an adjustment adjusts, whose figures are
+   * then negative changes. Empty for a line of the month's own sales.
+   */
+  adjustedPeriod: string;
   creatorPublicId: string;
   creatorName: string;
   seriesTitle: string;
@@ -24,8 +33,9 @@ export interface RoyaltyCreatorGroup {
 
 /**
  * The lines regrouped by creator, in the order each creator first appears, with
- * what the given lines pay that creator. The API orders lines by series and
- * episode, so on a paged statement a subtotal covers only the page it came from.
+ * what the given lines pay that creator, adjustments included. The API orders
+ * the month's own lines by series and episode and puts the adjustments after
+ * them, so on a paged statement a subtotal covers only the page it came from.
  *
  * A creator deleted since the close has no public ID left, so those lines are
  * told apart by the name kept on the line instead.

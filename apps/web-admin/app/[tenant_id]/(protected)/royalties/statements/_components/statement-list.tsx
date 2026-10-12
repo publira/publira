@@ -126,6 +126,11 @@ export const StatementList = async ({
               </TableHead>
               <TableHead className="text-right">
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                  <Message message="admin.royalties.statements.columns.adjustment" />
+                </Suspense>
+              </TableHead>
+              <TableHead className="text-right">
+                <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.royalties.statements.columns.payout" />
                 </Suspense>
               </TableHead>
@@ -163,6 +168,12 @@ export const StatementList = async ({
                 </TableCell>
                 <TableCell className="text-right">
                   {formatTenantAmount(statement.totals.refunded, {
+                    currency: statement.currency,
+                    locale,
+                  })}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatTenantAmount(statement.totals.adjustment, {
                     currency: statement.currency,
                     locale,
                   })}

@@ -3105,6 +3105,7 @@
       "totals": {
         "gross": "Sales",
         "refunded": "Refunds",
+        "adjustment": "Refund adjustments",
         "payout": "Payout to authors"
       },
       "open": {
@@ -3129,11 +3130,12 @@
       },
       "lines": {
         "title": "Lines by author",
-        "description": "Each credit with the month's sales, grouped by author. A payout is the sales net of refunds times the share, rounded down to whole yen.",
+        "description": "Each credit with the month's sales, grouped by author, followed by the adjustments for refunds of closed months. A payout is the sales net of refunds times the share, rounded down to the currency's smallest unit. An adjustment is what its refunds take off the payout of the closed line, worked out the same way.",
         "empty_title": "No sales this month",
         "empty_description": "A line appears when an episode credited to an author sells.",
         "subtotal": "Subtotal",
         "no_role": "—",
+        "adjustment": "Refund adjustment for {$period}",
         "columns": {
           "creator": "Author",
           "series": "Series",
@@ -3162,6 +3164,7 @@
           "closed_by": "Closed by",
           "gross": "Sales",
           "refunded": "Refunds",
+          "adjustment": "Adjustments",
           "payout": "Payout",
           "export": "CSV"
         }

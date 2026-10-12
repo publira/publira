@@ -30,6 +30,12 @@ import { getAccessToken } from "./session";
 export interface RoyaltyTotals {
   gross: number;
   refunded: number;
+  /**
+   * The net sales of earlier closed months that refunds recorded since their
+   * close take back: zero, or a negative amount. `payout` already includes the
+   * adjustment lines that carry it to the authors.
+   */
+  adjustment: number;
   payout: number;
 }
 
@@ -114,9 +120,13 @@ export type CloseRoyaltyStatementResult =
   | { ok: false; message: string };
 
 /** The generated `RoyaltyStatementTotals` fields {@link mapTotals} reads. */
-type RawTotals = Pick<RoyaltyStatementTotals, "gross" | "payout" | "refunded">;
+type RawTotals = Pick<
+  RoyaltyStatementTotals,
+  "adjustment" | "gross" | "payout" | "refunded"
+>;
 
 const mapTotals = (totals: RawTotals | undefined): RoyaltyTotals => ({
+  adjustment: Number(totals?.adjustment ?? 0),
   gross: Number(totals?.gross ?? 0),
   payout: Number(totals?.payout ?? 0),
   refunded: Number(totals?.refunded ?? 0),
@@ -125,6 +135,7 @@ const mapTotals = (totals: RawTotals | undefined): RoyaltyTotals => ({
 /** The generated `RoyaltyStatementLine` fields {@link mapLine} reads. */
 type RawLine = Pick<
   RoyaltyStatementLine,
+  | "adjustedPeriod"
   | "creatorName"
   | "creatorPublicId"
   | "episodeTitle"
@@ -139,6 +150,7 @@ type RawLine = Pick<
 >;
 
 const mapLine = (line: RawLine): RoyaltyLine => ({
+  adjustedPeriod: line.adjustedPeriod ?? "",
   creatorName: line.creatorName ?? "",
   creatorPublicId: line.creatorPublicId ?? "",
   episodeTitle: line.episodeTitle ?? "",

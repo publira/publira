@@ -3105,6 +3105,7 @@
       "totals": {
         "gross": "销售额",
         "refunded": "退款",
+        "adjustment": "退款调整",
         "payout": "支付给作者"
       },
       "open": {
@@ -3129,11 +3130,12 @@
       },
       "lines": {
         "title": "按作者列出的明细",
-        "description": "按作者汇总每项署名的当月销售额。支付额为扣除退款后的销售额乘以分成比例，并舍去不足1日元的部分。",
+        "description": "按作者汇总每项署名的当月销售额，其后列出已结算月份的退款调整。支付额为扣除退款后的销售额乘以分成比例，并舍去不足货币最小单位的部分。调整表示退款按同样的计算使已结算行的支付额减少多少。",
         "empty_title": "本月没有销售",
         "empty_description": "署名作者的话数售出后，将显示明细。",
         "subtotal": "小计",
         "no_role": "—",
+        "adjustment": "{$period}的退款调整",
         "columns": {
           "creator": "作者",
           "series": "系列",
@@ -3162,6 +3164,7 @@
           "closed_by": "结算人",
           "gross": "销售额",
           "refunded": "退款",
+          "adjustment": "调整",
           "payout": "支付额",
           "export": "CSV"
         }

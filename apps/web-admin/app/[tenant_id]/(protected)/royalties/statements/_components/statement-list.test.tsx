@@ -43,7 +43,7 @@ const statement = (
   currency,
   period,
   timeZone: "Asia/Tokyo",
-  totals: { gross: 7000, payout: 2950, refunded: 500 },
+  totals: { adjustment: -300, gross: 7000, payout: 2950, refunded: 500 },
 });
 
 afterEach(() => {
@@ -76,12 +76,14 @@ describe("StatementList", () => {
     expect(within(first).getByText("Operator")).toBeDefined();
     expect(within(first).getByText("¥7,000")).toBeDefined();
     expect(within(first).getByText("¥500")).toBeDefined();
+    expect(within(first).getByText("-¥300")).toBeDefined();
     expect(within(first).getByText("¥2,950")).toBeDefined();
     // Nobody is named for an automatic close or a deleted account.
     expect(within(second).getByText("—")).toBeDefined();
     // A month closed while the tenant sold in another currency keeps it.
     expect(within(second).getByText("$70.00")).toBeDefined();
     expect(within(second).getByText("$5.00")).toBeDefined();
+    expect(within(second).getByText("-$3.00")).toBeDefined();
     expect(within(second).getByText("$29.50")).toBeDefined();
   });
 

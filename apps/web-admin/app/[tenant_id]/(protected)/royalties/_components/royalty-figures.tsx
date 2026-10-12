@@ -22,7 +22,10 @@ interface RoyaltyFiguresProps {
   totals: RoyaltyTotals;
 }
 
-/** A month's own sales, its refunds, and what its lines pay out. */
+/**
+ * A month's own sales, its refunds, what it takes back of earlier months'
+ * sales refunded since their close, and what its lines pay out.
+ */
 export const RoyaltyFigures = ({
   currency,
   locale,
@@ -47,6 +50,16 @@ export const RoyaltyFigures = ({
       </FigureLabel>
       <FigureValue>
         {formatTenantAmount(totals.refunded, { currency, locale })}
+      </FigureValue>
+    </Figure>
+    <Figure>
+      <FigureLabel>
+        <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+          <Message message="admin.royalties.totals.adjustment" />
+        </Suspense>
+      </FigureLabel>
+      <FigureValue>
+        {formatTenantAmount(totals.adjustment, { currency, locale })}
       </FigureValue>
     </Figure>
     <Figure>
