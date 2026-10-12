@@ -157,6 +157,23 @@ describe("listTenantMembers", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockListMembers.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { listTenantMembers } = await import("./tenant-members");
+
+    await expect(listTenantMembers("TENANT001", "en")).rejects.toThrow(Error);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   it("asks for a sign-in without calling the API when there is no session", async () => {
     mockGetAccessToken.mockResolvedValueOnce("");
     const { listTenantMembers } = await import("./tenant-members");
@@ -252,6 +269,25 @@ describe("listTenantAdminInvitations", () => {
       ok: false,
       requiresSignIn: false,
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockListInvitations.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { listTenantAdminInvitations } = await import("./tenant-members");
+
+    await expect(listTenantAdminInvitations("TENANT001", "en")).rejects.toThrow(
+      Error
+    );
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,

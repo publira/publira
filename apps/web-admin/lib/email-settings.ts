@@ -5,6 +5,7 @@ import {
 } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
   rpcErrorHasFieldViolation,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
@@ -17,6 +18,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import type { TenantSmtpSettings } from "./email-settings-shared";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
@@ -158,7 +161,7 @@ const getTenantEmailSettingsForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<TenantSmtpSettingsResult> => {
+): Promise<CachedRead<TenantSmtpSettingsResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -185,12 +188,12 @@ const getTenantEmailSettingsForSession = async (
 
     return { ok: true, settings: toTenantSmtpSettings(response.settings) };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: await parseErrorMessage(error, locale),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -199,7 +202,13 @@ export const getTenantEmailSettings = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantSmtpSettingsResult> =>
-  getTenantEmailSettingsForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await getTenantEmailSettingsForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 export type TenantEmailSenderResult =
   | {
@@ -213,7 +222,7 @@ const getTenantEmailSenderForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<TenantEmailSenderResult> => {
+): Promise<CachedRead<TenantEmailSenderResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -244,7 +253,6 @@ const getTenantEmailSenderForSession = async (
 
     return { fromAddress: response.fromAddress, ok: true };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
@@ -254,6 +262,7 @@ const getTenantEmailSenderForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -267,7 +276,13 @@ export const getTenantEmailSender = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantEmailSenderResult> =>
-  getTenantEmailSenderForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await getTenantEmailSenderForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 export const updateTenantEmailSettings = async (
   input: UpdateTenantSmtpSettingsInput,

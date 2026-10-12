@@ -1,6 +1,9 @@
 import type { TenantFcmSettings as RpcTenantFcmSettings } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
@@ -10,6 +13,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
@@ -61,7 +66,7 @@ const getTenantFcmSettingsForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<TenantFcmSettingsResult> => {
+): Promise<CachedRead<TenantFcmSettingsResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -84,7 +89,6 @@ const getTenantFcmSettingsForSession = async (
     );
     return { ok: true, settings: toTenantFcmSettings(response.settings) };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
@@ -94,6 +98,7 @@ const getTenantFcmSettingsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -102,7 +107,13 @@ export const getTenantFcmSettings = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantFcmSettingsResult> =>
-  getTenantFcmSettingsForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await getTenantFcmSettingsForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 export interface SaveTenantFcmCredentialsInput {
   tenantId: string;

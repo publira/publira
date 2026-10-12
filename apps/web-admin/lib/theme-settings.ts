@@ -1,6 +1,7 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
@@ -14,6 +15,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import {
   mentionsIconRejection,
   mentionsLogoRejection,
@@ -149,7 +152,7 @@ const getTenantThemeSettingsForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<TenantThemeSettingsResult> => {
+): Promise<CachedRead<TenantThemeSettingsResult>> => {
   "use cache: private";
 
   cacheTag(tenantThemeCacheTag(tenantId));
@@ -186,7 +189,6 @@ const getTenantThemeSettingsForSession = async (
       theme: toTenantTheme(response.theme),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: parseErrorMessage(
@@ -196,6 +198,7 @@ const getTenantThemeSettingsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -204,7 +207,13 @@ export const getTenantThemeSettings = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantThemeSettingsResult> =>
-  getTenantThemeSettingsForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await getTenantThemeSettingsForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 /**
  * Logo for the console chrome. An unset theme, a classified RPC failure, or

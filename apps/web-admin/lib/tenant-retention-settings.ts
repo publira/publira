@@ -3,7 +3,10 @@ import type {
   TenantRetentionOverrides as TenantRetentionOverridesMessage,
 } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
@@ -13,6 +16,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
@@ -92,7 +97,7 @@ const getTenantRetentionSettingsForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<GetTenantRetentionSettingsResult> => {
+): Promise<CachedRead<GetTenantRetentionSettingsResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -121,7 +126,6 @@ const getTenantRetentionSettingsForSession = async (
       revision: String(response.revision),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
@@ -131,6 +135,7 @@ const getTenantRetentionSettingsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -139,10 +144,12 @@ export const getTenantRetentionSettings = async (
   tenantId: string,
   locale: Locale
 ): Promise<GetTenantRetentionSettingsResult> =>
-  getTenantRetentionSettingsForSession(
-    tenantId,
-    locale,
-    await getAccessToken()
+  settleCachedRead(
+    await getTenantRetentionSettingsForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
   );
 
 export const updateTenantRetentionSettings = async (

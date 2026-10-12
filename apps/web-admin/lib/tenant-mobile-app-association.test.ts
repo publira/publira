@@ -141,6 +141,26 @@ describe("tenant-mobile-app-association", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetTenantMobileAppAssociationApi.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getTenantMobileAppAssociation } =
+      await import("./tenant-mobile-app-association");
+
+    await expect(
+      getTenantMobileAppAssociation("TENANT001", "en")
+    ).rejects.toThrow(Error);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   it("writes an absent platform as absent, which clears it", async () => {
     mockUpdateTenantMobileAppAssociationApi.mockResolvedValueOnce({
       association: {

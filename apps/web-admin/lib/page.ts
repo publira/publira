@@ -8,8 +8,8 @@ import {
   Code,
   isMissingResourceRpcError,
   isRpcError,
-  RPC_FIELD_VIOLATION_REASON,
   rethrowUnclassifiedRpcError,
+  RPC_FIELD_VIOLATION_REASON,
   rpcErrorDisposition,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
@@ -24,6 +24,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
   cursorPageRequest,
@@ -317,7 +319,7 @@ const listPagesForSession = async (
   locale: Locale,
   options: CursorPageOptions,
   sessionId: string
-): Promise<ListPagesResult> => {
+): Promise<CachedRead<ListPagesResult>> => {
   "use cache: private";
   cacheTag(pagesCacheTag(tenantId));
 
@@ -348,7 +350,6 @@ const listPagesForSession = async (
       pages: (response.pages ?? []).map((page) => mapPage(page)),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
@@ -360,6 +361,7 @@ const listPagesForSession = async (
       ok: false,
       pages: [],
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -376,13 +378,15 @@ export const listPages = async (
   locale: Locale,
   options: CursorPageOptions = {}
 ): Promise<ListPagesResult> =>
-  listPagesForSession(tenantId, locale, options, await getAccessToken());
+  settleCachedRead(
+    await listPagesForSession(tenantId, locale, options, await getAccessToken())
+  );
 
 const listPublishedPagesForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<ListPublishedPagesResult> => {
+): Promise<CachedRead<ListPublishedPagesResult>> => {
   "use cache: private";
   cacheTag(pagesCacheTag(tenantId));
 
@@ -435,7 +439,6 @@ const listPublishedPagesForSession = async (
       ),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
@@ -445,6 +448,7 @@ const listPublishedPagesForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -460,7 +464,9 @@ export const listPublishedPages = async (
   tenantId: string,
   locale: Locale
 ): Promise<ListPublishedPagesResult> =>
-  listPublishedPagesForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await listPublishedPagesForSession(tenantId, locale, await getAccessToken())
+  );
 
 const getPageForSession = async (
   input: {
@@ -470,7 +476,7 @@ const getPageForSession = async (
   },
   locale: Locale,
   sessionId: string
-): Promise<GetPageResult> => {
+): Promise<CachedRead<GetPageResult>> => {
   "use cache: private";
   cacheTag(pagesCacheTag(input.tenantId));
   cacheTag(pageCacheTag(input.tenantId, input.pageId));
@@ -504,7 +510,6 @@ const getPageForSession = async (
       page: mapPage(response.page),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     // `invalid_argument` counts as missing here. This endpoint takes only the
     // tenant and the `[page_id]` segment, and the tenant is always a UUID
     // written by `proxy.ts`, so the only input the server can reject is the id
@@ -526,6 +531,7 @@ const getPageForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -538,7 +544,9 @@ export const getPage = async (
   },
   locale: Locale
 ): Promise<GetPageResult> =>
-  getPageForSession(input, locale, await getAccessToken());
+  settleCachedRead(
+    await getPageForSession(input, locale, await getAccessToken())
+  );
 
 const listPageVersionsForSession = async (
   input: {
@@ -548,7 +556,7 @@ const listPageVersionsForSession = async (
   },
   locale: Locale,
   sessionId: string
-): Promise<ListPageVersionsResult> => {
+): Promise<CachedRead<ListPageVersionsResult>> => {
   "use cache: private";
   cacheTag(pageCacheTag(input.tenantId, input.pageId));
 
@@ -580,7 +588,6 @@ const listPageVersionsForSession = async (
       ),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
@@ -590,6 +597,7 @@ const listPageVersionsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
       versions: [],
     };
   }
@@ -603,7 +611,9 @@ export const listPageVersions = async (
   },
   locale: Locale
 ): Promise<ListPageVersionsResult> =>
-  listPageVersionsForSession(input, locale, await getAccessToken());
+  settleCachedRead(
+    await listPageVersionsForSession(input, locale, await getAccessToken())
+  );
 
 export const createPage = async (
   input: {
@@ -960,7 +970,7 @@ const listPageTranslationsForSession = async (
   },
   locale: Locale,
   sessionId: string
-): Promise<ListPageTranslationsResult> => {
+): Promise<CachedRead<ListPageTranslationsResult>> => {
   "use cache: private";
   cacheTag(pagesCacheTag(input.tenantId));
   cacheTag(pageCacheTag(input.tenantId, input.pageId));
@@ -989,7 +999,6 @@ const listPageTranslationsForSession = async (
       translations: mapPageTranslations(response.translations ?? []),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     // The same reading of `invalid_argument` as `getPage`: the id in the URL
     // is the only input the server can reject.
     if (
@@ -1007,6 +1016,7 @@ const listPageTranslationsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -1019,7 +1029,9 @@ export const listPageTranslations = async (
   },
   locale: Locale
 ): Promise<ListPageTranslationsResult> =>
-  listPageTranslationsForSession(input, locale, await getAccessToken());
+  settleCachedRead(
+    await listPageTranslationsForSession(input, locale, await getAccessToken())
+  );
 
 const mapTranslationErrorToMessage = async (
   error: unknown,

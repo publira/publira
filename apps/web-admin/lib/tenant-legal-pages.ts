@@ -2,6 +2,7 @@ import type { TenantLegalPage as RpcTenantLegalPage } from "@publira/api-client/
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
@@ -13,6 +14,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import { pagesCacheTag } from "./page";
 import { getAccessToken } from "./session";
@@ -63,7 +66,7 @@ const getTenantLegalPagesForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<TenantLegalPagesResult> => {
+): Promise<CachedRead<TenantLegalPagesResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -88,7 +91,6 @@ const getTenantLegalPagesForSession = async (
 
     return { ok: true, pages: toTenantLegalPages(response.pages) };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
@@ -98,6 +100,7 @@ const getTenantLegalPagesForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -106,7 +109,13 @@ export const getTenantLegalPages = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantLegalPagesResult> =>
-  getTenantLegalPagesForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await getTenantLegalPagesForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 /**
  * Writes both nominations. An empty id clears that nomination.

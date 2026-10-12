@@ -6,8 +6,8 @@ import {
   isRejectedRequestRpcError,
   isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
-  rpcErrorDisposition,
   RPC_ERROR_REASON,
+  rpcErrorDisposition,
   rpcErrorHasFieldViolation,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
@@ -21,6 +21,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import type { MfaChallengeKindName } from "./mfa-challenge";
 import { getAccessToken } from "./session";
@@ -303,7 +304,7 @@ export const logoutAdmin = async (
 const getAdminCurrentUserForSession = async (
   tenantId: string,
   token: string
-): Promise<GetAdminCurrentUserResult> => {
+): Promise<CachedRead<GetAdminCurrentUserResult>> => {
   "use cache: private";
   cacheLife("minutes");
   cacheTag(ADMIN_SESSION_CACHE_TAG);
@@ -343,14 +344,32 @@ const getAdminCurrentUserForSession = async (
     if (isExpectedNullableRpcError(error)) {
       return { ok: false, requiresSignIn: false };
     }
-    throw error;
+    // Anything else — an unreachable API included — is the console's error
+    // screen, thrown by the caller. Only the verdict crosses the cache
+    // boundary, so the cause is logged here, where the error is still whole.
+    console.warn("[web-admin] getAdminCurrentUser failed", error);
+    dropFailedCacheEntry();
+    return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
 
+/**
+ * The signed-in operator, or why there is none. A failure that is neither a
+ * rejected session nor an operator this tenant does not show reaches the error
+ * boundary.
+ */
 export const getAdminCurrentUser = async (
   tenantId: string
-): Promise<GetAdminCurrentUserResult> =>
-  getAdminCurrentUserForSession(tenantId, await getAccessToken());
+): Promise<GetAdminCurrentUserResult> => {
+  const { unexpected, ...result } = await getAdminCurrentUserForSession(
+    tenantId,
+    await getAccessToken()
+  );
+  if (unexpected) {
+    throw new Error("The signed-in operator could not be read.");
+  }
+  return result;
+};
 
 export const isAdminSessionValid = async (
   tenantId: string

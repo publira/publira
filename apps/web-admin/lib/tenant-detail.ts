@@ -6,6 +6,7 @@ import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
 import { getAccessToken } from "./session";
 
 export interface TenantDetail {
@@ -41,7 +42,7 @@ export const tenantDetailCacheTag = (tenantId: string): string =>
 const readTenantForSession = async (
   tenantId: string,
   sessionId: string
-): Promise<GetTenantForSessionResult> => {
+): Promise<CachedRead<GetTenantForSessionResult>> => {
   "use cache: private";
 
   const normalizedTenantId = tenantId.trim();
@@ -84,11 +85,24 @@ const readTenantForSession = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: false, requiresSignIn: false };
     }
-    throw error;
+    // Any other failure is the error screen, thrown by the caller. Only the
+    // verdict crosses the cache boundary, so the cause is logged here, where
+    // the error is still whole.
+    console.warn("[web-admin] getTenantForSession failed", error);
+    dropFailedCacheEntry();
+    return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
 
 export const getTenantForSession = async (
   tenantId: string
-): Promise<GetTenantForSessionResult> =>
-  readTenantForSession(tenantId, await getAccessToken());
+): Promise<GetTenantForSessionResult> => {
+  const { unexpected, ...result } = await readTenantForSession(
+    tenantId,
+    await getAccessToken()
+  );
+  if (unexpected) {
+    throw new Error("The tenant could not be read.");
+  }
+  return result;
+};

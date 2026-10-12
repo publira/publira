@@ -1,5 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockCacheLife, mockCacheTag, mockGetAccessToken, mockGetMfaStatus } =
   vi.hoisted(() => ({
@@ -28,6 +28,10 @@ vi.mock("./api", () => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
 }));
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("getAdminMfaStatus", () => {
   beforeEach(() => {
@@ -91,15 +95,28 @@ describe("getAdminMfaStatus", () => {
     });
   });
 
-  it("rethrows any other error", async () => {
-    mockGetMfaStatus.mockRejectedValueOnce(
-      new ConnectError("upstream down", Code.Unavailable)
-    );
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws any other error only outside the cache scope, and logs its cause there", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {
+      // Asserted below.
+    });
+    const error = new ConnectError("upstream down", Code.Unavailable);
+    mockGetMfaStatus.mockRejectedValueOnce(error);
 
     const { getAdminMfaStatus } = await import("./admin-mfa");
 
     await expect(getAdminMfaStatus("TENANT001")).rejects.toThrow(
-      "upstream down"
+      "The second factor's status could not be read."
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+    expect(warn).toHaveBeenCalledWith(
+      "[web-admin] getAdminMfaStatus failed",
+      error
     );
   });
 });

@@ -5,8 +5,9 @@ import type {
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import type { RpcErrorMessageOverrides } from "@publira/api-client/error-messages";
 import {
-  RPC_ERROR_REASON,
   rethrowUnclassifiedRpcError,
+  RPC_ERROR_REASON,
+  rpcErrorDisposition,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
@@ -18,6 +19,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
   cursorPageRequest,
@@ -161,7 +164,7 @@ const listTenantMembersForSession = async (
   locale: Locale,
   options: CursorPageOptions,
   sessionId: string
-): Promise<ListTenantMembersResult> => {
+): Promise<CachedRead<ListTenantMembersResult>> => {
   "use cache: private";
   cacheTag(tenantMembersCacheTag(tenantId));
 
@@ -191,7 +194,6 @@ const listTenantMembersForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
@@ -201,6 +203,7 @@ const listTenantMembersForSession = async (
       }),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -210,11 +213,13 @@ export const listTenantMembers = async (
   locale: Locale,
   options: CursorPageOptions = {}
 ): Promise<ListTenantMembersResult> =>
-  listTenantMembersForSession(
-    tenantId,
-    locale,
-    options,
-    await getAccessToken()
+  settleCachedRead(
+    await listTenantMembersForSession(
+      tenantId,
+      locale,
+      options,
+      await getAccessToken()
+    )
   );
 
 const listTenantAdminInvitationsForSession = async (
@@ -222,7 +227,7 @@ const listTenantAdminInvitationsForSession = async (
   locale: Locale,
   options: CursorPageOptions,
   sessionId: string
-): Promise<ListTenantAdminInvitationsResult> => {
+): Promise<CachedRead<ListTenantAdminInvitationsResult>> => {
   "use cache: private";
   cacheTag(tenantAdminInvitationsCacheTag(tenantId));
 
@@ -252,7 +257,6 @@ const listTenantAdminInvitationsForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
@@ -264,6 +268,7 @@ const listTenantAdminInvitationsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -273,11 +278,13 @@ export const listTenantAdminInvitations = async (
   locale: Locale,
   options: CursorPageOptions = {}
 ): Promise<ListTenantAdminInvitationsResult> =>
-  listTenantAdminInvitationsForSession(
-    tenantId,
-    locale,
-    options,
-    await getAccessToken()
+  settleCachedRead(
+    await listTenantAdminInvitationsForSession(
+      tenantId,
+      locale,
+      options,
+      await getAccessToken()
+    )
   );
 
 export const updateTenantMemberRole = async (

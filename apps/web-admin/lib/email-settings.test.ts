@@ -233,6 +233,23 @@ describe("getTenantEmailSettings", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetTenantEmailSettings.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(getTenantEmailSettings("TENANT001", "en")).rejects.toThrow(
+      Error
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   it("tenantEmailSettingsCacheTag normalizes the tenant id", () => {
     expect(tenantEmailSettingsCacheTag("  TENANT001 ")).toBe(
       "tenant:TENANT001:email-settings"
@@ -293,6 +310,23 @@ describe("getTenantEmailSender", () => {
     const result = await getTenantEmailSender("TENANT001", "en");
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetTenantEmailSender.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(getTenantEmailSender("TENANT001", "en")).rejects.toThrow(
+      Error
+    );
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,

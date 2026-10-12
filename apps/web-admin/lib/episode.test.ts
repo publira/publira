@@ -532,6 +532,28 @@ describe("listEpisodeImages", () => {
       stale: 0,
     });
   });
+
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockListEpisodeImages.mockRejectedValue(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { listEpisodeImages } = await import("./episode");
+
+    await expect(
+      listEpisodeImages(
+        { episodeId: "EPISODE001-ID", tenantId: "TENANT001" },
+        "en"
+      )
+    ).rejects.toThrow(Error);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
 });
 
 describe("the surfaces an episode is shown on", () => {

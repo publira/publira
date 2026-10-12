@@ -1,6 +1,6 @@
 import { MfaChallengeKind } from "@publira/api-client/admin/auth";
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   acceptTenantAdminInvitation,
@@ -71,6 +71,10 @@ vi.mock("@publira/api-client/admin/client", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetAccessToken.mockResolvedValue("valid-token");
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("loginAdmin", () => {
@@ -319,10 +323,21 @@ describe("getAdminCurrentUser", () => {
     });
   });
 
-  it("rethrows an unexpected error", async () => {
-    mockGetMe.mockRejectedValueOnce(new Error("Network error"));
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an unexpected error only outside the cache scope, and logs its cause there", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {
+      // Asserted below.
+    });
+    const error = new Error("Network error");
+    mockGetMe.mockRejectedValueOnce(error);
     await expect(getAdminCurrentUser("tenant_001")).rejects.toThrow(
-      "Network error"
+      "The signed-in operator could not be read."
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith(droppedEntry);
+    expect(warn).toHaveBeenCalledWith(
+      "[web-admin] getAdminCurrentUser failed",
+      error
     );
   });
 
@@ -368,10 +383,13 @@ describe("isAdminSessionValid", () => {
     expect(mockCacheLife).not.toHaveBeenCalledWith(droppedEntry);
   });
 
-  it("rethrows an unexpected error", async () => {
+  it("throws an unexpected error", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {
+      // The cause is logged inside the cache scope; not under test here.
+    });
     mockGetMe.mockRejectedValueOnce(new Error("Unauthorized"));
     await expect(isAdminSessionValid("tenant_001")).rejects.toThrow(
-      "Unauthorized"
+      "The signed-in operator could not be read."
     );
   });
 });

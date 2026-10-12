@@ -1,5 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
@@ -9,6 +12,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
@@ -58,7 +63,7 @@ const getTenantSiteSettingsForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<GetTenantSiteSettingsResult> => {
+): Promise<CachedRead<GetTenantSiteSettingsResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -92,7 +97,6 @@ const getTenantSiteSettingsForSession = async (
       },
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: await mapErrorToMessage(
@@ -103,6 +107,7 @@ const getTenantSiteSettingsForSession = async (
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       settings: defaultSettings,
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -120,7 +125,13 @@ export const getTenantSiteSettings = async (
   tenantId: string,
   locale: Locale
 ): Promise<GetTenantSiteSettingsResult> =>
-  getTenantSiteSettingsForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await getTenantSiteSettingsForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 export const updateTenantSiteSettings = async (
   input: {

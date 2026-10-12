@@ -2,6 +2,7 @@ import type { AdminAccessTicket } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
@@ -13,6 +14,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
   cursorPageRequest,
@@ -163,7 +166,7 @@ const listAccessTicketsForSession = async (
   locale: Locale,
   options: ListAccessTicketsOptions,
   sessionId: string
-): Promise<ListAccessTicketsResult> => {
+): Promise<CachedRead<ListAccessTicketsResult>> => {
   "use cache: private";
   cacheTag(accessTicketsCacheTag(tenantId));
 
@@ -197,7 +200,6 @@ const listAccessTicketsForSession = async (
       tickets: response.tickets.map(mapTicket),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
@@ -209,6 +211,7 @@ const listAccessTicketsForSession = async (
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
       tickets: [],
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -225,11 +228,13 @@ export const listAccessTickets = async (
   locale: Locale,
   options: ListAccessTicketsOptions = {}
 ): Promise<ListAccessTicketsResult> =>
-  listAccessTicketsForSession(
-    tenantId,
-    locale,
-    options,
-    await getAccessToken()
+  settleCachedRead(
+    await listAccessTicketsForSession(
+      tenantId,
+      locale,
+      options,
+      await getAccessToken()
+    )
   );
 
 export const issueAccessTicket = async (

@@ -1,6 +1,9 @@
 import { AgeVerification } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
@@ -10,6 +13,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 import type { TenantAgeVerification } from "./tenant-age-verification-shared";
@@ -85,7 +90,7 @@ const getTenantAgeVerificationForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<GetTenantAgeVerificationResult> => {
+): Promise<CachedRead<GetTenantAgeVerificationResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -121,7 +126,6 @@ const getTenantAgeVerificationForSession = async (
 
     return { ageVerification, ok: true };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
@@ -131,6 +135,7 @@ const getTenantAgeVerificationForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -139,7 +144,13 @@ export const getTenantAgeVerification = async (
   tenantId: string,
   locale: Locale
 ): Promise<GetTenantAgeVerificationResult> =>
-  getTenantAgeVerificationForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await getTenantAgeVerificationForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 export const updateTenantAgeVerification = async (
   input: { tenantId: string; ageVerification: TenantAgeVerification },

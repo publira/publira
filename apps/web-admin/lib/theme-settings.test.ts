@@ -188,6 +188,25 @@ describe("theme-settings", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetTenantThemeApi.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getTenantThemeSettings } = await import("./theme-settings");
+
+    await expect(getTenantThemeSettings("TENANT001", "en")).rejects.toThrow(
+      Error
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   it("returns an invalid_argument error from an update as it is", async () => {
     mockUpsertTenantThemeApi.mockRejectedValueOnce(
       new ConnectError(

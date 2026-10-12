@@ -181,6 +181,24 @@ describe("store-payment-settings", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetApi.mockRejectedValueOnce(new ConnectError("boom", Code.Internal));
+
+    const { getTenantStorePaymentSettings } =
+      await import("./store-payment-settings");
+
+    await expect(
+      getTenantStorePaymentSettings("TENANT001", "en")
+    ).rejects.toThrow(Error);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   it("sends the route as the enum and each key with its mode", async () => {
     mockUpdateApi.mockResolvedValueOnce({ settings: rpcSettings });
 
