@@ -17,23 +17,22 @@ func TestCommentAuthorSubjectKeyNamesTheComment(t *testing.T) {
 	}
 }
 
-func TestNotifyCommentAuthorWritesAnApprovedRow(t *testing.T) {
+func TestNotifyCommentApprovedWritesAnApprovedRow(t *testing.T) {
 	tenantID := uuid.New()
 	userID := uuid.New()
 	queries := &stubCommentAuthorNotifier{}
 
-	err := NotifyCommentAuthor(context.Background(), queries, CommentAuthorNotification{
-		TenantID:         tenantID,
-		UserID:           userID,
-		NotificationType: NotificationTypeCommentApproved,
-		CommentPublicID:  "CMTPEND00001",
-		EpisodePublicID:  "EPISODE00001",
-		EpisodeTitle:     "Episode Three",
-		SeriesPublicID:   "SERIES000001",
-		SeriesTitle:      "Seed Series",
+	err := NotifyCommentApproved(context.Background(), queries, CommentApprovedNotification{
+		TenantID:        tenantID,
+		UserID:          userID,
+		CommentPublicID: "CMTPEND00001",
+		EpisodePublicID: "EPISODE00001",
+		EpisodeTitle:    "Episode Three",
+		SeriesPublicID:  "SERIES000001",
+		SeriesTitle:     "Seed Series",
 	})
 	if err != nil {
-		t.Fatalf("NotifyCommentAuthor: %v", err)
+		t.Fatalf("NotifyCommentApproved: %v", err)
 	}
 	if len(queries.created) != 1 {
 		t.Fatalf("notifications written = %d, want 1", len(queries.created))
@@ -60,112 +59,54 @@ func TestNotifyCommentAuthorWritesAnApprovedRow(t *testing.T) {
 	})
 }
 
-func TestNotifyCommentAuthorWritesAHiddenRowWithTheReason(t *testing.T) {
-	queries := &stubCommentAuthorNotifier{}
-
-	err := NotifyCommentAuthor(context.Background(), queries, CommentAuthorNotification{
-		TenantID:         uuid.New(),
-		UserID:           uuid.New(),
-		NotificationType: NotificationTypeCommentHidden,
-		CommentPublicID:  "CMTHIDE00001",
-		EpisodePublicID:  "EPISODE00001",
-		SeriesPublicID:   "SERIES000001",
-		HiddenReason:     CommentHiddenReasonAutoReports,
-	})
-	if err != nil {
-		t.Fatalf("NotifyCommentAuthor: %v", err)
-	}
-	if got := queries.created[0].NotificationType; got != NotificationTypeCommentHidden {
-		t.Fatalf("notification_type = %q, want %q", got, NotificationTypeCommentHidden)
-	}
-	assertCommentAuthorPayload(t, queries.created[0].Payload, map[string]string{
-		"episode_id":    "EPISODE00001",
-		"series_id":     "SERIES000001",
-		"comment_id":    "CMTHIDE00001",
-		"hidden_reason": CommentHiddenReasonAutoReports,
-	})
-}
-
-func TestNotifyCommentAuthorReturnsAFailedInsert(t *testing.T) {
+func TestNotifyCommentApprovedReturnsAFailedInsert(t *testing.T) {
 	queries := &stubCommentAuthorNotifier{createErr: errors.New("connection refused")}
 
-	err := NotifyCommentAuthor(context.Background(), queries, CommentAuthorNotification{
-		TenantID:         uuid.New(),
-		UserID:           uuid.New(),
-		NotificationType: NotificationTypeCommentApproved,
-		CommentPublicID:  "CMTPEND00001",
+	err := NotifyCommentApproved(context.Background(), queries, CommentApprovedNotification{
+		TenantID:        uuid.New(),
+		UserID:          uuid.New(),
+		CommentPublicID: "CMTPEND00001",
 	})
 	if err == nil {
-		t.Fatal("NotifyCommentAuthor error = nil, want the insert error")
+		t.Fatal("NotifyCommentApproved error = nil, want the insert error")
 	}
 }
 
-func TestNotifyCommentAuthorRejectsAnIncompleteRequest(t *testing.T) {
+func TestNotifyCommentApprovedRejectsAnIncompleteRequest(t *testing.T) {
 	tenantID := uuid.New()
 	userID := uuid.New()
 
 	cases := []struct {
 		name string
-		n    CommentAuthorNotification
+		n    CommentApprovedNotification
 	}{
 		{
 			name: "no comment",
-			n: CommentAuthorNotification{
-				TenantID:         tenantID,
-				UserID:           userID,
-				NotificationType: NotificationTypeCommentApproved,
+			n: CommentApprovedNotification{
+				TenantID: tenantID,
+				UserID:   userID,
 			},
 		},
 		{
 			name: "no author",
-			n: CommentAuthorNotification{
-				TenantID:         tenantID,
-				NotificationType: NotificationTypeCommentApproved,
-				CommentPublicID:  "CMTPEND00001",
+			n: CommentApprovedNotification{
+				TenantID:        tenantID,
+				CommentPublicID: "CMTPEND00001",
 			},
 		},
 		{
 			name: "no tenant",
-			n: CommentAuthorNotification{
-				UserID:           userID,
-				NotificationType: NotificationTypeCommentApproved,
-				CommentPublicID:  "CMTPEND00001",
-			},
-		},
-		{
-			name: "unknown type",
-			n: CommentAuthorNotification{
-				TenantID:         tenantID,
-				UserID:           userID,
-				NotificationType: NotificationTypeCommentAwaitingApproval,
-				CommentPublicID:  "CMTPEND00001",
-			},
-		},
-		{
-			name: "approved with a hidden reason",
-			n: CommentAuthorNotification{
-				TenantID:         tenantID,
-				UserID:           userID,
-				NotificationType: NotificationTypeCommentApproved,
-				CommentPublicID:  "CMTPEND00001",
-				HiddenReason:     CommentHiddenReasonStaff,
-			},
-		},
-		{
-			name: "hidden without a reason",
-			n: CommentAuthorNotification{
-				TenantID:         tenantID,
-				UserID:           userID,
-				NotificationType: NotificationTypeCommentHidden,
-				CommentPublicID:  "CMTHIDE00001",
+			n: CommentApprovedNotification{
+				UserID:          userID,
+				CommentPublicID: "CMTPEND00001",
 			},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			queries := &stubCommentAuthorNotifier{}
-			if err := NotifyCommentAuthor(context.Background(), queries, tc.n); err == nil {
-				t.Fatal("NotifyCommentAuthor error = nil, want a validation error")
+			if err := NotifyCommentApproved(context.Background(), queries, tc.n); err == nil {
+				t.Fatal("NotifyCommentApproved error = nil, want a validation error")
 			}
 			if len(queries.created) != 0 {
 				t.Fatalf("notifications written = %d, want 0", len(queries.created))

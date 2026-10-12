@@ -168,7 +168,7 @@ func (e *adminDBEnv) auditRowCount(t *testing.T, tenantID uuid.UUID, action, tar
 }
 
 // commentAuthorNotificationCount is how many bell rows one reader has of one
-// type. ApproveComment and HideComment write exactly one for the comment's
+// type. ApproveComment writes exactly one for the comment's
 // author, and nobody else.
 func (e *adminDBEnv) commentAuthorNotificationCount(t *testing.T, tenantID, userID uuid.UUID, notificationType string) int {
 	t.Helper()
@@ -323,7 +323,7 @@ func TestDBAdminCommentModerationRefusesAMissingOrMalformedCommentID(t *testing.
 	}
 }
 
-func TestDBAdminCommentApprovalAndHideNotifyTheAuthor(t *testing.T) {
+func TestDBAdminCommentApprovalNotifiesTheAuthorAndHideDoesNot(t *testing.T) {
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "NTF", "notify-author.example.com")
 	client := env.commentClient()
@@ -381,21 +381,19 @@ func TestDBAdminCommentApprovalAndHideNotifyTheAuthor(t *testing.T) {
 		t.Fatalf("HideComment: %v", err)
 	}
 
-	if got := env.commentAuthorNotificationCount(t, tenantID, fixture.reader, outbox.NotificationTypeCommentHidden); got != 1 {
-		t.Fatalf("comment_hidden rows for the author = %d, want 1", got)
-	}
-	_, hiddenPayload := env.commentAuthorNotificationPayload(t, tenantID, fixture.reader, outbox.NotificationTypeCommentHidden)
-	if hiddenPayload["hidden_reason"] != outbox.CommentHiddenReasonStaff {
-		t.Fatalf("comment_hidden hidden_reason = %q, want %q", hiddenPayload["hidden_reason"], outbox.CommentHiddenReasonStaff)
-	}
-	if hiddenPayload["comment_id"] != comment.PublicID {
-		t.Fatalf("comment_hidden comment_id = %q, want %q", hiddenPayload["comment_id"], comment.PublicID)
+	// The removal tells the author nothing: the approval stays the only row
+	// they have.
+	if got := env.countRows(t,
+		"SELECT count(*) FROM notifications WHERE tenant_id = $1 AND user_id = $2",
+		tenantID, fixture.reader,
+	); got != 1 {
+		t.Fatalf("notifications for the author after a removal = %d, want 1 (the approval alone)", got)
 	}
 	if got := env.countRows(t,
 		"SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2",
 		tenantID, outbox.EventTypeMemberPushNotification,
 	); got != 0 {
-		t.Fatalf("member_push_notification events = %d, want 0 (these types are bell-only)", got)
+		t.Fatalf("member_push_notification events = %d, want 0 (comment_approved is bell-only)", got)
 	}
 }
 

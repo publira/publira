@@ -147,7 +147,6 @@ func TestMemberPushNotificationSkipsATypeThatIsNotPushed(t *testing.T) {
 	for _, notificationType := range []string{
 		"episode_publish_failed",
 		NotificationTypeCommentApproved,
-		NotificationTypeCommentHidden,
 	} {
 		t.Run(notificationType, func(t *testing.T) {
 			queries := &stubPushDeviceQuerier{}

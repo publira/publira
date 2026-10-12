@@ -729,13 +729,12 @@ func validateCommentReportNote(note string) (sql.NullString, error) {
 // autoHideReportedComment applies the tenant's report threshold to the comment
 // the caller has just reported, and reports whether it took the comment down.
 //
-// The removal, its audit row, and the bell notification for the author are
-// written on the transaction that holds the report, so a tenant never ends up
-// with a comment hidden by a threshold no stored report reached, nor with
-// reports that reached it and a comment still on the site, nor with a removal
-// the author is never told about. The audit entry names no actor: the reader
-// pressed "report", and what removed the comment is the number the tenant
-// itself saved.
+// The removal and its audit row are written on the transaction that holds the
+// report, so a tenant never ends up with a comment hidden by a threshold no
+// stored report reached, nor with reports that reached it and a comment still
+// on the site. The audit entry names no actor: the reader pressed "report",
+// and what removed the comment is the number the tenant itself saved. The
+// author is not told, as with a removal by staff.
 func (s *apiServer) autoHideReportedComment(
 	ctx context.Context,
 	txq *dbmodels.Queries,
@@ -762,20 +761,6 @@ func (s *apiServer) autoHideReportedComment(
 		Outcome:    auditlog.OutcomeSuccess,
 	}); err != nil {
 		return false, s.internalDBError(ctx, "failed to record the automatic comment removal", err, "tenant_id", tenantID.String(), "comment_public_id", hiddenPublicID)
-	}
-
-	if err := outbox.NotifyCommentAuthor(ctx, txq, outbox.CommentAuthorNotification{
-		TenantID:         tenantID,
-		UserID:           comment.UserID,
-		NotificationType: outbox.NotificationTypeCommentHidden,
-		CommentPublicID:  comment.PublicID,
-		EpisodePublicID:  comment.EpisodePublicID,
-		EpisodeTitle:     comment.EpisodeTitle,
-		SeriesPublicID:   comment.SeriesPublicID,
-		SeriesTitle:      comment.SeriesTitle,
-		HiddenReason:     outbox.CommentHiddenReasonAutoReports,
-	}); err != nil {
-		return false, s.internalDBError(ctx, "failed to notify the author of an automatically hidden comment", err, "tenant_id", tenantID.String(), "comment_public_id", hiddenPublicID)
 	}
 
 	return true, nil

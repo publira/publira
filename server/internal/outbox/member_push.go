@@ -34,9 +34,9 @@ const EventTypeMemberPushNotification = "member_push_notification"
 // operator read their console bell instead. A member type added later stays
 // silent until it is named here, rather than shipping a surprise push.
 //
-// comment_approved and comment_hidden are member-facing and still absent:
-// they tell a reader what happened to their own comment, and that belongs in
-// the bell rather than on a lock screen.
+// comment_approved is member-facing and still absent: it tells a reader what
+// happened to their own comment, and that belongs in the bell rather than on a
+// lock screen.
 var pushedNotificationTypes = map[string]struct{}{
 	"episode_published": {},
 }
