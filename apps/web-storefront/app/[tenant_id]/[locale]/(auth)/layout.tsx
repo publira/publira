@@ -41,6 +41,17 @@ const AuthShell = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
+/**
+ * The auth screens are the same for every visitor until their form is used, so
+ * the App Shell a default `<Link>` loads is the static one. A cookie read under
+ * `(auth)` — the session, or the email flash cookie the `requested` and
+ * `pending` screens show — renders after the shell instead of making it one
+ * per session. This does not fail the build: Next.js validates nothing at
+ * `"shell"`, and a read outside `<Suspense>` already fails as a blocking
+ * prerender.
+ */
+export const ensureStatic = "shell";
+
 export const metadata: Metadata = {
   title: {
     default: "Publira",
