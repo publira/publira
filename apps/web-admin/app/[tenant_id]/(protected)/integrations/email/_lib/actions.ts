@@ -1,7 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
-import { toFieldErrors } from "@publira/utils/field-errors";
+import { toFieldErrors, toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
@@ -23,6 +23,7 @@ import {
 } from "#lib/email-settings-shared";
 import {
   checkboxOnFormSchema,
+  optionalBoundedIntFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
@@ -40,75 +41,82 @@ import type {
   TenantSmtpTestFormState,
 } from "../email-types";
 
-interface ParsedTenantSmtpFormData {
-  tenantId: string;
-  smtpOverrideEnabled: boolean;
-  host: string;
-  port: number;
-  username: string;
-  passwordUpdateMode: number;
-  password: string;
-  encryption: string;
-  fromName: string;
-  fromAddress: string;
-  replyTo: string;
-  recipientType: number;
-  recipientEmail: string;
-}
-
-const parseIntOrFallback = (value: string, fallback: number): number => {
-  const parsed = Math.trunc(Number(value));
-  if (!Number.isFinite(parsed)) {
-    return fallback;
+/**
+ * A mode the form does not post keeps the stored password, so a malformed
+ * value can never remove it.
+ */
+const secretUpdateModeFormSchema = z.preprocess((value) => {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (raw === String(SECRET_UPDATE_MODE_REPLACE)) {
+    return SECRET_UPDATE_MODE_REPLACE;
   }
+  return raw === String(SECRET_UPDATE_MODE_CLEAR)
+    ? SECRET_UPDATE_MODE_CLEAR
+    : SECRET_UPDATE_MODE_UNCHANGED;
+}, z.number());
 
-  return parsed;
+const recipientTypeFormSchema = z.preprocess((value) => {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return raw === String(TEST_EMAIL_RECIPIENT_TYPE_CUSTOM)
+    ? TEST_EMAIL_RECIPIENT_TYPE_CUSTOM
+    : TEST_EMAIL_RECIPIENT_TYPE_SELF;
+}, z.number());
+
+/**
+ * The SMTP form, which a save and the connection test both post. The fields
+ * are closed, and so not posted, while the override is off; whether they hold
+ * settings that can send is the API's to say.
+ */
+const tenantSmtpFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    encryption: z.preprocess(
+      (value) => (typeof value === "string" ? value.trim().toLowerCase() : ""),
+      z.string()
+    ),
+    fromAddress: optionalTrimmedString(),
+    fromName: optionalTrimmedString(),
+    host: optionalTrimmedString(),
+    password: z.preprocess(
+      (value) => (typeof value === "string" ? value : ""),
+      z.string()
+    ),
+    passwordUpdateMode: secretUpdateModeFormSchema,
+    // Absent is 0, which the API reads as no port given.
+    port: optionalBoundedIntFormSchema(t("admin.settings.email.port_invalid"), {
+      max: 65_535,
+      min: 1,
+    }).transform((port) => port ?? 0),
+    recipientEmail: optionalTrimmedString(),
+    recipientType: recipientTypeFormSchema,
+    replyTo: optionalTrimmedString(),
+    smtpOverrideEnabled: checkboxOnFormSchema,
+    tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
+    username: optionalTrimmedString(),
+  });
 };
 
-const parseSecretUpdateMode = (value: string): number => {
-  const parsed = parseIntOrFallback(value, SECRET_UPDATE_MODE_UNCHANGED);
-  if (
-    parsed === SECRET_UPDATE_MODE_REPLACE ||
-    parsed === SECRET_UPDATE_MODE_CLEAR
-  ) {
-    return parsed;
-  }
+const tenantSmtpFormFields = {
+  encryption: "value",
+  fromAddress: { kind: "value", name: "from_address" },
+  fromName: { kind: "value", name: "from_name" },
+  host: "value",
+  password: "value",
+  passwordUpdateMode: { kind: "value", name: "password_update_mode" },
+  port: "value",
+  recipientEmail: { kind: "value", name: "recipient_email" },
+  recipientType: { kind: "value", name: "recipient_type" },
+  replyTo: { kind: "value", name: "reply_to" },
+  smtpOverrideEnabled: { kind: "value", name: "smtp_override_enabled" },
+  tenantId: { kind: "value", name: "tenant_id" },
+  username: "value",
+} as const;
 
-  return SECRET_UPDATE_MODE_UNCHANGED;
+const parseTenantSmtpFormData = async (formData: FormData, locale: Locale) => {
+  const schema = await tenantSmtpFormSchema(locale);
+  return schema.safeParse(toFormDataInput(formData, tenantSmtpFormFields));
 };
-
-const parseRecipientType = (value: string): number => {
-  const parsed = parseIntOrFallback(value, TEST_EMAIL_RECIPIENT_TYPE_SELF);
-  if (parsed === TEST_EMAIL_RECIPIENT_TYPE_CUSTOM) {
-    return TEST_EMAIL_RECIPIENT_TYPE_CUSTOM;
-  }
-
-  return TEST_EMAIL_RECIPIENT_TYPE_SELF;
-};
-
-const parseTenantSmtpFormData = (
-  formData: FormData
-): ParsedTenantSmtpFormData => ({
-  encryption: String(formData.get("encryption") ?? "")
-    .trim()
-    .toLowerCase(),
-  fromAddress: String(formData.get("from_address") ?? "").trim(),
-  fromName: String(formData.get("from_name") ?? "").trim(),
-  host: String(formData.get("host") ?? "").trim(),
-  password: String(formData.get("password") ?? ""),
-  passwordUpdateMode: parseSecretUpdateMode(
-    String(formData.get("password_update_mode") ?? "")
-  ),
-  port: parseIntOrFallback(String(formData.get("port") ?? "587"), 587),
-  recipientEmail: String(formData.get("recipient_email") ?? "").trim(),
-  recipientType: parseRecipientType(
-    String(formData.get("recipient_type") ?? "")
-  ),
-  replyTo: String(formData.get("reply_to") ?? "").trim(),
-  smtpOverrideEnabled: formData.get("smtp_override_enabled") === "on",
-  tenantId: String(formData.get("tenant_id") ?? "").trim(),
-  username: String(formData.get("username") ?? "").trim(),
-});
 
 export const updateTenantEmailSettingsAction = async (
   _prevState: TenantEmailSettingsFormState,
@@ -116,15 +124,14 @@ export const updateTenantEmailSettingsAction = async (
 ): Promise<TenantEmailSettingsFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const t = await getMessagesFor(locale);
-  const input = parseTenantSmtpFormData(formData);
-
-  if (!input.tenantId) {
-    return {
-      message: t("admin.settings.tenant_missing"),
-      ok: false,
-    };
+  const [t, parsed] = await Promise.all([
+    getMessagesFor(locale),
+    parseTenantSmtpFormData(formData, locale),
+  ]);
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
+  const input = parsed.data;
 
   const result = await withAdminSessionReauth(() =>
     updateTenantEmailSettings(input, locale)
@@ -152,15 +159,14 @@ export const sendTenantSmtpTestEmailAction = async (
 ): Promise<TenantSmtpTestFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const t = await getMessagesFor(locale);
-  const input = parseTenantSmtpFormData(formData);
-
-  if (!input.tenantId) {
-    return {
-      message: t("admin.settings.tenant_missing"),
-      ok: false,
-    };
+  const [t, parsed] = await Promise.all([
+    getMessagesFor(locale),
+    parseTenantSmtpFormData(formData, locale),
+  ]);
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
+  const input = parsed.data;
 
   const result = await withAdminSessionReauth(() =>
     sendTenantSmtpTestEmail(input, locale)

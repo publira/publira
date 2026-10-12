@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SECRET_UPDATE_MODE_CLEAR } from "#lib/email-settings-shared";
+import {
+  SECRET_UPDATE_MODE_CLEAR,
+  SECRET_UPDATE_MODE_UNCHANGED,
+} from "#lib/email-settings-shared";
 
 const {
   mockAssertSameOrigin,
@@ -148,6 +151,42 @@ describe("updateTenantEmailSettingsAction", () => {
       }),
       "en"
     );
+  });
+
+  // Only the values the form posts name a mode; anything else keeps the stored
+  // password rather than removing it.
+  it("keeps the stored password for a mode the form does not post", async () => {
+    mockUpdateTenantEmailSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: savedSmtpSettings,
+    });
+
+    const { updateTenantEmailSettingsAction } = await import("./actions");
+    const formData = smtpFormData();
+    formData.set("password_update_mode", "3.9");
+
+    await updateTenantEmailSettingsAction(null, formData);
+
+    expect(mockUpdateTenantEmailSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        passwordUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
+      }),
+      "en"
+    );
+  });
+
+  it("refuses a port that is not a whole number before asking the API", async () => {
+    const { updateTenantEmailSettingsAction } = await import("./actions");
+    const formData = smtpFormData();
+    formData.set("port", "58.7");
+
+    await expect(
+      updateTenantEmailSettingsAction(null, formData)
+    ).resolves.toEqual({
+      message: "Enter an integer port between 1 and 65535.",
+      ok: false,
+    });
+    expect(mockUpdateTenantEmailSettings).not.toHaveBeenCalled();
   });
 
   it("puts the refusal of a password without a username on the username field", async () => {

@@ -2410,6 +2410,7 @@
         "override_description": "Left off, mail is sent with the platform's default SMTP settings, and the connection test is unavailable.",
         "host": "Host",
         "port": "Port",
+        "port_invalid": "Enter an integer port between 1 and 65535.",
         "username": "Username",
         "username_description": "Leave blank for a relay that takes no credentials; email is then sent without authenticating.",
         "username_required_with_password": "A password needs a username. Enter the username, or remove the password to send without authenticating.",
