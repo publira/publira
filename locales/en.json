@@ -4903,6 +4903,9 @@
         "default_locale_help": "This console starts in the language you pick here. Each operator can switch their own display language later, and each tenant picks its own default language when it is created.",
         "default_locale_label": "Default language",
         "default_locale_placeholder": "Select a language",
+        "default_timezone_empty": "No matching time zones.",
+        "default_timezone_help": "New tenants start on this time zone, and this console shows and counts dates in it. It starts on your browser's time zone.",
+        "default_timezone_label": "Default time zone",
         "description": "Create the first administrator account.",
         "locale_required": "Select a language.",
         "name_label": "Full name",
@@ -4911,6 +4914,8 @@
         "password_mismatch": "The password and its confirmation do not match.",
         "pending": "Creating...",
         "submit": "Create administrator",
+        "timezone_invalid": "Select a valid time zone.",
+        "timezone_required": "Select a time zone.",
         "title": "Initial setup"
       }
     },

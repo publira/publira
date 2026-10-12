@@ -25,9 +25,9 @@ import {
   PlatformSectionHeading,
   PlatformSectionTitle,
 } from "#components/platform-page";
+import { PlatformTimezoneCombobox } from "#components/platform-timezone-combobox";
 
 import { updatePlatformDefaultTimezoneAction } from "../_lib/actions";
-import { PlatformTimezoneCombobox } from "./platform-timezone-combobox";
 
 interface PlatformTimezoneFormProps {
   initialTimezone: string;

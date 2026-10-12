@@ -54,3 +54,12 @@ export const SETUP_DEFAULT_CURRENCY_CODE = "USD" as const;
 
 /** A currency the lock above refuses, chosen first to see the refusal. */
 export const SETUP_LOCKED_OUT_CURRENCY_LABEL = "Japanese Yen (JPY)" as const;
+
+/**
+ * The zone the setup suite's browser runs in, which the time zone field opens
+ * on and the form saves untouched. Not `UTC`, the zone a platform has before
+ * one is saved and the one the field renders without JavaScript, so a form
+ * that never read the browser's zone cannot pass for one that did. The restore
+ * file then puts back the development seed's `UTC`.
+ */
+export const SETUP_TIMEZONE = "America/Los_Angeles" as const;

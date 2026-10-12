@@ -4903,6 +4903,9 @@
         "default_locale_help": "此主控台會以您在這裡選擇的語言啟動。每位營運人員之後都可以切換自己的顯示語言，每個租戶也會在建立時選擇自己的預設語言。",
         "default_locale_label": "預設語言",
         "default_locale_placeholder": "請選擇語言",
+        "default_timezone_empty": "沒有相符的時區。",
+        "default_timezone_help": "新租戶將以此時區建立，此主控台也以此時區顯示與統計日期。初始值為您瀏覽器的時區。",
+        "default_timezone_label": "預設時區",
         "description": "建立第一個管理員帳戶。",
         "locale_required": "請選擇語言。",
         "name_label": "姓名",
@@ -4911,6 +4914,8 @@
         "password_mismatch": "密碼與確認密碼不一致。",
         "pending": "正在建立…",
         "submit": "建立管理員",
+        "timezone_invalid": "請選擇有效的時區。",
+        "timezone_required": "請選擇時區。",
         "title": "初始設定"
       }
     },

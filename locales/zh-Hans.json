@@ -4903,6 +4903,9 @@
         "default_locale_help": "此控制台会以您在这里选择的语言启动。每位运营人员之后都可以切换自己的显示语言，每个租户也会在创建时选择自己的默认语言。",
         "default_locale_label": "默认语言",
         "default_locale_placeholder": "请选择语言",
+        "default_timezone_empty": "没有匹配的时区。",
+        "default_timezone_help": "新租户将以此时区创建，此控制台也以此时区显示和统计日期。初始值为您浏览器的时区。",
+        "default_timezone_label": "默认时区",
         "description": "创建第一个管理员账户。",
         "locale_required": "请选择语言。",
         "name_label": "姓名",
@@ -4911,6 +4914,8 @@
         "password_mismatch": "密码与确认密码不一致。",
         "pending": "正在创建…",
         "submit": "创建管理员",
+        "timezone_invalid": "请选择有效的时区。",
+        "timezone_required": "请选择时区。",
         "title": "初始设置"
       }
     },

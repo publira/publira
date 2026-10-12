@@ -165,6 +165,8 @@ export interface CreateInitialUserInput {
   defaultCurrency?: string;
   /** Platform default language the operator chose on the setup form. */
   defaultLocale: Locale;
+  /** IANA zone every tenant created without one starts on. */
+  defaultTimezone: string;
   email: string;
   /** Locale the failure copy is rendered in, not the value being saved. */
   locale: Locale;
@@ -175,6 +177,7 @@ export interface CreateInitialUserInput {
 export const createInitialUser = async ({
   defaultCurrency,
   defaultLocale,
+  defaultTimezone,
   email,
   locale,
   name,
@@ -185,6 +188,7 @@ export const createInitialUser = async ({
       {
         defaultCurrency: defaultCurrency ?? "",
         defaultLocale,
+        defaultTimezone,
         email,
         name,
         password,
@@ -208,6 +212,11 @@ export const createInitialUser = async ({
           // can lag behind; every other field it refuses keeps the shared copy.
           ...(rpcErrorHasFieldViolation(error, "default_currency")
             ? { "invalid-argument": t("platform.settings.currency_invalid") }
+            : {}),
+          // The browser's tz database can name a zone the server's cannot
+          // load, and the operator can pick another from the same list.
+          ...(rpcErrorHasFieldViolation(error, "default_timezone")
+            ? { "invalid-argument": t("platform.auth.setup.timezone_invalid") }
             : {}),
           // `failed_precondition` is only ever the currency lock: a tenant
           // that sells in the stored currency had a purchase after the

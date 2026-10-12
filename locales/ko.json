@@ -4903,6 +4903,9 @@
         "default_locale_help": "여기에서 고른 언어로 이 콘솔이 표시됩니다. 운영자별 표시 언어는 나중에 바꿀 수 있고, 테넌트의 기본 언어는 테넌트를 만들 때 선택합니다.",
         "default_locale_label": "기본 언어",
         "default_locale_placeholder": "언어를 선택해 주세요",
+        "default_timezone_empty": "일치하는 시간대가 없습니다.",
+        "default_timezone_help": "새 테넌트는 이 시간대로 생성되며, 이 콘솔의 날짜 표시와 집계에도 사용됩니다. 처음에는 사용 중인 브라우저의 시간대가 선택되어 있습니다.",
+        "default_timezone_label": "기본 시간대",
         "description": "첫 관리자 계정을 만들어 주세요.",
         "locale_required": "언어를 선택해 주세요.",
         "name_label": "이름",
@@ -4911,6 +4914,8 @@
         "password_mismatch": "비밀번호와 확인용 비밀번호가 일치하지 않습니다.",
         "pending": "생성 중...",
         "submit": "관리자 계정 만들기",
+        "timezone_invalid": "유효한 시간대를 선택해 주세요.",
+        "timezone_required": "시간대를 선택해 주세요.",
         "title": "초기 설정"
       }
     },

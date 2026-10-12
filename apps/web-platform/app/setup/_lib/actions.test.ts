@@ -41,6 +41,7 @@ const setupFormData = (overrides: Record<string, string> = {}): FormData => {
     confirmPassword: "correct-horse-battery",
     default_currency: "JPY",
     default_locale: "en",
+    default_timezone: "America/Los_Angeles",
     email: "admin@example.com",
     name: "Admin User",
     password: "correct-horse-battery",
@@ -77,6 +78,7 @@ describe("setupAction", () => {
     expect(mockCreateInitialUser).toHaveBeenCalledWith({
       defaultCurrency: "JPY",
       defaultLocale: "en",
+      defaultTimezone: "America/Los_Angeles",
       email: "admin@example.com",
       // The failure copy follows the screen, which renders in the negotiated
       // locale; only `defaultLocale` is the operator's choice.
@@ -150,6 +152,46 @@ describe("setupAction", () => {
     );
 
     expect(result).toEqual({ message: "Select a currency.", ok: false });
+    expect(mockCreateInitialUser).not.toHaveBeenCalled();
+  });
+
+  it("saves the time zone chosen on the form", async () => {
+    mockCreateInitialUser.mockResolvedValueOnce({ ok: true });
+
+    const { setupAction } = await import("./actions");
+
+    await expect(
+      setupAction(null, setupFormData({ default_timezone: "Asia/Tokyo" }))
+    ).rejects.toThrow("NEXT_REDIRECT:/login?setup=done");
+    expect(mockCreateInitialUser).toHaveBeenCalledWith(
+      expect.objectContaining({ defaultTimezone: "Asia/Tokyo" })
+    );
+  });
+
+  it("rejects a time zone the runtime cannot resolve without calling the API", async () => {
+    mockGetInitialLocaleCandidate.mockResolvedValue("en");
+
+    const { setupAction } = await import("./actions");
+
+    const result = await setupAction(
+      null,
+      setupFormData({ default_timezone: "Mars/Olympus_Mons" })
+    );
+
+    expect(result).toEqual({ message: "Select a valid time zone.", ok: false });
+    expect(mockCreateInitialUser).not.toHaveBeenCalled();
+  });
+
+  it("rejects a submission that carries no time zone at all", async () => {
+    mockGetInitialLocaleCandidate.mockResolvedValue("en");
+    const formData = setupFormData();
+    formData.delete("default_timezone");
+
+    const { setupAction } = await import("./actions");
+
+    const result = await setupAction(null, formData);
+
+    expect(result).toEqual({ message: "Select a time zone.", ok: false });
     expect(mockCreateInitialUser).not.toHaveBeenCalled();
   });
 

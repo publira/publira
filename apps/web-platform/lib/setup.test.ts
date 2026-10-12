@@ -253,13 +253,14 @@ describe("resolveSetupState", () => {
 });
 
 describe("createInitialUser", () => {
-  it("sends the chosen default locale and currency and reports success", async () => {
+  it("sends the chosen default locale, time zone, and currency and reports success", async () => {
     mockCreateInitialUser.mockResolvedValueOnce({});
 
     await expect(
       createInitialUser({
         defaultCurrency: "JPY",
         defaultLocale: "en",
+        defaultTimezone: "America/Los_Angeles",
         email: "admin@example.com",
         locale: "en",
         name: "Admin",
@@ -270,6 +271,7 @@ describe("createInitialUser", () => {
       {
         defaultCurrency: "JPY",
         defaultLocale: "en",
+        defaultTimezone: "America/Los_Angeles",
         email: "admin@example.com",
         name: "Admin",
         password: "password",
@@ -283,6 +285,7 @@ describe("createInitialUser", () => {
 
     await createInitialUser({
       defaultLocale: "en",
+      defaultTimezone: "America/Los_Angeles",
       email: "admin@example.com",
       locale: "en",
       name: "Admin",
@@ -306,6 +309,7 @@ describe("createInitialUser", () => {
     const result = await createInitialUser({
       defaultCurrency: "EUR",
       defaultLocale: "en",
+      defaultTimezone: "America/Los_Angeles",
       email: "admin@example.com",
       locale: "en",
       name: "Admin",
@@ -327,6 +331,7 @@ describe("createInitialUser", () => {
     await expect(
       createInitialUser({
         defaultLocale: "ja",
+        defaultTimezone: "America/Los_Angeles",
         email: "admin@example.com",
         locale: "en",
         name: "Admin",
@@ -347,6 +352,7 @@ describe("createInitialUser", () => {
     await expect(
       createInitialUser({
         defaultLocale: "ja",
+        defaultTimezone: "America/Los_Angeles",
         email: "invalid",
         locale: "en",
         name: "Admin",
@@ -378,6 +384,7 @@ describe("createInitialUser", () => {
       createInitialUser({
         defaultCurrency: "VES",
         defaultLocale: "en",
+        defaultTimezone: "America/Los_Angeles",
         email: "admin@example.com",
         locale: "en",
         name: "Admin",
@@ -390,6 +397,37 @@ describe("createInitialUser", () => {
     });
   });
 
+  it("says which field to change when the server cannot load the time zone", async () => {
+    mockCreateInitialUser.mockRejectedValueOnce(
+      new ConnectError(
+        "timezone must be a valid IANA time zone name",
+        Code.InvalidArgument,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: { fieldViolations: [{ field: "default_timezone" }] },
+          },
+        ]
+      )
+    );
+
+    await expect(
+      createInitialUser({
+        defaultLocale: "en",
+        defaultTimezone: "America/Ciudad_Juarez",
+        email: "admin@example.com",
+        locale: "en",
+        name: "Admin",
+        password: "password",
+      })
+    ).resolves.toEqual({
+      alreadyCompleted: false,
+      message: "Select a valid time zone.",
+      ok: false,
+    });
+  });
+
   it("renders the failure copy in the locale it was given, so locale=ja is Japanese", async () => {
     mockCreateInitialUser.mockRejectedValueOnce(
       new ConnectError("setup already completed", Code.AlreadyExists)
@@ -398,6 +436,7 @@ describe("createInitialUser", () => {
     await expect(
       createInitialUser({
         defaultLocale: "ja",
+        defaultTimezone: "America/Los_Angeles",
         email: "admin@example.com",
         locale: "ja",
         name: "Admin",
@@ -419,6 +458,7 @@ describe("createInitialUser", () => {
     await expect(
       createInitialUser({
         defaultLocale: "ja",
+        defaultTimezone: "America/Los_Angeles",
         email: "admin@example.com",
         locale: "en",
         name: "Admin",
@@ -433,6 +473,7 @@ describe("createInitialUser", () => {
     await expect(
       createInitialUser({
         defaultLocale: "ja",
+        defaultTimezone: "America/Los_Angeles",
         email: "admin@example.com",
         locale: "en",
         name: "Admin",
