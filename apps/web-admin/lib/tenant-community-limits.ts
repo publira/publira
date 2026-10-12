@@ -5,7 +5,10 @@ import type {
   TenantCommunityLimitOverrides as TenantCommunityLimitOverridesMessage,
 } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
@@ -15,6 +18,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageAccessor } from "./messages";
 import { getAccessToken } from "./session";
@@ -251,7 +256,7 @@ const getTenantCommunityLimitSettingsForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<GetTenantCommunityLimitSettingsResult> => {
+): Promise<CachedRead<GetTenantCommunityLimitSettingsResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -281,7 +286,6 @@ const getTenantCommunityLimitSettingsForSession = async (
       revision: String(response.revision),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
@@ -291,6 +295,7 @@ const getTenantCommunityLimitSettingsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -299,10 +304,12 @@ export const getTenantCommunityLimitSettings = async (
   tenantId: string,
   locale: Locale
 ): Promise<GetTenantCommunityLimitSettingsResult> =>
-  getTenantCommunityLimitSettingsForSession(
-    tenantId,
-    locale,
-    await getAccessToken()
+  settleCachedRead(
+    await getTenantCommunityLimitSettingsForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
   );
 
 /**

@@ -5,6 +5,7 @@ import type {
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
@@ -16,6 +17,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
@@ -137,7 +140,7 @@ const getTenantSignInSettingsForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<TenantSignInSettingsResult> => {
+): Promise<CachedRead<TenantSignInSettingsResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -160,7 +163,6 @@ const getTenantSignInSettingsForSession = async (
     );
     return { ok: true, settings: toTenantSignInSettings(response.settings) };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(error, t("admin.settings.sign_in.load_failed"), {
@@ -168,6 +170,7 @@ const getTenantSignInSettingsForSession = async (
       }),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -176,7 +179,13 @@ export const getTenantSignInSettings = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantSignInSettingsResult> =>
-  getTenantSignInSettingsForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await getTenantSignInSettingsForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 /** The fields the API refused, in the words the form uses for them. */
 const refusedFieldErrors = (

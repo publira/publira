@@ -1,6 +1,9 @@
 import type { AdminAnnouncement } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
@@ -14,6 +17,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import type { CursorPageOptions } from "./cursor-page";
 import {
   cursorPageRequest,
@@ -50,7 +55,7 @@ const listAnnouncementsForSession = async (
   locale: Locale,
   options: CursorPageOptions,
   sessionId: string
-): Promise<ListAnnouncementsResult> => {
+): Promise<CachedRead<ListAnnouncementsResult>> => {
   "use cache: private";
   cacheTag(`announcements-${tenantId}`);
 
@@ -83,7 +88,6 @@ const listAnnouncementsForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
@@ -95,6 +99,7 @@ const listAnnouncementsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -111,11 +116,13 @@ export const listAnnouncements = async (
   locale: Locale,
   options: CursorPageOptions = {}
 ): Promise<ListAnnouncementsResult> =>
-  listAnnouncementsForSession(
-    tenantId,
-    locale,
-    options,
-    await getAccessToken()
+  settleCachedRead(
+    await listAnnouncementsForSession(
+      tenantId,
+      locale,
+      options,
+      await getAccessToken()
+    )
   );
 
 export const createAnnouncement = async (

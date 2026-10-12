@@ -319,11 +319,14 @@ describe("getAdminCurrentUser", () => {
     });
   });
 
-  it("rethrows an unexpected error", async () => {
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an unexpected error only outside the cache scope", async () => {
     mockGetMe.mockRejectedValueOnce(new Error("Network error"));
     await expect(getAdminCurrentUser("tenant_001")).rejects.toThrow(
-      "Network error"
+      "The signed-in operator could not be read."
     );
+    expect(mockCacheLife).toHaveBeenCalledWith(droppedEntry);
   });
 
   it("returns a user whose name and role are empty as long as it has a publicId", async () => {
@@ -368,10 +371,10 @@ describe("isAdminSessionValid", () => {
     expect(mockCacheLife).not.toHaveBeenCalledWith(droppedEntry);
   });
 
-  it("rethrows an unexpected error", async () => {
+  it("throws an unexpected error", async () => {
     mockGetMe.mockRejectedValueOnce(new Error("Unauthorized"));
     await expect(isAdminSessionValid("tenant_001")).rejects.toThrow(
-      "Unauthorized"
+      "The signed-in operator could not be read."
     );
   });
 });

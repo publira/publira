@@ -185,6 +185,21 @@ describe("listPages", () => {
       stale: 0,
     });
   });
+
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockListPages.mockRejectedValue(new ConnectError("boom", Code.Internal));
+
+    const { listPages } = await import("./page");
+
+    await expect(listPages("TENANT001", "en")).rejects.toThrow(Error);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
 });
 
 const slugViolation = (reason = "") =>
@@ -281,6 +296,21 @@ describe("listPublishedPages", () => {
     const result = await listPublishedPages("TENANT001", "en");
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockListPages.mockRejectedValue(new ConnectError("boom", Code.Internal));
+
+    const { listPublishedPages } = await import("./page");
+
+    await expect(listPublishedPages("TENANT001", "en")).rejects.toThrow(Error);
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
@@ -524,6 +554,25 @@ describe("listPageTranslations", () => {
       stale: 0,
     });
   });
+
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockListPageTranslations.mockRejectedValue(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { listPageTranslations } = await import("./page");
+
+    await expect(
+      listPageTranslations({ pageId: "PAGE001", tenantId: "TENANT001" }, "en")
+    ).rejects.toThrow(Error);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
 });
 
 describe("getPage", () => {
@@ -591,6 +640,23 @@ describe("getPage", () => {
     );
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetPage.mockRejectedValue(new ConnectError("boom", Code.Internal));
+
+    const { getPage } = await import("./page");
+
+    await expect(
+      getPage({ pageId: "PAGE001", tenantId: "TENANT001" }, "en")
+    ).rejects.toThrow(Error);
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
@@ -670,6 +736,23 @@ describe("listPageVersions", () => {
       requiresSignIn: false,
       versions: [],
     });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockListVersions.mockRejectedValue(new ConnectError("boom", Code.Internal));
+
+    const { listPageVersions } = await import("./page");
+
+    await expect(
+      listPageVersions({ pageId: "PAGE001", tenantId: "TENANT001" }, "en")
+    ).rejects.toThrow(Error);
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,

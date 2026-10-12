@@ -177,6 +177,26 @@ describe("tenant-sign-in-settings", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetTenantSignInSettingsApi.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getTenantSignInSettings } =
+      await import("./tenant-sign-in-settings");
+
+    await expect(getTenantSignInSettings("TENANT001", "en")).rejects.toThrow(
+      Error
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   it("writes both providers with the key's update mode", async () => {
     mockUpdateTenantSignInSettingsApi.mockResolvedValueOnce({
       settings: STORED,

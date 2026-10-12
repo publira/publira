@@ -119,6 +119,26 @@ describe("tenant-retention-settings", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetTenantRetentionSettingsApi.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getTenantRetentionSettings } =
+      await import("./tenant-retention-settings");
+
+    await expect(getTenantRetentionSettings("TENANT001", "en")).rejects.toThrow(
+      Error
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   // Every field is written, so a period the screen left following the platform
   // default has to reach the API as an absent field rather than as a number.
   it("sends an absent field for each period that follows the platform default", async () => {

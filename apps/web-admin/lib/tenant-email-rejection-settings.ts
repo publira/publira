@@ -2,6 +2,7 @@ import type { TenantEmailRejectionSettings as RpcTenantEmailRejectionSettings } 
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
@@ -13,6 +14,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 import { MAX_EMAIL_REJECTION_ENTRIES } from "./tenant-email-rejection-settings-shared";
@@ -69,7 +72,7 @@ const getTenantEmailRejectionSettingsForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<TenantEmailRejectionSettingsResult> => {
+): Promise<CachedRead<TenantEmailRejectionSettingsResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -97,7 +100,6 @@ const getTenantEmailRejectionSettingsForSession = async (
       settings: toTenantEmailRejectionSettings(response.settings),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
@@ -107,6 +109,7 @@ const getTenantEmailRejectionSettingsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -120,10 +123,12 @@ export const getTenantEmailRejectionSettings = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantEmailRejectionSettingsResult> =>
-  getTenantEmailRejectionSettingsForSession(
-    tenantId,
-    locale,
-    await getAccessToken()
+  settleCachedRead(
+    await getTenantEmailRejectionSettingsForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
   );
 
 /** Replaces the whole setting: the list sent is the list stored. */

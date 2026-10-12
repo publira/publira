@@ -130,6 +130,26 @@ describe("tenant-email-rejection-settings", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetTenantEmailRejectionSettingsApi.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getTenantEmailRejectionSettings } =
+      await import("./tenant-email-rejection-settings");
+
+    await expect(
+      getTenantEmailRejectionSettings("TENANT001", "en")
+    ).rejects.toThrow(Error);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   it("saves the whole setting and answers it as the server stored it", async () => {
     mockUpdateTenantEmailRejectionSettingsApi.mockResolvedValueOnce({
       disposableDomainListAvailable: true,

@@ -129,4 +129,24 @@ describe("tenant-comment-settings", () => {
       stale: 0,
     });
   });
+
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetTenantCommentSettingsApi.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getTenantCommentSettings } =
+      await import("./tenant-comment-settings");
+
+    await expect(getTenantCommentSettings("TENANT001", "en")).rejects.toThrow(
+      Error
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
 });

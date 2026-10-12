@@ -14,6 +14,7 @@ import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
   RPC_ERROR_REASON,
+  rpcErrorDisposition,
   rpcErrorHasFieldViolation,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
@@ -28,6 +29,8 @@ import {
 } from "./admin-auth-shared";
 import { verifyAdminPageSession } from "./admin-page-session";
 import { apiClient, withServiceHeaders, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
   cursorPageRequest,
@@ -1184,7 +1187,7 @@ const listEpisodeImagesForSession = async (
   },
   locale: Locale,
   sessionId: string
-): Promise<ListEpisodeImagesResult> => {
+): Promise<CachedRead<ListEpisodeImagesResult>> => {
   "use cache: private";
   cacheTag(episodeCacheTag(input.tenantId, input.episodeId));
 
@@ -1213,7 +1216,6 @@ const listEpisodeImagesForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       images: [],
@@ -1224,6 +1226,7 @@ const listEpisodeImagesForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -1235,7 +1238,9 @@ export const listEpisodeImages = async (
   },
   locale: Locale
 ): Promise<ListEpisodeImagesResult> =>
-  listEpisodeImagesForSession(input, locale, await getAccessToken());
+  settleCachedRead(
+    await listEpisodeImagesForSession(input, locale, await getAccessToken())
+  );
 
 const reorderEpisodes = async (
   input: {

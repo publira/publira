@@ -97,6 +97,26 @@ describe("getTenantSiteSettings", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    const { Code, ConnectError } = await import("@publira/api-client/errors");
+    mockGetTenantConfigApi.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getTenantSiteSettings } = await import("./site-settings");
+
+    await expect(getTenantSiteSettings("TENANT001", "en")).rejects.toThrow(
+      Error
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   it("files the settings under the tenant site settings tag", async () => {
     mockGetTenantConfigApi.mockResolvedValueOnce({});
 

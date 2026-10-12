@@ -3,6 +3,7 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { toIntlLocale } from "@publira/i18n";
@@ -17,6 +18,8 @@ import {
 } from "./admin-auth-shared";
 import { verifyAdminPageSession } from "./admin-page-session";
 import { apiClient, withServiceHeaders, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import type { CropRect } from "./crop-rect";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -416,7 +419,7 @@ const getCreatorForSession = async (
   },
   locale: Locale,
   sessionId: string
-): Promise<GetCreatorResult> => {
+): Promise<CachedRead<GetCreatorResult>> => {
   "use cache: private";
   cacheTag(`creators-${input.tenantId}`);
   cacheTag(`creator-${input.tenantId}-${input.publicId}`);
@@ -454,7 +457,6 @@ const getCreatorForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
@@ -467,6 +469,7 @@ const getCreatorForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -478,7 +481,9 @@ export const getCreator = async (
   },
   locale: Locale
 ): Promise<GetCreatorResult> =>
-  getCreatorForSession(input, locale, await getAccessToken());
+  settleCachedRead(
+    await getCreatorForSession(input, locale, await getAccessToken())
+  );
 
 export interface CreatorAccountInput {
   tenantId: string;

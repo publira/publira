@@ -151,6 +151,26 @@ describe("tenant-community-limits", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetTenantCommunityLimitSettingsApi.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getTenantCommunityLimitSettings } =
+      await import("./tenant-community-limits");
+
+    await expect(
+      getTenantCommunityLimitSettings("TENANT001", "en")
+    ).rejects.toThrow(Error);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   it("reports a missing session without naming a limit", async () => {
     mockGetAccessToken.mockResolvedValue("");
 

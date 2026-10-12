@@ -19,6 +19,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 import type {
@@ -178,7 +180,7 @@ const getTenantStorePaymentSettingsForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<TenantStorePaymentSettingsResult> => {
+): Promise<CachedRead<TenantStorePaymentSettingsResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -205,7 +207,6 @@ const getTenantStorePaymentSettingsForSession = async (
       settings: toTenantStorePaymentSettings(response.settings),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
@@ -215,6 +216,7 @@ const getTenantStorePaymentSettingsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -223,10 +225,12 @@ export const getTenantStorePaymentSettings = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantStorePaymentSettingsResult> =>
-  getTenantStorePaymentSettingsForSession(
-    tenantId,
-    locale,
-    await getAccessToken()
+  settleCachedRead(
+    await getTenantStorePaymentSettingsForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
   );
 
 /** The fields the API refused, in the words the form uses for them. */

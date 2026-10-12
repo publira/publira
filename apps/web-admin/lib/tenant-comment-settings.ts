@@ -1,6 +1,9 @@
 import { CommentMode } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
@@ -10,6 +13,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 import type { TenantCommentMode } from "./tenant-comment-settings-shared";
@@ -90,7 +95,7 @@ const getTenantCommentSettingsForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<GetTenantCommentSettingsResult> => {
+): Promise<CachedRead<GetTenantCommentSettingsResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -130,7 +135,6 @@ const getTenantCommentSettingsForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
@@ -142,6 +146,7 @@ const getTenantCommentSettingsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -150,7 +155,13 @@ export const getTenantCommentSettings = async (
   tenantId: string,
   locale: Locale
 ): Promise<GetTenantCommentSettingsResult> =>
-  getTenantCommentSettingsForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await getTenantCommentSettingsForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 export const updateTenantCommentSettings = async (
   input: {

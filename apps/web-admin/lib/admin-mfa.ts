@@ -22,6 +22,7 @@ import { cacheTag } from "next/cache";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageAccessor } from "./messages";
 import { getAccessToken } from "./session";
@@ -207,7 +208,7 @@ export const adminMfaStatusCacheTag = (tenantId: string): string =>
 const getAdminMfaStatusForSession = async (
   tenantId: string,
   token: string
-): Promise<GetAdminMfaStatusResult> => {
+): Promise<CachedRead<GetAdminMfaStatusResult>> => {
   "use cache: private";
 
   cacheTag(adminMfaStatusCacheTag(tenantId));
@@ -236,14 +237,28 @@ const getAdminMfaStatusForSession = async (
       dropFailedCacheEntry();
       return { ok: false, requiresSignIn: true };
     }
-    throw error;
+    dropFailedCacheEntry();
+    return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
 
+/**
+ * The signed-in operator's second factor, or a rejected session. Any other
+ * failure reaches the error boundary: the account screen has no copy for a
+ * status it could not read.
+ */
 export const getAdminMfaStatus = async (
   tenantId: string
-): Promise<GetAdminMfaStatusResult> =>
-  getAdminMfaStatusForSession(tenantId, await getAccessToken());
+): Promise<GetAdminMfaStatusResult> => {
+  const { unexpected, ...result } = await getAdminMfaStatusForSession(
+    tenantId,
+    await getAccessToken()
+  );
+  if (unexpected) {
+    throw new Error("The second factor's status could not be read.");
+  }
+  return result;
+};
 
 export const verifyAdminMfa = async (
   tenantId: string,

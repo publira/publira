@@ -134,6 +134,22 @@ describe("fcm-settings", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetApi.mockRejectedValueOnce(new ConnectError("boom", Code.Internal));
+    const { getTenantFcmSettings } = await import("./fcm-settings");
+
+    await expect(getTenantFcmSettings("TENANT001", "en")).rejects.toThrow(
+      Error
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   it("answers a refused key with the console's copy rather than the server's", async () => {
     mockSaveApi.mockRejectedValueOnce(
       new ConnectError(

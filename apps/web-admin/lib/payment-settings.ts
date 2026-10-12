@@ -5,6 +5,7 @@ import type {
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
@@ -16,6 +17,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import type {
   PaymentProvider,
@@ -168,7 +171,7 @@ const getTenantPaymentSettingsForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<TenantPaymentSettingsResult> => {
+): Promise<CachedRead<TenantPaymentSettingsResult>> => {
   "use cache: private";
   // The currency of a tenant that has saved no settings is the platform's
   // default, which publira server and publiractl change without this app, and
@@ -203,7 +206,6 @@ const getTenantPaymentSettingsForSession = async (
       settings: toTenantPaymentSettings(response.settings),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: parseErrorMessage(
@@ -213,6 +215,7 @@ const getTenantPaymentSettingsForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -221,13 +224,19 @@ export const getTenantPaymentSettings = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantPaymentSettingsResult> =>
-  getTenantPaymentSettingsForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await getTenantPaymentSettingsForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 const listPaymentProvidersForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<PaymentProvidersResult> => {
+): Promise<CachedRead<PaymentProvidersResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -249,7 +258,6 @@ const listPaymentProvidersForSession = async (
       providers: await requestPaymentProviders(normalizedTenantId, sessionId),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: parseErrorMessage(
@@ -259,6 +267,7 @@ const listPaymentProvidersForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -268,7 +277,13 @@ export const listPaymentProviders = async (
   tenantId: string,
   locale: Locale
 ): Promise<PaymentProvidersResult> =>
-  listPaymentProvidersForSession(tenantId, locale, await getAccessToken());
+  settleCachedRead(
+    await listPaymentProvidersForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
+  );
 
 /**
  * The declaration of the provider a save names, read afresh so the Action

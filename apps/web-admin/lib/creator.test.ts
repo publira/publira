@@ -329,6 +329,26 @@ describe("getCreator", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    const { Code, ConnectError } = await import("@publira/api-client/errors");
+    mockGetCreator.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getCreator } = await import("./creator");
+
+    await expect(
+      getCreator({ publicId: "CREATOR001", tenantId: "TENANT001" }, "en")
+    ).rejects.toThrow(Error);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   it("treats a response with no creator as an error", async () => {
     mockGetCreator.mockResolvedValue({});
 

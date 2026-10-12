@@ -148,6 +148,23 @@ describe("tenant-legal-pages", () => {
     });
   });
 
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
+    mockGetTenantLegalPagesApi.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getTenantLegalPages } = await import("./tenant-legal-pages");
+
+    await expect(getTenantLegalPages("TENANT001", "en")).rejects.toThrow(Error);
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
   it("writes both ids and reads back what was stored", async () => {
     mockUpdateTenantLegalPagesApi.mockResolvedValueOnce({
       pages: {

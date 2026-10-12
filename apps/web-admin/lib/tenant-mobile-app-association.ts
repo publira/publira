@@ -5,6 +5,7 @@ import type {
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
@@ -16,6 +17,8 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
@@ -81,7 +84,7 @@ const getTenantMobileAppAssociationForSession = async (
   tenantId: string,
   locale: Locale,
   sessionId: string
-): Promise<TenantMobileAppAssociationResult> => {
+): Promise<CachedRead<TenantMobileAppAssociationResult>> => {
   "use cache: private";
 
   const t = await getMessagesFor(locale);
@@ -108,7 +111,6 @@ const getTenantMobileAppAssociationForSession = async (
       ok: true,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
@@ -118,6 +120,7 @@ const getTenantMobileAppAssociationForSession = async (
       ),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -126,10 +129,12 @@ export const getTenantMobileAppAssociation = async (
   tenantId: string,
   locale: Locale
 ): Promise<TenantMobileAppAssociationResult> =>
-  getTenantMobileAppAssociationForSession(
-    tenantId,
-    locale,
-    await getAccessToken()
+  settleCachedRead(
+    await getTenantMobileAppAssociationForSession(
+      tenantId,
+      locale,
+      await getAccessToken()
+    )
   );
 
 /** Which field the API refused, as the form names it to the operator. */

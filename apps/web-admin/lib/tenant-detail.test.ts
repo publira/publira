@@ -166,7 +166,9 @@ describe("tenant-detail", () => {
     expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
-  it("throws an error it cannot classify as it is", async () => {
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
     mockGetTenant.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
@@ -174,7 +176,12 @@ describe("tenant-detail", () => {
     const { getTenantForSession } = await import("./tenant-detail");
 
     await expect(getTenantForSession("tenant_admin_001")).rejects.toThrow(
-      "boom"
+      "The tenant could not be read."
     );
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });
