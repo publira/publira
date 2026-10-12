@@ -1,11 +1,18 @@
 import { ClientSurface } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { tenantPurchasesTag } from "./cache-tags";
 import { listMyPurchases } from "./purchases";
 
-const { mockListMyPurchases, mockResolveAccessToken } = vi.hoisted(() => ({
-  mockListMyPurchases: vi.fn(),
-  mockResolveAccessToken: vi.fn(),
+const { mockCacheTag, mockListMyPurchases, mockResolveAccessToken } =
+  vi.hoisted(() => ({
+    mockCacheTag: vi.fn(),
+    mockListMyPurchases: vi.fn(),
+    mockResolveAccessToken: vi.fn(),
+  }));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./api-client", () => ({
@@ -23,6 +30,7 @@ const ACCESS_TOKEN = "session-token";
 
 describe("listMyPurchases", () => {
   beforeEach(() => {
+    mockCacheTag.mockReset();
     mockResolveAccessToken.mockResolvedValue(ACCESS_TOKEN);
     mockListMyPurchases.mockResolvedValue({
       nextToken: "",
@@ -43,6 +51,12 @@ describe("listMyPurchases", () => {
       },
       { Authorization: `Bearer ${ACCESS_TOKEN}` }
     );
+  });
+
+  it("files the library under the reader's purchases tag", async () => {
+    await listMyPurchases(TENANT_ID, { locale: "en" });
+
+    expect(mockCacheTag).toHaveBeenCalledWith(tenantPurchasesTag(TENANT_ID));
   });
 
   it("keeps the currency each purchase was paid in beside its price", async () => {
