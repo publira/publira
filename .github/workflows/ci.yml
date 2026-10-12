@@ -51,11 +51,6 @@ permissions:
   contents: read
   pull-requests: read
 
-# Every Linux job names its Ubuntu release instead of `ubuntu-latest`, which
-# GitHub moves to a new release on a date of its own and so fails every pull
-# request at once when a job does not pass on it. Renovate proposes the next
-# release as a pull request of its own, and a change to this file runs every
-# job, so the move is tested before it lands.
 jobs:
   changes:
     name: Detect changes
