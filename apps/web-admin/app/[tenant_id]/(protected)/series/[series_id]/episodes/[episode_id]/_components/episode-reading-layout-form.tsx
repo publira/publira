@@ -31,8 +31,10 @@ import type {
 } from "#lib/reading-layout";
 
 import {
-  ReadingDirectionField,
+  EpisodeReadingDirectionSelect,
+  SpreadStartPageField,
   SpreadStartSourceField,
+  SpreadStartSourceSelect,
 } from "./episode-reading-layout-controls";
 
 interface EpisodeReadingLayoutFormProps {
@@ -111,38 +113,50 @@ export const EpisodeReadingLayoutForm = ({
         <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
         <ActionFormFieldset className="grid gap-4">
-          <ReadingDirectionField
-            initialValue={initialLayout.readingDirection}
-            label={
+          <Field>
+            <FieldLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.series.episodes.layout.reading_direction" />
               </Suspense>
-            }
-            seriesDirection={seriesLayout?.readingDirection}
-          />
+            </FieldLabel>
+            <FieldContent>
+              <EpisodeReadingDirectionSelect
+                initialValue={initialLayout.readingDirection}
+                seriesDirection={seriesLayout?.readingDirection}
+              />
+            </FieldContent>
+          </Field>
 
           <SpreadStartSourceField
-            description={
-              hasNoPages ? (
-                <FieldDescription>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                    <Message message="admin.series.episodes.layout.spread_start_no_pages" />
-                  </Suspense>
-                </FieldDescription>
-              ) : null
-            }
-            hasNoPages={hasNoPages}
             initialValue={
               initialLayout.spreadStartIndex === undefined
                 ? "series"
                 : "episode"
             }
-            label={
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.series.episodes.layout.spread_start" />
-              </Suspense>
-            }
-            pageField={
+          >
+            <Field>
+              <FieldLabel>
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="admin.series.episodes.layout.spread_start" />
+                </Suspense>
+              </FieldLabel>
+              <FieldContent>
+                <SpreadStartSourceSelect
+                  hasNoPages={hasNoPages}
+                  seriesSpreadStartPage={seriesSpreadStartPage}
+                />
+                {hasNoPages ? (
+                  <FieldDescription>
+                    <Suspense
+                      fallback={<SkeletonLine className="h-4 w-full" />}
+                    >
+                      <Message message="admin.series.episodes.layout.spread_start_no_pages" />
+                    </Suspense>
+                  </FieldDescription>
+                ) : null}
+              </FieldContent>
+            </Field>
+            <SpreadStartPageField>
               <Field>
                 <FieldLabel required>
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
@@ -173,9 +187,8 @@ export const EpisodeReadingLayoutForm = ({
                   )}
                 </FieldContent>
               </Field>
-            }
-            seriesSpreadStartPage={seriesSpreadStartPage}
-          />
+            </SpreadStartPageField>
+          </SpreadStartSourceField>
         </ActionFormFieldset>
 
         <div className="mt-2 flex justify-end gap-2">

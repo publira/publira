@@ -16,7 +16,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
 import type { SeriesCreatorCredit } from "../series-types";
-import { SeriesCreatorCreditsField } from "./series-creator-credits-field";
+import { SeriesCreatorCreditsEditor } from "./series-creator-credits-field";
 
 // The save button sits outside this field, in the form around it, so what the
 // field tells it is read here instead.
@@ -118,12 +118,10 @@ const render = (
 ) => {
   savable.onChange = onSavableChange;
   return renderBase(
-    <SeriesCreatorCreditsField
+    <SeriesCreatorCreditsEditor
       creatorRoles={creatorRoles}
       creators={creators}
-      description={null}
       initialCredits={initialCredits}
-      legend="Authors"
     />,
     {
       wrapper: ({ children }) => (
@@ -173,7 +171,7 @@ const optionLabels = (control: HTMLSelectElement) =>
 
 afterEach(cleanup);
 
-describe("SeriesCreatorCreditsField", () => {
+describe("SeriesCreatorCreditsEditor", () => {
   // The API reads the credits back grouped by role priority and orders a save
   // the same way, so nothing here re-sorts them — a row that sorted itself the
   // moment its author was chosen would move out from under the editor.

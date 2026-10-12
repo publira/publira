@@ -13,7 +13,6 @@ import {
 } from "@publira/ui-components/combobox";
 import type { ComboboxItem } from "@publira/ui-components/combobox";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -264,25 +263,10 @@ const CreatorCreditRow = ({
   );
 };
 
-interface SeriesCreatorCreditsFieldProps {
-  creatorRoles: CreatorRoleOption[];
-  creatorRolesErrorMessage?: string;
-  creators: CreatorOption[];
-  creatorsErrorMessage?: string;
-  /** What the list of credits says about itself, under the list. */
-  description: ReactNode;
-  /**
-   * The credits the series holds, read once. The rows are this field's own
-   * state from then on, and what the form posts is the hidden field below —
-   * so a half-written row stays on screen without the rest of the form having
-   * to know about it.
-   */
-  initialCredits: SeriesCreatorCredit[];
-  legend: ReactNode;
-}
-
 /**
- * Who the series is credited to, and in what capacity.
+ * Who the series is credited to, and in what capacity: a `fieldset` holding
+ * `SeriesCreatorCreditsLegend`, `SeriesCreatorCreditsEditor`, and what the
+ * list says about itself under it.
  *
  * This list is the template an episode is created from: editing it changes
  * what the next episode is baked with and leaves the episodes that already
@@ -293,14 +277,37 @@ interface SeriesCreatorCreditsFieldProps {
  * and a single `<label>` would have nothing to point at.
  */
 export const SeriesCreatorCreditsField = ({
+  children,
+}: {
+  children: ReactNode;
+}) => <fieldset className="grid gap-2">{children}</fieldset>;
+
+export const SeriesCreatorCreditsLegend = ({
+  children,
+}: {
+  children: ReactNode;
+}) => (
+  <legend className="text-sm font-medium text-foreground">{children}</legend>
+);
+
+interface SeriesCreatorCreditsEditorProps {
+  creatorRoles: CreatorRoleOption[];
+  creators: CreatorOption[];
+  /**
+   * The credits the series holds, read once. The rows are this editor's own
+   * state from then on, and what the form posts is the hidden field below —
+   * so a half-written row stays on screen without the rest of the form having
+   * to know about it.
+   */
+  initialCredits: SeriesCreatorCredit[];
+}
+
+/** The credit rows, the controls that add and arrange them, and what they post. */
+export const SeriesCreatorCreditsEditor = ({
   creatorRoles,
-  creatorRolesErrorMessage,
   creators,
-  creatorsErrorMessage,
-  description,
   initialCredits,
-  legend,
-}: SeriesCreatorCreditsFieldProps) => {
+}: SeriesCreatorCreditsEditorProps) => {
   const locale = useAdminLocale();
   // The save button belongs to the form around this field, which is told
   // whether the shares as typed can be saved whenever that changes.
@@ -433,18 +440,7 @@ export const SeriesCreatorCreditsField = ({
   const canAdd = creatorItems.length > 0 && creatorRoles.length > 0;
 
   return (
-    <fieldset className="grid gap-2">
-      <legend className="text-sm font-medium text-foreground">{legend}</legend>
-
-      {creatorsErrorMessage ? (
-        <FormMessage variant="destructive">{creatorsErrorMessage}</FormMessage>
-      ) : null}
-      {creatorRolesErrorMessage ? (
-        <FormMessage variant="destructive">
-          {creatorRolesErrorMessage}
-        </FormMessage>
-      ) : null}
-
+    <>
       {resolvedRows.length === 0 ? (
         <p className="text-xs text-muted-foreground">
           <ClientMessage message="admin.series.form.creators_none" />
@@ -514,8 +510,6 @@ export const SeriesCreatorCreditsField = ({
         type="hidden"
         value={JSON.stringify(credits)}
       />
-
-      {description}
-    </fieldset>
+    </>
   );
 };

@@ -10,6 +10,7 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@publira/ui-components/field";
+import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -38,26 +39,38 @@ import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
 import type { TenantCommentMode } from "#lib/tenant-comment-settings-shared";
 
 import type { SeriesActionState, SeriesListItem } from "../series-types";
-import { SeriesAvailabilityField } from "./series-availability-field";
+import { SeriesAvailabilitySelect } from "./series-availability-field";
 import {
-  SeriesAgeRatingField,
-  SeriesGenreField,
+  SeriesAgeRatingSelect,
+  SeriesGenreCombobox,
+  SeriesScheduleEmpty,
   SeriesScheduleField,
-  SeriesStatusField,
-  SeriesTagField,
+  SeriesScheduleLegend,
+  SeriesScheduleWeekdays,
+  SeriesStatusSelect,
+  SeriesTagInput,
 } from "./series-classification-fields";
 import type { GenreOption } from "./series-classification-fields";
-import { SeriesCommentModeField } from "./series-comment-mode-field";
-import { SeriesCreatorCreditsField } from "./series-creator-credits-field";
+import { SeriesCommentModeSelect } from "./series-comment-mode-field";
+import {
+  SeriesCreatorCreditsEditor,
+  SeriesCreatorCreditsField,
+  SeriesCreatorCreditsLegend,
+} from "./series-creator-credits-field";
 import type {
   CreatorOption,
   CreatorRoleOption,
 } from "./series-creator-credits-field";
-import { SeriesEyeCatchUpload } from "./series-eye-catch-upload";
-import { SeriesLabelField } from "./series-label-field";
+import {
+  SeriesEyeCatchPreview,
+  SeriesEyeCatchPreviewEmpty,
+  SeriesEyeCatchPreviewTitle,
+  SeriesEyeCatchUpload,
+} from "./series-eye-catch-upload";
+import { SeriesLabelCombobox } from "./series-label-field";
 import type { LabelOption } from "./series-label-field";
-import { SeriesPurchaseAvailabilityField } from "./series-purchase-availability-field";
-import { SeriesReadingDirectionField } from "./series-reading-layout-fields";
+import { SeriesPurchaseAvailabilitySelect } from "./series-purchase-availability-field";
+import { SeriesReadingDirectionSelect } from "./series-reading-layout-fields";
 
 interface SeriesFormProps {
   mode: "create" | "update";
@@ -145,6 +158,63 @@ const NEW_SERIES_VALUES: SeriesFormValues = {
   tagNames: [],
   title: "",
 };
+
+/** The label the series is filed under, with a way to make one when none exists. */
+const LabelField = ({
+  canCreateLabel,
+  initialValue,
+  labels,
+  labelsErrorMessage,
+}: {
+  canCreateLabel: boolean;
+  initialValue: string;
+  labels: LabelOption[];
+  labelsErrorMessage?: string;
+}) => (
+  <Field>
+    <FieldLabel required>
+      <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+        <Message message="admin.series.form.label" />
+      </Suspense>
+    </FieldLabel>
+    <FieldContent>
+      {labelsErrorMessage ? (
+        <FormMessage variant="destructive">{labelsErrorMessage}</FormMessage>
+      ) : null}
+
+      <SeriesLabelCombobox initialValue={initialValue} labels={labels} />
+
+      {/* An empty list that was read successfully is a tenant with no
+          labels yet, which has to make one before it can save a series. */}
+      {labels.length === 0 && !labelsErrorMessage ? (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+            <Message message="admin.series.form.label_none" />
+          </Suspense>
+          {canCreateLabel ? (
+            <>
+              {" "}
+              <Link
+                className="text-primary underline underline-offset-4"
+                href="/labels/new"
+              >
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message message="admin.series.form.label_create" />
+                </Suspense>
+              </Link>
+            </>
+          ) : null}
+        </FieldDescription>
+      ) : (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="admin.series.form.label_description" />
+          </Suspense>
+        </FieldDescription>
+      )}
+    </FieldContent>
+  </Field>
+);
 
 /**
  * The form is composed on the server. Each control that holds what the editor
@@ -246,77 +316,47 @@ export const SeriesForm = ({
             </FieldContent>
           </Field>
 
-          <SeriesCreatorCreditsField
-            creatorRoles={creatorRoles}
-            creatorRolesErrorMessage={creatorRolesErrorMessage}
-            creators={creators}
-            creatorsErrorMessage={creatorsErrorMessage}
-            description={
-              <>
-                <p className="text-xs text-muted-foreground">
-                  <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
-                    <Message message="admin.series.form.creators_description" />
-                  </Suspense>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
-                    <Message message="admin.series.form.creators_share_description" />
-                  </Suspense>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
-                    <Message message="admin.series.form.creators_template_note" />
-                  </Suspense>
-                </p>
-              </>
-            }
-            initialCredits={values.creatorCredits}
-            legend={
+          <SeriesCreatorCreditsField>
+            <SeriesCreatorCreditsLegend>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.series.form.creators" />
               </Suspense>
-            }
-          />
-
-          <SeriesLabelField
-            description={
-              // An empty list that was read successfully is a tenant with no
-              // labels yet, which has to make one before it can save a series.
-              labels.length === 0 && !labelsErrorMessage ? (
-                <FieldDescription>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-                    <Message message="admin.series.form.label_none" />
-                  </Suspense>
-                  {canCreateLabel ? (
-                    <>
-                      {" "}
-                      <Link
-                        className="text-primary underline underline-offset-4"
-                        href="/labels/new"
-                      >
-                        <Suspense
-                          fallback={<SkeletonLine className="h-4 w-24" />}
-                        >
-                          <Message message="admin.series.form.label_create" />
-                        </Suspense>
-                      </Link>
-                    </>
-                  ) : null}
-                </FieldDescription>
-              ) : (
-                <FieldDescription>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                    <Message message="admin.series.form.label_description" />
-                  </Suspense>
-                </FieldDescription>
-              )
-            }
-            initialValue={values.labelId}
-            label={
-              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                <Message message="admin.series.form.label" />
+            </SeriesCreatorCreditsLegend>
+            {creatorsErrorMessage ? (
+              <FormMessage variant="destructive">
+                {creatorsErrorMessage}
+              </FormMessage>
+            ) : null}
+            {creatorRolesErrorMessage ? (
+              <FormMessage variant="destructive">
+                {creatorRolesErrorMessage}
+              </FormMessage>
+            ) : null}
+            <SeriesCreatorCreditsEditor
+              creatorRoles={creatorRoles}
+              creators={creators}
+              initialCredits={values.creatorCredits}
+            />
+            <p className="text-xs text-muted-foreground">
+              <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
+                <Message message="admin.series.form.creators_description" />
               </Suspense>
-            }
+            </p>
+            <p className="text-xs text-muted-foreground">
+              <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
+                <Message message="admin.series.form.creators_share_description" />
+              </Suspense>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
+                <Message message="admin.series.form.creators_template_note" />
+              </Suspense>
+            </p>
+          </SeriesCreatorCreditsField>
+
+          <LabelField
+            canCreateLabel={canCreateLabel}
+            initialValue={values.labelId}
             labels={labels}
             labelsErrorMessage={labelsErrorMessage}
           />
@@ -344,82 +384,88 @@ export const SeriesForm = ({
             </FieldContent>
           </Field>
 
-          <SeriesAvailabilityField
-            description={
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.series.form.availability" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <SeriesAvailabilitySelect initialValue={values.availability} />
               <FieldDescription>
                 <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                   <Message message="admin.series.form.availability_description" />
                 </Suspense>
               </FieldDescription>
-            }
-            initialValue={values.availability}
-            label={
-              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                <Message message="admin.series.form.availability" />
-              </Suspense>
-            }
-          />
+            </FieldContent>
+          </Field>
 
-          <SeriesPurchaseAvailabilityField
-            description={
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="admin.series.form.purchase_availability" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <SeriesPurchaseAvailabilitySelect
+                initialValue={initialPurchaseAvailability ?? ""}
+                tenantPurchaseAvailability={tenantPurchaseAvailability}
+              />
               <FieldDescription>
                 <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                   <Message message="admin.series.form.purchase_availability_description" />
                 </Suspense>
               </FieldDescription>
-            }
-            initialValue={initialPurchaseAvailability ?? ""}
-            label={
-              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                <Message message="admin.series.form.purchase_availability" />
-              </Suspense>
-            }
-            tenantPurchaseAvailability={tenantPurchaseAvailability}
-          />
+            </FieldContent>
+          </Field>
 
-          <SeriesStatusField
-            description={
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+                <Message message="admin.series.form.status" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <SeriesStatusSelect initialValue={values.status} />
               <FieldDescription>
                 <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                   <Message message="admin.series.form.status_description" />
                 </Suspense>
               </FieldDescription>
-            }
-            initialValue={values.status}
-            label={
-              <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
-                <Message message="admin.series.form.status" />
-              </Suspense>
-            }
-          />
+            </FieldContent>
+          </Field>
 
-          <SeriesScheduleField
-            description={
-              <p className="text-xs text-muted-foreground">
-                <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
-                  <Message message="admin.series.form.schedule_description" />
-                </Suspense>
-              </p>
-            }
-            empty={
+          <SeriesScheduleField initialValue={values.scheduleWeekdays}>
+            <SeriesScheduleLegend>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.form.schedule" />
+              </Suspense>
+            </SeriesScheduleLegend>
+            <SeriesScheduleWeekdays />
+            <p className="text-xs text-muted-foreground">
+              <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
+                <Message message="admin.series.form.schedule_description" />
+              </Suspense>
+            </p>
+            <SeriesScheduleEmpty>
               <p className="text-xs text-muted-foreground">
                 <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
                   <Message message="admin.series.form.schedule_empty" />
                 </Suspense>
               </p>
-            }
-            initialValue={values.scheduleWeekdays}
-            legend={
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.series.form.schedule" />
-              </Suspense>
-            }
-          />
+            </SeriesScheduleEmpty>
+          </SeriesScheduleField>
 
-          <SeriesAgeRatingField
-            description={
-              // What each rating means, so the choice is made from the form
-              // rather than from the guide.
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.series.form.age_rating" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <SeriesAgeRatingSelect initialValue={values.ageRating} />
+              {/* What each rating means, so the choice is made from the form
+                  rather than from the guide. */}
               <ul className="grid gap-1 text-xs text-muted-foreground">
                 <li>
                   <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
@@ -437,42 +483,62 @@ export const SeriesForm = ({
                   </Suspense>
                 </li>
               </ul>
-            }
-            initialValue={values.ageRating}
-            label={
-              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                <Message message="admin.series.form.age_rating" />
-              </Suspense>
-            }
-          />
+            </FieldContent>
+          </Field>
 
-          <SeriesGenreField
-            description={
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.series.form.genres" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              {genresErrorMessage ? (
+                <FormMessage variant="destructive">
+                  {genresErrorMessage}
+                </FormMessage>
+              ) : null}
+
+              {/* Stands in for the picker, which a tenant with no genre to
+                  offer is not shown. */}
+              {genres.length === 0 ? (
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+                    <Message message="admin.series.form.genres_empty" />
+                  </Suspense>
+                </FieldDescription>
+              ) : null}
+              <SeriesGenreCombobox
+                genres={genres}
+                initialValue={values.genreIds}
+              />
+
               <FieldDescription>
                 <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                   <Message message="admin.series.form.genres_description" />
                 </Suspense>
               </FieldDescription>
-            }
-            empty={
-              <FieldDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-                  <Message message="admin.series.form.genres_empty" />
-                </Suspense>
-              </FieldDescription>
-            }
-            genres={genres}
-            genresErrorMessage={genresErrorMessage}
-            initialValue={values.genreIds}
-            label={
-              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                <Message message="admin.series.form.genres" />
-              </Suspense>
-            }
-          />
+            </FieldContent>
+          </Field>
 
-          <SeriesTagField
-            description={
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                <Message message="admin.series.form.tags" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              {tagSuggestionsErrorMessage ? (
+                <FormMessage variant="destructive">
+                  {tagSuggestionsErrorMessage}
+                </FormMessage>
+              ) : null}
+
+              <SeriesTagInput
+                initialValue={values.tagNames}
+                suggestions={tagSuggestions}
+              />
+
               <FieldDescription>
                 <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                   <Message
@@ -481,52 +547,48 @@ export const SeriesForm = ({
                   />
                 </Suspense>
               </FieldDescription>
-            }
-            initialValue={values.tagNames}
-            label={
-              <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-                <Message message="admin.series.form.tags" />
-              </Suspense>
-            }
-            suggestions={tagSuggestions}
-            suggestionsErrorMessage={tagSuggestionsErrorMessage}
-          />
+            </FieldContent>
+          </Field>
 
-          <SeriesCommentModeField
-            description={
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.series.form.comment_mode" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <SeriesCommentModeSelect
+                initialValue={initialCommentMode ?? ""}
+                tenantCommentMode={tenantCommentMode}
+              />
               <FieldDescription>
                 <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                   <Message message="admin.series.form.comment_mode_description" />
                 </Suspense>
               </FieldDescription>
-            }
-            initialValue={initialCommentMode ?? ""}
-            label={
-              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                <Message message="admin.series.form.comment_mode" />
-              </Suspense>
-            }
-            tenantCommentMode={tenantCommentMode}
-          />
+            </FieldContent>
+          </Field>
 
-          <SeriesReadingDirectionField
-            description={
+          <Field>
+            <FieldLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.form.reading_direction" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <SeriesReadingDirectionSelect
+                initialValue={
+                  initialReadingLayout?.readingDirection ??
+                  DEFAULT_READING_DIRECTION
+                }
+              />
               <FieldDescription>
                 <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                   <Message message="admin.series.form.reading_direction_description" />
                 </Suspense>
               </FieldDescription>
-            }
-            initialValue={
-              initialReadingLayout?.readingDirection ??
-              DEFAULT_READING_DIRECTION
-            }
-            label={
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.series.form.reading_direction" />
-              </Suspense>
-            }
-          />
+            </FieldContent>
+          </Field>
 
           {/* No upper bound: a series states it for episodes of every length,
             and one shorter than the page named here is shown without
@@ -565,18 +627,22 @@ export const SeriesForm = ({
                 </Suspense>
               </FieldLabel>
               <FieldContent>
-                <SeriesEyeCatchUpload
-                  empty={
-                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                      <Message message="admin.series.form.eye_catch_preview_empty" />
-                    </Suspense>
-                  }
-                  title={
+                <SeriesEyeCatchUpload>
+                  <SeriesEyeCatchPreviewTitle>
                     <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                       <Message message="admin.series.form.eye_catch_preview" />
                     </Suspense>
-                  }
-                />
+                  </SeriesEyeCatchPreviewTitle>
+                  <SeriesEyeCatchPreview>
+                    <SeriesEyeCatchPreviewEmpty>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-32" />}
+                      >
+                        <Message message="admin.series.form.eye_catch_preview_empty" />
+                      </Suspense>
+                    </SeriesEyeCatchPreviewEmpty>
+                  </SeriesEyeCatchPreview>
+                </SeriesEyeCatchUpload>
                 <input name="clear_eye_catch_image" type="hidden" value="0" />
                 <FieldDescription>
                   <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
