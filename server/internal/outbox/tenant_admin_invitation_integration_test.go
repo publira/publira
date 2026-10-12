@@ -427,6 +427,39 @@ func TestTenantAdminInvitationEmailGoesThroughARelayWithoutCredentials(t *testin
 	}
 }
 
+// A tenant's own SMTP server may be such a relay too, saved with no username
+// and no password.
+func TestTenantAdminInvitationEmailGoesThroughTheTenantsOwnRelay(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXINV011", "outbox-tenant-relay.example.com", "Outbox Tenant Relay")
+	relay := testutil.StartSMTPRelay(t)
+	if _, err := dbmodels.New(pg.DB).UpsertTenantSMTPConfig(ctx, dbmodels.UpsertTenantSMTPConfigParams{
+		TenantID:            tenant.ID,
+		SmtpOverrideEnabled: true,
+		Host:                sql.NullString{String: relay.Host, Valid: true},
+		Port:                sql.NullInt32{Int32: relay.Port, Valid: true},
+		Encryption:          sql.NullString{String: "none", Valid: true},
+		FromAddress:         sql.NullString{String: "tenant-mail@example.com", Valid: true},
+	}); err != nil {
+		t.Fatalf("UpsertTenantSMTPConfig: %v", err)
+	}
+	event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-tenant-relay")
+
+	handler := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Mailer: internalsmtp.NewClient(), Renderer: invitationRendererStub{},
+	})
+	if err := handler(ctx, event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if got := len(relay.Messages()); got != 1 {
+		t.Fatalf("messages the relay took = %d, want 1", got)
+	}
+}
+
 // A tenant sending through its own SMTP account is named in From by the sender
 // name it saved, and by its own name when it saved none, as the console says
 // beside the field.
