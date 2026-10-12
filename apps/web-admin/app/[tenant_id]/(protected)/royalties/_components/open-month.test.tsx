@@ -23,21 +23,28 @@ vi.mock("#components/message", () => ({
 }));
 
 // The button carries a Server Action and is covered by its own test; here it
-// only has to show what the confirmation will say.
+// only has to show what the confirmation will say, so the confirmation's slots
+// render outside the dialog that would otherwise keep them closed.
 vi.mock("./close-statement-button", () => ({
   CloseStatementButton: ({
-    confirmDescription,
-    confirmTitle,
+    children,
     period,
   }: {
-    confirmDescription: ReactNode;
-    confirmTitle: ReactNode;
+    children: ReactNode;
     period: string;
   }) => (
     <div data-period={period} data-testid="close-button">
-      <p>{confirmTitle}</p>
-      <p>{confirmDescription}</p>
+      {children}
     </div>
+  ),
+}));
+
+vi.mock("@publira/ui-components/dialog", () => ({
+  ConfirmDialogDescription: ({ children }: { children: ReactNode }) => (
+    <p>{children}</p>
+  ),
+  ConfirmDialogTitle: ({ children }: { children: ReactNode }) => (
+    <p>{children}</p>
   ),
 }));
 

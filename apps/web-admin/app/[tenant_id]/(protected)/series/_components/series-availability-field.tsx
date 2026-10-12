@@ -1,9 +1,7 @@
 "use client";
 
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 import { useCallback, useState } from "react";
-import type { ReactNode } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { isSurfaceAvailabilityValue } from "#lib/surface-availability";
@@ -24,14 +22,14 @@ const SERIES_AVAILABILITY_ITEMS = [
   },
 ];
 
-export const SeriesAvailabilityField = ({
-  description,
+/**
+ * Where the series is offered, and the hidden field that posts it. The caller
+ * places it in a `Field` and writes the label and the description there.
+ */
+export const SeriesAvailabilitySelect = ({
   initialValue,
-  label,
 }: {
-  description: ReactNode;
   initialValue: SurfaceAvailabilityValue;
-  label: ReactNode;
 }) => {
   const [value, setValue] = useState(initialValue);
 
@@ -42,17 +40,13 @@ export const SeriesAvailabilityField = ({
   }, []);
 
   return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
-      <FieldContent>
-        <Select
-          items={SERIES_AVAILABILITY_ITEMS}
-          onValueChange={handleValueChange}
-          value={value}
-        />
-        <input name="availability" type="hidden" value={value} />
-        {description}
-      </FieldContent>
-    </Field>
+    <>
+      <Select
+        items={SERIES_AVAILABILITY_ITEMS}
+        onValueChange={handleValueChange}
+        value={value}
+      />
+      <input name="availability" type="hidden" value={value} />
+    </>
   );
 };

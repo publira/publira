@@ -1,9 +1,7 @@
 "use client";
 
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 import { useCallback, useMemo, useState } from "react";
-import type { ReactNode } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { isSeriesCommentMode } from "#lib/series-comment-mode";
@@ -67,16 +65,17 @@ const SERIES_COMMENT_MODE_ITEMS = [
   },
 ];
 
-export const SeriesCommentModeField = ({
-  description,
+/**
+ * The mode the series publishes comments under, and the hidden field that
+ * posts it. The caller places it in a `Field` and writes the label and the
+ * description there.
+ */
+export const SeriesCommentModeSelect = ({
   initialValue,
-  label,
   tenantCommentMode,
 }: {
-  description: ReactNode;
   /** Empty while the series follows its tenant. */
   initialValue: SeriesCommentMode;
-  label: ReactNode;
   /**
    * What the tenant publishes comments under, for the option that follows it.
    * Absent when that read failed, and the option then says only that it
@@ -112,13 +111,9 @@ export const SeriesCommentModeField = ({
   }, []);
 
   return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
-      <FieldContent>
-        <Select items={items} onValueChange={handleValueChange} value={value} />
-        <input name="comment_mode" type="hidden" value={value} />
-        {description}
-      </FieldContent>
-    </Field>
+    <>
+      <Select items={items} onValueChange={handleValueChange} value={value} />
+      <input name="comment_mode" type="hidden" value={value} />
+    </>
   );
 };

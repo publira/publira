@@ -16,12 +16,17 @@ import {
   MultiComboboxInputGroup,
 } from "@publira/ui-components/combobox";
 import type { MultiComboboxItem } from "@publira/ui-components/combobox";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import { formatWeekdayName, WEEKDAY_NUMBERS } from "@publira/utils";
-import { useCallback, useId, useMemo, useState } from "react";
+import {
+  createContext,
+  use,
+  useCallback,
+  useId,
+  useMemo,
+  useState,
+} from "react";
 import type {
   ChangeEventHandler,
   KeyboardEventHandler,
@@ -72,14 +77,14 @@ const SERIES_AGE_RATING_ITEMS = [
   },
 ];
 
-export const SeriesStatusField = ({
-  description,
+/**
+ * The series' publication status, and the hidden field that posts it. The
+ * caller places it in a `Field` and writes the label and the description there.
+ */
+export const SeriesStatusSelect = ({
   initialValue,
-  label,
 }: {
-  description: ReactNode;
   initialValue: SeriesStatusValue;
-  label: ReactNode;
 }) => {
   const [value, setValue] = useState(initialValue);
 
@@ -92,29 +97,25 @@ export const SeriesStatusField = ({
   }, []);
 
   return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
-      <FieldContent>
-        <Select
-          items={SERIES_STATUS_ITEMS}
-          onValueChange={handleValueChange}
-          value={value}
-        />
-        <input name="status" type="hidden" value={value} />
-        {description}
-      </FieldContent>
-    </Field>
+    <>
+      <Select
+        items={SERIES_STATUS_ITEMS}
+        onValueChange={handleValueChange}
+        value={value}
+      />
+      <input name="status" type="hidden" value={value} />
+    </>
   );
 };
 
-export const SeriesAgeRatingField = ({
-  description,
+/**
+ * The series' age rating, and the hidden field that posts it. The caller
+ * places it in a `Field` and writes the label and the description there.
+ */
+export const SeriesAgeRatingSelect = ({
   initialValue,
-  label,
 }: {
-  description: ReactNode;
   initialValue: SeriesAgeRatingValue;
-  label: ReactNode;
 }) => {
   const [value, setValue] = useState(initialValue);
 
@@ -125,55 +126,87 @@ export const SeriesAgeRatingField = ({
   }, []);
 
   return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
-      <FieldContent>
-        <Select
-          items={SERIES_AGE_RATING_ITEMS}
-          onValueChange={handleValueChange}
-          value={value}
-        />
-        <input name="age_rating" type="hidden" value={value} />
-        {description}
-      </FieldContent>
-    </Field>
+    <>
+      <Select
+        items={SERIES_AGE_RATING_ITEMS}
+        onValueChange={handleValueChange}
+        value={value}
+      />
+      <input name="age_rating" type="hidden" value={value} />
+    </>
   );
 };
 
-/** `empty` is shown while no weekday is chosen. */
+interface SeriesScheduleState {
+  setValue: (update: (current: number[]) => number[]) => void;
+  /** The checked weekdays, in ascending order. */
+  value: number[];
+}
+
+const SeriesScheduleContext = createContext<SeriesScheduleState | null>(null);
+
+const useSeriesSchedule = (): SeriesScheduleState => {
+  const state = use(SeriesScheduleContext);
+  if (!state) {
+    throw new Error(
+      "SeriesSchedule slots must be rendered inside a SeriesScheduleField."
+    );
+  }
+  return state;
+};
+
+/**
+ * The weekdays new episodes of the series come out on: a `fieldset` holding
+ * `SeriesScheduleLegend`, `SeriesScheduleWeekdays`, the description, and
+ * `SeriesScheduleEmpty`, which share the checked weekdays through it.
+ */
 export const SeriesScheduleField = ({
-  description,
-  empty,
+  children,
   initialValue,
-  legend,
 }: {
-  description: ReactNode;
-  empty: ReactNode;
+  children: ReactNode;
   initialValue: number[];
-  legend: ReactNode;
 }) => {
-  const locale = useAdminLocale();
   const [value, setValue] = useState(initialValue);
+  const state = useMemo(() => ({ setValue, value }), [value]);
+
+  return (
+    <SeriesScheduleContext value={state}>
+      <fieldset className="grid gap-2">{children}</fieldset>
+    </SeriesScheduleContext>
+  );
+};
+
+export const SeriesScheduleLegend = ({ children }: { children: ReactNode }) => (
+  <legend className="text-sm font-medium text-foreground">{children}</legend>
+);
+
+/** One checkbox per weekday, and the hidden fields that post the checked ones. */
+export const SeriesScheduleWeekdays = () => {
+  const locale = useAdminLocale();
+  const { setValue, value } = useSeriesSchedule();
   // One group of seven controls rather than seven fields, so the ids are
   // numbered off a single base and the legend names the whole set.
   const groupId = useId();
   const selected = new Set(value);
 
-  const handleToggle = useCallback((weekday: number, checked: boolean) => {
-    setValue((current) => {
-      const next = new Set(current);
-      if (checked) {
-        next.add(weekday);
-      } else {
-        next.delete(weekday);
-      }
-      return [...next].toSorted((a, b) => a - b);
-    });
-  }, []);
+  const handleToggle = useCallback(
+    (weekday: number, checked: boolean) => {
+      setValue((current) => {
+        const next = new Set(current);
+        if (checked) {
+          next.add(weekday);
+        } else {
+          next.delete(weekday);
+        }
+        return [...next].toSorted((a, b) => a - b);
+      });
+    },
+    [setValue]
+  );
 
   return (
-    <fieldset className="grid gap-2">
-      <legend className="text-sm font-medium text-foreground">{legend}</legend>
+    <>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {WEEKDAY_NUMBERS.map((weekday) => (
           <div className="flex items-center gap-2" key={weekday}>
@@ -201,27 +234,32 @@ export const SeriesScheduleField = ({
           value={String(weekday)}
         />
       ))}
-      {description}
-      {value.length === 0 ? empty : null}
-    </fieldset>
+    </>
   );
 };
 
-/** `empty` stands in for the picker when the tenant has no genre to offer. */
-export const SeriesGenreField = ({
-  description,
-  empty,
+/** Its children, shown only while no weekday is checked. */
+export const SeriesScheduleEmpty = ({ children }: { children: ReactNode }) => {
+  const { value } = useSeriesSchedule();
+
+  return value.length === 0 ? children : null;
+};
+
+/**
+ * The genres the series is filed under, and the hidden fields that post them.
+ * The caller places it in a `Field` and writes the label, the description,
+ * and the reason the list could not be read there.
+ *
+ * With no genre to offer it draws no picker, and the caller writes the note
+ * that stands in for one. The hidden fields stay either way: a list that
+ * failed to load arrives empty, and the series' genres must survive the save.
+ */
+export const SeriesGenreCombobox = ({
   genres,
-  genresErrorMessage,
   initialValue,
-  label,
 }: {
-  description: ReactNode;
-  empty: ReactNode;
   genres: GenreOption[];
-  genresErrorMessage?: string;
   initialValue: string[];
-  label: ReactNode;
 }) => {
   const t = useClientMessages();
   const [value, setValue] = useState(initialValue);
@@ -233,56 +271,45 @@ export const SeriesGenreField = ({
   );
 
   return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
-      <FieldContent>
-        {genresErrorMessage ? (
-          <FormMessage variant="destructive">{genresErrorMessage}</FormMessage>
-        ) : null}
+    <>
+      {items.length === 0 ? null : (
+        <MultiCombobox items={items} onValueChange={setValue} value={value}>
+          <MultiComboboxInputGroup>
+            <MultiComboboxChips>
+              {(selected) => (
+                <>
+                  {selected.map((item) => (
+                    <MultiComboboxChip item={item} key={item.value}>
+                      {item.label}
+                      <MultiComboboxChipRemove
+                        aria-label={t("admin.series.form.genres_remove")}
+                      />
+                    </MultiComboboxChip>
+                  ))}
+                  <MultiComboboxInput
+                    placeholder={
+                      selected.length > 0
+                        ? ""
+                        : t("admin.series.form.genres_search")
+                    }
+                  />
+                </>
+              )}
+            </MultiComboboxChips>
+          </MultiComboboxInputGroup>
+          <ComboboxPopup>
+            <ComboboxEmpty>
+              <ClientMessage message="admin.series.form.genres_no_match" />
+            </ComboboxEmpty>
+            <ComboboxItems />
+          </ComboboxPopup>
+        </MultiCombobox>
+      )}
 
-        {items.length === 0 ? (
-          empty
-        ) : (
-          <MultiCombobox items={items} onValueChange={setValue} value={value}>
-            <MultiComboboxInputGroup>
-              <MultiComboboxChips>
-                {(selected) => (
-                  <>
-                    {selected.map((item) => (
-                      <MultiComboboxChip item={item} key={item.value}>
-                        {item.label}
-                        <MultiComboboxChipRemove
-                          aria-label={t("admin.series.form.genres_remove")}
-                        />
-                      </MultiComboboxChip>
-                    ))}
-                    <MultiComboboxInput
-                      placeholder={
-                        selected.length > 0
-                          ? ""
-                          : t("admin.series.form.genres_search")
-                      }
-                    />
-                  </>
-                )}
-              </MultiComboboxChips>
-            </MultiComboboxInputGroup>
-            <ComboboxPopup>
-              <ComboboxEmpty>
-                <ClientMessage message="admin.series.form.genres_no_match" />
-              </ComboboxEmpty>
-              <ComboboxItems />
-            </ComboboxPopup>
-          </MultiCombobox>
-        )}
-
-        {value.map((id) => (
-          <input key={id} name="genre_ids" type="hidden" value={id} />
-        ))}
-
-        {description}
-      </FieldContent>
-    </Field>
+      {value.map((id) => (
+        <input key={id} name="genre_ids" type="hidden" value={id} />
+      ))}
+    </>
   );
 };
 
@@ -294,18 +321,17 @@ export const SeriesGenreField = ({
 const sameTagName = (left: string, right: string): boolean =>
   left.trim().toLocaleLowerCase() === right.trim().toLocaleLowerCase();
 
-export const SeriesTagField = ({
-  description,
+/**
+ * The tags the series carries, the box that adds one, and the hidden fields
+ * that post them. The caller places it in a `Field` and writes the label, the
+ * description, and the reason the suggestions could not be read there.
+ */
+export const SeriesTagInput = ({
   initialValue,
-  label,
   suggestions,
-  suggestionsErrorMessage,
 }: {
-  description: ReactNode;
   initialValue: string[];
-  label: ReactNode;
   suggestions: string[];
-  suggestionsErrorMessage?: string;
 }) => {
   const locale = useAdminLocale();
   const [value, setValue] = useState(initialValue);
@@ -363,73 +389,62 @@ export const SeriesTagField = ({
   }, []);
 
   return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
-      <FieldContent>
-        {suggestionsErrorMessage ? (
-          <FormMessage variant="destructive">
-            {suggestionsErrorMessage}
-          </FormMessage>
-        ) : null}
-
-        {value.length > 0 ? (
-          <ul className="flex flex-wrap gap-1">
-            {value.map((tagName) => (
-              <li
-                className="inline-flex items-center gap-1 rounded-control bg-muted px-2 py-1 text-xs"
-                key={tagName}
+    <>
+      {value.length > 0 ? (
+        <ul className="flex flex-wrap gap-1">
+          {value.map((tagName) => (
+            <li
+              className="inline-flex items-center gap-1 rounded-control bg-muted px-2 py-1 text-xs"
+              key={tagName}
+            >
+              {tagName}
+              <button
+                className="rounded-control p-0.5 transition-colors duration-state ease-state hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                onClick={() => handleRemove(tagName)}
+                type="button"
               >
-                {tagName}
-                <button
-                  className="rounded-control p-0.5 transition-colors duration-state ease-state hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  onClick={() => handleRemove(tagName)}
-                  type="button"
-                >
-                  <CloseIcon aria-hidden className="h-3 w-3" />
-                  <span className="sr-only">
-                    <ClientMessage
-                      message="admin.series.form.tags_remove"
-                      values={{ name: tagName }}
-                    />
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-
-        <div className="flex gap-2">
-          <Input
-            disabled={isFull}
-            list={suggestionsId}
-            maxLength={CATALOG_NAME_MAX_LENGTH}
-            onChange={handleDraftChange}
-            onKeyDown={handleDraftKeyDown}
-            type="text"
-            value={draft}
-          />
-          <Button
-            disabled={isFull || draft.trim().length === 0}
-            onClick={addDraft}
-            type="button"
-            variant="outline"
-          >
-            <ClientMessage message="admin.series.form.tags_add" />
-          </Button>
-        </div>
-
-        <datalist id={suggestionsId}>
-          {offered.map((suggestion) => (
-            <option key={suggestion}>{suggestion}</option>
+                <CloseIcon aria-hidden className="h-3 w-3" />
+                <span className="sr-only">
+                  <ClientMessage
+                    message="admin.series.form.tags_remove"
+                    values={{ name: tagName }}
+                  />
+                </span>
+              </button>
+            </li>
           ))}
-        </datalist>
+        </ul>
+      ) : null}
 
-        {value.map((tagName) => (
-          <input key={tagName} name="tag_names" type="hidden" value={tagName} />
+      <div className="flex gap-2">
+        <Input
+          disabled={isFull}
+          list={suggestionsId}
+          maxLength={CATALOG_NAME_MAX_LENGTH}
+          onChange={handleDraftChange}
+          onKeyDown={handleDraftKeyDown}
+          type="text"
+          value={draft}
+        />
+        <Button
+          disabled={isFull || draft.trim().length === 0}
+          onClick={addDraft}
+          type="button"
+          variant="outline"
+        >
+          <ClientMessage message="admin.series.form.tags_add" />
+        </Button>
+      </div>
+
+      <datalist id={suggestionsId}>
+        {offered.map((suggestion) => (
+          <option key={suggestion}>{suggestion}</option>
         ))}
+      </datalist>
 
-        {description}
-      </FieldContent>
-    </Field>
+      {value.map((tagName) => (
+        <input key={tagName} name="tag_names" type="hidden" value={tagName} />
+      ))}
+    </>
   );
 };

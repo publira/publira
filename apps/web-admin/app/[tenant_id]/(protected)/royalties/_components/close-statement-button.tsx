@@ -10,10 +10,8 @@ import {
   ConfirmDialogAction,
   ConfirmDialogCancel,
   ConfirmDialogContent,
-  ConfirmDialogDescription,
   ConfirmDialogFooter,
   ConfirmDialogHeader,
-  ConfirmDialogTitle,
   ConfirmDialogTrigger,
 } from "@publira/ui-components/dialog";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -25,10 +23,11 @@ import { Message } from "#components/message";
 import { closeRoyaltyStatementAction } from "../_lib/actions";
 
 interface CloseStatementButtonProps {
-  /** States the total payout the close fixes, already worded for the reader. */
-  confirmDescription: ReactNode;
-  /** Names the month, already worded for the reader. */
-  confirmTitle: ReactNode;
+  /**
+   * The confirmation's `ConfirmDialogTitle`, naming the month, and its
+   * `ConfirmDialogDescription`, stating the total payout the close fixes.
+   */
+  children: ReactNode;
   period: string;
   tenantId: string;
 }
@@ -40,8 +39,7 @@ interface CloseStatementButtonProps {
  * from here; a second close from elsewhere is refused by the API.
  */
 export const CloseStatementButton = ({
-  confirmDescription,
-  confirmTitle,
+  children,
   period,
   tenantId,
 }: CloseStatementButtonProps) => {
@@ -68,12 +66,7 @@ export const CloseStatementButton = ({
             </Suspense>
           </ConfirmDialogTrigger>
           <ConfirmDialogContent>
-            <ConfirmDialogHeader>
-              <ConfirmDialogTitle>{confirmTitle}</ConfirmDialogTitle>
-              <ConfirmDialogDescription>
-                {confirmDescription}
-              </ConfirmDialogDescription>
-            </ConfirmDialogHeader>
+            <ConfirmDialogHeader>{children}</ConfirmDialogHeader>
             <ConfirmDialogFooter>
               <ConfirmDialogCancel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>

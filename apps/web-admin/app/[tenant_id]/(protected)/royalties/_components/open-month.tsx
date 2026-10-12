@@ -1,6 +1,10 @@
 import type { Locale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
 import {
+  ConfirmDialogDescription,
+  ConfirmDialogTitle,
+} from "@publira/ui-components/dialog";
+import {
   EmptyState,
   EmptyStateDescription,
   EmptyStateHeading,
@@ -100,8 +104,16 @@ const CloseStatus = ({
               <Message message="admin.royalties.open.ready" />
             </Suspense>
           </p>
-          <CloseStatementButton
-            confirmDescription={
+          <CloseStatementButton period={period} tenantId={tenantId}>
+            <ConfirmDialogTitle>
+              <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
+                <Message
+                  message="admin.royalties.close.confirm_title"
+                  values={{ period: periodLabel }}
+                />
+              </Suspense>
+            </ConfirmDialogTitle>
+            <ConfirmDialogDescription>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message
                   message="admin.royalties.close.confirm_description"
@@ -113,18 +125,8 @@ const CloseStatus = ({
                   }}
                 />
               </Suspense>
-            }
-            confirmTitle={
-              <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
-                <Message
-                  message="admin.royalties.close.confirm_title"
-                  values={{ period: periodLabel }}
-                />
-              </Suspense>
-            }
-            period={period}
-            tenantId={tenantId}
-          />
+            </ConfirmDialogDescription>
+          </CloseStatementButton>
         </div>
       );
     }

@@ -19,7 +19,6 @@ import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
-import type { ReactNode } from "react";
 
 import {
   AdminSection,
@@ -113,32 +112,21 @@ const StoreStatusLine = ({ status }: { status: StoreStatus }) => (
   </div>
 );
 
-/** A value this form shows but does not edit, such as the app a store sells in. */
-const ReadOnlyField = ({
-  description,
-  label,
-  value,
-}: {
-  description: ReactNode;
-  label: ReactNode;
-  value: string;
-}) => (
-  <Field>
-    <FieldLabel>{label}</FieldLabel>
-    <FieldContent>
-      {value ? (
-        <Input disabled readOnly type="text" value={value} />
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-            <Message message="admin.settings.store_payment.app_identity_unset" />
-          </Suspense>
-        </p>
-      )}
-      <FieldDescription>{description}</FieldDescription>
-    </FieldContent>
-  </Field>
-);
+/**
+ * A value this form shows but does not edit, such as the app a store sells in,
+ * or a note that it is not set. The caller places it in a `Field` and writes
+ * the label and the description there.
+ */
+const ReadOnlyValue = ({ value }: { value: string }) =>
+  value ? (
+    <Input disabled readOnly type="text" value={value} />
+  ) : (
+    <p className="text-sm text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+        <Message message="admin.settings.store_payment.app_identity_unset" />
+      </Suspense>
+    </p>
+  );
 
 interface TenantStorePaymentSettingsFormProps {
   canEdit: boolean;
@@ -450,37 +438,43 @@ export const TenantStorePaymentSettingsForm = ({
                     </Field>
                   </SecretKeyWhile>
                 </SecretKey>
-                <ReadOnlyField
-                  description={
-                    <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                      <Message message="admin.settings.store_payment.app_store.bundle_identifier_description" />
-                    </Suspense>
-                  }
-                  label={
+                <Field>
+                  <FieldLabel>
                     <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                       <Message message="admin.settings.store_payment.app_store.bundle_identifier" />
                     </Suspense>
-                  }
-                  value={settings.appStore.bundleIdentifier}
-                />
-                {notificationUrl ? (
-                  <ReadOnlyField
-                    description={
+                  </FieldLabel>
+                  <FieldContent>
+                    <ReadOnlyValue value={settings.appStore.bundleIdentifier} />
+                    <FieldDescription>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-3/4" />}
                       >
-                        <Message message="admin.settings.store_payment.app_store.notification_url_description" />
+                        <Message message="admin.settings.store_payment.app_store.bundle_identifier_description" />
                       </Suspense>
-                    }
-                    label={
+                    </FieldDescription>
+                  </FieldContent>
+                </Field>
+                {notificationUrl ? (
+                  <Field>
+                    <FieldLabel>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-56" />}
                       >
                         <Message message="admin.settings.store_payment.app_store.notification_url" />
                       </Suspense>
-                    }
-                    value={notificationUrl}
-                  />
+                    </FieldLabel>
+                    <FieldContent>
+                      <ReadOnlyValue value={notificationUrl} />
+                      <FieldDescription>
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-3/4" />}
+                        >
+                          <Message message="admin.settings.store_payment.app_store.notification_url_description" />
+                        </Suspense>
+                      </FieldDescription>
+                    </FieldContent>
+                  </Field>
                 ) : null}
               </fieldset>
             </CredentialsEnabled>
@@ -630,37 +624,45 @@ export const TenantStorePaymentSettingsForm = ({
                   </SecretKeyWhile>
                 </SecretKey>
                 {settings.googlePlay.serviceAccountEmail ? (
-                  <ReadOnlyField
-                    description={
-                      <Suspense
-                        fallback={<SkeletonLine className="h-4 w-3/4" />}
-                      >
-                        <Message message="admin.settings.store_payment.google_play.service_account_email_description" />
-                      </Suspense>
-                    }
-                    label={
+                  <Field>
+                    <FieldLabel>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-28" />}
                       >
                         <Message message="admin.settings.store_payment.google_play.service_account_email" />
                       </Suspense>
-                    }
-                    value={settings.googlePlay.serviceAccountEmail}
-                  />
+                    </FieldLabel>
+                    <FieldContent>
+                      <ReadOnlyValue
+                        value={settings.googlePlay.serviceAccountEmail}
+                      />
+                      <FieldDescription>
+                        <Suspense
+                          fallback={<SkeletonLine className="h-4 w-3/4" />}
+                        >
+                          <Message message="admin.settings.store_payment.google_play.service_account_email_description" />
+                        </Suspense>
+                      </FieldDescription>
+                    </FieldContent>
+                  </Field>
                 ) : null}
-                <ReadOnlyField
-                  description={
-                    <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                      <Message message="admin.settings.store_payment.google_play.package_name_description" />
-                    </Suspense>
-                  }
-                  label={
+                <Field>
+                  <FieldLabel>
                     <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                       <Message message="admin.settings.store_payment.google_play.package_name" />
                     </Suspense>
-                  }
-                  value={settings.googlePlay.packageName}
-                />
+                  </FieldLabel>
+                  <FieldContent>
+                    <ReadOnlyValue value={settings.googlePlay.packageName} />
+                    <FieldDescription>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-3/4" />}
+                      >
+                        <Message message="admin.settings.store_payment.google_play.package_name_description" />
+                      </Suspense>
+                    </FieldDescription>
+                  </FieldContent>
+                </Field>
               </fieldset>
             </CredentialsEnabled>
           </ActionFormFieldset>

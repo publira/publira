@@ -5,6 +5,10 @@ import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import {
+  ConfirmDialogDescription,
+  ConfirmDialogTitle,
+} from "@publira/ui-components/dialog";
+import {
   act,
   cleanup,
   fireEvent,
@@ -48,12 +52,12 @@ vi.mock("#components/message", () => ({
 const renderButton = async () => {
   await act(() => {
     render(
-      <CloseStatementButton
-        confirmDescription="The payout to authors, ¥2,500 in total, will be fixed in a statement."
-        confirmTitle="Close August 2026?"
-        period="2026-08"
-        tenantId="TENANT001"
-      />
+      <CloseStatementButton period="2026-08" tenantId="TENANT001">
+        <ConfirmDialogTitle>Close August 2026?</ConfirmDialogTitle>
+        <ConfirmDialogDescription>
+          The payout to authors, ¥2,500 in total, will be fixed in a statement.
+        </ConfirmDialogDescription>
+      </CloseStatementButton>
     );
   });
   await screen.findByRole("button", { name: "Close month" });
