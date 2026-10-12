@@ -78,6 +78,31 @@ describe("LegalPageAgreementRedirect", () => {
     expect(navigation.redirect).not.toHaveBeenCalled();
   });
 
+  it("does not act for a gate mounted again behind a hidden Activity on the agreement screen", async () => {
+    // The redirect boundary that caught the gate's redirect mounts it again in
+    // the transition that moves the router to the agreement screen, where the
+    // layout of the page the reader was sent from is hidden, with what the
+    // server read for that page before the reader agreed.
+    navigation.pathname = AGREEMENT_PATH;
+    navigation.search = "returnTo=%2Fmy";
+    const check = vi.fn(() => Promise.resolve(null));
+    const { rerender } = render(
+      gate({ check, exemptPaths: OWED, mode: "hidden" })
+    );
+    expect(navigation.redirect).not.toHaveBeenCalled();
+
+    // The reader agrees and is returned to the page they were on.
+    navigation.pathname = "/my";
+    navigation.search = "";
+    await act(async () => {
+      rerender(gate({ check, exemptPaths: OWED }));
+      await check.mock.results[0]?.value;
+    });
+
+    expect(check).toHaveBeenCalledTimes(1);
+    expect(navigation.redirect).not.toHaveBeenCalled();
+  });
+
   it("asks the server about a page reached by a client-side navigation", async () => {
     const { promise, resolve } = Promise.withResolvers<string[] | null>();
     const check = vi.fn(() => promise);
