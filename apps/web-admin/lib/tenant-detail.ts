@@ -6,8 +6,7 @@ import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
-import type { CaughtReadError } from "./cached-read";
-import { rebuildCaughtReadError, toCaughtReadError } from "./cached-read";
+import type { CachedRead } from "./cached-read";
 import { getAccessToken } from "./session";
 
 export interface TenantDetail {
@@ -43,7 +42,7 @@ export const tenantDetailCacheTag = (tenantId: string): string =>
 const readTenantForSession = async (
   tenantId: string,
   sessionId: string
-): Promise<GetTenantForSessionResult & { failure?: CaughtReadError }> => {
+): Promise<CachedRead<GetTenantForSessionResult>> => {
   "use cache: private";
 
   const normalizedTenantId = tenantId.trim();
@@ -86,26 +85,24 @@ const readTenantForSession = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: false, requiresSignIn: false };
     }
-    // The scope hands any other error over as data and the caller throws it,
-    // so the error screen and the log still name what failed.
+    // Any other failure is the error screen, thrown by the caller. Only the
+    // verdict crosses the cache boundary, so the cause is logged here, where
+    // the error is still whole.
+    console.warn("[web-admin] getTenantForSession failed", error);
     dropFailedCacheEntry();
-    return {
-      failure: toCaughtReadError(error),
-      ok: false,
-      requiresSignIn: false,
-    };
+    return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
 
 export const getTenantForSession = async (
   tenantId: string
 ): Promise<GetTenantForSessionResult> => {
-  const { failure, ...result } = await readTenantForSession(
+  const { unexpected, ...result } = await readTenantForSession(
     tenantId,
     await getAccessToken()
   );
-  if (failure) {
-    throw rebuildCaughtReadError(failure);
+  if (unexpected) {
+    throw new Error("The tenant could not be read.");
   }
   return result;
 };

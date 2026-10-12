@@ -21,8 +21,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
-import type { CaughtReadError } from "./cached-read";
-import { rebuildCaughtReadError, toCaughtReadError } from "./cached-read";
+import type { CachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import type { MfaChallengeKindName } from "./mfa-challenge";
 import { getAccessToken } from "./session";
@@ -305,7 +304,7 @@ export const logoutAdmin = async (
 const getAdminCurrentUserForSession = async (
   tenantId: string,
   token: string
-): Promise<GetAdminCurrentUserResult & { failure?: CaughtReadError }> => {
+): Promise<CachedRead<GetAdminCurrentUserResult>> => {
   "use cache: private";
   cacheLife("minutes");
   cacheTag(ADMIN_SESSION_CACHE_TAG);
@@ -346,31 +345,28 @@ const getAdminCurrentUserForSession = async (
       return { ok: false, requiresSignIn: false };
     }
     // Anything else — an unreachable API included — is the console's error
-    // screen. The scope hands the error over as data and the caller throws
-    // it, so the screen and the log still name what failed.
+    // screen, thrown by the caller. Only the verdict crosses the cache
+    // boundary, so the cause is logged here, where the error is still whole.
+    console.warn("[web-admin] getAdminCurrentUser failed", error);
     dropFailedCacheEntry();
-    return {
-      failure: toCaughtReadError(error),
-      ok: false,
-      requiresSignIn: false,
-    };
+    return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
 
 /**
  * The signed-in operator, or why there is none. A failure that is neither a
  * rejected session nor an operator this tenant does not show reaches the error
- * boundary as the error the API answered.
+ * boundary.
  */
 export const getAdminCurrentUser = async (
   tenantId: string
 ): Promise<GetAdminCurrentUserResult> => {
-  const { failure, ...result } = await getAdminCurrentUserForSession(
+  const { unexpected, ...result } = await getAdminCurrentUserForSession(
     tenantId,
     await getAccessToken()
   );
-  if (failure) {
-    throw rebuildCaughtReadError(failure);
+  if (unexpected) {
+    throw new Error("The signed-in operator could not be read.");
   }
   return result;
 };

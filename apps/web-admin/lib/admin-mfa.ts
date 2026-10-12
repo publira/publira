@@ -22,8 +22,7 @@ import { cacheTag } from "next/cache";
 
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
-import type { CaughtReadError } from "./cached-read";
-import { rebuildCaughtReadError, toCaughtReadError } from "./cached-read";
+import type { CachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageAccessor } from "./messages";
 import { getAccessToken } from "./session";
@@ -209,7 +208,7 @@ export const adminMfaStatusCacheTag = (tenantId: string): string =>
 const getAdminMfaStatusForSession = async (
   tenantId: string,
   token: string
-): Promise<GetAdminMfaStatusResult & { failure?: CaughtReadError }> => {
+): Promise<CachedRead<GetAdminMfaStatusResult>> => {
   "use cache: private";
 
   cacheTag(adminMfaStatusCacheTag(tenantId));
@@ -238,14 +237,12 @@ const getAdminMfaStatusForSession = async (
       dropFailedCacheEntry();
       return { ok: false, requiresSignIn: true };
     }
-    // The scope hands any other error over as data and the caller throws it,
-    // so the error screen and the log still name what failed.
+    // Any other failure is the error screen, thrown by the caller. Only the
+    // verdict crosses the cache boundary, so the cause is logged here, where
+    // the error is still whole.
+    console.warn("[web-admin] getAdminMfaStatus failed", error);
     dropFailedCacheEntry();
-    return {
-      failure: toCaughtReadError(error),
-      ok: false,
-      requiresSignIn: false,
-    };
+    return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
 
@@ -257,12 +254,12 @@ const getAdminMfaStatusForSession = async (
 export const getAdminMfaStatus = async (
   tenantId: string
 ): Promise<GetAdminMfaStatusResult> => {
-  const { failure, ...result } = await getAdminMfaStatusForSession(
+  const { unexpected, ...result } = await getAdminMfaStatusForSession(
     tenantId,
     await getAccessToken()
   );
-  if (failure) {
-    throw rebuildCaughtReadError(failure);
+  if (unexpected) {
+    throw new Error("The second factor's status could not be read.");
   }
   return result;
 };

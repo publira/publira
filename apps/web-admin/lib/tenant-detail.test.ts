@@ -1,5 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockCacheLife, mockCacheTag, mockGetSessionId, mockGetTenant } =
   vi.hoisted(() => ({
@@ -26,6 +26,10 @@ vi.mock("@publira/api-client/admin/client", () => ({
     },
   }),
 }));
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("tenant-detail", () => {
   beforeEach(() => {
@@ -168,20 +172,26 @@ describe("tenant-detail", () => {
 
   // The cache fill itself must not throw, or the request fails before any
   // boundary can render; the exported read throws once outside the scope.
-  it("throws an error it cannot classify as it was answered, only outside the cache scope", async () => {
-    mockGetTenant.mockRejectedValueOnce(
-      new ConnectError("boom", Code.Internal)
-    );
+  it("throws an error it cannot classify only outside the cache scope, and logs its cause there", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {
+      // Asserted below.
+    });
+    const error = new ConnectError("boom", Code.Internal);
+    mockGetTenant.mockRejectedValueOnce(error);
 
     const { getTenantForSession } = await import("./tenant-detail");
 
     await expect(getTenantForSession("tenant_admin_001")).rejects.toThrow(
-      new ConnectError("boom", Code.Internal)
+      "The tenant could not be read."
     );
     expect(mockCacheLife).toHaveBeenCalledWith({
       expire: 0,
       revalidate: 0,
       stale: 0,
     });
+    expect(warn).toHaveBeenCalledWith(
+      "[web-admin] getTenantForSession failed",
+      error
+    );
   });
 });

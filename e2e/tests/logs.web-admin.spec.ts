@@ -6,13 +6,16 @@ import { unexpectedServerLogLines } from "../src/server-log";
  * The errors a passing run provokes on purpose. `admin.error-boundary.spec.ts`
  * renders the console while the API is down, where a request finds nothing
  * listening: one the GOAWAY of the stopping API refused is sent again and
- * finds the same. It fails a render, or the public tenant read, which says so
- * and renders the console without the tenant's name and theme. An operator
- * navigated away mid-stream closes the response React is still rendering into.
+ * finds the same. It fails a render, or a cached read that says so: the public
+ * tenant read, which renders the console without the tenant's name and theme,
+ * or the operator read, whose caller then fails the render outside the cache
+ * scope. An operator navigated away mid-stream closes the response React is
+ * still rendering into.
  */
 const EXPECTED_ERRORS = [
   /^⨯ Error \[ConnectError\]: \[unavailable\] connect ECONNREFUSED \S+$/u,
-  /^\[web-admin\] getTenantPublicInfo failed Error \[ConnectError\]: \[unavailable\] connect ECONNREFUSED \S+$/u,
+  /^\[web-admin\] \w+ failed Error \[ConnectError\]: \[unavailable\] connect ECONNREFUSED \S+$/u,
+  /^⨯ Error: The signed-in operator could not be read\.$/u,
   /^⨯ Error: The destination stream closed early\.$/u,
 ];
 
