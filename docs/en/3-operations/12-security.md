@@ -64,7 +64,7 @@ Once every process runs with both keys, change the primary key to `k2` and resta
 
 The two restarts are separate on purpose. A process that does not have `k2` yet cannot open a value another process has already sealed with it, so while `publira server` or `publira worker` runs more than one instance, or restarts one after the other, switching the primary key in the same step leaves a window in which mail fails or a sign-in is refused.
 
-On a [Docker Compose](../2-deployments/3-docker-compose.md) install, each step is an edit to the two variables in `.env` followed by `docker compose up -d`, which restarts `server` and `worker` and leaves the rest running.
+On a [Docker Compose](../2-deployments/3-docker-compose.md) install, each step is an edit to the two variables in `.env` followed by `docker compose up -d`, which restarts `server`, `server-internal`, and `worker` and leaves the rest running.
 
 ### 3. Seal the stored values again
 
