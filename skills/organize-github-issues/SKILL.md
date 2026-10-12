@@ -75,11 +75,14 @@ Remove or avoid labels such as `type/*`, `priority/*`, `effort/*`, `bug`, or `en
 
 ### [Milestone](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/about-milestones)
 
-Give every Issue you create exactly one milestone. The milestones are the repository's own, and so is what belongs in each: read their titles and descriptions with `gh api --paginate 'repos/OWNER/REPO/milestones?per_page=100'` before choosing, rather than assuming a set of names, and choose the open milestone whose description the work matches.
+Give every Issue you create exactly one milestone, and choose it from the open milestones' titles and descriptions alone. The milestones are the repository's own, and so is what belongs in each: read them with `gh api --paginate 'repos/OWNER/REPO/milestones?per_page=100'` before choosing, rather than assuming a set of names, and choose the open milestone whose description the work matches.
 
-- Decide without asking when the descriptions settle it, or when a precedent does: the request names one, the parent Issue carries one, or a comparable existing Issue was filed under one.
-- Ask the user only when the descriptions leave two milestones equally plausible — for example, whether a piece of work blocks a release or can follow it — and neither the request, the parent Issue, nor a comparable existing Issue settles the question. Ask that one question, naming the candidates, instead of guessing.
-- Give a parent and its Sub-issues the same milestone unless the request says otherwise.
+The descriptions are the one place the release plan is written down, so nothing else is evidence for the choice: not a comparable existing Issue, not the parent or its Sub-issues, not other Issues in the same area, and not `AGENTS.md` or any other document in the repository. An existing Issue only shows where similar work was filed under the descriptions of its day; once a description is rewritten, following it files new work by a plan that no longer exists. For the same reason, do not write what each milestone covers into `AGENTS.md` or any other file in the repository: a second copy drifts from the one on GitHub with nothing to catch it.
+
+- When the request names a milestone, use it as named. That is the user's decision, not an inference.
+- Judge each Issue on its own, a parent and each of its Sub-issues included. A parent's milestone says nothing about where each of its deliverables falls, and two Issues that do land together match the same description without a rule tying them.
+- Decide without asking when one description matches the work.
+- When no description matches the work, or two match it equally — for example, whether a piece of work blocks a release or can follow it — ask the user that one question, naming the candidates, and propose the change to the descriptions that would have settled it, so the answer is written where the next choice reads it instead of being left behind as a precedent. Edit a description only when the user accepts the change.
 - Never create, rename, or close a milestone unless the user asks for it. When no existing milestone fits, ask rather than inventing one.
 
 ## Model hierarchy and sequencing
@@ -102,7 +105,7 @@ Such work lands as two stacked pull requests, one per layer, and every pull requ
 - the backend one — the `proto/` contract, the schema, and the server that serves it
 - the frontend one — the screens that consume it, `blocked by` the backend one
 
-Give each its own title naming its layer's outcome, its own Effort, and its own `area/*` label, give both the same milestone, and put both under the same parent when the work has one. When a single Issue already covers both layers, split it rather than filing a second one next to it: narrow the existing Issue to one layer, including its title and purpose, and move the other layer's scope and acceptance criteria to the new Issue.
+Give each its own title naming its layer's outcome, its own Effort, its own `area/*` label, and its own milestone, and put both under the same parent when the work has one. When a single Issue already covers both layers, split it rather than filing a second one next to it: narrow the existing Issue to one layer, including its title and purpose, and move the other layer's scope and acceptance criteria to the new Issue.
 
 ## [Create an Issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue)
 
@@ -140,7 +143,7 @@ Confirm all applicable invariants:
 - every human-managed Issue title contains only meaningful content
 - automated titles remain compatible with their generators
 - every Issue has the correct Type
-- every Issue created in this run has exactly one open milestone, the one whose description its work matches and, unless the request said otherwise, the same one as its parent
+- every Issue created in this run has exactly one open milestone: the one the request named, or else the one whose description its work matches
 - no title or label duplicates Type, Priority, or Effort
 - every open actionable leaf Issue has Effort
 - parent Epics have `epic`, valid Sub-issues, and no Effort
