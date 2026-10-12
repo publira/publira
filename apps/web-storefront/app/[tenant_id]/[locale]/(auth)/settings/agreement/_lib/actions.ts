@@ -19,6 +19,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import {
   LEGAL_PAGE_AGREEMENT_PATH,
   legalPageAgreementHref,
+  legalPageAgreementReturnTo,
 } from "#lib/legal-page-agreement-path";
 import { agreeToLegalPages } from "#lib/legal-page-agreements";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
@@ -76,7 +77,8 @@ export const agreeToLegalPagesAction = async (
     };
   }
 
-  const { agreedPageVersionIds, locale, returnTo, tenantId } = parsed.data;
+  const { agreedPageVersionIds, locale, tenantId } = parsed.data;
+  const returnTo = legalPageAgreementReturnTo(parsed.data.returnTo);
   const agreementPath = legalPageAgreementHref(
     LEGAL_PAGE_AGREEMENT_PATH,
     returnTo

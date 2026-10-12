@@ -92,6 +92,14 @@ describe("agreeToLegalPagesAction", () => {
     ).rejects.toThrow("redirect to /en/");
   });
 
+  it("never returns the reader to the agreement screen itself", async () => {
+    mockAgreeToLegalPages.mockResolvedValueOnce("agreed");
+
+    await expect(
+      submit(form({ returnTo: "/settings/agreement?returnTo=%2Fmy" }))
+    ).rejects.toThrow("redirect to /en/");
+  });
+
   it("asks again without recording anything when the box is not ticked", async () => {
     // An unticked checkbox submits nothing at all.
     const data = form();

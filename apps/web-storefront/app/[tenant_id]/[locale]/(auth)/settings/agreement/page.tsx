@@ -34,6 +34,7 @@ import {
   ACCOUNT_DELETION_PATH,
   LEGAL_PAGE_AGREEMENT_PATH,
   legalPageAgreementHref,
+  legalPageAgreementReturnTo,
 } from "#lib/legal-page-agreement-path";
 import { getOwedLegalPages } from "#lib/legal-page-agreements";
 import { getLocale } from "#lib/locale";
@@ -105,7 +106,9 @@ const AgreementForm = async ({
     getTenantId(),
     getLocale(),
   ]);
-  const { returnTo } = agreementSearchParamsSchema.parse(params);
+  const returnTo = legalPageAgreementReturnTo(
+    agreementSearchParamsSchema.parse(params).returnTo
+  );
   const pages = await withPublicSessionReauth(
     locale,
     legalPageAgreementHref(LEGAL_PAGE_AGREEMENT_PATH, returnTo),
