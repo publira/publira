@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -216,6 +217,131 @@ func TestPlatformPasswordResetEmailRendersTheStoredRequest(t *testing.T) {
 	}
 	if mailer.emails[0].HTML == "" || mailer.emails[0].Text == "" {
 		t.Fatalf("delivered email = %+v, want both alternatives", mailer.emails[0])
+	}
+}
+
+// The link that sets an added operator's first password is the reset's link,
+// sent in the mail that says why it came.
+func TestPlatformPasswordResetEmailSendsAnAddedOperatorTheirFirstPasswordLink(t *testing.T) {
+	pg, encryptor := newPlatformEmailEnv(t)
+	operator := seedPlatformOperator(t, pg, "PLATOUTBOX09", "new-operator@example.com")
+	tokenID := seedPlatformPasswordResetToken(t, pg, operator.ID, "first-token", time.Now().Add(time.Hour))
+
+	renderer := &recordingPlatformRenderer{}
+	mailer := &recordingPlatformMailer{}
+	handler := outbox.NewPlatformPasswordResetEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	event := newPlatformOutboxEvent(t, outbox.EventTypePlatformPasswordResetEmail,
+		outbox.PlatformPasswordResetEmailPayload{
+			TokenID: tokenID.String(),
+			Token:   "first-token",
+			Purpose: outbox.PlatformPasswordLinkOperatorAdded,
+		},
+		"platform_password_reset_email:"+tokenID.String())
+
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(renderer.requests) != 1 {
+		t.Fatalf("render requests = %d, want 1", len(renderer.requests))
+	}
+	request := renderer.requests[0]
+	if request.Template != "platform_console_operator_added" {
+		t.Fatalf("template = %q, want platform_console_operator_added", request.Template)
+	}
+	if request.Locale != "ja" || request.TimeZone != "UTC" {
+		t.Fatalf("locale/time zone = %q/%q, want the platform defaults", request.Locale, request.TimeZone)
+	}
+	if url, _ := request.Data["set_password_url"].(string); url != "http://platform.localhost:3080/confirm-password?token=first-token" {
+		t.Fatalf("set_password_url = %v", request.Data["set_password_url"])
+	}
+	if _, ok := request.Data["expires_at"].(string); !ok {
+		t.Fatalf("expires_at = %v, want an RFC3339 string", request.Data["expires_at"])
+	}
+	if len(mailer.recipients) != 1 || mailer.recipients[0] != operator.Email {
+		t.Fatalf("recipients = %v, want [%s]", mailer.recipients, operator.Email)
+	}
+	if !strings.Contains(mailer.emails[0].Text, "http://platform.localhost:3080/confirm-password?token=first-token") {
+		t.Fatalf("text part = %q, want the link", mailer.emails[0].Text)
+	}
+}
+
+// A purpose this worker has no mail for is not sent in a reset mail nobody
+// asked for, and no retry will give it one.
+func TestPlatformPasswordResetEmailRefusesAnUnknownPurpose(t *testing.T) {
+	pg, encryptor := newPlatformEmailEnv(t)
+	operator := seedPlatformOperator(t, pg, "PLATOUTBOX10", "operator@example.com")
+	tokenID := seedPlatformPasswordResetToken(t, pg, operator.ID, "reset-token", time.Now().Add(time.Hour))
+
+	renderer := &recordingPlatformRenderer{}
+	mailer := &recordingPlatformMailer{}
+	handler := outbox.NewPlatformPasswordResetEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	event := newPlatformOutboxEvent(t, outbox.EventTypePlatformPasswordResetEmail,
+		outbox.PlatformPasswordResetEmailPayload{TokenID: tokenID.String(), Token: "reset-token", Purpose: "welcome_back"},
+		"platform_password_reset_email:"+tokenID.String())
+
+	err := handler(context.Background(), event)
+	if !outbox.IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a permanent failure", err)
+	}
+	if len(renderer.requests) != 0 || len(mailer.recipients) != 0 {
+		t.Fatalf("rendered %d and sent %d, want neither", len(renderer.requests), len(mailer.recipients))
+	}
+}
+
+// An address that already had an account keeps its password, so its mail says
+// it can sign in and links to the sign-in screen rather than to a password form.
+func TestPlatformOperatorRoleGrantedEmailLinksToSignIn(t *testing.T) {
+	pg, encryptor := newPlatformEmailEnv(t)
+	operator := seedPlatformOperator(t, pg, "PLATOUTBOX11", "returning@example.com")
+
+	renderer := &recordingPlatformRenderer{}
+	mailer := &recordingPlatformMailer{}
+	handler := outbox.NewPlatformOperatorRoleGrantedEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	event := newPlatformOutboxEvent(t, outbox.EventTypePlatformOperatorRoleGrantedEmail,
+		outbox.PlatformOperatorRoleGrantedEmailPayload{PlatformUserID: operator.ID.String()},
+		"platform_operator_role_granted_email:"+uuid.Must(uuid.NewV7()).String())
+
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(renderer.requests) != 1 {
+		t.Fatalf("render requests = %d, want 1", len(renderer.requests))
+	}
+	request := renderer.requests[0]
+	if request.Template != "platform_console_operator_role_granted" {
+		t.Fatalf("template = %q, want platform_console_operator_role_granted", request.Template)
+	}
+	if url, _ := request.Data["sign_in_url"].(string); url != "http://platform.localhost:3080/login" {
+		t.Fatalf("sign_in_url = %v", request.Data["sign_in_url"])
+	}
+	if len(mailer.recipients) != 1 || mailer.recipients[0] != operator.Email {
+		t.Fatalf("recipients = %v, want [%s]", mailer.recipients, operator.Email)
+	}
+}
+
+func TestPlatformOperatorRoleGrantedEmailFailsPermanentlyForAUserThatIsGone(t *testing.T) {
+	pg, encryptor := newPlatformEmailEnv(t)
+
+	renderer := &recordingPlatformRenderer{}
+	mailer := &recordingPlatformMailer{}
+	handler := outbox.NewPlatformOperatorRoleGrantedEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	event := newPlatformOutboxEvent(t, outbox.EventTypePlatformOperatorRoleGrantedEmail,
+		outbox.PlatformOperatorRoleGrantedEmailPayload{PlatformUserID: uuid.Must(uuid.NewV7()).String()},
+		"platform_operator_role_granted_email:"+uuid.Must(uuid.NewV7()).String())
+
+	if err := handler(context.Background(), event); !outbox.IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a permanent failure", err)
+	}
+	if len(mailer.recipients) != 0 {
+		t.Fatalf("sent %d, want none", len(mailer.recipients))
 	}
 }
 

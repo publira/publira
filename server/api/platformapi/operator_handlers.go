@@ -18,6 +18,8 @@ import (
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/publicid"
@@ -286,11 +288,29 @@ func (s *platformServer) CreateOperator(
 	txq := dbmodels.New(tx)
 
 	user, err := txq.GetPlatformUserByEmail(ctx, email)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, s.internalDBError(ctx, "failed to get platform user by email", err)
+	existing := err == nil
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, s.internalDBError(ctx, "failed to get platform user by email", err)
+	}
+	if existing {
+		roles, err := txq.ListPlatformUserRoles(ctx, user.ID)
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to list platform user roles", err, "platform_user_id", user.ID.String())
 		}
+		if len(roles) > 0 {
+			return nil, connect.NewError(connect.CodeAlreadyExists, "operator already exists")
+		}
+	}
 
+	// Adding an operator mails an address nobody has confirmed, so it is charged
+	// like an invitation is. The charge follows the lookup above: an address that
+	// already holds a role is refused without being mailed, and must not spend
+	// its allowance either.
+	if err := s.mail.Allow(ctx, mailguard.PlatformScope, email); err != nil {
+		return nil, err
+	}
+
+	if !existing {
 		password, err := createOperatorPassword()
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
@@ -320,16 +340,9 @@ func (s *platformServer) CreateOperator(
 		}
 	}
 
-	roles, err := txq.ListPlatformUserRoles(ctx, user.ID)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list platform user roles", err, "platform_user_id", user.ID.String())
-	}
-	if len(roles) > 0 {
-		return nil, connect.NewError(connect.CodeAlreadyExists, "operator already exists")
-	}
-
+	roleID := uuid.Must(uuid.NewV7())
 	_, err = txq.CreatePlatformUserRole(ctx, dbmodels.CreatePlatformUserRoleParams{
-		ID:             uuid.Must(uuid.NewV7()),
+		ID:             roleID,
 		PlatformUserID: user.ID,
 		Role:           role,
 	})
@@ -338,6 +351,21 @@ func (s *platformServer) CreateOperator(
 			return nil, connect.NewError(connect.CodeAlreadyExists, "operator role already exists")
 		}
 		return nil, s.internalDBError(ctx, "failed to create platform user role", err, "platform_user_id", user.ID.String())
+	}
+
+	// A new account's password is one nobody is told, so its mail carries the
+	// link that sets the first one. An account that already existed keeps the
+	// password it has, and is only told it can now sign in.
+	if existing {
+		err = enqueuePlatformOperatorRoleGrantedEmail(ctx, txq, user.ID, roleID)
+	} else {
+		err = queuePlatformPasswordResetRequest(ctx, txq, outbox.PlatformPasswordResetRequestPayload{
+			Email:   email,
+			Purpose: outbox.PlatformPasswordLinkOperatorAdded,
+		})
+	}
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to enqueue operator added email", err, "platform_user_id", user.ID.String())
 	}
 
 	operator, err := txq.GetPlatformOperatorByID(ctx, user.ID)

@@ -61,6 +61,28 @@
       "subject": "Publira平台控制台邮箱地址已变更",
       "warning": "如果这不是您本人的操作，请立即重设密码。"
     },
+    "platform_console_operator_added": {
+      "action": "设置密码",
+      "body": "请打开下方按钮，设置用于登录的密码。",
+      "expired_help": "如果链接已失效，请在登录页面选择“忘记密码？”以获取新的链接。",
+      "expires": "此链接将于{$expires_at}失效。",
+      "fallback_link": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+      "heading": "设置平台控制台密码",
+      "ignore": "如果您并未预期收到这封邮件，可以忽略它。",
+      "intro": "已为您创建Publira平台控制台账户。",
+      "preview": "为您新的平台控制台账户设置密码。",
+      "subject": "您的Publira平台控制台账户"
+    },
+    "platform_console_operator_role_granted": {
+      "action": "打开平台控制台",
+      "body": "您的账户现在可以登录Publira平台控制台。请使用接收此邮件的邮箱地址和您现有的密码登录。",
+      "fallback_link": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+      "heading": "您现在可以登录平台控制台",
+      "ignore": "如果您并未预期收到这封邮件，可以忽略它。",
+      "password_help": "如果您不记得密码，请在登录页面选择“忘记密码？”设置新密码。",
+      "preview": "您的账户现在可以登录平台控制台。",
+      "subject": "Publira平台控制台登录通知"
+    },
     "platform_console_password_reset": {
       "action": "重设密码",
       "body": "请打开下方按钮设置新密码。",

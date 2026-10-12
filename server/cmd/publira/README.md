@@ -129,9 +129,10 @@ The long-lived background process. It hosts one River client, on which it drains
 | Event type | Mail |
 | --- | --- |
 | `tenant_admin_invitation_email` | Tenant administrator invitation |
-| `platform_password_reset_email` | Platform Console password reset |
+| `platform_password_reset_email` | Platform Console password reset, or the link that sets the first password of an operator a Super admin added |
 | `platform_email_change_confirmation_email` | Platform Console email change confirmation, one event per address to confirm |
 | `platform_email_changed_notice_email` | Platform Console notice to the previous address once the change completes |
+| `platform_operator_role_granted_email` | Platform Console notice to an existing account a Super admin gave a role, saying it can now sign in |
 | `reader_email_verification_email` | Reader sign-up address verification |
 | `reader_email_change_confirmation_email` | Reader email change confirmation, one event per address to confirm |
 | `reader_email_changed_notice_email` | Reader notice to the previous address once the change completes |
@@ -157,7 +158,7 @@ It also handles these non-mail events:
 | `reader_password_reset_request` | A password reset the storefront accepted: the reset token and a `reader_password_reset_email` when the address has an account |
 | `reader_email_verification_request` | A verification resend the storefront accepted: a fresh token and a `reader_email_verification_email` when the address has an unconfirmed account |
 | `admin_password_reset_request` | A password reset the admin console accepted: the reset token and an `admin_password_reset_email` when the address has an account in the tenant |
-| `platform_password_reset_request` | A password reset the platform console accepted: the reset token and a `platform_password_reset_email` when the address belongs to an operator |
+| `platform_password_reset_request` | A password reset the platform console accepted, or an operator a Super admin added: the reset token and a `platform_password_reset_email` when the address belongs to an operator |
 | `google_play_purchase_consume` | The Google Play Developer API consume of a Play purchase `ConfirmStorePurchase` recorded, which also acknowledges it |
 
 The push handler is always registered and reads its credentials per delivery: a mobile device is sent with its tenant's stored FCM credentials and skipped while the tenant has none, and a browser with the platform's VAPID key pair; see [Mobile push](../../README.md#mobile-push-firebase-cloud-messaging) and [Web Push](../../README.md#web-push).

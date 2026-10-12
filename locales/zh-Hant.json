@@ -61,6 +61,28 @@
       "subject": "Publira平台主控台電子郵件地址已變更",
       "warning": "如果這不是您本人的操作，請立即重設密碼。"
     },
+    "platform_console_operator_added": {
+      "action": "設定密碼",
+      "body": "請開啟下方按鈕，設定用於登入的密碼。",
+      "expired_help": "如果連結已失效，請在登入畫面選擇「忘記密碼？」以取得新的連結。",
+      "expires": "此連結將於{$expires_at}失效。",
+      "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+      "heading": "設定平台主控台的密碼",
+      "ignore": "如果您並未預期收到這封郵件，可以直接忽略。",
+      "intro": "已為您建立Publira平台主控台帳戶。",
+      "preview": "為您新的平台主控台帳戶設定密碼。",
+      "subject": "您的Publira平台主控台帳戶"
+    },
+    "platform_console_operator_role_granted": {
+      "action": "開啟平台主控台",
+      "body": "您的帳戶現在可以登入Publira平台主控台。請使用收到這封郵件的電子郵件地址與您現有的密碼登入。",
+      "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+      "heading": "您現在可以登入平台主控台",
+      "ignore": "如果您並未預期收到這封郵件，可以直接忽略。",
+      "password_help": "如果您不記得密碼，請在登入畫面選擇「忘記密碼？」設定新密碼。",
+      "preview": "您的帳戶現在可以登入平台主控台。",
+      "subject": "Publira平台主控台登入通知"
+    },
     "platform_console_password_reset": {
       "action": "重設密碼",
       "body": "請開啟下方按鈕設定新密碼。",

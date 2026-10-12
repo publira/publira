@@ -28,7 +28,15 @@ const (
 	EventTypePlatformPasswordResetEmail           = "platform_password_reset_email"
 	EventTypePlatformEmailChangeConfirmationEmail = "platform_email_change_confirmation_email"
 	EventTypePlatformEmailChangedNoticeEmail      = "platform_email_changed_notice_email"
+	EventTypePlatformOperatorRoleGrantedEmail     = "platform_operator_role_granted_email"
 )
+
+// PlatformPasswordLinkOperatorAdded is the purpose of the password link mailed
+// to an operator whose account a Super admin just created. The account starts
+// with a password nobody is told, so the link is how its first password is set:
+// it is issued, expires, and is consumed exactly as a reset link is, and only
+// the mail around it says why it came.
+const PlatformPasswordLinkOperatorAdded = "operator_added"
 
 const defaultPlatformAppURL = "http://platform.localhost:3080"
 
@@ -37,6 +45,9 @@ const defaultPlatformAppURL = "http://platform.localhost:3080"
 type PlatformPasswordResetEmailPayload struct {
 	TokenID string `json:"token_id"`
 	Token   string `json:"token"`
+	// Purpose picks the mail, as PlatformPasswordResetRequestPayload.Purpose
+	// does: empty for a reset.
+	Purpose string `json:"purpose,omitempty"`
 }
 
 // PlatformEmailChangeConfirmationEmailPayload is one event per address to
@@ -53,9 +64,17 @@ type PlatformEmailChangedNoticeEmailPayload struct {
 	TokenID string `json:"token_id"`
 }
 
+// PlatformOperatorRoleGrantedEmailPayload names the platform user a Super admin
+// gave a role to when the address already had an account. That account has a
+// password of its own, so the mail carries no link that sets one.
+type PlatformOperatorRoleGrantedEmailPayload struct {
+	PlatformUserID string `json:"platform_user_id"`
+}
+
 // NewPlatformPasswordResetEmailHandler sends the platform operator's password
-// reset link. A token row that is gone, completed, or expired is a request this
-// event no longer speaks for, and the event is dropped rather than delivered.
+// link: a reset, or the first password of an account just added. A token row
+// that is gone, completed, or expired is a request this event no longer speaks
+// for, and the event is dropped rather than delivered.
 func NewPlatformPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 	queries := dbmodels.New(cfg.DB)
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
@@ -103,13 +122,64 @@ func NewPlatformPasswordResetEmailHandler(cfg EmailHandlerConfig) Handler {
 		if err != nil {
 			return fmt.Errorf("build platform password reset url: %w", err)
 		}
+		expiresAt := resetToken.ExpiresAt.UTC().Format(time.RFC3339Nano)
 
-		return deliverEmail(ctx, cfg, delivery.settings, operator.Email, emailrenderer.Request{
+		request := emailrenderer.Request{
 			Template: "platform_console_password_reset",
 			Locale:   delivery.locale,
 			Data: map[string]any{
-				"expires_at": resetToken.ExpiresAt.UTC().Format(time.RFC3339Nano),
+				"expires_at": expiresAt,
 				"reset_url":  resetURL,
+			},
+			TimeZone: delivery.timeZone,
+		}
+		if payload.Purpose == PlatformPasswordLinkOperatorAdded {
+			request.Template = "platform_console_operator_added"
+			request.Data = map[string]any{
+				"expires_at":       expiresAt,
+				"set_password_url": resetURL,
+			}
+		}
+		return deliverEmail(ctx, cfg, delivery.settings, operator.Email, request)
+	}
+}
+
+// NewPlatformOperatorRoleGrantedEmailHandler tells a platform user who already
+// had an account that a Super admin gave it a role, so they can now sign in to
+// the console with the password they have.
+func NewPlatformOperatorRoleGrantedEmailHandler(cfg EmailHandlerConfig) Handler {
+	queries := dbmodels.New(cfg.DB)
+	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		if err := cfg.require("platform operator role granted email"); err != nil {
+			return err
+		}
+		userID, err := decodePlatformOperatorRoleGrantedEmailPayload(event)
+		if err != nil {
+			return Permanent(err)
+		}
+
+		operator, err := queries.GetPlatformUserByID(ctx, userID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return Permanent(fmt.Errorf("platform user %s no longer exists", userID))
+		}
+		if err != nil {
+			return fmt.Errorf("load platform user: %w", err)
+		}
+
+		delivery, err := resolvePlatformDelivery(ctx, queries, cfg.Encryptor)
+		if err != nil {
+			return err
+		}
+		signInURL, err := platformConsoleURL("/login", "")
+		if err != nil {
+			return fmt.Errorf("build platform sign-in url: %w", err)
+		}
+
+		return deliverEmail(ctx, cfg, delivery.settings, operator.Email, emailrenderer.Request{
+			Template: "platform_console_operator_role_granted",
+			Locale:   delivery.locale,
+			Data: map[string]any{
+				"sign_in_url": signInURL,
 			},
 			TimeZone: delivery.timeZone,
 		})
@@ -235,7 +305,36 @@ func decodePlatformPasswordResetEmailPayload(event dbmodels.OutboxEvent) (Platfo
 	if strings.TrimSpace(payload.Token) == "" {
 		return payload, uuid.Nil, errors.New("platform password reset email payload has an empty token")
 	}
+	if err := checkPlatformPasswordLinkPurpose(event, payload.Purpose); err != nil {
+		return payload, uuid.Nil, err
+	}
 	return payload, tokenID, nil
+}
+
+// checkPlatformPasswordLinkPurpose refuses a purpose this worker has no mail
+// for, rather than sending such a link in a reset mail nobody asked for.
+func checkPlatformPasswordLinkPurpose(event dbmodels.OutboxEvent, purpose string) error {
+	switch purpose {
+	case "", PlatformPasswordLinkOperatorAdded:
+		return nil
+	default:
+		return fmt.Errorf("%s payload has an unknown purpose %q", event.EventType, purpose)
+	}
+}
+
+func decodePlatformOperatorRoleGrantedEmailPayload(event dbmodels.OutboxEvent) (uuid.UUID, error) {
+	var payload PlatformOperatorRoleGrantedEmailPayload
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		return uuid.Nil, fmt.Errorf("decode platform operator role granted email payload: %w", err)
+	}
+	if event.TenantID.Valid {
+		return uuid.Nil, fmt.Errorf("%s event belongs to no tenant but names %s", event.EventType, event.TenantID.UUID)
+	}
+	userID, err := uuid.Parse(payload.PlatformUserID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("%s payload has an invalid platform_user_id", event.EventType)
+	}
+	return userID, nil
 }
 
 func decodePlatformEmailChangeConfirmationEmailPayload(event dbmodels.OutboxEvent) (PlatformEmailChangeConfirmationEmailPayload, uuid.UUID, error) {
@@ -327,9 +426,10 @@ func resolvePlatformSMTPSettings(
 	return settings, nil
 }
 
-// platformConsoleURL builds a link into the platform console. The worker runs
-// outside the request that produced the event, so the console's origin comes
-// from PUBLIRA_PLATFORM_APP_URL rather than from an incoming Host header.
+// platformConsoleURL builds a link into the platform console, carrying token
+// when there is one. The worker runs outside the request that produced the
+// event, so the console's origin comes from PUBLIRA_PLATFORM_APP_URL rather
+// than from an incoming Host header.
 func platformConsoleURL(path, token string) (string, error) {
 	baseURL := strings.TrimSpace(os.Getenv("PUBLIRA_PLATFORM_APP_URL"))
 	if baseURL == "" {
@@ -344,8 +444,10 @@ func platformConsoleURL(path, token string) (string, error) {
 	}
 
 	target := parsed.ResolveReference(&url.URL{Path: path})
-	query := target.Query()
-	query.Set("token", token)
-	target.RawQuery = query.Encode()
+	if token != "" {
+		query := target.Query()
+		query.Set("token", token)
+		target.RawQuery = query.Encode()
+	}
 	return target.String(), nil
 }

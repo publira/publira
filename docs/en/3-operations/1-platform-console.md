@@ -68,7 +68,9 @@ The Platform Console shows an Auditor the same screens and forms as an Operator,
 
 ### Adding an operator
 
-**Add operator** asks for the operator's **Name**, **Email address**, and **Role**, and creates the account at once. It sends no mail, and the account's password is one nobody is told ([#3753](https://github.com/publira/publira/issues/3753)). Tell the new operator the account exists, and have them open the sign-in screen, choose **Forgot your password?**, and set a password from the link they are mailed. That mail, like every mail the Platform Console sends, is sent by `publira worker`, from the SMTP settings the platform saved.
+**Add operator** asks for the operator's **Name**, **Email address**, and **Role**, and creates the account at once. The new operator is mailed a link that sets the account's first password, and signs in with that password once it is set. The link is valid for 24 hours; after that, they get a new one by choosing **Forgot your password?** on the sign-in screen. That mail, like every mail the Platform Console sends, is sent by `publira worker`, from the SMTP settings the platform saved, in the platform's default language.
+
+If the address already has a Platform Console account that holds no role, that account is given the role instead of a new one being created. It keeps the password it has, so its mail carries no password link and only says it can now sign in.
 
 ![The Add operator form: Name, Email address, Role, and Add.](./platform-console-add-operator.png)
 
