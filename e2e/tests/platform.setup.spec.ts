@@ -11,6 +11,7 @@ import {
   SETUP_DEFAULT_LOCALE_CODE,
   SETUP_DEFAULT_LOCALE_LABEL,
   SETUP_OPERATOR,
+  SETUP_TIMEZONE,
 } from "../src/scenarios/platform-setup";
 import { fillLoginForm } from "../src/session";
 import { WEB_PLATFORM_BASE_URL } from "../src/urls";
@@ -31,6 +32,9 @@ const savedDefaultLocale = (): string =>
 const savedDefaultCurrency = (): string =>
   querySql("SELECT default_currency FROM platform_config WHERE singleton");
 
+const savedDefaultTimezone = (): string =>
+  querySql("SELECT default_timezone FROM platform_config WHERE singleton");
+
 /**
  * Platform Console initial setup: `/setup` → `CreateInitialUser` → the console.
  *
@@ -49,13 +53,17 @@ const savedDefaultCurrency = (): string =>
  * preference is `platform.locale-switching.spec.ts`, which saves a language and
  * opens the login screen in a context with no cookie at all.
  *
+ * The browser runs in a pinned time zone as well, so the zone the form opens on
+ * and saves is a known one rather than whichever zone the machine running the
+ * suite happens to be in.
+ *
  * Serial: the second test asserts what `/setup` does once the first has given
  * the platform an operator, so it has nothing to say if the first one failed.
  */
 test.describe.configure({ mode: "serial" });
 
 test.describe("web-platform initial setup", () => {
-  test.use({ locale: "en-US" });
+  test.use({ locale: "en-US", timezoneId: SETUP_TIMEZONE });
 
   test.beforeAll(() => {
     emptyPlatformOperators();
@@ -65,7 +73,7 @@ test.describe("web-platform initial setup", () => {
     applyScenarioSql(PLATFORM_SETUP_SCENARIO);
   });
 
-  test("the form creates the first operator and saves the language and currency it chose, refusing a currency the lock keeps", async ({
+  test("the form creates the first operator and saves the language, time zone, and currency it chose, refusing a currency the lock keeps", async ({
     page,
   }) => {
     const response = await page.goto(platformUrl("/setup"));
@@ -86,6 +94,11 @@ test.describe("web-platform initial setup", () => {
       name: /^Default language/u,
     });
     await expect(localeSelect).toHaveText("English");
+    // The time zone opens on the browser's own and is left as it is, so what
+    // gets saved is the zone the operator never had to choose.
+    await expect(
+      page.getByRole("combobox", { name: /^Default time zone/u })
+    ).toHaveValue(SETUP_TIMEZONE);
     // Emptying the operators deleted the settings row too, so there is no
     // saved currency to start on and the field waits for a choice.
     const currencyInput = page.getByRole("combobox", {
@@ -133,6 +146,7 @@ test.describe("web-platform initial setup", () => {
     );
     expect(savedDefaultLocale()).toBe(SETUP_DEFAULT_LOCALE_CODE);
     expect(savedDefaultCurrency()).toBe(SETUP_DEFAULT_CURRENCY_CODE);
+    expect(savedDefaultTimezone()).toBe(SETUP_TIMEZONE);
 
     // A fresh document rather than the Action's client-side redirect: `<html
     // lang>` is written by the inline script in the root layout, which only runs

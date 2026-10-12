@@ -19,6 +19,10 @@ vi.mock("#lib/platform-settings", () => ({
 
 vi.mock("../_lib/actions", () => ({ setupAction: vi.fn() }));
 
+vi.mock("#components/client-message", () => ({
+  useClientMessages: () => (message: string) => message,
+}));
+
 vi.mock("./setup-message", () => ({
   SetupMessage: ({ message }: { message: string }) => message,
 }));
@@ -30,6 +34,14 @@ const currencyInput = () =>
 
 const postedCurrency = (container: HTMLElement) =>
   container.querySelector<HTMLInputElement>('input[name="default_currency"]');
+
+const timezoneInput = () =>
+  screen.getByRole<HTMLInputElement>("combobox", {
+    name: /platform\.auth\.setup\.default_timezone_label/u,
+  });
+
+const postedTimezone = (container: HTMLElement) =>
+  container.querySelector<HTMLInputElement>('input[name="default_timezone"]');
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -93,6 +105,33 @@ describe("SetupForm currency", () => {
     expect(postedCurrency(container)).toBeNull();
     expect(
       screen.getByText("platform.auth.setup.default_currency_load_failed")
+    ).toBeDefined();
+  });
+});
+
+describe("SetupForm time zone", () => {
+  beforeEach(() => {
+    mockGetPlatformCurrencyForSetup.mockResolvedValue({ state: "none" });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("opens on the zone the browser runs in", async () => {
+    const resolvedOptions = Intl.DateTimeFormat().resolvedOptions();
+    vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockReturnValue({
+      ...resolvedOptions,
+      timeZone: "America/Los_Angeles",
+    });
+
+    const { container } = render(await SetupForm());
+
+    expect(timezoneInput().value).toBe("America/Los_Angeles");
+    expect(timezoneInput().disabled).toBe(false);
+    expect(postedTimezone(container)?.value).toBe("America/Los_Angeles");
+    expect(
+      screen.getByText("platform.auth.setup.default_timezone_help")
     ).toBeDefined();
   });
 });

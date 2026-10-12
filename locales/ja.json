@@ -4903,6 +4903,9 @@
         "default_locale_help": "ここで選んだ言語でこの管理画面が表示されます。運用担当者ごとの表示言語はあとから切り替えられ、テナントの既定言語はテナント作成時に選びます。",
         "default_locale_label": "既定言語",
         "default_locale_placeholder": "言語を選択してください",
+        "default_timezone_empty": "一致するタイムゾーンが見つかりません。",
+        "default_timezone_help": "新しいテナントはこのタイムゾーンで作成され、この管理画面の日時の表示と集計にも使われます。初期値はお使いのブラウザのタイムゾーンです。",
+        "default_timezone_label": "既定タイムゾーン",
         "description": "最初の管理ユーザーアカウントを作成してください。",
         "locale_required": "言語を選択してください。",
         "name_label": "氏名",
@@ -4911,6 +4914,8 @@
         "password_mismatch": "パスワードと確認用パスワードが一致しません。",
         "pending": "作成中...",
         "submit": "管理ユーザーを作成する",
+        "timezone_invalid": "有効なタイムゾーンを選択してください。",
+        "timezone_required": "タイムゾーンを選択してください。",
         "title": "初期セットアップ"
       }
     },

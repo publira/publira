@@ -31,7 +31,12 @@ import { WEB_PLATFORM_BASE_URL } from "../src/urls";
  * and puts back the development seed's platform rows and the documentation's
  * own operators however it ended.
  */
-test.use({ baseURL: WEB_PLATFORM_BASE_URL });
+/**
+ * The time zone field opens on the browser's own zone, so the browser is given
+ * one: left to the pinned image's, the picture would show whatever that
+ * container runs in rather than a choice the page can describe.
+ */
+test.use({ baseURL: WEB_PLATFORM_BASE_URL, timezoneId: "America/New_York" });
 
 /**
  * Put back what the test emptied: the development seed's platform rows, and

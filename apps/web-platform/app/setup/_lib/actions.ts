@@ -3,6 +3,7 @@
 import type { Locale } from "@publira/i18n";
 import { getLocales } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
+import { isValidTimeZone } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -26,6 +27,10 @@ import { platformSetupStatusCacheTag } from "#lib/setup-status";
  * The currency is checked only for its shape; the server knows which codes
  * name a currency. A form whose currency field is locked posts none, which
  * keeps the stored one, so an absent field passes and an empty choice does not.
+ *
+ * The time zone field always posts a zone, the browser's or `UTC`, so one that
+ * is missing or that the runtime cannot resolve is refused here rather than
+ * left for the server to keep the stored one.
  */
 const setupFormSchema = async (locale: Locale) => {
   const [t, confirmPassword, email, password] = await Promise.all([
@@ -46,6 +51,13 @@ const setupFormSchema = async (locale: Locale) => {
       defaultLocale: z.enum(getLocales(), {
         error: t("platform.auth.setup.locale_required"),
       }),
+      defaultTimezone: z
+        .string({ error: t("platform.auth.setup.timezone_required") })
+        .trim()
+        .min(1, t("platform.auth.setup.timezone_required"))
+        .refine(isValidTimeZone, {
+          error: t("platform.auth.setup.timezone_invalid"),
+        }),
       email,
       name: requiredTrimmedString(t("platform.auth.setup.name_required")),
       password,
@@ -71,6 +83,7 @@ export const setupAction = async (
       confirmPassword: "value",
       defaultCurrency: { kind: "value", name: "default_currency" },
       defaultLocale: { kind: "value", name: "default_locale" },
+      defaultTimezone: { kind: "value", name: "default_timezone" },
       email: "value",
       name: "value",
       password: "value",
@@ -83,10 +96,18 @@ export const setupAction = async (
     };
   }
 
-  const { defaultCurrency, defaultLocale, email, name, password } = parsed.data;
+  const {
+    defaultCurrency,
+    defaultLocale,
+    defaultTimezone,
+    email,
+    name,
+    password,
+  } = parsed.data;
   const result = await createInitialUser({
     defaultCurrency,
     defaultLocale,
+    defaultTimezone,
     email,
     locale,
     name,

@@ -33,6 +33,7 @@ import { getPlatformCurrencyForSetup } from "#lib/platform-settings";
 
 import { setupAction } from "../_lib/actions";
 import { SetupMessage } from "./setup-message";
+import { SetupTimezoneCombobox } from "./setup-timezone-combobox";
 
 export const SetupForm = async () => {
   // Nothing is stored yet, so the header decides both the language this screen
@@ -154,6 +155,31 @@ export const SetupForm = async () => {
           <FieldDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
               <SetupMessage message="platform.auth.setup.default_locale_help" />
+            </Suspense>
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+
+      <Field>
+        <FieldLabel required>
+          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+            <SetupMessage message="platform.auth.setup.default_timezone_label" />
+          </Suspense>
+        </FieldLabel>
+        <FieldContent>
+          <SetupTimezoneCombobox>
+            <ComboboxPopup>
+              <ComboboxEmpty>
+                <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                  <SetupMessage message="platform.auth.setup.default_timezone_empty" />
+                </Suspense>
+              </ComboboxEmpty>
+              <ComboboxItems />
+            </ComboboxPopup>
+          </SetupTimezoneCombobox>
+          <FieldDescription>
+            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+              <SetupMessage message="platform.auth.setup.default_timezone_help" />
             </Suspense>
           </FieldDescription>
         </FieldContent>

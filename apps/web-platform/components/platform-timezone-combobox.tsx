@@ -9,16 +9,18 @@ import type { ReactNode } from "react";
 import { useClientMessages } from "#components/client-message";
 
 /**
- * The zone the form saves, chosen by searching the runtime's list. `children`
- * is the popup, written where the form is composed.
+ * The platform default zone, chosen by searching the runtime's list and posted
+ * as `default_timezone`. `children` is the popup, written where the form is
+ * composed. The General settings form and the setup form both offer it, so the
+ * zone an operator can pick at setup is one they can pick again later.
  */
 export const PlatformTimezoneCombobox = ({
   children,
-  disabled,
+  disabled = false,
   initialTimezone,
 }: {
   children: ReactNode;
-  disabled: boolean;
+  disabled?: boolean;
   initialTimezone: string;
 }) => {
   const [timezone, setTimezone] = useState(initialTimezone);
