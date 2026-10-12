@@ -152,7 +152,7 @@ Implementation:
 - Job planning—selected jobs and Docker matrix: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
 - Flutter SDK setup for the mobile jobs: [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh)
 - Flutter, the JDK, the Gradle cache, and the app's dependencies for the jobs that build the Android app: [`.github/actions/mobile-android-setup`](../actions/mobile-android-setup/action.yml)
-- Go, the module cache, and the build cache of the compile a job runs, for every job that uses Go: [`.github/actions/go-setup`](../actions/go-setup/action.yml)
+- Go, the module cache (downloading the modules, retried once, when it misses), and the build cache of the compile a job runs, for every job that uses Go: [`.github/actions/go-setup`](../actions/go-setup/action.yml)
 - Saving that build cache on `main`, skipped by a run whose commit is no longer `main`'s tip: [`.github/actions/go-build-cache-save`](../actions/go-build-cache-save/action.yml)
 - migrate, wait4x, and sqlc from their GitHub releases, cached by tool, version, and architecture, at the versions `ci.yml` sets: [`.github/actions/tool-install`](../actions/tool-install/action.yml)
 - pnpm and Node.js, with a second attempt when the first fails: [`.github/actions/pnpm-setup`](../actions/pnpm-setup/action.yml)
@@ -178,14 +178,15 @@ Implementation:
 | `Test / Mobile E2E (<group>)` | `task mobile:test-integration` on an Android emulator of its own: `device` runs every group the app answers on the device and saves the Gradle cache every Android job restores, and `live`, after `Test / Mobile E2E Build`, runs the live group against the public API, the worker, and the seed, on a stack of only the containers it reads. | [`mobile/README.md`](../../mobile/README.md#integration-tests) |
 | `Test / Mobile iOS` | `task mobile:test-ios-build` on macOS: both iOS flavors built with Xcode, unsigned, with the built app's identity checked against the manifest. | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / E2E Build` | `task e2e:build` once, uploaded as `e2e-build` for every `Test / E2E` entry. | [`e2e/README.md`](../../e2e/README.md#ci) |
-| `Test / E2E (<group> <shard>)` | `task e2e:run-built` on `e2e-build` for one group of Playwright projects, or one shard of `main` or `admin`: readiness, Playwright, teardown, on a stack of its own. | [`e2e/README.md`](../../e2e/README.md#groups) |
+| `Test / E2E (<group> <shard>)` | `task e2e:run-built` on `e2e-build` for one group of Playwright projects, or one shard of `main` or `admin`: readiness, Playwright, teardown, on a stack of its own. On `main`, saves the Playwright browser cache every E2E job restores. | [`e2e/README.md`](../../e2e/README.md#groups) |
 | `Test / E2E Report` | Only when a `Test / E2E` entry failed: every entry's blob report merged into one HTML report. | [`e2e/README.md`](../../e2e/README.md#ci) |
-| `Test / E2E Search` | `task e2e:search`: the same lifecycle with OpenSearch in the stack and the server on it, running the catalog search and search settings specs alone. | [`e2e/README.md`](../../e2e/README.md#catalog-search-on-opensearch) |
+| `Test / E2E Search` | `task e2e:search`: the same lifecycle with OpenSearch in the stack and the server on it, running the catalog search and search settings specs alone. On `main`, saves the same Playwright browser cache when it missed. | [`e2e/README.md`](../../e2e/README.md#catalog-search-on-opensearch) |
 | `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Test / Routing` | `task e2e:routing`: host, `/api`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
 | `Test / Deploy` | `task deploy:check`, then `task docker:verify:full` and `task deploy:smoke`: the deployment Compose file brought up from every image, set up, and reached through its edge, including an image resized through libvips. | [`infra/deploy/README.md`](../../infra/deploy/README.md) |
 | `Build` | `pnpm build` for Web and `task server:build` for Go; on `main`, saves the `build` Go build cache every job that builds the server restores. | This file |
 | `Cache / Prune Go build` | On `main` only: deletes every Go build cache entry on `main` but the newest of each kind. | This file |
+| `Cache / Prune Playwright browsers` | On `main` only: deletes every Playwright browser cache entry on `main` but the newest. | This file |
 | `Docker / <target>` | `task docker:build:*`, then web/node/publiractl smoke tests. | [`infra/docker/README.md`](../../infra/docker/README.md) |
 | `Summary` | Final aggregation of every job result. | This file |
 

@@ -1199,15 +1199,25 @@ jobs:
       # runs on, and keeps it under a directory named after the browser's
       # revision alone. A cache restored from another Ubuntu release would
       # look installed and be left in place, so the key names the image.
-      - name: Cache / Runner image
-        id: image
-        run: echo "name=${ImageOS}" >> "$GITHUB_OUTPUT"
+      #
+      # The browsers change with the Playwright version and nothing else, so
+      # the key names the version rather than the lockfile: keyed on the
+      # lockfile, every Renovate merge saved another 293 MB copy of the same
+      # browsers, and twenty of them pushed the Go module cache out of the
+      # repository's 10 GB.
+      - name: Cache / Playwright key
+        id: playwright-key
+        run: |
+          set -euo pipefail
+          version="$(pnpm --dir e2e exec playwright --version)"
+          echo "key=playwright-${ImageOS}-${version#Version }" >> "$GITHUB_OUTPUT"
 
       - name: Cache / Playwright browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: playwright
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ steps.image.outputs.name }}-${{ hashFiles('e2e/package.json', 'pnpm-lock.yaml') }}
+          key: ${{ steps.playwright-key.outputs.key }}
 
       - name: Download / E2E build
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -1227,6 +1237,17 @@ jobs:
           CI: true
           PUBLIRA_E2E_GROUP: ${{ matrix.group }}
           PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.id }}.zip
+
+      # Only `main` saves, because only its entries are readable from a pull
+      # request or a merge group, and `Cache / Prune Playwright browsers` keeps
+      # the newest there. On a new version every entry of the matrix misses
+      # together; the first to finish saves, and the others find the key taken.
+      - name: Cache / Save Playwright browsers
+        if: github.ref == 'refs/heads/main' && steps.playwright.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ steps.playwright-key.outputs.key }}
 
       - name: Upload / E2E artifacts
         if: failure()
@@ -1336,15 +1357,20 @@ jobs:
       # runs on, and keeps it under a directory named after the browser's
       # revision alone. A cache restored from another Ubuntu release would
       # look installed and be left in place, so the key names the image.
-      - name: Cache / Runner image
-        id: image
-        run: echo "name=${ImageOS}" >> "$GITHUB_OUTPUT"
+      # Why the rest of it is the Playwright version: see `Test / E2E`.
+      - name: Cache / Playwright key
+        id: playwright-key
+        run: |
+          set -euo pipefail
+          version="$(pnpm --dir e2e exec playwright --version)"
+          echo "key=playwright-${ImageOS}-${version#Version }" >> "$GITHUB_OUTPUT"
 
       - name: Cache / Playwright browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: playwright
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ steps.image.outputs.name }}-${{ hashFiles('e2e/package.json', 'pnpm-lock.yaml') }}
+          key: ${{ steps.playwright-key.outputs.key }}
 
       - name: Build + Readiness + Playwright
         # The same lifecycle as Test / E2E, with the engine in the compose
@@ -1353,6 +1379,14 @@ jobs:
         run: task e2e:search
         env:
           CI: true
+
+      # Saved on `main` alone, for the reason `Test / E2E` gives.
+      - name: Cache / Save Playwright browsers
+        if: github.ref == 'refs/heads/main' && steps.playwright.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ steps.playwright-key.outputs.key }}
 
       - name: Upload / E2E artifacts
         if: failure()
@@ -1570,6 +1604,29 @@ jobs:
               xargs -r -n 1 gh cache delete
           done
 
+  # Every Playwright version saves one browser cache entry on `main`, and only
+  # the current version's is ever restored. Keeping the newest by creation
+  # time keeps that one. A job of its own for the reason `Cache / Prune Go
+  # build` is.
+  prune-playwright-cache:
+    name: Cache / Prune Playwright browsers
+    needs: [test-e2e, test-e2e-search]
+    if: >-
+      !cancelled() && github.ref == 'refs/heads/main' && (needs.test-e2e.result == 'success' || needs.test-e2e-search.result == 'success')
+    runs-on: ubuntu-26.04
+    permissions:
+      actions: write
+    steps:
+      - name: Delete superseded entries
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh cache list --ref refs/heads/main --key playwright- \
+            --sort created_at --order desc --limit 100 --json id --jq '.[1:][].id' |
+            xargs -r -n 1 gh cache delete
+
   docker:
     name: Docker / ${{ matrix.target }}
     needs: changes
@@ -1658,6 +1715,7 @@ jobs:
       - test-deploy
       - build
       - prune-go-build-cache
+      - prune-playwright-cache
       - docker
     runs-on: ubuntu-26.04
     steps:
@@ -1686,6 +1744,7 @@ jobs:
           TEST_DEPLOY: ${{ needs.test-deploy.result }}
           BUILD: ${{ needs.build.result }}
           PRUNE_GO_BUILD_CACHE: ${{ needs.prune-go-build-cache.result }}
+          PRUNE_PLAYWRIGHT_CACHE: ${{ needs.prune-playwright-cache.result }}
           DOCKER: ${{ needs.docker.result }}
         run: |
           set -euo pipefail
@@ -1714,6 +1773,7 @@ jobs:
             "Test / Deploy=${TEST_DEPLOY}" \
             "Build=${BUILD}" \
             "Cache / Prune Go build=${PRUNE_GO_BUILD_CACHE}" \
+            "Cache / Prune Playwright browsers=${PRUNE_PLAYWRIGHT_CACHE}" \
             "Docker=${DOCKER}"
           do
             name="${pair%%=*}"
