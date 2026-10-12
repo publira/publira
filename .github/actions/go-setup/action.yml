@@ -80,7 +80,7 @@ runs:
     # server commits behind, and 7 s, the link alone, on its own entry.
     #
     # Only `main` saves one (the `Build` and `Test / Go` jobs, through
-    # `go-build-cache-save`), because only its entries are readable from a pull
+    # `main-cache-save`), because only its entries are readable from a pull
     # request or a merge group, and `Cache / Prune Go build` keeps the newest of
     # each kind there. Go trims
     # what it has not used for five days, so restoring an older entry does not

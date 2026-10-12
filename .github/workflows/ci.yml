@@ -161,7 +161,7 @@ jobs:
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
               - '.github/actions/go-setup/**'
-              - '.github/actions/go-build-cache-save/**'
+              - '.github/actions/main-cache-save/**'
             test_ts:
               - *docs_excluded
               - 'apps/**'
@@ -279,6 +279,7 @@ jobs:
               - '.github/actions/go-setup/**'
               - '.github/actions/pnpm-setup/**'
               - '.github/actions/tool-install/**'
+              - '.github/actions/main-cache-save/**'
             # The OpenSearch backend and what it runs on, and nothing wider:
             # the rest of the stack is Test / E2E's, which runs the same spec
             # on the SQL backend.
@@ -373,7 +374,7 @@ jobs:
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
               - '.github/actions/go-setup/**'
-              - '.github/actions/go-build-cache-save/**'
+              - '.github/actions/main-cache-save/**'
               - '.github/actions/pnpm-setup/**'
             docker_web:
               - *docs_excluded
@@ -640,7 +641,7 @@ jobs:
 
       - name: Cache / Save Go build
         if: github.ref == 'refs/heads/main' && steps.go.outputs.build-cache-hit != 'true'
-        uses: ./.github/actions/go-build-cache-save
+        uses: ./.github/actions/main-cache-save
         with:
           path: ${{ steps.go.outputs.build-cache-path }}
           key: ${{ steps.go.outputs.build-cache-key }}
@@ -1240,11 +1241,12 @@ jobs:
 
       # Only `main` saves, because only its entries are readable from a pull
       # request or a merge group, and `Cache / Prune Playwright browsers` keeps
-      # the newest there. On a new version every entry of the matrix misses
-      # together; the first to finish saves, and the others find the key taken.
+      # the newest there; `main-cache-save` leaves that to the tip's run. On a
+      # new version every entry of the matrix misses together; the first to
+      # finish saves, and the others find the key taken.
       - name: Cache / Save Playwright browsers
         if: github.ref == 'refs/heads/main' && steps.playwright.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: ./.github/actions/main-cache-save
         with:
           path: ~/.cache/ms-playwright
           key: ${{ steps.playwright-key.outputs.key }}
@@ -1383,7 +1385,7 @@ jobs:
       # Saved on `main` alone, for the reason `Test / E2E` gives.
       - name: Cache / Save Playwright browsers
         if: github.ref == 'refs/heads/main' && steps.playwright.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: ./.github/actions/main-cache-save
         with:
           path: ~/.cache/ms-playwright
           key: ${{ steps.playwright-key.outputs.key }}
@@ -1571,7 +1573,7 @@ jobs:
       # nothing else in Go and runs whenever server/ changes.
       - name: Cache / Save Go build
         if: github.ref == 'refs/heads/main' && steps.go.outputs.build-cache-hit != 'true'
-        uses: ./.github/actions/go-build-cache-save
+        uses: ./.github/actions/main-cache-save
         with:
           path: ${{ steps.go.outputs.build-cache-path }}
           key: ${{ steps.go.outputs.build-cache-key }}
@@ -1581,7 +1583,7 @@ jobs:
   # 150 MB (`build`) and 200 MB (`test`) each that would crowd the Gradle and
   # Playwright entries out of the repository's 10 GB. Keeping the newest by
   # creation time keeps the newest commit's, because a run that is no longer
-  # main's tip does not save (`go-build-cache-save`). A job of its own, so the
+  # main's tip does not save (`main-cache-save`). A job of its own, so the
   # jobs that run the tree's code never hold a token that can delete caches.
   prune-go-build-cache:
     name: Cache / Prune Go build

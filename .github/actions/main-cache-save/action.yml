@@ -1,0 +1,43 @@
+name: Save a cache on main
+description: Save a cache that only main writes, unless a newer commit has reached main since this run started.
+
+inputs:
+  path:
+    description: The directory to save.
+    required: true
+  key:
+    description: The key to save it under.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Every cache saved through here is chosen by creation time: `restore-keys`
+    # reads the entry created last, and `Cache / Prune Go build` and `Cache /
+    # Prune Playwright browsers` keep only the newest on main. Creation order
+    # therefore has to follow commit order. Two pushes to main run side by
+    # side, and the older commit's run can finish last; it would then leave its
+    # stale entry as the one every later run restores or the prune keeps. The
+    # run that is no longer main's tip leaves saving to the run of the commit
+    # that is. The repository is public, so the lookup needs no credentials.
+    - name: Cache / Check main tip
+      id: tip
+      shell: bash
+      run: |
+        set -euo pipefail
+        tip="$(git ls-remote "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)"
+        if [[ "${tip}" == "${GITHUB_SHA}" ]]; then
+          echo "current=true" >> "${GITHUB_OUTPUT}"
+        else
+          echo "main is at ${tip}, past ${GITHUB_SHA}; not saving ${CACHE_KEY}"
+          echo "current=false" >> "${GITHUB_OUTPUT}"
+        fi
+      env:
+        CACHE_KEY: ${{ inputs.key }}
+
+    - name: Cache / Save
+      if: steps.tip.outputs.current == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ inputs.key }}

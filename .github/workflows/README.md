@@ -153,7 +153,7 @@ Implementation:
 - Flutter SDK setup for the mobile jobs: [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh)
 - Flutter, the JDK, the Gradle cache, and the app's dependencies for the jobs that build the Android app: [`.github/actions/mobile-android-setup`](../actions/mobile-android-setup/action.yml)
 - Go, the module cache (downloading the modules, retried once, when it misses), and the build cache of the compile a job runs, for every job that uses Go: [`.github/actions/go-setup`](../actions/go-setup/action.yml)
-- Saving that build cache on `main`, skipped by a run whose commit is no longer `main`'s tip: [`.github/actions/go-build-cache-save`](../actions/go-build-cache-save/action.yml)
+- Saving that build cache and the Playwright browser cache on `main`, skipped by a run whose commit is no longer `main`'s tip: [`.github/actions/main-cache-save`](../actions/main-cache-save/action.yml)
 - migrate, wait4x, and sqlc from their GitHub releases, cached by tool, version, and architecture, at the versions `ci.yml` sets: [`.github/actions/tool-install`](../actions/tool-install/action.yml)
 - pnpm and Node.js, with a second attempt when the first fails: [`.github/actions/pnpm-setup`](../actions/pnpm-setup/action.yml)
 - Migration version ordering for `Test / DB Migrations`: [`scripts/check-migration-order.sh`](../../scripts/check-migration-order.sh)
@@ -214,7 +214,7 @@ Nightly full builds find cross-service drift that filters cannot catch. Host CI 
 
 `Detect changes` uses [dorny/paths-filter](https://github.com/dorny/paths-filter); `scripts/ci-plan-jobs.sh` turns the result into job flags and the Docker matrix.
 
-For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jobs.sh` force the job to run so CI changes cannot escape validation. A job also watches each shared action it runs: [`apt-install`](../actions/apt-install/action.yml), [`go-setup`](../actions/go-setup/action.yml), [`go-build-cache-save`](../actions/go-build-cache-save/action.yml) where it saves a build cache, [`tool-install`](../actions/tool-install/action.yml), and [`pnpm-setup`](../actions/pnpm-setup/action.yml). The heavyweight filters exclude Markdown (`**/*.md`), avoiding checks triggered by README-only changes; `Lint and Format` deliberately includes it. Outside those shared rules, the main filters are:
+For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jobs.sh` force the job to run so CI changes cannot escape validation. A job also watches each shared action it runs: [`apt-install`](../actions/apt-install/action.yml), [`go-setup`](../actions/go-setup/action.yml), [`main-cache-save`](../actions/main-cache-save/action.yml) where it saves a cache, [`tool-install`](../actions/tool-install/action.yml), and [`pnpm-setup`](../actions/pnpm-setup/action.yml). The heavyweight filters exclude Markdown (`**/*.md`), avoiding checks triggered by README-only changes; `Lint and Format` deliberately includes it. Outside those shared rules, the main filters are:
 
 | Job | Watched paths |
 | --- | --- |
