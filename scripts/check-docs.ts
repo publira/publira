@@ -58,10 +58,17 @@ const IMAGE_EXTENSIONS = new Set([
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 
+/**
+ * A page's URL below the version segment, as `redirect_from` names one: slugs
+ * joined by `/`, with neither a number nor a leading or trailing `/`.
+ */
+const URL_PATH = /^[a-z\d]+(?:-[a-z\d]+)*(?:\/[a-z\d]+(?:-[a-z\d]+)*)*$/u;
+
 /** Every key the frontmatter may carry, and whether a page must. */
 const KEYS: Record<string, boolean> = {
   description: true,
   published: true,
+  redirect_from: false,
   title: true,
   updated: false,
 };
@@ -173,19 +180,73 @@ const checkDates = (record: Record<string, unknown>): string[] => {
   return messages;
 };
 
-const checkFrontmatter = (file: string, values: unknown): Finding[] => {
+/**
+ * The URLs `redirect_from` names, and what is wrong with how it names them.
+ *
+ * Each one is a URL the page was published at before it was renamed or moved,
+ * which the website redirects to the page. What it collides with is a question
+ * for the whole tree, so {@link scan} asks it.
+ */
+const checkRedirects = (
+  record: Record<string, unknown>
+): { messages: string[]; redirects: string[] } => {
+  if (!("redirect_from" in record)) {
+    return { messages: [], redirects: [] };
+  }
+  const value = record.redirect_from;
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    !value.every((entry) => typeof entry === "string")
+  ) {
+    return {
+      messages: [
+        "`redirect_from` is not a list of the URLs the page was published at before.",
+      ],
+      redirects: [],
+    };
+  }
+  const messages: string[] = [];
+  const redirects: string[] = [];
+  for (const entry of value as string[]) {
+    if (!URL_PATH.test(entry)) {
+      messages.push(
+        `\`${entry}\` in \`redirect_from\` is not a URL below the version, such as \`deployments/reverse-proxy\`: slugs joined by \`/\`, without numbers or a leading \`/\`.`
+      );
+    } else if (redirects.includes(entry)) {
+      messages.push(`\`${entry}\` is in \`redirect_from\` twice.`);
+    } else {
+      redirects.push(entry);
+    }
+  }
+
+  return { messages, redirects };
+};
+
+const checkFrontmatter = (
+  file: string,
+  values: unknown
+): { findings: Finding[]; redirects: string[] } => {
   if (typeof values !== "object" || values === null || Array.isArray(values)) {
-    return [
-      { file, line: 1, message: "The frontmatter is not a map of keys." },
-    ];
+    return {
+      findings: [
+        { file, line: 1, message: "The frontmatter is not a map of keys." },
+      ],
+      redirects: [],
+    };
   }
   const record = values as Record<string, unknown>;
+  const { messages, redirects } = checkRedirects(record);
 
-  return [
-    ...checkKeys(record),
-    ...checkText(record),
-    ...checkDates(record),
-  ].map((message) => ({ file, line: 1, message }));
+  return {
+    findings: [
+      ...checkKeys(record),
+      ...checkText(record),
+      ...checkDates(record),
+      ...messages,
+    ].map((message) => ({ file, line: 1, message })),
+    redirects,
+  };
 };
 
 /** A link target a reader follows, as the page spells it. */
@@ -206,13 +267,14 @@ const visit = (node: Nodes, onNode: (node: Nodes) => void): void => {
 };
 
 /**
- * The findings that can be told from the page alone, and the links it makes,
- * which only the tree around it can resolve.
+ * The findings that can be told from the page alone, and the links it makes
+ * and the former URLs it redirects from, which only the tree around it can
+ * resolve.
  */
 export const checkPage = (
   file: string,
   source: string
-): { findings: Finding[]; links: Link[] } => {
+): { findings: Finding[]; links: Link[]; redirects: string[] } => {
   const frontmatter = splitFrontmatter(source);
   if (!frontmatter) {
     return {
@@ -225,16 +287,18 @@ export const checkPage = (
         },
       ],
       links: [],
+      redirects: [],
     };
   }
   if ("error" in frontmatter) {
     return {
       findings: [{ file, line: 1, message: frontmatter.error }],
       links: [],
+      redirects: [],
     };
   }
 
-  const findings = checkFrontmatter(file, frontmatter.values);
+  const { findings, redirects } = checkFrontmatter(file, frontmatter.values);
 
   // Blank lines stand in for the frontmatter, so the body is parsed on its own
   // while every position still names the line in the file.
@@ -303,7 +367,7 @@ export const checkPage = (
     }
   }
 
-  return { findings, links };
+  return { findings, links, redirects };
 };
 
 const SCHEME = /^[a-z][\d+.a-z-]*:/iu;
@@ -479,13 +543,16 @@ const checkDirectory = async (
   };
 };
 
-/** The findings in one page, and the images beside it that it shows. */
+/**
+ * The findings in one page, the images beside it that it shows, and the former
+ * URLs it redirects from.
+ */
 const checkFile = async (
   repository: string,
   file: string
-): Promise<{ findings: Finding[]; images: string[] }> => {
+): Promise<{ findings: Finding[]; images: string[]; redirects: string[] }> => {
   const source = await readFile(path.join(repository, file), "utf-8");
-  const { findings, links } = checkPage(file, source);
+  const { findings, links, redirects } = checkPage(file, source);
   const resolved = await Promise.all(
     links.map(async (link) => ({
       image: link.image,
@@ -508,6 +575,7 @@ const checkFile = async (
         ? [result.target]
         : []
     ),
+    redirects,
   };
 };
 
@@ -518,6 +586,68 @@ const pageSlug = (page: string): string => {
   return name === path.posix.basename(INDEX, PAGE_EXTENSION)
     ? name
     : (ENTRY_NAME.exec(name)?.groups?.slug ?? name);
+};
+
+/**
+ * A page's URL below the version segment: the slugs of its path, with an
+ * `index.md` standing for its directory.
+ */
+const pageUrlPath = (root: string, page: string): string =>
+  path.posix
+    .relative(root, page)
+    .split("/")
+    .filter((segment) => segment !== INDEX)
+    .map((segment) => {
+      const stem = path.posix.basename(segment, PAGE_EXTENSION);
+
+      return ENTRY_NAME.exec(stem)?.groups?.slug ?? stem;
+    })
+    .join("/");
+
+/**
+ * The findings for `redirect_from` entries the website could not honour: one
+ * that is the URL of a page the tree still has, which the page there answers
+ * rather than the redirect, and one that two pages claim.
+ */
+const checkRedirectTargets = (
+  root: string,
+  pages: readonly string[],
+  redirects: readonly (readonly string[])[]
+): Finding[] => {
+  const urls = new Map(pages.map((page) => [pageUrlPath(root, page), page]));
+  const claims = new Map<string, string[]>();
+  const findings: Finding[] = [];
+  for (const [index, page] of pages.entries()) {
+    for (const redirect of redirects[index] ?? []) {
+      const existing = urls.get(redirect);
+      if (existing) {
+        findings.push({
+          file: page,
+          line: 1,
+          message: `\`${redirect}\` in \`redirect_from\` is the URL of ${existing}, which the website serves instead of the redirect.`,
+        });
+      } else {
+        claims.set(redirect, [...(claims.get(redirect) ?? []), page]);
+      }
+    }
+  }
+  for (const [redirect, claimants] of claims) {
+    if (claimants.length > 1) {
+      for (const page of claimants) {
+        const others = claimants
+          .filter((other) => other !== page)
+          .toSorted((a, b) => a.localeCompare(b, "en"))
+          .join(", ");
+        findings.push({
+          file: page,
+          line: 1,
+          message: `${others} redirects from \`${redirect}\` too, so the website could send it to only one of the pages.`,
+        });
+      }
+    }
+  }
+
+  return findings;
 };
 
 /**
@@ -624,6 +754,11 @@ export const scan = async (
     ...locales,
     ...findings,
     ...inPages.flatMap((page) => page.findings),
+    ...checkRedirectTargets(
+      root,
+      pages,
+      inPages.map((page) => page.redirects)
+    ),
     ...checkImages(images, shownBy),
   ].toSorted(
     (a, b) =>
