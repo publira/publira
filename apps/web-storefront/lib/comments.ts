@@ -427,6 +427,13 @@ export const postEpisodeComment = async (
         t("storefront.episode.comments.post_failed"),
         {
           locale: input.locale,
+          // The one conflict this RPC answers is the reader repeating a body
+          // inside the duplicate comment window. The shared wording asks them
+          // to change the values, and what they need to hear is that the
+          // comment is already there and that the same text can wait.
+          overrides: {
+            conflict: t("storefront.episode.comments.post_duplicate"),
+          },
         }
       ),
       ok: false,
