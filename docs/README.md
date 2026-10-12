@@ -57,7 +57,7 @@ A Publira install is made of ...
 | `description` | yes | One sentence for the meta description and the Open Graph card |
 | `published` | yes | `YYYY-MM-DD`, the date the page was first published |
 | `updated` | no | `YYYY-MM-DD`, the date of the last change a reader should notice, never earlier than `published`. Omitted until there is one; a typo fix does not bump it |
-| `redirect_from` | no | The URLs the page was published at before a rename or a move, each below the version segment, such as `deployments/reverse-proxy`. The website redirects each of them to the page, in every version whose tree carries the entry |
+| `redirect_from` | no | The URLs the page was published at before a rename or a move, each the path below the version segment, such as `/deployments/reverse-proxy`. The website redirects each of them to the page, in every version whose tree carries the entry |
 
 No other key is allowed: a misspelt one would otherwise be ignored by both sides.
 
@@ -71,7 +71,7 @@ title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do.
 published: 2026-10-06
 redirect_from:
-  - deployments/reverse-proxy
+  - /deployments/reverse-proxy
 ---
 ```
 

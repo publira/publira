@@ -92,17 +92,17 @@ describe("checkPage", () => {
       page([
         ...VALID,
         "redirect_from:",
-        "  - deployments/reverse-proxy",
-        "  - proxy",
+        "  - /deployments/reverse-proxy",
+        "  - /proxy",
       ])
     );
     assert.deepEqual(findings, []);
-    assert.deepEqual(redirects, ["deployments/reverse-proxy", "proxy"]);
+    assert.deepEqual(redirects, ["/deployments/reverse-proxy", "/proxy"]);
   });
 
   it("reports a redirect_from that is not a list of URLs below the version", () => {
     for (const value of [
-      "redirect_from: deployments/reverse-proxy",
+      "redirect_from: /deployments/reverse-proxy",
       "redirect_from: []",
       "redirect_from: [1]",
     ]) {
@@ -115,10 +115,10 @@ describe("checkPage", () => {
       );
     }
     for (const entry of [
-      "/deployments/reverse-proxy",
-      "deployments/reverse-proxy/",
-      "deployments/reverse-proxy.md",
-      "Deployments/Reverse-Proxy",
+      "deployments/reverse-proxy",
+      "/deployments/reverse-proxy/",
+      "/deployments/reverse-proxy.md",
+      "/Deployments/Reverse-Proxy",
     ]) {
       assert.match(
         messages(page([...VALID, `redirect_from: [${entry}]`]))[0] ?? "",
@@ -127,8 +127,8 @@ describe("checkPage", () => {
       );
     }
     assert.deepEqual(
-      messages(page([...VALID, "redirect_from: [proxy, proxy]"])),
-      ["`proxy` is in `redirect_from` twice."]
+      messages(page([...VALID, "redirect_from: [/proxy, /proxy]"])),
+      ["`/proxy` is in `redirect_from` twice."]
     );
   });
 
@@ -437,7 +437,7 @@ describe("scan", () => {
   it("passes a page that redirects from a URL no page has", async () => {
     await write(
       "docs/en/2-deployments/2-edge.md",
-      page([...VALID, "redirect_from: [deployments/reverse-proxy]"])
+      page([...VALID, "redirect_from: [/deployments/reverse-proxy]"])
     );
 
     assert.deepEqual(await findings(), []);
@@ -448,12 +448,12 @@ describe("scan", () => {
       "docs/en/2-deployments/2-edge.md",
       page([
         ...VALID,
-        "redirect_from: [deployments/overview, deployments, deployments/proxy]",
+        "redirect_from: [/deployments/overview, /deployments, /deployments/proxy]",
       ])
     );
     await write(
       "docs/en/3-proxies.md",
-      page([...VALID, "redirect_from: [deployments/proxy]"])
+      page([...VALID, "redirect_from: [/deployments/proxy]"])
     );
 
     const reported = await scan(repository);
@@ -462,19 +462,19 @@ describe("scan", () => {
       [
         [
           "docs/en/2-deployments/2-edge.md",
-          "`deployments/overview` in `redirect_from` is the URL of docs/en/2-deployments/1-overview.md, which the website serves instead of the redirect.",
+          "`/deployments/overview` in `redirect_from` is the URL of docs/en/2-deployments/1-overview.md, which the website serves instead of the redirect.",
         ],
         [
           "docs/en/2-deployments/2-edge.md",
-          "`deployments` in `redirect_from` is the URL of docs/en/2-deployments/index.md, which the website serves instead of the redirect.",
+          "`/deployments` in `redirect_from` is the URL of docs/en/2-deployments/index.md, which the website serves instead of the redirect.",
         ],
         [
           "docs/en/2-deployments/2-edge.md",
-          "docs/en/3-proxies.md redirects from `deployments/proxy` too, so the website could send it to only one of the pages.",
+          "docs/en/3-proxies.md redirects from `/deployments/proxy` too, so the website could send it to only one of the pages.",
         ],
         [
           "docs/en/3-proxies.md",
-          "docs/en/2-deployments/2-edge.md redirects from `deployments/proxy` too, so the website could send it to only one of the pages.",
+          "docs/en/2-deployments/2-edge.md redirects from `/deployments/proxy` too, so the website could send it to only one of the pages.",
         ],
       ]
     );

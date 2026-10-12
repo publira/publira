@@ -59,10 +59,10 @@ const IMAGE_EXTENSIONS = new Set([
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 
 /**
- * A page's URL below the version segment, as `redirect_from` names one: slugs
- * joined by `/`, with neither a number nor a leading or trailing `/`.
+ * A page's URL below the version segment, as `redirect_from` names one: each
+ * slug after a `/`, with neither a number nor a trailing `/`.
  */
-const URL_PATH = /^[a-z\d]+(?:-[a-z\d]+)*(?:\/[a-z\d]+(?:-[a-z\d]+)*)*$/u;
+const URL_PATH = /^(?:\/[a-z\d]+(?:-[a-z\d]+)*)+$/u;
 
 /** Every key the frontmatter may carry, and whether a page must. */
 const KEYS: Record<string, boolean> = {
@@ -211,7 +211,7 @@ const checkRedirects = (
   for (const entry of value as string[]) {
     if (!URL_PATH.test(entry)) {
       messages.push(
-        `\`${entry}\` in \`redirect_from\` is not a URL below the version, such as \`deployments/reverse-proxy\`: slugs joined by \`/\`, without numbers or a leading \`/\`.`
+        `\`${entry}\` in \`redirect_from\` is not a URL below the version, such as \`/deployments/reverse-proxy\`: each slug after a \`/\`, without numbers or a trailing \`/\`.`
       );
     } else if (redirects.includes(entry)) {
       messages.push(`\`${entry}\` is in \`redirect_from\` twice.`);
@@ -589,11 +589,11 @@ const pageSlug = (page: string): string => {
 };
 
 /**
- * A page's URL below the version segment: the slugs of its path, with an
- * `index.md` standing for its directory.
+ * A page's URL below the version segment: each slug of its path after a `/`,
+ * with an `index.md` standing for its directory.
  */
-const pageUrlPath = (root: string, page: string): string =>
-  path.posix
+const pageUrlPath = (root: string, page: string): string => {
+  const slugs = path.posix
     .relative(root, page)
     .split("/")
     .filter((segment) => segment !== INDEX)
@@ -601,8 +601,10 @@ const pageUrlPath = (root: string, page: string): string =>
       const stem = path.posix.basename(segment, PAGE_EXTENSION);
 
       return ENTRY_NAME.exec(stem)?.groups?.slug ?? stem;
-    })
-    .join("/");
+    });
+
+  return `/${slugs.join("/")}`;
+};
 
 /**
  * The findings for `redirect_from` entries the website could not honour: one

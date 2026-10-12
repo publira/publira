@@ -4,7 +4,7 @@ description: What the load balancer, proxy, or CDN in front of an install has to
 published: 2026-10-06
 updated: 2026-10-12
 redirect_from:
-  - deployments/reverse-proxy
+  - /deployments/reverse-proxy
 ---
 
 Every request a browser or the mobile app sends to an install reaches it through its edge: whatever terminates TLS and forwards the request to one of the processes. That can be a load balancer your platform manages, an Ingress or a Gateway, a CDN in front of either, a reverse proxy you run yourself, or several of them in a chain. Publira does not depend on which one it is, only on what the edge does with a request.
