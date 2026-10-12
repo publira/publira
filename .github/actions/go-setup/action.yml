@@ -1,5 +1,5 @@
 name: Set up Go
-description: Install Go, restore the module cache, and restore the build cache of one kind of compile when the job names one.
+description: Install Go, restore the module cache or download the modules, and restore the build cache of one kind of compile when the job names one.
 
 inputs:
   build-cache:
@@ -62,6 +62,16 @@ runs:
         path: ${{ steps.env.outputs.gomodcache }}
         key: go-mod-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('server/go.sum') }}
 
+    # On a miss every module comes from proxy.golang.org, and Go does not retry
+    # a module zip download, so one reset stream fails whichever later step
+    # needed that module. Downloading them here, once more on a failure,
+    # leaves those steps nothing to fetch.
+    - name: Dependencies / Go modules
+      if: steps.modules.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: server
+      run: go mod download || go mod download
+
     # One entry per kind of compile, keyed by everything under server/, so an
     # unchanged tree restores exactly what it compiles. A changed tree falls
     # back to the newest entry of its kind, whose dependencies and untouched
@@ -70,7 +80,7 @@ runs:
     # server commits behind, and 7 s, the link alone, on its own entry.
     #
     # Only `main` saves one (the `Build` and `Test / Go` jobs, through
-    # `go-build-cache-save`), because only its entries are readable from a pull
+    # `main-cache-save`), because only its entries are readable from a pull
     # request or a merge group, and `Cache / Prune Go build` keeps the newest of
     # each kind there. Go trims
     # what it has not used for five days, so restoring an older entry does not
