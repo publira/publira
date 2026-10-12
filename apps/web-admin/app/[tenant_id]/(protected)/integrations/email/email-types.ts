@@ -9,6 +9,7 @@ export type TenantEmailSettingsFormState =
   | {
       ok: false;
       message: string;
+      fieldErrors?: { username?: string };
     }
   | null;
 

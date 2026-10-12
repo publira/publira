@@ -80,6 +80,17 @@ const smtpOverrideEnabled = (): boolean =>
     );
   `) === "t";
 
+/** The username and the stored password, `|`-joined; empty where none is saved. */
+const smtpCredentials = (): string =>
+  querySql(`
+    SELECT COALESCE(username, '') || '|' || COALESCE(password_encrypted, '')
+    FROM tenant_smtp_config
+    WHERE tenant_id = (
+      SELECT id FROM tenants
+      WHERE public_id = '${ADMIN_OPERATOR_SETTINGS_TENANT.publicId}'
+    );
+  `);
+
 const inboundEmailSettings = (): string =>
   querySql(`
     SELECT COALESCE((
@@ -353,6 +364,40 @@ test.describe("web-admin operator settings", () => {
     ).toBeVisible();
   });
 
+  // Mailpit takes no credentials, and the scenario names none, so the test
+  // message reaches it only by being sent without signing in.
+  test("the email settings screen tests the tenant's own relay without credentials", async ({
+    page,
+  }) => {
+    await clearMessagesTo(ADMIN_OPERATOR_SETTINGS_NEW_EMAIL);
+    await signInAsAdmin(
+      page,
+      {
+        email: ADMIN_OPERATOR_SETTINGS_NEW_EMAIL,
+        password: ADMIN_OPERATOR_SETTINGS_ADMIN.password,
+      },
+      "/integrations/email",
+      WEB_ADMIN_OPERATOR_SETTINGS_BASE_URL
+    );
+
+    const smtp = emailSection(page, "Outgoing email");
+    await smtp
+      .getByRole("checkbox", {
+        name: "Use this tenant's own SMTP server",
+      })
+      .check();
+    await expect(smtp.getByLabel("Username")).toHaveValue("");
+    await smtp.getByRole("button", { name: "Test the connection" }).click();
+    await page.getByRole("button", { name: "Run the test" }).click();
+
+    await expect(
+      page.getByText(
+        `The test message was sent to ${ADMIN_OPERATOR_SETTINGS_NEW_EMAIL}.`
+      )
+    ).toBeVisible();
+    await waitForMessageTo(ADMIN_OPERATOR_SETTINGS_NEW_EMAIL);
+  });
+
   test("the email settings screen saves a sender name that survives a reload", async ({
     page,
   }) => {
@@ -388,6 +433,7 @@ test.describe("web-admin operator settings", () => {
     await expect(smtp.getByRole("status")).toContainText(SMTP_SAVED_MESSAGE);
     expect(smtpFromName()).toBe(ADMIN_OPERATOR_SETTINGS_FROM_NAME);
     expect(smtpOverrideEnabled()).toBe(true);
+    expect(smtpCredentials()).toBe("|");
 
     await page.goto(adminUrl("/integrations/email"));
     await expect(page.getByLabel("Sender name (optional)")).toHaveValue(

@@ -15,6 +15,7 @@ import {
   updateTenantEmailSettings,
 } from "#lib/email-settings";
 import {
+  SECRET_UPDATE_MODE_CLEAR,
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
@@ -66,8 +67,11 @@ const parseIntOrFallback = (value: string, fallback: number): number => {
 
 const parseSecretUpdateMode = (value: string): number => {
   const parsed = parseIntOrFallback(value, SECRET_UPDATE_MODE_UNCHANGED);
-  if (parsed === SECRET_UPDATE_MODE_REPLACE) {
-    return SECRET_UPDATE_MODE_REPLACE;
+  if (
+    parsed === SECRET_UPDATE_MODE_REPLACE ||
+    parsed === SECRET_UPDATE_MODE_CLEAR
+  ) {
+    return parsed;
   }
 
   return SECRET_UPDATE_MODE_UNCHANGED;
@@ -127,6 +131,7 @@ export const updateTenantEmailSettingsAction = async (
   );
   if (!result.ok) {
     return {
+      fieldErrors: result.fieldErrors,
       message: result.message,
       ok: false,
     };

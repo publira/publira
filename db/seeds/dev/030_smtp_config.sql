@@ -31,7 +31,8 @@ SET host = EXCLUDED.host,
     revision = platform_smtp_config.revision + 1,
     updated_at = NOW();
 
--- Tenant override (disabled, but the values are kept)
+-- Tenant override (disabled, but the values are kept). It names the same
+-- Mailpit, so it saves no credentials either.
 INSERT INTO tenant_smtp_config (
     tenant_id,
     smtp_override_enabled,
@@ -49,8 +50,8 @@ SELECT
     FALSE,
     'mailpit',
     1025,
-    'mailpit',
-    'enc:seed:tenant:dummy-ciphertext-v1',
+    NULL,
+    NULL,
     'none',
     'Seed Tenant Mail',
     'no-reply@tenant.local',

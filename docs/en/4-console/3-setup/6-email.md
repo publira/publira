@@ -2,7 +2,7 @@
 title: Email
 description: Send the tenant's mail through the publisher's own SMTP server, and receive readers' replies to contact messages back in the console.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-12
 ---
 
 The tenant sends mail to its readers and its staff: address confirmations, password resets, invitations, replies to contact messages. Until a Tenant admin sets up a server of the tenant's own, all of it goes out through the platform's mail server, from the platform's address, which the operator chooses. **Integrations** › **Email** sends it through the publisher's own SMTP server instead, from an address on the publisher's domain.
@@ -24,7 +24,7 @@ The tenant sends no purchase receipts. Announcements and other notices reach rea
 Have these from whoever runs the publisher's mail:
 
 - The SMTP server's host name and port, and whether it expects TLS from the start of the connection (usually port 465) or STARTTLS (usually port 587).
-- A username and password for it.
+- A username and password for it, unless it relays mail without credentials.
 - The address the mail should come from, which the server is allowed to send as. Have the domain's SPF and DKIM records cover the server, or readers' mail services are likely to file the tenant's mail as spam.
 
 ## Setting it up
@@ -32,7 +32,7 @@ Have these from whoever runs the publisher's mail:
 1. Open **Integrations** › **Email** and, in the **Outgoing email** section, tick **Enable the override** under **Use this tenant's own SMTP server**. The fields below it open.
 2. Fill in:
    - **Host** and **Port**.
-   - **Username** and **Password**.
+   - **Username** and **Password**, if the server asks you to sign in. Leave **Username** blank for a relay that takes no credentials, such as one that trusts the platform's address: the mail is then sent without signing in, and no password is kept. A password without a username is refused.
    - **Encryption**: **TLS**, **STARTTLS**, or **None**. **TLS** and **STARTTLS** both require TLS 1.2 or later, and **STARTTLS** fails rather than sending in the clear when the server does not offer it. Choose **None** only for a server that is reached over a private network.
    - **Sender email address**: the address the mail comes from, such as `noreply@comics.example.com`.
    - **Sender name (optional)**: the name readers see beside that address, usually the site's name. Left empty, the tenant's name is used, both for the tenant's mail and for the connection test.
@@ -40,11 +40,11 @@ Have these from whoever runs the publisher's mail:
 3. Choose **Test the connection**, then **Run the test**. The test sends a message through the values in the form, without saving them, to your own address, or to another one if you clear **Send it to myself**. A failed test says which step failed where it can tell: connecting, TLS or STARTTLS, signing in, the server refusing the recipient, or the server taking too long to answer.
 4. Choose **Save**. The next mail the tenant sends goes through the new server.
 
-![The Outgoing email section with Enable the override ticked: Host, Port, Username, Password with Change, Encryption, Sender name, Sender email address, Reply-to address, Test the connection, and Save.](./email-outgoing.png)
+![The Outgoing email section with Enable the override ticked: Host, Port, Username, Password, Encryption, Sender name, Sender email address, Reply-to address, Test the connection, and Save.](./email-outgoing.png)
 
 ![The SMTP connection test dialog: Send it to myself, Close, and Run the test.](./email-test-connection.png)
 
-A saved password is never shown again. The field shows that one is stored, and **Change** replaces it.
+A saved password is never shown again. The field shows that one is stored, and **Change** replaces it. Saving after **Change** with the box left empty removes it, which is how the tenant moves to a relay that takes no credentials: clear **Username** as well, since a username without a password is refused.
 
 ## When it stops working
 

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { SECRET_UPDATE_MODE_CLEAR } from "#lib/email-settings-shared";
+
 const {
   mockAssertSameOrigin,
   mockGetAccessToken,
@@ -120,6 +122,52 @@ describe("updateTenantEmailSettingsAction", () => {
     await updateTenantEmailSettingsAction(null, smtpFormData());
 
     expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  // An open password box left empty is how a relay that takes no credentials
+  // is saved, and how a stored password is removed.
+  it("passes a cleared password on as such", async () => {
+    mockUpdateTenantEmailSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: { ...savedSmtpSettings, hasPassword: false, username: "" },
+    });
+
+    const { updateTenantEmailSettingsAction } = await import("./actions");
+    const formData = smtpFormData();
+    formData.set("username", "");
+    formData.set("password", "");
+    formData.set("password_update_mode", String(SECRET_UPDATE_MODE_CLEAR));
+
+    await updateTenantEmailSettingsAction(null, formData);
+
+    expect(mockUpdateTenantEmailSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        password: "",
+        passwordUpdateMode: SECRET_UPDATE_MODE_CLEAR,
+        username: "",
+      }),
+      "en"
+    );
+  });
+
+  it("puts the refusal of a password without a username on the username field", async () => {
+    const refusal =
+      "A password needs a username. Enter the username, or remove the password to send without authenticating.";
+    mockUpdateTenantEmailSettings.mockResolvedValueOnce({
+      fieldErrors: { username: refusal },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+
+    const { updateTenantEmailSettingsAction } = await import("./actions");
+
+    await expect(
+      updateTenantEmailSettingsAction(null, smtpFormData())
+    ).resolves.toEqual({
+      fieldErrors: { username: refusal },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
   });
 });
 
