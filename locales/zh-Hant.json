@@ -3492,6 +3492,7 @@
         "own_failed": "無法載入您自己的留言。請稍後再試。",
         "page_empty": "本頁沒有留言。",
         "pagination_aria": "留言分頁",
+        "post_duplicate": "您剛剛已發表過這則留言。相同的內容需過一段時間才能再次發表。",
         "post_failed": "無法發表留言。請稍後再試。",
         "posted": "您的留言已發表。",
         "posted_awaiting_approval": "您的留言已送出審核。審核通過後會顯示在這裡。",

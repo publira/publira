@@ -448,6 +448,25 @@ describe("postEpisodeComment", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("tells a reader repeating a comment that it is already posted", async () => {
+    mockPostEpisodeComment.mockRejectedValueOnce(
+      new ConnectError("posted a moment ago", Code.AlreadyExists)
+    );
+
+    await expect(
+      postEpisodeComment({
+        body: "A comment",
+        episodeId,
+        locale: "en",
+        tenantId,
+      })
+    ).resolves.toEqual({
+      message:
+        "You have just posted this comment. The same text can be posted again after a while.",
+      ok: false,
+    });
+  });
+
   it("lets a rejected session through, so the caller can send the reader to sign in", async () => {
     mockPostEpisodeComment.mockRejectedValueOnce(
       new ConnectError("expired", Code.Unauthenticated)
