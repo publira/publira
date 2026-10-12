@@ -521,6 +521,11 @@ const settingTargetName = (targetType: string) => {
     case "tenant_default_locale": {
       return <Message message="admin.audit.targets.tenant_default_locale" />;
     }
+    case "tenant_email_rejection_settings": {
+      return (
+        <Message message="admin.audit.targets.tenant_email_rejection_settings" />
+      );
+    }
     case "tenant_legal_pages": {
       return <Message message="admin.audit.targets.tenant_legal_pages" />;
     }

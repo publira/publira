@@ -261,6 +261,7 @@
         "tenant_comment_settings": "讀者留言",
         "tenant_community_limits": "社群限制",
         "tenant_default_locale": "預設語言",
+        "tenant_email_rejection_settings": "不接受的電子郵件地址",
         "tenant_legal_pages": "服務條款與隱私權政策",
         "tenant_mobile_app_association": "應用程式連結",
         "tenant_purchase_settings": "販售位置",

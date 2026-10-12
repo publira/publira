@@ -261,6 +261,7 @@
         "tenant_comment_settings": "Reader comments",
         "tenant_community_limits": "Community limits",
         "tenant_default_locale": "Default language",
+        "tenant_email_rejection_settings": "Refused email addresses",
         "tenant_legal_pages": "Terms and privacy policy",
         "tenant_mobile_app_association": "App links",
         "tenant_purchase_settings": "Where episodes are sold",
