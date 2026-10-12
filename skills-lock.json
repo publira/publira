@@ -29,7 +29,7 @@
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-cache-components-optimizer/SKILL.md",
-      "computedHash": "60f603cd578249e5bfc6e192032b20bf7e74764554bdd319fdc543be0b563052"
+      "computedHash": "7c1e21574ff39a11fc3874e4df2ab8a355154cc7b6bf4897ad570a2dd9e5a5f2"
     },
     "next-dev-loop": {
       "source": "vercel/next.js",
@@ -41,13 +41,13 @@
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-partial-prefetching-adoption/SKILL.md",
-      "computedHash": "8b5621a5e6a2c66fc43a37755361d75eb902bdd72a474f715248ad754bdb9607"
+      "computedHash": "6aa8c96d816dcbf061be6dcf58b7f49686c74be09be436ed4b06251bd74fabf3"
     },
     "ultracite": {
       "source": "haydenbleasel/ultracite",
       "sourceType": "github",
       "skillPath": "skills/ultracite/SKILL.md",
-      "computedHash": "766088d57ab81b713d5997575c9f15cfc01817b1c850e94d8dca31c5e21c5a85"
+      "computedHash": "a97df1e37bd2025efc378aa7881dd2ea510bf6d599bf92dee1ace2ecf174866c"
     },
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",
