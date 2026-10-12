@@ -5,17 +5,20 @@ import { listPlatformAuditLogs, platformAuditLogsCacheTag } from "./audit-logs";
 
 const {
   mockBuildSessionHeaders,
+  mockCacheLife,
   mockCacheTag,
   mockListAuditLogs,
   mockResolveSessionId,
 } = vi.hoisted(() => ({
   mockBuildSessionHeaders: vi.fn(),
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockListAuditLogs: vi.fn(),
   mockResolveSessionId: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -273,14 +276,21 @@ describe("listPlatformAuditLogs", () => {
     });
   });
 
-  it("propagates unclassified RPC errors", async () => {
+  // The cache fill itself must not throw, or the request fails before any
+  // boundary can render; the exported read throws once outside the scope.
+  it("throws an error it cannot classify only outside the cache scope", async () => {
     mockListAuditLogs.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
 
     await expect(listPlatformAuditLogs({ locale: "en" })).rejects.toThrow(
-      "boom"
+      Error
     );
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
   });
 });
 

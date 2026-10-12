@@ -1,5 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
 import type { PlatformWebPushSettings as RawPlatformWebPushSettingsMessage } from "@publira/api-client/platform/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
@@ -14,6 +17,8 @@ import {
   isUnauthenticatedError,
   rethrowUnauthenticatedRpcError,
 } from "./auth-shared";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 
 /** What the console shows of the Web Push identity; never the private key. */
@@ -50,7 +55,7 @@ export const toPlatformWebPushSettings = (
 const getPlatformWebPushSettingsForSession = async (
   locale: Locale,
   sessionId: string
-): Promise<GetPlatformWebPushSettingsResult> => {
+): Promise<CachedRead<GetPlatformWebPushSettingsResult>> => {
   "use cache: private";
   cacheTag(platformWebPushSettingsCacheTag);
 
@@ -74,7 +79,6 @@ const getPlatformWebPushSettingsForSession = async (
       settings: toPlatformWebPushSettings(response.settings),
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     // A failed read must not be cached: the client router would replay it
     // after the API recovers.
     dropFailedCacheEntry();
@@ -90,6 +94,7 @@ const getPlatformWebPushSettingsForSession = async (
       }),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -97,7 +102,12 @@ const getPlatformWebPushSettingsForSession = async (
 export const getPlatformWebPushSettings = async (
   locale: Locale
 ): Promise<GetPlatformWebPushSettingsResult> =>
-  getPlatformWebPushSettingsForSession(locale, await resolveAccessToken());
+  settleCachedRead(
+    await getPlatformWebPushSettingsForSession(
+      locale,
+      await resolveAccessToken()
+    )
+  );
 
 /**
  * Save the subject. `expectedRevision` is the revision the screen was rendered

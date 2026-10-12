@@ -1,5 +1,5 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import { rpcErrorDisposition } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
@@ -10,6 +10,8 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { isUnauthenticatedError } from "./auth-shared";
+import type { CachedRead } from "./cached-read";
+import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 
 export interface PlatformAuditLogSummary {
@@ -60,7 +62,7 @@ export const platformAuditLogsCacheTag = "platform:audit-logs";
 const listPlatformAuditLogsForSession = async (
   input: ListPlatformAuditLogsInput,
   sid: string
-): Promise<ListPlatformAuditLogsResult> => {
+): Promise<CachedRead<ListPlatformAuditLogsResult>> => {
   "use cache: private";
   cacheTag(platformAuditLogsCacheTag);
 
@@ -115,7 +117,6 @@ const listPlatformAuditLogsForSession = async (
       previousToken: response.previousToken ?? "",
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
     // A failed read must not be cached: the client router would replay it after
     // the API recovers, and a cached `requiresSignIn` would bounce the operator
     // back to /login even once they have signed in again.
@@ -130,6 +131,7 @@ const listPlatformAuditLogsForSession = async (
       ok: false,
       previousToken: "",
       requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
     };
   }
 };
@@ -137,4 +139,6 @@ const listPlatformAuditLogsForSession = async (
 export const listPlatformAuditLogs = async (
   input: ListPlatformAuditLogsInput
 ): Promise<ListPlatformAuditLogsResult> =>
-  listPlatformAuditLogsForSession(input, await resolveAccessToken());
+  settleCachedRead(
+    await listPlatformAuditLogsForSession(input, await resolveAccessToken())
+  );

@@ -16,6 +16,7 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { PLATFORM_SESSION_CACHE_TAG } from "./auth-shared";
+import type { CachedRead } from "./cached-read";
 import type { MfaChallengeKindName } from "./mfa-challenge";
 import { toPlatformSession } from "./platform-session-cookie";
 import type { PlatformSession } from "./platform-session-cookie";
@@ -154,7 +155,7 @@ export const logoutPlatform = async (accessToken: string): Promise<void> => {
  */
 const getPlatformCurrentOperatorForSession = async (
   sid: string
-): Promise<GetPlatformCurrentOperatorResult> => {
+): Promise<CachedRead<GetPlatformCurrentOperatorResult>> => {
   "use cache: private";
   cacheLife("minutes");
   cacheTag(PLATFORM_SESSION_CACHE_TAG);
@@ -188,10 +189,26 @@ const getPlatformCurrentOperatorForSession = async (
     if (isExpectedNullableRpcError(error)) {
       return { ok: false, requiresSignIn: false };
     }
-    throw error;
+    // Anything else — an unreachable API included — is the console's error
+    // screen, thrown by the caller. Only the verdict crosses the cache
+    // boundary, so the cause is logged here, where the error is still whole.
+    console.warn("[web-platform] getPlatformCurrentOperator failed", error);
+    dropFailedCacheEntry();
+    return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
 
+/**
+ * The signed-in operator, or why there is none. A failure that is neither a
+ * rejected session nor an operator the API does not show reaches the error
+ * boundary.
+ */
 export const getPlatformCurrentOperator =
-  async (): Promise<GetPlatformCurrentOperatorResult> =>
-    getPlatformCurrentOperatorForSession(await resolveAccessToken());
+  async (): Promise<GetPlatformCurrentOperatorResult> => {
+    const { unexpected, ...result } =
+      await getPlatformCurrentOperatorForSession(await resolveAccessToken());
+    if (unexpected) {
+      throw new Error("The signed-in operator could not be read.");
+    }
+    return result;
+  };
