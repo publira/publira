@@ -121,11 +121,9 @@ The tenant's refused email addresses under **Settings** do not apply to these si
 
 ### What a reader can manage
 
-Under **Settings** › **Security** on the site, **Linked accounts** lists the Apple and Google accounts the reader can sign in with, each with **Unlink**, and offers **Link** for each provider the site offers that the account has none of yet. **Link** sends the reader to sign in with that provider and links the account they sign in to, whatever address it carries, so a **Hide My Email** address links as well as the reader's own. From then on, signing in with it opens the same account.
+Under **Settings** › **Security** on the site, and from the app's account screen, **Linked accounts** lists the Apple and Google accounts the reader can sign in with, each with **Unlink**, and offers **Link** for each provider the site or the app offers that the account has none of yet. **Link** sends the reader to sign in with that provider and links the account they sign in to, whatever address it carries, so a **Hide My Email** address links as well as the reader's own. From then on, signing in with it opens the same account, on the site and in the app.
 
 A link is refused, with the reason on the screen, when the Apple or Google account already signs in to another account on the site, which has to unlink it first, and when the reader's account already has an account of that provider linked, which they unlink before linking another.
-
-The app's account screen lists and unlinks linked accounts too; linking one is done on the site.
 
 An account created through Apple or Google has no password. The same screen offers **Set a password**, which mails a link to set one, after which the reader can sign in with their email address as well. Until then:
 

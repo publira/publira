@@ -402,12 +402,140 @@ void main() {
       );
       await pumpUntilFound(
         tester,
-        find.byKey(const ValueKey('linked-accounts-empty')),
+        find.byKey(const ValueKey('linked-account-link-google')),
       );
 
       expect(find.text('The account was unlinked.'), findsOneWidget);
       expect(repository.identities, isEmpty);
     });
+
+    testWidgets('offers to link each provider the device offers that the '
+        'account has none of', (tester) async {
+      repository.identities = [google];
+      await pumpApp(tester, initialLocation: AppRoutes.accountLinkedAccounts);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('linked-account-link-apple')),
+      );
+
+      expect(find.text('Not linked'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('linked-account-unlink-google')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('linked-account-link-google')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('offers no link where this run has no provider sign-in', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.accountLinkedAccounts,
+        withSignIn: false,
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('linked-accounts-empty')),
+      );
+
+      expect(find.text('Link'), findsNothing);
+    });
+
+    testWidgets('links a provider with a fresh sign-in and lists it', (
+      tester,
+    ) async {
+      await pumpApp(tester, initialLocation: AppRoutes.accountLinkedAccounts);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('linked-account-link-google')),
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('linked-account-link-google')),
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('linked-account-unlink-google')),
+      );
+
+      expect(providerSignIn.requested, [IdentityProvider.google]);
+      expect(repository.linkCredentials.single.idToken, 'google-id-token-1');
+      expect(
+        find.text(
+          'Your Google account was linked. You can now sign in with it.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('linked@google.example'), findsOneWidget);
+    });
+
+    testWidgets('a closed provider sheet links nothing and says nothing', (
+      tester,
+    ) async {
+      providerSignIn.failure = const ProviderSignInCancelled();
+      await pumpApp(tester, initialLocation: AppRoutes.accountLinkedAccounts);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('linked-account-link-google')),
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('linked-account-link-google')),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(repository.linkCredentials, isEmpty);
+      expect(find.byType(SnackBar), findsNothing);
+      final link = tester.widget<TextButton>(
+        find.byKey(const ValueKey('linked-account-link-google')),
+      );
+      expect(link.onPressed, isNotNull);
+    });
+
+    for (final (kind, copy) in const [
+      (
+        AuthFailureKind.linkedToAnotherAccount,
+        'This Google account is already linked to another account. Unlink it '
+            'from that account first.',
+      ),
+      (
+        AuthFailureKind.providerAlreadyLinked,
+        'Your account already has a Google account linked. Unlink it first to '
+            'link another one.',
+      ),
+      (
+        AuthFailureKind.invalidInput,
+        'Could not confirm your sign-in with Google. Try again.',
+      ),
+      (
+        AuthFailureKind.providerRefused,
+        'This sign-in method is not available right now.',
+      ),
+    ]) {
+      testWidgets('a link refused as ${kind.name} says why', (tester) async {
+        repository.linkFailure = AuthFailure(kind);
+        await pumpApp(tester, initialLocation: AppRoutes.accountLinkedAccounts);
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('linked-account-link-google')),
+        );
+
+        await tester.tap(
+          find.byKey(const ValueKey('linked-account-link-google')),
+        );
+        await pumpUntilFound(tester, find.text(copy));
+
+        expect(repository.identities, isEmpty);
+        expect(
+          find.byKey(const ValueKey('linked-account-link-google')),
+          findsOneWidget,
+        );
+      });
+    }
 
     testWidgets('keeps the last one of an account without a password', (
       tester,

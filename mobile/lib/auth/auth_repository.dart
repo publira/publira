@@ -46,6 +46,18 @@ abstract class AuthRepository {
   /// last way an account without a password signs in.
   Future<void> unlinkIdentity(AuthSession session, IdentityProvider provider);
 
+  /// Links the provider account [credential] is a fresh sign-in to, to the
+  /// account behind [session], whatever address the provider carries, so it
+  /// signs in to that account from then on.
+  ///
+  /// Throws [AuthFailure]: [AuthFailureKind.linkedToAnotherAccount] where the
+  /// provider account signs in to another reader,
+  /// [AuthFailureKind.providerAlreadyLinked] where the account has one of that
+  /// provider linked, [AuthFailureKind.invalidInput] for a sign-in the API
+  /// could not verify, and [AuthFailureKind.providerRefused] where the tenant
+  /// no longer offers the provider.
+  Future<void> linkIdentity(AuthSession session, ProviderCredential credential);
+
   /// Asks the API for an account on [email], which it answers by mailing that
   /// address a confirmation link.
   ///

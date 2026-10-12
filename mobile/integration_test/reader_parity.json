@@ -490,7 +490,10 @@
         "routes": ["[locale]/(site)/settings/security"],
         "rpcs": ["ListMyIdentities", "UnlinkIdentity"]
       },
-      "exception": "Not in the app yet: #1778."
+      "mobile": {
+        "routes": ["/account/linked-accounts"],
+        "rpcs": ["ListMyIdentities", "UnlinkIdentity"]
+      }
     },
     {
       "name": "Linking an Apple or Google account to the reader's account from Linked accounts",
@@ -498,7 +501,10 @@
         "routes": ["[locale]/(site)/settings/security"],
         "rpcs": ["LinkIdentity"]
       },
-      "exception": "Not in the app yet: #3784."
+      "mobile": {
+        "routes": ["/account/linked-accounts"],
+        "rpcs": ["LinkIdentity"]
+      }
     },
     {
       "name": "Signing out at the API",

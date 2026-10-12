@@ -149,6 +149,16 @@ class AuthController extends ChangeNotifier {
     await _whileHeld(() => _repository.unlinkIdentity(session, provider));
   }
 
+  /// Links the provider account [credential] is a fresh sign-in to, to the
+  /// signed-in account.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> linkIdentity(ProviderCredential credential) async {
+    final session = _requireSession();
+    await _whileHeld(() => _repository.linkIdentity(session, credential));
+  }
+
   /// Asks for an account, which the API answers by mailing a confirmation
   /// link. Nothing here signs anybody in: the reader opens that link and then
   /// signs in, and a session the app already holds is left alone.

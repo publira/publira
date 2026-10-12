@@ -23,6 +23,15 @@ const readerCreditedOnEpisodeReason = 'READER_CREDITED_ON_EPISODE';
 /// the tenant's last active tenant admin.
 const lastTenantAdminReason = 'LAST_TENANT_ADMIN';
 
+/// The ErrorInfo reason `LinkIdentity` refuses a provider account with that
+/// signs in to another reader already, under `failed_precondition`.
+const identityLinkedToAnotherAccountReason =
+    'IDENTITY_LINKED_TO_ANOTHER_ACCOUNT';
+
+/// The ErrorInfo reason `LinkIdentity` refuses with where the caller has an
+/// account of that provider linked already, under `failed_precondition`.
+const providerAlreadyLinkedReason = 'PROVIDER_ALREADY_LINKED';
+
 /// The ErrorInfo reason the API refuses most of what a signed-in reader does
 /// with, under `failed_precondition`, while they have not agreed to a version
 /// of the tenant's terms of service or privacy policy that asks every reader.

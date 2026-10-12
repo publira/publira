@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -12,7 +13,9 @@ import 'package:publira/typography/autospaced_text.dart';
 
 /// The Apple and Google accounts linked to the signed-in reader, through
 /// `AuthService/ListMyIdentities`, each with a way to unlink it
-/// (`AuthService/UnlinkIdentity`).
+/// (`AuthService/UnlinkIdentity`), and a way to link each provider this device
+/// offers that the account has none of yet (`AuthService/LinkIdentity`),
+/// through the same sign-in as the sign-in screen's.
 ///
 /// An account without a password keeps its last linked provider, because it
 /// would have no way left to sign in.
@@ -27,8 +30,15 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
   LinkedIdentities? _identities;
   var _loadFailed = false;
 
-  /// The provider being unlinked, `null` while none is.
-  IdentityProvider? _unlinking;
+  /// What the tenant answered for its providers, which a link signs in with.
+  var _providers = SignInProviders.none;
+
+  /// The providers this device offers for the tenant's, in the order the
+  /// sign-in screen shows them.
+  var _offered = const <IdentityProvider>[];
+
+  /// The provider being linked or unlinked, `null` while none is.
+  IdentityProvider? _busy;
 
   var _started = false;
 
@@ -51,13 +61,17 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
         _loadFailed = false;
       });
     }
+    final offered = _readOffered();
     try {
       final identities = await auth.readLinkedIdentities();
+      final (providers, devices) = await offered;
       if (!mounted) {
         return;
       }
       setState(() {
         _identities = identities;
+        _providers = providers;
+        _offered = devices;
       });
     } on Exception {
       if (!mounted) {
@@ -69,15 +83,31 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
     }
   }
 
+  /// The tenant's providers and the ones this device offers for them. A
+  /// tenant read that fails offers none, as on the sign-in screen, and leaves
+  /// the linked accounts to be listed and unlinked.
+  Future<(SignInProviders, List<IdentityProvider>)> _readOffered() async {
+    final signIn = ProviderSignInScope.maybeOf(context);
+    if (signIn == null) {
+      return (SignInProviders.none, const <IdentityProvider>[]);
+    }
+    try {
+      final providers = await AuthScope.of(context).readSignInProviders();
+      return (providers, await signIn.offered(providers));
+    } on Exception {
+      return (SignInProviders.none, const <IdentityProvider>[]);
+    }
+  }
+
   Future<void> _unlink(IdentityProvider provider) async {
-    if (_unlinking != null) {
+    if (_busy != null) {
       return;
     }
     final auth = AuthScope.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final messages = AppMessages.of(context);
     setState(() {
-      _unlinking = provider;
+      _busy = provider;
     });
     String copy;
     try {
@@ -93,11 +123,64 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
       copy = messages.linkedAccountsUnlinkFailed;
     }
     messenger.showSnackBar(SnackBar(content: AutospacedText(copy)));
+    await _settle();
+  }
+
+  /// Signs in with [provider] and links the account the reader signed in to.
+  /// A closed provider sheet links nothing and says nothing.
+  Future<void> _link(IdentityProvider provider) async {
+    final signIn = ProviderSignInScope.maybeOf(context);
+    if (_busy != null || signIn == null) {
+      return;
+    }
+    final auth = AuthScope.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final messages = AppMessages.of(context);
+    final name = provider.displayName;
+    setState(() {
+      _busy = provider;
+    });
+    String? copy;
+    try {
+      final credential = await signIn.signIn(provider, _providers);
+      await auth.linkIdentity(credential);
+      copy = messages.linkedAccountsLinked(provider: name);
+    } on ProviderSignInCancelled {
+      copy = null;
+    } on ProviderSignInFailure {
+      copy = messages.signInProviderUnavailable;
+    } on AuthFailure catch (failure) {
+      copy = switch (failure.kind) {
+        AuthFailureKind.linkedToAnotherAccount =>
+          messages.linkedAccountsLinkAnotherAccount(provider: name),
+        AuthFailureKind.providerAlreadyLinked =>
+          messages.linkedAccountsLinkAlreadyLinked(provider: name),
+        AuthFailureKind.invalidInput => messages.linkedAccountsLinkUnverified(
+          provider: name,
+        ),
+        // The tenant stopped offering the provider after the screen read it.
+        AuthFailureKind.providerRefused => messages.signInProviderUnavailable,
+        AuthFailureKind.rateLimited => messages.errorsRpcRateLimited,
+        AuthFailureKind.network => messages.errorsRpcUnavailable,
+        _ => messages.linkedAccountsLinkFailed,
+      };
+    } on Exception {
+      copy = messages.linkedAccountsLinkFailed;
+    }
+    if (copy != null) {
+      messenger.showSnackBar(SnackBar(content: AutospacedText(copy)));
+    }
+    await _settle();
+  }
+
+  /// Ends a link or an unlink and reads the accounts again, which either may
+  /// have changed whatever the API answered.
+  Future<void> _settle() async {
     if (!mounted) {
       return;
     }
     setState(() {
-      _unlinking = null;
+      _busy = null;
     });
     await _load();
   }
@@ -153,7 +236,11 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
         ),
       ];
     }
-    if (identities.identities.isEmpty) {
+    final unlinked = [
+      for (final provider in _offered)
+        if (!identities.links(provider)) provider,
+    ];
+    if (identities.identities.isEmpty && unlinked.isEmpty) {
       return [
         ListTile(
           key: const ValueKey('linked-accounts-empty'),
@@ -179,10 +266,21 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
           ),
           trailing: TextButton(
             key: ValueKey('linked-account-unlink-${identity.provider.name}'),
-            onPressed: keepsLast || _unlinking != null
+            onPressed: keepsLast || _busy != null
                 ? null
                 : () => unawaited(_unlink(identity.provider)),
             child: AutospacedText(messages.linkedAccountsUnlink),
+          ),
+        ),
+      for (final provider in unlinked)
+        ListTile(
+          key: ValueKey('linked-account-${provider.name}'),
+          title: AutospacedText(provider.displayName),
+          subtitle: AutospacedText(messages.linkedAccountsNotLinked),
+          trailing: TextButton(
+            key: ValueKey('linked-account-link-${provider.name}'),
+            onPressed: _busy != null ? null : () => unawaited(_link(provider)),
+            child: AutospacedText(messages.linkedAccountsLink),
           ),
         ),
       if (keepsLast)

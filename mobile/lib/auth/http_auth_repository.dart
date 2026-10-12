@@ -39,6 +39,7 @@ class HttpAuthRepository implements AuthRepository {
       '/publira.v1.AuthService/ListMyIdentities';
   static const _unlinkIdentityProcedure =
       '/publira.v1.AuthService/UnlinkIdentity';
+  static const _linkIdentityProcedure = '/publira.v1.AuthService/LinkIdentity';
   static const _createUserProcedure = '/publira.v1.AuthService/CreateUser';
   static const _verifyUserEmailProcedure =
       '/publira.v1.AuthService/VerifyUserEmail';
@@ -213,6 +214,55 @@ class HttpAuthRepository implements AuthRepository {
           );
       }
       throw _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<void> linkIdentity(
+    AuthSession session,
+    ProviderCredential credential,
+  ) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      await _client.unary(
+        _linkIdentityProcedure,
+        {
+          'tenant': {'tenantId': tenantId},
+          'provider': credential.provider.wireName,
+          'idToken': credential.idToken,
+          'nonce': credential.nonce,
+          if (credential.authorizationCode.isNotEmpty)
+            'authorizationCode': credential.authorizationCode,
+          if (credential.redirectUri.isNotEmpty)
+            'redirectUri': credential.redirectUri,
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+    } on ConnectException catch (error) {
+      final reasons = error.reasons;
+      throw switch (error.code) {
+        'failed_precondition'
+            when reasons.contains(identityLinkedToAnotherAccountReason) =>
+          AuthFailure(
+            AuthFailureKind.linkedToAnotherAccount,
+            message: error.message,
+          ),
+        'failed_precondition'
+            when reasons.contains(providerAlreadyLinkedReason) =>
+          AuthFailure(
+            AuthFailureKind.providerAlreadyLinked,
+            message: error.message,
+          ),
+        // The tenant stopped offering the provider after the screen read it.
+        'failed_precondition' when reasons.isEmpty => AuthFailure(
+          AuthFailureKind.providerRefused,
+          message: error.message,
+        ),
+        // A token or a nonce the API would not take is `invalid_argument`,
+        // which reads as invalidInput rather than as an ended session.
+        _ => _toAccountFailure(error),
+      };
     }
   }
 

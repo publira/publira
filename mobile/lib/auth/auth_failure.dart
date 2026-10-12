@@ -46,6 +46,14 @@ enum AuthFailureKind {
   /// the account holding it is linked to another account of the provider.
   providerRefused,
 
+  /// The Apple or Google account a link was asked for signs in to another
+  /// reader already, which unlinks it before it links here.
+  linkedToAnotherAccount,
+
+  /// The account already has an account of the provider a link was asked
+  /// for, which it unlinks before linking another.
+  providerAlreadyLinked,
+
   /// The provider is the last way an account without a password signs in,
   /// so it stays linked.
   lastSignInMethod,

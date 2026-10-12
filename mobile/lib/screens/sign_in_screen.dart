@@ -212,6 +212,8 @@ class _SignInScreenState extends State<SignInScreen> {
       AuthFailureKind.sessionExpired ||
       AuthFailureKind.consentRequired ||
       AuthFailureKind.providerRefused ||
+      AuthFailureKind.linkedToAnotherAccount ||
+      AuthFailureKind.providerAlreadyLinked ||
       AuthFailureKind.lastSignInMethod ||
       AuthFailureKind.lastTenantAdmin ||
       AuthFailureKind.invalidInput ||
