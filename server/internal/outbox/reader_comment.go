@@ -11,47 +11,36 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
-// The notifications.notification_type values a reader's own comment raises
-// when staff, or the report threshold, decide it. The storefront assembles
-// its copy from these plus the payload; there is no title or body column.
+// NotificationTypeCommentApproved is the notifications.notification_type a
+// reader's own comment raises when staff approve it. The storefront assembles
+// its copy from it plus the payload; there is no title or body column.
 //
-// Both are bell-only. They are not on the push allowlist, so a device never
-// receives them: a comment going live or disappearing is something the reader
-// learns the next time they open the inbox, not an interruption.
-const (
-	NotificationTypeCommentApproved = "comment_approved"
-	NotificationTypeCommentHidden   = "comment_hidden"
-)
-
-// The hidden_reason values [NotificationTypeCommentHidden] carries. They are
-// the same categories episode_comments.hidden_reason stores.
-const (
-	CommentHiddenReasonStaff       = "staff"
-	CommentHiddenReasonAutoReports = "auto_reports"
-)
+// It is bell-only. It is not on the push allowlist, so a device never receives
+// it: a comment going live is something the reader learns the next time they
+// open the inbox, not an interruption.
+//
+// A removal raises nothing. A removed comment keeps showing to its author
+// exactly as they posted it, so that someone posting to disrupt a comment
+// section has no signal to post again, and a notification would be that signal.
+const NotificationTypeCommentApproved = "comment_approved"
 
 // CommentAuthorSubjectKey is the identity one comment's reader notifications
-// share. A second approval or removal of the same comment is a no-op rather
-// than a second row, which is what a retried RPC looks like.
+// share. A second approval of the same comment is a no-op rather than a second
+// row, which is what a retried RPC looks like.
 func CommentAuthorSubjectKey(commentPublicID string) string {
 	return "comment:" + commentPublicID
 }
 
-// CommentAuthorNotification is what ApproveComment, HideComment, and the
-// automatic report threshold write for the comment's author.
-type CommentAuthorNotification struct {
-	TenantID         uuid.UUID
-	UserID           uuid.UUID
-	NotificationType string
-	CommentPublicID  string
-	EpisodePublicID  string
-	EpisodeTitle     string
-	SeriesPublicID   string
-	SeriesTitle      string
-	// HiddenReason is the category the payload carries for comment_hidden:
-	// [CommentHiddenReasonStaff] for a moderator, [CommentHiddenReasonAutoReports]
-	// for the threshold. Unused for comment_approved.
-	HiddenReason string
+// CommentApprovedNotification is what ApproveComment writes for the comment's
+// author.
+type CommentApprovedNotification struct {
+	TenantID        uuid.UUID
+	UserID          uuid.UUID
+	CommentPublicID string
+	EpisodePublicID string
+	EpisodeTitle    string
+	SeriesPublicID  string
+	SeriesTitle     string
 }
 
 // commentAuthorNotificationBody is what the storefront reads back. The tenant
@@ -65,7 +54,6 @@ type commentAuthorNotificationBody struct {
 	SeriesID     string `json:"series_id,omitempty"`
 	SeriesTitle  string `json:"series_title,omitempty"`
 	CommentID    string `json:"comment_id,omitempty"`
-	HiddenReason string `json:"hidden_reason,omitempty"`
 }
 
 // commentAuthorNotifier is the insert the helper runs, named so a test can
@@ -74,11 +62,11 @@ type commentAuthorNotifier interface {
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 }
 
-// NotifyCommentAuthor writes one bell notification for the author of a comment
-// that was just approved or hidden. It does not enqueue a push: these types
-// are excluded from the allowlist, and the row in `notifications` is the
-// record the bell reads.
-func NotifyCommentAuthor(ctx context.Context, queries commentAuthorNotifier, n CommentAuthorNotification) error {
+// NotifyCommentApproved writes one bell notification for the author of a
+// comment that was just approved. It does not enqueue a push: the type is
+// excluded from the allowlist, and the row in `notifications` is the record
+// the bell reads.
+func NotifyCommentApproved(ctx context.Context, queries commentAuthorNotifier, n CommentApprovedNotification) error {
 	if n.CommentPublicID == "" {
 		return errors.New("comment author notification names no comment")
 	}
@@ -88,18 +76,6 @@ func NotifyCommentAuthor(ctx context.Context, queries commentAuthorNotifier, n C
 	if n.TenantID == uuid.Nil {
 		return errors.New("comment author notification names no tenant")
 	}
-	switch n.NotificationType {
-	case NotificationTypeCommentApproved:
-		if n.HiddenReason != "" {
-			return errors.New("comment_approved notification carries a hidden_reason")
-		}
-	case NotificationTypeCommentHidden:
-		if n.HiddenReason == "" {
-			return errors.New("comment_hidden notification names no reason")
-		}
-	default:
-		return fmt.Errorf("comment author notification type %q is not a reader comment type", n.NotificationType)
-	}
 
 	body := commentAuthorNotificationBody{
 		EpisodeID:    n.EpisodePublicID,
@@ -107,9 +83,6 @@ func NotifyCommentAuthor(ctx context.Context, queries commentAuthorNotifier, n C
 		SeriesID:     n.SeriesPublicID,
 		SeriesTitle:  n.SeriesTitle,
 		CommentID:    n.CommentPublicID,
-	}
-	if n.NotificationType == NotificationTypeCommentHidden {
-		body.HiddenReason = n.HiddenReason
 	}
 	payload, err := json.Marshal(body)
 	if err != nil {
@@ -123,12 +96,12 @@ func NotifyCommentAuthor(ctx context.Context, queries commentAuthorNotifier, n C
 		ID:               notificationID,
 		TenantID:         n.TenantID,
 		UserID:           n.UserID,
-		NotificationType: n.NotificationType,
+		NotificationType: NotificationTypeCommentApproved,
 		SubjectKey:       CommentAuthorSubjectKey(n.CommentPublicID),
 		Payload:          payload,
 	})
 	// An author who already has this comment's row, which is what a retried
-	// approval or hide looks like, is a no-op rather than an error.
+	// approval looks like, is a no-op rather than an error.
 	if err != nil {
 		return fmt.Errorf("insert comment author notification: %w", err)
 	}

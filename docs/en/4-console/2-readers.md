@@ -96,7 +96,7 @@ Only signed-in readers comment, up to 1000 characters each. A comment belongs to
 | **Restore** | **Removed** | Puts the comment back as it was: published again if it had been published, otherwise back to **Awaiting approval**. Every report still waiting on it is dismissed |
 | **Purge** | Any state | Deletes the comment and its reports for good. A **Reason** is required, since the audit log entry is all that remains of the comment |
 
-A removed comment's commenter is notified on the site and in the app, with "Your comment was removed" and whether a moderator or readers' reports removed it. The console's confirmation says they are never told, which is wrong ([#3815](https://github.com/publira/publira/issues/3815)). Remove a comment knowing that its commenter will find out.
+A removed comment's commenter is never told, whether a moderator or readers' reports removed it. They keep seeing the comment as they posted it, so someone posting to disrupt the comments gets nothing that prompts them to post again.
 
 If another moderator acted on the same comment after you loaded the list, your action is refused with "Another moderator already handled this comment. Reload the list to see its current state."
 
@@ -114,7 +114,7 @@ Nobody but the commenter sees a comment until it is approved, so a queue left un
 
 A signed-in reader can report a published comment that is not their own, choosing **Spam or advertising**, **Abuse or harassment**, **Spoilers**, or **Something else**, with an optional note. Each reader reports a comment once; reporting it again changes nothing. The commenter is not told.
 
-When the reports waiting on a comment reach **Reports that remove a comment**, it is removed on its own, without waiting for staff. It then reads "Removed automatically once the reports passed the threshold.", and the audit log records **Comment removed automatically after reports** with **Automatic** as the actor. Every member of the staff gets a console notification, "Comments were reported", at most once an hour for each episode.
+When the reports waiting on a comment reach **Reports that remove a comment**, it is removed on its own, without waiting for staff, and its commenter is not told. It then reads "Removed automatically once the reports passed the threshold.", and the audit log records **Comment removed automatically after reports** with **Automatic** as the actor. Every member of the staff gets a console notification, "Comments were reported", at most once an hour for each episode.
 
 **Reported comments** lists one row for each report, newest first, with its reason, note, reporter, the comment, and its commenter. A report is **Waiting** until it is decided:
 

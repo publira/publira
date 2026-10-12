@@ -418,22 +418,18 @@ func (s *adminServer) loadCommentForModeration(
 	return row, nil
 }
 
-// commentAuthorNotification is the bell row ApproveComment and HideComment
-// write for the person who posted the comment. The catalog fields come off
-// the moderation read so the inbox can name the episode without a second
-// lookup, and the type plus hidden_reason is what the storefront turns into
-// copy.
-func commentAuthorNotification(row moderationCommentRow, notificationType, hiddenReason string) outbox.CommentAuthorNotification {
-	return outbox.CommentAuthorNotification{
-		TenantID:         row.TenantID,
-		UserID:           row.UserID,
-		NotificationType: notificationType,
-		CommentPublicID:  row.PublicID,
-		EpisodePublicID:  row.EpisodePublicID,
-		EpisodeTitle:     row.EpisodeTitle,
-		SeriesPublicID:   row.SeriesPublicID,
-		SeriesTitle:      row.SeriesTitle,
-		HiddenReason:     hiddenReason,
+// commentApprovedNotification is the bell row ApproveComment writes for the
+// person who posted the comment. The catalog fields come off the moderation
+// read so the inbox can name the episode without a second lookup.
+func commentApprovedNotification(row moderationCommentRow) outbox.CommentApprovedNotification {
+	return outbox.CommentApprovedNotification{
+		TenantID:        row.TenantID,
+		UserID:          row.UserID,
+		CommentPublicID: row.PublicID,
+		EpisodePublicID: row.EpisodePublicID,
+		EpisodeTitle:    row.EpisodeTitle,
+		SeriesPublicID:  row.SeriesPublicID,
+		SeriesTitle:     row.SeriesTitle,
 	}
 }
 
@@ -703,7 +699,7 @@ func (s *adminServer) ApproveComment(
 	if err := contentevents.ProjectComment(ctx, qtx, tenant.ID, current.ID); err != nil {
 		return nil, s.internalDBError(ctx, "failed to project the engagement event of an approved comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
-	if err := outbox.NotifyCommentAuthor(ctx, qtx, commentAuthorNotification(current, outbox.NotificationTypeCommentApproved, "")); err != nil {
+	if err := outbox.NotifyCommentApproved(ctx, qtx, commentApprovedNotification(current)); err != nil {
 		return nil, s.internalDBError(ctx, "failed to notify the author of an approved comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
 	owed, err := s.recordCommentListRevalidation(ctx, qtx, tenant.ID, current.EpisodePublicID)
@@ -725,8 +721,8 @@ func (s *adminServer) ApproveComment(
 }
 
 // HideComment removes one comment from every reader-facing response but its
-// author's. The author still sees the comment unchanged, and is told through a
-// bell notification rather than by the comment itself changing shape.
+// author's. The author still sees the comment unchanged and is never told, so
+// someone posting to disrupt a comment section has no signal to post again.
 func (s *adminServer) HideComment(
 	ctx context.Context,
 	req *publiraadminv1.HideCommentRequest,
@@ -768,9 +764,6 @@ func (s *adminServer) HideComment(
 		HiddenReason: commentHiddenReasonStaff,
 	}); err != nil {
 		return nil, s.commentTransitionError(ctx, "hide", "removed", tenant.ID, current.ID, err)
-	}
-	if err := outbox.NotifyCommentAuthor(ctx, qtx, commentAuthorNotification(current, outbox.NotificationTypeCommentHidden, commentHiddenReasonStaff)); err != nil {
-		return nil, s.internalDBError(ctx, "failed to notify the author of a hidden comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
 	owed, err := s.recordCommentListRevalidation(ctx, qtx, tenant.ID, current.EpisodePublicID)
 	if err != nil {
