@@ -59,7 +59,8 @@ const creatorDetailParamsSchema = z.object({
 /**
  * `"use cache"` keys on the serialized arguments, so metadata and the page
  * body have to pass the same `{ limit, token }` or one request fills two
- * entries and hits the RPC twice.
+ * entries and hits the RPC twice. Both look the creator up on their first
+ * page, which needs nothing but the path.
  */
 const loadPublishedCreatorDetail = (
   tenantId: string,
@@ -78,21 +79,20 @@ export const generateStaticParams = () =>
 
 export const generateMetadata = async ({
   params,
-  searchParams,
 }: CreatorDetailPageProps): Promise<Metadata> => {
-  const [rawParams, tenantId, resolvedSearchParams, locale] = await Promise.all(
-    [params, getTenantId(), searchParams, getLocale()]
-  );
+  const [rawParams, tenantId, locale] = await Promise.all([
+    params,
+    getTenantId(),
+    getLocale(),
+  ]);
   const parsedParams = parseRouteParams(creatorDetailParamsSchema, rawParams);
   if (!parsedParams) {
     notFound();
   }
   const { creator_id } = parsedParams;
 
-  const { token } = parseCreatorDetailSearchParams(resolvedSearchParams);
-
   const [result, t, alternates] = await Promise.all([
-    loadPublishedCreatorDetail(tenantId, creator_id, locale, token),
+    loadPublishedCreatorDetail(tenantId, creator_id, locale, ""),
     getMessagesFor(locale),
     tenantLocaleAlternates(tenantId, locale, `/creators/${creator_id}`),
   ]);
@@ -277,26 +277,42 @@ const CreatorDetailContent = async ({
   params,
   searchParams,
 }: CreatorDetailPageProps) => {
-  const [rawParams, tenantId, resolvedSearchParams, locale] = await Promise.all(
-    [params, getTenantId(), searchParams, getLocale()]
-  );
+  const [rawParams, tenantId, locale] = await Promise.all([
+    params,
+    getTenantId(),
+    getLocale(),
+  ]);
   const parsedParams = parseRouteParams(creatorDetailParamsSchema, rawParams);
   if (!parsedParams) {
     notFound();
   }
   const { creator_id } = parsedParams;
 
-  const { token } = parseCreatorDetailSearchParams(resolvedSearchParams);
-
-  // A failed read is a value, not a throw: a `"use cache"` fill that throws
-  // fails the whole request, so neither this page nor any boundary would get
-  // to render anything.
-  const result = await loadPublishedCreatorDetail(
+  // The creator is looked up from the path alone, before `searchParams` is
+  // awaited: a `notFound()` that runs while the route is prerendered answers
+  // 404, and one behind request data streams into a response already sent
+  // with 200. A failed read is a value, not a throw: a `"use cache"` fill that
+  // throws fails the whole request, so neither this page nor any boundary
+  // would get to render anything.
+  const firstPage = await loadPublishedCreatorDetail(
     tenantId,
     creator_id,
     locale,
-    token
+    ""
   );
+
+  if (!firstPage.ok) {
+    return <PageLoadError description={firstPage.message} />;
+  }
+
+  if (!firstPage.value) {
+    notFound();
+  }
+
+  const { token } = parseCreatorDetailSearchParams(await searchParams);
+  const result = token
+    ? await loadPublishedCreatorDetail(tenantId, creator_id, locale, token)
+    : firstPage;
 
   if (!result.ok) {
     return <PageLoadError description={result.message} />;

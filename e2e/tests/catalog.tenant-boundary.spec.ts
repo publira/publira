@@ -20,11 +20,9 @@ const otherTenantUrl = (pathname: string): string =>
  * second tenant sees only its own catalog, neither tenant can reach the
  * other's records by public_id, and an unmapped Host is a 404.
  *
- * A record another tenant owns renders the not-found UI with the status
- * `catalog.not-found.spec.ts` describes: 404 for series detail, 200 for the
- * routes that read `searchParams` first. What matters for isolation is the
- * same either way and asserted below — the other tenant's title, episode title
- * and creator name never appear in the response.
+ * A record another tenant owns renders the not-found UI with HTTP 404, and
+ * the other tenant's title, episode title and creator name never appear in the
+ * response.
  */
 test.describe("web-storefront tenant boundary", () => {
   test.beforeAll(() => {
@@ -109,7 +107,7 @@ test.describe("web-storefront tenant boundary", () => {
         `/series/${OTHER_TENANT.publishedSeries.publicId}/episodes/${OTHER_TENANT.publishedSeries.scheduledEpisodeId}`
       )
     );
-    expect(scheduled?.status(), await page.content()).toBe(200);
+    expect(scheduled?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(OTHER_TENANT.publishedSeries.scheduledEpisodeTitle)
     ).toHaveCount(0);
@@ -156,7 +154,7 @@ test.describe("web-storefront tenant boundary", () => {
         `/series/${OTHER_TENANT.publishedSeries.publicId}/episodes/${SEED_TENANT.series.freeEpisodeId}`
       )
     );
-    expect(foreign?.status(), await page.content()).toBe(200);
+    expect(foreign?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(SEED_TENANT.series.freeEpisodeTitle)
     ).toHaveCount(0);
@@ -166,7 +164,7 @@ test.describe("web-storefront tenant boundary", () => {
     const reverse = await page.goto(
       `/series/${SEED_TENANT.series.publicId}/episodes/${otherEpisodeId}`
     );
-    expect(reverse?.status(), await page.content()).toBe(200);
+    expect(reverse?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(OTHER_TENANT.publishedSeries.episodeTitles[0])
     ).toHaveCount(0);
@@ -188,7 +186,7 @@ test.describe("web-storefront tenant boundary", () => {
       otherTenantUrl(`/creators/${SEED_TENANT.creatorId}`)
     );
 
-    expect(response?.status(), await page.content()).toBe(200);
+    expect(response?.status(), await page.content()).toBe(404);
     await expect(page.getByText(SEED_TENANT.creatorName)).toHaveCount(0);
   });
 
@@ -197,7 +195,7 @@ test.describe("web-storefront tenant boundary", () => {
       otherTenantUrl(`/labels/${SEED_TENANT.labelId}`)
     );
 
-    expect(response?.status(), await page.content()).toBe(200);
+    expect(response?.status(), await page.content()).toBe(404);
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
     ).toBeVisible();

@@ -245,7 +245,8 @@ test.describe("web-storefront ranking", () => {
       storefrontPath(`/ranking?genre=${MISSING_PUBLIC_ID}`)
     );
 
-    // 200 rather than 404, for the reason `catalog.not-found.spec.ts` gives.
+    // 200 rather than 404: the genre is read from `searchParams`, so the
+    // lookup runs at request time, after the shell has been committed.
     expect(response?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: "Page not found" })
