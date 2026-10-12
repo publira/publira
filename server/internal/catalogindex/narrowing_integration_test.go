@@ -138,9 +138,7 @@ func TestTheTickerJobsCarryClockBoundariesIntoTheIndex(t *testing.T) {
 		priced := pg.SeedEpisode(t, tenant.ID, bravo.ID, testutil.EpisodeSeed{
 			PublicID: "INDEXCLOCK06", Price: 100, Status: testutil.EpisodeStatusPublished, PublishedAt: now.Add(-time.Hour),
 		})
-		opens := now.Add(2 * time.Second)
-		closes := opens.Add(2 * time.Second)
-		pg.SeedEpisodeFreeWindow(t, tenant.ID, priced.ID, opens, closes)
+		window := pg.SeedEpisodeFreeWindow(t, tenant.ID, priced.ID, now.Add(time.Hour), now.Add(2*time.Hour))
 
 		if err := catalogindex.Queue(ctx, dbmodels.New(pg.DB), tenant.ID, catalogindex.SeriesRef(alpha.ID), catalogindex.SeriesRef(bravo.ID)); err != nil {
 			t.Fatalf("Queue: %v", err)
@@ -158,13 +156,20 @@ func TestTheTickerJobsCarryClockBoundariesIntoTheIndex(t *testing.T) {
 		idx.assertSeries(t, tenant.ID, testSurface, publishedseries.LatestEpisodeAtDesc, publishedseries.Filter{}, alpha.ID, bravo.ID)
 
 		windows := freewindows.New(dbmodels.New(tickerDB), nil, logger)
-		time.Sleep(time.Until(opens) + 100*time.Millisecond)
+		// Each boundary is moved into the past right before the job that has to
+		// see it pass. Waiting for the wall clock to reach it instead lets the
+		// runner's speed decide which side of it the earlier steps land on.
+		if _, err := pg.DB.ExecContext(ctx, `UPDATE episode_free_windows SET starts_at = now() - interval '1 minute' WHERE id = $1`, window); err != nil {
+			t.Fatalf("open the free window: %v", err)
+		}
 		windows.RunOnce(ctx)
 		drain(t, pg, handler)
 		idx.refresh(t)
 		idx.assertSeries(t, tenant.ID, testSurface, publishedseries.TitleAsc, free, bravo.ID)
 
-		time.Sleep(time.Until(closes) + 100*time.Millisecond)
+		if _, err := pg.DB.ExecContext(ctx, `UPDATE episode_free_windows SET ends_at = now() - interval '1 second' WHERE id = $1`, window); err != nil {
+			t.Fatalf("close the free window: %v", err)
+		}
 		windows.RunOnce(ctx)
 		drain(t, pg, handler)
 		idx.refresh(t)
