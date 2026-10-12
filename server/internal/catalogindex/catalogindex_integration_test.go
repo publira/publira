@@ -1,7 +1,9 @@
 package catalogindex_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"log/slog"
 	"maps"
 	"slices"
@@ -60,6 +62,39 @@ func (i index) refresh(t *testing.T) {
 	t.Helper()
 	if _, err := i.client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Indices: []string{i.alias}}); err != nil {
 		t.Fatalf("refresh: %v", err)
+	}
+}
+
+// backdate rewrites the instant an entity's indexed document was published at,
+// as if that much time had passed since it was written, and refreshes.
+func (i index) backdate(t *testing.T, entityID uuid.UUID, publishedAt time.Time) {
+	t.Helper()
+	body, err := json.Marshal(map[string]any{
+		"query": map[string]any{"term": map[string]any{"entity_id": entityID.String()}},
+		"script": map[string]any{
+			"source": "ctx._source.published_at = params.published_at",
+			"params": map[string]any{"published_at": publishedAt.UTC().Format(time.RFC3339Nano)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("backdate body: %v", err)
+	}
+	resp, err := i.client.UpdateByQuery(context.Background(), &opensearchapi.UpdateByQueryReq{
+		Indices:    []string{i.alias},
+		BodyReader: bytes.NewReader(body),
+		Params:     &opensearchapi.UpdateByQueryParams{Refresh: "true"},
+	})
+	if err != nil {
+		t.Fatalf("backdate %s: %v", entityID, err)
+	}
+	var result struct {
+		Updated int `json:"updated"`
+	}
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		t.Fatalf("backdate %s: decode response: %v", entityID, err)
+	}
+	if result.Updated != 1 {
+		t.Fatalf("backdate %s updated %d documents, want 1", entityID, result.Updated)
 	}
 }
 
@@ -198,7 +233,11 @@ func TestEventsKeepTheIndexInStepWithTheCatalog(t *testing.T) {
 }
 
 // A series scheduled for later is indexed with its instant, and the search
-// finds it once that instant has passed without another event.
+// finds it once that instant has passed without another event. The instant is
+// moved into the past in the indexed document itself, right before the search
+// that has to see it pass: nothing syncs the series again, so the search has
+// only the instant the sync wrote to compare with the time it runs, and the
+// runner's speed does not decide which side of the instant either search lands.
 func TestAScheduledSeriesIsFoundOnceItsInstantPasses(t *testing.T) {
 	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
 		pg := testutil.StartPostgres(t)
@@ -207,8 +246,7 @@ func TestAScheduledSeriesIsFoundOnceItsInstantPasses(t *testing.T) {
 		ctx := context.Background()
 
 		tenant := pg.SeedTenant(t, "INDEXSCHED01", "index-scheduled.example.com", "Index Scheduled Tenant")
-		soon := time.Now().Add(2 * time.Second)
-		series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "INDEXSCHED02", Title: "Seed Garden", Published: true, PublishedAt: soon})
+		series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "INDEXSCHED02", Title: "Seed Garden", Published: true, PublishedAt: time.Now().Add(time.Hour)})
 
 		if err := catalogindex.NewSyncer(pg.OpenOutboxDB(t), idx.backend).Sync(ctx, tenant.ID, string(opensearchbackend.KindSeries), series.ID); err != nil {
 			t.Fatalf("Sync: %v", err)
@@ -216,7 +254,7 @@ func TestAScheduledSeriesIsFoundOnceItsInstantPasses(t *testing.T) {
 		idx.refresh(t)
 		idx.assertHits(t, searchSeries, tenant.ID, "seed")
 
-		time.Sleep(time.Until(soon) + 100*time.Millisecond)
+		idx.backdate(t, series.ID, time.Now().Add(-time.Second))
 		idx.assertHits(t, searchSeries, tenant.ID, "seed", series.ID)
 	})
 }
