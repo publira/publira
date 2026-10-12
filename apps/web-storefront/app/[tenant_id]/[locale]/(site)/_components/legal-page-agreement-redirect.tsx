@@ -16,6 +16,12 @@ import { legalPageAgreementRedirect } from "#lib/legal-page-agreement-path";
  * after one the server is asked again through `check`: a revision published
  * while the reader was browsing is asked about on the next page they open, not
  * on the next reload.
+ *
+ * Each read decides only the page it was made for, and only while the layout
+ * is shown. Next.js keeps the layout of a page the reader left rendered in a
+ * hidden `<Activity>`, where it renders again for the URL the reader is on now
+ * — the agreement screen, among others — and a `redirect()` thrown there is
+ * carried out when the reader comes back, after they may have agreed.
  */
 export const LegalPageAgreementRedirect = ({
   agreementPath,
@@ -28,8 +34,12 @@ export const LegalPageAgreementRedirect = ({
 }) => {
   const pathname = usePathname();
   const search = useSearchParams().toString();
-  // The page the server already answered for, which needs no second read.
-  const checkedPage = useRef(`${pathname}?${search}`);
+  const page = `${pathname}?${search}`;
+  // The page the server's read is about, which this instance mounted on.
+  // oxlint-disable-next-line react/hook-use-state -- it never changes, and a ref cannot be read during render
+  const [renderedPage] = useState(page);
+  // The page the server was last asked about, which needs no second read.
+  const checkedPage = useRef(page);
   // What the server answered after the last client-side navigation, for the
   // page it was asked about. It is read during render, where `redirect()` has
   // to be called: Next.js does not take one from an Effect.
@@ -40,7 +50,6 @@ export const LegalPageAgreementRedirect = ({
   } | null>(null);
 
   useEffect(() => {
-    const page = `${pathname}?${search}`;
     if (page === checkedPage.current) {
       return;
     }
@@ -58,15 +67,22 @@ export const LegalPageAgreementRedirect = ({
       }
     };
     ask();
+    // The answer goes with the Effect that asked for it. Hiding the layout runs
+    // this too, so the reader who comes back after agreeing is not sent to
+    // agree again on an answer from before.
     return () => {
       current = false;
+      setAnswer(null);
     };
-  }, [check, pathname, search]);
+  }, [check, page]);
 
-  // An answer is about the page it was asked for; until the one for this page
-  // arrives, the server's own read stands.
-  const owed =
-    answer?.page === `${pathname}?${search}` ? answer.exemptPaths : exemptPaths;
+  // A page no read is about yet waits for the answer `check` gives for it.
+  let owed: readonly string[] | null = null;
+  if (answer?.page === page) {
+    owed = answer.exemptPaths;
+  } else if (page === renderedPage) {
+    owed = exemptPaths;
+  }
   const target = owed
     ? legalPageAgreementRedirect({
         agreementPath,
