@@ -147,9 +147,11 @@ func TestUpdateTenantConfigRecordsItsInvalidationBeforeCommitting(t *testing.T) 
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
+	expectTenantConfigLock(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantConfig)).
 		WithArgs(tenantID, "© Tenant", "A tenant that exists only in a test", "Read on").
 		WillReturnRows(tenantSiteCopyRow(tenantID, now))
+	expectAdminAuditLogInsert(mock)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 
@@ -178,12 +180,14 @@ func TestUpdateTenantConfigRecordsItsInvalidationWhenItCreatesTheRow(t *testing.
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
+	expectTenantConfigLock(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantConfig)).
 		WithArgs(tenantID, "© Tenant", "A tenant that exists only in a test", "Read on").
 		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenantConfig)).
 		WithArgs(tenantID, "© Tenant", "A tenant that exists only in a test", "Read on").
 		WillReturnRows(tenantSiteCopyRow(tenantID, now))
+	expectAdminAuditLogInsert(mock)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 
@@ -208,9 +212,11 @@ func TestUpdateTenantConfigRollsBackWhenItsInvalidationCannotBeRecorded(t *testi
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
+	expectTenantConfigLock(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantConfig)).
 		WithArgs(tenantID, "© Tenant", "A tenant that exists only in a test", "Read on").
 		WillReturnRows(tenantSiteCopyRow(tenantID, now))
+	expectAdminAuditLogInsert(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WillReturnError(sql.ErrConnDone)
 	mock.ExpectRollback()

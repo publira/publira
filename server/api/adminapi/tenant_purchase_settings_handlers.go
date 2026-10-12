@@ -102,7 +102,8 @@ func (s *adminServer) UpdateTenantPurchaseSettings(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -122,6 +123,16 @@ func (s *adminServer) UpdateTenantPurchaseSettings(
 
 	var updated dbmodels.TenantConfig
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		current, err := s.lockTenantConfig(txCtx, tenant.ID)
+		if err != nil {
+			return nil, err
+		}
+		if current.PurchaseAvailability == availability &&
+			current.AppStoreUrl == appStoreURL &&
+			current.GooglePlayUrl == googlePlayURL {
+			updated = current
+			return nil, nil
+		}
 		row, err := s.queriesFor(txCtx).UpsertTenantPurchaseSettings(txCtx, dbmodels.UpsertTenantPurchaseSettingsParams{
 			TenantID:             tenant.ID,
 			PurchaseAvailability: availability,
@@ -132,6 +143,9 @@ func (s *adminServer) UpdateTenantPurchaseSettings(
 			return nil, s.internalDBError(ctx, "failed to update tenant purchase settings", err, "tenant_id", tenant.ID.String())
 		}
 		updated = row
+		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_purchase_settings_updated", "tenant_purchase_settings"); err != nil {
+			return nil, err
+		}
 		return tenantPurchaseSettingsRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err

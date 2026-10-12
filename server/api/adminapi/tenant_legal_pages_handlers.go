@@ -116,7 +116,8 @@ func (s *adminServer) UpdateTenantLegalPages(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -134,12 +135,24 @@ func (s *adminServer) UpdateTenantLegalPages(
 	}
 
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		// Compared against the locked row rather than against current, which
+		// was read before the transaction and only decides what may be chosen.
+		locked, err := s.lockTenantConfig(txCtx, tenant.ID)
+		if err != nil {
+			return nil, err
+		}
+		if locked.TermsPageID == termsPageID && locked.PrivacyPageID == privacyPageID {
+			return nil, nil
+		}
 		if _, err := s.queriesFor(txCtx).UpsertTenantLegalPages(txCtx, dbmodels.UpsertTenantLegalPagesParams{
 			TenantID:      tenant.ID,
 			TermsPageID:   termsPageID,
 			PrivacyPageID: privacyPageID,
 		}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to update tenant legal pages", err, "tenant_id", tenant.ID.String())
+		}
+		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_legal_pages_updated", "tenant_legal_pages"); err != nil {
+			return nil, err
 		}
 		return tenantLegalPagesRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {

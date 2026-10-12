@@ -631,11 +631,12 @@ WHERE id = $1
 FOR UPDATE
 `
 
-// Lock the tenant row so concurrent tenant branding image uploads and deletes
-// (icon, logo) serialize. The following read of the current image must be a
-// separate statement: READ COMMITTED freezes its snapshot at statement start,
-// so waiting for the lock in the same statement would still see the pre-wait
-// row.
+// Lock the tenant row so concurrent writes to the tenant theme serialize: the
+// branding image uploads and deletes (icon, logo), and the theme saves, each
+// of which reads the theme first to decide what it changes. That read must be
+// a separate statement: READ COMMITTED freezes its snapshot at statement
+// start, so waiting for the lock in the same statement would still see the
+// pre-wait row.
 func (q *Queries) LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, LockTenantForUpdate, id)
 	var id_2 uuid.UUID
@@ -708,6 +709,7 @@ const UpdateTenantDefaultLocale = `-- name: UpdateTenantDefaultLocale :one
 UPDATE tenants
 SET default_locale = $1
 WHERE id = $2
+    AND default_locale <> $1
 RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
 `
 
@@ -716,6 +718,8 @@ type UpdateTenantDefaultLocaleParams struct {
 	ID            uuid.UUID `json:"id"`
 }
 
+// No row when the tenant already has that locale, for the reason
+// UpdateTenantTimezone gives.
 func (q *Queries) UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenantDefaultLocaleParams) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, UpdateTenantDefaultLocale, arg.DefaultLocale, arg.ID)
 	var i Tenant
@@ -804,6 +808,7 @@ const UpdateTenantTimezone = `-- name: UpdateTenantTimezone :one
 UPDATE tenants
 SET timezone = $1
 WHERE id = $2
+    AND timezone <> $1
 RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
 `
 
@@ -812,7 +817,9 @@ type UpdateTenantTimezoneParams struct {
 	ID       uuid.UUID `json:"id"`
 }
 
-// Update the tenant display time zone (an IANA name).
+// Update the tenant display time zone (an IANA name). No row when the tenant
+// already has that zone, so the caller can tell a save that changes nothing
+// from one it has to answer for in the audit log.
 func (q *Queries) UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTimezoneParams) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, UpdateTenantTimezone, arg.Timezone, arg.ID)
 	var i Tenant

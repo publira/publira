@@ -80,6 +80,7 @@ func TestUpdateTenantTimezonePersistsIANAName(t *testing.T) {
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja"))
+	expectAdminAuditLogInsert(mock)
 	mock.ExpectCommit()
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -114,6 +115,7 @@ func TestUpdateTenantTimezoneRecordsItsInvalidationBeforeCommitting(t *testing.T
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja"))
+	expectAdminAuditLogInsert(mock)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 
@@ -147,6 +149,7 @@ func TestUpdateTenantTimezoneRollsBackWhenItsInvalidationCannotBeRecorded(t *tes
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja"))
+	expectAdminAuditLogInsert(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WillReturnError(sql.ErrConnDone)
 	mock.ExpectRollback()
@@ -315,6 +318,7 @@ func TestUpdateTenantDefaultLocalePersistsSupportedCode(t *testing.T) {
 		WithArgs("en", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "UTC", "en"))
+	expectAdminAuditLogInsert(mock)
 	mock.ExpectCommit()
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -424,6 +428,19 @@ func tenantConfigRow(tenantID uuid.UUID, now time.Time, mode string, threshold i
 func tenantConfigRowWithAgeVerification(tenantID uuid.UUID, now time.Time, mode string, threshold int32, rule string) *sqlmock.Rows {
 	return sqlmock.NewRows(tenantConfigColumns()).
 		AddRow(tenantID, nil, nil, now, now, nil, mode, threshold, "single", rule, "all", nil, nil, nil, nil, nil, "{}", nil, nil, "external_checkout")
+}
+
+// expectTenantConfigLock expects a settings save to lock the tenant's config
+// row before comparing against it, and answers that the tenant has none yet.
+func expectTenantConfigLock(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	expectTenantConfigLockedAs(mock, tenantID, sqlmock.NewRows(tenantConfigColumns()))
+}
+
+// expectTenantConfigLockedAs expects the same lock and answers rows.
+func expectTenantConfigLockedAs(mock sqlmock.Sqlmock, tenantID uuid.UUID, rows *sqlmock.Rows) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockTenantConfigByTenantID)).
+		WithArgs(tenantID).
+		WillReturnRows(rows)
 }
 
 func expectTenantConfigWithCommentSettings(
@@ -566,9 +583,12 @@ func TestUpdateTenantCommentSettingsPersistsTheChosenValues(t *testing.T) {
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 			mock.ExpectBegin()
+			// Stored values none of the cases asks for, so every case is a change.
+			expectTenantConfigLockedAs(mock, tenantID, tenantConfigRow(tenantID, now, "immediate", 10))
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantCommentSettings)).
 				WithArgs(tenantID, tt.want, int32(tt.threshold)).
 				WillReturnRows(tenantConfigRow(tenantID, now, tt.want, int32(tt.threshold)))
+			expectAdminAuditLogInsert(mock)
 			mock.ExpectCommit()
 
 			client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -802,10 +822,16 @@ func TestUpdateTenantAgeVerificationPersistsTheChosenRule(t *testing.T) {
 			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+			previous := ageverification.R18
+			if tt.want == ageverification.R18 {
+				previous = ageverification.None
+			}
 			mock.ExpectBegin()
+			expectTenantConfigLockedAs(mock, tenantID, tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, previous))
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantAgeVerification)).
 				WithArgs(tenantID, tt.want).
 				WillReturnRows(tenantConfigRowWithAgeVerification(tenantID, now, "disabled", 3, tt.want))
+			expectAdminAuditLogInsert(mock)
 			mock.ExpectCommit()
 
 			client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))

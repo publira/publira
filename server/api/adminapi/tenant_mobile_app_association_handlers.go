@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"connectrpc.com/connect/v2"
@@ -14,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 // The identifier patterns are the app manifest's (mobile/config/app.schema.json),
@@ -158,7 +160,8 @@ func (s *adminServer) UpdateTenantMobileAppAssociation(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -180,9 +183,19 @@ func (s *adminServer) UpdateTenantMobileAppAssociation(
 	}
 	defer tx.Rollback() //nolint:errcheck
 	qtx := dbmodels.New(tx)
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, qtx)
 
-	if _, err := qtx.LockTenantConfigByTenantID(ctx, tenant.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, s.internalDBError(ctx, "failed to lock tenant config", err, "tenant_id", tenant.ID.String())
+	current, err := s.lockTenantConfig(txCtx, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
+	if current.AndroidApplicationID == android.applicationID &&
+		slices.Equal(current.AndroidSha256CertFingerprints, android.fingerprints) &&
+		current.IosTeamID == teamID &&
+		current.IosBundleIdentifier == bundleIdentifier {
+		return &publiraadminv1.UpdateTenantMobileAppAssociationResponse{
+			Association: tenantMobileAppAssociationFromConfig(current),
+		}, nil
 	}
 	updated, err := qtx.UpsertTenantMobileAppAssociation(ctx, dbmodels.UpsertTenantMobileAppAssociationParams{
 		TenantID:                      tenant.ID,
@@ -203,6 +216,9 @@ func (s *adminServer) UpdateTenantMobileAppAssociation(
 			return nil, s.internalError(ctx, "tenant app purchase route is not a supported value", err, "tenant_id", tenant.ID.String())
 		}
 		return nil, s.internalDBError(ctx, "failed to check the store route against the app association", err, "tenant_id", tenant.ID.String())
+	}
+	if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_mobile_app_association_updated", "tenant_mobile_app_association"); err != nil {
+		return nil, err
 	}
 	owed, err := s.reval.Record(ctx, qtx, tenant.ID, tenantMobileAppAssociationRevalidateTags(tenant.ID.String()))
 	if err != nil {

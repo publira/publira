@@ -478,6 +478,12 @@ func tenantSiteCopyRevalidateTags(tenantID string) []string {
 	return []string{fmt.Sprintf("tenant:%s:site", strings.TrimSpace(tenantID))}
 }
 
+// sameNullString reports whether two nullable strings hold the same value. The
+// String of a NULL is not part of its value, and a request can leave one there.
+func sameNullString(a, b sql.NullString) bool {
+	return a.Valid == b.Valid && (!a.Valid || a.String == b.String)
+}
+
 func (s *adminServer) UpdateTenantConfig(
 	ctx context.Context,
 	req *publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest,
@@ -498,6 +504,16 @@ func (s *adminServer) UpdateTenantConfig(
 
 	var config dbmodels.TenantConfig
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		current, err := s.lockTenantConfig(txCtx, tenant.ID)
+		if err != nil {
+			return nil, err
+		}
+		if sameNullString(current.CopyrightText, copyrightText) &&
+			sameNullString(current.SiteDescription, siteDescription) &&
+			sameNullString(current.SiteTagline, siteTagline) {
+			config = current
+			return nil, nil
+		}
 		row, err := s.queriesFor(txCtx).UpdateTenantConfig(txCtx, dbmodels.UpdateTenantConfigParams{
 			TenantID:        tenant.ID,
 			CopyrightText:   copyrightText,
@@ -520,6 +536,9 @@ func (s *adminServer) UpdateTenantConfig(
 			}
 		}
 		config = row
+		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_site_copy_updated", "tenant_site_copy"); err != nil {
+			return nil, err
+		}
 		return tenantSiteCopyRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err

@@ -2326,11 +2326,12 @@ type Querier interface {
 	// tenant's currency (LockTenantCurrency), while letting other price writes of
 	// the same tenant go on.
 	LockTenantCurrencyShared(ctx context.Context, tenantID uuid.UUID) error
-	// Lock the tenant row so concurrent tenant branding image uploads and deletes
-	// (icon, logo) serialize. The following read of the current image must be a
-	// separate statement: READ COMMITTED freezes its snapshot at statement start,
-	// so waiting for the lock in the same statement would still see the pre-wait
-	// row.
+	// Lock the tenant row so concurrent writes to the tenant theme serialize: the
+	// branding image uploads and deletes (icon, logo), and the theme saves, each
+	// of which reads the theme first to decide what it changes. That read must be
+	// a separate statement: READ COMMITTED freezes its snapshot at statement
+	// start, so waiting for the lock in the same statement would still see the
+	// pre-wait row.
 	LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	// Serializes, for the rest of the transaction, the writes that decide which
 	// tenant a host name belongs to. The unique constraints keep two domains or two
@@ -2841,13 +2842,17 @@ type Querier interface {
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)
 	UpdateTenantCommunityLimitOverrides(ctx context.Context, arg UpdateTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)
 	UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfigParams) (TenantConfig, error)
+	// No row when the tenant already has that locale, for the reason
+	// UpdateTenantTimezone gives.
 	UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenantDefaultLocaleParams) (Tenant, error)
 	// Update the tenant name and its domains.
 	UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error)
 	UpdateTenantRetentionSettings(ctx context.Context, arg UpdateTenantRetentionSettingsParams) (TenantRetentionSetting, error)
 	// Update the tenant status (active / suspended).
 	UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error)
-	// Update the tenant display time zone (an IANA name).
+	// Update the tenant display time zone (an IANA name). No row when the tenant
+	// already has that zone, so the caller can tell a save that changes nothing
+	// from one it has to answer for in the audit log.
 	UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTimezoneParams) (Tenant, error)
 	UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailByIDParams) (User, error)
 	UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateUserEmailVerifiedAtByIDParams) (User, error)
