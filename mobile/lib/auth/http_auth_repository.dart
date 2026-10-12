@@ -62,6 +62,10 @@ class HttpAuthRepository implements AuthRepository {
   static const _updateNotificationSettingsProcedure =
       '/publira.v1.AuthService/UpdateNotificationSettings';
   static const _logoutProcedure = '/publira.v1.AuthService/Logout';
+  static const _getMyLegalPageAgreementsProcedure =
+      '/publira.v1.AuthService/GetMyLegalPageAgreements';
+  static const _agreeToLegalPagesProcedure =
+      '/publira.v1.AuthService/AgreeToLegalPages';
   static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
   static const _tenantMobileAppAssociationProcedure =
       '/publira.v1.TenantService/GetTenantMobileAppAssociation';
@@ -330,6 +334,51 @@ class HttpAuthRepository implements AuthRepository {
       termsPage: LegalPage.fromWire(legalPages['termsPage']),
       privacyPage: LegalPage.fromWire(legalPages['privacyPage']),
     );
+  }
+
+  @override
+  Future<List<LegalPage>> readOwedLegalPages(
+    AuthSession session, {
+    required String locale,
+  }) => _legalPageAgreements(session, _getMyLegalPageAgreementsProcedure, {
+    'locale': locale,
+  });
+
+  @override
+  Future<List<LegalPage>> agreeToLegalPages(
+    AuthSession session, {
+    required List<String> agreedPageVersionIds,
+    required String locale,
+  }) => _legalPageAgreements(session, _agreeToLegalPagesProcedure, {
+    'agreedPageVersionIds': agreedPageVersionIds,
+    'locale': locale,
+  });
+
+  /// Sends [procedure] for the reader behind [session], both of whose answers
+  /// name the pages the reader owes afterwards.
+  Future<List<LegalPage>> _legalPageAgreements(
+    AuthSession session,
+    String procedure,
+    Map<String, Object?> fields,
+  ) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        procedure,
+        {
+          'tenant': {'tenantId': tenantId},
+          ...fields,
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+      );
+      return legalPagesToAgreeTo(
+        termsPage: LegalPage.fromWire(body['termsPage']),
+        privacyPage: LegalPage.fromWire(body['privacyPage']),
+      );
+    } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
   }
 
   @override

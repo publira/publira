@@ -33,6 +33,12 @@ class ConnectException implements Exception {
   bool get isTenantSuspended =>
       code == 'failed_precondition' && reasons.contains(tenantSuspendedReason);
 
+  /// The signed-in reader owes an agreement to a revised terms of service or
+  /// privacy policy, which the API asks before it does this for them.
+  bool get isLegalPageAgreementRequired =>
+      code == 'failed_precondition' &&
+      reasons.contains(legalPageAgreementRequiredReason);
+
   @override
   String toString() => 'ConnectException($code, $message)';
 }

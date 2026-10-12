@@ -813,6 +813,15 @@ class ConnectFixtureServer {
   Map<String, Object?>? termsPage;
   Map<String, Object?>? privacyPage;
 
+  /// The pages `GetMyLegalPageAgreements` reports the member owes, as
+  /// `TenantLegalPage` JSON, until `AgreeToLegalPages` is sent its version.
+  /// `null` is a role the member owes nothing for.
+  Map<String, Object?>? owedTermsPage;
+  Map<String, Object?>? owedPrivacyPage;
+
+  /// The versions `AgreeToLegalPages` was sent, one list per call.
+  final legalPageAgreements = <List<String>>[];
+
   /// The tenant's name and `TenantTheme`, as `GetTenant` answers them. A
   /// `null` theme is a tenant that has stored none, which the API omits.
   String tenantName;
@@ -1216,6 +1225,12 @@ class ConnectFixtureServer {
           'email': memberEmail,
         },
       });
+      return;
+    }
+
+    if (path.endsWith('/GetMyLegalPageAgreements') ||
+        path.endsWith('/AgreeToLegalPages')) {
+      await _writeLegalPageAgreements(request, path, body);
       return;
     }
 
@@ -3140,6 +3155,59 @@ class ConnectFixtureServer {
     return _write(request, HttpStatus.badRequest, {
       'code': 'invalid_argument',
       'message': message,
+    });
+  }
+
+  /// Answers both legal page agreement RPCs with the pages the member owes
+  /// afterwards, the way the API does. An agreement to a version the member
+  /// is not asked about is refused as the API refuses one the tenant does
+  /// not name.
+  ///
+  /// The account a sign-up opened agreed to the pages it was shown, so it
+  /// owes nothing; its session is accepted rather than refused, which the app
+  /// would take as a session the API has stopped accepting.
+  Future<void> _writeLegalPageAgreements(
+    HttpRequest request,
+    String path,
+    Map<String, Object?> body,
+  ) async {
+    if (_signedUpSession != null &&
+        request.headers.value(HttpHeaders.authorizationHeader) ==
+            'Bearer $signedUpAccessToken') {
+      await _write(request, HttpStatus.ok, const <String, Object?>{});
+      return;
+    }
+    if (!_isAuthorized(request)) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid token',
+      });
+      return;
+    }
+    if (path.endsWith('/AgreeToLegalPages')) {
+      final agreed = [
+        for (final id in body['agreedPageVersionIds'] as List? ?? const [])
+          '$id',
+      ];
+      final owed = {
+        for (final page in [?owedTermsPage, ?owedPrivacyPage])
+          page['versionId'],
+      };
+      if (agreed.isEmpty || !agreed.every(owed.contains)) {
+        await _writeInvalidArgument(request, 'unknown page version');
+        return;
+      }
+      legalPageAgreements.add(agreed);
+      if (agreed.contains(owedTermsPage?['versionId'])) {
+        owedTermsPage = null;
+      }
+      if (agreed.contains(owedPrivacyPage?['versionId'])) {
+        owedPrivacyPage = null;
+      }
+    }
+    await _write(request, HttpStatus.ok, {
+      'termsPage': ?owedTermsPage,
+      'privacyPage': ?owedPrivacyPage,
     });
   }
 

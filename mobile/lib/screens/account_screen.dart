@@ -137,7 +137,7 @@ class AccountScreen extends StatelessWidget {
                         key: const ValueKey('account-sign-out'),
                         // The unregister needs the session, so the device comes
                         // off the delivery list before the session goes away.
-                        onPressed: () => unawaited(_signOut(context)),
+                        onPressed: () => unawaited(signOut(context)),
                         child: AutospacedText(messages.accountSignOut),
                       ),
                     ),
@@ -161,7 +161,9 @@ class AccountScreen extends StatelessWidget {
   }
 }
 
-Future<void> _signOut(BuildContext context) async {
+/// Signs the reader out of this device, taking the device off the delivery
+/// list first, while the session it unregisters with is still good.
+Future<void> signOut(BuildContext context) async {
   final auth = AuthScope.of(context);
   final push = PushScope.maybeOf(context);
   if (push != null) {

@@ -475,7 +475,14 @@
         "routes": ["[locale]/(auth)/settings/agreement"],
         "rpcs": ["GetMyLegalPageAgreements", "AgreeToLegalPages"]
       },
-      "exception": "Not in the app yet: #3800."
+      "mobile": {
+        "routes": ["/agreement"],
+        "rpcs": ["GetMyLegalPageAgreements", "AgreeToLegalPages"]
+      },
+      "sharedRecord": true,
+      "tests": [
+        "a member asked to agree to revised terms agrees once in the app"
+      ]
     },
     {
       "name": "The Apple and Google accounts linked to the reader's account",

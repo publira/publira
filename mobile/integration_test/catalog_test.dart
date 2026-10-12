@@ -2594,6 +2594,79 @@ void main() {
         }
       });
     });
+
+    testApp('a member asked to agree to revised terms agrees once in the app', (
+      tester,
+    ) async {
+      server
+        ..publishedPages = {
+          '/legal/terms': (
+            title: 'Terms of service',
+            contentMarkdown: '## What changed',
+            locale: 'en',
+          ),
+        }
+        ..owedTermsPage = {
+          'slug': '/legal/terms',
+          'title': 'Terms of service',
+          'versionId': 'terms-v2',
+          'locale': 'en',
+        };
+      await withFailureScreenshot(tester, 'fixture-legal-agreement', () async {
+        await pumpApp(tester, session: memberSession());
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('legal-page-agreement-submit')),
+        );
+
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-up-legal-page-/legal/terms')),
+        );
+        await pumpUntilRouteSettled(tester, find.text('What changed'));
+        await tapBack(tester);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('legal-page-agreement-submit')),
+        );
+
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('sign-up-consent')),
+        );
+        await tapReachable(
+          tester,
+          find.byKey(const ValueKey('legal-page-agreement-submit')),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('tab-home')),
+        );
+        expect(server.legalPageAgreements, [
+          ['terms-v2'],
+        ]);
+
+        // The next launch asks the API again, which records the agreement for
+        // the site as well, and the member is not asked a second time.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpApp(tester, session: memberSession());
+        await pumpUntilTrue(
+          tester,
+          () => server.requestsTo('GetMyLegalPageAgreements').length >= 2,
+          description: 'the second launch to ask the API',
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('tab-home')),
+        );
+        expect(
+          find.byKey(const ValueKey('legal-page-agreement-submit')),
+          findsNothing,
+        );
+        expect(server.legalPageAgreements, hasLength(1));
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
   });
 
   group('live public API', skip: !_liveApi, () {

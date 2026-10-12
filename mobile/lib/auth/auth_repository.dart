@@ -113,6 +113,35 @@ abstract class AuthRepository {
   /// Throws [AuthFailure].
   Future<SignUpRequirements> readSignUpRequirements({required String locale});
 
+  /// The pages the reader behind [session] has still to agree to: the
+  /// tenant's terms of service and privacy policy where a version published
+  /// since they last agreed asks every reader again. Empty when they owe
+  /// nothing.
+  ///
+  /// Each page is read in its translation in [locale], as
+  /// [readSignUpRequirements] reads it, so the version agreed to is the text
+  /// the reader was offered.
+  ///
+  /// Throws [AuthFailure].
+  Future<List<LegalPage>> readOwedLegalPages(
+    AuthSession session, {
+    required String locale,
+  });
+
+  /// Records that the reader behind [session] agreed to
+  /// [agreedPageVersionIds], the versions [readOwedLegalPages] offered, and
+  /// returns the pages they still owe afterwards, read in [locale]: none once
+  /// the agreement settles them, and the page again where a version was
+  /// published since it was read.
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.invalidInput] where a version is
+  /// not one the tenant asks about any longer.
+  Future<List<LegalPage>> agreeToLegalPages(
+    AuthSession session, {
+    required List<String> agreedPageVersionIds,
+    required String locale,
+  });
+
   /// Re-reads the reader behind [session], so a token restored from storage is
   /// confirmed before the app presents it as signed in.
   ///

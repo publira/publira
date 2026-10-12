@@ -1629,6 +1629,36 @@ final class AppMessages {
     return _format('mobile.labels.title');
   }
 
+  /// `mobile.legal_page_agreement.decline`
+  String get legalPageAgreementDecline {
+    return _format('mobile.legal_page_agreement.decline');
+  }
+
+  /// `mobile.legal_page_agreement.description`
+  String get legalPageAgreementDescription {
+    return _format('mobile.legal_page_agreement.description');
+  }
+
+  /// `mobile.legal_page_agreement.failed`
+  String get legalPageAgreementFailed {
+    return _format('mobile.legal_page_agreement.failed');
+  }
+
+  /// `mobile.legal_page_agreement.required`
+  String get legalPageAgreementRequired {
+    return _format('mobile.legal_page_agreement.required');
+  }
+
+  /// `mobile.legal_page_agreement.submit`
+  String get legalPageAgreementSubmit {
+    return _format('mobile.legal_page_agreement.submit');
+  }
+
+  /// `mobile.legal_page_agreement.title`
+  String get legalPageAgreementTitle {
+    return _format('mobile.legal_page_agreement.title');
+  }
+
   /// `mobile.library.continue_empty`
   String get libraryContinueEmpty {
     return _format('mobile.library.continue_empty');
@@ -3256,6 +3286,13 @@ const _jaSources = <String, String>{
   'mobile.labels.empty': 'レーベルはまだ登録されていません。',
   'mobile.labels.load_failed': 'レーベル一覧を表示できませんでした。もう一度お試しください。',
   'mobile.labels.title': 'レーベル一覧',
+  'mobile.legal_page_agreement.decline': '同意しない場合は、サインアウトするか、アカウントを削除できます。',
+  'mobile.legal_page_agreement.description':
+      '下記のページが更新されました。アカウントを引き続き利用するには、内容を読んで同意してください。',
+  'mobile.legal_page_agreement.failed': '同意を記録できませんでした。もう一度お試しください。',
+  'mobile.legal_page_agreement.required': '続けるには、表示されたページに同意してください。',
+  'mobile.legal_page_agreement.submit': '同意して続ける',
+  'mobile.legal_page_agreement.title': '更新された規約への同意',
   'mobile.library.continue_empty': '読みかけの作品はまだありません。エピソードを読み始めると、ここに表示されます。',
   'mobile.library.continue_sign_in_prompt': 'サインインすると、読みかけの作品を確認できます。',
   'mobile.library.title': '本棚',
@@ -3935,6 +3972,16 @@ const _enSources = <String, String>{
   'mobile.labels.empty': 'No labels have been registered yet.',
   'mobile.labels.load_failed': 'Could not show the labels. Try again.',
   'mobile.labels.title': 'Labels',
+  'mobile.legal_page_agreement.decline':
+      'If you do not agree, you can sign out or delete your account.',
+  'mobile.legal_page_agreement.description':
+      'The pages below have been updated. Read them and agree to them to keep using your account.',
+  'mobile.legal_page_agreement.failed':
+      'Could not record your agreement. Try again.',
+  'mobile.legal_page_agreement.required':
+      'Agree to the listed pages to continue.',
+  'mobile.legal_page_agreement.submit': 'Agree and continue',
+  'mobile.legal_page_agreement.title': 'Agree to the updated terms',
   'mobile.library.continue_empty':
       'Nothing to continue yet. Start reading an episode, and it appears here.',
   'mobile.library.continue_sign_in_prompt':
@@ -4592,6 +4639,13 @@ const _koSources = <String, String>{
   'mobile.labels.empty': '아직 등록된 레이블이 없습니다.',
   'mobile.labels.load_failed': '레이블 목록을 표시할 수 없습니다. 다시 시도해 주세요.',
   'mobile.labels.title': '레이블 목록',
+  'mobile.legal_page_agreement.decline': '동의하지 않으면 로그아웃하거나 계정을 삭제할 수 있습니다.',
+  'mobile.legal_page_agreement.description':
+      '아래 페이지가 업데이트되었습니다. 계정을 계속 이용하려면 내용을 읽고 동의해 주세요.',
+  'mobile.legal_page_agreement.failed': '동의를 기록하지 못했습니다. 다시 시도해 주세요.',
+  'mobile.legal_page_agreement.required': '계속하려면 표시된 페이지에 동의해 주세요.',
+  'mobile.legal_page_agreement.submit': '동의하고 계속',
+  'mobile.legal_page_agreement.title': '업데이트된 약관에 동의',
   'mobile.library.continue_empty':
       '아직 읽고 있는 작품이 없습니다. 에피소드를 읽기 시작하면 여기에 표시됩니다.',
   'mobile.library.continue_sign_in_prompt': '로그인하면 읽고 있는 작품을 볼 수 있습니다.',
@@ -5187,6 +5241,12 @@ const _zhHansSources = <String, String>{
   'mobile.labels.empty': '尚未登记任何品牌。',
   'mobile.labels.load_failed': '无法显示品牌列表。请重试。',
   'mobile.labels.title': '品牌',
+  'mobile.legal_page_agreement.decline': '如果不同意，您可以退出登录或注销账户。',
+  'mobile.legal_page_agreement.description': '以下页面已更新。如需继续使用您的账户，请阅读并同意。',
+  'mobile.legal_page_agreement.failed': '无法记录您的同意。请重试。',
+  'mobile.legal_page_agreement.required': '请同意列出的页面后继续。',
+  'mobile.legal_page_agreement.submit': '同意并继续',
+  'mobile.legal_page_agreement.title': '同意更新后的条款',
   'mobile.library.continue_empty': '您还没有正在阅读的作品。开始阅读剧集后，会显示在这里。',
   'mobile.library.continue_sign_in_prompt': '登录后即可查看您正在阅读的作品。',
   'mobile.library.title': '书架',
@@ -5754,6 +5814,12 @@ const _zhHantSources = <String, String>{
   'mobile.labels.empty': '尚未新增任何品牌。',
   'mobile.labels.load_failed': '無法顯示品牌列表。請重試。',
   'mobile.labels.title': '品牌',
+  'mobile.legal_page_agreement.decline': '如果不同意，您可以登出或刪除帳戶。',
+  'mobile.legal_page_agreement.description': '以下頁面已更新。如需繼續使用您的帳戶，請閱讀並同意。',
+  'mobile.legal_page_agreement.failed': '無法記錄您的同意。請再試一次。',
+  'mobile.legal_page_agreement.required': '請同意列出的頁面後繼續。',
+  'mobile.legal_page_agreement.submit': '同意並繼續',
+  'mobile.legal_page_agreement.title': '同意更新後的條款',
   'mobile.library.continue_empty': '您還沒有正在閱讀的作品。開始閱讀集數後，就會顯示在這裡。',
   'mobile.library.continue_sign_in_prompt': '登入後即可查看您正在閱讀的作品。',
   'mobile.library.title': '書架',

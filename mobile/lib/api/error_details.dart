@@ -23,6 +23,11 @@ const readerCreditedOnEpisodeReason = 'READER_CREDITED_ON_EPISODE';
 /// the tenant's last active tenant admin.
 const lastTenantAdminReason = 'LAST_TENANT_ADMIN';
 
+/// The ErrorInfo reason the API refuses most of what a signed-in reader does
+/// with, under `failed_precondition`, while they have not agreed to a version
+/// of the tenant's terms of service or privacy policy that asks every reader.
+const legalPageAgreementRequiredReason = 'LEGAL_PAGE_AGREEMENT_REQUIRED';
+
 /// The ErrorInfo reason `WaitFreeService` refuses a series with when its
 /// wait-for-free rule is off.
 const waitFreeNotOfferedReason = 'WAIT_FREE_NOT_OFFERED';

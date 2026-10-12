@@ -103,9 +103,22 @@ class BirthDateField extends StatelessWidget {
 /// Each page opens on its own screen above the form, so reading it keeps
 /// everything the reader has typed.
 class ConsentField extends StatelessWidget {
-  const ConsentField({super.key, required this.pages});
+  const ConsentField({
+    super.key,
+    required this.pages,
+    this.pagePath = AppRoutes.publishedPagePath,
+    this.requiredMessage,
+  });
 
   final List<LegalPage> pages;
+
+  /// Where a page opens, from its slug: the tab's own page screen unless a
+  /// screen that stands outside every tab names its own.
+  final String Function(String slug) pagePath;
+
+  /// What the box says while it is unticked, which is the sign-up's copy
+  /// unless the form asks for something else.
+  final String? requiredMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -113,8 +126,9 @@ class ConsentField extends StatelessWidget {
     final theme = Theme.of(context);
     return FormField<bool>(
       initialValue: false,
-      validator: (value) =>
-          value ?? false ? null : messages.signUpConsentRequired,
+      validator: (value) => value ?? false
+          ? null
+          : requiredMessage ?? messages.signUpConsentRequired,
       builder: (field) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -133,11 +147,8 @@ class ConsentField extends StatelessWidget {
               for (final page in pages)
                 TextButton(
                   key: ValueKey('sign-up-legal-page-${page.slug}'),
-                  onPressed: () => unawaited(
-                    context.pushInTab<void>(
-                      AppRoutes.publishedPagePath(page.slug),
-                    ),
-                  ),
+                  onPressed: () =>
+                      unawaited(context.pushInTab<void>(pagePath(page.slug))),
                   child: AutospacedText(page.title),
                 ),
             ],

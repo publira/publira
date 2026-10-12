@@ -30,6 +30,7 @@ class ConnectClient {
     http.Client? httpClient,
     this._accessToken,
     this._availability,
+    this._onLegalPageAgreementRequired,
     this.timeout = const Duration(seconds: 10),
   }) : _http = httpClient ?? http.Client();
 
@@ -43,6 +44,11 @@ class ConnectClient {
   /// suspended, and that it has been resumed, from whichever request comes
   /// first. Every public RPC names the tenant, so any answer is about it.
   final TenantAvailability? _availability;
+
+  /// Told of every refusal that names a legal page agreement the reader owes,
+  /// so the app asks for it from whichever request the API refused first,
+  /// rather than each screen reporting the refusal as a failure of its own.
+  final void Function()? _onLegalPageAgreementRequired;
 
   final http.Client _http;
 
@@ -142,6 +148,9 @@ class ConnectClient {
     );
     if (error.isTenantSuspended) {
       _availability?.reportSuspended();
+    }
+    if (error.isLegalPageAgreementRequired) {
+      _onLegalPageAgreementRequired?.call();
     }
     throw error;
   }

@@ -48,6 +48,17 @@ class LegalPage {
   int get hashCode => Object.hash(slug, title, versionId);
 }
 
+/// The pages a reader is asked to agree to, terms first, from the roles a
+/// `TenantLegalPage` pair names. A page named for both roles is one page, and
+/// the API takes one version of it.
+List<LegalPage> legalPagesToAgreeTo({
+  required LegalPage? termsPage,
+  required LegalPage? privacyPage,
+}) => [
+  ?termsPage,
+  if (privacyPage?.versionId != termsPage?.versionId) ?privacyPage,
+];
+
 /// What the tenant asks of a sign-up beyond a name, an address, and a
 /// password: a birth date where it checks ages, and consent to the pages it
 /// names.
@@ -63,12 +74,10 @@ class SignUpRequirements {
   final LegalPage? termsPage;
   final LegalPage? privacyPage;
 
-  /// The pages the reader is asked to agree to, terms first. A page named for
-  /// both roles is one page, and the API takes one version of it.
-  List<LegalPage> get legalPages => [
-    ?termsPage,
-    if (privacyPage?.versionId != termsPage?.versionId) ?privacyPage,
-  ];
+  /// The pages the reader is asked to agree to, as [legalPagesToAgreeTo]
+  /// lists them.
+  List<LegalPage> get legalPages =>
+      legalPagesToAgreeTo(termsPage: termsPage, privacyPage: privacyPage);
 
   /// Whether [other] asks consent to exactly the versions this does.
   bool asksSameConsentAs(SignUpRequirements other) {
