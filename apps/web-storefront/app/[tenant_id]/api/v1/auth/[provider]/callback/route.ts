@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import {
   deleteMe,
+  linkMyIdentity,
   loginWithIdToken,
   requestPublicEmailChange,
 } from "#lib/auth";
@@ -13,7 +14,10 @@ import { sealPublicSessionCookie } from "#lib/auth-session";
 import { buildLoginPath, PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { emailRefusalMessage } from "#lib/email-refusal-message";
 import { getMessagesFor } from "#lib/messages";
-import { SIGN_IN_PROVIDERS } from "#lib/sign-in-provider";
+import {
+  SIGN_IN_PROVIDER_NAMES,
+  SIGN_IN_PROVIDERS,
+} from "#lib/sign-in-provider";
 import {
   clearSignInRequest,
   isExpectedState,
@@ -250,6 +254,78 @@ const finishEmailChange = async (
 };
 
 /**
+ * Link the provider account the reader just signed in to, whatever address it
+ * carries, to the account the link was asked from.
+ */
+const finishLink = async (
+  request: SignInRequest,
+  signIn: IdTokenSignIn
+): Promise<Response> => {
+  const { accessToken, locale, tenantId } = request;
+  const linked = await withConfirmingSession(
+    request,
+    CONFIRMING_SCREENS.link,
+    () => linkMyIdentity(tenantId, signIn, accessToken)
+  );
+  if (linked instanceof Response) {
+    return linked;
+  }
+  const t = await getMessagesFor(locale);
+  const provider = SIGN_IN_PROVIDER_NAMES[signIn.provider];
+  switch (linked.kind) {
+    case "linked": {
+      const path = await tenantLocalePath(
+        tenantId,
+        locale,
+        CONFIRMING_SCREENS.link
+      );
+      const params = new URLSearchParams({
+        message: t("storefront.settings.linked_account_linked", { provider }),
+        status: "success",
+      });
+      return seeOther(`${path}?${params.toString()}`);
+    }
+    case "linked_to_another_account": {
+      return failure(
+        request,
+        t("storefront.settings.linked_account_link_another_account", {
+          provider,
+        })
+      );
+    }
+    case "provider_already_linked": {
+      return failure(
+        request,
+        t("storefront.settings.linked_account_link_already_linked", {
+          provider,
+        })
+      );
+    }
+    default: {
+      return failure(
+        request,
+        rpcErrorMessage(
+          linked.error,
+          t("storefront.settings.linked_account_link_failed"),
+          {
+            locale,
+            overrides: {
+              // A token the API could not verify, or a nonce already spent.
+              "invalid-argument": t(
+                "storefront.settings.linked_account_link_unverified",
+                { provider }
+              ),
+              // The tenant stopped offering the provider meanwhile.
+              precondition: t("storefront.auth.social.errors.unavailable"),
+            },
+          }
+        )
+      );
+    }
+  }
+};
+
+/**
  * Where Apple and Google post a reader back to, from their own site. The state
  * it echoes and the nonce in its token tie it to the request this browser made.
  */
@@ -302,6 +378,9 @@ export const POST = async (
     }
     case "email_change": {
       return finishEmailChange(signInRequest, signIn);
+    }
+    case "link": {
+      return finishLink(signInRequest, signIn);
     }
     default: {
       return finishLogin(signInRequest, signIn, appleUserName(form.user));

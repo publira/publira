@@ -31,7 +31,9 @@ import {
  * on a first sign-in, to the same one on the next, and to the account already
  * holding the address Google vouches for. A tenant that asks for consent asks
  * before the account is created. A linked account is listed in the security
- * settings and can be unlinked. An account without a password confirms an
+ * settings and can be unlinked, and a reader who signs in with a password links
+ * a Google account under another address there and then signs in to the same
+ * account with it. An account without a password confirms an
  * email change and its deletion by signing in again, and sets a first password
  * through the reset flow.
  *
@@ -56,6 +58,16 @@ const MEMBER_GOOGLE: GoogleAccount = {
   email: SOCIAL_SIGN_IN_MEMBER.email,
   name: "Member at Google",
   subject: "google-social-member",
+};
+
+/**
+ * The member's Google account under another address than the member's, which
+ * links only from the security settings.
+ */
+const MEMBER_ELSEWHERE_GOOGLE: GoogleAccount = {
+  email: "social-member-elsewhere@example.com",
+  name: "Member Elsewhere",
+  subject: "google-social-member-elsewhere",
 };
 
 /** An account Google creates, which then moves to another address. */
@@ -179,9 +191,81 @@ test.describe("Sign in with Apple and Google on the public site", () => {
     await linked.getByRole("button", { name: "Unlink Google" }).click();
     await expect(page.getByText("The account was unlinked.")).toBeVisible();
     await expect(
-      page.getByRole("region", { name: "Linked accounts" })
-    ).toHaveCount(0);
+      page
+        .getByRole("region", { name: "Linked accounts" })
+        .getByRole("button", { name: "Link Google" })
+    ).toBeVisible();
     expect(linkCount(SOCIAL_SIGN_IN_MEMBER.email)).toBe("0");
+  });
+
+  test("refuses to link a Google account another reader signs in with", async ({
+    page,
+  }) => {
+    await signInAsMember(
+      page,
+      SOCIAL_SIGN_IN_MEMBER,
+      "/settings/security",
+      WEB_STOREFRONT_SOCIAL_SIGN_IN_BASE_URL
+    );
+    await stubGoogleSignIn(page, NEWCOMER);
+    await page
+      .getByRole("region", { name: "Linked accounts" })
+      .getByRole("button", { name: "Link Google" })
+      .click();
+
+    await page.waitForURL(
+      (url) =>
+        url.pathname.endsWith("/settings/security") &&
+        url.searchParams.get("status") === "error"
+    );
+    await expect(
+      page.getByText(
+        "This Google account is already linked to another account on this site. Unlink it from that account first."
+      )
+    ).toBeVisible();
+    await expectSignedInAs(page, SOCIAL_SIGN_IN_MEMBER.name);
+    expect(linkCount(SOCIAL_SIGN_IN_MEMBER.email)).toBe("0");
+  });
+
+  test("links a Google account under another address, which then signs in to the same account", async ({
+    page,
+  }) => {
+    await signInAsMember(
+      page,
+      SOCIAL_SIGN_IN_MEMBER,
+      "/settings/security",
+      WEB_STOREFRONT_SOCIAL_SIGN_IN_BASE_URL
+    );
+    await stubGoogleSignIn(page, MEMBER_ELSEWHERE_GOOGLE);
+    await page
+      .getByRole("region", { name: "Linked accounts" })
+      .getByRole("button", { name: "Link Google" })
+      .click();
+
+    await page.waitForURL(
+      (url) =>
+        url.pathname.endsWith("/settings/security") &&
+        url.searchParams.get("status") === "success"
+    );
+    await expect(
+      page.getByText(
+        "Your Google account was linked. You can now sign in with it."
+      )
+    ).toBeVisible();
+    const linked = page.getByRole("region", { name: "Linked accounts" });
+    await expect(linked).toContainText(MEMBER_ELSEWHERE_GOOGLE.email);
+    await expect(
+      linked.getByRole("button", { name: "Unlink Google" })
+    ).toBeEnabled();
+    expect(linkCount(SOCIAL_SIGN_IN_MEMBER.email)).toBe("1");
+
+    await signOutStorefront(page);
+    await signInWithGoogle(page, MEMBER_ELSEWHERE_GOOGLE);
+    await page.waitForURL(socialUrl("/"));
+    await expectSignedInAs(page, SOCIAL_SIGN_IN_MEMBER.name);
+    expect(
+      accountCount(SOCIAL_SIGN_IN_TENANT, MEMBER_ELSEWHERE_GOOGLE.email)
+    ).toBe("0");
   });
 
   test("keeps the only way into an account without a password", async ({

@@ -2,7 +2,7 @@
 title: Sign-in with Apple and Google
 description: Let readers sign in to the site and the app with an Apple or Google account, and create what Apple and Google need for it.
 published: 2026-10-06
-updated: 2026-10-10
+updated: 2026-10-12
 ---
 
 Readers sign in to a tenant's site with an email address and a password. **Integrations** › **Sign-in** adds two buttons beside that form, **Continue with Apple** and **Continue with Google**, so a reader can sign up and sign in with an account they already have. This page takes a Tenant admin through both providers for the site, and says what readers see once they are on. The app shares the same setup; what only the app needs is on [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#sign-in-with-apple-and-google).
@@ -115,13 +115,17 @@ An Apple or Google account is linked to one reader's account on the tenant. Whic
 - **The reader has an account with that address, but never confirmed it.** The Apple or Google account takes it over: the account is linked, its address counts as confirmed, and the password it was created with is removed. Whoever created it without being able to confirm the address loses it to the address's owner.
 - **No account has the address.** A new account is created, with the address the provider gave and no password.
 
-A reader who chose **Hide My Email** with Apple gives the site an address at `privaterelay.appleid.com` instead of their own. It matches no existing account, so it creates a new one. A reader who already has an account and wants to keep it signs in with their email address instead, or shares their real address with Apple.
+A reader who chose **Hide My Email** with Apple gives the site an address at `privaterelay.appleid.com` instead of their own. It matches no existing account, so it creates a new one, and so does a Google account under another address than the reader's account. A reader who already has an account and wants to keep it signs in with their email address and links the Apple or Google account to it from **Linked accounts**, as described below.
 
 The tenant's refused email addresses under **Settings** do not apply to these sign-ins, since the provider supplies the address. A reader whose account is suspended cannot sign in with Apple or Google either.
 
 ### What a reader can manage
 
-Under **Settings** › **Security** on the site, and in the app's account screen, **Linked accounts** lists the Apple and Google accounts the reader can sign in with, each with **Unlink**. A reader cannot link an account from there; a provider is linked by signing in with it as described above.
+Under **Settings** › **Security** on the site, **Linked accounts** lists the Apple and Google accounts the reader can sign in with, each with **Unlink**, and offers **Link** for each provider the site offers that the account has none of yet. **Link** sends the reader to sign in with that provider and links the account they sign in to, whatever address it carries, so a **Hide My Email** address links as well as the reader's own. From then on, signing in with it opens the same account.
+
+A link is refused, with the reason on the screen, when the Apple or Google account already signs in to another account on the site, which has to unlink it first, and when the reader's account already has an account of that provider linked, which they unlink before linking another.
+
+The app's account screen lists and unlinks linked accounts too; linking one is done on the site.
 
 An account created through Apple or Google has no password. The same screen offers **Set a password**, which mails a link to set one, after which the reader can sign in with their email address as well. Until then:
 

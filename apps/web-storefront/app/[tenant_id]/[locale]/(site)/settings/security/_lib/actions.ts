@@ -319,12 +319,58 @@ export const changePasswordAction = async (
   redirect(successPath);
 };
 
-const unlinkIdentityFormSchema = async (locale: Locale) => {
+/** The form of a row in Linked accounts, which links or unlinks one provider. */
+const linkedAccountFormSchema = async (locale: Locale) => {
   const tenantId = await tenantIdFormSchema(locale);
 
   return z.object({
     locale: localeFormSchema,
     provider: z.enum(SIGN_IN_PROVIDERS),
+    tenantId,
+  });
+};
+
+/**
+ * Link a provider account to the signed-in reader's: the reader signs in with
+ * the provider whose button they pressed, and the callback links the account
+ * they signed in to, whatever address it carries.
+ */
+export const linkIdentityAction = async (formData: FormData): Promise<void> => {
+  await assertSameOrigin();
+  const submittedLocale = requireFormLocale(formData.get("locale"));
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    linkedAccountFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      locale: "value",
+      provider: "value",
+      tenantId: "value",
+    })
+  );
+  if (!parsed.success) {
+    const errorPath = await buildSettingsPath(
+      submittedLocale,
+      String(formData.get("tenantId") ?? ""),
+      "error",
+      t("storefront.settings.linked_account_link_failed")
+    );
+    redirect(errorPath);
+  }
+
+  const { locale, provider, tenantId } = parsed.data;
+  const accessToken = await requirePublicSession(
+    locale,
+    SECURITY_SETTINGS_RETURN_TO,
+    tenantId
+  );
+  await sendToProvider({
+    accessToken,
+    intent: "link",
+    locale,
+    provider,
+    returnTo: SECURITY_SETTINGS_RETURN_TO,
     tenantId,
   });
 };
@@ -336,7 +382,7 @@ export const unlinkIdentityAction = async (
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
-    unlinkIdentityFormSchema(submittedLocale),
+    linkedAccountFormSchema(submittedLocale),
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
