@@ -257,3 +257,76 @@ func TestDBTenantLegalPagesNameAPagePublishedOnlyInAnotherLocale(t *testing.T) {
 		t.Fatalf("terms title = %q, want the published en one", saved.TermsPage.Title)
 	}
 }
+
+// Asking every reader to agree again is a tenant_admin's decision, made on a
+// publication of the terms or the privacy policy, and is stored on the version
+// published. A correction leaves it unset.
+func TestDBPublishVersionAsksReadersToAgreeToTheLegalPages(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)
+	termsID := createDBPage(t, env, tenant, "tos", "Terms of Service", true)
+	aboutID := createDBPage(t, env, tenant, "about", "About", true)
+	if _, err := updateDBTenantLegalPages(env, tenant, termsID, ""); err != nil {
+		t.Fatalf("UpdateTenantLegalPages: %v", err)
+	}
+	client := env.pagesClient()
+	newVersion := func(pageID string) string {
+		t.Helper()
+		version, err := client.CreateVersion(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateVersionRequest{
+			Tenant:          tenant.tenantContext(),
+			PageId:          pageID,
+			ContentMarkdown: "# Revised",
+		})
+		if err != nil {
+			t.Fatalf("CreateVersion: %v", err)
+		}
+		return version.Version.Id
+	}
+	publish := func(as adminDBTenant, pageID, versionID string, requireAgreement bool) (*publiraadminv1.PublishVersionResponse, error) {
+		return client.PublishVersion(testutil.WithBearer(context.Background(), as.token()), &publiraadminv1.PublishVersionRequest{
+			Tenant:           as.tenantContext(),
+			PageId:           pageID,
+			VersionId:        versionID,
+			RequireAgreement: requireAgreement,
+		})
+	}
+	requests := func() int {
+		return env.countRows(t, "SELECT count(*) FROM page_versions WHERE agreement_required_at IS NOT NULL")
+	}
+
+	revision := newVersion(termsID)
+	if _, err := publish(tenant.as(editor), termsID, revision, true); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("PublishVersion asking agreement as an editor error = %v, want permission_denied", err)
+	}
+	aboutRevision := newVersion(aboutID)
+	if _, err := publish(tenant, aboutID, aboutRevision, true); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("PublishVersion asking agreement to another page error = %v, want failed_precondition", err)
+	}
+	if got := requests(); got != 0 {
+		t.Fatalf("versions asking agreement after refused publications = %d, want 0", got)
+	}
+
+	// An editor still publishes the terms, as a correction.
+	corrected, err := publish(tenant.as(editor), termsID, revision, false)
+	if err != nil {
+		t.Fatalf("PublishVersion of a correction as an editor: %v", err)
+	}
+	if corrected.Version.AgreementRequiredAt != "" {
+		t.Fatalf("agreement_required_at of a correction = %q, want empty", corrected.Version.AgreementRequiredAt)
+	}
+
+	asked, err := publish(tenant, termsID, newVersion(termsID), true)
+	if err != nil {
+		t.Fatalf("PublishVersion asking agreement: %v", err)
+	}
+	if asked.Version.AgreementRequiredAt == "" || asked.Version.AgreementRequiredAt != asked.Version.PublishedAt {
+		t.Fatalf("agreement_required_at = %q, want the publication time %q", asked.Version.AgreementRequiredAt, asked.Version.PublishedAt)
+	}
+	if got := requests(); got != 1 {
+		t.Fatalf("versions asking agreement = %d, want 1", got)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM audit_logs WHERE action = 'page_version_published' AND reason = 'agreement_required'"); got != 1 {
+		t.Fatalf("audit entries for the request = %d, want 1", got)
+	}
+}

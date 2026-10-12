@@ -181,9 +181,15 @@ func (s *apiServer) GetTenantLegalPages(
 		return nil, s.internalDBError(ctx, "failed to read the tenant legal pages", err, "tenant_id", tenant.ID.String())
 	}
 
-	resp := &publirav1.GetTenantLegalPagesResponse{}
+	terms, privacy := tenantLegalPagesFromRow(row)
+	return &publirav1.GetTenantLegalPagesResponse{TermsPage: terms, PrivacyPage: privacy}, nil
+}
+
+// tenantLegalPagesFromRow is each published page of a GetTenantLegalPages row,
+// and nil for a role whose page is absent or unpublished.
+func tenantLegalPagesFromRow(row dbmodels.GetTenantLegalPagesRow) (terms, privacy *publirav1.TenantLegalPage) {
 	if row.TermsPublished {
-		resp.TermsPage = &publirav1.TenantLegalPage{
+		terms = &publirav1.TenantLegalPage{
 			Slug:      row.TermsSlug.String,
 			Title:     row.TermsTitle.String,
 			VersionId: row.TermsPublishedVersionID.UUID.String(),
@@ -191,14 +197,14 @@ func (s *apiServer) GetTenantLegalPages(
 		}
 	}
 	if row.PrivacyPublished {
-		resp.PrivacyPage = &publirav1.TenantLegalPage{
+		privacy = &publirav1.TenantLegalPage{
 			Slug:      row.PrivacySlug.String,
 			Title:     row.PrivacyTitle.String,
 			VersionId: row.PrivacyPublishedVersionID.UUID.String(),
 			Locale:    row.PrivacyLocale.String,
 		}
 	}
-	return resp, nil
+	return terms, privacy
 }
 
 // tenantAcceptsPayments deliberately fails closed. The public response only

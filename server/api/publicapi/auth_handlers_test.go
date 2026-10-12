@@ -57,6 +57,14 @@ func expectAuthSession(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, now tim
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_member"))
 }
 
+// expectLegalPagesAgreed answers the check an RPC a reader who owes an
+// agreement may not call makes after the session, for a reader who owes none.
+func expectLegalPagesAgreed(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetReaderLegalPageAgreements)).
+		WithArgs(userID, tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"terms_agreed", "privacy_agreed"}).AddRow(true, true))
+}
+
 func announcementColumns() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
 		"id", "tenant_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until", "is_read", "read_at",
@@ -534,6 +542,7 @@ func TestAuthMarkAnnouncementAsRead(t *testing.T) {
 
 		expectTenantLookup(mock, tenantID, "TENANT", now)
 		expectAuthSession(mock, tenantID, userID, now)
+		expectLegalPagesAgreed(mock, tenantID, userID)
 		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkAnnouncementAsRead)).
 			WithArgs(announcementID, tenantID, userID).
 			WillReturnRows(sqlmock.NewRows([]string{"announcement_id", "user_id", "read_at", "tenant_id"}).
@@ -563,6 +572,7 @@ func TestAuthMarkAnnouncementAsRead(t *testing.T) {
 
 		expectTenantLookup(mock, tenantID, "TENANT", now)
 		expectAuthSession(mock, tenantID, userID, now)
+		expectLegalPagesAgreed(mock, tenantID, userID)
 
 		client := publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 		_, err := client.MarkAnnouncementAsRead(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.MarkAnnouncementAsReadRequest{
@@ -586,6 +596,7 @@ func TestAuthMarkAnnouncementAsRead(t *testing.T) {
 
 		expectTenantLookup(mock, tenantID, "TENANT", now)
 		expectAuthSession(mock, tenantID, userID, now)
+		expectLegalPagesAgreed(mock, tenantID, userID)
 		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkAnnouncementAsRead)).
 			WithArgs(announcementID, tenantID, userID).
 			WillReturnRows(sqlmock.NewRows([]string{"announcement_id", "user_id", "read_at", "tenant_id"}))
@@ -612,6 +623,7 @@ func TestAuthMarkAllAnnouncementsAsRead(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectAuthSession(mock, tenantID, userID, now)
+	expectLegalPagesAgreed(mock, tenantID, userID)
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.MarkAllAnnouncementsAsRead)).
 		WithArgs(tenantID, userID).
 		WillReturnResult(sqlmock.NewResult(0, 3))

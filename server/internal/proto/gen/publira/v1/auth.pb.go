@@ -2970,12 +2970,246 @@ func (x *MarkAllAnnouncementsAsReadResponse) GetMarkedCount() int32 {
 	return 0
 }
 
+type GetMyLegalPageAgreementsRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The reader's locale, read as GetTenantLegalPagesRequest.locale reads it.
+	Locale        string `protobuf:"bytes,2,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMyLegalPageAgreementsRequest) Reset() {
+	*x = GetMyLegalPageAgreementsRequest{}
+	mi := &file_publira_v1_auth_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMyLegalPageAgreementsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMyLegalPageAgreementsRequest) ProtoMessage() {}
+
+func (x *GetMyLegalPageAgreementsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMyLegalPageAgreementsRequest.ProtoReflect.Descriptor instead.
+func (*GetMyLegalPageAgreementsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *GetMyLegalPageAgreementsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *GetMyLegalPageAgreementsRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+// The pages the signed-in reader has still to agree to, each in the version
+// currently in force for the locale, as GetTenantLegalPages reports it. A role
+// is absent where the reader owes it nothing: the tenant names no published
+// page for it, no publication of that page has asked readers to agree again,
+// or the reader has agreed to a version published since the last one that did
+// in its translation. A response with neither role means the reader may use
+// the site.
+type GetMyLegalPageAgreementsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TermsPage     *TenantLegalPage       `protobuf:"bytes,1,opt,name=terms_page,json=termsPage,proto3" json:"terms_page,omitempty"`
+	PrivacyPage   *TenantLegalPage       `protobuf:"bytes,2,opt,name=privacy_page,json=privacyPage,proto3" json:"privacy_page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMyLegalPageAgreementsResponse) Reset() {
+	*x = GetMyLegalPageAgreementsResponse{}
+	mi := &file_publira_v1_auth_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMyLegalPageAgreementsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMyLegalPageAgreementsResponse) ProtoMessage() {}
+
+func (x *GetMyLegalPageAgreementsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMyLegalPageAgreementsResponse.ProtoReflect.Descriptor instead.
+func (*GetMyLegalPageAgreementsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *GetMyLegalPageAgreementsResponse) GetTermsPage() *TenantLegalPage {
+	if x != nil {
+		return x.TermsPage
+	}
+	return nil
+}
+
+func (x *GetMyLegalPageAgreementsResponse) GetPrivacyPage() *TenantLegalPage {
+	if x != nil {
+		return x.PrivacyPage
+	}
+	return nil
+}
+
+type AgreeToLegalPagesRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The versions the reader agreed to, as GetMyLegalPageAgreements reported
+	// them in TenantLegalPage.version_id. Each has to be a published version of
+	// the page the tenant names as its terms or its privacy policy, and there may
+	// be at most one per page; anything else is invalid_argument. A version the
+	// page has since superseded is recorded, since it is the text the reader was
+	// shown, but it does not settle a request made after it, so the response
+	// reports the page again.
+	AgreedPageVersionIds []string `protobuf:"bytes,2,rep,name=agreed_page_version_ids,json=agreedPageVersionIds,proto3" json:"agreed_page_version_ids,omitempty"`
+	// The locale the response reads the pages in, as in
+	// GetMyLegalPageAgreementsRequest.
+	Locale        string `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgreeToLegalPagesRequest) Reset() {
+	*x = AgreeToLegalPagesRequest{}
+	mi := &file_publira_v1_auth_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgreeToLegalPagesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgreeToLegalPagesRequest) ProtoMessage() {}
+
+func (x *AgreeToLegalPagesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgreeToLegalPagesRequest.ProtoReflect.Descriptor instead.
+func (*AgreeToLegalPagesRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *AgreeToLegalPagesRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *AgreeToLegalPagesRequest) GetAgreedPageVersionIds() []string {
+	if x != nil {
+		return x.AgreedPageVersionIds
+	}
+	return nil
+}
+
+func (x *AgreeToLegalPagesRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+// What GetMyLegalPageAgreements answers once the agreement is recorded.
+type AgreeToLegalPagesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TermsPage     *TenantLegalPage       `protobuf:"bytes,1,opt,name=terms_page,json=termsPage,proto3" json:"terms_page,omitempty"`
+	PrivacyPage   *TenantLegalPage       `protobuf:"bytes,2,opt,name=privacy_page,json=privacyPage,proto3" json:"privacy_page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgreeToLegalPagesResponse) Reset() {
+	*x = AgreeToLegalPagesResponse{}
+	mi := &file_publira_v1_auth_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgreeToLegalPagesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgreeToLegalPagesResponse) ProtoMessage() {}
+
+func (x *AgreeToLegalPagesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgreeToLegalPagesResponse.ProtoReflect.Descriptor instead.
+func (*AgreeToLegalPagesResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *AgreeToLegalPagesResponse) GetTermsPage() *TenantLegalPage {
+	if x != nil {
+		return x.TermsPage
+	}
+	return nil
+}
+
+func (x *AgreeToLegalPagesResponse) GetPrivacyPage() *TenantLegalPage {
+	if x != nil {
+		return x.PrivacyPage
+	}
+	return nil
+}
+
 var File_publira_v1_auth_proto protoreflect.FileDescriptor
 
 const file_publira_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"\x15publira/v1/auth.proto\x12\n" +
-	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"y\n" +
+	"publira.v1\x1a\x1cpublira/types/v1/types.proto\x1a\x17publira/v1/tenant.proto\"y\n" +
 	"\fLoginRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
@@ -3148,11 +3382,26 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"!MarkAllAnnouncementsAsReadRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"G\n" +
 	"\"MarkAllAnnouncementsAsReadResponse\x12!\n" +
-	"\fmarked_count\x18\x01 \x01(\x05R\vmarkedCount*p\n" +
+	"\fmarked_count\x18\x01 \x01(\x05R\vmarkedCount\"r\n" +
+	"\x1fGetMyLegalPageAgreementsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
+	"\x06locale\x18\x02 \x01(\tR\x06locale\"\x9e\x01\n" +
+	" GetMyLegalPageAgreementsResponse\x12:\n" +
+	"\n" +
+	"terms_page\x18\x01 \x01(\v2\x1b.publira.v1.TenantLegalPageR\ttermsPage\x12>\n" +
+	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\xa2\x01\n" +
+	"\x18AgreeToLegalPagesRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x125\n" +
+	"\x17agreed_page_version_ids\x18\x02 \x03(\tR\x14agreedPageVersionIds\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\"\x97\x01\n" +
+	"\x19AgreeToLegalPagesResponse\x12:\n" +
+	"\n" +
+	"terms_page\x18\x01 \x01(\v2\x1b.publira.v1.TenantLegalPageR\ttermsPage\x12>\n" +
+	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage*p\n" +
 	"\x10IdentityProvider\x12!\n" +
 	"\x1dIDENTITY_PROVIDER_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17IDENTITY_PROVIDER_APPLE\x10\x01\x12\x1c\n" +
-	"\x18IDENTITY_PROVIDER_GOOGLE\x10\x022\xa4\x13\n" +
+	"\x18IDENTITY_PROVIDER_GOOGLE\x10\x022\x81\x15\n" +
 	"\vAuthService\x12>\n" +
 	"\x05Login\x12\x18.publira.v1.LoginRequest\x1a\x19.publira.v1.LoginResponse\"\x00\x12_\n" +
 	"\x10LoginWithIdToken\x12#.publira.v1.LoginWithIdTokenRequest\x1a$.publira.v1.LoginWithIdTokenResponse\"\x00\x12_\n" +
@@ -3179,7 +3428,9 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\x15GetPinnedAnnouncement\x12(.publira.v1.GetPinnedAnnouncementRequest\x1a).publira.v1.GetPinnedAnnouncementResponse\"\x00\x12b\n" +
 	"\x11ListAnnouncements\x12$.publira.v1.ListAnnouncementsRequest\x1a%.publira.v1.ListAnnouncementsResponse\"\x00\x12q\n" +
 	"\x16MarkAnnouncementAsRead\x12).publira.v1.MarkAnnouncementAsReadRequest\x1a*.publira.v1.MarkAnnouncementAsReadResponse\"\x00\x12}\n" +
-	"\x1aMarkAllAnnouncementsAsRead\x12-.publira.v1.MarkAllAnnouncementsAsReadRequest\x1a..publira.v1.MarkAllAnnouncementsAsReadResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
+	"\x1aMarkAllAnnouncementsAsRead\x12-.publira.v1.MarkAllAnnouncementsAsReadRequest\x1a..publira.v1.MarkAllAnnouncementsAsReadResponse\"\x00\x12w\n" +
+	"\x18GetMyLegalPageAgreements\x12+.publira.v1.GetMyLegalPageAgreementsRequest\x1a,.publira.v1.GetMyLegalPageAgreementsResponse\"\x00\x12b\n" +
+	"\x11AgreeToLegalPages\x12$.publira.v1.AgreeToLegalPagesRequest\x1a%.publira.v1.AgreeToLegalPagesResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 
 var (
 	file_publira_v1_auth_proto_rawDescOnce sync.Once
@@ -3194,7 +3445,7 @@ func file_publira_v1_auth_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_v1_auth_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_publira_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 53)
+var file_publira_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 57)
 var file_publira_v1_auth_proto_goTypes = []any{
 	(IdentityProvider)(0),                      // 0: publira.v1.IdentityProvider
 	(*LoginRequest)(nil),                       // 1: publira.v1.LoginRequest
@@ -3250,109 +3501,124 @@ var file_publira_v1_auth_proto_goTypes = []any{
 	(*MarkAnnouncementAsReadResponse)(nil),     // 51: publira.v1.MarkAnnouncementAsReadResponse
 	(*MarkAllAnnouncementsAsReadRequest)(nil),  // 52: publira.v1.MarkAllAnnouncementsAsReadRequest
 	(*MarkAllAnnouncementsAsReadResponse)(nil), // 53: publira.v1.MarkAllAnnouncementsAsReadResponse
-	(*v1.TenantContext)(nil),                   // 54: publira.types.v1.TenantContext
-	(*v1.User)(nil),                            // 55: publira.types.v1.User
-	(*v1.AccessToken)(nil),                     // 56: publira.types.v1.AccessToken
+	(*GetMyLegalPageAgreementsRequest)(nil),    // 54: publira.v1.GetMyLegalPageAgreementsRequest
+	(*GetMyLegalPageAgreementsResponse)(nil),   // 55: publira.v1.GetMyLegalPageAgreementsResponse
+	(*AgreeToLegalPagesRequest)(nil),           // 56: publira.v1.AgreeToLegalPagesRequest
+	(*AgreeToLegalPagesResponse)(nil),          // 57: publira.v1.AgreeToLegalPagesResponse
+	(*v1.TenantContext)(nil),                   // 58: publira.types.v1.TenantContext
+	(*v1.User)(nil),                            // 59: publira.types.v1.User
+	(*v1.AccessToken)(nil),                     // 60: publira.types.v1.AccessToken
+	(*TenantLegalPage)(nil),                    // 61: publira.v1.TenantLegalPage
 }
 var file_publira_v1_auth_proto_depIdxs = []int32{
-	54, // 0: publira.v1.LoginRequest.tenant:type_name -> publira.types.v1.TenantContext
-	55, // 1: publira.v1.LoginResponse.user:type_name -> publira.types.v1.User
-	56, // 2: publira.v1.LoginResponse.access_token:type_name -> publira.types.v1.AccessToken
-	54, // 3: publira.v1.LoginWithIdTokenRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 0: publira.v1.LoginRequest.tenant:type_name -> publira.types.v1.TenantContext
+	59, // 1: publira.v1.LoginResponse.user:type_name -> publira.types.v1.User
+	60, // 2: publira.v1.LoginResponse.access_token:type_name -> publira.types.v1.AccessToken
+	58, // 3: publira.v1.LoginWithIdTokenRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 4: publira.v1.LoginWithIdTokenRequest.provider:type_name -> publira.v1.IdentityProvider
-	55, // 5: publira.v1.LoginWithIdTokenResponse.user:type_name -> publira.types.v1.User
-	56, // 6: publira.v1.LoginWithIdTokenResponse.access_token:type_name -> publira.types.v1.AccessToken
+	59, // 5: publira.v1.LoginWithIdTokenResponse.user:type_name -> publira.types.v1.User
+	60, // 6: publira.v1.LoginWithIdTokenResponse.access_token:type_name -> publira.types.v1.AccessToken
 	0,  // 7: publira.v1.LinkedIdentity.provider:type_name -> publira.v1.IdentityProvider
-	54, // 8: publira.v1.ListMyIdentitiesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 8: publira.v1.ListMyIdentitiesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	5,  // 9: publira.v1.ListMyIdentitiesResponse.identities:type_name -> publira.v1.LinkedIdentity
-	54, // 10: publira.v1.UnlinkIdentityRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 10: publira.v1.UnlinkIdentityRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 11: publira.v1.UnlinkIdentityRequest.provider:type_name -> publira.v1.IdentityProvider
-	54, // 12: publira.v1.CreateUserRequest.tenant:type_name -> publira.types.v1.TenantContext
-	54, // 13: publira.v1.VerifyUserEmailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	54, // 14: publira.v1.RequestEmailVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	54, // 15: publira.v1.RequestEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 12: publira.v1.CreateUserRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 13: publira.v1.VerifyUserEmailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 14: publira.v1.RequestEmailVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 15: publira.v1.RequestEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 16: publira.v1.RequestEmailChangeRequest.provider:type_name -> publira.v1.IdentityProvider
-	54, // 17: publira.v1.ConfirmEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	54, // 18: publira.v1.RequestPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
-	54, // 19: publira.v1.ConfirmPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
-	54, // 20: publira.v1.ChangePasswordRequest.tenant:type_name -> publira.types.v1.TenantContext
-	56, // 21: publira.v1.ChangePasswordResponse.access_token:type_name -> publira.types.v1.AccessToken
-	54, // 22: publira.v1.LogoutRequest.tenant:type_name -> publira.types.v1.TenantContext
-	54, // 23: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	55, // 24: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
-	54, // 25: publira.v1.UpdateMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	55, // 26: publira.v1.UpdateMeResponse.user:type_name -> publira.types.v1.User
-	54, // 27: publira.v1.DeleteMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 17: publira.v1.ConfirmEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 18: publira.v1.RequestPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 19: publira.v1.ConfirmPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 20: publira.v1.ChangePasswordRequest.tenant:type_name -> publira.types.v1.TenantContext
+	60, // 21: publira.v1.ChangePasswordResponse.access_token:type_name -> publira.types.v1.AccessToken
+	58, // 22: publira.v1.LogoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 23: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	59, // 24: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
+	58, // 25: publira.v1.UpdateMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	59, // 26: publira.v1.UpdateMeResponse.user:type_name -> publira.types.v1.User
+	58, // 27: publira.v1.DeleteMeRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 28: publira.v1.DeleteMeRequest.provider:type_name -> publira.v1.IdentityProvider
-	54, // 29: publira.v1.GetNotificationSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	54, // 30: publira.v1.UpdateNotificationSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	54, // 31: publira.v1.GetViewerPreferencesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 29: publira.v1.GetNotificationSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 30: publira.v1.UpdateNotificationSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 31: publira.v1.GetViewerPreferencesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	38, // 32: publira.v1.GetViewerPreferencesResponse.preferences:type_name -> publira.v1.ViewerPreferences
-	54, // 33: publira.v1.UpdateViewerPreferencesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 33: publira.v1.UpdateViewerPreferencesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	38, // 34: publira.v1.UpdateViewerPreferencesResponse.preferences:type_name -> publira.v1.ViewerPreferences
-	54, // 35: publira.v1.GetPinnedAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 35: publira.v1.GetPinnedAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
 	43, // 36: publira.v1.GetPinnedAnnouncementResponse.announcement:type_name -> publira.v1.AnnouncementItem
-	54, // 37: publira.v1.GetAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 37: publira.v1.GetAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
 	43, // 38: publira.v1.GetAnnouncementResponse.announcement:type_name -> publira.v1.AnnouncementItem
-	54, // 39: publira.v1.ListAnnouncementsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 39: publira.v1.ListAnnouncementsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	43, // 40: publira.v1.ListAnnouncementsResponse.announcements:type_name -> publira.v1.AnnouncementItem
-	54, // 41: publira.v1.MarkAnnouncementAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	54, // 42: publira.v1.MarkAllAnnouncementsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 43: publira.v1.AuthService.Login:input_type -> publira.v1.LoginRequest
-	3,  // 44: publira.v1.AuthService.LoginWithIdToken:input_type -> publira.v1.LoginWithIdTokenRequest
-	6,  // 45: publira.v1.AuthService.ListMyIdentities:input_type -> publira.v1.ListMyIdentitiesRequest
-	8,  // 46: publira.v1.AuthService.UnlinkIdentity:input_type -> publira.v1.UnlinkIdentityRequest
-	10, // 47: publira.v1.AuthService.CreateUser:input_type -> publira.v1.CreateUserRequest
-	12, // 48: publira.v1.AuthService.VerifyUserEmail:input_type -> publira.v1.VerifyUserEmailRequest
-	14, // 49: publira.v1.AuthService.RequestEmailVerification:input_type -> publira.v1.RequestEmailVerificationRequest
-	16, // 50: publira.v1.AuthService.RequestEmailChange:input_type -> publira.v1.RequestEmailChangeRequest
-	18, // 51: publira.v1.AuthService.ConfirmEmailChange:input_type -> publira.v1.ConfirmEmailChangeRequest
-	20, // 52: publira.v1.AuthService.RequestPasswordReset:input_type -> publira.v1.RequestPasswordResetRequest
-	22, // 53: publira.v1.AuthService.ConfirmPasswordReset:input_type -> publira.v1.ConfirmPasswordResetRequest
-	24, // 54: publira.v1.AuthService.ChangePassword:input_type -> publira.v1.ChangePasswordRequest
-	26, // 55: publira.v1.AuthService.Logout:input_type -> publira.v1.LogoutRequest
-	28, // 56: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
-	30, // 57: publira.v1.AuthService.UpdateMe:input_type -> publira.v1.UpdateMeRequest
-	32, // 58: publira.v1.AuthService.DeleteMe:input_type -> publira.v1.DeleteMeRequest
-	34, // 59: publira.v1.AuthService.GetNotificationSettings:input_type -> publira.v1.GetNotificationSettingsRequest
-	36, // 60: publira.v1.AuthService.UpdateNotificationSettings:input_type -> publira.v1.UpdateNotificationSettingsRequest
-	39, // 61: publira.v1.AuthService.GetViewerPreferences:input_type -> publira.v1.GetViewerPreferencesRequest
-	41, // 62: publira.v1.AuthService.UpdateViewerPreferences:input_type -> publira.v1.UpdateViewerPreferencesRequest
-	46, // 63: publira.v1.AuthService.GetAnnouncement:input_type -> publira.v1.GetAnnouncementRequest
-	44, // 64: publira.v1.AuthService.GetPinnedAnnouncement:input_type -> publira.v1.GetPinnedAnnouncementRequest
-	48, // 65: publira.v1.AuthService.ListAnnouncements:input_type -> publira.v1.ListAnnouncementsRequest
-	50, // 66: publira.v1.AuthService.MarkAnnouncementAsRead:input_type -> publira.v1.MarkAnnouncementAsReadRequest
-	52, // 67: publira.v1.AuthService.MarkAllAnnouncementsAsRead:input_type -> publira.v1.MarkAllAnnouncementsAsReadRequest
-	2,  // 68: publira.v1.AuthService.Login:output_type -> publira.v1.LoginResponse
-	4,  // 69: publira.v1.AuthService.LoginWithIdToken:output_type -> publira.v1.LoginWithIdTokenResponse
-	7,  // 70: publira.v1.AuthService.ListMyIdentities:output_type -> publira.v1.ListMyIdentitiesResponse
-	9,  // 71: publira.v1.AuthService.UnlinkIdentity:output_type -> publira.v1.UnlinkIdentityResponse
-	11, // 72: publira.v1.AuthService.CreateUser:output_type -> publira.v1.CreateUserResponse
-	13, // 73: publira.v1.AuthService.VerifyUserEmail:output_type -> publira.v1.VerifyUserEmailResponse
-	15, // 74: publira.v1.AuthService.RequestEmailVerification:output_type -> publira.v1.RequestEmailVerificationResponse
-	17, // 75: publira.v1.AuthService.RequestEmailChange:output_type -> publira.v1.RequestEmailChangeResponse
-	19, // 76: publira.v1.AuthService.ConfirmEmailChange:output_type -> publira.v1.ConfirmEmailChangeResponse
-	21, // 77: publira.v1.AuthService.RequestPasswordReset:output_type -> publira.v1.RequestPasswordResetResponse
-	23, // 78: publira.v1.AuthService.ConfirmPasswordReset:output_type -> publira.v1.ConfirmPasswordResetResponse
-	25, // 79: publira.v1.AuthService.ChangePassword:output_type -> publira.v1.ChangePasswordResponse
-	27, // 80: publira.v1.AuthService.Logout:output_type -> publira.v1.LogoutResponse
-	29, // 81: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
-	31, // 82: publira.v1.AuthService.UpdateMe:output_type -> publira.v1.UpdateMeResponse
-	33, // 83: publira.v1.AuthService.DeleteMe:output_type -> publira.v1.DeleteMeResponse
-	35, // 84: publira.v1.AuthService.GetNotificationSettings:output_type -> publira.v1.GetNotificationSettingsResponse
-	37, // 85: publira.v1.AuthService.UpdateNotificationSettings:output_type -> publira.v1.UpdateNotificationSettingsResponse
-	40, // 86: publira.v1.AuthService.GetViewerPreferences:output_type -> publira.v1.GetViewerPreferencesResponse
-	42, // 87: publira.v1.AuthService.UpdateViewerPreferences:output_type -> publira.v1.UpdateViewerPreferencesResponse
-	47, // 88: publira.v1.AuthService.GetAnnouncement:output_type -> publira.v1.GetAnnouncementResponse
-	45, // 89: publira.v1.AuthService.GetPinnedAnnouncement:output_type -> publira.v1.GetPinnedAnnouncementResponse
-	49, // 90: publira.v1.AuthService.ListAnnouncements:output_type -> publira.v1.ListAnnouncementsResponse
-	51, // 91: publira.v1.AuthService.MarkAnnouncementAsRead:output_type -> publira.v1.MarkAnnouncementAsReadResponse
-	53, // 92: publira.v1.AuthService.MarkAllAnnouncementsAsRead:output_type -> publira.v1.MarkAllAnnouncementsAsReadResponse
-	68, // [68:93] is the sub-list for method output_type
-	43, // [43:68] is the sub-list for method input_type
-	43, // [43:43] is the sub-list for extension type_name
-	43, // [43:43] is the sub-list for extension extendee
-	0,  // [0:43] is the sub-list for field type_name
+	58, // 41: publira.v1.MarkAnnouncementAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 42: publira.v1.MarkAllAnnouncementsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58, // 43: publira.v1.GetMyLegalPageAgreementsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	61, // 44: publira.v1.GetMyLegalPageAgreementsResponse.terms_page:type_name -> publira.v1.TenantLegalPage
+	61, // 45: publira.v1.GetMyLegalPageAgreementsResponse.privacy_page:type_name -> publira.v1.TenantLegalPage
+	58, // 46: publira.v1.AgreeToLegalPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	61, // 47: publira.v1.AgreeToLegalPagesResponse.terms_page:type_name -> publira.v1.TenantLegalPage
+	61, // 48: publira.v1.AgreeToLegalPagesResponse.privacy_page:type_name -> publira.v1.TenantLegalPage
+	1,  // 49: publira.v1.AuthService.Login:input_type -> publira.v1.LoginRequest
+	3,  // 50: publira.v1.AuthService.LoginWithIdToken:input_type -> publira.v1.LoginWithIdTokenRequest
+	6,  // 51: publira.v1.AuthService.ListMyIdentities:input_type -> publira.v1.ListMyIdentitiesRequest
+	8,  // 52: publira.v1.AuthService.UnlinkIdentity:input_type -> publira.v1.UnlinkIdentityRequest
+	10, // 53: publira.v1.AuthService.CreateUser:input_type -> publira.v1.CreateUserRequest
+	12, // 54: publira.v1.AuthService.VerifyUserEmail:input_type -> publira.v1.VerifyUserEmailRequest
+	14, // 55: publira.v1.AuthService.RequestEmailVerification:input_type -> publira.v1.RequestEmailVerificationRequest
+	16, // 56: publira.v1.AuthService.RequestEmailChange:input_type -> publira.v1.RequestEmailChangeRequest
+	18, // 57: publira.v1.AuthService.ConfirmEmailChange:input_type -> publira.v1.ConfirmEmailChangeRequest
+	20, // 58: publira.v1.AuthService.RequestPasswordReset:input_type -> publira.v1.RequestPasswordResetRequest
+	22, // 59: publira.v1.AuthService.ConfirmPasswordReset:input_type -> publira.v1.ConfirmPasswordResetRequest
+	24, // 60: publira.v1.AuthService.ChangePassword:input_type -> publira.v1.ChangePasswordRequest
+	26, // 61: publira.v1.AuthService.Logout:input_type -> publira.v1.LogoutRequest
+	28, // 62: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
+	30, // 63: publira.v1.AuthService.UpdateMe:input_type -> publira.v1.UpdateMeRequest
+	32, // 64: publira.v1.AuthService.DeleteMe:input_type -> publira.v1.DeleteMeRequest
+	34, // 65: publira.v1.AuthService.GetNotificationSettings:input_type -> publira.v1.GetNotificationSettingsRequest
+	36, // 66: publira.v1.AuthService.UpdateNotificationSettings:input_type -> publira.v1.UpdateNotificationSettingsRequest
+	39, // 67: publira.v1.AuthService.GetViewerPreferences:input_type -> publira.v1.GetViewerPreferencesRequest
+	41, // 68: publira.v1.AuthService.UpdateViewerPreferences:input_type -> publira.v1.UpdateViewerPreferencesRequest
+	46, // 69: publira.v1.AuthService.GetAnnouncement:input_type -> publira.v1.GetAnnouncementRequest
+	44, // 70: publira.v1.AuthService.GetPinnedAnnouncement:input_type -> publira.v1.GetPinnedAnnouncementRequest
+	48, // 71: publira.v1.AuthService.ListAnnouncements:input_type -> publira.v1.ListAnnouncementsRequest
+	50, // 72: publira.v1.AuthService.MarkAnnouncementAsRead:input_type -> publira.v1.MarkAnnouncementAsReadRequest
+	52, // 73: publira.v1.AuthService.MarkAllAnnouncementsAsRead:input_type -> publira.v1.MarkAllAnnouncementsAsReadRequest
+	54, // 74: publira.v1.AuthService.GetMyLegalPageAgreements:input_type -> publira.v1.GetMyLegalPageAgreementsRequest
+	56, // 75: publira.v1.AuthService.AgreeToLegalPages:input_type -> publira.v1.AgreeToLegalPagesRequest
+	2,  // 76: publira.v1.AuthService.Login:output_type -> publira.v1.LoginResponse
+	4,  // 77: publira.v1.AuthService.LoginWithIdToken:output_type -> publira.v1.LoginWithIdTokenResponse
+	7,  // 78: publira.v1.AuthService.ListMyIdentities:output_type -> publira.v1.ListMyIdentitiesResponse
+	9,  // 79: publira.v1.AuthService.UnlinkIdentity:output_type -> publira.v1.UnlinkIdentityResponse
+	11, // 80: publira.v1.AuthService.CreateUser:output_type -> publira.v1.CreateUserResponse
+	13, // 81: publira.v1.AuthService.VerifyUserEmail:output_type -> publira.v1.VerifyUserEmailResponse
+	15, // 82: publira.v1.AuthService.RequestEmailVerification:output_type -> publira.v1.RequestEmailVerificationResponse
+	17, // 83: publira.v1.AuthService.RequestEmailChange:output_type -> publira.v1.RequestEmailChangeResponse
+	19, // 84: publira.v1.AuthService.ConfirmEmailChange:output_type -> publira.v1.ConfirmEmailChangeResponse
+	21, // 85: publira.v1.AuthService.RequestPasswordReset:output_type -> publira.v1.RequestPasswordResetResponse
+	23, // 86: publira.v1.AuthService.ConfirmPasswordReset:output_type -> publira.v1.ConfirmPasswordResetResponse
+	25, // 87: publira.v1.AuthService.ChangePassword:output_type -> publira.v1.ChangePasswordResponse
+	27, // 88: publira.v1.AuthService.Logout:output_type -> publira.v1.LogoutResponse
+	29, // 89: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
+	31, // 90: publira.v1.AuthService.UpdateMe:output_type -> publira.v1.UpdateMeResponse
+	33, // 91: publira.v1.AuthService.DeleteMe:output_type -> publira.v1.DeleteMeResponse
+	35, // 92: publira.v1.AuthService.GetNotificationSettings:output_type -> publira.v1.GetNotificationSettingsResponse
+	37, // 93: publira.v1.AuthService.UpdateNotificationSettings:output_type -> publira.v1.UpdateNotificationSettingsResponse
+	40, // 94: publira.v1.AuthService.GetViewerPreferences:output_type -> publira.v1.GetViewerPreferencesResponse
+	42, // 95: publira.v1.AuthService.UpdateViewerPreferences:output_type -> publira.v1.UpdateViewerPreferencesResponse
+	47, // 96: publira.v1.AuthService.GetAnnouncement:output_type -> publira.v1.GetAnnouncementResponse
+	45, // 97: publira.v1.AuthService.GetPinnedAnnouncement:output_type -> publira.v1.GetPinnedAnnouncementResponse
+	49, // 98: publira.v1.AuthService.ListAnnouncements:output_type -> publira.v1.ListAnnouncementsResponse
+	51, // 99: publira.v1.AuthService.MarkAnnouncementAsRead:output_type -> publira.v1.MarkAnnouncementAsReadResponse
+	53, // 100: publira.v1.AuthService.MarkAllAnnouncementsAsRead:output_type -> publira.v1.MarkAllAnnouncementsAsReadResponse
+	55, // 101: publira.v1.AuthService.GetMyLegalPageAgreements:output_type -> publira.v1.GetMyLegalPageAgreementsResponse
+	57, // 102: publira.v1.AuthService.AgreeToLegalPages:output_type -> publira.v1.AgreeToLegalPagesResponse
+	76, // [76:103] is the sub-list for method output_type
+	49, // [49:76] is the sub-list for method input_type
+	49, // [49:49] is the sub-list for extension type_name
+	49, // [49:49] is the sub-list for extension extendee
+	0,  // [0:49] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_auth_proto_init() }
@@ -3360,6 +3626,7 @@ func file_publira_v1_auth_proto_init() {
 	if File_publira_v1_auth_proto != nil {
 		return
 	}
+	file_publira_v1_tenant_proto_init()
 	file_publira_v1_auth_proto_msgTypes[40].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -3367,7 +3634,7 @@ func file_publira_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_auth_proto_rawDesc), len(file_publira_v1_auth_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   53,
+			NumMessages:   57,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

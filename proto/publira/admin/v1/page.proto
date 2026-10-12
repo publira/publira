@@ -91,6 +91,14 @@ message PublishVersionRequest {
   string page_id = 2;
   string version_id = 3;
   string locale = 4;
+  // Asks every reader to agree to the page again: until they agree to this
+  // version, or to one published after it in the same translation, the public
+  // API reports them as owing an agreement and refuses most of what they do.
+  // Left false, the version is a correction, and readers who agreed to an
+  // earlier one are not asked. Only a tenant_admin may set it
+  // (permission_denied otherwise), and only on the page the tenant names as its
+  // terms of service or its privacy policy (failed_precondition otherwise).
+  bool require_agreement = 5;
 }
 
 message PublishVersionResponse {

@@ -100,7 +100,7 @@ func (q *Queries) CreatePageTranslation(ctx context.Context, arg CreatePageTrans
 const CreatePageVersion = `-- name: CreatePageVersion :one
 INSERT INTO page_versions (id, page_id, translation_id, tenant_id, version_number, content_markdown, author_user_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id, translation_id
+RETURNING id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id, translation_id, agreement_required_at
 `
 
 type CreatePageVersionParams struct {
@@ -136,6 +136,7 @@ func (q *Queries) CreatePageVersion(ctx context.Context, arg CreatePageVersionPa
 		&i.PublishedAt,
 		&i.TenantID,
 		&i.TranslationID,
+		&i.AgreementRequiredAt,
 	)
 	return i, err
 }
@@ -255,7 +256,7 @@ func (q *Queries) GetPagePublicationForTenant(ctx context.Context, arg GetPagePu
 }
 
 const GetPageVersionByIDForTranslation = `-- name: GetPageVersionByIDForTranslation :one
-SELECT id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id, translation_id FROM page_versions
+SELECT id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id, translation_id, agreement_required_at FROM page_versions
 WHERE id = $1 AND translation_id = $2
 `
 
@@ -279,6 +280,7 @@ func (q *Queries) GetPageVersionByIDForTranslation(ctx context.Context, arg GetP
 		&i.PublishedAt,
 		&i.TenantID,
 		&i.TranslationID,
+		&i.AgreementRequiredAt,
 	)
 	return i, err
 }
@@ -470,7 +472,7 @@ func (q *Queries) ListPageTranslationsForTenant(ctx context.Context, arg ListPag
 }
 
 const ListPageVersionsByTranslationID = `-- name: ListPageVersionsByTranslationID :many
-SELECT id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id, translation_id FROM page_versions
+SELECT id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id, translation_id, agreement_required_at FROM page_versions
 WHERE translation_id = $1
 ORDER BY version_number DESC
 `
@@ -496,6 +498,7 @@ func (q *Queries) ListPageVersionsByTranslationID(ctx context.Context, translati
 			&i.PublishedAt,
 			&i.TenantID,
 			&i.TranslationID,
+			&i.AgreementRequiredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -791,18 +794,27 @@ func (q *Queries) LockPageForTenant(ctx context.Context, arg LockPageForTenantPa
 
 const PublishPageVersion = `-- name: PublishPageVersion :one
 UPDATE page_versions
-SET status = 'published', published_at = NOW()
-WHERE id = $1 AND translation_id = $2
-RETURNING id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id, translation_id
+SET status = 'published',
+	published_at = NOW(),
+	agreement_required_at = CASE
+		WHEN $1::boolean THEN NOW()
+		ELSE agreement_required_at
+	END
+WHERE id = $2 AND translation_id = $3
+RETURNING id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id, translation_id, agreement_required_at
 `
 
 type PublishPageVersionParams struct {
-	ID            uuid.UUID `json:"id"`
-	TranslationID uuid.UUID `json:"translation_id"`
+	RequireAgreement bool      `json:"require_agreement"`
+	ID               uuid.UUID `json:"id"`
+	TranslationID    uuid.UUID `json:"translation_id"`
 }
 
+// require_agreement asks every reader to agree to the page again from this
+// publication on; without it the version keeps whatever request an earlier
+// publication of it made, which is already older than this one.
 func (q *Queries) PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error) {
-	row := q.db.QueryRowContext(ctx, PublishPageVersion, arg.ID, arg.TranslationID)
+	row := q.db.QueryRowContext(ctx, PublishPageVersion, arg.RequireAgreement, arg.ID, arg.TranslationID)
 	var i PageVersion
 	err := row.Scan(
 		&i.ID,
@@ -816,6 +828,7 @@ func (q *Queries) PublishPageVersion(ctx context.Context, arg PublishPageVersion
 		&i.PublishedAt,
 		&i.TenantID,
 		&i.TranslationID,
+		&i.AgreementRequiredAt,
 	)
 	return i, err
 }

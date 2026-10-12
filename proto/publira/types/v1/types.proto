@@ -409,6 +409,10 @@ message PageVersion {
   string publish_at = 7;
   string created_at = 8;
   string published_at = 9;
+  // When the last publication of this version asked every reader to agree to
+  // the page again (AdminPagesService.PublishVersion's require_agreement).
+  // Empty where no publication of it did.
+  string agreement_required_at = 10;
 }
 // How comments a reader writes on an episode are published. The tenant states
 // it once (tenant_config.comment_mode) and one series may state its own

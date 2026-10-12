@@ -2450,8 +2450,12 @@ type PageVersion struct {
 	PublishAt       string                 `protobuf:"bytes,7,opt,name=publish_at,json=publishAt,proto3" json:"publish_at,omitempty"`
 	CreatedAt       string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	PublishedAt     string                 `protobuf:"bytes,9,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// When the last publication of this version asked every reader to agree to
+	// the page again (AdminPagesService.PublishVersion's require_agreement).
+	// Empty where no publication of it did.
+	AgreementRequiredAt string `protobuf:"bytes,10,opt,name=agreement_required_at,json=agreementRequiredAt,proto3" json:"agreement_required_at,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *PageVersion) Reset() {
@@ -2543,6 +2547,13 @@ func (x *PageVersion) GetCreatedAt() string {
 func (x *PageVersion) GetPublishedAt() string {
 	if x != nil {
 		return x.PublishedAt
+	}
+	return ""
+}
+
+func (x *PageVersion) GetAgreementRequiredAt() string {
+	if x != nil {
+		return x.AgreementRequiredAt
 	}
 	return ""
 }
@@ -2807,7 +2818,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\tR\tupdatedAt\"\xa7\x02\n" +
+	"updated_at\x18\a \x01(\tR\tupdatedAt\"\xdb\x02\n" +
 	"\vPageVersion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12%\n" +
@@ -2819,7 +2830,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"publish_at\x18\a \x01(\tR\tpublishAt\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12!\n" +
-	"\fpublished_at\x18\t \x01(\tR\vpublishedAt\"\xf6\x01\n" +
+	"\fpublished_at\x18\t \x01(\tR\vpublishedAt\x122\n" +
+	"\x15agreement_required_at\x18\n" +
+	" \x01(\tR\x13agreementRequiredAt\"\xf6\x01\n" +
 	"\x10RetentionPeriods\x124\n" +
 	"\x16withdrawn_comment_days\x18\x01 \x01(\x05R\x14withdrawnCommentDays\x12,\n" +
 	"\x12content_event_days\x18\x02 \x01(\x05R\x10contentEventDays\x12=\n" +

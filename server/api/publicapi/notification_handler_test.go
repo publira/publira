@@ -167,6 +167,7 @@ func TestNotificationMarkAsReadNotFound(t *testing.T) {
 	notificationID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
+	expectLegalPagesAgreed(mock, tenantID, userID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.MarkNotificationAsRead)).
 		WithArgs(userID, notificationID, tenantID).
@@ -188,6 +189,7 @@ func TestNotificationMarkAsReadInvalidID(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
+	expectLegalPagesAgreed(mock, tenantID, userID)
 
 	_, err := client.MarkNotificationAsRead(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.MarkNotificationAsReadRequest{
 		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -205,6 +207,7 @@ func TestNotificationMarkAllAsRead(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
+	expectLegalPagesAgreed(mock, tenantID, userID)
 
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.MarkAllNotificationsAsRead)).
 		WithArgs(userID, tenantID, sql.NullString{String: "web", Valid: true}).
@@ -228,6 +231,7 @@ func TestNotificationMarkAllAsReadRejectsOverflow(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
+	expectLegalPagesAgreed(mock, tenantID, userID)
 
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.MarkAllNotificationsAsRead)).
 		WithArgs(userID, tenantID, sql.NullString{String: "web", Valid: true}).

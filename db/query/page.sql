@@ -153,8 +153,16 @@ WHERE translation_id = sqlc.arg('translation_id')
 ORDER BY version_number DESC;
 
 -- name: PublishPageVersion :one
+-- require_agreement asks every reader to agree to the page again from this
+-- publication on; without it the version keeps whatever request an earlier
+-- publication of it made, which is already older than this one.
 UPDATE page_versions
-SET status = 'published', published_at = NOW()
+SET status = 'published',
+	published_at = NOW(),
+	agreement_required_at = CASE
+		WHEN sqlc.arg('require_agreement')::boolean THEN NOW()
+		ELSE agreement_required_at
+	END
 WHERE id = sqlc.arg('id') AND translation_id = sqlc.arg('translation_id')
 RETURNING *;
 

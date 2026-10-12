@@ -39,6 +39,7 @@ func TestAuthRequestEmailChangeTakesExactlyOneConfirmation(t *testing.T) {
 			now := time.Now().UTC()
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			expectAuthSession(mock, tenantID, userID, now)
+			expectLegalPagesAgreed(mock, tenantID, userID)
 
 			req := &publirav1.RequestEmailChangeRequest{
 				Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
