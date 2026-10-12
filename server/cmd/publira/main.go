@@ -16,6 +16,12 @@
 // an install that will not scale the two apart. It is a flag on server rather
 // than a third command because the server is the process the reverse proxy
 // points at, and the worker riding in it is an extension of that process.
+//
+// server --listener edge or --listener internal serves one of the server's two
+// listeners, for an install that runs them as processes of their own: the one
+// the edge forwards internet traffic to then holds neither the Platform
+// Console's login nor the web apps' credential, and a platform that exposes
+// one port per workload can reach each of them.
 package main
 
 import (
@@ -40,11 +46,11 @@ func run(args []string, stderr io.Writer) int {
 	command, rest := args[0], args[1:]
 	switch command {
 	case "server":
-		withWorker, err := parseServerFlags(rest)
+		h, err := parseServerFlags(rest)
 		if err != nil {
 			return usageError(stderr, err.Error())
 		}
-		return serve(command, hosted{server: true, worker: withWorker})
+		return serve(command, h)
 	case "worker":
 		if len(rest) > 0 {
 			return usageError(stderr, fmt.Sprintf("%s takes no arguments", command))
@@ -55,23 +61,36 @@ func run(args []string, stderr io.Writer) int {
 	}
 }
 
-// parseServerFlags reads the one flag server takes. A flag chooses what the
+// parseServerFlags reads the flags server takes. A flag chooses what the
 // process hosts and nothing else: every value it runs with comes from the
 // environment, so anything else after the command is a mistake rather than a
 // setting.
-func parseServerFlags(args []string) (withWorker bool, err error) {
+func parseServerFlags(args []string) (hosted, error) {
 	fs := flag.NewFlagSet("server", flag.ContinueOnError)
 	// The flag package prints its own usage on a parse error; run prints this
 	// command's instead.
 	fs.SetOutput(io.Discard)
+	var only string
+	var withWorker bool
+	fs.StringVar(&only, "listener", "", "")
 	fs.BoolVar(&withWorker, "with-worker", false, "")
 	if err := fs.Parse(args); err != nil {
-		return false, err
+		return hosted{}, err
 	}
 	if fs.NArg() > 0 {
-		return false, errors.New("server takes no arguments other than --with-worker")
+		return hosted{}, errors.New("server takes no arguments other than --listener and --with-worker")
 	}
-	return withWorker, nil
+	h := hosted{server: bothListeners, worker: withWorker}
+	switch only {
+	case "":
+	case "edge":
+		h.server = serverListeners{edge: true}
+	case "internal":
+		h.server = serverListeners{internal: true}
+	default:
+		return hosted{}, fmt.Errorf("--listener must be edge or internal, not %q", only)
+	}
+	return h, nil
 }
 
 // usageError reports a bad invocation on w, followed by the usage text, and
@@ -86,6 +105,7 @@ func usage() string {
 		"  server                    Serve the API and image delivery to the edge and the Next.js apps\n" +
 		"  worker                    Drain the Outbox and run every scheduled job\n" +
 		"\nFlags of server:\n" +
+		"  --listener edge|internal  Serve that listener alone instead of both\n" +
 		"  --with-worker             Host the worker in the same process as well\n" +
 		"\nEvery command reads its settings from the environment.\n"
 }

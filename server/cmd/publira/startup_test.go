@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
@@ -16,6 +18,8 @@ import (
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -51,6 +55,103 @@ func TestServerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 	// read; the internal listener names every login it serves.
 	assertReadyChecks(t, "http://"+edgeAddr+"/readyz", "db")
 	assertReadyChecks(t, "http://"+internalAddr+"/readyz", "db.public", "db.admin", "db.platform")
+}
+
+// A server serving the edge listener alone answers what the edge forwards and
+// nothing else, and holds only the two logins the edge answers as. The
+// platform URL names a port nothing listens on, so a process that opened that
+// pool anyway would refuse to start, and the search, whose engine settings it
+// reads on the admin pool, is what proves it needs no platform pool to answer.
+func TestServerServesTheEdgeListenerAlone(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	edgeAddr := testutil.FreeAddr(t)
+	internalAddr := testutil.FreeAddr(t)
+
+	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_PUBLIC_DB_URL":        pg.PublicURL,
+		"PUBLIRA_ADMIN_DB_URL":         pg.AdminURL,
+		"PUBLIRA_PLATFORM_DB_URL":      unreachablePlatformDBURL,
+		"PUBLIRA_PUBLIC_API_ADDR":      edgeAddr,
+		"PUBLIRA_PUBLIC_API_GRPC_ADDR": internalAddr,
+	}, revalidationWithoutPlatformConsole()), "server", "--listener", "edge")
+	p.WaitReady(t, "http://"+edgeAddr+"/readyz")
+	assertLive(t, "http://"+edgeAddr+"/livez")
+	assertReadyChecks(t, "http://"+edgeAddr+"/readyz", "db")
+
+	base := "http://" + edgeAddr
+	assertRouteRegistered(t, base, "/api/publira.v1.CatalogService/ListPublishedSeries", true)
+	assertRouteRegistered(t, base, "/images/creators/media", true)
+	assertRouteRegistered(t, base, "/api/publira.admin.v1.AdminSeriesService/ListSeries", false)
+	assertRouteRegistered(t, base, "/api/publira.platform.v1.PlatformTenantService/ListTenants", false)
+
+	catalog := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, base+"/api")))
+	if _, err := catalog.SearchPublishedSeries(t.Context(), &publirav1.SearchPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
+		Query:  "Harbor",
+	}); err != nil {
+		t.Fatalf("SearchPublishedSeries: %v", err)
+	}
+
+	assertNotListening(t, internalAddr)
+	// The web service token is read for the console APIs alone, which this
+	// process does not serve.
+	if out := p.Output(); strings.Contains(out, "web service token") {
+		t.Fatalf("output reports the web service token, which the edge does not read:\n%s", out)
+	}
+
+	if code := p.Stop(t); code != 0 {
+		t.Fatalf("exit code after SIGTERM = %d, want 0; output:\n%s", code, p.Output())
+	}
+}
+
+// A server serving the internal listener alone answers all three namespaces
+// to the web apps, with a readiness check per login, and leaves the edge's
+// port and the image routes to another process.
+func TestServerServesTheInternalListenerAlone(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	edgeAddr := testutil.FreeAddr(t)
+	internalAddr := testutil.FreeAddr(t)
+
+	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_PUBLIC_DB_URL":        pg.PublicURL,
+		"PUBLIRA_ADMIN_DB_URL":         pg.AdminURL,
+		"PUBLIRA_PLATFORM_DB_URL":      pg.PlatformURL,
+		"PUBLIRA_PUBLIC_API_ADDR":      edgeAddr,
+		"PUBLIRA_PUBLIC_API_GRPC_ADDR": internalAddr,
+	}, revalidationWithoutPlatformConsole()), "server", "--listener", "internal")
+	p.WaitReady(t, "http://"+internalAddr+"/readyz")
+	assertLive(t, "http://"+internalAddr+"/livez")
+	assertReadyChecks(t, "http://"+internalAddr+"/readyz", "db.public", "db.admin", "db.platform")
+
+	base := "http://" + internalAddr
+	assertRouteRegistered(t, base, "/publira.v1.CatalogService/ListPublishedSeries", true)
+	assertRouteRegistered(t, base, "/publira.admin.v1.AdminSeriesService/ListSeries", true)
+	assertRouteRegistered(t, base, "/publira.platform.v1.PlatformTenantService/ListTenants", true)
+	assertRouteRegistered(t, base, "/images/creators/media", false)
+
+	assertNotListening(t, edgeAddr)
+
+	if code := p.Stop(t); code != 0 {
+		t.Fatalf("exit code after SIGTERM = %d, want 0; output:\n%s", code, p.Output())
+	}
+}
+
+// unreachablePlatformDBURL names a port nothing listens on, so opening it
+// fails at once.
+const unreachablePlatformDBURL = "postgres://publira_platform:platformpass@127.0.0.1:1/publira?sslmode=disable"
+
+// assertNotListening fails when anything accepts a connection on addr.
+func assertNotListening(t *testing.T, addr string) {
+	t.Helper()
+
+	conn, err := net.DialTimeout("tcp", addr, time.Second)
+	if err == nil {
+		_ = conn.Close()
+		t.Fatalf("%s accepts connections, want nothing listening", addr)
+	}
 }
 
 // The web apps' credential reaches the tenant console's tenant-level reads and

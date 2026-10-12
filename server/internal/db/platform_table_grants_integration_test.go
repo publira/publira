@@ -80,7 +80,8 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 // tenant-admin MFA requirement come from, the retention defaults the tenant
 // console and the purge batches resolve a tenant's periods from, the object
 // store the image server and the orphan image sweep resolve, the search
-// engine the maintenance role builds the catalog index on, and the spent
+// engine the server's search answers from and the maintenance role builds the
+// catalog index on, and the spent
 // operator MFA challenges it purges. The object store and the search engine hold
 // their secret encrypted under keys the database does not have. The storefront also
 // reads the Web Push settings, but only the columns that publish the public
@@ -91,7 +92,7 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 // which TestTenantRolesReadOnlyThePlatformDefaultCurrency holds them to.
 var readablePlatformTables = map[string][]string{
 	"publira_public":        {"platform_config", "platform_policy_config", "platform_webpush_config"},
-	"publira_admin":         {"platform_config", "platform_policy_config", "platform_retention_config", "platform_smtp_config", "platform_storage_config"},
+	"publira_admin":         {"platform_config", "platform_policy_config", "platform_retention_config", "platform_search_config", "platform_smtp_config", "platform_storage_config"},
 	"publira_content_stats": {"platform_config", "platform_retention_config", "platform_search_config", "platform_storage_config", "platform_user_mfa_used_challenges"},
 }
 

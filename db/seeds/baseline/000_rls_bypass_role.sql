@@ -281,13 +281,14 @@ GRANT SELECT, DELETE, UPDATE (used_at) ON platform_user_mfa_used_challenges TO p
 
 -- The catalog search engine is read by the worker, which writes every
 -- catalog_index_sync event into the index the search answers from and into the
--- one being built, and by the maintenance role, which builds that index and
--- then moves the search onto it. The password is stored encrypted under keys
--- the database never holds. Only the build may move the serving configuration
--- or record a failure, and neither role may write what an operator saved.
--- publira server reads the row on its platform pool, so the storefront's role
--- is not given it.
-GRANT SELECT ON platform_search_config TO publira_outbox, publira_content_stats;
+-- one being built, by the maintenance role, which builds that index and then
+-- moves the search onto it, and by publira server on its admin pool, which
+-- every listener of it holds, so a server serving the edge listener alone
+-- searches without the platform's login. The password is stored encrypted
+-- under keys the database never holds, and the storefront's role is not given
+-- the row. Only the build may move the serving configuration or record a
+-- failure, and no role here may write what an operator saved.
+GRANT SELECT ON platform_search_config TO publira_admin, publira_outbox, publira_content_stats;
 GRANT UPDATE (
     serving_revision,
     serving_engine,

@@ -40,23 +40,41 @@ const (
 	defaultPlatformDBURL = "postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable"
 )
 
-// serverServiceNames is one service.name per Connect namespace, and one for
-// the image routes, so the four stay apart in a trace UI now that they share
-// a process. The public namespace's comes first: it is the process default.
-func serverServiceNames() []string {
-	return []string{
-		publicapi.ServiceName,
-		adminapi.ServiceName,
-		platformapi.ServiceName,
-		imageserver.ServiceName,
-	}
+// serverListeners is which of the server's two listeners a process serves.
+type serverListeners struct {
+	edge     bool
+	internal bool
 }
 
-// buildServer builds the API and image delivery: the edge listener carries
-// what the reverse proxy forwards, /api and /images alike, and the internal
-// listener carries the three Connect namespaces the Next.js apps dial
-// directly.
-func buildServer(deps shared) (_ half, err error) {
+// bothListeners is what server serves unless --listener names one.
+var bothListeners = serverListeners{edge: true, internal: true}
+
+func (l serverListeners) any() bool { return l.edge || l.internal }
+
+// serverServiceNames is one service.name per Connect namespace the listeners
+// serve, and one for the image routes, so they stay apart in a trace UI now
+// that they share a process. The public namespace's comes first: both
+// listeners serve it, and it is the process default.
+func serverServiceNames(l serverListeners) []string {
+	names := []string{publicapi.ServiceName}
+	if l.internal {
+		names = append(names, adminapi.ServiceName, platformapi.ServiceName)
+	}
+	if l.edge {
+		names = append(names, imageserver.ServiceName)
+	}
+	return names
+}
+
+// buildServer builds the API and image delivery for the listeners l names:
+// the edge listener carries what the reverse proxy forwards, /api and /images
+// alike, and the internal listener carries the three Connect namespaces the
+// Next.js apps dial directly. What only one listener uses — the platform pool,
+// the console APIs and the web service token for the internal one, image
+// delivery for the edge — is built only when that listener is served, so a
+// process serving the edge alone holds no login that bypasses row-level
+// security and reads no variable it would not use.
+func buildServer(deps shared, l serverListeners) (_ half, err error) {
 	logger := deps.logger
 
 	// Refused here rather than where Redis is dialled, which falls back to
@@ -85,8 +103,10 @@ func buildServer(deps shared) (_ half, err error) {
 	// names, or for an image by the host it arrived on — a tenant's storefront
 	// is answered as publira_public and its console as publira_admin — so a
 	// mux entry is also a database role, and image delivery shares the pool of
-	// the login it answers as rather than opening a second one for it.
-	pools, err := openServerPools()
+	// the login it answers as rather than opening a second one for it. The
+	// platform pool serves the Platform Console's namespace alone, so only the
+	// internal listener opens it.
+	pools, err := openServerPools(l.internal)
 	if err != nil {
 		return half{}, failed("failed to initialize db", err)
 	}
@@ -98,22 +118,15 @@ func buildServer(deps shared) (_ half, err error) {
 
 	encryptor := deps.encryptor
 
-	// The object store is read from the platform's settings on the platform
-	// pool, the one login here that may read them, so this process starts
-	// before an operator has saved one and an upload until then is refused.
-	storageProvider := platformstorage.Provider{Resolver: platformstorage.New(platformstorage.Config{
-		Queries: dbmodels.New(pools.platform),
-		Secrets: encryptor,
-		Logger:  logger,
-	}, platformstorage.NewStorage)}
-
-	// The search engine is read from the platform's settings on the platform
-	// pool too, so the storefront's role holds neither the engine's password
-	// nor a way to read it. The searches themselves run on the public pool when
-	// the engine is SQL.
+	// The search engine is read from the platform's settings on the admin pool,
+	// whose login is granted that row and none of the platform's other
+	// credentials, so the storefront's role holds neither the engine's password
+	// nor a way to read it, and the edge listener needs no platform pool to
+	// search. The searches themselves run on the public pool when the engine is
+	// SQL.
 	searcher := platformsearch.Searcher{
 		Resolver: platformsearch.NewResolver(platformsearch.ResolverConfig{
-			Queries: dbmodels.New(pools.platform),
+			Queries: dbmodels.New(pools.admin),
 			Secrets: encryptor,
 			Logger:  logger,
 		}),
@@ -137,44 +150,59 @@ func buildServer(deps shared) (_ half, err error) {
 		return half{}, failed("failed to initialize public api handler", err)
 	}
 
-	smtpTester := internalsmtp.NewClient()
+	built := half{close: pools.close}
 
-	webServiceToken := newWebServiceToken(logger)
+	if l.internal {
+		// The object store is read from the platform's settings on the platform
+		// pool, so this process starts before an operator has saved one and an
+		// upload until then is refused.
+		storageProvider := platformstorage.Provider{Resolver: platformstorage.New(platformstorage.Config{
+			Queries: dbmodels.New(pools.platform),
+			Secrets: encryptor,
+			Logger:  logger,
+		}, platformstorage.NewStorage)}
 
-	adminRecorder := auditlog.NewAsync(dbmodels.New(pools.admin), pools.admin, logger)
-	adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, deps.revalidate, adminRecorder, webServiceToken, login, mail)
-	if err != nil {
-		return half{}, failed("failed to initialize admin api handler", err)
+		smtpTester := internalsmtp.NewClient()
+
+		webServiceToken := newWebServiceToken(logger)
+
+		adminRecorder := auditlog.NewAsync(dbmodels.New(pools.admin), pools.admin, logger)
+		adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, deps.revalidate, adminRecorder, webServiceToken, login, mail)
+		if err != nil {
+			return half{}, failed("failed to initialize admin api handler", err)
+		}
+
+		platformRecorder := auditlog.NewAsync(dbmodels.New(pools.platform), nil, logger)
+		platformAPI := platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder, webServiceToken, login, mail)
+
+		internalAddr := addrFromEnv("PUBLIRA_PUBLIC_API_GRPC_ADDR", defaultInternalAddr)
+		built.listeners = append(built.listeners, listener{name: "server (internal)", server: httpserver.New(internalAddr, internalHandler(clientIPs, publicAPI, adminAPI, platformAPI, pools))})
+		built.drain = []func(context.Context) error{adminRecorder.Shutdown, platformRecorder.Shutdown}
 	}
 
-	platformRecorder := auditlog.NewAsync(dbmodels.New(pools.platform), nil, logger)
-	platformAPI := platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder, webServiceToken, login, mail)
+	// Image delivery is built last: nothing after it can fail and leave its
+	// conversion server running.
+	if l.edge {
+		imageHandler, err := imageserver.NewHandler(
+			dbmodels.New(pools.public),
+			imageserver.SiteDB{Pool: pools.public, Tenants: imageserver.NewDBTenantScopedFactory(pools.public, logger)},
+			imageserver.SiteDB{Pool: pools.admin, Tenants: imageserver.NewDBTenantScopedFactory(pools.admin, logger)},
+			newImageObjectStore(encryptor, pools.admin, logger),
+			logger,
+			tokens,
+		)
+		if err != nil {
+			return half{}, failed("failed to initialize image handler", err)
+		}
 
-	imageHandler, err := imageserver.NewHandler(
-		dbmodels.New(pools.public),
-		imageserver.SiteDB{Pool: pools.public, Tenants: imageserver.NewDBTenantScopedFactory(pools.public, logger)},
-		imageserver.SiteDB{Pool: pools.admin, Tenants: imageserver.NewDBTenantScopedFactory(pools.admin, logger)},
-		newImageObjectStore(encryptor, pools.admin, logger),
-		logger,
-		tokens,
-	)
-	if err != nil {
-		return half{}, failed("failed to initialize image handler", err)
-	}
-
-	edgeAddr := addrFromEnv("PUBLIRA_PUBLIC_API_ADDR", defaultEdgeAddr)
-	internalAddr := addrFromEnv("PUBLIRA_PUBLIC_API_GRPC_ADDR", defaultInternalAddr)
-
-	return half{
-		listeners: []listener{
-			{name: "server (edge)", server: httpserver.New(edgeAddr, edgeHandler(clientIPs, publicAPI, imageHandler, pools))},
-			{name: "server (internal)", server: httpserver.New(internalAddr, internalHandler(clientIPs, publicAPI, adminAPI, platformAPI, pools))},
-		},
-		drain: []func(context.Context) error{adminRecorder.Shutdown, platformRecorder.Shutdown},
-		close: func() error {
+		edgeAddr := addrFromEnv("PUBLIRA_PUBLIC_API_ADDR", defaultEdgeAddr)
+		built.listeners = append(built.listeners, listener{name: "server (edge)", server: httpserver.New(edgeAddr, edgeHandler(clientIPs, publicAPI, imageHandler, pools))})
+		built.close = func() error {
 			return errors.Join(imageHandler.Close(), pools.close())
-		},
-	}, nil
+		}
+	}
+
+	return built, nil
 }
 
 // edgeHandler serves what the internet may reach: the public API under /api
@@ -213,14 +241,18 @@ func internalHandler(clientIPs *clientip.Resolver, publicAPI *publicapi.API, adm
 	return clientIPs.Middleware(mux)
 }
 
-// serverPools is one pool per PostgreSQL login this process serves as.
+// serverPools is one pool per PostgreSQL login this process serves as. The
+// platform pool is nil in a process that serves the edge listener alone.
 type serverPools struct {
 	public   *sql.DB
 	admin    *sql.DB
 	platform *sql.DB
 }
 
-func openServerPools() (serverPools, error) {
+// openServerPools opens the public and the admin pool, which both listeners
+// answer on, and the platform pool when withPlatform asks for it. A pool left
+// unopened is nil, and its variable is never read.
+func openServerPools(withPlatform bool) (serverPools, error) {
 	public, err := sqldb.Open(dbURLFromEnv("PUBLIRA_PUBLIC_DB_URL", defaultPublicDBURL))
 	if err != nil {
 		return serverPools{}, err
@@ -229,11 +261,15 @@ func openServerPools() (serverPools, error) {
 	if err != nil {
 		return serverPools{}, errors.Join(err, public.Close())
 	}
-	platform, err := sqldb.Open(dbURLFromEnv("PUBLIRA_PLATFORM_DB_URL", defaultPlatformDBURL))
+	pools := serverPools{public: public, admin: admin}
+	if !withPlatform {
+		return pools, nil
+	}
+	pools.platform, err = sqldb.Open(dbURLFromEnv("PUBLIRA_PLATFORM_DB_URL", defaultPlatformDBURL))
 	if err != nil {
 		return serverPools{}, errors.Join(err, public.Close(), admin.Close())
 	}
-	return serverPools{public: public, admin: admin, platform: platform}, nil
+	return pools, nil
 }
 
 func (p serverPools) close() error {

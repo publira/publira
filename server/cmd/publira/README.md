@@ -7,11 +7,11 @@ The binary behind both of a deployment's long-lived Go processes. The first argu
 | `publira server` | The API and image delivery, on the two listeners below |
 | `publira worker` | The Outbox drain and every scheduled job               |
 
-`publira server --with-worker` runs both in one process; see [Hosting the worker](#hosting-the-worker---with-worker). Without a command, with a command other than these two, or with any further argument — `--with-worker` after `server` aside — the binary prints its usage to stderr and exits with status 2. With the three Next.js apps, a deployment therefore runs five processes, and both Go ones come from one image ([`infra/docker/server/Dockerfile`](../../../infra/docker/server/Dockerfile)). [`publiractl`](../publiractl/README.md), the command an operator runs by hand, stays a binary of its own because it has to work on a deployment that serves nothing.
+`publira server --with-worker` runs both in one process; see [Hosting the worker](#hosting-the-worker---with-worker). `publira server --listener edge` and `publira server --listener internal` each serve one of the server's two listeners, so the two can run as processes of their own; see [Serving one listener](#serving-one-listener---listener). Without a command, with a command other than these two, or with any further argument — `--listener` and `--with-worker` after `server` aside — the binary prints its usage to stderr and exits with status 2. With the three Next.js apps, a deployment therefore runs five processes, and both Go ones come from one image ([`infra/docker/server/Dockerfile`](../../../infra/docker/server/Dockerfile)). [`publiractl`](../publiractl/README.md), the command an operator runs by hand, stays a binary of its own because it has to work on a deployment that serves nothing.
 
 ## publira server
 
-One process serves all three Connect namespaces — `publira.v1`, `publira.admin.v1`, and `publira.platform.v1` — and image delivery, over two listeners that differ in what is registered on each.
+One process serves all three Connect namespaces — `publira.v1`, `publira.admin.v1`, and `publira.platform.v1` — and image delivery, over two listeners that differ in what is registered on each. `--listener` serves one of them alone; see [Serving one listener](#serving-one-listener---listener).
 
 | Listener | Default address | Serves | Reached by |
 | --- | --- | --- | --- |
@@ -51,8 +51,8 @@ Manael uses libvips, so building and running require `libvips-dev` (at runtime, 
 
 - `PUBLIRA_PUBLIC_API_ADDR` (optional, `:8000` when unset. The edge-facing listener)
 - `PUBLIRA_PUBLIC_API_GRPC_ADDR` (optional, `:8100` when unset. The internal listener)
-- `PUBLIRA_PUBLIC_DB_URL` / `PUBLIRA_ADMIN_DB_URL` / `PUBLIRA_PLATFORM_DB_URL` (optional; a development default is used when unset. One per login; the process never falls back from one to another, and image delivery uses the first two)
-- `PUBLIRA_DB_MAX_OPEN_CONNS` / `PUBLIRA_DB_MAX_IDLE_CONNS` / `PUBLIRA_DB_CONN_MAX_IDLE_TIME` (optional, `10`, the first one's value, and `5m` when unset. Bound each of the three pools on its own; see [Connection pools](../../README.md#connection-pools) for sizing the database)
+- `PUBLIRA_PUBLIC_DB_URL` / `PUBLIRA_ADMIN_DB_URL` / `PUBLIRA_PLATFORM_DB_URL` (optional; a development default is used when unset. One per login; the process never falls back from one to another, and image delivery and the search engine's settings use the first two. The third is read only when the internal listener is served)
+- `PUBLIRA_DB_MAX_OPEN_CONNS` / `PUBLIRA_DB_MAX_IDLE_CONNS` / `PUBLIRA_DB_CONN_MAX_IDLE_TIME` (optional, `10`, the first one's value, and `5m` when unset. Bound each of its pools on its own; see [Connection pools](../../README.md#connection-pools) for sizing the database)
 - `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes. The HS256 signing key for access tokens, which the image routes verify as well. The process fails to start when it is unset. For the details, see the [repository README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional. Encrypt and decrypt the stored SMTP, payment, object store, search engine, and FCM secrets)
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (optional. The ambient credential for an object store saved without an access key. The store itself comes from the platform's settings; see [Image storage configuration](../../README.md#image-storage-configuration))
@@ -60,7 +60,7 @@ Manael uses libvips, so building and running require `libvips-dev` (at runtime, 
 - `PUBLIRA_IMAGE_CACHE_TTL` (optional. The TTL of a converted image. A Go duration or a number of seconds. Default `1h`)
 - `PUBLIRA_REVALIDATE_TOKEN` (optional, the shared token sent in the `X-Revalidate-Token` header)
 - `PUBLIRA_WEB_STOREFRONT_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (optional, the private network URL of each Next.js app `PUBLIRA_REVALIDATE_TOKEN` sends cache tags to. An app left unset is not sent anything; the token with none of them stops the process at startup)
-- `PUBLIRA_WEB_SERVICE_TOKEN` (optional, the bearer the web apps call the tenant console's tenant-level reads and the Platform Console's platform-level reads with as themselves rather than as an operator. Unset, the admin and platform APIs accept operator sessions alone. Logged at startup as `web service token is enabled` or `disabled`; see [Web service credential](../../README.md#web-service-credential))
+- `PUBLIRA_WEB_SERVICE_TOKEN` (optional, read only when the internal listener is served. The bearer the web apps call the tenant console's tenant-level reads and the Platform Console's platform-level reads with as themselves rather than as an operator. Unset, the admin and platform APIs accept operator sessions alone. Logged at startup as `web service token is enabled` or `disabled`; see [Web service credential](../../README.md#web-service-credential))
 - `PUBLIRA_TRUSTED_PROXIES` (optional. The addresses and CIDR ranges, separated by commas or spaces, of the proxies whose `Forwarded` and `X-Forwarded-For` entries are believed when finding the client address the sign-in log and the audit log record and the per-client limits count, and whose rightmost `host=` of `Forwarded`, or else rightmost `X-Forwarded-Host`, names the tenant an image request is for. From any other peer, the tenant is found from `Host` alone. Unset, the loopback, private, and link-local ranges; set, it replaces them. A value that is not an address or a range, or a range covering every address, stops the process at startup. See [The proxies Publira trusts](../../../docs/en/2-deployments/4-edge.md#the-proxies-publira-trusts))
 - `PUBLIRA_FORWARDED_HEADER_ENABLED` (optional, `true` when unset. `false` reads the client address from `X-Forwarded-For` alone, and an image request's host from `X-Forwarded-Host` and `Host` alone, for proxies that pass on a `Forwarded` header the caller sent; otherwise `Forwarded` is read ahead of them. A value that is not a boolean stops the process at startup)
 - `PUBLIRA_TENANT_URL_SCHEME` (optional, the scheme of every tenant host, set to the value `publira worker` runs with. Here it builds the storefront URL a payment provider returns the browser to)
@@ -72,7 +72,7 @@ The tenant-admin MFA requirement, the reader write limits, the step-up password 
 
 The object store is read from the platform's settings: uploads resolve it on the platform pool, and image delivery on the admin pool, whose login is granted `platform_storage_config` and none of the platform's other credentials; see [Image storage configuration](../../README.md#image-storage-configuration). Both read the row again every 30 seconds, so a saved change reaches a running process without a restart, and the process starts before an operator has saved one: an upload until then is refused and an image answers `503`.
 
-The catalog search engine is read from the platform's settings on the platform pool as well, so the storefront's login is never given its password, and reread every 30 seconds: the search RPCs answer from the engine the row says the search is serving from, which trails a saved engine until the worker has built its index; see [Catalog search](../../README.md#catalog-search).
+The catalog search engine is read from the platform's settings on the admin pool, whose login is granted `platform_search_config` as it is the object store, so the storefront's login is never given its password and a process serving the edge listener alone needs no platform pool to search. It is reread every 30 seconds: the search RPCs answer from the engine the row says the search is serving from, which trails a saved engine until the worker has built its index; see [Catalog search](../../README.md#catalog-search).
 
 The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
 
@@ -109,13 +109,31 @@ The publication state and the price are not considered, so a draft, a scheduled,
 
 The server checks mutating RPCs in a shared interceptor, so a rejected call never starts a DB update, an audit log entry, or an email.
 
+### Serving one listener (`--listener`)
+
+```bash
+publira server --listener edge
+publira server --listener internal
+```
+
+serves the named listener alone, for an install that runs the two as processes of their own: to keep the logins the internet-facing process holds to the ones the edge answers as, to scale, probe, or place each on a network of its own, or on a platform that exposes one port per workload. Without the flag the process serves both, as it always has.
+
+| `--listener` | Serves | Opens | Database logins | Does not read |
+| --- | --- | --- | --- | --- |
+| `edge` | `publira.v1` under `/api`, `GET /images/…`, `/livez`, `/readyz` | `PUBLIRA_PUBLIC_API_ADDR` | `publira_public` and `publira_admin`, both under row-level security | `PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_WEB_SERVICE_TOKEN`, `PUBLIRA_PUBLIC_API_GRPC_ADDR` |
+| `internal` | all three namespaces, `/livez`, `/readyz` | `PUBLIRA_PUBLIC_API_GRPC_ADDR` | all three | `PUBLIRA_PUBLIC_API_ADDR`, `PUBLIRA_IMAGE_CACHE_TTL` |
+
+The edge process holds `publira_admin` because a console host's images are answered as that login, and because that login is the one granted the object store's and the search engine's settings. It holds no login that bypasses row-level security, serves neither console's API, and takes no web service token. Every other variable [above](#main-environment-variables) is read by both, and each listener answers `/readyz` with the checks it answers with beside the other: `db` on the edge, one per login on the internal listener.
+
+The two processes together serve what one process without the flag does, so the reverse proxy keeps forwarding `/api` and `/images` to the edge process and the web apps keep dialling the internal one, and either can run any number of replicas. `--with-worker` combines with either value and adds the worker to that process.
+
 ### Hosting the worker (`--with-worker`)
 
 ```bash
 publira server --with-worker
 ```
 
-runs everything [`publira worker`](#publira-worker) runs inside this process as well, for an install on one host that will not scale the two apart: the Go side becomes one container, or one systemd unit, instead of two. It is the only flag the binary takes, and it chooses what the process hosts, and every value still comes from the environment. The image's default command stays `server`, and [`infra/deploy/compose.yaml`](../../../infra/deploy/compose.yaml) still runs the two as separate services.
+runs everything [`publira worker`](#publira-worker) runs inside this process as well, for an install on one host that will not scale the two apart: the Go side becomes one container, or one systemd unit, instead of two. Like `--listener`, it chooses what the process hosts, and every value still comes from the environment. The image's default command stays `server`, and [`infra/deploy/compose.yaml`](../../../infra/deploy/compose.yaml) still runs the two as separate services.
 
 Nothing is merged. The process holds all six pools, one per login, and serves all three listeners — the edge-facing `:8000`, the internal `:8100`, and the worker's `:8003` — each with the `/livez` and `/readyz` it answers with in a process of its own, so an orchestrator's probes and the reverse proxy's routing are unchanged. It therefore reads the union of both processes' environment variables: the ones [above](#main-environment-variables) and the ones [under the worker](#main-environment-variables-1). The process does not start when either half cannot, just as that half does not start on its own. One `SIGTERM` stops the whole process within the same 30-second window either process takes alone.
 

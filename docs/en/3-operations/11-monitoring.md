@@ -24,7 +24,7 @@ Every process answers two requests over plain HTTP:
 | `web-storefront`, `web-admin`, `web-platform` | `PORT`: `3000`, `4000`, and `4100` in the images as the repository builds them | `api`, the `/readyz` of `publira server`'s internal listener, at `PUBLIRA_GRPC_URL`; and `redis`, a ping to the shared cache at `PNCH_REDIS_URL`, which always passes while that cache is turned off |
 | `email-renderer` | `8080` (`PORT`) | Nothing: it depends on no other service, so it is ready whenever it is up |
 
-A `publira server --with-worker` process answers on all three ports of the first three rows, each with the checks its row names, so probe it as you would probe the two processes.
+A `publira server --with-worker` process answers on all three ports of the first three rows, each with the checks its row names, so probe it as you would probe the two processes. A `publira server --listener edge` or `--listener internal` process answers on the port of its own listener alone, with the checks that listener's row names.
 
 None of them checks the object store, the SMTP server, or the search engine. A failure there shows in the log and in what readers see, not in `/readyz`.
 
