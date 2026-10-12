@@ -2,7 +2,7 @@
 title: Monitoring
 description: Probing every process with /livez and /readyz, the log lines and metrics worth alerting on, and turning on OpenTelemetry metrics and traces.
 published: 2026-10-07
-updated: 2026-10-11
+updated: 2026-10-12
 ---
 
 An install tells you how it is doing in four ways: every process answers a liveness and a readiness check, `publira server` and `publira worker` write a structured log, the same two export OpenTelemetry metrics once you turn them on, and every process but `email-renderer` can export OpenTelemetry traces. This page says what each of them reports, how to wire them into an orchestrator and an alerting system, and what is worth an alert. Which monitoring system receives them is your choice; the page names only what an install sends.
@@ -157,8 +157,8 @@ With `PUBLIRA_DEPLOYMENT_ENVIRONMENT` unset, every process counts itself as `dev
 
 To sample at another rate, set the SDK's own `OTEL_TRACES_SAMPLER` and `OTEL_TRACES_SAMPLER_ARG`, such as `parentbased_traceidratio` and `0.25`, which replace the default on every process they are set on.
 
-### Why the reverse proxy removes trace headers
+### Why the edge removes trace headers
 
 Every process trusts the trace context a request arrives with: a `traceparent` header makes its span part of the caller's trace, and carries the caller's sampling decision. That is what joins the web app's span to the API's. A browser or the mobile app could send the same header, though, and with it attach its spans to a trace of someone else's, or mark every request as sampled and export a trace for each one past the one-in-ten rate.
 
-So the reverse proxy removes `traceparent`, `tracestate`, and `baggage` from every request it forwards, and every request from outside starts a new trace. The web apps call the API, and the API and the worker call the web apps, directly on the private network rather than through the proxy, so their trace context is kept. Every sample configuration in the repository does this, as [The headers the proxy owns](../2-deployments/4-reverse-proxy.md#the-headers-the-proxy-owns) describes; a proxy configured by hand has to remove the same three headers.
+So the edge in front of the install removes `traceparent`, `tracestate`, and `baggage` from every request it forwards, as [Trace context](../2-deployments/4-edge.md#trace-context) requires of every edge, and every request from outside starts a new trace. The web apps call the API, and the API and the worker call the web apps, directly on the private network rather than through the edge, so their trace context is kept.

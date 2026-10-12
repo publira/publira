@@ -62,7 +62,7 @@ An answer to a contact message reaches the reader by mail. Until the tenant rece
 
 - An account with SendGrid or Resend.
 - A domain for replies whose DNS you can change, such as `reply.comics.example.com`. Its MX record will point at the provider, so mail sent to it reaches no other mailbox. A subdomain of its own keeps the mail the publisher's main domain already receives where it is.
-- The site reachable from the internet: the provider posts each reply to the site's own domain. An IP allowlist, a sign-in prompt, or a bot challenge in front of the site has to let these requests through, as [Webhooks](../../2-deployments/4-reverse-proxy.md#webhooks) describes for the operator.
+- The site reachable from the internet: the provider posts each reply to the site's own domain. An IP allowlist, a sign-in prompt, or a bot challenge in front of the site has to let these requests through, as [Webhooks](../../2-deployments/4-edge.md#webhooks) describes for the operator.
 
 ### Setting it up
 

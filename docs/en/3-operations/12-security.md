@@ -2,7 +2,7 @@
 title: Securing an install
 description: How an install keeps tenants and credentials apart, how to rotate its encryption keys, database passwords, signing keys, and tokens, and what two-step verification and the audit logs cover.
 published: 2026-10-07
-updated: 2026-10-10
+updated: 2026-10-12
 ---
 
 An install holds the credentials of every tenant's payment provider and mail server, the personal data of every reader, and the keys that seal them. This page is for the operator who keeps them safe: what the install relies on to keep them apart, where each secret may go, how to replace each one, and what two-step verification and the audit logs give you. Read it before you need it — each procedure below is easier to run on a quiet day than during an incident.
@@ -19,7 +19,7 @@ That only holds while each process has the connection URLs of its own roles and 
 
 ### The two listeners
 
-`publira server` listens twice. Its edge listener, port `8000`, serves the public API and the images, and is what the reverse proxy forwards to. Its internal listener, port `8100`, also serves the tenant console's and the Platform Console's APIs, and is for the web apps alone. Keep it on a network that only the web apps reach, as [Reverse proxy](../2-deployments/4-reverse-proxy.md#choose-a-sample) describes: whoever reaches it with the web service token can read every tenant's catalog and the platform's list of readers.
+`publira server` listens twice. Its edge listener, port `8000`, serves the public API and the images, and is what the edge forwards to. Its internal listener, port `8100`, also serves the tenant console's and the Platform Console's APIs, and is for the web apps alone. Keep it on a network that only the web apps reach, as [Keep the internal listener private](../2-deployments/4-edge.md#keep-the-internal-listener-private) describes: whoever reaches it with the web service token can read every tenant's catalog and the platform's list of readers.
 
 ### Where each secret may go
 
