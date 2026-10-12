@@ -27,9 +27,14 @@ class LegalPageAgreements extends ChangeNotifier {
   /// starts reads them in again. Empty reads the tenant's default locale.
   String _locale = '';
 
-  /// Bumped by every read and by [forget], so an answer that lands after a
-  /// newer one, or after the reader it was read for has gone, is dropped.
+  /// Bumped by every read, by every recorded agreement, and by [forget], so
+  /// a read that lands after a newer read, after an agreement, or after the
+  /// reader it was read for has gone, is dropped.
   var _generation = 0;
+
+  /// Bumped by [forget] alone, so an agreement recorded for a reader who has
+  /// signed out since is dropped, while one that overlapped a read is not.
+  var _reader = 0;
 
   /// The pages the reader owes, terms first, each in the version they are
   /// asked to agree to. Empty when they owe nothing, when nobody is signed
@@ -65,9 +70,14 @@ class LegalPageAgreements extends ChangeNotifier {
   /// page is no longer one the tenant asks about; [owed] then holds what the
   /// reader is to be asked instead.
   ///
+  /// The answer stands over every read still in flight, even one started
+  /// after the agreement was sent: such a read may have been answered from
+  /// before the agreement was recorded, and would hold the reader on the
+  /// agreement screen they have just left.
+  ///
   /// Throws [AuthFailure] for a refusal of any other kind.
   Future<bool> agree(List<LegalPage> pages) async {
-    final generation = ++_generation;
+    final reader = _reader;
     final List<LegalPage> owed;
     try {
       owed = await _auth.agreeToLegalPages([
@@ -80,7 +90,8 @@ class LegalPageAgreements extends ChangeNotifier {
       await check();
       return false;
     }
-    if (generation == _generation) {
+    if (reader == _reader) {
+      _generation++;
       _set(owed);
     }
     return owed.isEmpty;
@@ -97,6 +108,7 @@ class LegalPageAgreements extends ChangeNotifier {
   /// for them.
   void forget() {
     _generation++;
+    _reader++;
     _set(const []);
   }
 

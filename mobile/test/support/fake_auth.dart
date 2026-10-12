@@ -94,6 +94,13 @@ class FakeAuthRepository implements AuthRepository {
   /// an API that cannot be reached or refuses.
   AuthFailure? legalPageAgreementFailure;
 
+  /// Held open by a test that needs to act while [readOwedLegalPages], or
+  /// [agreeToLegalPages], is in flight. [readOwedLegalPages] answers with the
+  /// pages owed when it was called, the way a read the API answered before
+  /// an agreement was recorded does.
+  Completer<void>? owedLegalPagesGate;
+  Completer<void>? agreeToLegalPagesGate;
+
   /// Thrown by [readReaderAge], standing in for an account that cannot be
   /// read.
   AuthFailure? birthDateFailure;
@@ -396,11 +403,13 @@ class FakeAuthRepository implements AuthRepository {
     required String locale,
   }) async {
     owedLegalPagesLocales.add(locale);
+    final owed = owedLegalPages;
+    await owedLegalPagesGate?.future;
     final failure = legalPageAgreementFailure;
     if (failure != null) {
       throw failure;
     }
-    return owedLegalPages;
+    return owed;
   }
 
   @override
@@ -410,6 +419,7 @@ class FakeAuthRepository implements AuthRepository {
     required String locale,
   }) async {
     legalPageAgreements.add(agreedPageVersionIds);
+    await agreeToLegalPagesGate?.future;
     final failure = legalPageAgreementFailure;
     if (failure != null) {
       throw failure;

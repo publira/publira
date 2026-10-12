@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -165,6 +166,38 @@ void main() {
       expect(repository.legalPageAgreements, [
         ['terms-v2', 'privacy-v3'],
       ]);
+    });
+
+    test('an agreement stands over a read answered from before it', () async {
+      await agreements.check(locale: 'en');
+      repository.agreeToLegalPagesGate = Completer<void>();
+      final agreed = agreements.agree(agreements.owed);
+      // A refused request starts a read while the agreement is in flight, and
+      // the API answers it from before the agreement was recorded.
+      repository.owedLegalPagesGate = Completer<void>();
+      final read = agreements.check();
+
+      repository.agreeToLegalPagesGate!.complete();
+      expect(await agreed, isTrue);
+      repository.owedLegalPagesGate!.complete();
+      await read;
+
+      expect(agreements.owed, isEmpty);
+    });
+
+    test('an agreement recorded for a reader who signed out since is '
+        'dropped', () async {
+      await agreements.check(locale: 'en');
+      repository.agreeToLegalPagesGate = Completer<void>();
+      final agreed = agreements.agree(const [_terms]);
+      agreements.forget();
+      await agreements.check();
+
+      repository.agreeToLegalPagesGate!.complete();
+      await agreed;
+
+      // What the next reader owes, not what the agreement answered.
+      expect(agreements.owed, [_terms, _privacy]);
     });
 
     test(
