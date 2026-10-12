@@ -347,6 +347,8 @@ export const getCatalogTopWeeklySchedule = async (
 ): Promise<CachedReadResult<CatalogTopWeeklySchedule>> => {
   "use cache";
 
+  applyCacheTag(tenantSeriesListTag(tenantId));
+  applyCacheTag(tenantCreatorsTag(tenantId));
   applyCacheTag(tenantTodayTag(tenantId));
 
   const pages = await Promise.all(

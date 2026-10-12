@@ -1004,7 +1004,11 @@ describe("catalog-top cache tags", () => {
       name: "getCatalogTopFreeSeries",
     },
     {
-      expected: ["tenant:TENANT_001:today"],
+      expected: [
+        "tenant:TENANT_001:series:list",
+        "tenant:TENANT_001:creators",
+        "tenant:TENANT_001:today",
+      ],
       load: () =>
         getCatalogTopWeeklySchedule("TENANT_001", {
           locale: "en",
