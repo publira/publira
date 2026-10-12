@@ -1,14 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockAcceptInvitation, mockAssertSameOrigin, mockRedirect } = vi.hoisted(
-  () => ({
-    mockAcceptInvitation: vi.fn(),
-    mockAssertSameOrigin: vi.fn(),
-    mockRedirect: vi.fn((path: string) => {
-      throw new Error(`NEXT_REDIRECT:${path}`);
-    }),
-  })
-);
+const {
+  mockAcceptInvitation,
+  mockAssertSameOrigin,
+  mockRedirect,
+  mockUpdateTag,
+} = vi.hoisted(() => ({
+  mockAcceptInvitation: vi.fn(),
+  mockAssertSameOrigin: vi.fn(),
+  mockRedirect: vi.fn((path: string) => {
+    throw new Error(`NEXT_REDIRECT:${path}`);
+  }),
+  mockUpdateTag: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({ updateTag: mockUpdateTag }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
@@ -18,6 +24,8 @@ vi.mock("#lib/action-messages", () => ({
 
 vi.mock("#lib/admin-auth", () => ({
   acceptTenantAdminInvitation: mockAcceptInvitation,
+  tenantAdminInvitationCacheTag: (tenantId: string) =>
+    `tenant-admin-invitation-${tenantId}`,
 }));
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
@@ -77,5 +85,36 @@ describe("acceptInviteAction", () => {
       ok: false,
     });
     expect(mockAcceptInvitation).not.toHaveBeenCalled();
+  });
+
+  it("clears the invitation read before sending the invitee to sign in", async () => {
+    mockAcceptInvitation.mockResolvedValueOnce({
+      accepted: true,
+      accountCreated: true,
+      ok: true,
+    });
+
+    const { acceptInviteAction } = await import("./actions");
+
+    await expect(
+      acceptInviteAction(null, acceptFormData("correct horse"))
+    ).rejects.toThrow("NEXT_REDIRECT:/login?");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `tenant-admin-invitation-${TENANT_ID}`
+    );
+  });
+
+  it("leaves the invitation read alone when the API refuses the acceptance", async () => {
+    mockAcceptInvitation.mockResolvedValueOnce({
+      message: "This invitation has expired.",
+      ok: false,
+    });
+
+    const { acceptInviteAction } = await import("./actions");
+
+    await expect(
+      acceptInviteAction(null, acceptFormData("correct horse"))
+    ).resolves.toEqual({ message: "This invitation has expired.", ok: false });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });
