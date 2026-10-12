@@ -20,7 +20,7 @@ import {
   ViewportTrack,
 } from "@publira/comic-viewer";
 import type {
-  PageStatusProps,
+  PageStatusValue,
   ReadingDirection,
   ViewerPage,
 } from "@publira/comic-viewer";
@@ -50,11 +50,15 @@ const stopClick = (event: MouseEvent) => {
   event.stopPropagation();
 };
 
+/**
+ * Names the visible pages for both `PageStatus` and the slider's
+ * `aria-valuetext`, so the status a reader sees and the value a screen reader
+ * announces are the same words. It returns a string because the attribute
+ * cannot hold anything else.
+ */
 const buildPageStatusFormatter =
-  (
-    t: StorefrontClientMessageAccessor
-  ): NonNullable<PageStatusProps["format"]> =>
-  ({ firstPage, lastPage, pageCount, slot }) => {
+  (t: StorefrontClientMessageAccessor) =>
+  ({ firstPage, lastPage, pageCount, slot }: PageStatusValue): string => {
     if (pageCount === 0) {
       return t("storefront.episode.viewer.no_pages");
     }
@@ -333,6 +337,7 @@ const ViewerToolbar = ({
   onToggleWide: () => void;
 }) => {
   const t = useClientMessages();
+  const formatPageStatus = buildPageStatusFormatter(t);
 
   return (
     // On a narrow screen a centred slider would run under the buttons on the
@@ -347,10 +352,13 @@ const ViewerToolbar = ({
             way pages turn; the status text still reads left to right. The
             input is taller than its thumb so a finger can catch it, and both
             grow where the pointer is a finger. */}
-        <PageProgressSlider className="block h-6 w-full cursor-pointer appearance-none rounded-control bg-transparent p-0 [--pcv-page-progress-fill-direction:to_right] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 rtl:[--pcv-page-progress-fill-direction:to_left] pointer-coarse:h-11 [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-background pointer-coarse:[&::-moz-range-thumb]:size-5 [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-control [&::-moz-range-track]:bg-muted-foreground [&::-moz-range-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-background)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-control [&::-webkit-slider-runnable-track]:bg-muted-foreground [&::-webkit-slider-runnable-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-background)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-thumb]:-mt-[0.3125rem] [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-0 [&::-webkit-slider-thumb]:bg-background pointer-coarse:[&::-webkit-slider-thumb]:-mt-2 pointer-coarse:[&::-webkit-slider-thumb]:size-5" />
+        <PageProgressSlider
+          className="block h-6 w-full cursor-pointer appearance-none rounded-control bg-transparent p-0 [--pcv-page-progress-fill-direction:to_right] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 rtl:[--pcv-page-progress-fill-direction:to_left] pointer-coarse:h-11 [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-background pointer-coarse:[&::-moz-range-thumb]:size-5 [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-control [&::-moz-range-track]:bg-muted-foreground [&::-moz-range-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-background)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-control [&::-webkit-slider-runnable-track]:bg-muted-foreground [&::-webkit-slider-runnable-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-background)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-thumb]:-mt-[0.3125rem] [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-0 [&::-webkit-slider-thumb]:bg-background pointer-coarse:[&::-webkit-slider-thumb]:-mt-2 pointer-coarse:[&::-webkit-slider-thumb]:size-5"
+          format={formatPageStatus}
+        />
         <PageStatus
           className="block text-center text-sm text-background tabular-nums [direction:ltr]"
-          format={buildPageStatusFormatter(t)}
+          format={formatPageStatus}
         />
       </PageProgress>
       {/* Placed against the physical right edge rather than laid out in the

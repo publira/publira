@@ -281,6 +281,36 @@ describe("EpisodeComicViewer progress slider", () => {
     expect(pageStatus().textContent).toBe("Page 1 of 4");
   });
 
+  it("announces the pages under the thumb in the words the page status shows, in the reader's language", async () => {
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      />,
+      "ja"
+    );
+    pressViewer();
+
+    // The library's own value text is English whatever the catalog, so a
+    // Japanese one proves the slider took the storefront's formatter.
+    const slider = screen.getByRole("slider", { name: "読み進み" });
+    const expectAnnounced = (label: string) => {
+      expect(screen.getByText(/ページ$/u).textContent).toBe(label);
+      expect(slider.getAttribute("aria-valuetext")).toBe(label);
+    };
+
+    expectAnnounced("1 / 4ページ");
+
+    fireEvent.pointerDown(slider);
+    fireEvent.change(slider, { target: { value: "1.4" } });
+    expectAnnounced("2–3 / 4ページ");
+
+    releaseThumb();
+    expectAnnounced("2–3 / 4ページ");
+  });
+
   it("shows the page under the thumb while dragging and turns to it on release", async () => {
     await renderWithClientMessages(
       <EpisodeComicViewer
