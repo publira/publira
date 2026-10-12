@@ -222,8 +222,10 @@ const AuditLogsFilters = async ({
         placeholder={t("platform.audit.actor_filter_placeholder")}
         type="search"
       />
+      {/* An action's name runs from two words to a sentence, so the trigger
+          takes the width of the one chosen rather than wrapping it. */}
       <Select
-        className="w-56"
+        className="w-auto max-w-full min-w-56 gap-2"
         defaultValue={actionFilter || undefined}
         items={actionItems}
         name="action"
