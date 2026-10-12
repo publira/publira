@@ -346,6 +346,7 @@ String _failureCopy(AppMessages messages, Object? error, String fallback) {
     CommentFailureKind.network => messages.errorsRpcUnavailable,
     CommentFailureKind.sessionExpired => messages.errorsRpcUnauthenticated,
     CommentFailureKind.rateLimited => messages.errorsRpcRateLimited,
+    CommentFailureKind.duplicate => messages.commentsPostDuplicate,
     CommentFailureKind.rejected => messages.errorsRpcInvalidArgument,
     CommentFailureKind.notAllowed => messages.errorsRpcForbidden,
     CommentFailureKind.gone => messages.errorsRpcNotFound,

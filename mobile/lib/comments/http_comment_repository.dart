@@ -266,6 +266,10 @@ class HttpCommentRepository implements CommentRepository {
         CommentFailureKind.rateLimited,
         message: error.message,
       ),
+      'already_exists' => CommentFailure(
+        CommentFailureKind.duplicate,
+        message: error.message,
+      ),
       'invalid_argument' => CommentFailure(
         CommentFailureKind.rejected,
         message: error.message,

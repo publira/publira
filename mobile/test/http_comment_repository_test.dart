@@ -198,6 +198,29 @@ void main() {
     );
   });
 
+  test('posting the same body again is a duplicate', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    final comments = repository();
+    await comments.post(
+      episodeInternalId: episodeInternalId,
+      body: 'What an episode.',
+    );
+
+    await expectLater(
+      comments.post(
+        episodeInternalId: episodeInternalId,
+        body: 'What an episode.',
+      ),
+      throwsA(
+        isA<CommentFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          CommentFailureKind.duplicate,
+        ),
+      ),
+    );
+  });
+
   test('posting without a session fails before the request', () async {
     await expectLater(
       repository().post(

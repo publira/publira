@@ -4133,6 +4133,7 @@
       "older": "Older comments",
       "own_failed": "Could not load your own comments. Please try again later.",
       "page_empty": "This page has no comments.",
+      "post_duplicate": "You have just posted this comment. The same text can be posted again after a while.",
       "post_failed": "Could not post the comment. Please try again later.",
       "posted": "Your comment has been posted.",
       "posted_awaiting_approval": "Your comment has been sent for approval. It appears here once a moderator approves it.",

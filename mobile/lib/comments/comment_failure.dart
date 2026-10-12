@@ -12,6 +12,11 @@ enum CommentFailureKind {
   /// The reader has posted or reported too often in too short a time.
   rateLimited,
 
+  /// The reader posted this same body on this episode a moment ago, inside the
+  /// tenant's duplicate comment window. Their comment is already there, so
+  /// sending it again is not what they need to try.
+  duplicate,
+
   /// The API refused what was submitted: a body over the limit, or a token
   /// that names no page.
   rejected,

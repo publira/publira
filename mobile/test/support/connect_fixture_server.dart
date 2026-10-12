@@ -2226,6 +2226,19 @@ class ConnectFixtureServer {
       return;
     }
     if (path.endsWith('/PostEpisodeComment')) {
+      // The API refuses a body the reader has just posted on the same episode;
+      // a body already among their own comments here stands in for one still
+      // inside the duplicate comment window.
+      final repeated = (myEpisodeComments[episodeId] ?? const []).any(
+        (comment) => comment['body'] == body['body'],
+      );
+      if (repeated) {
+        await _write(request, HttpStatus.conflict, const {
+          'code': 'already_exists',
+          'message': 'the same comment was posted a moment ago',
+        });
+        return;
+      }
       final comment = {
         'publicId':
             'SeedCMNT${(myEpisodeComments[episodeId]?.length ?? 0) + 1}',
