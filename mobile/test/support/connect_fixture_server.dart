@@ -3162,11 +3162,21 @@ class ConnectFixtureServer {
   /// afterwards, the way the API does. An agreement to a version the member
   /// is not asked about is refused as the API refuses one the tenant does
   /// not name.
+  ///
+  /// The account a sign-up opened agreed to the pages it was shown, so it
+  /// owes nothing; its session is accepted rather than refused, which the app
+  /// would take as a session the API has stopped accepting.
   Future<void> _writeLegalPageAgreements(
     HttpRequest request,
     String path,
     Map<String, Object?> body,
   ) async {
+    if (_signedUpSession != null &&
+        request.headers.value(HttpHeaders.authorizationHeader) ==
+            'Bearer $signedUpAccessToken') {
+      await _write(request, HttpStatus.ok, const <String, Object?>{});
+      return;
+    }
     if (!_isAuthorized(request)) {
       await _write(request, HttpStatus.unauthorized, {
         'code': 'unauthenticated',
