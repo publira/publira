@@ -1,0 +1,112 @@
+name: Install a release tool
+description: Install migrate, wait4x, or sqlc from its GitHub release, from the cache when that version has been installed on this architecture before.
+
+inputs:
+  tool:
+    description: >-
+      `migrate`, `wait4x`, or `sqlc`. The version installed is the workflow's `MIGRATE_VERSION`, `WAIT4X_VERSION`, or `SQLC_VERSION`.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve
+      id: tool
+      shell: bash
+      env:
+        TOOL: ${{ inputs.tool }}
+      run: |
+        set -euo pipefail
+        case "${RUNNER_ARCH}" in
+          X64) arch="amd64" ;;
+          ARM64) arch="arm64" ;;
+          *) echo "::error::Unsupported architecture: ${RUNNER_ARCH}"; exit 1 ;;
+        esac
+        case "${TOOL}" in
+          migrate)
+            version="${MIGRATE_VERSION:?MIGRATE_VERSION is not set}"
+            repo="golang-migrate/migrate"
+            asset="migrate.linux-${arch}.tar.gz"
+            ;;
+          wait4x)
+            version="${WAIT4X_VERSION:?WAIT4X_VERSION is not set}"
+            repo="wait4x/wait4x"
+            asset="wait4x-linux-${arch}.tar.gz"
+            ;;
+          sqlc)
+            version="${SQLC_VERSION:?SQLC_VERSION is not set}"
+            repo="sqlc-dev/sqlc"
+            asset="sqlc_${version}_linux_${arch}.tar.gz"
+            ;;
+          *) echo "::error::Unknown tool: ${TOOL}"; exit 1 ;;
+        esac
+        {
+          echo "version=${version}"
+          echo "repo=${repo}"
+          echo "asset=${asset}"
+        } >> "${GITHUB_OUTPUT}"
+
+    # Exact key only: an entry holds one released binary and never changes.
+    - name: Cache / Restore
+      id: cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/publira-tools/${{ inputs.tool }}
+        key: tool-${{ inputs.tool }}-${{ steps.tool.outputs.version }}-${{ runner.os }}-${{ runner.arch }}
+
+    # The checksum is the digest GitHub records for the release asset, which
+    # every one of these releases has, where an upstream checksum file is not:
+    # sqlc publishes none.
+    #
+    # Without `--retry-delay`, curl backs off exponentially from one second,
+    # so eight retries span about four minutes and `--retry-max-time` ends the
+    # last of them at five. A fixed delay keeps every wait at that delay, which
+    # gave up within half a minute of a github.com outage that lasted longer.
+    # Retrying every error covers the 5xx a github.com outage answers with; a
+    # transient response is not what the job installing the tool is testing.
+    - name: Download
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        TOOL: ${{ inputs.tool }}
+        VERSION: ${{ steps.tool.outputs.version }}
+        REPO: ${{ steps.tool.outputs.repo }}
+        ASSET: ${{ steps.tool.outputs.asset }}
+        DEST: ${{ runner.temp }}/publira-tools/${{ inputs.tool }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+        retry=(--retry 8 --retry-max-time 300 --connect-timeout 20 --retry-all-errors)
+        digest="$(
+          curl -fsSL "${retry[@]}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            "${GITHUB_API_URL}/repos/${REPO}/releases/tags/v${VERSION}" |
+            jq -r --arg asset "${ASSET}" '.assets[] | select(.name == $asset) | .digest // empty'
+        )"
+        if [[ "${digest}" != sha256:* ]]; then
+          echo "::error::No SHA-256 digest for ${ASSET} in ${REPO} v${VERSION}"
+          exit 1
+        fi
+        archive="${RUNNER_TEMP}/${ASSET}"
+        curl -fsSL "${retry[@]}" "${GITHUB_SERVER_URL}/${REPO}/releases/download/v${VERSION}/${ASSET}" -o "${archive}"
+        echo "${digest#sha256:}  ${archive}" | sha256sum -c -
+        mkdir -p "${DEST}"
+        tar -xzf "${archive}" -C "${DEST}" "${TOOL}"
+        rm -f "${archive}"
+
+    # Saved on any ref, as soon as the binary is verified. A pull request or a
+    # merge group misses only when it changes the version or main's entry is
+    # gone, so the entries it leaves behind are few, and each is one binary.
+    - name: Cache / Save
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/publira-tools/${{ inputs.tool }}
+        key: ${{ steps.cache.outputs.cache-primary-key }}
+
+    - name: Add to PATH
+      shell: bash
+      env:
+        DEST: ${{ runner.temp }}/publira-tools/${{ inputs.tool }}
+      run: echo "${DEST}" >> "${GITHUB_PATH}"
