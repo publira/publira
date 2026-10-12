@@ -5,9 +5,10 @@
 //
 // A closed statement never changes. A refund recorded after the month of its
 // sale was closed is carried into the next statement closed for a later month
-// instead, as adjustment lines at the shares the closed month applied. Each
-// close writes down what it counted of every purchase, so a later close
-// carries only the part of a refund that no statement has counted yet.
+// instead, as adjustment lines that take off the closed lines' payouts what
+// the refunds take off their net. Each close writes down what it counted of
+// every purchase, so a later close carries only the part of a refund that no
+// statement has counted yet.
 package royalties
 
 import (
@@ -344,8 +345,10 @@ type statementLine struct {
 	RefundedAmount int64         `json:"refunded_amount"`
 	ShareBps       int32         `json:"share_bps"`
 	PayoutAmount   int64         `json:"payout_amount"`
-	// AdjustedStatementID is set on an adjustment line alone.
+	// AdjustedStatementID and AdjustedLineNumber name the line an adjustment
+	// adjusts, and are set on an adjustment line alone.
 	AdjustedStatementID uuid.NullUUID `json:"adjusted_statement_id"`
+	AdjustedLineNumber  *int32        `json:"adjusted_line_number"`
 }
 
 // statementLinesJSON numbers the month's own lines first and its adjustment
@@ -389,6 +392,7 @@ func statementLinesJSON(rows []dbmodels.ListRoyaltyLinesForPeriodRow, adjustment
 			ShareBps:            row.ShareBps,
 			PayoutAmount:        row.PayoutAmount,
 			AdjustedStatementID: uuid.NullUUID{UUID: row.AdjustedStatementID, Valid: true},
+			AdjustedLineNumber:  &row.AdjustedLineNumber,
 		}
 		if row.RoleName.Valid {
 			line.RoleName = &row.RoleName.String

@@ -88,7 +88,7 @@ A refund recorded after the month of the purchase was closed cannot change that 
 
 - **Sales** is minus the purchases refunded in full, and **Gross** minus their price.
 - **Refunded** is the change in the refunds of the purchases that are still sales. It is negative when a purchase that was partly refunded at the close has since been refunded in full, since that purchase now leaves through **Gross** instead.
-- **Payout** takes back what the refund took off the sale, at the share the closed month applied. A share changed since the close, or an Author credited since, changes nothing about it. It is rounded toward zero, so it never takes back more than the sale paid.
+- **Payout** is what the refund takes off the closed line's payout: the line's payout worked out again, at the share the closed month applied and rounded down as before, over what is left of its sales, less what it was. A share changed since the close, or an Author credited since, changes nothing about it. The closed line and its adjustments together pay what the line would have paid had the refunds come before the close, so nothing once every sale on it is refunded.
 
 Each part of a refund is taken off once. A purchase refunded in part after one close and in full after the next is taken off in two adjustments, the second for what the first did not cover, and the statements together pay nothing for it.
 

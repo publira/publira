@@ -1991,9 +1991,13 @@ type Querier interface {
 	// were counted, at the share that line applied and under the names it was
 	// closed with. A credit added or edited since that close changes nothing
 	// here. A sale in another currency than the one asked for was never counted
-	// by a statement in it. The payout is the same expression as a line of sales,
-	// over changes that are negative, and a statement lists these after the
-	// month's own lines, oldest adjusted month first.
+	// by a statement in it.
+	//
+	// The payout is what the refunds take off the adjusted line's payout: the
+	// line's net after them times its share, floored as the line was, less the
+	// same over its net before them, which is the line's own net and every
+	// adjustment it has had since. A statement lists these after the month's own
+	// lines, oldest adjusted month first.
 	ListRoyaltyAdjustmentLinesForPeriod(ctx context.Context, arg ListRoyaltyAdjustmentLinesForPeriodParams) ([]ListRoyaltyAdjustmentLinesForPeriodRow, error)
 	// Computes the lines of one tenant month: every credit on an episode sold in
 	// the month, with the month's sales of that episode. It is what a close

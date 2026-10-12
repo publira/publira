@@ -537,9 +537,12 @@ type RoyaltyStatementLine struct {
 	RefundedAmount int64  `protobuf:"varint,12,opt,name=refunded_amount,json=refundedAmount,proto3" json:"refunded_amount,omitempty"`
 	// The credit's share in basis points (10000 is all of it), as applied.
 	ShareBps int32 `protobuf:"varint,13,opt,name=share_bps,json=shareBps,proto3" json:"share_bps,omitempty"`
-	// (gross_amount - refunded_amount) * share_bps / 10000, rounded toward zero
-	// to the minor unit of the statement's currency: floored on a line of
-	// sales, and on an adjustment never more than the refunded sales paid.
+	// On a line of sales, (gross_amount - refunded_amount) * share_bps / 10000,
+	// floored to the minor unit of the statement's currency. On an adjustment,
+	// what its refunds take off the payout of the line it adjusts: that line's
+	// payout worked out the same way over its net after them, less the same
+	// over its net before them. A line and its adjustments therefore pay
+	// nothing once every sale in the line is refunded.
 	PayoutAmount int64 `protobuf:"varint,14,opt,name=payout_amount,json=payoutAmount,proto3" json:"payout_amount,omitempty"`
 	// YYYY-MM of the closed month an adjustment line adjusts. Empty for a line
 	// of the month's own sales.

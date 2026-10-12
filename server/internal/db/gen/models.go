@@ -804,6 +804,7 @@ type RoyaltyStatementLine struct {
 	ShareBps            int32          `json:"share_bps"`
 	PayoutAmount        int64          `json:"payout_amount"`
 	AdjustedStatementID uuid.NullUUID  `json:"adjusted_statement_id"`
+	AdjustedLineNumber  sql.NullInt32  `json:"adjusted_line_number"`
 }
 
 type RoyaltyStatementPurchase struct {

@@ -198,6 +198,40 @@ func TestDBAdminRefundAfterCloseKeepsTheShareTheClosedMonthApplied(t *testing.T)
 	}
 }
 
+// Refunds of the sales of one line, carried in different months, take back
+// what the line paid in full, however its payout was rounded: two sales of 101
+// at half pay 101 together and one alone pays 50, so the first refund takes
+// back 51 and the second the 50 left, where rounding each refund on its own
+// would take back 50 twice and leave 1 paid for two refunded sales.
+func TestDBAdminRefundsOfOneLineSpreadOverMonthsTakeBackAllItPaid(t *testing.T) {
+	env := newAdminDBEnv(t)
+	f := env.seedRoyaltyFixture(t, "RYR")
+	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYRCREATOR01", Name: "Creator"})
+	env.creditEpisode(t, f.admin.Tenant.ID, f.episode.ID, creator.ID, "Artist", "series", 5000)
+	credit := [3]string{"Creator", "Artist", "Episode 1"}
+
+	first := env.seedSale(t, f, f.episode.ID, royaltySale{price: 101, purchasedAt: inRoyaltyZone(2026, time.January, 10, 12, 0, 0)})
+	second := env.seedSale(t, f, f.episode.ID, royaltySale{price: 101, purchasedAt: inRoyaltyZone(2026, time.January, 11, 12, 0, 0)})
+	january := env.closeRoyalties(t, f.admin, "2026-01")
+	assertRoyaltyTotals(t, "January", january.Totals, 202, 0, 0, 101)
+
+	env.refundSale(t, first, 101)
+	february := env.closeRoyalties(t, f.admin, "2026-02")
+	assertRoyaltyLines(t, "February", env.getRoyalties(t, f.admin, &publiraadminv1.GetRoyaltyStatementRequest{Period: "2026-02"}).Lines, []expectedRoyaltyLine{
+		{credit, adjustedLineFigures{"2026-01", royaltyLineFigures{saleCount: -1, gross: -101, shareBps: 5000, payout: -51}}},
+	})
+
+	env.refundSale(t, second, 101)
+	march := env.closeRoyalties(t, f.admin, "2026-03")
+	assertRoyaltyLines(t, "March", env.getRoyalties(t, f.admin, &publiraadminv1.GetRoyaltyStatementRequest{Period: "2026-03"}).Lines, []expectedRoyaltyLine{
+		{credit, adjustedLineFigures{"2026-01", royaltyLineFigures{saleCount: -1, gross: -101, shareBps: 5000, payout: -50}}},
+	})
+
+	if paid := january.Totals.Payout + february.Totals.Payout + march.Totals.Payout; paid != 0 {
+		t.Fatalf("two refunded sales pay %d over three statements, want 0", paid)
+	}
+}
+
 // A month closed before an earlier one carries none of that earlier month's
 // refunds, and the earlier month, closed afterwards, counts its own refunds as
 // they stand. Only the next statement of a later month carries what was

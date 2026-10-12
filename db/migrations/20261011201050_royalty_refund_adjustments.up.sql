@@ -78,27 +78,52 @@ WHERE p.refunded_at IS NULL
     AND p.currency = rs.currency;
 
 -- COLUMN: royalty_statement_lines adjusted_statement_id
--- NULL for a line of the month's own sales. Otherwise the line is an
--- adjustment: it carries the refunds recorded since that earlier statement was
--- closed on the sales one of its lines counted, under that line's creator,
--- episode, role, names, and share. Its figures are changes, so they are zero or
--- negative where a line of sales has them positive: sale_count is minus the
+-- COLUMN: royalty_statement_lines adjusted_line_number
+-- Both NULL for a line of the month's own sales. Otherwise the line is an
+-- adjustment of that line of an earlier statement: it carries the refunds
+-- recorded since on the sales the line counted, under the line's creator,
+-- episode, role, names, and share. Its figures are changes, so they are zero
+-- or negative where a line of sales has them positive: sale_count is minus the
 -- sales refunded in full, gross_amount minus their price, and refunded_amount
--- the change in what is refunded of the sales counted. The payout is the same
--- expression over them, which rounds toward zero, so an adjustment never takes
--- back more than the refunded sales paid.
+-- the change in what is refunded of the sales counted.
+--
+-- Its payout is what the refunds take off the adjusted line: that line's
+-- payout recomputed, floored the same way, over its net after them, less the
+-- same over its net before them, its earlier adjustments included. The line
+-- and its adjustments therefore always add up to what the line would pay had
+-- the refunds come before its close, which is nothing once every sale in it is
+-- refunded, however the refunds were spread over later months. That is why an
+-- adjustment's payout cannot be recomputed from the adjustment alone, as a
+-- line of sales can.
 ALTER TABLE ONLY royalty_statement_lines
-    ADD COLUMN adjusted_statement_id uuid;
+    ADD COLUMN adjusted_statement_id uuid,
+    ADD COLUMN adjusted_line_number integer;
 
--- FK CONSTRAINT: royalty_statement_lines royalty_statement_lines_tenant_adjusted_statement_id_fkey
+-- CONSTRAINT: royalty_statement_lines royalty_statement_lines_tenant_id_statement_id_line_number_key
+-- The target of an adjustment's reference, which names the tenant as every
+-- reference to a tenant-scoped row does.
 ALTER TABLE ONLY royalty_statement_lines
-    ADD CONSTRAINT royalty_statement_lines_tenant_adjusted_statement_id_fkey FOREIGN KEY (tenant_id, adjusted_statement_id) REFERENCES royalty_statements(tenant_id, id);
+    ADD CONSTRAINT royalty_statement_lines_tenant_id_statement_id_line_number_key UNIQUE (tenant_id, statement_id, line_number);
+
+-- FK CONSTRAINT: royalty_statement_lines royalty_statement_lines_tenant_adjusted_line_fkey
+ALTER TABLE ONLY royalty_statement_lines
+    ADD CONSTRAINT royalty_statement_lines_tenant_adjusted_line_fkey FOREIGN KEY (tenant_id, adjusted_statement_id, adjusted_line_number) REFERENCES royalty_statement_lines(tenant_id, statement_id, line_number);
+
+-- INDEX: idx_royalty_statement_lines_adjusted_line
+-- Finds the adjustments a line has had, which the next one is computed from.
+CREATE INDEX idx_royalty_statement_lines_adjusted_line ON royalty_statement_lines USING btree (tenant_id, adjusted_statement_id, adjusted_line_number) WHERE (adjusted_statement_id IS NOT NULL);
 
 -- CONSTRAINT: royalty_statement_lines royalty_statement_lines_amounts_check
 ALTER TABLE ONLY royalty_statement_lines
     DROP CONSTRAINT royalty_statement_lines_amounts_check;
 ALTER TABLE ONLY royalty_statement_lines
-    ADD CONSTRAINT royalty_statement_lines_amounts_check CHECK ((((adjusted_statement_id IS NULL) AND (sale_count > 0) AND (refunded_amount >= 0) AND (gross_amount >= refunded_amount)) OR ((adjusted_statement_id IS NOT NULL) AND (sale_count <= 0) AND (gross_amount <= 0) AND (gross_amount < refunded_amount))));
+    ADD CONSTRAINT royalty_statement_lines_amounts_check CHECK ((((adjusted_statement_id IS NULL) AND (adjusted_line_number IS NULL) AND (sale_count > 0) AND (refunded_amount >= 0) AND (gross_amount >= refunded_amount)) OR ((adjusted_statement_id IS NOT NULL) AND (adjusted_line_number IS NOT NULL) AND (sale_count <= 0) AND (gross_amount <= 0) AND (gross_amount < refunded_amount))));
+
+-- CONSTRAINT: royalty_statement_lines royalty_statement_lines_payout_check
+ALTER TABLE ONLY royalty_statement_lines
+    DROP CONSTRAINT royalty_statement_lines_payout_check;
+ALTER TABLE ONLY royalty_statement_lines
+    ADD CONSTRAINT royalty_statement_lines_payout_check CHECK ((((adjusted_statement_id IS NULL) AND (payout_amount = (((gross_amount - refunded_amount) * share_bps) / 10000))) OR ((adjusted_statement_id IS NOT NULL) AND (payout_amount <= 0))));
 
 -- COLUMN: royalty_statements total_adjustment
 -- The net sales of earlier statements that the statement's adjustment lines

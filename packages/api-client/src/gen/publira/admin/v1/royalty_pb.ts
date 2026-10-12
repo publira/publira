@@ -324,9 +324,12 @@ export type RoyaltyStatementLine = Message<"publira.admin.v1.RoyaltyStatementLin
   shareBps: number;
 
   /**
-   * (gross_amount - refunded_amount) * share_bps / 10000, rounded toward zero
-   * to the minor unit of the statement's currency: floored on a line of
-   * sales, and on an adjustment never more than the refunded sales paid.
+   * On a line of sales, (gross_amount - refunded_amount) * share_bps / 10000,
+   * floored to the minor unit of the statement's currency. On an adjustment,
+   * what its refunds take off the payout of the line it adjusts: that line's
+   * payout worked out the same way over its net after them, less the same
+   * over its net before them. A line and its adjustments therefore pay
+   * nothing once every sale in the line is refunded.
    *
    * @generated from field: int64 payout_amount = 14;
    */
