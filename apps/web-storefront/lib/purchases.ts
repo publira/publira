@@ -14,6 +14,7 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import { applyCacheTag, tenantPurchasesTag } from "./cache-tags";
 import { getMessagesFor } from "./messages";
 
 const defaultPurchasePageSize = 20;
@@ -99,13 +100,23 @@ const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
   },
 });
 
-/** A private, paged list of the signed-in reader's purchases. */
+/**
+ * A private, paged list of the signed-in reader's purchases.
+ *
+ * Nothing in this app writes what it lists, so no Action clears
+ * {@link tenantPurchasesTag}: the checkout Action only hands the reader to the
+ * payment provider, and the purchase is recorded when the provider's
+ * notification reaches the API. A new purchase shows in the library once the
+ * private entry goes stale, or on a reload.
+ */
 const readPurchaseList = async (
   tenantId: string,
   input: ListPurchasesInput,
   sessionId: string
 ): Promise<CachedListPurchasesResult> => {
   "use cache: private";
+
+  applyCacheTag(tenantPurchasesTag(tenantId));
 
   const { locale } = input;
   const t = await getMessagesFor(locale);

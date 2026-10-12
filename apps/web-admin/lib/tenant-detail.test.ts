@@ -1,14 +1,17 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCacheLife, mockGetSessionId, mockGetTenant } = vi.hoisted(() => ({
-  mockCacheLife: vi.fn(),
-  mockGetSessionId: vi.fn(),
-  mockGetTenant: vi.fn(),
-}));
+const { mockCacheLife, mockCacheTag, mockGetSessionId, mockGetTenant } =
+  vi.hoisted(() => ({
+    mockCacheLife: vi.fn(),
+    mockCacheTag: vi.fn(),
+    mockGetSessionId: vi.fn(),
+    mockGetTenant: vi.fn(),
+  }));
 
 vi.mock("next/cache", () => ({
   cacheLife: mockCacheLife,
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./session", () => ({
@@ -62,6 +65,34 @@ describe("tenant-detail", () => {
       }
     );
     expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("files the tenant under the tenant detail tag", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      tenant: {
+        adminDomain: "admin.example.com",
+        domain: "example.com",
+        name: "Acme Publishing",
+        publicId: "tenant_admin_001",
+      },
+    });
+
+    const { getTenantForSession, tenantDetailCacheTag } =
+      await import("./tenant-detail");
+
+    await getTenantForSession(" tenant_admin_001 ");
+
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      tenantDetailCacheTag("tenant_admin_001")
+    );
+  });
+
+  it("tenantDetailCacheTag normalizes the tenant id", async () => {
+    const { tenantDetailCacheTag } = await import("./tenant-detail");
+
+    expect(tenantDetailCacheTag("  tenant_admin_001 ")).toBe(
+      "tenant:tenant_admin_001:detail"
+    );
   });
 
   it("fails without asking for a fresh login when the tenant name is empty", async () => {

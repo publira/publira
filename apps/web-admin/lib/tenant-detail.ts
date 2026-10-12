@@ -3,6 +3,7 @@ import {
   isUnauthenticatedRpcError,
 } from "@publira/api-client/errors";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
@@ -26,6 +27,17 @@ export type GetTenantForSessionResult =
   | { ok: true; tenant: TenantDetail }
   | { ok: false; requiresSignIn: boolean };
 
+/**
+ * Tag the private read of the tenant behind the console chrome carries.
+ *
+ * Nothing in this console clears it: the name and the domains it reports are
+ * set from the platform console, which runs in another app and cannot reach
+ * this one's cache, so a change there shows here once the private entry goes
+ * stale. The tag is what lets an Action clear it once one writes them.
+ */
+export const tenantDetailCacheTag = (tenantId: string): string =>
+  `tenant:${tenantId.trim()}:detail`;
+
 const readTenantForSession = async (
   tenantId: string,
   sessionId: string
@@ -37,6 +49,8 @@ const readTenantForSession = async (
     dropFailedCacheEntry();
     return { ok: false, requiresSignIn: !sessionId };
   }
+
+  cacheTag(tenantDetailCacheTag(normalizedTenantId));
 
   try {
     const response = await apiClient.auth.getTenant(

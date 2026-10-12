@@ -94,6 +94,13 @@ export const tenantEpisodeRatingsTag = (tenantId: string) =>
 export const tenantReaderAccessTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:reader-access`;
 
+/**
+ * The private read of the signed-in reader's purchases, which the library
+ * lists. `readPurchaseList` says why no Action clears it.
+ */
+export const tenantPurchasesTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:purchases`;
+
 export const tenantAnnouncementsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:announcements`;
 
