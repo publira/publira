@@ -508,17 +508,18 @@ type PageTranslation struct {
 }
 
 type PageVersion struct {
-	ID              uuid.UUID     `json:"id"`
-	PageID          uuid.UUID     `json:"page_id"`
-	VersionNumber   int32         `json:"version_number"`
-	ContentMarkdown string        `json:"content_markdown"`
-	AuthorUserID    uuid.NullUUID `json:"author_user_id"`
-	Status          string        `json:"status"`
-	PublishAt       sql.NullTime  `json:"publish_at"`
-	CreatedAt       time.Time     `json:"created_at"`
-	PublishedAt     sql.NullTime  `json:"published_at"`
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	TranslationID   uuid.UUID     `json:"translation_id"`
+	ID                  uuid.UUID     `json:"id"`
+	PageID              uuid.UUID     `json:"page_id"`
+	VersionNumber       int32         `json:"version_number"`
+	ContentMarkdown     string        `json:"content_markdown"`
+	AuthorUserID        uuid.NullUUID `json:"author_user_id"`
+	Status              string        `json:"status"`
+	PublishAt           sql.NullTime  `json:"publish_at"`
+	CreatedAt           time.Time     `json:"created_at"`
+	PublishedAt         sql.NullTime  `json:"published_at"`
+	TenantID            uuid.UUID     `json:"tenant_id"`
+	TranslationID       uuid.UUID     `json:"translation_id"`
+	AgreementRequiredAt sql.NullTime  `json:"agreement_required_at"`
 }
 
 type PlatformAuditLog struct {
@@ -595,6 +596,8 @@ type PlatformPolicyConfig struct {
 	LoginSourceLimitPerHour              int32     `json:"login_source_limit_per_hour"`
 	LoginSourceLimitPerDay               int32     `json:"login_source_limit_per_day"`
 	MfaRequiredForPlatformOperator       bool      `json:"mfa_required_for_platform_operator"`
+	LegalPageAgreementLimitPerMinute     int32     `json:"legal_page_agreement_limit_per_minute"`
+	LegalPageAgreementLimitPerDay        int32     `json:"legal_page_agreement_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {

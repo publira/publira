@@ -91,6 +91,12 @@ const (
 	// AuthServiceMarkAllAnnouncementsAsReadProcedure is the procedure name of the AuthService's
 	// MarkAllAnnouncementsAsRead RPC.
 	AuthServiceMarkAllAnnouncementsAsReadProcedure = "/publira.v1.AuthService/MarkAllAnnouncementsAsRead"
+	// AuthServiceGetMyLegalPageAgreementsProcedure is the procedure name of the AuthService's
+	// GetMyLegalPageAgreements RPC.
+	AuthServiceGetMyLegalPageAgreementsProcedure = "/publira.v1.AuthService/GetMyLegalPageAgreements"
+	// AuthServiceAgreeToLegalPagesProcedure is the procedure name of the AuthService's
+	// AgreeToLegalPages RPC.
+	AuthServiceAgreeToLegalPagesProcedure = "/publira.v1.AuthService/AgreeToLegalPages"
 )
 
 var (
@@ -269,6 +275,20 @@ var (
 			Procedure:  AuthServiceMarkAllAnnouncementsAsReadProcedure,
 		}
 	})
+	authServiceGetMyLegalPageAgreementsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("GetMyLegalPageAgreements"),
+			Procedure:  AuthServiceGetMyLegalPageAgreementsProcedure,
+		}
+	})
+	authServiceAgreeToLegalPagesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("AgreeToLegalPages"),
+			Procedure:  AuthServiceAgreeToLegalPagesProcedure,
+		}
+	})
 )
 
 // AuthServiceClient is a client for the publira.v1.AuthService service.
@@ -301,6 +321,18 @@ type AuthServiceClient interface {
 	ListAnnouncements(context.Context, *v1.ListAnnouncementsRequest) (*v1.ListAnnouncementsResponse, error)
 	MarkAnnouncementAsRead(context.Context, *v1.MarkAnnouncementAsReadRequest) (*v1.MarkAnnouncementAsReadResponse, error)
 	MarkAllAnnouncementsAsRead(context.Context, *v1.MarkAllAnnouncementsAsReadRequest) (*v1.MarkAllAnnouncementsAsReadResponse, error)
+	// Which of the tenant's terms of service and privacy policy the signed-in
+	// reader has still to agree to.
+	//
+	// A reader who owes an agreement may still read — the catalog, the episodes
+	// they own, and their own account, library, and history — finish a store
+	// purchase already paid for, sign out, and delete their account. Every other
+	// RPC that requires a session refuses them with failed_precondition and the
+	// ErrorInfo reason LEGAL_PAGE_AGREEMENT_REQUIRED, which is the one answer a
+	// client has to recognize to send them to agree.
+	GetMyLegalPageAgreements(context.Context, *v1.GetMyLegalPageAgreementsRequest) (*v1.GetMyLegalPageAgreementsResponse, error)
+	// Records the signed-in reader's agreement to the versions they were shown.
+	AgreeToLegalPages(context.Context, *v1.AgreeToLegalPagesRequest) (*v1.AgreeToLegalPagesResponse, error)
 }
 
 // NewAuthServiceClient constructs a client for the publira.v1.AuthService service. Multiple service
@@ -339,6 +371,18 @@ type AuthServiceHandler interface {
 	ListAnnouncements(context.Context, *v1.ListAnnouncementsRequest) (*v1.ListAnnouncementsResponse, error)
 	MarkAnnouncementAsRead(context.Context, *v1.MarkAnnouncementAsReadRequest) (*v1.MarkAnnouncementAsReadResponse, error)
 	MarkAllAnnouncementsAsRead(context.Context, *v1.MarkAllAnnouncementsAsReadRequest) (*v1.MarkAllAnnouncementsAsReadResponse, error)
+	// Which of the tenant's terms of service and privacy policy the signed-in
+	// reader has still to agree to.
+	//
+	// A reader who owes an agreement may still read — the catalog, the episodes
+	// they own, and their own account, library, and history — finish a store
+	// purchase already paid for, sign out, and delete their account. Every other
+	// RPC that requires a session refuses them with failed_precondition and the
+	// ErrorInfo reason LEGAL_PAGE_AGREEMENT_REQUIRED, which is the one answer a
+	// client has to recognize to send them to agree.
+	GetMyLegalPageAgreements(context.Context, *v1.GetMyLegalPageAgreementsRequest) (*v1.GetMyLegalPageAgreementsResponse, error)
+	// Records the signed-in reader's agreement to the versions they were shown.
+	AgreeToLegalPages(context.Context, *v1.AgreeToLegalPagesRequest) (*v1.AgreeToLegalPagesResponse, error)
 }
 
 // RegisterAuthServiceHandler registers svc as the publira.v1.AuthService implementation on server.
@@ -370,6 +414,8 @@ func RegisterAuthServiceHandler(server *connect.Server, svc AuthServiceHandler) 
 		connect.Method{Spec: authServiceListAnnouncementsSpec(), Handler: adapter.listAnnouncements},
 		connect.Method{Spec: authServiceMarkAnnouncementAsReadSpec(), Handler: adapter.markAnnouncementAsRead},
 		connect.Method{Spec: authServiceMarkAllAnnouncementsAsReadSpec(), Handler: adapter.markAllAnnouncementsAsRead},
+		connect.Method{Spec: authServiceGetMyLegalPageAgreementsSpec(), Handler: adapter.getMyLegalPageAgreements},
+		connect.Method{Spec: authServiceAgreeToLegalPagesSpec(), Handler: adapter.agreeToLegalPages},
 	)
 }
 
@@ -474,6 +520,14 @@ func (UnimplementedAuthServiceHandler) MarkAnnouncementAsRead(context.Context, *
 
 func (UnimplementedAuthServiceHandler) MarkAllAnnouncementsAsRead(context.Context, *v1.MarkAllAnnouncementsAsReadRequest) (*v1.MarkAllAnnouncementsAsReadResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.MarkAllAnnouncementsAsRead is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) GetMyLegalPageAgreements(context.Context, *v1.GetMyLegalPageAgreementsRequest) (*v1.GetMyLegalPageAgreementsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.GetMyLegalPageAgreements is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) AgreeToLegalPages(context.Context, *v1.AgreeToLegalPagesRequest) (*v1.AgreeToLegalPagesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.AgreeToLegalPages is not implemented")
 }
 
 type authServiceClient struct {
@@ -675,6 +729,22 @@ func (c *authServiceClient) MarkAnnouncementAsRead(ctx context.Context, req *v1.
 func (c *authServiceClient) MarkAllAnnouncementsAsRead(ctx context.Context, req *v1.MarkAllAnnouncementsAsReadRequest) (*v1.MarkAllAnnouncementsAsReadResponse, error) {
 	var res v1.MarkAllAnnouncementsAsReadResponse
 	if err := c.client.CallUnary(ctx, authServiceMarkAllAnnouncementsAsReadSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) GetMyLegalPageAgreements(ctx context.Context, req *v1.GetMyLegalPageAgreementsRequest) (*v1.GetMyLegalPageAgreementsResponse, error) {
+	var res v1.GetMyLegalPageAgreementsResponse
+	if err := c.client.CallUnary(ctx, authServiceGetMyLegalPageAgreementsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) AgreeToLegalPages(ctx context.Context, req *v1.AgreeToLegalPagesRequest) (*v1.AgreeToLegalPagesResponse, error) {
+	var res v1.AgreeToLegalPagesResponse
+	if err := c.client.CallUnary(ctx, authServiceAgreeToLegalPagesSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -976,6 +1046,30 @@ func (h authServiceHandler) markAllAnnouncementsAsRead(ctx context.Context, _ co
 		return err
 	}
 	res, err := h.svc.MarkAllAnnouncementsAsRead(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) getMyLegalPageAgreements(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetMyLegalPageAgreementsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetMyLegalPageAgreements(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) agreeToLegalPages(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AgreeToLegalPagesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.AgreeToLegalPages(ctx, &req)
 	if err != nil {
 		return err
 	}

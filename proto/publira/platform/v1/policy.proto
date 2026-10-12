@@ -100,6 +100,12 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   optional bool mfa_required_for_platform_operator = 11;
+  // How often one reader may ask AuthService.AgreeToLegalPages to record an
+  // agreement to the tenant's terms of service or privacy policy.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  MinuteDayLimit legal_page_agreement = 12;
 }
 
 message GetPlatformPolicyRequest {}

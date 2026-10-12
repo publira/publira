@@ -126,6 +126,7 @@ func openPolicy() platformpolicy.Policy {
 	policy.Community.ViewerPreferencesUpdate = open
 	policy.StorePurchaseConfirmation = open
 	policy.WaitFreeTicketUse = open
+	policy.LegalPageAgreement = open
 	return policy
 }
 

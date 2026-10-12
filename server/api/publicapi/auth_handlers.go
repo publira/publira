@@ -153,6 +153,9 @@ func (s *apiServer) currentUserFromSession(
 	if err != nil {
 		return dbmodels.Tenant{}, dbmodels.User{}, "", err
 	}
+	if err := s.requireLegalPageAgreement(ctx, authCtx.Tenant, authCtx.User); err != nil {
+		return dbmodels.Tenant{}, dbmodels.User{}, "", err
+	}
 	return authCtx.Tenant, authCtx.User, authCtx.Role, nil
 }
 

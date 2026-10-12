@@ -38,6 +38,7 @@ func TestRegisterPushDeviceStoresTheTokenForTheSignedInReader(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
+	expectLegalPagesAgreed(mock, tenantID, userID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertUserPushDevice)).
 		WithArgs(tenantID, userID, "device-token", "android", sql.NullString{}, sql.NullString{}, sql.NullString{}).
@@ -64,6 +65,7 @@ func TestRegisterWebPushDeviceRequiresVAPIDConfiguration(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	client, mock := newNotificationClient(t, tenantID, userID, time.Now().UTC())
+	expectLegalPagesAgreed(mock, tenantID, userID)
 	expectPublishedWebPushPublicKey(mock, "")
 
 	_, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.RegisterPushDeviceRequest{
@@ -88,6 +90,7 @@ func TestRegisterWebPushDeviceStoresSubscription(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
+	expectLegalPagesAgreed(mock, tenantID, userID)
 	expectPublishedWebPushPublicKey(mock, publicKey)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertUserPushDevice)).
@@ -138,6 +141,7 @@ func TestRegisterPushDeviceRejectsAnUnusableRequest(t *testing.T) {
 			userID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			client, mock := newNotificationClient(t, tenantID, userID, now)
+			expectLegalPagesAgreed(mock, tenantID, userID)
 
 			_, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.RegisterPushDeviceRequest{
 				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},

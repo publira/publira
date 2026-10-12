@@ -26,6 +26,10 @@ const (
 	ReasonArchiveInvalidPath      = "ARCHIVE_INVALID_PATH"
 	ReasonCreatorRoleInUse        = "CREATOR_ROLE_IN_USE"
 	ReasonInvitationCanceled      = "INVITATION_CANCELED"
+	// ReasonLegalPageAgreementRequired refuses a signed-in reader who has not
+	// agreed to a version of the tenant's terms of service or privacy policy
+	// that the tenant has asked every reader to agree to.
+	ReasonLegalPageAgreementRequired = "LEGAL_PAGE_AGREEMENT_REQUIRED"
 	// ReasonLastTenantAdmin refuses removing, demoting, suspending, or deleting
 	// the tenant's last active tenant_admin.
 	ReasonLastTenantAdmin = "LAST_TENANT_ADMIN"

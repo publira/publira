@@ -709,13 +709,21 @@ func (x *ListVersionsResponse) GetVersions() []*v1.PageVersion {
 }
 
 type PublishVersionRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PageId        string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
-	VersionId     string                 `protobuf:"bytes,3,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
-	Locale        string                 `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Tenant    *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PageId    string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
+	VersionId string                 `protobuf:"bytes,3,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	Locale    string                 `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	// Asks every reader to agree to the page again: until they agree to this
+	// version, or to one published after it in the same translation, the public
+	// API reports them as owing an agreement and refuses most of what they do.
+	// Left false, the version is a correction, and readers who agreed to an
+	// earlier one are not asked. Only a tenant_admin may set it
+	// (permission_denied otherwise), and only on the page the tenant names as its
+	// terms of service or its privacy policy (failed_precondition otherwise).
+	RequireAgreement bool `protobuf:"varint,5,opt,name=require_agreement,json=requireAgreement,proto3" json:"require_agreement,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *PublishVersionRequest) Reset() {
@@ -774,6 +782,13 @@ func (x *PublishVersionRequest) GetLocale() string {
 		return x.Locale
 	}
 	return ""
+}
+
+func (x *PublishVersionRequest) GetRequireAgreement() bool {
+	if x != nil {
+		return x.RequireAgreement
+	}
+	return false
 }
 
 type PublishVersionResponse struct {
@@ -1391,13 +1406,14 @@ const file_publira_admin_v1_page_proto_rawDesc = "" +
 	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x16\n" +
 	"\x06locale\x18\x03 \x01(\tR\x06locale\"Q\n" +
 	"\x14ListVersionsResponse\x129\n" +
-	"\bversions\x18\x01 \x03(\v2\x1d.publira.types.v1.PageVersionR\bversions\"\xa0\x01\n" +
+	"\bversions\x18\x01 \x03(\v2\x1d.publira.types.v1.PageVersionR\bversions\"\xcd\x01\n" +
 	"\x15PublishVersionRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
 	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\x03 \x01(\tR\tversionId\x12\x16\n" +
-	"\x06locale\x18\x04 \x01(\tR\x06locale\"Q\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\x12+\n" +
+	"\x11require_agreement\x18\x05 \x01(\bR\x10requireAgreement\"Q\n" +
 	"\x16PublishVersionResponse\x127\n" +
 	"\aversion\x18\x01 \x01(\v2\x1d.publira.types.v1.PageVersionR\aversion\"\x80\x01\n" +
 	"\x14UnpublishPageRequest\x127\n" +

@@ -27,7 +27,8 @@ message TenantLegalPage {
   // The title of the translation read.
   string title = 2;
   // The published version of the translation read, which a sign-up sends back
-  // in CreateUserRequest.agreed_page_version_ids.
+  // in CreateUserRequest.agreed_page_version_ids, and an existing reader in
+  // AuthService.AgreeToLegalPages.
   string version_id = 3;
   // The locale of the translation read, which differs from the one asked for
   // when the page has no published translation in it.

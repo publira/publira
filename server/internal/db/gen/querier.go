@@ -316,6 +316,9 @@ type Querier interface {
 	CreateUserEmailVerificationToken(ctx context.Context, arg CreateUserEmailVerificationTokenParams) (UserEmailVerificationToken, error)
 	CreateUserIdentity(ctx context.Context, arg CreateUserIdentityParams) (UserIdentity, error)
 	CreateUserMfaRecoveryCode(ctx context.Context, arg CreateUserMfaRecoveryCodeParams) error
+	// Agreeing to a version the reader has already agreed to keeps the first
+	// agreement, so a client that sends its agreement twice is answered the same
+	// way both times.
 	CreateUserPageConsent(ctx context.Context, arg CreateUserPageConsentParams) error
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
 	// The grant a spent ticket opens. It is an access_tickets row so every read
@@ -705,6 +708,12 @@ type Querier interface {
 	// configured, so the key is never offered before a push could be signed.
 	GetPublishedWebPushPublicKey(ctx context.Context) (string, error)
 	GetPurchasableEpisodeForTenant(ctx context.Context, arg GetPurchasableEpisodeForTenantParams) (GetPurchasableEpisodeForTenantRow, error)
+	// Whether the reader has agreed to each page the tenant names as its terms of
+	// service and its privacy policy, as far as reader_has_agreed_to_page asks. A
+	// role with no page, or whose page is not published, is agreed to: there is
+	// nothing a reader could be shown to agree to. No row where the tenant has no
+	// config.
+	GetReaderLegalPageAgreements(ctx context.Context, arg GetReaderLegalPageAgreementsParams) (GetReaderLegalPageAgreementsRow, error)
 	// Reader reports on episode comments, and the open-report counter they keep on
 	// the comment they are about.
 	//
@@ -2532,6 +2541,9 @@ type Querier interface {
 	// published_at included, so it counts no row, as an id naming no episode does;
 	// the count is what tells the caller its followers have news.
 	PublishEpisodeNowByIDForTenant(ctx context.Context, arg PublishEpisodeNowByIDForTenantParams) (int64, error)
+	// require_agreement asks every reader to agree to the page again from this
+	// publication on; without it the version keeps whatever request an earlier
+	// publication of it made, which is already older than this one.
 	PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error)
 	// The end of the retention window for a comment its author deleted. The inner
 	// select bounds one chunk, so a tenant with a long backlog is drained over

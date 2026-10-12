@@ -131,7 +131,8 @@ type TenantLegalPage struct {
 	// The title of the translation read.
 	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	// The published version of the translation read, which a sign-up sends back
-	// in CreateUserRequest.agreed_page_version_ids.
+	// in CreateUserRequest.agreed_page_version_ids, and an existing reader in
+	// AuthService.AgreeToLegalPages.
 	VersionId string `protobuf:"bytes,3,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
 	// The locale of the translation read, which differs from the one asked for
 	// when the page has no published translation in it.

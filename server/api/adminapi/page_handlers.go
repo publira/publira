@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
@@ -178,6 +179,9 @@ func pageVersionFromModel(v dbmodels.PageVersion) *publirattypesv1.PageVersion {
 	}
 	if v.PublishedAt.Valid {
 		proto.PublishedAt = v.PublishedAt.Time.UTC().Format("2006-01-02T15:04:05Z07:00")
+	}
+	if v.AgreementRequiredAt.Valid {
+		proto.AgreementRequiredAt = v.AgreementRequiredAt.Time.UTC().Format("2006-01-02T15:04:05Z07:00")
 	}
 	return proto
 }
@@ -637,11 +641,17 @@ func (s *adminServer) PublishVersion(
 	if err != nil {
 		return nil, err
 	}
+	if req.RequireAgreement {
+		if err := s.checkAgreementRequest(ctx, sessionCtx, tenant, pageID); err != nil {
+			return nil, err
+		}
+	}
 	var version dbmodels.PageVersion
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
 		published, err := s.queriesFor(txCtx).PublishPageVersion(txCtx, dbmodels.PublishPageVersionParams{
-			ID:            versionID,
-			TranslationID: page.PageTranslation.ID,
+			ID:               versionID,
+			TranslationID:    page.PageTranslation.ID,
+			RequireAgreement: req.RequireAgreement,
 		})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -662,6 +672,13 @@ func (s *adminServer) PublishVersion(
 	}); err != nil {
 		return nil, err
 	}
+	// The reason marks the publications that asked every reader to agree
+	// again, which is what an administrator reading the log afterwards needs
+	// to tell apart from a correction.
+	reason := ""
+	if req.RequireAgreement {
+		reason = "agreement_required"
+	}
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
@@ -670,11 +687,33 @@ func (s *adminServer) PublishVersion(
 		TargetType:  "page_version",
 		TargetID:    version.ID.String(),
 		Outcome:     auditlog.OutcomeSuccess,
+		Reason:      reason,
 		ClientIP:    clientip.FromContext(ctx),
 	})
 	return &publiraadminv1.PublishVersionResponse{
 		Version: pageVersionFromModel(version),
 	}, nil
+}
+
+// checkAgreementRequest refuses a publication that asks readers to agree again
+// when the caller or the page cannot ask it. The RPC stays at tenant_editor,
+// since publishing is an editor's work, but asking every reader of the tenant
+// to agree before they may go on changes how the whole tenant behaves, which
+// is a tenant_admin's decision. And readers are only ever asked to agree to the
+// pages the tenant names as its terms and its privacy policy, so a request on
+// any other page would be stored and do nothing.
+func (s *adminServer) checkAgreementRequest(ctx context.Context, sessionCtx rpcmiddleware.SessionContext, tenant dbmodels.Tenant, pageID uuid.UUID) error {
+	if sessionCtx.Role != auth.RoleTenantAdmin {
+		return connect.NewError(connect.CodePermissionDenied, "tenant admin role required to ask readers to agree again")
+	}
+	legal, err := s.readTenantLegalPages(ctx, tenant)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to read the tenant legal pages", err, "tenant_id", tenant.ID.String())
+	}
+	if legal.TermsPageID.UUID != pageID && legal.PrivacyPageID.UUID != pageID {
+		return connect.NewError(connect.CodeFailedPrecondition, "readers are asked to agree only to the terms of service and the privacy policy")
+	}
+	return nil
 }
 
 // UnpublishPage takes a page off the public site by clearing its published

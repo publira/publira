@@ -5,6 +5,7 @@ package publira.v1;
 option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1";
 
 import "publira/types/v1/types.proto";
+import "publira/v1/tenant.proto";
 
 message LoginRequest {
   publira.types.v1.TenantContext tenant = 1;
@@ -388,6 +389,45 @@ message MarkAllAnnouncementsAsReadResponse {
   int32 marked_count = 1;
 }
 
+message GetMyLegalPageAgreementsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The reader's locale, read as GetTenantLegalPagesRequest.locale reads it.
+  string locale = 2;
+}
+
+// The pages the signed-in reader has still to agree to, each in the version
+// currently in force for the locale, as GetTenantLegalPages reports it. A role
+// is absent where the reader owes it nothing: the tenant names no published
+// page for it, no publication of that page has asked readers to agree again,
+// or the reader has agreed to a version published since the last one that did
+// in its translation. A response with neither role means the reader may use
+// the site.
+message GetMyLegalPageAgreementsResponse {
+  TenantLegalPage terms_page = 1;
+  TenantLegalPage privacy_page = 2;
+}
+
+message AgreeToLegalPagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The versions the reader agreed to, as GetMyLegalPageAgreements reported
+  // them in TenantLegalPage.version_id. Each has to be a published version of
+  // the page the tenant names as its terms or its privacy policy, and there may
+  // be at most one per page; anything else is invalid_argument. A version the
+  // page has since superseded is recorded, since it is the text the reader was
+  // shown, but it does not settle a request made after it, so the response
+  // reports the page again.
+  repeated string agreed_page_version_ids = 2;
+  // The locale the response reads the pages in, as in
+  // GetMyLegalPageAgreementsRequest.
+  string locale = 3;
+}
+
+// What GetMyLegalPageAgreements answers once the agreement is recorded.
+message AgreeToLegalPagesResponse {
+  TenantLegalPage terms_page = 1;
+  TenantLegalPage privacy_page = 2;
+}
+
 service AuthService {
   rpc Login(LoginRequest) returns (LoginResponse) {}
   rpc LoginWithIdToken(LoginWithIdTokenRequest) returns (LoginWithIdTokenResponse) {}
@@ -417,4 +457,16 @@ service AuthService {
   rpc ListAnnouncements(ListAnnouncementsRequest) returns (ListAnnouncementsResponse) {}
   rpc MarkAnnouncementAsRead(MarkAnnouncementAsReadRequest) returns (MarkAnnouncementAsReadResponse) {}
   rpc MarkAllAnnouncementsAsRead(MarkAllAnnouncementsAsReadRequest) returns (MarkAllAnnouncementsAsReadResponse) {}
+  // Which of the tenant's terms of service and privacy policy the signed-in
+  // reader has still to agree to.
+  //
+  // A reader who owes an agreement may still read — the catalog, the episodes
+  // they own, and their own account, library, and history — finish a store
+  // purchase already paid for, sign out, and delete their account. Every other
+  // RPC that requires a session refuses them with failed_precondition and the
+  // ErrorInfo reason LEGAL_PAGE_AGREEMENT_REQUIRED, which is the one answer a
+  // client has to recognize to send them to agree.
+  rpc GetMyLegalPageAgreements(GetMyLegalPageAgreementsRequest) returns (GetMyLegalPageAgreementsResponse) {}
+  // Records the signed-in reader's agreement to the versions they were shown.
+  rpc AgreeToLegalPages(AgreeToLegalPagesRequest) returns (AgreeToLegalPagesResponse) {}
 }

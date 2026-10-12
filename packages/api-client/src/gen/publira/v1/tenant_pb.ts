@@ -80,7 +80,8 @@ export type TenantLegalPage = Message<"publira.v1.TenantLegalPage"> & {
 
   /**
    * The published version of the translation read, which a sign-up sends back
-   * in CreateUserRequest.agreed_page_version_ids.
+   * in CreateUserRequest.agreed_page_version_ids, and an existing reader in
+   * AuthService.AgreeToLegalPages.
    *
    * @generated from field: string version_id = 3;
    */

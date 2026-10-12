@@ -15,6 +15,7 @@ import (
 const CreateUserPageConsent = `-- name: CreateUserPageConsent :exec
 INSERT INTO user_page_consents (tenant_id, user_id, page_version_id)
 VALUES ($1, $2, $3)
+ON CONFLICT (user_id, page_version_id) DO NOTHING
 `
 
 type CreateUserPageConsentParams struct {
@@ -23,9 +24,50 @@ type CreateUserPageConsentParams struct {
 	PageVersionID uuid.UUID `json:"page_version_id"`
 }
 
+// Agreeing to a version the reader has already agreed to keeps the first
+// agreement, so a client that sends its agreement twice is answered the same
+// way both times.
 func (q *Queries) CreateUserPageConsent(ctx context.Context, arg CreateUserPageConsentParams) error {
 	_, err := q.db.ExecContext(ctx, CreateUserPageConsent, arg.TenantID, arg.UserID, arg.PageVersionID)
 	return err
+}
+
+const GetReaderLegalPageAgreements = `-- name: GetReaderLegalPageAgreements :one
+SELECT (
+        tc.terms_page_id IS NULL
+        OR published_page_translation_for(tc.terms_page_id, t.default_locale) IS NULL
+        OR reader_has_agreed_to_page($1, tc.terms_page_id)
+    )::boolean AS terms_agreed,
+    (
+        tc.privacy_page_id IS NULL
+        OR published_page_translation_for(tc.privacy_page_id, t.default_locale) IS NULL
+        OR reader_has_agreed_to_page($1, tc.privacy_page_id)
+    )::boolean AS privacy_agreed
+FROM tenant_config tc
+    JOIN tenants t ON t.id = tc.tenant_id
+WHERE tc.tenant_id = $2
+`
+
+type GetReaderLegalPageAgreementsParams struct {
+	UserID   uuid.UUID `json:"user_id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+type GetReaderLegalPageAgreementsRow struct {
+	TermsAgreed   bool `json:"terms_agreed"`
+	PrivacyAgreed bool `json:"privacy_agreed"`
+}
+
+// Whether the reader has agreed to each page the tenant names as its terms of
+// service and its privacy policy, as far as reader_has_agreed_to_page asks. A
+// role with no page, or whose page is not published, is agreed to: there is
+// nothing a reader could be shown to agree to. No row where the tenant has no
+// config.
+func (q *Queries) GetReaderLegalPageAgreements(ctx context.Context, arg GetReaderLegalPageAgreementsParams) (GetReaderLegalPageAgreementsRow, error) {
+	row := q.db.QueryRowContext(ctx, GetReaderLegalPageAgreements, arg.UserID, arg.TenantID)
+	var i GetReaderLegalPageAgreementsRow
+	err := row.Scan(&i.TermsAgreed, &i.PrivacyAgreed)
+	return i, err
 }
 
 const ListPublishedPageVersionsByIDsForTenant = `-- name: ListPublishedPageVersionsByIDsForTenant :many
