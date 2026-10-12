@@ -61,6 +61,28 @@
       "subject": "Publira Platform Console email address changed",
       "warning": "If you did not make this change, reset your password right away."
     },
+    "platform_console_operator_added": {
+      "action": "Set password",
+      "body": "Open the button below to set the password you will sign in with.",
+      "expired_help": "If the link has expired, choose Forgot your password? on the sign-in screen to have a new one sent.",
+      "expires": "This link expires at {$expires_at}.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Set your Platform Console password",
+      "ignore": "If you were not expecting this email, you can ignore it.",
+      "intro": "An account on the Publira Platform Console was created for you.",
+      "preview": "Set a password for your new Platform Console account.",
+      "subject": "Your Publira Platform Console account"
+    },
+    "platform_console_operator_role_granted": {
+      "action": "Open the Platform Console",
+      "body": "Your account can now sign in to the Publira Platform Console. Sign in with the email address this mail was sent to and the password you already have.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "You can now sign in to the Platform Console",
+      "ignore": "If you were not expecting this email, you can ignore it.",
+      "password_help": "If you do not remember the password, choose Forgot your password? on the sign-in screen to set a new one.",
+      "preview": "Your account can now sign in to the Platform Console.",
+      "subject": "Publira Platform Console access"
+    },
     "platform_console_password_reset": {
       "action": "Reset password",
       "body": "Open the button below to set a new password.",

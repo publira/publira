@@ -93,10 +93,12 @@ func (s *platformServer) authenticatePlatformSession(
 // to no tenant, and publira_platform is BYPASSRLS, so the insert is not subject
 // to the tenant-isolation policy.
 
-// queuePlatformPasswordResetRequest records a reset asked for in the platform
-// console. It is the handler's only write; the worker looks the address up.
-func queuePlatformPasswordResetRequest(ctx context.Context, queries dbmodels.Querier, email string) error {
-	payload, err := json.Marshal(outbox.PlatformPasswordResetRequestPayload{Email: email})
+// queuePlatformPasswordResetRequest records a password link asked for: a reset
+// from the platform console's form, where it is the handler's only write, or the
+// first password of an operator CreateOperator just added. The worker looks the
+// address up and issues the link either way.
+func queuePlatformPasswordResetRequest(ctx context.Context, queries dbmodels.Querier, request outbox.PlatformPasswordResetRequestPayload) error {
+	payload, err := json.Marshal(request)
 	if err != nil {
 		return fmt.Errorf("marshal platform password reset request event: %w", err)
 	}
@@ -141,6 +143,15 @@ func enqueuePlatformEmailChangedNoticeEmail(ctx context.Context, queries *dbmode
 	}
 	return insertPlatformOutboxEvent(ctx, queries, outbox.EventTypePlatformEmailChangedNoticeEmail, payload,
 		"platform_email_changed_notice_email:"+tokenID.String())
+}
+
+func enqueuePlatformOperatorRoleGrantedEmail(ctx context.Context, queries *dbmodels.Queries, platformUserID, roleID uuid.UUID) error {
+	payload, err := json.Marshal(outbox.PlatformOperatorRoleGrantedEmailPayload{PlatformUserID: platformUserID.String()})
+	if err != nil {
+		return fmt.Errorf("marshal platform operator role granted email event: %w", err)
+	}
+	return insertPlatformOutboxEvent(ctx, queries, outbox.EventTypePlatformOperatorRoleGrantedEmail, payload,
+		outbox.EventTypePlatformOperatorRoleGrantedEmail+":"+roleID.String())
 }
 
 func insertPlatformOutboxEvent(
@@ -272,7 +283,7 @@ func (s *platformServer) RequestPasswordReset(
 
 	// Recorded for the worker whether or not the address has an account, so an
 	// unknown address takes as long to answer as a registered one.
-	if err := queuePlatformPasswordResetRequest(ctx, s.queriesFor(ctx), email); err != nil {
+	if err := queuePlatformPasswordResetRequest(ctx, s.queriesFor(ctx), outbox.PlatformPasswordResetRequestPayload{Email: email}); err != nil {
 		auth.AuditEvent(ctx, "platform_password_reset_request", "failure", "", "", "request_enqueue_failed")
 		return nil, s.internalDBError(ctx, "failed to enqueue platform password reset request", err)
 	}

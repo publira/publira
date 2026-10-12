@@ -6,6 +6,7 @@ import {
   deletePlatformOperatorsByEmails,
   querySql,
 } from "../src/db";
+import { tokenFromLink, waitForMessageTo } from "../src/mail";
 import {
   confirmDangerAction,
   createOperatorViaUi,
@@ -198,6 +199,42 @@ test.describe("platform operator management", () => {
     ).toBeVisible();
     await expect(onlyVisible(page.getByText(email))).toBeVisible();
     await expect(currentRoleValue(page)).toHaveText("Operator");
+  });
+
+  test("mails a new operator the link that sets their first password", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const email = trackOperator(`first-password-${suffix}@example.com`);
+    const password = `e2e-first-password-${suffix}`;
+
+    await createOperatorViaUi(page, {
+      email,
+      name: `E2E First Password Operator ${suffix}`,
+      roleLabel: "Auditor",
+    });
+    // The account's password is one nobody is told, so the mailed link is the
+    // only way in.
+    const token = tokenFromLink(
+      await waitForMessageTo(email),
+      "/confirm-password"
+    );
+
+    await signOutPlatform(page);
+    // The mailed URL names the platform's seeded domain rather than the origin
+    // this stack serves web-platform on, so the token is carried over.
+    await page.goto(
+      platformUrl(`/confirm-password?token=${encodeURIComponent(token)}`)
+    );
+    await page.getByLabel(/^New password\s*\*?$/u).fill(password);
+    await page.getByLabel(/^New password \(confirm\)\s*\*?$/u).fill(password);
+    await page.getByRole("button", { name: "Set new password" }).click();
+    await page.waitForURL((url) => url.pathname.endsWith("/login"));
+
+    await signInAsPlatformOperator(page, { email, password });
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Tenants" })
+    ).toBeVisible();
   });
 
   test("an operator added from the list is in the list the console returns to", async ({

@@ -28,6 +28,8 @@ A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole li
 | `admin_console_password_reset` | admin console password reset | `tenant_name`, `reset_url`, `expires_at` |
 | `platform_console_email_change_confirmation` | platform console address change | `confirm_url`, `recipient_kind`, `current_email`, `new_email`, `expires_at` |
 | `platform_console_email_changed_notice` | platform console, to the previous address | `previous_email`, `new_email` |
+| `platform_console_operator_added` | to an operator a Super admin added, with the link that sets the new account's first password | `set_password_url`, `expires_at` |
+| `platform_console_operator_role_granted` | to an existing platform account a Super admin gave a role, with no password link | `sign_in_url` |
 | `platform_console_password_reset` | platform console password reset | `reset_url`, `expires_at` |
 | `staff_contact_message_notice` | to the tenant's staff, when a reader sends a message through the contact form | `tenant_name`, `sender_name`, `reply_to_email`, `subject`, `body`, `received_at` |
 | `staff_contact_reply` | to a reader, with the answer a member of staff wrote in the console | `tenant_name`, `body`, `original_subject`, `original_body`, `original_received_at` |

@@ -32,6 +32,16 @@ import {
   platformConsoleEmailChangedNoticePreview,
 } from "./templates/platform-console-email-changed-notice";
 import {
+  PlatformConsoleOperatorAddedEmail,
+  platformConsoleOperatorAddedDataSchema,
+  platformConsoleOperatorAddedPreview,
+} from "./templates/platform-console-operator-added";
+import {
+  PlatformConsoleOperatorRoleGrantedEmail,
+  platformConsoleOperatorRoleGrantedDataSchema,
+  platformConsoleOperatorRoleGrantedPreview,
+} from "./templates/platform-console-operator-role-granted";
+import {
   PlatformConsolePasswordResetEmail,
   platformConsolePasswordResetDataSchema,
   platformConsolePasswordResetPreview,
@@ -95,6 +105,8 @@ export const TEMPLATE_IDS = [
   "admin_console_password_reset",
   "platform_console_email_change_confirmation",
   "platform_console_email_changed_notice",
+  "platform_console_operator_added",
+  "platform_console_operator_role_granted",
   "platform_console_password_reset",
   "staff_contact_message_notice",
   "staff_contact_reply",
@@ -234,6 +246,27 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: platformConsoleEmailChangedNoticePreview,
     schema: platformConsoleEmailChangedNoticeDataSchema,
+  }),
+  platform_console_operator_added: defineTemplate({
+    element: ({ data, locale, messages, timeZone }) =>
+      createElement(PlatformConsoleOperatorAddedEmail, {
+        data,
+        locale,
+        messages,
+        timeZone,
+      }),
+    preview: platformConsoleOperatorAddedPreview,
+    schema: platformConsoleOperatorAddedDataSchema,
+  }),
+  platform_console_operator_role_granted: defineTemplate({
+    element: ({ data, locale, messages }) =>
+      createElement(PlatformConsoleOperatorRoleGrantedEmail, {
+        data,
+        locale,
+        messages,
+      }),
+    preview: platformConsoleOperatorRoleGrantedPreview,
+    schema: platformConsoleOperatorRoleGrantedDataSchema,
   }),
   platform_console_password_reset: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>

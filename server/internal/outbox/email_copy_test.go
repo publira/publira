@@ -228,6 +228,27 @@ var emailCopyCases = []struct {
 		},
 	},
 	{
+		name:     "platform_console_operator_added",
+		subjects: map[string]string{"en": "Your Publira Platform Console account", "ja": "Publiraプラットフォーム管理画面アカウントのご案内"},
+		request: emailrenderer.Request{
+			Template: "platform_console_operator_added",
+			Data: map[string]any{
+				"expires_at":       copyExpiresAt,
+				"set_password_url": "https://platform.example.test/confirm-password?token=first",
+			},
+		},
+	},
+	{
+		name:     "platform_console_operator_role_granted",
+		subjects: map[string]string{"en": "Publira Platform Console access", "ja": "Publiraプラットフォーム管理画面ログインのご案内"},
+		request: emailrenderer.Request{
+			Template: "platform_console_operator_role_granted",
+			Data: map[string]any{
+				"sign_in_url": "https://platform.example.test/login",
+			},
+		},
+	},
+	{
 		name:     "platform_console_password_reset",
 		subjects: map[string]string{"en": "Publira Platform Console password reset", "ja": "Publiraプラットフォーム管理画面パスワード再設定"},
 		request: emailrenderer.Request{

@@ -47,6 +47,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.EventTypePlatformPasswordResetRequest,
 		outbox.EventTypePlatformEmailChangeConfirmationEmail,
 		outbox.EventTypePlatformEmailChangedNoticeEmail,
+		outbox.EventTypePlatformOperatorRoleGrantedEmail,
 		outbox.EventTypeNextCacheRevalidation,
 		outbox.EventTypeCatalogIndexSync,
 		outbox.EventTypeGooglePlayPurchaseConsume,

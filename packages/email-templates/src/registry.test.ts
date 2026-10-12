@@ -26,6 +26,8 @@ describe("TEMPLATE_IDS", () => {
       "admin_console_password_reset",
       "platform_console_email_change_confirmation",
       "platform_console_email_changed_notice",
+      "platform_console_operator_added",
+      "platform_console_operator_role_granted",
       "platform_console_password_reset",
       "staff_contact_message_notice",
       "staff_contact_reply",

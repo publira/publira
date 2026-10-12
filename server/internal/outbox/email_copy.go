@@ -122,6 +122,8 @@ var emailTemplates = map[string]func(*emailComposer){
 	"admin_console_password_reset":               adminConsolePasswordResetCopy,
 	"platform_console_email_change_confirmation": platformConsoleEmailChangeConfirmationCopy,
 	"platform_console_email_changed_notice":      platformConsoleEmailChangedNoticeCopy,
+	"platform_console_operator_added":            platformConsoleOperatorAddedCopy,
+	"platform_console_operator_role_granted":     platformConsoleOperatorRoleGrantedCopy,
 	"platform_console_password_reset":            platformConsolePasswordResetCopy,
 	"reader_email_change_confirmation":           readerEmailChangeConfirmationCopy,
 	"reader_email_changed_notice":                readerEmailChangedNoticeCopy,
@@ -362,6 +364,32 @@ func platformConsolePasswordResetCopy(c *emailComposer) {
 	c.line("email.platform_console_password_reset.expires", map[string]any{"expires_at": c.instant("expires_at")})
 	c.line("email.platform_console_password_reset.ignore", nil)
 	c.linkLine("email.platform_console_password_reset.fallback_link", nil, resetURL)
+}
+
+func platformConsoleOperatorAddedCopy(c *emailComposer) {
+	setPasswordURL := c.value("set_password_url")
+	c.setSubject("email.platform_console_operator_added.subject", nil)
+	c.from(c.message("email.layout.brand", nil))
+	c.line("email.platform_console_operator_added.heading", nil)
+	c.line("email.platform_console_operator_added.intro", nil)
+	c.line("email.platform_console_operator_added.body", nil)
+	c.linkLine("email.platform_console_operator_added.action", nil, setPasswordURL)
+	c.line("email.platform_console_operator_added.expires", map[string]any{"expires_at": c.instant("expires_at")})
+	c.line("email.platform_console_operator_added.expired_help", nil)
+	c.line("email.platform_console_operator_added.ignore", nil)
+	c.linkLine("email.platform_console_operator_added.fallback_link", nil, setPasswordURL)
+}
+
+func platformConsoleOperatorRoleGrantedCopy(c *emailComposer) {
+	signInURL := c.value("sign_in_url")
+	c.setSubject("email.platform_console_operator_role_granted.subject", nil)
+	c.from(c.message("email.layout.brand", nil))
+	c.line("email.platform_console_operator_role_granted.heading", nil)
+	c.line("email.platform_console_operator_role_granted.body", nil)
+	c.linkLine("email.platform_console_operator_role_granted.action", nil, signInURL)
+	c.line("email.platform_console_operator_role_granted.password_help", nil)
+	c.line("email.platform_console_operator_role_granted.ignore", nil)
+	c.linkLine("email.platform_console_operator_role_granted.fallback_link", nil, signInURL)
 }
 
 func platformConsoleEmailChangeConfirmationCopy(c *emailComposer) {

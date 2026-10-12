@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/testutil"
@@ -87,6 +90,50 @@ func TestDBCreateOperatorPersistsAndLists(t *testing.T) {
 	}
 }
 
+// The new account's password is one nobody is told, so the mail the worker
+// sends for it is the only way in: its link sets the first password, and that
+// password signs in.
+func TestDBCreateOperatorMailsTheLinkThatSetsTheFirstPassword(t *testing.T) {
+	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
+	transport := connecthttp.NewTransport(ts.Client(), ts.URL)
+	operatorClient := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(transport))
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(transport))
+
+	if _, err := operatorClient.CreateOperator(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)), &publirasplatformv1.CreateOperatorRequest{
+		Name:  "New Operator",
+		Email: "new-operator@example.com",
+		Role:  auth.RolePlatformOperator,
+	}); err != nil {
+		t.Fatalf("CreateOperator: %v", err)
+	}
+	if got := countOutboxEvents(t, pg, outbox.EventTypePlatformOperatorRoleGrantedEmail); got != 0 {
+		t.Fatalf("queued role granted mails = %d, want none for a new account", got)
+	}
+
+	processPasswordResetRequests(t, pg)
+	mail := platformPasswordLinkMail(t, pg)
+	if mail.Purpose != outbox.PlatformPasswordLinkOperatorAdded {
+		t.Fatalf("mail purpose = %q, want %q", mail.Purpose, outbox.PlatformPasswordLinkOperatorAdded)
+	}
+
+	if _, err := authClient.ConfirmPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
+		Token:       mail.Token,
+		NewPassword: "first-password-of-mine",
+	}); err != nil {
+		t.Fatalf("ConfirmPasswordReset: %v", err)
+	}
+	login, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
+		Email:    "new-operator@example.com",
+		Password: "first-password-of-mine",
+	})
+	if err != nil {
+		t.Fatalf("Login with the password the link set: %v", err)
+	}
+	if login.AccessToken.GetToken() == "" {
+		t.Fatal("Login issued no access token")
+	}
+}
+
 func TestDBCreateOperatorRejectsExistingOperatorEmail(t *testing.T) {
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -141,6 +188,47 @@ func TestDBCreateOperatorPromotesRolelessPlatformUser(t *testing.T) {
 	}
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_users"); got != 2 {
 		t.Fatalf("platform_users rows = %d, want the seeded super admin plus the promoted user", got)
+	}
+
+	// The account already has a password, so it is told it can sign in and is
+	// sent no link that would replace that password.
+	if got := countOutboxEvents(t, pg, outbox.EventTypePlatformPasswordResetRequest); got != 0 {
+		t.Fatalf("queued password links = %d, want none for an existing account", got)
+	}
+	var payload outbox.PlatformOperatorRoleGrantedEmailPayload
+	if err := json.Unmarshal([]byte(platformScalar(t, pg, "SELECT payload::text FROM outbox_events WHERE event_type = '"+outbox.EventTypePlatformOperatorRoleGrantedEmail+"' AND tenant_id IS NULL")), &payload); err != nil {
+		t.Fatalf("decode role granted payload: %v", err)
+	}
+	if payload.PlatformUserID != existing.ID.String() {
+		t.Fatalf("role granted mail names %q, want the promoted user %s", payload.PlatformUserID, existing.ID)
+	}
+}
+
+// Adding an operator mails an address nobody has confirmed, so it spends the
+// allowance the reset form does, and an address that has none left gets no
+// account either.
+func TestDBCreateOperatorStopsAtTheMailLimit(t *testing.T) {
+	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
+	superAdmin := pg.SeedPlatformSuperAdmin(t, "PLATADMIN001", "superadmin@example.com", "Platform Super Admin")
+	transport := connecthttp.NewTransport(ts.Client(), ts.URL)
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(transport))
+	operatorClient := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(transport))
+
+	if _, err := authClient.RequestPasswordReset(context.Background(), &publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest{
+		Email: "new-operator@example.com",
+	}); err != nil {
+		t.Fatalf("RequestPasswordReset: %v", err)
+	}
+
+	ctx, call := testutil.NewClientContext(testutil.WithBearer(context.Background(), issueDBIntegrationToken(superAdmin)))
+	_, err := operatorClient.CreateOperator(ctx, &publirasplatformv1.CreateOperatorRequest{
+		Name:  "New Operator",
+		Email: "new-operator@example.com",
+		Role:  auth.RolePlatformOperator,
+	})
+	requireRateLimited(t, "CreateOperator", call, err)
+	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_users"); got != 1 {
+		t.Fatalf("platform_users rows = %d, want only the seeded super admin", got)
 	}
 }
 
@@ -313,4 +401,18 @@ func TestDBOperatorNotFoundReturnsNotFound(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("SuspendOperator code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
+}
+
+// platformPasswordLinkMail is the one password link mail the worker queued.
+func platformPasswordLinkMail(t *testing.T, pg *testutil.PostgresEnv) outbox.PlatformPasswordResetEmailPayload {
+	t.Helper()
+
+	var payload outbox.PlatformPasswordResetEmailPayload
+	if err := json.Unmarshal([]byte(platformScalar(t, pg, "SELECT payload::text FROM outbox_events WHERE event_type = '"+outbox.EventTypePlatformPasswordResetEmail+"' AND tenant_id IS NULL")), &payload); err != nil {
+		t.Fatalf("decode password link payload: %v", err)
+	}
+	if payload.Token == "" {
+		t.Fatal("password link mail carries no token")
+	}
+	return payload
 }

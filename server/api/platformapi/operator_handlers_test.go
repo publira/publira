@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 )
@@ -336,13 +337,15 @@ func TestCreateOperatorSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(newOperatorID, "PLATNEW001", "new-operator@example.com", "hash", "New Operator", "active", now, int32(1)))
 	expectPublicIDAttemptReleased(mock)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPlatformUserRoles)).
-		WithArgs(newOperatorID).
-		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreatePlatformUserRole)).
 		WithArgs(sqlmock.AnyArg(), newOperatorID, "platform_operator").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "role", "created_at", "platform_user_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), "platform_operator", now, newOperatorID))
+	// The new account's password is one nobody is told, so the same transaction
+	// asks the worker for the link that sets the first one.
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
+		WithArgs(sqlmock.AnyArg(), nil, outbox.EventTypePlatformPasswordResetRequest, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnRows(newOutboxEventRow(outbox.EventTypePlatformPasswordResetRequest))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformOperatorByID)).
 		WithArgs(newOperatorID).
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).

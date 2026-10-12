@@ -33,6 +33,10 @@ type AdminPasswordResetRequestPayload struct {
 // a reset for. It names no tenant, as an operator belongs to none.
 type PlatformPasswordResetRequestPayload struct {
 	Email string `json:"email"`
+	// Purpose is the mail the link travels in: empty for a reset, or
+	// PlatformPasswordLinkOperatorAdded for an account a Super admin just
+	// created. The link itself is the same either way.
+	Purpose string `json:"purpose,omitempty"`
 }
 
 // NewAdminPasswordResetRequestHandler issues the reset link an address asked
@@ -81,8 +85,11 @@ func NewPlatformPasswordResetRequestHandler(cfg EmailHandlerConfig) Handler {
 		if strings.TrimSpace(payload.Email) == "" {
 			return Permanent(fmt.Errorf("%s payload has no email", event.EventType))
 		}
+		if err := checkPlatformPasswordLinkPurpose(event, payload.Purpose); err != nil {
+			return Permanent(err)
+		}
 
-		outcome, err := processPlatformPasswordReset(ctx, cfg.DB, event, payload.Email)
+		outcome, err := processPlatformPasswordReset(ctx, cfg.DB, event, payload.Email, payload.Purpose)
 		if err != nil {
 			return err
 		}
@@ -91,7 +98,7 @@ func NewPlatformPasswordResetRequestHandler(cfg EmailHandlerConfig) Handler {
 	}
 }
 
-func processPlatformPasswordReset(ctx context.Context, db *sql.DB, event dbmodels.OutboxEvent, email string) (string, error) {
+func processPlatformPasswordReset(ctx context.Context, db *sql.DB, event dbmodels.OutboxEvent, email, purpose string) (string, error) {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return "", fmt.Errorf("begin platform password reset transaction: %w", err)
@@ -127,7 +134,7 @@ func processPlatformPasswordReset(ctx context.Context, db *sql.DB, event dbmodel
 		return "", fmt.Errorf("create platform password reset token: %w", err)
 	}
 	queued, err := queueEvent(ctx, queries, event.TenantID, EventTypePlatformPasswordResetEmail,
-		PlatformPasswordResetEmailPayload{TokenID: event.ID.String(), Token: token},
+		PlatformPasswordResetEmailPayload{TokenID: event.ID.String(), Token: token, Purpose: purpose},
 		EventTypePlatformPasswordResetEmail+":"+event.ID.String(),
 	)
 	if err != nil {
