@@ -5,7 +5,14 @@ import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import type { RestrictedAgeRating } from "./age-rating";
 import { resolveAccessToken } from "./api-client";
-import { applyCacheTag, tenantTodayTag } from "./cache-tags";
+import {
+  applyCacheTag,
+  tenantCreatorsTag,
+  tenantLabelsTag,
+  tenantSeriesDetailTag,
+  tenantSeriesListTag,
+  tenantTodayTag,
+} from "./cache-tags";
 import {
   getSeriesDetail,
   listMyRecommendedSeries,
@@ -147,6 +154,10 @@ interface SeriesDetailRow {
  * The reads this builds on answer with results instead of throwing, so
  * a failure is carried through here as a result too — a section that could not
  * be built must say so, not quietly render the rows that happened to load.
+ *
+ * This is not a cache scope of its own, so the loaders that call it tag their
+ * entries with what it reads: the series list, the series details, and the
+ * creators the list credits.
  */
 const loadSeriesDetailRows = async (
   tenantId: string,
@@ -208,6 +219,13 @@ export const getCatalogTopRecommendedSeries = async (
   { locale, maxRecommended = 6 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<SeriesListItem[]>> => {
   "use cache";
+
+  // The read below tags itself, and Next.js copies an inner entry's tags onto
+  // the one around it, so these add nothing at runtime today. Every loader in
+  // this file states them anyway: they are what drops its entry, and stating
+  // them here keeps that true after a change that reads past the tagged read.
+  applyCacheTag(tenantSeriesListTag(tenantId));
+  applyCacheTag(tenantCreatorsTag(tenantId));
 
   const page = await listRecommendedSeries(tenantId, {
     limit: maxRecommended,
@@ -271,6 +289,9 @@ export const getCatalogTopFreeSeries = async (
 ): Promise<CachedReadResult<SeriesListItem[]>> => {
   "use cache";
 
+  applyCacheTag(tenantSeriesListTag(tenantId));
+  applyCacheTag(tenantCreatorsTag(tenantId));
+
   const page = await listPublishedSeries(tenantId, {
     hasFreeEpisodes: true,
     limit: maxFreeSeries,
@@ -326,6 +347,8 @@ export const getCatalogTopWeeklySchedule = async (
 ): Promise<CachedReadResult<CatalogTopWeeklySchedule>> => {
   "use cache";
 
+  applyCacheTag(tenantSeriesListTag(tenantId));
+  applyCacheTag(tenantCreatorsTag(tenantId));
   applyCacheTag(tenantTodayTag(tenantId));
 
   const pages = await Promise.all(
@@ -423,6 +446,10 @@ export const getCatalogTopFeaturedWork = async (
 ): Promise<CachedReadResult<CatalogTopFeaturedWork | null>> => {
   "use cache";
 
+  applyCacheTag(tenantSeriesListTag(tenantId));
+  applyCacheTag(tenantSeriesDetailTag(tenantId));
+  applyCacheTag(tenantCreatorsTag(tenantId));
+
   const recommended = await getCatalogTopRecommendedSeries(tenantId, {
     locale,
     maxRecommended,
@@ -476,6 +503,10 @@ export const getCatalogTopNewEpisodes = async (
 ): Promise<CachedReadResult<CatalogTopEpisodeItem[]>> => {
   "use cache";
 
+  applyCacheTag(tenantSeriesListTag(tenantId));
+  applyCacheTag(tenantSeriesDetailTag(tenantId));
+  applyCacheTag(tenantCreatorsTag(tenantId));
+
   const detailRows = await loadSeriesDetailRows(
     tenantId,
     locale,
@@ -522,6 +553,10 @@ export const getCatalogTopUpdatedSeries = async (
   }: CatalogTopDataOptions
 ): Promise<CachedReadResult<CatalogTopUpdatedSeriesItem[]>> => {
   "use cache";
+
+  applyCacheTag(tenantSeriesListTag(tenantId));
+  applyCacheTag(tenantSeriesDetailTag(tenantId));
+  applyCacheTag(tenantCreatorsTag(tenantId));
 
   const detailRows = await loadSeriesDetailRows(
     tenantId,
@@ -578,6 +613,9 @@ export const getCatalogTopFeaturedLabels = async (
 ): Promise<CachedReadResult<LabelListItem[]>> => {
   "use cache";
 
+  applyCacheTag(tenantLabelsTag(tenantId));
+  applyCacheTag(tenantSeriesListTag(tenantId));
+
   const labels = await listPublishedLabels(tenantId, {
     hasPublishedSeries: true,
     limit: maxLabels,
@@ -597,6 +635,8 @@ export const getCatalogTopFeaturedCreators = async (
   { locale, maxCreators = 6 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<CatalogTopFeaturedCreator[]>> => {
   "use cache";
+
+  applyCacheTag(tenantCreatorsTag(tenantId));
 
   const creatorsResult = await listPublishedCreators(tenantId, {
     limit: maxCreators,

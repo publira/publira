@@ -13,6 +13,8 @@ import {
   getCatalogTopWeeklySchedule,
 } from "./catalog-top";
 
+const { mockCacheTag } = vi.hoisted(() => ({ mockCacheTag: vi.fn() }));
+
 const { mockListPublishedCreators } = vi.hoisted(() => ({
   mockListPublishedCreators: vi.fn(),
 }));
@@ -35,6 +37,11 @@ const {
   mockListPublishedSeries: vi.fn(),
   mockListRankedSeries: vi.fn(),
   mockListRecommendedSeries: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheLife: vi.fn(),
+  cacheTag: mockCacheTag,
 }));
 
 vi.mock("./creators", () => ({
@@ -957,5 +964,102 @@ describe("catalog-top section loaders", () => {
       message: "The catalog is unavailable.",
       ok: false,
     });
+  });
+});
+
+describe("catalog-top cache tags", () => {
+  const failedRead = { message: "The catalog is unavailable.", ok: false };
+
+  beforeEach(() => {
+    mockCacheTag.mockReset();
+    for (const mock of [
+      mockGetSeriesDetail,
+      mockListPublishedCreators,
+      mockListPublishedLabels,
+      mockListPublishedSeries,
+      mockListRecommendedSeries,
+    ]) {
+      mock.mockReset();
+      mock.mockResolvedValue(failedRead);
+    }
+  });
+
+  /**
+   * The reads in `catalog.ts` and `creators.ts` are mocked here, so the tags
+   * recorded are the ones each loader states itself: a loader that stopped
+   * stating them would keep its entry past the write that changed it as soon as
+   * it read past those tagged reads. Every read fails, because the tags have
+   * to be on the entry whatever it holds.
+   */
+  it.each([
+    {
+      expected: ["tenant:TENANT_001:series:list", "tenant:TENANT_001:creators"],
+      load: () =>
+        getCatalogTopRecommendedSeries("TENANT_001", { locale: "en" }),
+      name: "getCatalogTopRecommendedSeries",
+    },
+    {
+      expected: ["tenant:TENANT_001:series:list", "tenant:TENANT_001:creators"],
+      load: () => getCatalogTopFreeSeries("TENANT_001", { locale: "en" }),
+      name: "getCatalogTopFreeSeries",
+    },
+    {
+      expected: [
+        "tenant:TENANT_001:series:list",
+        "tenant:TENANT_001:creators",
+        "tenant:TENANT_001:today",
+      ],
+      load: () =>
+        getCatalogTopWeeklySchedule("TENANT_001", {
+          locale: "en",
+          timeZone: "UTC",
+        }),
+      name: "getCatalogTopWeeklySchedule",
+    },
+    {
+      expected: [
+        "tenant:TENANT_001:series:list",
+        "tenant:TENANT_001:series:detail",
+        "tenant:TENANT_001:creators",
+      ],
+      load: () => getCatalogTopFeaturedWork("TENANT_001", { locale: "en" }),
+      name: "getCatalogTopFeaturedWork",
+    },
+    {
+      expected: [
+        "tenant:TENANT_001:series:list",
+        "tenant:TENANT_001:series:detail",
+        "tenant:TENANT_001:creators",
+      ],
+      load: () => getCatalogTopNewEpisodes("TENANT_001", { locale: "en" }),
+      name: "getCatalogTopNewEpisodes",
+    },
+    {
+      expected: [
+        "tenant:TENANT_001:series:list",
+        "tenant:TENANT_001:series:detail",
+        "tenant:TENANT_001:creators",
+      ],
+      load: () => getCatalogTopUpdatedSeries("TENANT_001", { locale: "en" }),
+      name: "getCatalogTopUpdatedSeries",
+    },
+    {
+      expected: ["tenant:TENANT_001:labels", "tenant:TENANT_001:series:list"],
+      load: () => getCatalogTopFeaturedLabels("TENANT_001", { locale: "en" }),
+      name: "getCatalogTopFeaturedLabels",
+    },
+    {
+      expected: ["tenant:TENANT_001:creators"],
+      load: () => getCatalogTopFeaturedCreators("TENANT_001", { locale: "en" }),
+      name: "getCatalogTopFeaturedCreators",
+    },
+  ])("$name carries the tags of what it reads", async ({ expected, load }) => {
+    await expect(load()).resolves.toMatchObject({ ok: false });
+
+    // `getCatalogTopFeaturedWork` goes through the recommendation loader,
+    // which states its own two tags again, so a repeat is not a difference.
+    expect([
+      ...new Set(mockCacheTag.mock.calls.map((call) => call[0])),
+    ]).toEqual(expected);
   });
 });
