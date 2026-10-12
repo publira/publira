@@ -145,7 +145,7 @@ The checkout button on a paid episode sends the reader to the URL `StartEpisodeC
 
 ### Agreeing to revised terms
 
-A signed-in reader who has not agreed to a version of the terms of service or the privacy policy that asks every reader again is sent to `/settings/agreement` from whichever page under `(site)` they open, except the pages they are asked to read and `/settings`, where the account can be deleted instead, and comes back to that page once they agree. A Server Action or a render that the public API refuses with `LEGAL_PAGE_AGREEMENT_REQUIRED` is sent there by `withPublicSessionReauth` in `lib/auth-session.ts`. The reads are in `lib/legal-page-agreements.ts`.
+A signed-in reader who has not agreed to a version of the terms of service or the privacy policy that asks every reader again is sent to `/settings/agreement` from whichever page under `(site)` they open, except the pages they are asked to read and `/settings`, where the account can be deleted instead, and comes back to that page once they agree. The layout reads the reader's agreements for the page it is rendered on, and after a client-side navigation, which keeps the layout, the page asks again through `checkLegalPageAgreementAction`. A Server Action or a render that the public API refuses with `LEGAL_PAGE_AGREEMENT_REQUIRED` is sent there by `withPublicSessionReauth` in `lib/auth-session.ts`. The reads are in `lib/legal-page-agreements.ts`.
 
 ## What it covers
 

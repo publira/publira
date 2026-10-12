@@ -1,4 +1,7 @@
-import { rpcErrorDisposition } from "@publira/api-client/errors";
+import {
+  isUnauthenticatedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
 import type { GetMyLegalPageAgreementsResponse } from "@publira/api-client/public/auth";
 import type { Locale } from "@publira/i18n";
 
@@ -7,6 +10,7 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import { legalPageAgreementExemptPaths } from "./legal-page-agreement-path";
 import { consentPages, toTenantLegalPage } from "./tenant";
 import type { TenantLegalPage } from "./tenant";
 
@@ -48,6 +52,29 @@ export const getOwedLegalPages = async (
     buildSessionHeaders(sid)
   );
   return toOwedPages(response);
+};
+
+/**
+ * {@link legalPageAgreementExemptPaths} for the reader `accessToken` signs in,
+ * which is `null` for one who owes nothing, for the site's gate. A failed read
+ * asks nothing: the API still refuses such a reader, and
+ * `withPublicSessionReauth` turns that refusal into the agreement screen.
+ */
+export const readLegalPageAgreementExemptPaths = async (
+  tenantId: string,
+  locale: Locale,
+  accessToken: string
+): Promise<string[] | null> => {
+  try {
+    const pages = await getOwedLegalPages(tenantId, locale, accessToken);
+    return legalPageAgreementExemptPaths(pages.map((page) => page.href));
+  } catch (error) {
+    // A session the API turned away is the pages' to send to sign-in.
+    if (!isUnauthenticatedRpcError(error)) {
+      console.warn("[web-storefront] getMyLegalPageAgreements failed", error);
+    }
+    return null;
+  }
 };
 
 /**

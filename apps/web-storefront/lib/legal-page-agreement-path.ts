@@ -16,6 +16,30 @@ export const LEGAL_PAGE_AGREEMENT_PATH = "/settings/agreement";
 export const ACCOUNT_DELETION_PATH = "/settings";
 
 /**
+ * The bare paths a reader who owes an agreement is left on: the pages they are
+ * asked to read, which the agreement screen opens in a tab of their own, and
+ * the screen that deletes the account. `null` for a reader who owes nothing.
+ */
+export const legalPageAgreementExemptPaths = (
+  owedPageHrefs: readonly string[]
+): string[] | null =>
+  owedPageHrefs.length === 0 ? null : [...owedPageHrefs, ACCOUNT_DELETION_PATH];
+
+/**
+ * Where the agreement screen sends the reader once they agree, from a
+ * sanitized `returnTo`. The screen itself is never one: a reader who owes
+ * nothing is sent on from it, so returning to it would only send them on
+ * again.
+ */
+export const legalPageAgreementReturnTo = (returnTo: string): string => {
+  const pathname = returnTo.split(/[?#]/u, 1)[0] ?? "";
+  return pathname === LEGAL_PAGE_AGREEMENT_PATH ||
+    pathname.startsWith(`${LEGAL_PAGE_AGREEMENT_PATH}/`)
+    ? "/"
+    : returnTo;
+};
+
+/**
  * The agreement screen's URL, carrying where the reader goes once they agree.
  * `agreementPath` already carries the locale prefix; the screen sanitizes
  * `returnTo` when it reads it, as the sign-in screen does.
@@ -26,13 +50,11 @@ export const legalPageAgreementHref = (
 ): string => `${agreementPath}?${new URLSearchParams({ returnTo }).toString()}`;
 
 /**
- * Where a reader who owes an agreement is sent from `pathname`, or `null` on a
- * path they are left on: one of the pages they are asked to read, which the
- * agreement screen opens in a tab of their own, and the screen that deletes
- * the account.
+ * Where a reader who owes an agreement is sent from `pathname`, or `null` on
+ * one of {@link legalPageAgreementExemptPaths}.
  *
  * `pathname` is what `usePathname()` reports, in either the rewritten or the
- * public shape, and `exemptPaths` are bare paths.
+ * public shape.
  */
 export const legalPageAgreementRedirect = ({
   agreementPath,

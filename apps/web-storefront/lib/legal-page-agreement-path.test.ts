@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  legalPageAgreementExemptPaths,
   legalPageAgreementHref,
   legalPageAgreementRedirect,
+  legalPageAgreementReturnTo,
 } from "./legal-page-agreement-path";
 
 const agreementPath = "/en/settings/agreement";
@@ -69,5 +71,36 @@ describe("legalPageAgreementRedirect", () => {
         search: "",
       })
     ).toBe("/en/settings/agreement?returnTo=%2Fsettings%2Fnotifications");
+  });
+});
+
+describe("legalPageAgreementExemptPaths", () => {
+  it("leaves the pages asked about and the account's deletion open", () => {
+    expect(legalPageAgreementExemptPaths(["/terms"])).toEqual([
+      "/terms",
+      "/settings",
+    ]);
+  });
+
+  it("is null for a reader who owes nothing", () => {
+    expect(legalPageAgreementExemptPaths([])).toBeNull();
+  });
+});
+
+describe("legalPageAgreementReturnTo", () => {
+  it("keeps any other page, with its query", () => {
+    expect(legalPageAgreementReturnTo("/series/abc?page=2")).toBe(
+      "/series/abc?page=2"
+    );
+  });
+
+  it("never returns to the agreement screen itself", () => {
+    for (const returnTo of [
+      "/settings/agreement",
+      "/settings/agreement?returnTo=%2Fmy",
+      "/settings/agreement#top",
+    ]) {
+      expect(legalPageAgreementReturnTo(returnTo)).toBe("/");
+    }
   });
 });

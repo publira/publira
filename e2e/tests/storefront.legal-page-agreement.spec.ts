@@ -21,7 +21,8 @@ import {
 /**
  * A Tenant admin publishes a revision of the terms of service asking every
  * reader to agree to it. A reader who agreed to the earlier version is sent to
- * agree on the next page they open, may still read the page they are asked
+ * agree on the next page they open, including one reached by a link from a
+ * page opened before the revision, may still read the page they are asked
  * about, and is returned where they were once they agree, after which the site
  * does not ask again.
  */
@@ -69,33 +70,55 @@ test.describe("web-storefront agreement to revised terms", () => {
     applyScenarioSql(LEGAL_PAGE_AGREEMENT_SCENARIO);
   });
 
-  test("the console publishes the revision asking readers to agree to it", async ({
+  test("a reader browsing as the console publishes the revision is asked on the next page they open", async ({
+    browser,
     page,
   }) => {
-    const pagePath = `/pages/${LEGAL_PAGE_AGREEMENT_TERMS_PAGE.id}`;
-    await signInAsAdmin(
+    await signInAsMember(
       page,
-      LEGAL_PAGE_AGREEMENT_ADMIN,
-      pagePath,
-      WEB_ADMIN_LEGAL_PAGE_AGREEMENT_BASE_URL
+      LEGAL_PAGE_AGREEMENT_READER,
+      "/my",
+      WEB_STOREFRONT_LEGAL_PAGE_AGREEMENT_BASE_URL
     );
+    await expect(page).toHaveURL(storefrontUrl("/my"));
 
-    await versionRow(page, 2).getByRole("button", { name: "Publish" }).click();
-    const dialog = page.getByRole("alertdialog");
-    await expect(dialog.getByText("Publish v2")).toBeVisible();
-    await dialog
-      .getByRole("button", { name: "Publish and ask readers to agree" })
+    const adminContext = await browser.newContext();
+    try {
+      const admin = await adminContext.newPage();
+      await signInAsAdmin(
+        admin,
+        LEGAL_PAGE_AGREEMENT_ADMIN,
+        `/pages/${LEGAL_PAGE_AGREEMENT_TERMS_PAGE.id}`,
+        WEB_ADMIN_LEGAL_PAGE_AGREEMENT_BASE_URL
+      );
+      await versionRow(admin, 2)
+        .getByRole("button", { name: "Publish" })
+        .click();
+      const dialog = admin.getByRole("alertdialog");
+      await expect(dialog.getByText("Publish v2")).toBeVisible();
+      await dialog
+        .getByRole("button", { name: "Publish and ask readers to agree" })
+        .click();
+      await expect(
+        versionRow(admin, 2).getByText("Readers asked to agree", {
+          exact: true,
+        })
+      ).toBeVisible({ timeout: 30_000 });
+    } finally {
+      await adminContext.close();
+    }
+
+    // A link keeps the layout the reader opened the site in, which read the
+    // agreements before the revision was published.
+    await page
+      .getByRole("navigation")
+      .getByRole("link", { exact: true, name: "Labels" })
+      .first()
       .click();
-
-    await expect(
-      versionRow(page, 2).getByText("Readers asked to agree", { exact: true })
-    ).toBeVisible({ timeout: 30_000 });
-    await expect(
-      versionRow(page, 2).getByText("Published", { exact: true })
-    ).toBeVisible();
+    await expect(page).toHaveURL(agreementUrl("/labels"));
   });
 
-  test("a reader who agreed to the earlier version is asked on the next page they open", async ({
+  test("a reader who agreed to the earlier version is asked when they sign in", async ({
     page,
   }) => {
     await signInAsMember(
