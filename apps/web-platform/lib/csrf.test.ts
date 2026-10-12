@@ -48,23 +48,7 @@ describe("assertSameOrigin", () => {
     expect(mockForbidden).not.toHaveBeenCalled();
   });
 
-  it("compares the Origin with Host rather than a caller's X-Forwarded-Host", async () => {
-    mockHeaders.mockResolvedValue(
-      requestHeaders({
-        Host: "platform.example.com",
-        Origin: "https://evil.example",
-        "X-Forwarded-Host": "evil.example",
-      })
-    );
-
-    const { assertSameOrigin } = await import("./csrf");
-    await assertSameOrigin();
-
-    expect(mockForbidden).toHaveBeenCalledTimes(1);
-  });
-
-  it("uses X-Forwarded-Host when the operator says the edge writes it", async () => {
-    vi.stubEnv("PUBLIRA_X_FORWARDED_HOST_ENABLED", "true");
+  it("uses X-Forwarded-Host when a reverse proxy supplies the public host", async () => {
     mockHeaders.mockResolvedValue(
       requestHeaders({
         Host: "web-platform:4100",
@@ -77,6 +61,22 @@ describe("assertSameOrigin", () => {
     await assertSameOrigin();
 
     expect(mockForbidden).not.toHaveBeenCalled();
+  });
+
+  it("compares the Origin with Host when the edge passes a caller's X-Forwarded-Host on", async () => {
+    vi.stubEnv("PUBLIRA_FORWARDED_HEADER_ENABLED", "false");
+    mockHeaders.mockResolvedValue(
+      requestHeaders({
+        Host: "platform.example.com",
+        Origin: "https://evil.example",
+        "X-Forwarded-Host": "evil.example",
+      })
+    );
+
+    const { assertSameOrigin } = await import("./csrf");
+    await assertSameOrigin();
+
+    expect(mockForbidden).toHaveBeenCalledTimes(1);
   });
 
   it.each([

@@ -50,9 +50,9 @@ pnpm dev --filter @publira/web-admin
 
 ### Request host
 
-`proxy.ts` resolves the tenant from the host the request was sent to, and `lib/csrf.ts` compares a form submission's origin with the same host (`getRequestHost` in [`@publira/utils/request-host`](../../packages/utils/README.md#subpaths)). That host is `Host`.
+`proxy.ts` resolves the tenant from the host the request was sent to, and `lib/csrf.ts` compares a form submission's origin with the same host (`getRequestHost` in [`@publira/utils/request-host`](../../packages/utils/README.md#subpaths)). That host is the rightmost value of `X-Forwarded-Host`, which the edge sets, and `Host` when there is none.
 
-- `PUBLIRA_X_FORWARDED_HOST_ENABLED` — `true` takes the host from `X-Forwarded-Host` ahead of `Host`, for an edge that rewrites `Host`. Off when unset; a value other than `true` or `false` is refused. The app cannot tell which peer sent the header, so turn it on only when every edge in front of the app overwrites `X-Forwarded-Host` itself: behind one that passes a caller's value on, as a managed load balancer does, the caller picks the tenant.
+- `PUBLIRA_FORWARDED_HEADER_ENABLED` — `false` takes the host from `Host` alone, for an edge that passes on a caller's `X-Forwarded-Host`, as a managed load balancer does; left on behind one, the caller picks the tenant. `true` when unset; a value other than `true` or `false` is refused. The app cannot tell which peer sent the header, so the value is a statement about the edge. `publira server` reads the same variable for the `Forwarded` header.
 
 ### Storefront URLs
 

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getRequestHost,
   getTenantDomainCandidates,
-  X_FORWARDED_HOST_ENABLED_ENV,
+  FORWARDED_HEADER_ENABLED_ENV,
 } from "./request-host";
 
 afterEach(() => {
@@ -16,29 +16,27 @@ const behindEdge = new Headers({
 });
 
 describe("getRequestHost", () => {
-  it.each([undefined, "", "false", "0", "F"])(
-    "takes Host over X-Forwarded-Host when the variable is %j",
-    (value) => {
-      if (value !== undefined) {
-        vi.stubEnv(X_FORWARDED_HOST_ENABLED_ENV, value);
-      }
-
-      expect(getRequestHost(behindEdge)).toBe("store.example");
-    }
-  );
-
-  it.each(["true", "TRUE", "1", "t", " true "])(
+  it.each([undefined, "", "true", "TRUE", "1", "t", " true "])(
     "takes X-Forwarded-Host when the variable is %j",
     (value) => {
-      vi.stubEnv(X_FORWARDED_HOST_ENABLED_ENV, value);
+      if (value !== undefined) {
+        vi.stubEnv(FORWARDED_HEADER_ENABLED_ENV, value);
+      }
 
       expect(getRequestHost(behindEdge)).toBe("other.example");
     }
   );
 
-  it("takes the value the nearest hop appended", () => {
-    vi.stubEnv(X_FORWARDED_HOST_ENABLED_ENV, "true");
+  it.each(["false", "0", "F"])(
+    "takes Host over X-Forwarded-Host when the variable is %j",
+    (value) => {
+      vi.stubEnv(FORWARDED_HEADER_ENABLED_ENV, value);
 
+      expect(getRequestHost(behindEdge)).toBe("store.example");
+    }
+  );
+
+  it("takes the value the nearest hop appended", () => {
     expect(
       getRequestHost(
         new Headers({
@@ -50,18 +48,16 @@ describe("getRequestHost", () => {
   });
 
   it("falls back to Host when the edge sent no X-Forwarded-Host", () => {
-    vi.stubEnv(X_FORWARDED_HOST_ENABLED_ENV, "true");
-
     expect(getRequestHost(new Headers({ Host: "store.example" }))).toBe(
       "store.example"
     );
   });
 
   it("refuses a value it cannot read as a boolean", () => {
-    vi.stubEnv(X_FORWARDED_HOST_ENABLED_ENV, "yes");
+    vi.stubEnv(FORWARDED_HEADER_ENABLED_ENV, "yes");
 
     expect(() => getRequestHost(behindEdge)).toThrow(
-      X_FORWARDED_HOST_ENABLED_ENV
+      FORWARDED_HEADER_ENABLED_ENV
     );
   });
 
@@ -83,7 +79,9 @@ describe("getTenantDomainCandidates", () => {
     ).toEqual(["shop.example:8443"]);
   });
 
-  it("ignores a caller's X-Forwarded-Host by default", () => {
+  it("ignores X-Forwarded-Host when the edge passes a caller's on", () => {
+    vi.stubEnv(FORWARDED_HEADER_ENABLED_ENV, "false");
+
     expect(getTenantDomainCandidates(behindEdge)).toEqual(["store.example"]);
   });
 
