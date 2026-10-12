@@ -493,6 +493,14 @@
       "exception": "Not in the app yet: #1778."
     },
     {
+      "name": "Linking an Apple or Google account to the reader's account from Linked accounts",
+      "web": {
+        "routes": ["[locale]/(site)/settings/security"],
+        "rpcs": ["LinkIdentity"]
+      },
+      "exception": "Not in the app yet: #3784."
+    },
+    {
       "name": "Signing out at the API",
       "web": { "rpcs": ["Logout"] },
       "exception": "The app drops its session without telling the API, which only audits the sign-out: #2830."

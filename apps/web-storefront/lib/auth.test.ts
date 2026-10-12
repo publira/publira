@@ -17,6 +17,7 @@ const {
   mockLogout,
   mockGetMe,
   mockGetNotificationSettings,
+  mockLinkIdentity,
   mockListMyIdentities,
   mockLoginWithIdToken,
   mockRequestEmailChange,
@@ -31,6 +32,7 @@ const {
   mockDeleteMe: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetNotificationSettings: vi.fn(),
+  mockLinkIdentity: vi.fn(),
   mockListMyIdentities: vi.fn(),
   mockLogin: vi.fn(),
   mockLoginWithIdToken: vi.fn(),
@@ -56,6 +58,7 @@ vi.mock("./api-client", () => ({
       deleteMe: mockDeleteMe,
       getMe: mockGetMe,
       getNotificationSettings: mockGetNotificationSettings,
+      linkIdentity: mockLinkIdentity,
       listMyIdentities: mockListMyIdentities,
       login: mockLogin,
       loginWithIdToken: mockLoginWithIdToken,
@@ -238,6 +241,87 @@ describe("web-storefront auth", () => {
         },
       ],
     });
+  });
+
+  it("linkMyIdentity: links the provider account of the fresh sign-in to the session's", async () => {
+    const { linkMyIdentity } = await importAuth();
+    mockLinkIdentity.mockResolvedValueOnce({});
+
+    await expect(
+      linkMyIdentity("TENANT001", {
+        authorizationCode: "apple-code",
+        idToken: "header.payload.signature",
+        nonce: "nonce-value",
+        provider: "apple",
+        redirectUri: "https://reader.example/api/v1/auth/apple/callback",
+      })
+    ).resolves.toEqual({ kind: "linked" });
+    expect(mockLinkIdentity).toHaveBeenCalledWith(
+      {
+        authorizationCode: "apple-code",
+        idToken: "header.payload.signature",
+        nonce: "nonce-value",
+        provider: IdentityProvider.APPLE,
+        redirectUri: "https://reader.example/api/v1/auth/apple/callback",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it.each([
+    ["IDENTITY_LINKED_TO_ANOTHER_ACCOUNT", "linked_to_another_account"],
+    ["PROVIDER_ALREADY_LINKED", "provider_already_linked"],
+  ])("linkMyIdentity: names the %s refusal", async (reason, kind) => {
+    const { linkMyIdentity } = await importAuth();
+    mockLinkIdentity.mockRejectedValueOnce(
+      new ConnectError("refused", Code.FailedPrecondition, undefined, [
+        { desc: ErrorInfoSchema, value: { domain: "publira", reason } },
+      ])
+    );
+
+    await expect(
+      linkMyIdentity("TENANT001", {
+        authorizationCode: "",
+        idToken: "header.payload.signature",
+        nonce: "nonce-value",
+        provider: "google",
+        redirectUri: "https://reader.example/api/v1/auth/google/callback",
+      })
+    ).resolves.toEqual({ kind });
+  });
+
+  it("linkMyIdentity: hands any other refusal back for the caller to word", async () => {
+    const { linkMyIdentity } = await importAuth();
+    const error = new ConnectError("invalid ID token", Code.InvalidArgument);
+    mockLinkIdentity.mockRejectedValueOnce(error);
+
+    await expect(
+      linkMyIdentity("TENANT001", {
+        authorizationCode: "",
+        idToken: "header.payload.signature",
+        nonce: "nonce-value",
+        provider: "google",
+        redirectUri: "https://reader.example/api/v1/auth/google/callback",
+      })
+    ).resolves.toEqual({ error, kind: "refused" });
+  });
+
+  it("linkMyIdentity: propagates an ended session for the caller to sign the reader in again", async () => {
+    const { linkMyIdentity } = await importAuth();
+    mockLinkIdentity.mockRejectedValueOnce(
+      new ConnectError("session ended", Code.Unauthenticated)
+    );
+
+    await expect(
+      linkMyIdentity("TENANT001", {
+        authorizationCode: "",
+        idToken: "header.payload.signature",
+        nonce: "nonce-value",
+        provider: "google",
+        redirectUri: "https://reader.example/api/v1/auth/google/callback",
+      })
+    ).rejects.toThrow("session ended");
   });
 
   it("deleteMe: confirms an account without a password with a fresh sign-in", async () => {

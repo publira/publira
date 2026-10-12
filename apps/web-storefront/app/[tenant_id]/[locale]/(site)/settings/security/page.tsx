@@ -15,13 +15,17 @@ import { listMyIdentities } from "#lib/auth";
 import { withPublicSessionReauth } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { SIGN_IN_PROVIDER_NAMES } from "#lib/sign-in-provider";
+import {
+  SIGN_IN_PROVIDER_NAMES,
+  SIGN_IN_PROVIDERS,
+} from "#lib/sign-in-provider";
 import { getTenantDisplayTimeZone, getTenantSignInClients } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
   changePasswordAction,
   confirmEmailChangeWithProviderAction,
+  linkIdentityAction,
   requestEmailChangeAction,
   unlinkIdentityAction,
 } from "./_lib/actions";
@@ -399,18 +403,33 @@ const PasswordChangeSectionFallback = () => (
   </section>
 );
 
+const linkedAccountButtonClassName =
+  "inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50";
+
 /**
- * The Apple and Google accounts the reader signs in with, once one is linked.
- * The last one of an account without a password cannot be unlinked.
+ * The Apple and Google accounts the reader signs in with, and a way to link
+ * each provider the tenant offers that the account has none of yet. Shown once
+ * there is either to list. The last one of an account without a password
+ * cannot be unlinked.
  */
 const LinkedAccountsSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [mine, t, timeZone] = await Promise.all([
+  const [mine, clients, t, timeZone] = await Promise.all([
     readMyIdentities(tenantId, locale),
+    getTenantSignInClients(tenantId),
     getMessagesFor(locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
-  if (!mine || mine.identities.length === 0) {
+  if (!mine) {
+    return null;
+  }
+  const linked = new Map(
+    mine.identities.map((identity) => [identity.provider, identity])
+  );
+  const providers = SIGN_IN_PROVIDERS.filter(
+    (provider) => linked.has(provider) || Boolean(clients[provider])
+  );
+  if (providers.length === 0) {
     return null;
   }
   const keepsLast = !mine.hasPassword && mine.identities.length === 1;
@@ -430,48 +449,71 @@ const LinkedAccountsSection = async () => {
         {t("storefront.settings.linked_accounts_description")}
       </p>
       <ul className="grid gap-4">
-        {mine.identities.map((identity) => (
-          <li
-            className="flex flex-wrap items-center justify-between gap-3"
-            key={identity.provider}
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-medium">
-                {SIGN_IN_PROVIDER_NAMES[identity.provider]}
-              </p>
-              <p className="text-sm break-all text-muted-foreground">
-                {identity.email}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {t("storefront.settings.linked_account_linked_at", {
-                  date: formatDate(identity.linkedAt, {
-                    fallback: "-",
-                    locale,
-                    timeZone,
-                  }),
-                })}
-              </p>
-            </div>
-            <form action={unlinkIdentityAction}>
-              <LocaleField />
-              <input name="tenantId" type="hidden" value={tenantId} />
-              <input name="provider" type="hidden" value={identity.provider} />
-              <button
-                aria-label={t(
-                  "storefront.settings.linked_account_unlink_aria",
-                  {
-                    provider: SIGN_IN_PROVIDER_NAMES[identity.provider],
-                  }
+        {providers.map((provider) => {
+          const identity = linked.get(provider);
+          const name = SIGN_IN_PROVIDER_NAMES[provider];
+          return (
+            <li
+              className="flex flex-wrap items-center justify-between gap-3"
+              key={provider}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{name}</p>
+                {identity ? (
+                  <>
+                    <p className="text-sm break-all text-muted-foreground">
+                      {identity.email}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("storefront.settings.linked_account_linked_at", {
+                        date: formatDate(identity.linkedAt, {
+                          fallback: "-",
+                          locale,
+                          timeZone,
+                        }),
+                      })}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {t("storefront.settings.linked_account_not_linked")}
+                  </p>
                 )}
-                className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-                disabled={keepsLast}
-                type="submit"
+              </div>
+              <form
+                action={identity ? unlinkIdentityAction : linkIdentityAction}
               >
-                {t("storefront.settings.linked_account_unlink")}
-              </button>
-            </form>
-          </li>
-        ))}
+                <LocaleField />
+                <input name="tenantId" type="hidden" value={tenantId} />
+                <input name="provider" type="hidden" value={provider} />
+                {identity ? (
+                  <button
+                    aria-label={t(
+                      "storefront.settings.linked_account_unlink_aria",
+                      { provider: name }
+                    )}
+                    className={linkedAccountButtonClassName}
+                    disabled={keepsLast}
+                    type="submit"
+                  >
+                    {t("storefront.settings.linked_account_unlink")}
+                  </button>
+                ) : (
+                  <button
+                    aria-label={t(
+                      "storefront.settings.linked_account_link_aria",
+                      { provider: name }
+                    )}
+                    className={linkedAccountButtonClassName}
+                    type="submit"
+                  >
+                    {t("storefront.settings.linked_account_link")}
+                  </button>
+                )}
+              </form>
+            </li>
+          );
+        })}
       </ul>
       {keepsLast ? (
         <p className="mt-2 text-xs text-muted-foreground">

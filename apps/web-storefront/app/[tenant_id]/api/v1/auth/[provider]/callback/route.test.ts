@@ -7,6 +7,7 @@ const {
   cookieJar,
   mockDeleteMe,
   mockGetTenantSignInClients,
+  mockLinkMyIdentity,
   mockLoginWithIdToken,
   mockRequestPublicEmailChange,
   mockRequirePublicSession,
@@ -15,6 +16,7 @@ const {
   cookieJar: new Map<string, string>(),
   mockDeleteMe: vi.fn(),
   mockGetTenantSignInClients: vi.fn(),
+  mockLinkMyIdentity: vi.fn(),
   mockLoginWithIdToken: vi.fn(),
   mockRequestPublicEmailChange: vi.fn(),
   mockRequirePublicSession: vi.fn(),
@@ -48,6 +50,7 @@ vi.mock("#lib/csrf", () => ({ assertSameOrigin: vi.fn() }));
 
 vi.mock("#lib/auth", () => ({
   deleteMe: mockDeleteMe,
+  linkMyIdentity: mockLinkMyIdentity,
   loginWithIdToken: mockLoginWithIdToken,
   requestPublicEmailChange: mockRequestPublicEmailChange,
 }));
@@ -123,6 +126,21 @@ const startEmailChange = async () => {
     data.set(name, value);
   }
   return redirectedTo(confirmEmailChangeWithProviderAction(data));
+};
+
+/** Ask to link a provider from the security settings. */
+const startLink = async (provider = "google") => {
+  const { linkIdentityAction } =
+    await import("../../../../../[locale]/(site)/settings/security/_lib/actions");
+  const data = new FormData();
+  for (const [name, value] of Object.entries({
+    locale: "en",
+    provider,
+    tenantId,
+  })) {
+    data.set(name, value);
+  }
+  return redirectedTo(linkIdentityAction(data));
 };
 
 const postAnswer = async (
@@ -465,6 +483,125 @@ describe("Apple and Google sign-in round trip", () => {
       "This account is the last tenant admin of this site, so it cannot be deleted. Make another member a tenant admin first."
     );
     expect(cookieJar.get(PUBLIC_SESSION_COOKIE_NAME)).toBe("sealed-session");
+  });
+
+  it("links the provider account to the session the link was asked from", async () => {
+    const authorization = await startLink("apple");
+    mockLinkMyIdentity.mockResolvedValueOnce({ kind: "linked" });
+
+    const response = await postAnswer("apple", {
+      code: "apple-code",
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    expect(authorization.origin).toBe("https://appleid.apple.com");
+    expect(mockRequirePublicSession).toHaveBeenCalledWith(
+      "en",
+      "/settings/security",
+      tenantId
+    );
+    expect(mockLinkMyIdentity).toHaveBeenCalledWith(
+      tenantId,
+      {
+        authorizationCode: "apple-code",
+        idToken: "header.payload.signature",
+        nonce: authorization.searchParams.get("nonce"),
+        provider: "apple",
+        redirectUri: "https://reader.example/api/v1/auth/apple/callback",
+      },
+      "access-token"
+    );
+    expect(mockLoginWithIdToken).not.toHaveBeenCalled();
+    const location = new URL(
+      response.headers.get("Location") ?? "",
+      "https://reader.example"
+    );
+    expect(location.pathname).toBe("/en/settings/security");
+    expect(location.searchParams.get("status")).toBe("success");
+    expect(location.searchParams.get("message")).toBe(
+      "Your Apple account was linked. You can now sign in with it."
+    );
+  });
+
+  it.each([
+    {
+      message:
+        "This Google account is already linked to another account on this site. Unlink it from that account first.",
+      outcome: { kind: "linked_to_another_account" },
+      refusal: "a provider account another reader signs in with",
+    },
+    {
+      message:
+        "Your account already has a Google account linked. Unlink it first to link another one.",
+      outcome: { kind: "provider_already_linked" },
+      refusal: "a second account of a provider already linked",
+    },
+    {
+      message: "Could not confirm your sign-in with Google. Please try again.",
+      outcome: {
+        error: new ConnectError("invalid ID token", Code.InvalidArgument),
+        kind: "refused",
+      },
+      refusal: "a sign-in the API could not verify",
+    },
+    {
+      message: "This sign-in method is not available right now.",
+      outcome: {
+        error: new ConnectError("provider disabled", Code.FailedPrecondition),
+        kind: "refused",
+      },
+      refusal: "a provider the tenant stopped offering",
+    },
+  ])("says why it refused $refusal", async ({ message, outcome }) => {
+    const authorization = await startLink();
+    cookieJar.set(PUBLIC_SESSION_COOKIE_NAME, "sealed-session");
+    mockLinkMyIdentity.mockResolvedValueOnce(outcome);
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    const location = new URL(
+      response.headers.get("Location") ?? "",
+      "https://reader.example"
+    );
+    expect(location.pathname).toBe("/en/settings/security");
+    expect(location.searchParams.get("status")).toBe("error");
+    expect(location.searchParams.get("message")).toBe(message);
+    expect(cookieJar.get(PUBLIC_SESSION_COOKIE_NAME)).toBe("sealed-session");
+  });
+
+  it("returns a reader who stopped at the provider to the security settings", async () => {
+    const authorization = await startLink();
+
+    const response = await postAnswer("google", {
+      error: "access_denied",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    expect(mockLinkMyIdentity).not.toHaveBeenCalled();
+    expect(response.headers.get("Location")).toBe("/en/settings/security");
+  });
+
+  it("sends a reader whose session ended to sign in again before the link", async () => {
+    const authorization = await startLink();
+    mockLinkMyIdentity.mockRejectedValueOnce(
+      new ConnectError("session ended", Code.Unauthenticated)
+    );
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    const location = new URL(
+      response.headers.get("Location") ?? "",
+      "https://reader.example"
+    );
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("returnTo")).toBe("/settings/security");
   });
 
   it("offers no provider the tenant has not enabled", async () => {

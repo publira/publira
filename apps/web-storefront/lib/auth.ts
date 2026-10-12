@@ -308,6 +308,64 @@ export const unlinkMyIdentity = async (
 };
 
 /**
+ * What became of linking a provider account. The two refusals the API names
+ * have their own kinds: `linked_to_another_account` where the provider account
+ * signs in to another reader, and `provider_already_linked` where this account
+ * has an account of that provider linked. Any other refusal is `refused`, with
+ * the error for the caller to word.
+ */
+export type LinkIdentityOutcome =
+  | { kind: "linked" }
+  | { kind: "linked_to_another_account" }
+  | { kind: "provider_already_linked" }
+  | { error: unknown; kind: "refused" };
+
+/**
+ * Link the provider account of a fresh sign-in to the signed-in reader's
+ * account, whatever address the provider carries.
+ */
+export const linkMyIdentity = async (
+  tenantId: string,
+  signIn: IdTokenSignIn,
+  accessToken?: string
+): Promise<LinkIdentityOutcome> => {
+  const sid = await resolveAccessToken(accessToken);
+  try {
+    await apiClient.auth.linkIdentity(
+      {
+        authorizationCode: signIn.authorizationCode,
+        idToken: signIn.idToken,
+        nonce: signIn.nonce,
+        provider: IDENTITY_PROVIDERS[signIn.provider],
+        redirectUri: signIn.redirectUri,
+        tenant: { tenantId },
+      },
+      buildSessionHeaders(sid)
+    );
+    return { kind: "linked" };
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
+    rethrowUnclassifiedRpcError(error);
+    if (rpcErrorDisposition(error) === "precondition") {
+      if (
+        rpcErrorHasReason(
+          error,
+          RPC_ERROR_REASON.identityLinkedToAnotherAccount
+        )
+      ) {
+        return { kind: "linked_to_another_account" };
+      }
+      if (rpcErrorHasReason(error, RPC_ERROR_REASON.providerAlreadyLinked)) {
+        return { kind: "provider_already_linked" };
+      }
+    }
+    return { error, kind: "refused" };
+  }
+};
+
+/**
  * Why the API refused the address a reader typed: one on a disposable domain
  * the tenant has switched the list on for, or one the tenant listed itself. It
  * depends on the address alone, so unlike a registered address it is answered

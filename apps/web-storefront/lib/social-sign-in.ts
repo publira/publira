@@ -24,10 +24,16 @@ import type { SignInProvider } from "./sign-in-provider";
 import { isTenantIdFormat } from "./tenant-id-format";
 
 /**
- * What the fresh sign-in is for: signing in, or confirming that an account
- * without a password is to be deleted or to move to another address.
+ * What the fresh sign-in is for: signing in, confirming that an account
+ * without a password is to be deleted or to move to another address, or
+ * linking the provider account to the signed-in reader's.
  */
-export const SIGN_IN_INTENTS = ["login", "delete", "email_change"] as const;
+export const SIGN_IN_INTENTS = [
+  "login",
+  "delete",
+  "email_change",
+  "link",
+] as const;
 
 export type SignInIntent = (typeof SIGN_IN_INTENTS)[number];
 
@@ -100,9 +106,9 @@ const signInRequestSchema = z.object({
 
 export interface SignInRequest {
   /**
-   * The session a deletion or an email change is confirmed for. The provider's
-   * POST carries no `SameSite=Lax` cookie, so the session cookie never reaches
-   * the callback.
+   * The session a deletion or an email change is confirmed for, or a provider
+   * account is linked to. The provider's POST carries no `SameSite=Lax`
+   * cookie, so the session cookie never reaches the callback.
    */
   accessToken?: string;
   /**

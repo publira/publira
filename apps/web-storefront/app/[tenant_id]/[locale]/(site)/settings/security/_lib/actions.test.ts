@@ -195,13 +195,56 @@ describe("changePasswordAction", () => {
   });
 });
 
-const unlinkForm = (provider = "google"): FormData => {
+/** A link or unlink row's form, which names the provider and nothing else. */
+const providerForm = (provider = "google"): FormData => {
   const data = new FormData();
   data.set("locale", "en");
   data.set("provider", provider);
   data.set("tenantId", tenantId);
   return data;
 };
+
+describe("linkIdentityAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequirePublicSession.mockResolvedValue(accessToken);
+  });
+
+  it("sends the reader to the provider with the session to link to", async () => {
+    const { linkIdentityAction } = await importActions();
+
+    await linkIdentityAction(providerForm("apple"));
+
+    expect(mockAssertSameOrigin).toHaveBeenCalled();
+    expect(mockRequirePublicSession).toHaveBeenCalledWith(
+      "en",
+      "/settings/security",
+      tenantId
+    );
+    expect(mockSendToProvider).toHaveBeenCalledWith({
+      accessToken,
+      intent: "link",
+      locale: "en",
+      provider: "apple",
+      returnTo: "/settings/security",
+      tenantId,
+    });
+  });
+
+  it("refuses a provider the site does not know", async () => {
+    const { linkIdentityAction } = await importActions();
+
+    await expect(linkIdentityAction(providerForm("github"))).rejects.toThrow(
+      /NEXT_REDIRECT/u
+    );
+
+    expect(mockSendToProvider).not.toHaveBeenCalled();
+    expect(lastFlash()).toEqual({
+      message: "Could not link the account. Please try again later.",
+      status: "error",
+    });
+  });
+});
 
 describe("unlinkIdentityAction", () => {
   beforeEach(() => {
@@ -213,7 +256,7 @@ describe("unlinkIdentityAction", () => {
     mockUnlinkMyIdentity.mockResolvedValueOnce({ ok: true });
     const { unlinkIdentityAction } = await import("./actions");
 
-    await expect(unlinkIdentityAction(unlinkForm())).rejects.toThrow(
+    await expect(unlinkIdentityAction(providerForm())).rejects.toThrow(
       "NEXT_REDIRECT"
     );
 
@@ -235,7 +278,7 @@ describe("unlinkIdentityAction", () => {
     });
     const { unlinkIdentityAction } = await import("./actions");
 
-    await expect(unlinkIdentityAction(unlinkForm())).rejects.toThrow(
+    await expect(unlinkIdentityAction(providerForm())).rejects.toThrow(
       "NEXT_REDIRECT"
     );
 
@@ -249,7 +292,7 @@ describe("unlinkIdentityAction", () => {
   it("refuses a provider the site does not know", async () => {
     const { unlinkIdentityAction } = await import("./actions");
 
-    await expect(unlinkIdentityAction(unlinkForm("github"))).rejects.toThrow(
+    await expect(unlinkIdentityAction(providerForm("github"))).rejects.toThrow(
       "NEXT_REDIRECT"
     );
 
