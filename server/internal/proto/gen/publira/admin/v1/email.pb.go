@@ -325,15 +325,19 @@ type UpdateTenantEmailSettingsRequest struct {
 	SmtpOverrideEnabled bool                   `protobuf:"varint,2,opt,name=smtp_override_enabled,json=smtpOverrideEnabled,proto3" json:"smtp_override_enabled,omitempty"`
 	Host                string                 `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty"`
 	Port                int32                  `protobuf:"varint,4,opt,name=port,proto3" json:"port,omitempty"`
-	Username            string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
-	PasswordUpdateMode  SecretUpdateMode       `protobuf:"varint,6,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.admin.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
-	Password            string                 `protobuf:"bytes,7,opt,name=password,proto3" json:"password,omitempty"`
-	Encryption          string                 `protobuf:"bytes,8,opt,name=encryption,proto3" json:"encryption,omitempty"`
-	FromName            string                 `protobuf:"bytes,9,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
-	FromAddress         string                 `protobuf:"bytes,10,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
-	ReplyTo             string                 `protobuf:"bytes,11,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Optional: empty names a relay that takes no credentials, which the worker
+	// sends through without authenticating. While smtp_override_enabled is set, a
+	// password is refused without one with INVALID_ARGUMENT naming this field,
+	// and a username is refused without a password, stored or given here.
+	Username           string           `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+	PasswordUpdateMode SecretUpdateMode `protobuf:"varint,6,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.admin.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
+	Password           string           `protobuf:"bytes,7,opt,name=password,proto3" json:"password,omitempty"`
+	Encryption         string           `protobuf:"bytes,8,opt,name=encryption,proto3" json:"encryption,omitempty"`
+	FromName           string           `protobuf:"bytes,9,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
+	FromAddress        string           `protobuf:"bytes,10,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
+	ReplyTo            string           `protobuf:"bytes,11,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *UpdateTenantEmailSettingsRequest) Reset() {
@@ -586,15 +590,17 @@ type SendTenantSmtpTestEmailRequest struct {
 	SmtpOverrideEnabled bool                   `protobuf:"varint,4,opt,name=smtp_override_enabled,json=smtpOverrideEnabled,proto3" json:"smtp_override_enabled,omitempty"`
 	Host                string                 `protobuf:"bytes,5,opt,name=host,proto3" json:"host,omitempty"`
 	Port                int32                  `protobuf:"varint,6,opt,name=port,proto3" json:"port,omitempty"`
-	Username            string                 `protobuf:"bytes,7,opt,name=username,proto3" json:"username,omitempty"`
-	PasswordUpdateMode  SecretUpdateMode       `protobuf:"varint,8,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.admin.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
-	Password            string                 `protobuf:"bytes,9,opt,name=password,proto3" json:"password,omitempty"`
-	Encryption          string                 `protobuf:"bytes,10,opt,name=encryption,proto3" json:"encryption,omitempty"`
-	FromName            string                 `protobuf:"bytes,11,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
-	FromAddress         string                 `protobuf:"bytes,12,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
-	ReplyTo             string                 `protobuf:"bytes,13,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Optional, as UpdateTenantEmailSettingsRequest.username is. With one, the
+	// test fails when the server offers no AUTH rather than sending without it.
+	Username           string           `protobuf:"bytes,7,opt,name=username,proto3" json:"username,omitempty"`
+	PasswordUpdateMode SecretUpdateMode `protobuf:"varint,8,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.admin.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
+	Password           string           `protobuf:"bytes,9,opt,name=password,proto3" json:"password,omitempty"`
+	Encryption         string           `protobuf:"bytes,10,opt,name=encryption,proto3" json:"encryption,omitempty"`
+	FromName           string           `protobuf:"bytes,11,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
+	FromAddress        string           `protobuf:"bytes,12,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
+	ReplyTo            string           `protobuf:"bytes,13,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *SendTenantSmtpTestEmailRequest) Reset() {

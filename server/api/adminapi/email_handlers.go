@@ -13,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/fielderr"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/secretupdate"
@@ -154,20 +155,17 @@ func (s *adminServer) UpdateTenantEmailSettings(
 
 	settings := tenantEmailSettingsFromUpdateRequest(req)
 	if req.SmtpOverrideEnabled {
-		if !hasPassword {
-			return nil, connect.NewError(connect.CodeInvalidArgument, emailsettings.ErrPasswordRequired.Error()).WithCause(emailsettings.ErrPasswordRequired)
-		}
 		if err := emailsettings.Validate(settings, false); err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+			return nil, tenantEmailSettingsError(err)
 		}
-		if err := emailsettings.RequireUsername(settings); err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+		if err := requireCredentialsTogether(settings, hasPassword); err != nil {
+			return nil, tenantEmailSettingsError(err)
 		}
 	} else {
 		settings = mergeTenantSettingsWithExisting(settings, existing, found)
 		if emailsettings.HasAnyValue(settings, hasPassword) {
 			if err := emailsettings.ValidateOptional(settings, hasPassword); err != nil {
-				return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+				return nil, tenantEmailSettingsError(err)
 			}
 		}
 	}
@@ -343,13 +341,34 @@ func (s *adminServer) resolveTenantSMTPSettingsForTest(ctx context.Context, tena
 		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 	settings := emailsettings.WithTenantFromName(tenantEmailSettingsFromTestRequest(req, password), tenant.Name)
-	if err := emailsettings.RequireUsername(settings); err != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
-	}
 	if err := emailsettings.Validate(settings, true); err != nil {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+		return emailsettings.SMTPSettings{}, tenantEmailSettingsError(err)
 	}
 	return settings, nil
+}
+
+// requireCredentialsTogether refuses an override whose username and the
+// password the row ends up holding, given or kept, do not come as a pair: an
+// empty username is a relay that takes no credentials, and the sender
+// authenticates exactly when one is saved.
+func requireCredentialsTogether(settings emailsettings.SMTPSettings, hasPassword bool) error {
+	username := emailsettings.Normalize(settings).Username
+	switch {
+	case username == "" && hasPassword:
+		return &fielderr.Invalid{Field: emailsettings.FieldUsername, Err: emailsettings.ErrPasswordWithoutUsername}
+	case username != "" && !hasPassword:
+		return &fielderr.Invalid{Field: emailsettings.FieldPassword, Err: emailsettings.ErrPasswordRequired}
+	}
+	return nil
+}
+
+// tenantEmailSettingsError reports a refusal of the settings as
+// invalid_argument, naming the field at fault when err names one.
+func tenantEmailSettingsError(err error) error {
+	if fieldErr := rpcerrors.FromFieldError(err); fieldErr != nil {
+		return fieldErr
+	}
+	return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 }
 
 func nullableInt32(value int32) sql.NullInt32 {

@@ -30,7 +30,6 @@ const (
 var (
 	ErrSecretManagerUnavailable = errors.New("secret manager is not configured")
 	ErrPasswordRequired         = errors.New("password is required")
-	ErrUsernameRequired         = errors.New("username is required")
 	// ErrPasswordWithoutUsername refuses a password there is no username to
 	// send it with.
 	ErrPasswordWithoutUsername = errors.New("username is required with a password")
@@ -100,15 +99,6 @@ func Validate(settings SMTPSettings, requirePassword bool) error {
 		if _, err := mail.ParseAddress(settings.ReplyTo); err != nil {
 			return invalid(FieldReplyTo, "reply_to must be a valid email address")
 		}
-	}
-	return nil
-}
-
-// RequireUsername refuses settings with no username, for the tenant consoles'
-// settings, which always authenticate.
-func RequireUsername(settings SMTPSettings) error {
-	if Normalize(settings).Username == "" {
-		return &fielderr.Invalid{Field: FieldUsername, Err: ErrUsernameRequired}
 	}
 	return nil
 }

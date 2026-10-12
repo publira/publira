@@ -72,16 +72,6 @@ func TestValidateTakesNoUsernameForARelayWithoutCredentials(t *testing.T) {
 	}
 }
 
-func TestRequireUsername(t *testing.T) {
-	err := RequireUsername(SMTPSettings{Username: "  "})
-	if !errors.Is(err, ErrUsernameRequired) || fielderr.Field(err) != FieldUsername {
-		t.Fatalf("RequireUsername(blank) = %v, want ErrUsernameRequired on username", err)
-	}
-	if err := RequireUsername(SMTPSettings{Username: "mailer"}); err != nil {
-		t.Fatalf("RequireUsername(mailer) = %v, want nil", err)
-	}
-}
-
 // No stored password and a cleared one are both an empty password, which
 // Validate then judges against the username.
 func TestAnAbsentPasswordResolvesToAnEmptyOne(t *testing.T) {
