@@ -31,14 +31,14 @@ On every one of those hosts, the path then decides whether the web app answers o
 
 | Path | Process |
 | --- | --- |
-| Starting with `/images` | The edge listener of `publira server`, port `8000` |
+| Starting with `/images` | The edge listener of `publira server` |
 | `/api/v1`, or starting with `/api/v1/` | The web app the host picked |
-| `/api`, or starting with `/api/` | The edge listener of `publira server`, port `8000` |
+| `/api`, or starting with `/api/` | The edge listener of `publira server` |
 | Anything else | The web app the host picked |
 
 `/images` is every image a page shows, and `/api` the public API the browser and the mobile app call. `/api/v1` is the exception: it belongs to the web apps, which answer their own endpoints there, the payment and inbound email webhooks among them. The exception ends at a `/`, so a path such as `/api/v10` or `/api/v1beta` is not part of it and goes to `publira server` with the rest of `/api`. An edge that matches the longest prefix first gets the order right without being told it.
 
-The web apps listen on port `3000` (`web-storefront`), `4000` (`web-admin`), and `4100` (`web-platform`) in the images as the repository builds them, unless you set their `PORT`.
+The edge listener of `publira server` is on port `8000`, and its internal listener on port `8100`, unless `PUBLIRA_PUBLIC_API_ADDR` and `PUBLIRA_PUBLIC_API_GRPC_ADDR` give them other addresses, as the [`publira server` reference](https://github.com/publira/publira/blob/main/server/cmd/publira/README.md) lists. The web apps listen on port `3000` (`web-storefront`), `4000` (`web-admin`), and `4100` (`web-platform`) in the images as the repository builds them, unless you set their `PORT`.
 
 The edge forwards the path as it arrived, and the `Host` header as the browser sent it. Publira's routes carry the `/api` and `/images` prefixes, and Publira finds the tenant from the host name, so an edge that strips a prefix or rewrites `Host` reaches no tenant at all.
 
@@ -46,7 +46,7 @@ An edge that checks the health of what it forwards to, as a load balancer does, 
 
 ### Keep the internal listener private
 
-`publira server` listens twice. The edge forwards to its edge listener, port `8000`, and to nothing else of it. Its internal listener, port `8100`, serves the tenant console's and the Platform Console's APIs to the web apps, and is for them alone. Keep it on a network the edge cannot reach, and never route a host or a path to it.
+`publira server` listens twice. The edge forwards to its edge listener, port `8000` by default, and to nothing else of it. Its internal listener, port `8100` by default, serves the tenant console's and the Platform Console's APIs to the web apps, and is for them alone. Keep it on a network the edge cannot reach, and never route a host or a path to it.
 
 ### TLS
 
@@ -162,7 +162,7 @@ Each sample keeps the backend addresses apart from the routing, and the committe
 | `web-storefront` | `web-storefront`, on the port it listens on |
 | `web-admin` | `web-admin`, on the port it listens on |
 | `web-platform` | `web-platform`, on the port it listens on, when you run it |
-| `api` | The edge listener of `publira server`, port `8000` |
+| `api` | The edge listener of `publira server`, port `8000` unless `PUBLIRA_PUBLIC_API_ADDR` sets another |
 
 ### The host lists
 
