@@ -59,8 +59,11 @@ import {
   PageVersionDiff,
   PageVersionLoadButton,
 } from "./page-draft-controls";
+import { PagePublishForm } from "./page-publish-form";
 
 interface PageWorkspaceProps {
+  /** See {@link PagePublishForm}. */
+  asksReadersToAgree: boolean;
   initialPage: PageListItem;
   initialVersions: PageVersionListItem[];
   locale: Locale;
@@ -101,6 +104,41 @@ const VersionStatus = ({
     <Message message="admin.pages.workspace.past_published" />
   ) : (
     <Message message="admin.pages.workspace.draft" />
+  );
+};
+
+/**
+ * A version's status, with a note under it where a publication of the version
+ * asked readers to agree to the page again. A version without one keeps the
+ * badge alone, as every page that readers do not agree to shows it.
+ */
+const VersionStatusCell = ({
+  page,
+  version,
+}: {
+  page: PageListItem;
+  version: PageVersionListItem;
+}) => {
+  const badge = (
+    <Badge tone={versionTone(page, version)}>
+      <Suspense fallback={<SkeletonLine className="h-3 w-12" />}>
+        <VersionStatus page={page} version={version} />
+      </Suspense>
+    </Badge>
+  );
+  if (!version.agreementRequiredAt) {
+    return badge;
+  }
+
+  return (
+    <div className="grid justify-items-start gap-1">
+      {badge}
+      <span className="text-xs text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-3 w-24" />}>
+          <Message message="admin.pages.workspace.agreement_required" />
+        </Suspense>
+      </span>
+    </div>
   );
 };
 
@@ -176,6 +214,7 @@ const PublicationStatus = ({
 };
 
 export const PageWorkspace = ({
+  asksReadersToAgree,
   initialPage,
   initialVersions,
   locale,
@@ -398,13 +437,7 @@ export const PageWorkspace = ({
                     v{version.versionNumber}
                   </TableCell>
                   <TableCell>
-                    <Badge tone={versionTone(initialPage, version)}>
-                      <Suspense
-                        fallback={<SkeletonLine className="h-3 w-12" />}
-                      >
-                        <VersionStatus page={initialPage} version={version} />
-                      </Suspense>
-                    </Badge>
+                    <VersionStatusCell page={initialPage} version={version} />
                   </TableCell>
                   <TableCell>
                     {formatPageDateTime(version.createdAt, locale, timeZone)}
@@ -422,41 +455,15 @@ export const PageWorkspace = ({
                         </Suspense>
                       </PageVersionLoadButton>
 
-                      <form action={publishAction}>
-                        <input
-                          name="tenant_id"
-                          type="hidden"
-                          value={tenantId}
-                        />
-                        <input
-                          name="page_id"
-                          type="hidden"
-                          value={initialPage.id}
-                        />
-                        <input
-                          name="translation_locale"
-                          type="hidden"
-                          value={initialPage.locale ?? ""}
-                        />
-                        <input
-                          name="version_id"
-                          type="hidden"
-                          value={version.id}
-                        />
-                        <Button
-                          disabled={
-                            initialPage.publishedVersionId === version.id
-                          }
-                          type="submit"
-                          variant="outline"
-                        >
-                          <Suspense
-                            fallback={<SkeletonLine className="h-4 w-14" />}
-                          >
-                            <Message message="admin.pages.workspace.publish" />
-                          </Suspense>
-                        </Button>
-                      </form>
+                      <PagePublishForm
+                        asksReadersToAgree={asksReadersToAgree}
+                        disabled={initialPage.publishedVersionId === version.id}
+                        pageId={initialPage.id}
+                        publishAction={publishAction}
+                        tenantId={tenantId}
+                        translationLocale={initialPage.locale ?? ""}
+                        version={version}
+                      />
 
                       <form action={rollbackAction}>
                         <input

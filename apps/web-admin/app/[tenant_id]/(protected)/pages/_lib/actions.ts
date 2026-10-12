@@ -32,7 +32,7 @@ import {
 import { normalizePageSlugInput, pageEditPath } from "../page-types";
 import type { PageFormState } from "../page-types";
 
-const displayInFooterSchema = z.preprocess((value) => {
+const formBooleanSchema = z.preprocess((value) => {
   if (typeof value !== "string") {
     return;
   }
@@ -49,15 +49,16 @@ const pageCommonSchema = async (locale: Locale) => {
       .string()
       .optional()
       .transform((value) => value ?? ""),
-    displayInFooter: displayInFooterSchema,
+    displayInFooter: formBooleanSchema,
     // What the edit screen loaded, so the save can tell which half changed.
     initialContentMarkdown: z
       .string()
       .optional()
       .transform((value) => value ?? ""),
-    initialDisplayInFooter: displayInFooterSchema,
+    initialDisplayInFooter: formBooleanSchema,
     initialTitle: optionalTrimmedString(),
     pageId: optionalTrimmedString(),
+    requireAgreement: formBooleanSchema,
     slug: optionalTrimmedString(
       255,
       t("admin.pages.validation.slug_too_long")
@@ -87,6 +88,7 @@ const pageFormFields = {
   initialDisplayInFooter: { kind: "value", name: "initial_display_in_footer" },
   initialTitle: { kind: "value", name: "initial_title" },
   pageId: { kind: "value", name: "page_id" },
+  requireAgreement: { kind: "value", name: "require_agreement" },
   slug: "value",
   tenantId: { kind: "value", name: "tenant_id" },
   title: "value",
@@ -270,6 +272,12 @@ export const savePageAction = async (
   );
 };
 
+/**
+ * Publishes a version. On the tenant's terms of service or privacy policy, a
+ * tenant admin's form also says whether readers have to agree to it again
+ * (`require_agreement`); every other form leaves the field out, which publishes
+ * a correction.
+ */
 export const publishVersionAction = async (formData: FormData) => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
@@ -282,6 +290,7 @@ export const publishVersionAction = async (formData: FormData) => {
     publishPageVersion(
       {
         pageId: parsed.data.pageId,
+        requireAgreement: parsed.data.requireAgreement === true,
         tenantId: parsed.data.tenantId,
         translationLocale: parsed.data.translationLocale,
         versionId: parsed.data.versionId,

@@ -77,6 +77,7 @@ import {
   NotificationBellTrigger,
 } from "#components/notification-bell";
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
+import { SignOutForm } from "#components/sign-out-form";
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
 import { getMe } from "#lib/auth";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
@@ -95,8 +96,8 @@ import {
 import { getTenantId } from "#lib/tenant-id";
 import { resolveTenantLogoVariant } from "#lib/tenant-logo";
 
+import { LegalPageAgreementGate } from "./legal-page-agreement-gate";
 import { PinnedAnnouncementBanner } from "./pinned-announcement-banner";
-import { SignOutForm } from "./sign-out-form";
 
 const notificationMenuLimit = 5;
 
@@ -640,6 +641,10 @@ const TenantBrandLink = async () => {
  */
 export const SiteChrome = ({ children }: { children: ReactNode }) => (
   <SiteLayout>
+    {/* Draws nothing; it only sends a reader who owes an agreement to give it. */}
+    <Suspense fallback={null}>
+      <LegalPageAgreementGate />
+    </Suspense>
     {/*
       The band has no skeleton: a tenant with nothing pinned draws nothing here,
       and a placeholder above the header would push the page down on every

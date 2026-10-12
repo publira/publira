@@ -2,7 +2,7 @@
 title: Pages
 description: Write the site's own pages in Markdown, publish and roll back their versions, translate them, and make two of them the terms of service and privacy policy readers agree to.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-12
 ---
 
 **Pages**, under **Site**, holds the pages the publisher writes for the site: the terms of service, the privacy policy, a page about the publisher, submission guidelines, and anything else that is not a series. A page is written in Markdown, kept in versions, and can be translated into each of the site's languages.
@@ -67,7 +67,7 @@ From then on:
 
 - The site and the app link to both pages, whether or not they are in the footer.
 - The sign-up form shows "I have read and agree to the following." above links to the two pages, and an account cannot be created without ticking it. A reader signing up with Apple or Google for the first time is shown the same agreement on **Finish signing up**.
-- The tenant records which published version of each page every new reader agreed to, and when.
+- The tenant records which published version of each page every reader agreed to, and when.
 
 A page that is chosen but not published is not asked about at sign-up. If no page is chosen, sign-up asks for no agreement at all.
 
@@ -75,4 +75,15 @@ A page that is chosen but not published is not asked about at sign-up. If no pag
 
 Publishing a new version of either page changes what new readers agree to from then on. If a reader has the sign-up form open when you publish, their sign-up is refused with "The pages to agree to have been updated. Read them and agree again.", so nobody agrees to text they were not shown.
 
-Readers who already have an account are not asked to agree to the new version. Publira asks for agreement only when an account is created, so they go on using the site under the version they agreed to, and the console has no way to ask them again yet ([#3799](https://github.com/publira/publira/issues/3799), [#3800](https://github.com/publira/publira/issues/3800)). Until it does, tell readers about a change that matters to them with an [announcement](./4-announcements.md), linking to the page.
+Whether readers who already have an account have to agree to the new version is chosen when it is published. On either page, a Tenant admin's **Publish** asks first, and offers two ways to publish:
+
+- **Publish and ask readers to agree** asks every reader to agree to this version. Choose it when the change alters what readers agree to.
+- **Publish without asking** publishes the version as a correction, such as a typo or a broken link: readers who agreed to an earlier version are not asked again.
+
+An Editor's **Publish** always publishes without asking. In **Versions**, a version whose publication asked readers is marked **Readers asked to agree** under its status.
+
+A reader asked to agree is sent, the next time they open a page of the site while signed in, to a screen that says "The pages below have been updated. Read them and agree to them to keep using your account." It links the pages that changed and asks them to tick "I have read and agree to the following." **Agree and continue** records their agreement to the version they were shown and returns them to the page they were on, and they are not asked again until another version asks. Until they agree, they can still read the site and the episodes they own, but most of what an account does, such as buying an episode, commenting, or following a series, is refused. A reader who does not want to agree can sign out, or delete their account under **Settings**.
+
+Each translation is asked about on its own. A reader who agreed to the page in another language, whose translation did not change, is not asked, so a change that applies to every language is published with **Publish and ask readers to agree** on each translation's tab.
+
+The app does not ask readers yet ([#3800](https://github.com/publira/publira/issues/3800)). It refuses a reader who has not agreed what the site refuses, and they agree on the site.

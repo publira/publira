@@ -1,4 +1,8 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  Code,
+  ConnectError,
+  ErrorInfoSchema,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -167,6 +171,55 @@ describe("web-storefront auth-session", () => {
     expect(mockRedirect).toHaveBeenCalledWith(
       "/en/login?returnTo=%2Fsettings&reason=session_revoked"
     );
+  });
+
+  it("withPublicSessionReauth sends a reader who owes an agreement to agree, coming back where they were", async () => {
+    const { withPublicSessionReauth } = await importAuthSession();
+
+    await expect(
+      withPublicSessionReauth(
+        "en",
+        "/series/a?page=2",
+        () =>
+          Promise.reject(
+            new ConnectError(
+              "agreement required",
+              Code.FailedPrecondition,
+              undefined,
+              [
+                {
+                  desc: ErrorInfoSchema,
+                  value: {
+                    domain: "publira",
+                    reason: "LEGAL_PAGE_AGREEMENT_REQUIRED",
+                  },
+                },
+              ]
+            )
+          ),
+        tenantId
+      )
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/en/settings/agreement?returnTo=%2Fseries%2Fa%3Fpage%3D2"
+    );
+  });
+
+  it("withPublicSessionReauth leaves any other failed precondition to the caller", async () => {
+    const { withPublicSessionReauth } = await importAuthSession();
+
+    await expect(
+      withPublicSessionReauth(
+        "en",
+        "/settings",
+        () =>
+          Promise.reject(
+            new ConnectError("last admin", Code.FailedPrecondition)
+          ),
+        tenantId
+      )
+    ).rejects.toMatchObject({ code: Code.FailedPrecondition });
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 
   it("withPublicSessionReauth does not treat business errors as re-authentication", async () => {

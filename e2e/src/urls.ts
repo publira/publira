@@ -194,6 +194,24 @@ export const WEB_ADMIN_ANNOUNCEMENT_DELIVERY_BASE_URL = envUrl(
 );
 
 /**
+ * Public site of the agreement tenant from the scenario seed
+ * `db/seeds/scenarios/500_legal_page_agreement.sql`.
+ *
+ * Publishing a version that asks readers to agree asks every reader of the
+ * tenant, so it is published in a tenant no other spec signs in to.
+ */
+export const WEB_STOREFRONT_LEGAL_PAGE_AGREEMENT_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_LEGAL_PAGE_AGREEMENT_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "agree.localhost")
+);
+
+/** Admin console of the same agreement tenant. */
+export const WEB_ADMIN_LEGAL_PAGE_AGREEMENT_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_LEGAL_PAGE_AGREEMENT_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.agree.localhost")
+);
+
+/**
  * Public site of the banner tenant from the scenario seed
  * `db/seeds/scenarios/200_announcement_banner.sql`.
  *

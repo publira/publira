@@ -1,4 +1,5 @@
 import { getLocales } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   SectionError,
@@ -34,11 +35,15 @@ import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { TenantEditorFieldset } from "#components/tenant-role-gate";
-import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import {
+  isSignedInTenantAdmin,
+  redirectToLoginIfSessionRejected,
+} from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPage, listPageTranslations, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantLegalPages } from "#lib/tenant-legal-pages";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { PageWorkspace } from "../_components/page-workspace";
@@ -108,6 +113,30 @@ const PageLoadError = ({ message }: { message: string }) => (
   </SectionError>
 );
 
+/**
+ * Whether publishing this page can ask readers to agree to it again: it is the
+ * page the tenant names as its terms of service or privacy policy, and the
+ * member of staff is a tenant admin, the one role the API lets ask. A failed
+ * read of the nomination leaves **Publish** as it is everywhere else, which
+ * publishes a correction.
+ */
+const canAskReadersToAgree = async (
+  tenantId: string,
+  pageId: string,
+  locale: Locale
+): Promise<boolean> => {
+  if (!(await isSignedInTenantAdmin(tenantId))) {
+    return false;
+  }
+  const legalPages = await getTenantLegalPages(tenantId, locale);
+  return (
+    legalPages.ok &&
+    [legalPages.pages.termsPage, legalPages.pages.privacyPage].some(
+      (page) => page?.pageId === pageId
+    )
+  );
+};
+
 const PageWorkspaceData = async ({
   params,
   searchParams,
@@ -162,14 +191,16 @@ const PageWorkspaceData = async ({
     );
   }
 
-  const [pageResult, versionsResult, timeZone] = await Promise.all([
-    getPage({ pageId, tenantId, translationLocale: requestedLocale }, locale),
-    listPageVersions(
-      { pageId, tenantId, translationLocale: requestedLocale },
-      locale
-    ),
-    getTenantDisplayTimeZone(tenantId),
-  ]);
+  const [pageResult, versionsResult, timeZone, asksReadersToAgree] =
+    await Promise.all([
+      getPage({ pageId, tenantId, translationLocale: requestedLocale }, locale),
+      listPageVersions(
+        { pageId, tenantId, translationLocale: requestedLocale },
+        locale
+      ),
+      getTenantDisplayTimeZone(tenantId),
+      canAskReadersToAgree(tenantId, pageId, locale),
+    ]);
 
   if (!pageResult.ok) {
     if (pageResult.notFound) {
@@ -209,6 +240,7 @@ const PageWorkspaceData = async ({
       ) : null}
       {/* A key per translation, so the editor's unsaved body never carries over to another language. */}
       <PageWorkspace
+        asksReadersToAgree={asksReadersToAgree}
         initialPage={pageResult.page}
         initialVersions={versionsResult.versions}
         key={selectedLocale}

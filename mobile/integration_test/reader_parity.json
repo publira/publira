@@ -470,6 +470,14 @@
       "exception": "Not in the app yet: #1778."
     },
     {
+      "name": "Agreeing to a revised terms of service or privacy policy that asks every reader again",
+      "web": {
+        "routes": ["[locale]/(auth)/settings/agreement"],
+        "rpcs": ["GetMyLegalPageAgreements", "AgreeToLegalPages"]
+      },
+      "exception": "Not in the app yet: #3800."
+    },
+    {
       "name": "The Apple and Google accounts linked to the reader's account",
       "web": {
         "routes": ["[locale]/(site)/settings/security"],

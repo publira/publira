@@ -57,6 +57,11 @@ export interface PageTranslationItem {
 }
 
 export interface PageVersionItem {
+  /**
+   * When the last publication of this version asked every reader to agree to
+   * the page again, and empty where none did.
+   */
+  agreementRequiredAt: string;
   id: string;
   pageId: string;
   versionNumber: number;
@@ -282,6 +287,7 @@ const mapPageTranslations = (
 /** The generated `PageVersion` fields {@link mapPageVersion} reads (see `series.ts`). */
 type RawPageVersion = Pick<
   PageVersion,
+  | "agreementRequiredAt"
   | "authorUserId"
   | "contentMarkdown"
   | "createdAt"
@@ -294,6 +300,7 @@ type RawPageVersion = Pick<
 >;
 
 const mapPageVersion = (version: RawPageVersion): PageVersionItem => ({
+  agreementRequiredAt: version.agreementRequiredAt ?? "",
   authorUserId: version.authorUserId ?? "",
   contentMarkdown: version.contentMarkdown,
   createdAt: version.createdAt ?? "",
@@ -778,6 +785,11 @@ export const publishPageVersion = async (
   input: {
     tenantId: string;
     pageId: string;
+    /**
+     * Asks every reader to agree to the page again. Only a tenant admin may,
+     * and only on the tenant's terms of service or privacy policy.
+     */
+    requireAgreement?: boolean;
     translationLocale?: Locale;
     versionId: string;
   },
@@ -799,6 +811,7 @@ export const publishPageVersion = async (
       {
         locale: input.translationLocale ?? "",
         pageId: input.pageId,
+        requireAgreement: input.requireAgreement === true,
         tenant: { tenantId: input.tenantId },
         versionId: input.versionId,
       },

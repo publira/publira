@@ -10,6 +10,7 @@ import {
   isExpectedNullableRpcError,
   isMissingResourceRpcError,
   isRpcError,
+  isLegalPageAgreementRequiredRpcError,
   isTenantSuspendedRpcError,
   isUnauthenticatedRpcError,
   rpcErrorCode,
@@ -252,6 +253,22 @@ describe("Connect error details", () => {
     expect(isMissingResourceRpcError(tenantRefusal("TENANT_SUSPENDED"))).toBe(
       false
     );
+  });
+
+  it("tells a reader owing an agreement from any other failed precondition", () => {
+    expect(
+      isLegalPageAgreementRequiredRpcError(
+        tenantRefusal("LEGAL_PAGE_AGREEMENT_REQUIRED")
+      )
+    ).toBe(true);
+    expect(
+      isLegalPageAgreementRequiredRpcError(tenantRefusal("TENANT_SUSPENDED"))
+    ).toBe(false);
+    expect(
+      isLegalPageAgreementRequiredRpcError(
+        tenantRefusal("LEGAL_PAGE_AGREEMENT_REQUIRED", Code.PermissionDenied)
+      )
+    ).toBe(false);
   });
 
   it("a value that did not come from an RPC has no details", () => {

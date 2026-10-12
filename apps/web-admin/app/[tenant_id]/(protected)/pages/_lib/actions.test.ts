@@ -396,6 +396,7 @@ describe("publishVersionAction", () => {
     expect(mockPublishPageVersion).toHaveBeenCalledWith(
       {
         pageId: PAGE_ID,
+        requireAgreement: false,
         tenantId: TENANT_ID,
         translationLocale: "en",
         versionId: "VERSION002",
@@ -406,6 +407,47 @@ describe("publishVersionAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(`page-${TENANT_ID}-${PAGE_ID}`);
     expect(mockRedirect).toHaveBeenCalledWith(
       `/pages/${PAGE_ID}?locale=en&published=1`
+    );
+  });
+});
+
+const publishForm = (requireAgreement: string): FormData => {
+  const data = new FormData();
+  data.set("tenant_id", TENANT_ID);
+  data.set("page_id", PAGE_ID);
+  data.set("version_id", "VERSION002");
+  data.set("translation_locale", "en");
+  data.set("require_agreement", requireAgreement);
+  return data;
+};
+
+describe("publishVersionAction on the terms of service or privacy policy", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockPublishPageVersion.mockResolvedValue({
+      ok: true,
+      version: { id: "VERSION002" },
+    });
+  });
+
+  it("asks readers to agree again when the publisher chose to", async () => {
+    const { publishVersionAction } = await import("./actions");
+    await publishVersionAction(publishForm("true"));
+
+    expect(mockPublishPageVersion).toHaveBeenCalledWith(
+      expect.objectContaining({ requireAgreement: true }),
+      "en"
+    );
+  });
+
+  it("publishes a correction when the publisher chose not to ask", async () => {
+    const { publishVersionAction } = await import("./actions");
+    await publishVersionAction(publishForm("false"));
+
+    expect(mockPublishPageVersion).toHaveBeenCalledWith(
+      expect.objectContaining({ requireAgreement: false }),
+      "en"
     );
   });
 });

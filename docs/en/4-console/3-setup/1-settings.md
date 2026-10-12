@@ -2,7 +2,7 @@
 title: Settings
 description: Set the site's copy, time zone, language, reader comments, age verification, legal pages, and refused email addresses, and tighten the platform's limits for the tenant.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-12
 ---
 
 **Settings**, under **Administration**, has two tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds.
@@ -84,7 +84,7 @@ Choose **Save the age verification** to save.
 
 ### Terms and privacy policy
 
-**Terms of service** and **Privacy policy** each name one of the tenant's published pages. The site and the app link to them, and a reader agrees to them when creating an account. Write and publish the pages first, as [Pages](./3-pages.md#the-terms-of-service-and-the-privacy-policy) describes, then choose them here and choose **Save the terms and privacy policy**. **None** leaves either one unset.
+**Terms of service** and **Privacy policy** each name one of the tenant's published pages. The site and the app link to them, and a reader agrees to them when creating an account, and again when a new version of either asks readers to agree to it, as [Publishing a new version](./3-pages.md#publishing-a-new-version) describes. Write and publish the pages first, as [Pages](./3-pages.md#the-terms-of-service-and-the-privacy-policy) describes, then choose them here and choose **Save the terms and privacy policy**. **None** leaves either one unset.
 
 ![The Terms and privacy policy card: a Terms of service and a Privacy policy field, each naming one of the tenant's pages, and Save the terms and privacy policy.](./settings-terms-and-privacy-policy.png)
 
