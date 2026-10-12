@@ -83,3 +83,36 @@ func TestValidateRefusesACodeNoCurrencyHas(t *testing.T) {
 		})
 	}
 }
+
+func TestInitialValidateReadsTheDefaultTimezone(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		given string
+		want  string
+	}{
+		{name: "blank keeps the stored one", given: "  ", want: ""},
+		{name: "surrounding space", given: " America/Los_Angeles ", want: "America/Los_Angeles"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := InitialParams{DefaultLocale: "en", DefaultTimezone: tc.given}.Validate()
+			if err != nil {
+				t.Fatalf("Validate(%q) error = %v", tc.given, err)
+			}
+			if got.DefaultTimezone != tc.want {
+				t.Fatalf("Validate(%q) time zone = %q, want %q", tc.given, got.DefaultTimezone, tc.want)
+			}
+		})
+	}
+}
+
+func TestInitialValidateRefusesANameNoZoneHas(t *testing.T) {
+	for _, given := range []string{"Mars/Olympus_Mons", "Local", "+09:00"} {
+		t.Run(given, func(t *testing.T) {
+			_, err := InitialParams{DefaultLocale: "en", DefaultTimezone: given}.Validate()
+			var invalid *fielderr.Invalid
+			if !errors.As(err, &invalid) || invalid.Field != FieldDefaultTimezone {
+				t.Fatalf("Validate(%q) error = %v, want an invalid %s", given, err, FieldDefaultTimezone)
+			}
+		})
+	}
+}

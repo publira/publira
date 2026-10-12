@@ -266,6 +266,12 @@ func TestCreateInitialUserInvalidInput(t *testing.T) {
 		{"code_that_names_no_currency", func() *publirasplatformv1.CreateInitialUserRequest {
 			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: "pass", DefaultLocale: "en", DefaultCurrency: "ABC"}
 		}},
+		{"timezone_that_names_no_zone", func() *publirasplatformv1.CreateInitialUserRequest {
+			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: "pass", DefaultLocale: "en", DefaultTimezone: "Mars/Olympus_Mons"}
+		}},
+		{"timezone_of_the_server_process", func() *publirasplatformv1.CreateInitialUserRequest {
+			return &publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: "pass", DefaultLocale: "en", DefaultTimezone: "Local"}
+		}},
 	}
 
 	for _, tc := range cases {

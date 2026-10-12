@@ -13,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/platformconfig"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -213,6 +214,94 @@ func TestDBCreateInitialUserRejectsACodeThatNamesNoCurrency(t *testing.T) {
 		Password:        "initial-admin-password",
 		DefaultLocale:   "en",
 		DefaultCurrency: "ABC",
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateInitialUser code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+
+	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_users"); got != 0 {
+		t.Fatalf("platform_users rows = %d, want 0", got)
+	}
+	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_config"); got != 0 {
+		t.Fatalf("platform_config rows = %d, want 0", got)
+	}
+}
+
+// The zone chosen at setup is the platform default, so a tenant created
+// afterwards without one starts on it.
+func TestDBInitialSetupSavesTheChosenTimezoneForNewTenants(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+
+	if _, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+		Name:            "Initial Admin",
+		Email:           "initial-admin@example.com",
+		Password:        "initial-admin-password",
+		DefaultLocale:   "en",
+		DefaultTimezone: "America/Los_Angeles",
+	}); err != nil {
+		t.Fatalf("CreateInitialUser: %v", err)
+	}
+
+	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_config WHERE default_timezone = 'America/Los_Angeles'`); got != 1 {
+		t.Fatalf("platform_config rows with default_timezone = America/Los_Angeles: %d, want 1", got)
+	}
+
+	loginResp, err := authClient.Login(context.Background(), &publirasplatformv1.PlatformAuthServiceLoginRequest{
+		Email:    "initial-admin@example.com",
+		Password: "initial-admin-password",
+	})
+	if err != nil {
+		t.Fatalf("Login as the initial user: %v", err)
+	}
+	created, err := tenants.CreateTenant(testutil.WithBearer(context.Background(), loginResp.AccessToken.Token), &publirasplatformv1.CreateTenantRequest{
+		DefaultLocale: "en",
+		Name:          "First Tenant",
+		Domain:        "first.example.com",
+	})
+	if err != nil {
+		t.Fatalf("CreateTenant: %v", err)
+	}
+	if got := tenantTimezoneByPublicID(t, pg, created.Tenant.PublicId); got != "America/Los_Angeles" {
+		t.Fatalf("stored tenants.timezone = %q, want America/Los_Angeles", got)
+	}
+}
+
+// A setup that names no zone starts the platform on the built-in one, as the
+// settings row did before the zone was asked for.
+func TestDBInitialSetupWithoutATimezoneStartsOnTheBuiltInOne(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+
+	if _, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+		Name:          "Initial Admin",
+		Email:         "initial-admin@example.com",
+		Password:      "initial-admin-password",
+		DefaultLocale: "en",
+	}); err != nil {
+		t.Fatalf("CreateInitialUser: %v", err)
+	}
+
+	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_config WHERE default_timezone = '`+tenanttz.Default+`'`); got != 1 {
+		t.Fatalf("platform_config rows with default_timezone = %s: %d, want 1", tenanttz.Default, got)
+	}
+}
+
+// A name that is not a usable zone is refused before any write, as the platform
+// settings save refuses it, so a rejected setup leaves no administrator and no
+// settings row behind.
+func TestDBCreateInitialUserRejectsANameThatIsNoTimezone(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+
+	_, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+		Name:            "Initial Admin",
+		Email:           "initial-admin@example.com",
+		Password:        "initial-admin-password",
+		DefaultLocale:   "en",
+		DefaultTimezone: "Mars/Olympus_Mons",
 	})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateInitialUser code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)

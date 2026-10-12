@@ -136,6 +136,11 @@ type CreateInitialUserRequest struct {
 	// nothing. Empty keeps the stored currency, which is USD on a platform that
 	// has saved none.
 	DefaultCurrency string `protobuf:"bytes,5,opt,name=default_currency,json=defaultCurrency,proto3" json:"default_currency,omitempty"`
+	// IANA time zone every tenant created without one starts on, as
+	// UpdatePlatformSettingsRequest takes it: a name that is not a usable zone is
+	// INVALID_ARGUMENT and creates nothing. Empty keeps the stored zone, which is
+	// UTC on a platform that has saved none.
+	DefaultTimezone string `protobuf:"bytes,6,opt,name=default_timezone,json=defaultTimezone,proto3" json:"default_timezone,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -205,6 +210,13 @@ func (x *CreateInitialUserRequest) GetDefaultCurrency() string {
 	return ""
 }
 
+func (x *CreateInitialUserRequest) GetDefaultTimezone() string {
+	if x != nil {
+		return x.DefaultTimezone
+	}
+	return ""
+}
+
 // Response returned after the first operator account is created.
 type CreateInitialUserResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -250,13 +262,14 @@ const file_publira_platform_v1_setup_proto_rawDesc = "" +
 	"\x17CheckSetupStatusRequest\"j\n" +
 	"\x18CheckSetupStatusResponse\x12'\n" +
 	"\x0fsetup_completed\x18\x01 \x01(\bR\x0esetupCompleted\x12%\n" +
-	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"\xb2\x01\n" +
+	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"\xdd\x01\n" +
 	"\x18CreateInitialUserRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x03 \x01(\tR\bpassword\x12%\n" +
 	"\x0edefault_locale\x18\x04 \x01(\tR\rdefaultLocale\x12)\n" +
-	"\x10default_currency\x18\x05 \x01(\tR\x0fdefaultCurrency\"\x1b\n" +
+	"\x10default_currency\x18\x05 \x01(\tR\x0fdefaultCurrency\x12)\n" +
+	"\x10default_timezone\x18\x06 \x01(\tR\x0fdefaultTimezone\"\x1b\n" +
 	"\x19CreateInitialUserResponse2\xff\x01\n" +
 	"\x14PlatformSetupService\x12q\n" +
 	"\x10CheckSetupStatus\x12,.publira.platform.v1.CheckSetupStatusRequest\x1a-.publira.platform.v1.CheckSetupStatusResponse\"\x00\x12t\n" +

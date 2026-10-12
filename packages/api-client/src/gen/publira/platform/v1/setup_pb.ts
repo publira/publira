@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/setup.proto.
  */
 export const file_publira_platform_v1_setup: GenFile = /*@__PURE__*/
-  fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL3NldHVwLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIhkKF0NoZWNrU2V0dXBTdGF0dXNSZXF1ZXN0IksKGENoZWNrU2V0dXBTdGF0dXNSZXNwb25zZRIXCg9zZXR1cF9jb21wbGV0ZWQYASABKAgSFgoOZGVmYXVsdF9sb2NhbGUYAiABKAkiewoYQ3JlYXRlSW5pdGlhbFVzZXJSZXF1ZXN0EgwKBG5hbWUYASABKAkSDQoFZW1haWwYAiABKAkSEAoIcGFzc3dvcmQYAyABKAkSFgoOZGVmYXVsdF9sb2NhbGUYBCABKAkSGAoQZGVmYXVsdF9jdXJyZW5jeRgFIAEoCSIbChlDcmVhdGVJbml0aWFsVXNlclJlc3BvbnNlMv8BChRQbGF0Zm9ybVNldHVwU2VydmljZRJxChBDaGVja1NldHVwU3RhdHVzEiwucHVibGlyYS5wbGF0Zm9ybS52MS5DaGVja1NldHVwU3RhdHVzUmVxdWVzdBotLnB1YmxpcmEucGxhdGZvcm0udjEuQ2hlY2tTZXR1cFN0YXR1c1Jlc3BvbnNlIgASdAoRQ3JlYXRlSW5pdGlhbFVzZXISLS5wdWJsaXJhLnBsYXRmb3JtLnYxLkNyZWF0ZUluaXRpYWxVc2VyUmVxdWVzdBouLnB1YmxpcmEucGxhdGZvcm0udjEuQ3JlYXRlSW5pdGlhbFVzZXJSZXNwb25zZSIAQl1aW2dpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw");
+  fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL3NldHVwLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIhkKF0NoZWNrU2V0dXBTdGF0dXNSZXF1ZXN0IksKGENoZWNrU2V0dXBTdGF0dXNSZXNwb25zZRIXCg9zZXR1cF9jb21wbGV0ZWQYASABKAgSFgoOZGVmYXVsdF9sb2NhbGUYAiABKAkilQEKGENyZWF0ZUluaXRpYWxVc2VyUmVxdWVzdBIMCgRuYW1lGAEgASgJEg0KBWVtYWlsGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJEhYKDmRlZmF1bHRfbG9jYWxlGAQgASgJEhgKEGRlZmF1bHRfY3VycmVuY3kYBSABKAkSGAoQZGVmYXVsdF90aW1lem9uZRgGIAEoCSIbChlDcmVhdGVJbml0aWFsVXNlclJlc3BvbnNlMv8BChRQbGF0Zm9ybVNldHVwU2VydmljZRJxChBDaGVja1NldHVwU3RhdHVzEiwucHVibGlyYS5wbGF0Zm9ybS52MS5DaGVja1NldHVwU3RhdHVzUmVxdWVzdBotLnB1YmxpcmEucGxhdGZvcm0udjEuQ2hlY2tTZXR1cFN0YXR1c1Jlc3BvbnNlIgASdAoRQ3JlYXRlSW5pdGlhbFVzZXISLS5wdWJsaXJhLnBsYXRmb3JtLnYxLkNyZWF0ZUluaXRpYWxVc2VyUmVxdWVzdBouLnB1YmxpcmEucGxhdGZvcm0udjEuQ3JlYXRlSW5pdGlhbFVzZXJSZXNwb25zZSIAQl1aW2dpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw");
 
 /**
  * Request to check the platform setup status.
@@ -102,6 +102,16 @@ export type CreateInitialUserRequest = Message<"publira.platform.v1.CreateInitia
    * @generated from field: string default_currency = 5;
    */
   defaultCurrency: string;
+
+  /**
+   * IANA time zone every tenant created without one starts on, as
+   * UpdatePlatformSettingsRequest takes it: a name that is not a usable zone is
+   * INVALID_ARGUMENT and creates nothing. Empty keeps the stored zone, which is
+   * UTC on a platform that has saved none.
+   *
+   * @generated from field: string default_timezone = 6;
+   */
+  defaultTimezone: string;
 };
 
 /**
