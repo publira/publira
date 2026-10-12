@@ -261,6 +261,7 @@
         "tenant_comment_settings": "読者のコメント",
         "tenant_community_limits": "コミュニティの上限",
         "tenant_default_locale": "既定言語",
+        "tenant_email_rejection_settings": "受け付けないメールアドレス",
         "tenant_legal_pages": "利用規約とプライバシーポリシー",
         "tenant_mobile_app_association": "アプリリンク",
         "tenant_purchase_settings": "販売先",

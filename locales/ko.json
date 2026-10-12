@@ -261,6 +261,7 @@
         "tenant_comment_settings": "독자 댓글",
         "tenant_community_limits": "커뮤니티 제한",
         "tenant_default_locale": "기본 언어",
+        "tenant_email_rejection_settings": "받지 않는 이메일 주소",
         "tenant_legal_pages": "이용약관 및 개인정보 처리방침",
         "tenant_mobile_app_association": "앱 링크",
         "tenant_purchase_settings": "판매 위치",

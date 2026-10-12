@@ -261,6 +261,7 @@
         "tenant_comment_settings": "读者评论",
         "tenant_community_limits": "社区限制",
         "tenant_default_locale": "默认语言",
+        "tenant_email_rejection_settings": "不接受的电子邮件地址",
         "tenant_legal_pages": "服务条款与隐私政策",
         "tenant_mobile_app_association": "应用链接",
         "tenant_purchase_settings": "销售位置",

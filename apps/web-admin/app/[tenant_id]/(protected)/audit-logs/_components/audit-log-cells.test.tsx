@@ -125,6 +125,29 @@ describe("AuditLogActionCell", () => {
     }
   );
 
+  it.each(getLocales())(
+    "names a change to the refused email addresses in %s",
+    async (locale) => {
+      const cell = await renderActionCell(
+        locale,
+        "tenant_email_rejection_settings_updated",
+        "tenant_email_rejection_settings",
+        "TENANT001"
+      );
+
+      const actionName = sharedMessage(
+        "admin.audit.actions.tenant_email_rejection_settings_updated",
+        locale
+      );
+      const targetName = sharedMessage(
+        "admin.audit.targets.tenant_email_rejection_settings",
+        locale
+      );
+
+      expect(cell.textContent).toBe(`${actionName}${targetName} / TENANT001`);
+    }
+  );
+
   it("falls back to the raw target type it has no name for", async () => {
     const cell = await renderActionCell(
       "en",
