@@ -1369,7 +1369,14 @@
           "published_at": "공개일시",
           "actions": "작업"
         },
-        "version_option": "v{$version} · {$status}"
+        "version_option": "v{$version} · {$status}",
+        "agreement_required": "독자에게 동의 요청함",
+        "publish_agreement": {
+          "title": "{$version} 공개하기",
+          "description": "독자는 이 페이지에 동의했습니다. 이 버전에도 다시 동의를 받을지 선택하세요. 동의를 요청하면 독자는 다음에 사이트를 이용할 때 이 페이지를 보게 되며, 동의할 때까지 계정의 대부분 기능을 사용할 수 없습니다. 동의한 내용을 바꾸지 않는 수정이라면 동의를 요청하지 않고 공개할 수 있습니다.",
+          "correction": "동의 요청 없이 공개",
+          "require": "공개하고 독자에게 동의 요청"
+        }
       },
       "translations": {
         "tabs_label": "언어",
@@ -3282,7 +3289,9 @@
         "resend_verification_failed": "확인 메일을 보내지 못했습니다. 입력한 내용을 확인해 주세요.",
         "reset_confirm_failed": "비밀번호를 재설정하지 못했습니다. 링크가 만료되었거나 유효하지 않을 수 있습니다.",
         "reset_request_failed": "재설정 메일을 보내지 못했습니다. 입력한 내용을 확인해 주세요.",
-        "signup_failed": "계정을 만들지 못했습니다. 입력한 내용을 확인해 주세요."
+        "signup_failed": "계정을 만들지 못했습니다. 입력한 내용을 확인해 주세요.",
+        "agreement_required": "계속하려면 표시된 페이지에 동의해 주세요.",
+        "agreement_failed": "동의를 기록하지 못했습니다. 다시 시도해 주세요."
       },
       "fields": {
         "birth_date_invalid": "생년월일을 과거 날짜로 입력해 주세요.",
@@ -3365,6 +3374,14 @@
         "to_login": "로그인 화면으로 이동",
         "to_resend_verification": "확인 메일 다시 보내기",
         "verified": "이메일 주소 확인이 완료되었습니다. 이제 로그인하실 수 있습니다."
+      },
+      "agreement": {
+        "title": "업데이트된 약관에 동의",
+        "description": "아래 페이지가 업데이트되었습니다. 계정을 계속 이용하려면 내용을 읽고 동의해 주세요.",
+        "submit": "동의하고 계속",
+        "submitting": "보내는 중...",
+        "decline": "동의하지 않으면 로그아웃하거나 계정을 삭제할 수 있습니다.",
+        "delete_account": "계정 삭제"
       }
     },
     "common": {

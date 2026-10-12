@@ -1369,7 +1369,14 @@
           "published_at": "发布时间",
           "actions": "操作"
         },
-        "version_option": "v{$version} · {$status}"
+        "version_option": "v{$version} · {$status}",
+        "agreement_required": "已要求读者同意",
+        "publish_agreement": {
+          "title": "发布{$version}",
+          "description": "读者已同意此页面。请选择是否要求读者重新同意此版本。要求同意后，读者下次使用站点时会看到此页面，在同意之前无法使用账户的大部分功能。如果只是不改变同意内容的更正，可以不要求同意直接发布。",
+          "correction": "不要求同意直接发布",
+          "require": "发布并要求读者同意"
+        }
       },
       "translations": {
         "tabs_label": "语言",
@@ -3282,7 +3289,9 @@
         "resend_verification_failed": "无法发送确认邮件。请检查您输入的内容。",
         "reset_confirm_failed": "无法重设您的密码。链接可能已失效或无效。",
         "reset_request_failed": "无法发送重设邮件。请检查您输入的内容。",
-        "signup_failed": "无法创建您的账户。请检查您输入的内容。"
+        "signup_failed": "无法创建您的账户。请检查您输入的内容。",
+        "agreement_required": "请同意列出的页面后继续。",
+        "agreement_failed": "无法记录您的同意。请重试。"
       },
       "fields": {
         "birth_date_invalid": "请以过去的日期填写出生日期。",
@@ -3365,6 +3374,14 @@
         "to_login": "前往登录",
         "to_resend_verification": "重新发送确认邮件",
         "verified": "您的邮箱地址已确认。现在可以登录了。"
+      },
+      "agreement": {
+        "title": "同意更新后的条款",
+        "description": "以下页面已更新。如需继续使用您的账户，请阅读并同意。",
+        "submit": "同意并继续",
+        "submitting": "正在提交…",
+        "decline": "如果不同意，您可以退出登录或注销账户。",
+        "delete_account": "注销账户"
       }
     },
     "common": {

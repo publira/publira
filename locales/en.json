@@ -1369,7 +1369,14 @@
           "published_at": "Published",
           "actions": "Actions"
         },
-        "version_option": "v{$version} · {$status}"
+        "version_option": "v{$version} · {$status}",
+        "agreement_required": "Readers asked to agree",
+        "publish_agreement": {
+          "title": "Publish {$version}",
+          "description": "Readers have agreed to this page. Choose whether they have to agree to this version as well. Readers asked to agree are shown the page the next time they use the site, and cannot use most of their account until they agree. A correction that does not change what they agreed to can be published without asking.",
+          "correction": "Publish without asking",
+          "require": "Publish and ask readers to agree"
+        }
       },
       "translations": {
         "tabs_label": "Languages",
@@ -3282,7 +3289,9 @@
         "resend_verification_failed": "Could not send the confirmation email. Please check what you entered.",
         "reset_confirm_failed": "Could not reset your password. The link may have expired or be invalid. Request a new reset email.",
         "reset_request_failed": "Could not send the reset email. Please check what you entered.",
-        "signup_failed": "Could not create your account. Please check what you entered."
+        "signup_failed": "Could not create your account. Please check what you entered.",
+        "agreement_required": "Agree to the listed pages to continue.",
+        "agreement_failed": "Could not record your agreement. Please try again."
       },
       "fields": {
         "birth_date_invalid": "Enter your date of birth as a past calendar date.",
@@ -3365,6 +3374,14 @@
         "to_login": "Sign in",
         "to_resend_verification": "Send a new confirmation email",
         "verified": "Your email address has been confirmed. You can sign in now."
+      },
+      "agreement": {
+        "title": "Agree to the updated terms",
+        "description": "The pages below have been updated. Read them and agree to them to keep using your account.",
+        "submit": "Agree and continue",
+        "submitting": "Saving...",
+        "decline": "If you do not agree, you can sign out or delete your account.",
+        "delete_account": "Delete account"
       }
     },
     "common": {

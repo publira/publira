@@ -18,6 +18,7 @@ export const RPC_ERROR_REASON = {
   creatorRoleInUse: "CREATOR_ROLE_IN_USE",
   invitationCanceled: "INVITATION_CANCELED",
   lastTenantAdmin: "LAST_TENANT_ADMIN",
+  legalPageAgreementRequired: "LEGAL_PAGE_AGREEMENT_REQUIRED",
   mfaInvalidCode: "MFA_INVALID_CODE",
   mfaLocked: "MFA_LOCKED",
   ownAccount: "OWN_ACCOUNT",
@@ -320,6 +321,17 @@ export const rpcErrorHasReason = (
 export const isTenantSuspendedRpcError = (error: unknown): boolean =>
   isRpcError(error, Code.FailedPrecondition) &&
   rpcErrorHasReason(error, RPC_ERROR_REASON.tenantSuspended);
+
+/**
+ * The signed-in reader has not agreed to the version of the tenant's terms of
+ * service or privacy policy in force, and the public API refuses what they
+ * asked until they do (`AuthService.GetMyLegalPageAgreements` names the pages).
+ * It refuses the reader rather than the request, so a caller sends them to
+ * agree instead of reporting a failure.
+ */
+export const isLegalPageAgreementRequiredRpcError = (error: unknown): boolean =>
+  isRpcError(error, Code.FailedPrecondition) &&
+  rpcErrorHasReason(error, RPC_ERROR_REASON.legalPageAgreementRequired);
 
 /**
  * The numeric value stored under `key` on a Publira-owned ErrorInfo whose

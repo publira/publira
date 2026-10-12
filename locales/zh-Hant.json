@@ -1369,7 +1369,14 @@
           "published_at": "發布時間",
           "actions": "操作"
         },
-        "version_option": "v{$version} · {$status}"
+        "version_option": "v{$version} · {$status}",
+        "agreement_required": "已要求讀者同意",
+        "publish_agreement": {
+          "title": "發布{$version}",
+          "description": "讀者已同意此頁面。請選擇是否要求讀者重新同意此版本。要求同意後，讀者下次使用網站時會看到此頁面，在同意之前無法使用帳戶的大部分功能。如果只是不改變同意內容的更正，可以不要求同意直接發布。",
+          "correction": "不要求同意直接發布",
+          "require": "發布並要求讀者同意"
+        }
       },
       "translations": {
         "tabs_label": "語言",
@@ -3282,7 +3289,9 @@
         "resend_verification_failed": "無法寄送確認郵件。請檢查您輸入的內容。",
         "reset_confirm_failed": "無法重設您的密碼。連結可能已失效或無效。",
         "reset_request_failed": "無法寄送重設郵件。請檢查您輸入的內容。",
-        "signup_failed": "無法建立您的帳戶。請檢查您輸入的內容。"
+        "signup_failed": "無法建立您的帳戶。請檢查您輸入的內容。",
+        "agreement_required": "請同意列出的頁面後繼續。",
+        "agreement_failed": "無法記錄您的同意。請再試一次。"
       },
       "fields": {
         "birth_date_invalid": "請以過去的日期填寫出生日期。",
@@ -3365,6 +3374,14 @@
         "to_login": "前往登入",
         "to_resend_verification": "重新寄送確認郵件",
         "verified": "您的電子郵件地址已確認。現在可以登入了。"
+      },
+      "agreement": {
+        "title": "同意更新後的條款",
+        "description": "以下頁面已更新。如需繼續使用您的帳戶，請閱讀並同意。",
+        "submit": "同意並繼續",
+        "submitting": "正在送出…",
+        "decline": "如果不同意，您可以登出或刪除帳戶。",
+        "delete_account": "刪除帳戶"
       }
     },
     "common": {

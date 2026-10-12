@@ -48,6 +48,7 @@ const page: PageListItem = {
 };
 
 const version: PageVersionListItem = {
+  agreementRequiredAt: "",
   authorUserId: "USER001",
   contentMarkdown: "# Privacy policy\n\nSaved body.",
   createdAt: "2030-01-01T00:00:00Z",
@@ -59,14 +60,28 @@ const version: PageVersionListItem = {
   versionNumber: 1,
 };
 
+const draft: PageVersionListItem = {
+  ...version,
+  contentMarkdown: "# Privacy policy\n\nRevised body.",
+  id: "VERSION002",
+  publishedAt: "",
+  status: "draft",
+  versionNumber: 2,
+};
+
 const workspace = (
   saveAction: () => Promise<PageFormState>,
-  initialPage: PageListItem
+  initialPage: PageListItem,
+  {
+    asksReadersToAgree = false,
+    versions = [version],
+  }: { asksReadersToAgree?: boolean; versions?: PageVersionListItem[] } = {}
 ) => (
   <AdminLocaleTestProvider locale="en">
     <PageWorkspace
+      asksReadersToAgree={asksReadersToAgree}
       initialPage={initialPage}
-      initialVersions={[version]}
+      initialVersions={versions}
       locale="en"
       publishAction={noopFormAction}
       rollbackAction={noopFormAction}
@@ -80,11 +95,12 @@ const workspace = (
 
 const renderWorkspace = async (
   saveAction: () => Promise<PageFormState> = noopSaveAction,
-  initialPage: PageListItem = page
+  initialPage: PageListItem = page,
+  options?: Parameters<typeof workspace>[2]
 ) => {
   let rendered: ReturnType<typeof renderBase> | undefined;
   await act(() => {
-    rendered = renderBase(workspace(saveAction, initialPage));
+    rendered = renderBase(workspace(saveAction, initialPage, options));
   });
   return rendered as ReturnType<typeof renderBase>;
 };
@@ -258,5 +274,55 @@ describe("PageWorkspace", () => {
 
     expect(await screen.findByText("Could not save.")).toBeDefined();
     expect(load.disabled).toBe(false);
+  });
+
+  it("publishes at once on a page readers do not agree to", async () => {
+    await renderWorkspace(noopSaveAction, page, { versions: [draft, version] });
+
+    const [publish] = screen.getAllByRole("button", { name: "Publish" });
+
+    expect(publish).toHaveProperty("type", "submit");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("asks whether readers agree again before publishing the terms", async () => {
+    await renderWorkspace(noopSaveAction, page, {
+      asksReadersToAgree: true,
+      versions: [draft, version],
+    });
+
+    const [publish] = screen.getAllByRole("button", { name: "Publish" });
+    expect(publish).toHaveProperty("type", "button");
+    await act(() => {
+      fireEvent.click(publish as HTMLElement);
+    });
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog.textContent).toContain("Publish v2");
+    const ask = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Publish and ask readers to agree",
+    });
+    const correction = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Publish without asking",
+    });
+    for (const [button, value] of [
+      [ask, "true"],
+      [correction, "false"],
+    ] as const) {
+      expect(button.type).toBe("submit");
+      expect(button.getAttribute("form")).toBe(
+        "publish-page-version-VERSION002"
+      );
+      expect(button.name).toBe("require_agreement");
+      expect(button.value).toBe(value);
+    }
+  });
+
+  it("marks a version whose publication asked readers to agree", async () => {
+    await renderWorkspace(noopSaveAction, page, {
+      versions: [{ ...version, agreementRequiredAt: "2030-01-02T00:00:00Z" }],
+    });
+
+    expect(screen.getByText("Readers asked to agree")).toBeTruthy();
   });
 });

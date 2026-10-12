@@ -1369,7 +1369,14 @@
           "published_at": "公開日時",
           "actions": "操作"
         },
-        "version_option": "v{$version}・{$status}"
+        "version_option": "v{$version}・{$status}",
+        "agreement_required": "読者に同意を依頼",
+        "publish_agreement": {
+          "title": "{$version}を公開する",
+          "description": "読者はこのページに同意しています。この版にもあらためて同意を求めるかを選んでください。同意を求めると、読者は次にサイトを利用するときにこのページを示され、同意するまでアカウントのほとんどの機能を使えません。同意した内容を変えない訂正であれば、同意を求めずに公開できます。",
+          "correction": "同意を求めずに公開",
+          "require": "公開して読者に同意を求める"
+        }
       },
       "translations": {
         "tabs_label": "言語",
@@ -3282,7 +3289,9 @@
         "resend_verification_failed": "確認メールの送信に失敗しました。入力内容をご確認ください。",
         "reset_confirm_failed": "再設定に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。再設定メールを送り直してください。",
         "reset_request_failed": "再設定メールの送信に失敗しました。入力内容をご確認ください。",
-        "signup_failed": "新規登録に失敗しました。入力内容をご確認ください。"
+        "signup_failed": "新規登録に失敗しました。入力内容をご確認ください。",
+        "agreement_required": "続けるには、表示されたページに同意してください。",
+        "agreement_failed": "同意を記録できませんでした。もう一度お試しください。"
       },
       "fields": {
         "birth_date_invalid": "生年月日を過去の日付で入力してください。",
@@ -3365,6 +3374,14 @@
         "to_login": "ログイン",
         "to_resend_verification": "確認メールを再送する",
         "verified": "メールアドレスの確認が完了しました。ログインしてください。"
+      },
+      "agreement": {
+        "title": "更新された規約への同意",
+        "description": "下記のページが更新されました。アカウントを引き続き利用するには、内容を読んで同意してください。",
+        "submit": "同意して続ける",
+        "submitting": "送信中...",
+        "decline": "同意しない場合は、ログアウトするか、アカウントを削除できます。",
+        "delete_account": "アカウントを削除"
       }
     },
     "common": {

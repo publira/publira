@@ -1,3 +1,4 @@
+import { isLegalPageAgreementRequiredRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { sessionCookieOptions } from "@publira/web-session";
 import { updateTag } from "next/cache";
@@ -11,7 +12,13 @@ import {
   getPublicSessionCacheTag,
   isUnauthenticatedError,
   PUBLIC_SESSION_COOKIE_NAME,
+  sanitizeRedirectPath,
 } from "./auth-shared";
+import {
+  LEGAL_PAGE_AGREEMENT_PATH,
+  legalPageAgreementHref,
+} from "./legal-page-agreement-path";
+import { withLocalePrefix } from "./locale-path";
 import { getTenantDefaultLocale } from "./tenant";
 
 /**
@@ -94,6 +101,25 @@ export const redirectToLogin = async (
 };
 
 /**
+ * Send the reader to agree to the tenant's terms of service or privacy policy,
+ * coming back to `returnTo` once they do. Safe to call while rendering, and
+ * takes `locale` explicitly for the same reason {@link redirectToLogin} does.
+ */
+export const redirectToLegalPageAgreement = async (
+  locale: Locale,
+  returnTo: string | null | undefined,
+  tenantId: string
+): Promise<never> => {
+  const defaultLocale = await getTenantDefaultLocale(tenantId);
+  return redirect(
+    legalPageAgreementHref(
+      withLocalePrefix(locale, defaultLocale, LEGAL_PAGE_AGREEMENT_PATH),
+      sanitizeRedirectPath(returnTo)
+    )
+  );
+};
+
+/**
  * Resolve the session for work that must not run without one.
  *
  * A Server Action is its own request, so it authenticates independently of the
@@ -113,11 +139,13 @@ export const requirePublicSession = async (
 
 /**
  * Run an authenticated call, turning the API's rejection of the session into
- * the re-authentication flow.
+ * the re-authentication flow, and its refusal of a reader who owes an agreement
+ * to the tenant's terms into the screen that asks for it.
  *
- * Only `Code.Unauthenticated` qualifies. Everything else — a wrong password, a
- * validation failure, an outage — propagates unchanged, so a business error is
- * never mistaken for a lost session.
+ * Only `Code.Unauthenticated` and the `LEGAL_PAGE_AGREEMENT_REQUIRED` reason
+ * qualify. Everything else — a wrong password, a validation failure, an outage
+ * — propagates unchanged, so a business error is never mistaken for a lost
+ * session.
  */
 export const withPublicSessionReauth = async <T>(
   locale: Locale,
@@ -130,6 +158,9 @@ export const withPublicSessionReauth = async <T>(
   } catch (error) {
     if (isUnauthenticatedError(error)) {
       return redirectToLogin(locale, returnTo, tenantId);
+    }
+    if (isLegalPageAgreementRequiredRpcError(error)) {
+      return redirectToLegalPageAgreement(locale, returnTo, tenantId);
     }
     throw error;
   }

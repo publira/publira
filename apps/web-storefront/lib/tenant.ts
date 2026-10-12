@@ -219,7 +219,12 @@ type RawTenantImageVariant = Pick<
   | "width"
 >;
 
-const toTenantLegalPage = (
+/**
+ * A page as `TenantLegalPage` reports it, or `undefined` where the API names
+ * none for the role. The public API reports a page this way both for the
+ * tenant's nomination and for what a signed-in reader still owes.
+ */
+export const toTenantLegalPage = (
   page: { slug?: string; title?: string; versionId?: string } | undefined
 ): TenantLegalPage | undefined => {
   const slug = nonEmpty(page?.slug);

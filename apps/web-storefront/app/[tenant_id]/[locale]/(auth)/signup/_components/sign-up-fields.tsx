@@ -1,4 +1,3 @@
-import { Checkbox } from "@publira/ui-components/checkbox";
 import {
   Field,
   FieldContent,
@@ -6,11 +5,8 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Suspense } from "react";
 
-import { LocaleLink } from "#components/locale-link";
-import { Message } from "#components/message";
+import { LegalPagesConsentField } from "#components/legal-pages-consent-field";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import {
@@ -18,7 +14,6 @@ import {
   getTenantAgeVerification,
   getTenantLegalPages,
 } from "#lib/tenant";
-import type { TenantLegalPage } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 /**
@@ -54,23 +49,8 @@ export const BirthDateField = async () => {
   );
 };
 
-/** Opens in a new tab, so reading the text does not throw away the form. */
-const LegalPageLink = ({ page }: { page: TenantLegalPage }) => (
-  <LocaleLink
-    href={page.href}
-    className="text-primary underline underline-offset-4"
-    rel="noopener"
-    target="_blank"
-  >
-    {page.title}
-  </LocaleLink>
-);
-
 /**
- * Asked only where the tenant names a terms or privacy page. Each version sent
- * is the one whose title this form links to, so what the API records is the
- * text the reader was shown. Keyed by those versions, so a page republished
- * while the form was open is agreed to anew rather than carried over.
+ * Asked only where the tenant names a terms or privacy page.
  */
 export const ConsentField = async () => {
   const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
@@ -79,29 +59,5 @@ export const ConsentField = async () => {
     return null;
   }
 
-  return (
-    <Field key={pages.map((page) => page.versionId).join(" ")}>
-      {pages.map((page) => (
-        <input
-          key={page.versionId}
-          name="agreedPageVersionIds"
-          type="hidden"
-          value={page.versionId}
-        />
-      ))}
-      <div className="flex items-center gap-2">
-        <Checkbox name="consent" required />
-        <FieldLabel>
-          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-            <Message message="storefront.auth.signup.consent_label" />
-          </Suspense>
-        </FieldLabel>
-      </div>
-      <FieldDescription className="flex flex-wrap gap-x-4 gap-y-1 pl-6">
-        {pages.map((page) => (
-          <LegalPageLink key={page.versionId} page={page} />
-        ))}
-      </FieldDescription>
-    </Field>
-  );
+  return <LegalPagesConsentField pages={pages} />;
 };

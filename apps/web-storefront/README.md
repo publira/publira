@@ -143,6 +143,10 @@ The checkout button on a paid episode sends the reader to the URL `StartEpisodeC
 
 `/login` and `/signup` offer a button for each provider `GetTenant` answers a client ID for, and `/settings/security` lists the providers linked to the account. A button sends the reader to the provider's authorization endpoint, which posts its answer to `POST /api/v1/auth/apple/callback` or `POST /api/v1/auth/google/callback` on the tenant's public domain; that is the redirect URI a tenant registers with Apple's Services ID and Google's web client. A first sign-in on a tenant that asks for consent to its terms continues on `/signup/continue`. An account without a password confirms its deletion on `/settings` and an email change on `/settings/security` with a fresh sign-in through the same callback, and `/settings/security` points it to `/reset-password` to set a first password. The flow is in `lib/social-sign-in.ts`.
 
+### Agreeing to revised terms
+
+A signed-in reader who has not agreed to a version of the terms of service or the privacy policy that asks every reader again is sent to `/settings/agreement` from whichever page under `(site)` they open, except the pages they are asked to read and `/settings`, where the account can be deleted instead, and comes back to that page once they agree. A Server Action or a render that the public API refuses with `LEGAL_PAGE_AGREEMENT_REQUIRED` is sent there by `withPublicSessionReauth` in `lib/auth-session.ts`. The reads are in `lib/legal-page-agreements.ts`.
+
 ## What it covers
 
 - Public pages (privacy policy, terms of service, and so on)
