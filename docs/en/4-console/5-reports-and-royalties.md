@@ -98,7 +98,7 @@ An adjustment is carried only into a month later than the one it adjusts. A mont
 
 **Royalties** opens on the month after the newest closed statement, or on last month when nothing has been closed yet. **Month**, with **Show**, opens any other month that is not closed and has started.
 
-**Open month** gives three totals:
+**Open month** gives four totals:
 
 | Total | What it is |
 | --- | --- |

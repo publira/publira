@@ -3130,7 +3130,7 @@
       },
       "lines": {
         "title": "Lines by author",
-        "description": "Each credit with the month's sales, grouped by author. A payout is the sales net of refunds times the share, rounded down to whole yen.",
+        "description": "Each credit with the month's sales, grouped by author, followed by the adjustments for refunds of closed months. A payout is the sales net of refunds times the share, rounded down to the currency's smallest unit. An adjustment is what its refunds take off the payout of the closed line, worked out the same way.",
         "empty_title": "No sales this month",
         "empty_description": "A line appears when an episode credited to an author sells.",
         "subtotal": "Subtotal",
