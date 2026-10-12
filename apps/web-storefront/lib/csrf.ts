@@ -1,3 +1,4 @@
+import { getRequestHost } from "@publira/utils/request-host";
 import { headers } from "next/headers";
 import { forbidden } from "next/navigation";
 
@@ -34,8 +35,8 @@ const isMatchingReferer = (value: string, host: string): boolean => {
  *
  * This app deliberately uses Origin/Referer validation instead of a
  * double-submit token. Tenant hosts are dynamic, so this compares the
- * request's advertised origin with Host (or the trusted proxy's
- * X-Forwarded-Host) rather than a fixed deployment allowlist.
+ * request's advertised origin with the host the request was sent to, as
+ * `getRequestHost` reads it, rather than a fixed deployment allowlist.
  *
  * The headers are a parameter rather than read here, because a Route Handler
  * already holds the request and answers a rejection with a status code, while
@@ -44,9 +45,7 @@ const isMatchingReferer = (value: string, host: string): boolean => {
 export const isSameOriginRequest = (requestHeaders: {
   get: (name: string) => string | null;
 }): boolean => {
-  const host =
-    requestHeaders.get("x-forwarded-host")?.trim() ??
-    requestHeaders.get("host")?.trim();
+  const host = getRequestHost(requestHeaders);
   if (!host) {
     return false;
   }

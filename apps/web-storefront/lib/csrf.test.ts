@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockForbidden, mockHeaders } = vi.hoisted(() => ({
   mockForbidden: vi.fn(),
@@ -14,6 +14,10 @@ const requestHeaders = (values: Record<string, string>): Headers =>
 describe("assertSameOrigin", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("accepts an Origin that matches Host", async () => {
@@ -57,6 +61,39 @@ describe("assertSameOrigin", () => {
     await assertSameOrigin();
 
     expect(mockForbidden).not.toHaveBeenCalled();
+  });
+
+  it("uses the host= of Forwarded ahead of X-Forwarded-Host", async () => {
+    mockHeaders.mockResolvedValue(
+      requestHeaders({
+        Forwarded: "for=192.0.2.1;host=reader.example.com",
+        Host: "web-storefront:3000",
+        Origin: "https://reader.example.com",
+        "X-Forwarded-Host": "evil.example",
+      })
+    );
+
+    const { assertSameOrigin } = await import("./csrf");
+    await assertSameOrigin();
+
+    expect(mockForbidden).not.toHaveBeenCalled();
+  });
+
+  it("ignores Forwarded when PUBLIRA_FORWARDED_HEADER_ENABLED is false", async () => {
+    vi.stubEnv("PUBLIRA_FORWARDED_HEADER_ENABLED", "false");
+    mockHeaders.mockResolvedValue(
+      requestHeaders({
+        Forwarded: "for=192.0.2.1;host=evil.example",
+        Host: "web-storefront:3000",
+        Origin: "https://evil.example",
+        "X-Forwarded-Host": "reader.example.com",
+      })
+    );
+
+    const { assertSameOrigin } = await import("./csrf");
+    await assertSameOrigin();
+
+    expect(mockForbidden).toHaveBeenCalledTimes(1);
   });
 
   it.each([

@@ -1,3 +1,4 @@
+import { getRequestHost } from "@publira/utils/request-host";
 import { headers } from "next/headers";
 import { forbidden } from "next/navigation";
 
@@ -34,16 +35,14 @@ const isMatchingReferer = (value: string, host: string): boolean => {
  *
  * This app deliberately uses Origin/Referer validation instead of a
  * double-submit token. This compares the request's advertised origin with
- * Host (or the trusted proxy's X-Forwarded-Host) rather than a fixed
- * deployment allowlist.
+ * the host the request was sent to, as `getRequestHost` reads it, rather
+ * than a fixed deployment allowlist.
  * Route Handlers are outside this guard because web-platform only exposes
  * GET-only health checks.
  */
 export const assertSameOrigin = async (): Promise<void> => {
   const requestHeaders = await headers();
-  const host =
-    requestHeaders.get("x-forwarded-host")?.trim() ??
-    requestHeaders.get("host")?.trim();
+  const host = getRequestHost(requestHeaders);
   const origin = requestHeaders.get("origin")?.trim();
 
   if (!host) {

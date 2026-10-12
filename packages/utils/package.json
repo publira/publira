@@ -47,6 +47,10 @@
       "types": "./dist/static-param-placeholder.d.mts",
       "default": "./dist/static-param-placeholder.mjs"
     },
+    "./request-host": {
+      "types": "./dist/request-host.d.mts",
+      "default": "./dist/request-host.mjs"
+    },
     "./tenant-origin": {
       "types": "./dist/tenant-origin.d.mts",
       "default": "./dist/tenant-origin.mjs"

@@ -12,6 +12,7 @@ export default defineConfig({
     "src/health.ts",
     "src/image-loader.ts",
     "src/next-static-params.ts",
+    "src/request-host.ts",
     "src/resolved-locale.ts",
     "src/route-params.ts",
     "src/search-params.ts",

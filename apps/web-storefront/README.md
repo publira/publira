@@ -36,6 +36,12 @@ Series titles, synopses, episode bodies, and the contents of a published page ar
 
 - `PUBLIRA_GRPC_URL` — the internal listener of `publira server`, which every server-side RPC is made on (`http://localhost:8100` when unset)
 
+### Request host
+
+`proxy.ts` resolves the tenant from the host the request was sent to, and `lib/csrf.ts` compares a form submission's origin with the same host (`getRequestHost` in [`@publira/utils/request-host`](../../packages/utils/README.md#subpaths)): the rightmost `host=` of `Forwarded`, then the rightmost value of `X-Forwarded-Host`, then `Host`.
+
+- `PUBLIRA_FORWARDED_HEADER_ENABLED` — `false` skips `Forwarded`, for an edge that writes `X-Forwarded-Host` and passes on a `Forwarded` header the caller sent. `true` when unset. It takes the values Go's `strconv.ParseBool` reads, as `publira server` does: `true`, `false`, `1`, `0`, `t`, and `f`, in lower, upper, or title case. Anything else is refused. The same variable as on `publira server`, which reads it for the client address.
+
 ### Absolute tenant URLs
 
 Canonical links, language alternates, the Open Graph URL, and the share URL come from the tenant's stored domain (`getTenantPublicOrigin` in `lib/tenant.ts`).

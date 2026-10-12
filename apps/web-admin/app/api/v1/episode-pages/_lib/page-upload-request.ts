@@ -1,6 +1,6 @@
 import type { Locale } from "@publira/i18n";
 import { sharedMessage } from "@publira/i18n/catalog";
-import { getTenantDomainCandidates } from "@publira/utils";
+import { getTenantDomainCandidates } from "@publira/utils/request-host";
 import { suspendedTenantLocale } from "@publira/utils/suspended-tenant";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
