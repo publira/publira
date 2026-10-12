@@ -64,16 +64,22 @@ WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: UpdateTenantTimezone :one
--- Update the tenant display time zone (an IANA name).
+-- Update the tenant display time zone (an IANA name). No row when the tenant
+-- already has that zone, so the caller can tell a save that changes nothing
+-- from one it has to answer for in the audit log.
 UPDATE tenants
 SET timezone = sqlc.arg('timezone')
 WHERE id = sqlc.arg('id')
+    AND timezone <> sqlc.arg('timezone')
 RETURNING *;
 
 -- name: UpdateTenantDefaultLocale :one
+-- No row when the tenant already has that locale, for the reason
+-- UpdateTenantTimezone gives.
 UPDATE tenants
 SET default_locale = sqlc.arg('default_locale')
 WHERE id = sqlc.arg('id')
+    AND default_locale <> sqlc.arg('default_locale')
 RETURNING *;
 
 -- name: GetTenantByDomains :one
@@ -128,11 +134,12 @@ FROM tenants t
 WHERE t.id <> sqlc.arg('id');
 
 -- name: LockTenantForUpdate :one
--- Lock the tenant row so concurrent tenant branding image uploads and deletes
--- (icon, logo) serialize. The following read of the current image must be a
--- separate statement: READ COMMITTED freezes its snapshot at statement start,
--- so waiting for the lock in the same statement would still see the pre-wait
--- row.
+-- Lock the tenant row so concurrent writes to the tenant theme serialize: the
+-- branding image uploads and deletes (icon, logo), and the theme saves, each
+-- of which reads the theme first to decide what it changes. That read must be
+-- a separate statement: READ COMMITTED freezes its snapshot at statement
+-- start, so waiting for the lock in the same statement would still see the
+-- pre-wait row.
 SELECT id
 FROM tenants
 WHERE id = $1

@@ -428,6 +428,10 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockTenantForUpdate)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tenantID))
+	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{}, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantTheme)).
 		WithArgs(
 			tenantID,
@@ -463,6 +467,7 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 		).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
 			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{}, now)...))
+	expectAdminAuditLogInsert(mock)
 	mock.ExpectCommit()
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{}, now)
 
@@ -602,6 +607,7 @@ func TestUploadTenantIconStoresImageAndPointsThemeAtIt(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantImage)).
 		WithArgs(previousImageID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectAdminAuditLogInsert(mock)
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{UUID: storedImageID, Valid: true}, uuid.NullUUID{}, now)
 	mock.ExpectCommit()
 
@@ -669,6 +675,7 @@ func TestDeleteTenantIconClearsReferenceAndDropsImage(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantImage)).
 		WithArgs(currentImageID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectAdminAuditLogInsert(mock)
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{}, now)
 	mock.ExpectCommit()
 
@@ -743,6 +750,7 @@ func TestUploadTenantLogoStoresImageAndPointsThemeAtIt(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantImage)).
 		WithArgs(previousImageID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectAdminAuditLogInsert(mock)
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{UUID: storedImageID, Valid: true}, now)
 	mock.ExpectCommit()
 
@@ -810,6 +818,7 @@ func TestDeleteTenantLogoClearsReferenceAndDropsImage(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantImage)).
 		WithArgs(currentImageID, tenantID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectAdminAuditLogInsert(mock)
 	expectTenantThemeRead(mock, tenantID, uuid.NullUUID{}, uuid.NullUUID{}, now)
 	mock.ExpectCommit()
 

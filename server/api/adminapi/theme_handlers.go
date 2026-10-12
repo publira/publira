@@ -319,7 +319,8 @@ func (s *adminServer) UpsertTenantTheme(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 	if req.Theme == nil {
@@ -333,8 +334,21 @@ func (s *adminServer) UpsertTenantTheme(
 	params.TenantID = tenant.ID
 
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		if _, err := s.queriesFor(txCtx).LockTenantForUpdate(txCtx, tenant.ID); err != nil {
+			return nil, s.internalDBError(ctx, "failed to lock tenant for theme change", err, "tenant_id", tenant.ID.String())
+		}
+		current, err := s.queriesFor(txCtx).GetTenantThemeByTenantID(txCtx, tenant.ID)
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to get tenant theme", err, "tenant_id", tenant.ID.String())
+		}
+		if tenantThemeParamsFromRow(current) == params {
+			return nil, nil
+		}
 		if _, err := s.queriesFor(txCtx).UpsertTenantTheme(txCtx, params); err != nil {
 			return nil, s.internalDBError(ctx, "failed to upsert tenant theme", err, "tenant_id", tenant.ID.String())
+		}
+		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_theme_updated", "tenant_branding"); err != nil {
+			return nil, err
 		}
 		return themeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
@@ -349,6 +363,44 @@ func (s *adminServer) UpsertTenantTheme(
 	return &publiraadminv1.UpsertTenantThemeResponse{Theme: theme}, nil
 }
 
+// tenantThemeParamsFromRow is the save that would store the theme row as it is
+// read, defaults included, so comparing a save against it tells whether the
+// save changes anything the console shows.
+func tenantThemeParamsFromRow(row dbmodels.GetTenantThemeByTenantIDRow) dbmodels.UpsertTenantThemeParams {
+	return dbmodels.UpsertTenantThemeParams{
+		TenantID:                   row.TenantID,
+		BackgroundColor:            row.BackgroundColor,
+		ForegroundColor:            row.ForegroundColor,
+		SurfaceColor:               row.SurfaceColor,
+		SurfaceForegroundColor:     row.SurfaceForegroundColor,
+		CardColor:                  row.CardColor,
+		CardForegroundColor:        row.CardForegroundColor,
+		PopoverColor:               row.PopoverColor,
+		PopoverForegroundColor:     row.PopoverForegroundColor,
+		PrimaryColor:               row.PrimaryColor,
+		PrimaryForegroundColor:     row.PrimaryForegroundColor,
+		SecondaryColor:             row.SecondaryColor,
+		SecondaryForegroundColor:   row.SecondaryForegroundColor,
+		AccentColor:                row.AccentColor,
+		AccentForegroundColor:      row.AccentForegroundColor,
+		MutedColor:                 row.MutedColor,
+		MutedForegroundColor:       row.MutedForegroundColor,
+		BorderColor:                row.BorderColor,
+		InputColor:                 row.InputColor,
+		RingColor:                  row.RingColor,
+		SuccessColor:               row.SuccessColor,
+		SuccessForegroundColor:     row.SuccessForegroundColor,
+		WarningColor:               row.WarningColor,
+		WarningForegroundColor:     row.WarningForegroundColor,
+		DestructiveColor:           row.DestructiveColor,
+		DestructiveForegroundColor: row.DestructiveForegroundColor,
+		InfoColor:                  row.InfoColor,
+		InfoForegroundColor:        row.InfoForegroundColor,
+		SerifFontFamily:            row.SerifFontFamily,
+		SansFontFamily:             row.SansFontFamily,
+	}
+}
+
 // tenantBrandingImage is the part of a branding image write that differs
 // between the icon and the logo: where its objects live, which theme column
 // holds the image in use, and which query points the theme at a new one.
@@ -357,17 +409,23 @@ func (s *adminServer) UpsertTenantTheme(
 type tenantBrandingImage struct {
 	// name goes into the log messages, so a failed write says which of the two
 	// images it was.
-	name           string
-	variantType    string
-	objectPrefix   string
+	name         string
+	variantType  string
+	objectPrefix string
+	// uploadedAction and deletedAction are what the audit log records the
+	// change as.
+	uploadedAction string
+	deletedAction  string
 	currentImageID func(dbmodels.GetTenantThemeByTenantIDRow) uuid.NullUUID
 	setImageID     func(context.Context, Querier, uuid.UUID, uuid.NullUUID) (dbmodels.TenantTheme, error)
 }
 
 var tenantIconImage = tenantBrandingImage{
-	name:         "icon",
-	variantType:  imageproc.TenantVariantTypeIcon,
-	objectPrefix: "icons",
+	name:           "icon",
+	variantType:    imageproc.TenantVariantTypeIcon,
+	objectPrefix:   "icons",
+	uploadedAction: "tenant_icon_uploaded",
+	deletedAction:  "tenant_icon_deleted",
 	currentImageID: func(row dbmodels.GetTenantThemeByTenantIDRow) uuid.NullUUID {
 		return row.IconImageID
 	},
@@ -380,9 +438,11 @@ var tenantIconImage = tenantBrandingImage{
 }
 
 var tenantLogoImage = tenantBrandingImage{
-	name:         "logo",
-	variantType:  imageproc.TenantVariantTypeLogo,
-	objectPrefix: "logos",
+	name:           "logo",
+	variantType:    imageproc.TenantVariantTypeLogo,
+	objectPrefix:   "logos",
+	uploadedAction: "tenant_logo_uploaded",
+	deletedAction:  "tenant_logo_deleted",
 	currentImageID: func(row dbmodels.GetTenantThemeByTenantIDRow) uuid.NullUUID {
 		return row.LogoImageID
 	},
@@ -456,8 +516,9 @@ func (s *adminServer) storeTenantBrandingImage(ctx context.Context, tenant dbmod
 // The tenant row is locked before the image in use is read. Two concurrent
 // changes would otherwise read the same previous image, and whichever commits
 // last would leave the image the other stored behind with nothing pointing at
-// it.
-func (s *adminServer) applyTenantBrandingImage(ctx context.Context, tenant dbmodels.Tenant, image tenantBrandingImage, variant *imageproc.Variant) (*publirattypesv1.TenantTheme, error) {
+// it. Deleting an image the tenant does not have writes nothing and records
+// nothing, and answers the theme as it is.
+func (s *adminServer) applyTenantBrandingImage(ctx context.Context, tenant dbmodels.Tenant, session rpcmiddleware.SessionContext, image tenantBrandingImage, variant *imageproc.Variant) (*publirattypesv1.TenantTheme, error) {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to begin tenant "+image.name+" transaction", err, "tenant_id", tenant.ID.String())
@@ -474,6 +535,10 @@ func (s *adminServer) applyTenantBrandingImage(ctx context.Context, tenant dbmod
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get tenant theme", err, "tenant_id", tenant.ID.String())
 	}
+	previous := image.currentImageID(current)
+	if variant == nil && !previous.Valid {
+		return s.tenantTheme(txCtx, tenant.ID)
+	}
 
 	imageID := uuid.NullUUID{}
 	if variant != nil {
@@ -488,13 +553,21 @@ func (s *adminServer) applyTenantBrandingImage(ctx context.Context, tenant dbmod
 		return nil, s.internalDBError(ctx, "failed to set tenant "+image.name, err, "tenant_id", tenant.ID.String())
 	}
 
-	if previous := image.currentImageID(current); previous.Valid {
+	if previous.Valid {
 		if err := s.queriesFor(txCtx).DeleteTenantImage(txCtx, dbmodels.DeleteTenantImageParams{
 			ID:       previous.UUID,
 			TenantID: tenant.ID,
 		}); err != nil {
 			return nil, s.internalDBError(ctx, "failed to delete replaced tenant "+image.name+" image", err, "tenant_id", tenant.ID.String(), "tenant_image_id", previous.UUID.String())
 		}
+	}
+
+	action := image.deletedAction
+	if variant != nil {
+		action = image.uploadedAction
+	}
+	if err := s.writeTenantSettingAudit(txCtx, tenant, session, action, "tenant_branding"); err != nil {
+		return nil, err
 	}
 
 	// Read the theme back inside the transaction: the variants of the image just
@@ -527,7 +600,8 @@ func (s *adminServer) UploadTenantIcon(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -536,7 +610,7 @@ func (s *adminServer) UploadTenantIcon(
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "icon_data")
 	}
 
-	theme, err := s.applyTenantBrandingImage(ctx, tenant, tenantIconImage, &variant)
+	theme, err := s.applyTenantBrandingImage(ctx, tenant, session, tenantIconImage, &variant)
 	if err != nil {
 		return nil, err
 	}
@@ -552,11 +626,12 @@ func (s *adminServer) DeleteTenantIcon(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 
-	theme, err := s.applyTenantBrandingImage(ctx, tenant, tenantIconImage, nil)
+	theme, err := s.applyTenantBrandingImage(ctx, tenant, session, tenantIconImage, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -572,7 +647,8 @@ func (s *adminServer) UploadTenantLogo(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -581,7 +657,7 @@ func (s *adminServer) UploadTenantLogo(
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "logo_data")
 	}
 
-	theme, err := s.applyTenantBrandingImage(ctx, tenant, tenantLogoImage, &variant)
+	theme, err := s.applyTenantBrandingImage(ctx, tenant, session, tenantLogoImage, &variant)
 	if err != nil {
 		return nil, err
 	}
@@ -597,11 +673,12 @@ func (s *adminServer) DeleteTenantLogo(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 
-	theme, err := s.applyTenantBrandingImage(ctx, tenant, tenantLogoImage, nil)
+	theme, err := s.applyTenantBrandingImage(ctx, tenant, session, tenantLogoImage, nil)
 	if err != nil {
 		return nil, err
 	}

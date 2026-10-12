@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect/v2"
+	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -55,7 +56,8 @@ func (s *adminServer) UpdateTenantTimezone(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -70,13 +72,17 @@ func (s *adminServer) UpdateTenantTimezone(
 			ID:       tenant.ID,
 			Timezone: timezone,
 		})
+		if errors.Is(err, sql.ErrNoRows) {
+			updated, err = s.unchangedTenant(txCtx, tenant.ID)
+			return nil, err
+		}
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeNotFound, "tenant not found")
-			}
 			return nil, s.internalDBError(ctx, "failed to update tenant timezone", err, "tenant_id", tenant.ID.String())
 		}
 		updated = row
+		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_timezone_updated", "tenant_timezone"); err != nil {
+			return nil, err
+		}
 		return tenantTimezoneRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
@@ -85,6 +91,20 @@ func (s *adminServer) UpdateTenantTimezone(
 	return &publiraadminv1.UpdateTenantTimezoneResponse{
 		Timezone: tenanttz.Resolve(updated.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
 	}, nil
+}
+
+// unchangedTenant reads the tenant row back inside the transaction txCtx
+// carries, after an update that matched no row because the tenant already held
+// the value: the answer is still the stored row, as it is after a write.
+func (s *adminServer) unchangedTenant(txCtx context.Context, tenantID uuid.UUID) (dbmodels.Tenant, error) {
+	row, err := s.queriesFor(txCtx).GetTenantByID(txCtx, tenantID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, "tenant not found")
+	}
+	if err != nil {
+		return dbmodels.Tenant{}, s.internalDBError(txCtx, "failed to get tenant", err, "tenant_id", tenantID.String())
+	}
+	return row, nil
 }
 
 // tenantDefaultLocaleRevalidateTags lists the public site caches that render
@@ -123,7 +143,8 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -138,13 +159,17 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 			ID:            tenant.ID,
 			DefaultLocale: defaultLocale,
 		})
+		if errors.Is(err, sql.ErrNoRows) {
+			updated, err = s.unchangedTenant(txCtx, tenant.ID)
+			return nil, err
+		}
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeNotFound, "tenant not found")
-			}
 			return nil, s.internalDBError(ctx, "failed to update tenant default locale", err, "tenant_id", tenant.ID.String())
 		}
 		updated = row
+		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_default_locale_updated", "tenant_default_locale"); err != nil {
+			return nil, err
+		}
 		return tenantDefaultLocaleRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
@@ -258,7 +283,8 @@ func (s *adminServer) UpdateTenantCommentSettings(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -276,6 +302,14 @@ func (s *adminServer) UpdateTenantCommentSettings(
 	// that have nothing to do with each other.
 	var updated dbmodels.TenantConfig
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		current, err := s.lockTenantConfig(txCtx, tenant.ID)
+		if err != nil {
+			return nil, err
+		}
+		if current.CommentMode == stored && current.CommentAutoHideReportThreshold == int32(req.AutoHideReportThreshold) {
+			updated = current
+			return nil, nil
+		}
 		row, err := s.queriesFor(txCtx).UpsertTenantCommentSettings(txCtx, dbmodels.UpsertTenantCommentSettingsParams{
 			CommentAutoHideReportThreshold: int32(req.AutoHideReportThreshold),
 			CommentMode:                    stored,
@@ -285,6 +319,9 @@ func (s *adminServer) UpdateTenantCommentSettings(
 			return nil, s.internalDBError(ctx, "failed to update tenant comment settings", err, "tenant_id", tenant.ID.String())
 		}
 		updated = row
+		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_comment_settings_updated", "tenant_comment_settings"); err != nil {
+			return nil, err
+		}
 		return tenantCommentSettingsRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err
@@ -365,7 +402,8 @@ func (s *adminServer) UpdateTenantAgeVerification(
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireTenantAdmin(ctx); err != nil {
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -376,6 +414,14 @@ func (s *adminServer) UpdateTenantAgeVerification(
 
 	var updated dbmodels.TenantConfig
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		current, err := s.lockTenantConfig(txCtx, tenant.ID)
+		if err != nil {
+			return nil, err
+		}
+		if current.AgeVerification == stored {
+			updated = current
+			return nil, nil
+		}
 		row, err := s.queriesFor(txCtx).UpsertTenantAgeVerification(txCtx, dbmodels.UpsertTenantAgeVerificationParams{
 			AgeVerification: stored,
 			TenantID:        tenant.ID,
@@ -384,6 +430,9 @@ func (s *adminServer) UpdateTenantAgeVerification(
 			return nil, s.internalDBError(ctx, "failed to update tenant age verification", err, "tenant_id", tenant.ID.String())
 		}
 		updated = row
+		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_age_verification_updated", "tenant_age_verification"); err != nil {
+			return nil, err
+		}
 		return tenantAgeVerificationRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err

@@ -2,7 +2,7 @@
 title: Audit log
 description: Find out who on the staff changed what in the tenant, and when, from the record the console keeps of its staff's actions.
 published: 2026-10-07
-updated: 2026-10-10
+updated: 2026-10-12
 ---
 
 **Audit logs**, under **Administration**, is the tenant's record of what its staff did in the console: who changed what, when, and whether it worked. It answers questions such as who suspended a reader, who changed the payment settings, or when a member was given a role. Only a Tenant admin sees it.
@@ -32,9 +32,11 @@ The log cannot be exported, and its entries are never deleted. An entry keeps th
 | Readers | Readers suspended, restored, and deleted, their dates of birth changed or cleared, and access tickets issued and revoked. Contact messages handled, reopened, assigned, annotated, and answered |
 | Royalties | Closing settings changed, months closed, and statements downloaded as CSV |
 | Staff | Members invited, invitations resent, canceled, and accepted, roles changed, and members removed |
-| Settings and integrations | The mail settings and their tests, the payment provider's settings, the mobile push credentials, the sign-in providers, community limits, retention periods, and refused email addresses |
+| Branding | The theme changed, and the logo and the icon uploaded and removed |
+| Settings | On the **General** tab, the public site display, the time zone, the default language, reader comments, age verification, the terms of service and privacy policy, and refused email addresses; on **Limits and retention**, community limits and retention periods |
+| Integrations | The mail settings and their tests, the payment provider's settings, **Where episodes are sold**, the mobile push credentials, the apps named under **App links**, and the sign-in providers |
 | Two-step verification | Staff setting it up, turning it off, regenerating recovery codes, and signing in with it or with a recovery code |
 
-Some changes leave no entry yet ([#3797](https://github.com/publira/publira/issues/3797)): anything under **Branding**; on the **General** tab of **Settings**, the public site display, the time zone, the default language, reader comments, age verification, and the choice of terms of service and privacy policy; and under **Integrations**, **Where episodes are sold** on **Payments** and the apps named under **App links**. Nor does a member changing their own email address, or anything readers do on the site.
+A member changing their own email address leaves no entry, and neither does anything readers do on the site.
 
 What the operator changes for the tenant from the Platform Console or `publiractl`, such as its domain or an administrator's role, is recorded in the Platform Console's own log, not this one.
