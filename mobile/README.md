@@ -331,7 +331,7 @@ mobile/
 
 ## Navigation
 
-Every screen but the episode viewer carries a bottom navigation bar of five tabs, each with a navigation stack of its own. Switching tabs keeps each one's screens and scroll positions, and tapping the tab on screen takes it back to its root.
+Every screen but the episode viewer and the agreement screen carries a bottom navigation bar of five tabs, each with a navigation stack of its own. Switching tabs keeps each one's screens and scroll positions, and tapping the tab on screen takes it back to its root.
 
 | Tab | Root | Screen |
 | --- | --- | --- |
@@ -377,6 +377,16 @@ The routes only one tab holds:
 | `/confirm-email` | Account | Where either link of an email change is confirmed; the site's own path, claimed as an App Link |
 
 An incoming App Link, a push-notification tap, and a checkout return open on the tab their path belongs to — the home tab for a site path under none of the other roots — and leave the other tabs as they were. A session the API stopped accepting offers sign-in on the account tab.
+
+The agreement screen stands outside every tab:
+
+| Path | Screen |
+| --- | --- |
+| `/agreement` | Asks a signed-in reader to agree to a revised terms of service or privacy policy (`AuthService/GetMyLegalPageAgreements`, `AuthService/AgreeToLegalPages`), and returns them to its `return_to` once they owe nothing |
+| `/agreement/page/:pageSlug` | A page it asks about |
+| `/agreement/delete` | The account deletion it offers instead of agreeing |
+
+The router holds a reader who owes an agreement under `/agreement` whatever path they open. What they owe is read when they sign in, when the app comes back to the front, and when the API refuses a request with the `LEGAL_PAGE_AGREEMENT_REQUIRED` reason, which is how a version published while the app is open reaches it.
 
 Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
 

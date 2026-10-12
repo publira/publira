@@ -80,6 +80,20 @@ class FakeAuthRepository implements AuthRepository {
   /// The locales [readSignUpRequirements] has been asked for, in order.
   final signUpRequirementsLocales = <String>[];
 
+  /// The pages the reader owes an agreement to, none by default, which
+  /// [agreeToLegalPages] settles for each version it is sent.
+  List<LegalPage> owedLegalPages = const [];
+
+  /// The locales [readOwedLegalPages] has been asked for, in order.
+  final owedLegalPagesLocales = <String>[];
+
+  /// The versions [agreeToLegalPages] was sent, one list per call.
+  final legalPageAgreements = <List<String>>[];
+
+  /// Thrown by [readOwedLegalPages] and [agreeToLegalPages], standing in for
+  /// an API that cannot be reached or refuses.
+  AuthFailure? legalPageAgreementFailure;
+
   /// Thrown by [readReaderAge], standing in for an account that cannot be
   /// read.
   AuthFailure? birthDateFailure;
@@ -374,6 +388,37 @@ class FakeAuthRepository implements AuthRepository {
       termsPage: termsPage,
       privacyPage: privacyPage,
     );
+  }
+
+  @override
+  Future<List<LegalPage>> readOwedLegalPages(
+    AuthSession session, {
+    required String locale,
+  }) async {
+    owedLegalPagesLocales.add(locale);
+    final failure = legalPageAgreementFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return owedLegalPages;
+  }
+
+  @override
+  Future<List<LegalPage>> agreeToLegalPages(
+    AuthSession session, {
+    required List<String> agreedPageVersionIds,
+    required String locale,
+  }) async {
+    legalPageAgreements.add(agreedPageVersionIds);
+    final failure = legalPageAgreementFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    owedLegalPages = [
+      for (final page in owedLegalPages)
+        if (!agreedPageVersionIds.contains(page.versionId)) page,
+    ];
+    return owedLegalPages;
   }
 
   @override

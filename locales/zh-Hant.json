@@ -4678,6 +4678,14 @@
       "unlink_failed": "無法解除連結。請稍後再試。",
       "unlinked": "已解除連結。"
     },
+    "legal_page_agreement": {
+      "decline": "如果不同意，您可以登出或刪除帳戶。",
+      "description": "以下頁面已更新。如需繼續使用您的帳戶，請閱讀並同意。",
+      "failed": "無法記錄您的同意。請再試一次。",
+      "required": "請同意列出的頁面後繼續。",
+      "submit": "同意並繼續",
+      "title": "同意更新後的條款"
+    },
     "tenant_suspended": {
       "description": "請過一段時間再試。",
       "title": "此應用程式目前無法使用"

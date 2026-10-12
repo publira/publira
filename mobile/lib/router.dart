@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/auth/legal_page_agreements.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/models/series_item.dart';
@@ -27,6 +28,7 @@ import 'package:publira/screens/genre_screen.dart';
 import 'package:publira/screens/genres_screen.dart';
 import 'package:publira/screens/label_screen.dart';
 import 'package:publira/screens/labels_screen.dart';
+import 'package:publira/screens/legal_page_agreement_screen.dart';
 import 'package:publira/screens/library_screen.dart';
 import 'package:publira/screens/linked_accounts_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
@@ -68,6 +70,21 @@ abstract final class AppRoutes {
   /// link itself, both claimed as App Links so neither opens a browser.
   static const resetPassword = '/reset-password';
   static const confirmPassword = '/confirm-password';
+
+  /// Where a signed-in reader who owes an agreement to a revised terms of
+  /// service or privacy policy is sent before the rest of the app. It stands
+  /// outside every tab, and the pages it asks about and the account deletion
+  /// it offers instead are under it, so nothing it leads to leaves it.
+  static const agreement = '/agreement';
+  static const agreementDelete = '$agreement/$delete';
+
+  /// The page published at [slug], opened from the agreement screen.
+  static String agreementPagePath(String slug) =>
+      '$agreement${publishedPagePath(slug)}';
+
+  /// [agreement], landing on [returnTo] once the reader has agreed.
+  static String agreementPath({required String returnTo}) =>
+      Uri(path: agreement, queryParameters: {'return_to': returnTo}).toString();
 
   /// The site's path for either link of an email change, claimed as an App
   /// Link like the other account mails.
@@ -402,7 +419,31 @@ GoRouter createAppRouter({String? initialLocation}) {
     // in-app paths, so the platform's raw `https://…` location is never
     // matched against these routes.
     overridePlatformDefaultLocation: true,
+    // The app calls `refresh` whenever what the reader owes changes, so the
+    // context is read without depending on it.
+    redirect: (context, state) => legalPageAgreementRedirect(
+      state.uri,
+      owesAgreement:
+          LegalPageAgreementScope.read(context)?.owed.isNotEmpty ?? false,
+    ),
     routes: [
+      GoRoute(
+        path: AppRoutes.agreement,
+        builder: (context, state) => const LegalPageAgreementScreen(),
+        routes: [
+          GoRoute(
+            path: AppRoutes.publishedPage,
+            builder: (context, state) => PublishedPageScreen(
+              slug: '/${state.pathParameters['pageSlug']!}',
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.delete,
+            builder: (context, state) =>
+                const ReaderKeyed(child: DeleteAccountScreen()),
+          ),
+        ],
+      ),
       StatefulShellRoute(
         builder: (context, state, navigationShell) => navigationShell,
         navigatorContainerBuilder: (context, navigationShell, children) =>
@@ -553,6 +594,32 @@ GoRouter createAppRouter({String? initialLocation}) {
     errorBuilder: (context, state) => NotFoundScreen(uri: state.uri),
   );
 }
+
+/// Where the router sends [uri] instead, or `null` to open it as it is.
+///
+/// A reader who [owesAgreement] is held under [AppRoutes.agreement], and
+/// returns from it to where they were going once they no longer owe one: an
+/// agreement, a sign-out, or a deletion all settle it. Returning to the
+/// agreement screen itself would only send them on again, so a `return_to`
+/// naming it lands on the catalog.
+String? legalPageAgreementRedirect(Uri uri, {required bool owesAgreement}) {
+  final onAgreement = _isAgreementPath(uri.path);
+  if (owesAgreement) {
+    return onAgreement
+        ? null
+        : AppRoutes.agreementPath(returnTo: uri.toString());
+  }
+  if (!onAgreement) {
+    return null;
+  }
+  final returnTo = inAppLocation(uri.queryParameters['return_to']);
+  return returnTo == null || _isAgreementPath(Uri.parse(returnTo).path)
+      ? AppRoutes.catalog
+      : returnTo;
+}
+
+bool _isAgreementPath(String path) =>
+    path == AppRoutes.agreement || path.startsWith('${AppRoutes.agreement}/');
 
 /// [location] when it is a path inside this app, and `null` otherwise, so a
 /// query parameter cannot send the reader to another origin.

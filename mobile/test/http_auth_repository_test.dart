@@ -548,6 +548,105 @@ void main() {
     },
   );
 
+  group('legal page agreements', () {
+    const terms = {
+      'slug': '/legal/terms',
+      'title': 'Terms of service',
+      'versionId': 'terms-v2',
+    };
+    const privacy = {
+      'slug': '/privacy',
+      'title': 'Privacy policy',
+      'versionId': 'privacy-v3',
+    };
+
+    test('reads the pages the reader owes, terms first', () async {
+      server
+        ..owedTermsPage = terms
+        ..owedPrivacyPage = privacy;
+
+      final owed = await auth.readOwedLegalPages(stored, locale: 'ja');
+
+      expect(owed.map((page) => page.versionId), ['terms-v2', 'privacy-v3']);
+      final request = server.requestsTo('GetMyLegalPageAgreements').single;
+      expect(request.body, {
+        'tenant': {'tenantId': ConnectFixtureServer.defaultTenantId},
+        'locale': 'ja',
+      });
+      expect(
+        request.headers['authorization'],
+        'Bearer ${ConnectFixtureServer.memberAccessToken}',
+      );
+    });
+
+    test('reads nothing owed as an empty list', () async {
+      expect(await auth.readOwedLegalPages(stored, locale: 'en'), isEmpty);
+    });
+
+    test('a page named for both roles is owed once', () async {
+      server
+        ..owedTermsPage = terms
+        ..owedPrivacyPage = terms;
+
+      final owed = await auth.readOwedLegalPages(stored, locale: 'en');
+
+      expect(owed.map((page) => page.versionId), ['terms-v2']);
+    });
+
+    test('an agreement answers with what the reader still owes', () async {
+      server
+        ..owedTermsPage = terms
+        ..owedPrivacyPage = privacy;
+
+      final owed = await auth.agreeToLegalPages(
+        stored,
+        agreedPageVersionIds: ['terms-v2'],
+        locale: 'en',
+      );
+
+      expect(owed.map((page) => page.versionId), ['privacy-v3']);
+      expect(server.requestsTo('AgreeToLegalPages').single.body, {
+        'tenant': {'tenantId': ConnectFixtureServer.defaultTenantId},
+        'agreedPageVersionIds': ['terms-v2'],
+        'locale': 'en',
+      });
+    });
+
+    test('maps a version the tenant no longer asks about to invalidInput', () {
+      server.owedTermsPage = terms;
+
+      expect(
+        () => auth.agreeToLegalPages(
+          stored,
+          agreedPageVersionIds: ['terms-v1'],
+          locale: 'en',
+        ),
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.kind,
+            'kind',
+            AuthFailureKind.invalidInput,
+          ),
+        ),
+      );
+    });
+
+    test('maps a rejected session to sessionExpired', () {
+      server.activeAccessToken = 'another-token';
+
+      expect(
+        () => auth.readOwedLegalPages(stored, locale: 'en'),
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.kind,
+            'kind',
+            AuthFailureKind.sessionExpired,
+          ),
+        ),
+      );
+    });
+  });
+
   test('refresh maps a token the API rejects to sessionExpired', () async {
     server.activeAccessToken = 'another-token';
     const stored = AuthSession(

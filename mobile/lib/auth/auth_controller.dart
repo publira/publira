@@ -228,6 +228,40 @@ class AuthController extends ChangeNotifier {
   Future<SignUpRequirements> readSignUpRequirements({required String locale}) =>
       _repository.readSignUpRequirements(locale: locale);
 
+  /// The pages the signed-in reader has still to agree to, read in [locale];
+  /// empty when nobody is signed in.
+  ///
+  /// Throws [AuthFailure], and signs out on a token the API has stopped
+  /// accepting, the way [readReaderAge] does.
+  Future<List<LegalPage>> readOwedLegalPages({required String locale}) async {
+    final session = _session;
+    if (session == null) {
+      return const [];
+    }
+    return _whileHeld(
+      () => _repository.readOwedLegalPages(session, locale: locale),
+    );
+  }
+
+  /// Records the signed-in reader's agreement to [agreedPageVersionIds] and
+  /// returns the pages they still owe, read in [locale].
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<List<LegalPage>> agreeToLegalPages(
+    List<String> agreedPageVersionIds, {
+    required String locale,
+  }) async {
+    final session = _requireSession();
+    return _whileHeld(
+      () => _repository.agreeToLegalPages(
+        session,
+        agreedPageVersionIds: agreedPageVersionIds,
+        locale: locale,
+      ),
+    );
+  }
+
   /// The signed-in reader's birth date and the tenant rule it is read
   /// against, or `null` when nobody is signed in.
   ///

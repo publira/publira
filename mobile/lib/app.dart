@@ -12,6 +12,7 @@ import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/http_auth_repository.dart';
+import 'package:publira/auth/legal_page_agreements.dart';
 import 'package:publira/auth/native_provider_sign_in.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/session_store.dart';
@@ -78,6 +79,7 @@ class PubliraApp extends StatefulWidget {
     required this.router,
     required this.catalog,
     required this.auth,
+    this.legalPageAgreements,
     this.providerSignIn,
     this.comments,
     this.follows,
@@ -161,11 +163,13 @@ class PubliraApp extends StatefulWidget {
         offline ?? FileOfflineLibrary(tenantHost: resolved.tenantHost);
     late final AuthController auth;
     late final TenantResolver tenants;
+    late final LegalPageAgreements agreements;
     final availability = TenantAvailability(check: () => tenants.confirm());
     final client = ConnectClient(
       baseUrl: resolved.baseUrl,
       accessToken: () => auth.accessToken,
       availability: availability,
+      onLegalPageAgreementRequired: () => agreements.reportRequired(),
     );
     tenants = TenantResolver(client: client, tenantHost: resolved.tenantHost);
     auth = AuthController(
@@ -176,6 +180,7 @@ class PubliraApp extends StatefulWidget {
       ),
       store: store ?? sessionStoreFor(resolved),
     );
+    agreements = LegalPageAgreements(auth: auth);
     final purchaseStore = inAppPurchase == null
         ? null
         : deviceInAppPurchaseStore();
@@ -201,6 +206,7 @@ class PubliraApp extends StatefulWidget {
       router: router ?? createAppRouter(),
       catalog: catalog,
       auth: auth,
+      legalPageAgreements: agreements,
       providerSignIn:
           providerSignIn ??
           NativeProviderSignIn(
@@ -279,6 +285,15 @@ class PubliraApp extends StatefulWidget {
   final GoRouter router;
   final CatalogRepository catalog;
   final AuthController auth;
+
+  /// The revised terms of service and privacy policy the signed-in reader has
+  /// still to agree to, which every screen gives way to the agreement screen
+  /// for until they have.
+  ///
+  /// [PubliraApp.fromConfig] always supplies the one its client reports
+  /// refusals to. It is nullable for the direct constructor, which a widget
+  /// test uses to build the app with a reader who never owes one.
+  final LegalPageAgreements? legalPageAgreements;
 
   /// The platform's Apple and Google sign-in.
   ///
@@ -493,10 +508,12 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       _ageRating = _ownedAgeRating!;
     }
     widget.auth.addListener(_onAuthChanged);
+    widget.legalPageAgreements?.addListener(_onLegalPageAgreementsChanged);
     widget.push?.addListener(_onPushChanged);
     if (widget.auth.isSignedIn) {
       unawaited(widget.notifications?.refresh());
       unawaited(widget.progress?.flush());
+      unawaited(_checkLegalPageAgreements());
     }
     widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
     widget.tenantBrand?.addListener(_onTenantBrandChanged);
@@ -581,6 +598,12 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       );
       widget.tenantAvailability?.addListener(_onTenantAvailabilityChanged);
     }
+    if (widget.legalPageAgreements != oldWidget.legalPageAgreements) {
+      oldWidget.legalPageAgreements?.removeListener(
+        _onLegalPageAgreementsChanged,
+      );
+      widget.legalPageAgreements?.addListener(_onLegalPageAgreementsChanged);
+    }
     if (widget.tenantBrand != oldWidget.tenantBrand) {
       oldWidget.tenantBrand?.removeListener(_onTenantBrandChanged);
       widget.tenantBrand?.addListener(_onTenantBrandChanged);
@@ -594,6 +617,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     widget.tenantBrand?.removeListener(_onTenantBrandChanged);
     widget.tenantDefaultLocale?.removeListener(_onTenantDefaultLocaleChanged);
     widget.push?.removeListener(_onPushChanged);
+    widget.legalPageAgreements?.removeListener(_onLegalPageAgreementsChanged);
     widget.auth.removeListener(_onAuthChanged);
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_incomingLinks?.cancel());
@@ -627,6 +651,9 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     }
     unawaited(widget.announcements?.refreshPinned());
     if (widget.auth.isSignedIn) {
+      // A Tenant admin may have published a version asking every reader while
+      // the app was in the background, or the reader agreed on the site.
+      unawaited(_checkLegalPageAgreements());
       unawaited(widget.notifications?.refresh());
       unawaited(widget.progress?.flush());
       unawaited(widget.storePurchaser?.reconcile());
@@ -647,6 +674,17 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     setState(() {});
   }
 
+  /// What the reader owes changed, so the router decides again whether the
+  /// screen on top is one they may stand on.
+  void _onLegalPageAgreementsChanged() {
+    widget.router.refresh();
+  }
+
+  /// Reads what the signed-in reader owes, in the pages' translations the
+  /// screens render in.
+  Future<void> _checkLegalPageAgreements() async =>
+      widget.legalPageAgreements?.check(locale: _locale.toLanguageTag());
+
   /// The locale every screen renders in, decided from the device's languages
   /// and what the tenant lookup has answered so far.
   Locale get _locale => resolveAppLocale(
@@ -664,11 +702,15 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       final previous = _readerId;
       _readerId = readerId;
       if (readerId.isNotEmpty) {
+        unawaited(_checkLegalPageAgreements());
         unawaited(widget.progress?.flush());
-      } else if (!widget.auth.expired) {
-        // Signing out is the reader's own word. A session the API refused
-        // keeps its queue, so signing back in as the same reader sends it.
-        unawaited(widget.progress?.forget(previous));
+      } else {
+        widget.legalPageAgreements?.forget();
+        if (!widget.auth.expired) {
+          // Signing out is the reader's own word. A session the API refused
+          // keeps its queue, so signing back in as the same reader sends it.
+          unawaited(widget.progress?.forget(previous));
+        }
       }
     }
     final signedIn = widget.auth.isSignedIn;
@@ -796,40 +838,43 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       controller: widget.tenantBrand,
       child: AuthScope(
         controller: widget.auth,
-        child: ProviderSignInScope(
-          signIn: widget.providerSignIn,
-          child: PushScope(
-            controller: widget.push,
-            child: OfflineScope(
-              library: widget.offline,
-              downloader: widget.downloader,
-              child: CatalogScope(
-                repository: widget.catalog,
-                child: CommentScope(
-                  repository: widget.comments,
-                  child: FollowScope(
-                    repository: widget.follows,
-                    child: ContentViewScope(
-                      repository: widget.contentViews,
-                      child: NotificationScope(
-                        inbox: widget.notifications,
-                        child: AnnouncementScope(
-                          board: widget.announcements,
-                          child: ContactScope(
-                            repository: widget.contact,
-                            child: PageScope(
-                              repository: widget.pages,
-                              child: PurchaseScope(
-                                repository: widget.purchases,
-                                launcher: widget.checkoutLauncher,
-                                storePurchaser: widget.storePurchaser,
-                                child: WaitFreeScope(
-                                  repository: widget.waitFree,
-                                  child: AgeRatingConfirmationScope(
-                                    controller: _ageRating,
-                                    child: ScreenCaptureScope(
-                                      notices: widget.screenCaptures,
-                                      child: app,
+        child: LegalPageAgreementScope(
+          agreements: widget.legalPageAgreements,
+          child: ProviderSignInScope(
+            signIn: widget.providerSignIn,
+            child: PushScope(
+              controller: widget.push,
+              child: OfflineScope(
+                library: widget.offline,
+                downloader: widget.downloader,
+                child: CatalogScope(
+                  repository: widget.catalog,
+                  child: CommentScope(
+                    repository: widget.comments,
+                    child: FollowScope(
+                      repository: widget.follows,
+                      child: ContentViewScope(
+                        repository: widget.contentViews,
+                        child: NotificationScope(
+                          inbox: widget.notifications,
+                          child: AnnouncementScope(
+                            board: widget.announcements,
+                            child: ContactScope(
+                              repository: widget.contact,
+                              child: PageScope(
+                                repository: widget.pages,
+                                child: PurchaseScope(
+                                  repository: widget.purchases,
+                                  launcher: widget.checkoutLauncher,
+                                  storePurchaser: widget.storePurchaser,
+                                  child: WaitFreeScope(
+                                    repository: widget.waitFree,
+                                    child: AgeRatingConfirmationScope(
+                                      controller: _ageRating,
+                                      child: ScreenCaptureScope(
+                                        notices: widget.screenCaptures,
+                                        child: app,
+                                      ),
                                     ),
                                   ),
                                 ),

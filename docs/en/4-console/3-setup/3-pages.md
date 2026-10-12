@@ -86,4 +86,4 @@ A reader asked to agree is sent, the next time they open a page of the site whil
 
 Each translation is asked about on its own. A reader who agreed to the page in another language, whose translation did not change, is not asked, so a change that applies to every language is published with **Publish and ask readers to agree** on each translation's tab.
 
-The app does not ask readers yet ([#3800](https://github.com/publira/publira/issues/3800)). It refuses a reader who has not agreed what the site refuses, and they agree on the site.
+The app asks too. A reader signed in to the app is shown the same screen in place of the rest of the app when they open it, when they come back to it, or as soon as the app is refused something because they have not agreed. It links the same pages, and offers **Sign out** and **Delete account** instead of agreeing; **Agree and continue** returns them to where they were in the app. An agreement given in the app or on the site counts for both, so a reader is asked once.

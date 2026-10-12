@@ -4678,6 +4678,14 @@
       "unlink_failed": "无法解除关联。请稍后重试。",
       "unlinked": "已解除关联。"
     },
+    "legal_page_agreement": {
+      "decline": "如果不同意，您可以退出登录或注销账户。",
+      "description": "以下页面已更新。如需继续使用您的账户，请阅读并同意。",
+      "failed": "无法记录您的同意。请重试。",
+      "required": "请同意列出的页面后继续。",
+      "submit": "同意并继续",
+      "title": "同意更新后的条款"
+    },
     "tenant_suspended": {
       "description": "请过一段时间再试。",
       "title": "此应用目前无法使用"
