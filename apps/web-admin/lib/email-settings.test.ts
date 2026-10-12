@@ -1,4 +1,5 @@
 import {
+  BadRequestSchema,
   Code,
   ConnectError,
   ErrorInfoSchema,
@@ -10,6 +11,7 @@ import {
   getTenantEmailSettings,
   sendTenantSmtpTestEmail,
   tenantEmailSettingsCacheTag,
+  updateTenantEmailSettings,
 } from "./email-settings";
 import {
   SECRET_UPDATE_MODE_UNCHANGED,
@@ -23,6 +25,7 @@ const {
   mockGetTenantEmailSender,
   mockGetTenantEmailSettings,
   mockSendTenantSmtpTestEmail,
+  mockUpdateTenantEmailSettings,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
@@ -30,6 +33,7 @@ const {
   mockGetTenantEmailSender: vi.fn(),
   mockGetTenantEmailSettings: vi.fn(),
   mockSendTenantSmtpTestEmail: vi.fn(),
+  mockUpdateTenantEmailSettings: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -43,6 +47,7 @@ vi.mock("./api", () => ({
       getTenantEmailSender: mockGetTenantEmailSender,
       getTenantEmailSettings: mockGetTenantEmailSettings,
       sendTenantSmtpTestEmail: mockSendTenantSmtpTestEmail,
+      updateTenantEmailSettings: mockUpdateTenantEmailSettings,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -52,7 +57,7 @@ vi.mock("./api", () => ({
 
 vi.mock("./session", () => ({ getAccessToken: mockGetAccessToken }));
 
-const smtpTestInput = {
+const smtpSettingsInput = {
   encryption: "starttls",
   fromAddress: "noreply@example.com",
   fromName: "",
@@ -60,12 +65,16 @@ const smtpTestInput = {
   password: "",
   passwordUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
   port: 587,
-  recipientEmail: "",
-  recipientType: TEST_EMAIL_RECIPIENT_TYPE_SELF,
   replyTo: "",
   smtpOverrideEnabled: true,
   tenantId: "TENANT001",
   username: "mailer",
+};
+
+const smtpTestInput = {
+  ...smtpSettingsInput,
+  recipientEmail: "",
+  recipientType: TEST_EMAIL_RECIPIENT_TYPE_SELF,
 };
 
 const smtpAuthenticationError = () =>
@@ -83,6 +92,22 @@ const smtpAuthenticationError = () =>
       },
     ]
   );
+
+const passwordWithoutUsernameError = () =>
+  new ConnectError(
+    "username is required with a password",
+    Code.InvalidArgument,
+    undefined,
+    [
+      {
+        desc: BadRequestSchema,
+        value: { fieldViolations: [{ field: "username" }] },
+      },
+    ]
+  );
+
+const passwordWithoutUsernameMessage =
+  "A password needs a username. Enter the username, or remove the password to send without authenticating.";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -112,6 +137,45 @@ describe("sendTenantSmtpTestEmail", () => {
         ok: false,
       }
     );
+  });
+
+  it("says a password needs a username when the test is refused for want of one", async () => {
+    mockSendTenantSmtpTestEmail.mockRejectedValueOnce(
+      passwordWithoutUsernameError()
+    );
+
+    await expect(
+      sendTenantSmtpTestEmail({ ...smtpTestInput, username: "" }, "en")
+    ).resolves.toEqual({ message: passwordWithoutUsernameMessage, ok: false });
+  });
+});
+
+describe("updateTenantEmailSettings", () => {
+  it("puts a password refused for want of a username on the username field", async () => {
+    mockUpdateTenantEmailSettings.mockRejectedValueOnce(
+      passwordWithoutUsernameError()
+    );
+
+    await expect(
+      updateTenantEmailSettings({ ...smtpSettingsInput, username: "" }, "en")
+    ).resolves.toEqual({
+      fieldErrors: { username: passwordWithoutUsernameMessage },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+  });
+
+  it("passes the server's validation detail through", async () => {
+    mockUpdateTenantEmailSettings.mockRejectedValueOnce(
+      new ConnectError("from_address is required", Code.InvalidArgument)
+    );
+
+    await expect(
+      updateTenantEmailSettings(smtpSettingsInput, "en")
+    ).resolves.toEqual({
+      message: "from_address is required",
+      ok: false,
+    });
   });
 });
 

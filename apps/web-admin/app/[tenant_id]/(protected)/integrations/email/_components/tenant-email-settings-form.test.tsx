@@ -16,7 +16,12 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
-import { TEST_EMAIL_RECIPIENT_TYPE_CUSTOM } from "#lib/email-settings-shared";
+import {
+  SECRET_UPDATE_MODE_CLEAR,
+  SECRET_UPDATE_MODE_REPLACE,
+  SECRET_UPDATE_MODE_UNCHANGED,
+  TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
+} from "#lib/email-settings-shared";
 import type { TenantSmtpSettings } from "#lib/email-settings-shared";
 
 import type {
@@ -27,7 +32,10 @@ import { TenantEmailSettingsForm } from "./tenant-email-settings-form";
 
 const { actions } = vi.hoisted(() => ({
   actions: {
-    save: (): Promise<TenantEmailSettingsFormState> => Promise.resolve(null),
+    save: (
+      _previousState: TenantEmailSettingsFormState,
+      _formData: FormData
+    ): Promise<TenantEmailSettingsFormState> => Promise.resolve(null),
     test: (
       _previousState: TenantSmtpTestFormState,
       _formData: FormData
@@ -40,7 +48,10 @@ vi.mock("../_lib/actions", () => ({
     previousState: TenantSmtpTestFormState,
     formData: FormData
   ) => actions.test(previousState, formData),
-  updateTenantEmailSettingsAction: () => actions.save(),
+  updateTenantEmailSettingsAction: (
+    previousState: TenantEmailSettingsFormState,
+    formData: FormData
+  ) => actions.save(previousState, formData),
 }));
 
 vi.mock("#components/message", () => ({
@@ -78,7 +89,10 @@ const renderForm = async (
     saveAction = () => Promise.resolve(null),
     testAction = () => Promise.resolve(null),
   }: {
-    saveAction?: () => Promise<TenantEmailSettingsFormState>;
+    saveAction?: (
+      previousState: TenantEmailSettingsFormState,
+      formData: FormData
+    ) => Promise<TenantEmailSettingsFormState>;
     testAction?: (
       previousState: TenantSmtpTestFormState,
       formData: FormData
@@ -98,6 +112,24 @@ const renderForm = async (
       { wrapper: EnglishConsole }
     );
   });
+};
+
+const refusedSave = () =>
+  vi.fn((_previousState: TenantEmailSettingsFormState, _formData: FormData) =>
+    Promise.resolve<TenantEmailSettingsFormState>({
+      message: "Could not save.",
+      ok: false,
+    })
+  );
+
+const passwordBox = () => {
+  const password = document.querySelector<HTMLInputElement>(
+    'input[name="password"]'
+  );
+  if (!password) {
+    throw new Error("The form has no password box open.");
+  }
+  return password;
 };
 
 const testButton = () =>
@@ -285,5 +317,141 @@ describe("TenantEmailSettingsForm", () => {
     await waitFor(() => {
       expect(recipient.disabled).toBe(false);
     });
+  });
+
+  it("keeps the stored password until the administrator asks to change it", async () => {
+    const saveAction = refusedSave();
+    await renderForm(storedSettings(), { saveAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await screen.findByText("Could not save.");
+    const formData = saveAction.mock.calls[0]?.[1];
+    expect(formData?.get("password_update_mode")).toBe(
+      String(SECRET_UPDATE_MODE_UNCHANGED)
+    );
+    expect(formData?.has("password")).toBe(false);
+  });
+
+  it("saves without a username or a password for a relay that takes no credentials", async () => {
+    const saveAction = refusedSave();
+    await renderForm(storedSettings({ hasPassword: false, username: "" }), {
+      saveAction,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await screen.findByText("Could not save.");
+    const blank = saveAction.mock.calls[0]?.[1];
+    expect(blank?.get("username")).toBe("");
+    expect(blank?.get("password")).toBe("");
+    expect(blank?.get("password_update_mode")).toBe(
+      String(SECRET_UPDATE_MODE_CLEAR)
+    );
+
+    fireEvent.change(passwordBox(), { target: { value: "new-secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(saveAction).toHaveBeenCalledTimes(2);
+    });
+    expect(saveAction.mock.calls[1]?.[1].get("password_update_mode")).toBe(
+      String(SECRET_UPDATE_MODE_REPLACE)
+    );
+  });
+
+  // Moving saved credentials to a relay that takes none has to be able to drop
+  // the stored password, which a blank username would otherwise be refused beside.
+  it("removes the stored password when its box is opened and left empty", async () => {
+    const saveAction = refusedSave();
+    await renderForm(storedSettings(), { saveAction });
+
+    fireEvent.change(screen.getByLabelText(/Username/u), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await screen.findByText("Could not save.");
+    const formData = saveAction.mock.calls[0]?.[1];
+    expect(formData?.get("username")).toBe("");
+    expect(formData?.get("password")).toBe("");
+    expect(formData?.get("password_update_mode")).toBe(
+      String(SECRET_UPDATE_MODE_CLEAR)
+    );
+  });
+
+  // The box opened again is empty, whatever it held before the change was
+  // cancelled, so saving it as it is removes the stored password.
+  it("forgets a password typed before the change was cancelled", async () => {
+    const saveAction = refusedSave();
+    await renderForm(storedSettings(), { saveAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    fireEvent.change(passwordBox(), { target: { value: "abandoned" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel the change" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await screen.findByText("Could not save.");
+    const formData = saveAction.mock.calls[0]?.[1];
+    expect(formData?.get("password")).toBe("");
+    expect(formData?.get("password_update_mode")).toBe(
+      String(SECRET_UPDATE_MODE_CLEAR)
+    );
+  });
+
+  it("explains under the username what leaving it blank means", async () => {
+    await renderForm(storedSettings());
+
+    const description = screen.getByText(
+      "Leave blank for a relay that takes no credentials; email is then sent without authenticating."
+    );
+    expect(
+      screen.getByLabelText(/Username/u).getAttribute("aria-describedby")
+    ).toContain(description.id);
+  });
+
+  it("says what an empty box does only while the stored password is open", async () => {
+    const note = "Saving with this box empty removes the stored password.";
+    await renderForm(storedSettings());
+
+    expect(screen.queryByText(note)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    expect(screen.getByText(note)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel the change" }));
+    expect(screen.queryByText(note)).toBeNull();
+
+    cleanup();
+    await renderForm(storedSettings({ hasPassword: false, username: "" }));
+    expect(screen.queryByText(note)).toBeNull();
+  });
+
+  it("shows the refusal of a password without a username on the username field", async () => {
+    const refusal =
+      "A password needs a username. Enter the username, or remove the password to send without authenticating.";
+    const saveAction = vi.fn(
+      (_previousState: TenantEmailSettingsFormState, _formData: FormData) =>
+        Promise.resolve<TenantEmailSettingsFormState>({
+          fieldErrors: { username: refusal },
+          message: "Please check the information you entered.",
+          ok: false,
+        })
+    );
+    await renderForm(storedSettings({ hasPassword: false, username: "" }), {
+      saveAction,
+    });
+
+    fireEvent.change(passwordBox(), { target: { value: "new-secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const message = await screen.findByText(refusal);
+    const sent = saveAction.mock.calls[0]?.[1];
+    expect(sent?.get("username")).toBe("");
+    expect(sent?.get("password")).toBe("new-secret");
+    const username = screen.getByLabelText(/Username/u);
+    expect(username.parentElement?.contains(message)).toBe(true);
+    expect(username).toHaveProperty("value", "");
+    expect(passwordBox().value).toBe("new-secret");
   });
 });

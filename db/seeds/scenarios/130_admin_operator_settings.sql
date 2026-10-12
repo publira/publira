@@ -87,6 +87,8 @@ FROM users u
 WHERE u.public_id = 'AsetADMNAAA1'
 ON CONFLICT (user_id, role) DO NOTHING;
 
+-- The override names the stack's Mailpit, which takes no credentials, so it
+-- saves none.
 INSERT INTO tenant_smtp_config (
     tenant_id,
     smtp_override_enabled,
@@ -104,8 +106,8 @@ SELECT
     FALSE,
     'mailpit',
     1025,
-    'mailpit',
-    'enc:seed:tenant:dummy-ciphertext-v1',
+    NULL,
+    NULL,
     'none',
     'Operator Settings Tenant Mail',
     'no-reply@aset.local',

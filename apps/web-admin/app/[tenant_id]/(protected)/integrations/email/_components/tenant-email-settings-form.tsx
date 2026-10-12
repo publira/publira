@@ -1,5 +1,6 @@
 import {
   ActionForm,
+  ActionFormFieldError,
   ActionFormFieldset,
   ActionFormIdle,
   ActionFormPending,
@@ -50,7 +51,7 @@ import {
   SmtpOverrideFieldset,
   SmtpPassword,
   SmtpPasswordEditor,
-  SmtpPasswordLabel,
+  SmtpPasswordReplacing,
   SmtpPasswordStored,
   SmtpSettingLabel,
   SmtpTest,
@@ -169,28 +170,33 @@ export const TenantEmailSettingsForm = ({
             </Field>
 
             <Field>
-              <SmtpSettingLabel>
+              <FieldLabel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                   <Message message="admin.settings.email.username" />
                 </Suspense>
-              </SmtpSettingLabel>
+              </FieldLabel>
               <FieldContent>
                 <Input
                   defaultValue={initialSettings.username}
                   name="username"
-                  required
                   type="text"
                 />
+                <ActionFormFieldError name="username" />
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                    <Message message="admin.settings.email.username_description" />
+                  </Suspense>
+                </FieldDescription>
               </FieldContent>
             </Field>
 
             <SmtpPassword hasStoredPassword={initialSettings.hasPassword}>
               <Field>
-                <SmtpPasswordLabel>
+                <FieldLabel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                     <Message message="admin.settings.email.password" />
                   </Suspense>
-                </SmtpPasswordLabel>
+                </FieldLabel>
                 <FieldContent>
                   <SmtpPasswordStored>
                     <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
@@ -202,6 +208,15 @@ export const TenantEmailSettingsForm = ({
                       <Message message="admin.settings.email.password_change_cancel" />
                     </Suspense>
                   </SmtpPasswordEditor>
+                  <SmtpPasswordReplacing>
+                    <FieldDescription>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-3/4" />}
+                      >
+                        <Message message="admin.settings.email.password_clear_description" />
+                      </Suspense>
+                    </FieldDescription>
+                  </SmtpPasswordReplacing>
                 </FieldContent>
               </Field>
             </SmtpPassword>

@@ -5,6 +5,7 @@ import {
 } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
+  rpcErrorHasFieldViolation,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
@@ -57,6 +58,11 @@ export type TenantSmtpSettingsResult =
   | {
       ok: false;
       message: string;
+      /**
+       * What the save refused about one field, in the form's words. Only
+       * {@link updateTenantEmailSettings} sets it.
+       */
+      fieldErrors?: { username?: string };
       /**
        * The API rejected the session while reading the settings — the page
        * raises the login redirect. The update path throws instead, so only
@@ -299,6 +305,17 @@ export const updateTenantEmailSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+    // The one refusal naming the username is a password, entered or kept from
+    // the stored settings, with no username to authenticate it.
+    if (rpcErrorHasFieldViolation(error, "username")) {
+      return {
+        fieldErrors: {
+          username: t("admin.settings.email.username_required_with_password"),
+        },
+        message: t("errors.validation"),
+        ok: false,
+      };
+    }
     return { message: await parseErrorMessage(error, locale), ok: false };
   }
 };
@@ -341,6 +358,14 @@ export const sendTenantSmtpTestEmail = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+    // The dialog has no username field of its own, so the refusal is its
+    // message.
+    if (rpcErrorHasFieldViolation(error, "username")) {
+      return {
+        message: t("admin.settings.email.username_required_with_password"),
+        ok: false,
+      };
+    }
     return {
       message: await parseSmtpTestErrorMessage(error, locale),
       ok: false,

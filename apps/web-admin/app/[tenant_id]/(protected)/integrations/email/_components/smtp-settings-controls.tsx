@@ -18,6 +18,7 @@ import type { ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
+  SECRET_UPDATE_MODE_CLEAR,
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
@@ -129,6 +130,7 @@ export const SmtpSettingLabel = ({ children }: { children: ReactNode }) => {
 interface SmtpPasswordContextValue {
   hasStoredPassword: boolean;
   isEditing: boolean;
+  setHasEntry: (hasEntry: boolean) => void;
   setIsEditing: (isEditing: boolean) => void;
 }
 
@@ -147,7 +149,8 @@ const useSmtpPassword = () => {
 /**
  * The SMTP password, which never reaches the browser once stored: it is shown
  * masked until the operator asks to change it, and a save that stores one puts
- * it back behind that mask.
+ * it back behind that mask. An open box left empty stores no password, for a
+ * relay that takes no credentials.
  */
 export const SmtpPassword = ({
   children,
@@ -161,42 +164,38 @@ export const SmtpPassword = ({
     ? state.settings.hasPassword
     : initialHasStoredPassword;
   const [isEditing, setIsEditing] = useState(!initialHasStoredPassword);
+  const [hasEntry, setHasEntry] = useState(false);
+  // Opening or closing the box remounts it empty, so what it held goes too.
   const context = useMemo(
-    () => ({ hasStoredPassword, isEditing, setIsEditing }),
+    () => ({
+      hasStoredPassword,
+      isEditing,
+      setHasEntry,
+      setIsEditing: (editing: boolean) => {
+        setIsEditing(editing);
+        setHasEntry(false);
+      },
+    }),
     [hasStoredPassword, isEditing]
   );
 
   useActionFormSettled<SavedSettingsState>((settled) => {
     if (settled?.ok) {
       setIsEditing(!settled.settings.hasPassword);
+      setHasEntry(false);
     }
   });
 
-  const keepsStoredPassword = hasStoredPassword && !isEditing;
+  let mode = SECRET_UPDATE_MODE_UNCHANGED;
+  if (isEditing) {
+    mode = hasEntry ? SECRET_UPDATE_MODE_REPLACE : SECRET_UPDATE_MODE_CLEAR;
+  }
 
   return (
     <SmtpPasswordContext value={context}>
       {children}
-      <input
-        name="password_update_mode"
-        type="hidden"
-        value={String(
-          keepsStoredPassword
-            ? SECRET_UPDATE_MODE_UNCHANGED
-            : SECRET_UPDATE_MODE_REPLACE
-        )}
-      />
+      <input name="password_update_mode" type="hidden" value={String(mode)} />
     </SmtpPasswordContext>
-  );
-};
-
-/** The password's label, required only while a new one is being entered. */
-export const SmtpPasswordLabel = ({ children }: { children: ReactNode }) => {
-  const { interactive } = useSmtpOverride();
-  const { isEditing } = useSmtpPassword();
-
-  return (
-    <FieldLabel required={interactive && isEditing}>{children}</FieldLabel>
   );
 };
 
@@ -233,8 +232,8 @@ export const SmtpPasswordStored = ({ children }: { children: ReactNode }) => {
  * is kept.
  */
 export const SmtpPasswordEditor = ({ children }: { children: ReactNode }) => {
-  const { interactive } = useSmtpOverride();
-  const { hasStoredPassword, isEditing, setIsEditing } = useSmtpPassword();
+  const { hasStoredPassword, isEditing, setHasEntry, setIsEditing } =
+    useSmtpPassword();
 
   if (hasStoredPassword && !isEditing) {
     return null;
@@ -245,7 +244,9 @@ export const SmtpPasswordEditor = ({ children }: { children: ReactNode }) => {
       <Input
         autoComplete="new-password"
         name="password"
-        required={interactive && isEditing}
+        onChange={(event) => {
+          setHasEntry(event.currentTarget.value !== "");
+        }}
         type="password"
       />
       {hasStoredPassword ? (
@@ -261,6 +262,21 @@ export const SmtpPasswordEditor = ({ children }: { children: ReactNode }) => {
       ) : null}
     </div>
   );
+};
+
+/**
+ * `children`, only while the stored password is open for change: what saving
+ * that box empty does to it. With nothing stored, an empty box has nothing to
+ * remove.
+ */
+export const SmtpPasswordReplacing = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const { hasStoredPassword, isEditing } = useSmtpPassword();
+
+  return hasStoredPassword && isEditing ? children : null;
 };
 
 /**
