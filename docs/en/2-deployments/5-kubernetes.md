@@ -151,7 +151,16 @@ kubectl wait --for=condition=Complete --timeout=10m job/publira-db-migrate
 kubectl logs job/publira-db-migrate
 ```
 
-`backoffLimit: 0` keeps Kubernetes from running a failed migration again on its own: a failed run leaves the database marked dirty, which [When a migration fails](./6-upgrading.md#when-a-migration-fails) resolves by hand. A Job cannot be changed once it exists, so the Job is deleted a day after it finishes, and a later release creates it again under the same name. `kubectl wait` gives up after ten minutes whether the Job failed or is still running, so read its log either way.
+`backoffLimit: 0` keeps Kubernetes from running a failed migration again on its own: a failed run leaves the database marked dirty, which [When a migration fails](./6-upgrading.md#when-a-migration-fails) resolves by hand. `kubectl wait` gives up after ten minutes whether the Job failed or is still running, so read its log either way.
+
+A Job cannot be changed once it exists, and one that has finished, whether it completed or failed, does not run again when its manifest is applied. This one is deleted a day after it finishes. Until then, running it again, as the last step of that recovery does, starts by deleting it:
+
+```bash
+kubectl delete job publira-db-migrate --ignore-not-found
+kubectl apply -f publira-db-migrate.yaml
+```
+
+The `db roles` and `setup` Jobs below are run again the same way.
 
 ## 3. Create the roles
 
@@ -199,7 +208,7 @@ kubectl wait --for=condition=Complete --timeout=5m job/publira-db-roles
 kubectl logs job/publira-db-roles
 ```
 
-The log has one line per role. The same Job is how a role's password is rotated later: change it in `publira-db-roles` and in the connection URL that carries it, run the Job again, and restart the Deployment that connects as that role. A finished Job does not run again when its manifest is applied, and this one stays for a day after it completes, so delete it first. For `publira_admin`, whose URL `publira-server` carries:
+The log has one line per role. The same Job is how a role's password is rotated later: change it in `publira-db-roles` and in the connection URL that carries it, run the Job again, and restart the Deployment that connects as that role. As with the migrations, delete the finished Job before applying it again. For `publira_admin`, whose URL `publira-server` carries:
 
 ```bash
 kubectl delete job publira-db-roles --ignore-not-found
@@ -478,6 +487,8 @@ kubectl logs job/publiractl-setup
 ```
 
 For a store other than Amazon S3, add its URL with `--endpoint`, and `--force-path-style` if it addresses buckets by path. The [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#setup) lists every flag, and the steps that are optional.
+
+A run that stops partway, on an object store that refuses the connection test for one, keeps what it saved and is finished by running it again once the cause is fixed. Delete the failed Job and apply it again, as with the migrations.
 
 The administrator's password is the `admin-password` key of the `publiractl-setup` Secret. Once they have signed in and changed it, delete the Secret: nothing reads it afterwards.
 
