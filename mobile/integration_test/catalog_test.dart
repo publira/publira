@@ -187,10 +187,12 @@ void main() {
   group('fixture public API', () {
     late ConnectFixtureServer server;
     late Directory offlineRoot;
+    late List<FileOfflineLibrary> libraries;
 
     setUp(() async {
       // Its own directory per test, so no test reads what another one saved.
       offlineRoot = await Directory.systemTemp.createTemp('publira-offline-');
+      libraries = [];
       server = ConnectFixtureServer(
         series: ConnectFixtureServer.populatedSeries(),
         details: ConnectFixtureServer.populatedDetails(),
@@ -203,7 +205,7 @@ void main() {
 
     tearDown(() async {
       await server.close();
-      await removeDirectory(offlineRoot);
+      await removeOfflineRoot(offlineRoot, libraries);
     });
 
     Future<void> pumpApp(
@@ -214,6 +216,11 @@ void main() {
       FakeCheckoutLauncher? checkoutLauncher,
       FakeIncomingLinks? incomingLinks,
     }) async {
+      final offline = FileOfflineLibrary(
+        tenantHost: 'localhost',
+        root: () async => offlineRoot,
+      );
+      libraries.add(offline);
       await tester.pumpWidget(
         PubliraApp.fromConfig(
           checkoutLauncher: checkoutLauncher,
@@ -232,10 +239,7 @@ void main() {
           store: InMemorySessionStore(session: session),
           dismissedAnnouncements: MemoryDismissedAnnouncementStore(),
           anonymousIds: MemoryAnonymousIdStore(),
-          offline: FileOfflineLibrary(
-            tenantHost: 'localhost',
-            root: () async => offlineRoot,
-          ),
+          offline: offline,
         ),
       );
       await tester.pump();
@@ -2671,13 +2675,15 @@ void main() {
 
   group('live public API', skip: !_liveApi, () {
     late Directory offlineRoot;
+    late List<FileOfflineLibrary> libraries;
 
     setUp(() async {
       offlineRoot = await Directory.systemTemp.createTemp('publira-offline-');
+      libraries = [];
     });
 
     tearDown(() async {
-      await removeDirectory(offlineRoot);
+      await removeOfflineRoot(offlineRoot, libraries);
     });
 
     // Loopback inside an emulator is the emulator, so the live stack is
@@ -2705,6 +2711,11 @@ void main() {
       String? initialLocation,
       AuthSession? session,
     }) async {
+      final offline = FileOfflineLibrary(
+        tenantHost: liveTenantHost,
+        root: () async => offlineRoot,
+      );
+      libraries.add(offline);
       await tester.pumpWidget(
         PubliraApp.fromConfig(
           config: const AppConfig(
@@ -2717,10 +2728,7 @@ void main() {
           store: InMemorySessionStore(session: session),
           dismissedAnnouncements: MemoryDismissedAnnouncementStore(),
           anonymousIds: MemoryAnonymousIdStore(),
-          offline: FileOfflineLibrary(
-            tenantHost: liveTenantHost,
-            root: () async => offlineRoot,
-          ),
+          offline: offline,
         ),
       );
       await tester.pump();
@@ -4419,7 +4427,7 @@ void main() {
 
     tearDown(() async {
       await server.close();
-      await removeDirectory(offlineRoot);
+      await removeOfflineRoot(offlineRoot, [offline]);
     });
 
     /// Pumps the app the way a launch would.
@@ -4820,8 +4828,18 @@ void main() {
   });
 }
 
-/// Removes a temporary directory a test wrote under, if it is still there.
-Future<void> removeDirectory(Directory directory) async {
+/// Removes the temporary directory [libraries] wrote under, if it is still
+/// there, once none of them writes any more.
+///
+/// The app the test pumped saves what it reads without waiting for the save,
+/// so a page or an index can still be landing in the directory after the test
+/// body has finished, and a recursive delete that lists the directory before
+/// such a write fails on a directory that is no longer empty.
+Future<void> removeOfflineRoot(
+  Directory directory,
+  Iterable<FileOfflineLibrary> libraries,
+) async {
+  await Future.wait([for (final library in libraries) library.close()]);
   if (await directory.exists()) {
     await directory.delete(recursive: true);
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -917,6 +918,34 @@ void main() {
     expect(await library.readEpisode(_seriesId, 'EP1'), isNull);
     expect(await library.readPage(pageKey), isNull);
   });
+
+  test(
+    'close lets a save already asked for land and stops any later one',
+    () async {
+      final library = open();
+      final pageKey = episodePageKey(_pageUrl('EP1', 1));
+      var saved = false;
+      unawaited(
+        library.writePage(pageKey, _bytes(64, 3)).then((_) => saved = true),
+      );
+
+      await library.close();
+
+      expect(saved, isTrue);
+      final written = await root
+          .list(recursive: true)
+          .map((entity) => entity.path)
+          .toList();
+      await library.writeEpisode(_episode('EP2'));
+      expect(
+        await root.list(recursive: true).map((entity) => entity.path).toList(),
+        unorderedEquals(written),
+      );
+      expect(await library.readPage(pageKey), isNull);
+      expect(await open().readPage(pageKey), isNotNull);
+      expect(await open().readEpisode(_seriesId, 'EP2'), isNull);
+    },
+  );
 
   test('a device with nowhere to keep a key reads as empty', () async {
     final library = FileOfflineLibrary(
