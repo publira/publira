@@ -168,7 +168,7 @@ Implementation:
 | `Lint and Format` | `pnpm check` across every file type that oxfmt supports, then `pnpm reader-parity:check`, which holds the mobile app's reader parity matrix to web-storefront. | [`AGENTS.md`](../../AGENTS.md) |
 | `Check` | Locale-catalog, `sqlc`, and buf-generated drift; literal-`<svg>` grep, the design-token guard, the `docs/en/` contract, and `pnpm typecheck`. Saves the Go module cache every Go job restores. | [`AGENTS.md`](../../AGENTS.md), [`docs/README.md`](../../docs/README.md) |
 | `Lint / Go` | `go mod tidy` drift guard, then `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
-| `Test / Go` | `go test -count=1 ./...` in `server/`; on `main`, saves the `test` Go build cache. | [`server/AGENTS.md`](../../server/AGENTS.md) |
+| `Test / Go` | Builds the OpenSearch and Elasticsearch images the search integration tests run on, then `go test -count=1 ./...` in `server/`; on `main`, saves the `test` Go build cache. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test`, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` for the isolated development-profile and E2E-stack Bash libraries and the device ports the mobile integration tests use. | This file |
 | `Test / DB Migrations` | Append-only and version-ordering guards on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
@@ -221,7 +221,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Lint and Format` | Every path (including documentation); oxfmt ignores unsupported and configured-ignored files. |
 | `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, and package / lock / turbo config; and, through the separate `check_docs` filter, `docs/**` Markdown included |
 | `Lint / Go` | `server/**`, `scripts/check-go-mod-tidy.sh` |
-| `Test / Go` | `server/**`, `db/**`, `proto/**`, and generator config |
+| `Test / Go` | `server/**`, `db/**`, `proto/**`, generator config, and `infra/docker/opensearch/**` and `infra/docker/elasticsearch/**` |
 | `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
 | `Test / Bash` | Every tracked Bash file, `scripts/dev-env.sh`, `scripts/dev-env/**`, `e2e/scripts/**`, and their Taskfiles |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |

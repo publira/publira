@@ -2,19 +2,18 @@
 
 # OpenSearch with the analysis plugins the catalog index can be built from,
 # for the optional `search` profile of the root compose.yaml and of
-# e2e/compose.yaml: analysis-kuromoji and analysis-icu, which the default text
+# e2e/compose.yaml, and for the Go integration tests that run the catalog
+# search backend on OpenSearch: analysis-kuromoji and analysis-icu, which the default text
 # analysis needs, and analysis-nori and analysis-smartcn, which a definition
 # for Korean or Chinese titles is built on. The published image ships none of
 # them, and one can only be installed while the node is stopped, so they are
 # installed here rather than at container start.
 #
-# This is a dependency of local development and E2E, not a deployment image:
-# single-node discovery and the disabled security plugin are set by the
-# compose files that run it, and nothing here builds it for a registry.
-#
-# Keep the version in step with defaultOpenSearchImage in
-# server/internal/testutil/opensearch.go, the node the Go integration tests
-# run against.
+# This is a dependency of local development and the tests, not a deployment
+# image: single-node discovery and the disabled security plugin are set by the
+# compose files and by server/internal/testutil, which run it, and nothing
+# here builds it for a registry. testutil builds it from this file when
+# PUBLIRA_TEST_OPENSEARCH_IMAGE is unset.
 #
 # Build from the repository root (compose does this with `--profile search`):
 #

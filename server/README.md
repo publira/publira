@@ -61,6 +61,13 @@ task server:test
   - Shared helpers: `internal/testutil` (applying migrations, seeding the app roles, Snapshot/Restore, seeding tenants and the catalog)
   - Open a connection per app role with `OpenPlatformDB` / `OpenAdminDB` / `OpenPublicDB`. The latter two have RLS enabled, so they can verify the tenant boundary itself.
   - Examples: `TestDB*` in `api/platformapi` (tenant creation, uniqueness constraints, state transitions), `TestDB*` in `api/adminapi` (tenant isolation), `TestDB*` in `api/publicapi` (published/unpublished filtering, member authentication)
+- The catalog search tests start an OpenSearch and an Elasticsearch node with `StartOpenSearch` / `StartElasticsearch`, on images that carry the analysis plugins. Each runs the image named by its variable when that is set, and otherwise builds one from [`infra/docker/opensearch`](../infra/docker/opensearch/Dockerfile) or [`infra/docker/elasticsearch`](../infra/docker/elasticsearch/Dockerfile), which Docker's build cache keeps for the next run. CI builds both once and sets the variables.
+
+  | Variable | Image |
+  | --- | --- |
+  | `PUBLIRA_TEST_OPENSEARCH_IMAGE` | An image built from `infra/docker/opensearch/Dockerfile` |
+  | `PUBLIRA_TEST_ELASTICSEARCH_IMAGE` | An image built from `infra/docker/elasticsearch/Dockerfile` |
+
 - Requirement: Docker must be usable locally (the affected tests skip when it is not running)
 - For a faster run, `go test -short ./...` skips the integration tests that start containers
 

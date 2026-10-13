@@ -14,11 +14,12 @@ Implementation rules for agents: [`AGENTS.md`](./AGENTS.md) The full CI, includi
 | Server (long-running) | [`server/Dockerfile`](./server/Dockerfile) | `server/cmd/publira`, run as `publira server` (the API and image delivery, Manael / libvips) or `publira worker` | `VERSION` |
 | publiractl | [`publiractl/Dockerfile`](./publiractl/Dockerfile) | `server/cmd/publiractl` (the install's command line: the database migrations and the login roles, which the image carries, manual runs of every maintenance job, saving and testing the platform's SMTP settings and object store, creating and managing a tenant, and turning on Web Push) | none |
 | Node (long-running) | [`node/Dockerfile`](./node/Dockerfile) | non-Next.js services in `apps/*` | `APP_NAME`, `PORT` |
-| OpenSearch (development dependency) | [`opensearch/Dockerfile`](./opensearch/Dockerfile) | the catalog search engine with the `analysis-kuromoji` and `analysis-icu` plugins, run by the `search` profile of the root `compose.yaml` and of `e2e/compose.yaml` | none |
+| OpenSearch (development dependency) | [`opensearch/Dockerfile`](./opensearch/Dockerfile) | the catalog search engine with the `analysis-kuromoji` and `analysis-icu` plugins, run by the `search` profile of the root `compose.yaml` and of `e2e/compose.yaml`, and by the Go integration tests | none |
+| Elasticsearch (test dependency) | [`elasticsearch/Dockerfile`](./elasticsearch/Dockerfile) | the same engine on Elasticsearch, with the same plugins, run by the Go integration tests | none |
 
 A deployment runs the long-running images and nothing on a timer: the worker (the server image with `worker` as its container argument) schedules every recurring job, the maintenance jobs included. The publiractl image is what a deployment runs once per release to apply the migrations and the role grants it carries (`db migrate`, then `db roles`), and what an operator runs one of those jobs with by hand — a backfill of a named date, a recovery, a dry-run purge — so it is not something a deployment has to schedule.
 
-The OpenSearch image is not a deployment image: a deployment brings its own engine with those two plugins installed. It is built by `docker compose --profile search` and by the `Test / E2E Search` job, so it has no `task docker:build:*` target and no row in the Docker matrix.
+The OpenSearch and Elasticsearch images are not deployment images: a deployment brings its own engine with those two plugins installed. The OpenSearch image is built by `docker compose --profile search` and by the `Test / E2E Search` job, and both are built by the `Test / Go` job and, when it is not handed one, by the Go integration tests themselves (`PUBLIRA_TEST_OPENSEARCH_IMAGE` and `PUBLIRA_TEST_ELASTICSEARCH_IMAGE` in [`server/README.md`](../../server/README.md#tests)). Neither has a `task docker:build:*` target or a row in the Docker matrix.
 
 Keep the Dev Container separate from production images. Its image, `ghcr.io/publira/base-images/publira-dev`, is built in the `publira/base-images` repository; `.devcontainer/` holds only the configuration that runs it.
 
@@ -68,7 +69,7 @@ What is being containerized?
 
 ### Naming
 
-- **Role directories** use a short category name (`web` / `server` / `node`), never a service name. `publiractl` is the exception: it carries one binary, which the directory is named for, and so is `opensearch`, which carries one third-party service.
+- **Role directories** use a short category name (`web` / `server` / `node`), never a service name. `publiractl` is the exception: it carries one binary, which the directory is named for, and so are `opensearch` and `elasticsearch`, which each carry one third-party service.
 - **`APP_NAME`** is the directory name directly under `apps/` (for example, `web-admin` or `email-renderer`). The Dockerfile adds the `@publira/` prefix.
 - **Example image tags** use `publira/<service-name>:local`, a build-time convention. Deployment defines registry policy separately.
 - **Published images** are `ghcr.io/publira/<service-name>:<version>`, the release's Git tag without its `v`, pushed for every release by [`release-images.yml`](../../.github/workflows/release-images.yml) (see [Release images](../../.github/workflows/README.md#release-images)).
@@ -148,11 +149,12 @@ Every container image in the repository — each `FROM` line and `# syntax=` fro
 
 The `node` tag names the version in `devEngines.runtime.version` of the root `package.json`, the runtime contributors run, and Renovate raises that version and the `node` image tags on one branch.
 
-Three publishers offer nothing more to name:
+Four publishers offer nothing more to name:
 
 - **distroless** publishes no versioned tags. The image name carries the Debian release (`nodejs24-debian13`, `static-debian13`, never the unsuffixed `static` alias), and the digest is the only further identifier.
 - **caddy** publishes no Alpine-versioned tags, so `caddy:<version>-alpine` keeps a bare `-alpine`.
 - **OpenSearch** publishes its image under the version alone (`opensearchproject/opensearch:3.9.0`), with no tag naming the OS it is built on.
+- **Elasticsearch** does the same (`elasticsearch:9.1.5`).
 
 Renovate's Docker versioning treats everything after the version (`-alpine3.24`, `-trixie-slim`) as a compatibility marker and never changes it. Its pull requests move the version and the digest within the OS release the tag names, so moving to a new OS release — Alpine 3.24 to 3.25, Debian 13 to 14 — is an edit made by hand. An image staying on an older OS release after a newer one has shipped is that behaviour, not a missed update.
 

@@ -1,25 +1,26 @@
 package testutil
 
 import (
-	"context"
-	"fmt"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-const defaultOpenSearchImage = "opensearchproject/opensearch:3.9.0"
-
-// openSearchEntrypoint installs the two analysis plugins the catalog index's
+// openSearch runs the image infra/docker/opensearch/Dockerfile builds, which
+// adds to the published image the two analysis plugins the catalog index's
 // default analysis is built from, and the Korean and Chinese ones the tests of
-// a replaced analysis are, before the image's own entrypoint starts the node.
-// The published image ships none of them, and a plugin can only be installed
-// while the node is stopped.
-const openSearchEntrypoint = "bin/opensearch-plugin install --batch analysis-kuromoji analysis-icu analysis-nori analysis-smartcn" +
-	" && exec ./opensearch-docker-entrypoint.sh opensearch"
+// a replaced analysis are.
+var openSearch = searchEngine{
+	name:     "opensearch",
+	imageEnv: "PUBLIRA_TEST_OPENSEARCH_IMAGE",
+	env: map[string]string{
+		"discovery.type":              "single-node",
+		"DISABLE_SECURITY_PLUGIN":     "true",
+		"DISABLE_INSTALL_DEMO_CONFIG": "true",
+		"OPENSEARCH_JAVA_OPTS":        "-Xms512m -Xmx512m",
+	},
+}
 
 type OpenSearchEnv struct {
 	Container testcontainers.Container
@@ -29,6 +30,9 @@ type OpenSearchEnv struct {
 var (
 	sharedOpenSearchMu  sync.Mutex
 	sharedOpenSearchEnv *OpenSearchEnv
+	// sharedOpenSearchErr is kept only when Docker is unavailable. Any other
+	// failure fails the test that started the node, and the next test that
+	// asks for one starts it again.
 	sharedOpenSearchErr error
 )
 
@@ -37,6 +41,9 @@ var (
 // installed and the security plugin off, so it answers plain HTTP without
 // credentials. Tests share the node and stay apart by each using an index of
 // its own.
+//
+// The image is PUBLIRA_TEST_OPENSEARCH_IMAGE when that is set, and otherwise
+// the one built here from infra/docker/opensearch/Dockerfile.
 // Skips when -short is set or Docker is unavailable.
 func StartOpenSearch(t *testing.T) *OpenSearchEnv {
 	t.Helper()
@@ -47,67 +54,21 @@ func StartOpenSearch(t *testing.T) *OpenSearchEnv {
 	sharedOpenSearchMu.Lock()
 	defer sharedOpenSearchMu.Unlock()
 
-	if sharedOpenSearchEnv != nil || sharedOpenSearchErr != nil {
-		if sharedOpenSearchErr != nil {
-			if isDockerUnavailable(sharedOpenSearchErr) {
-				t.Skipf("skipping OpenSearch integration test: Docker unavailable: %v", sharedOpenSearchErr)
-			}
-			t.Fatalf("opensearch testcontainer: %v", sharedOpenSearchErr)
-		}
+	if sharedOpenSearchEnv != nil {
 		return sharedOpenSearchEnv
 	}
+	if sharedOpenSearchErr != nil {
+		t.Skipf("skipping OpenSearch integration test: Docker unavailable: %v", sharedOpenSearchErr)
+	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	env, err := startOpenSearch(ctx)
+	container, url, err := openSearch.start()
 	if err != nil {
-		sharedOpenSearchErr = err
 		if isDockerUnavailable(err) {
+			sharedOpenSearchErr = err
 			t.Skipf("skipping OpenSearch integration test: Docker unavailable: %v", err)
 		}
 		t.Fatalf("opensearch testcontainer: %v", err)
 	}
-	sharedOpenSearchEnv = env
+	sharedOpenSearchEnv = &OpenSearchEnv{Container: container, URL: url}
 	return sharedOpenSearchEnv
-}
-
-func startOpenSearch(ctx context.Context) (*OpenSearchEnv, error) {
-	req := testcontainers.ContainerRequest{
-		Image:        defaultOpenSearchImage,
-		Entrypoint:   []string{"sh", "-c", openSearchEntrypoint},
-		ExposedPorts: []string{"9200/tcp"},
-		Env: map[string]string{
-			"discovery.type":              "single-node",
-			"DISABLE_SECURITY_PLUGIN":     "true",
-			"DISABLE_INSTALL_DEMO_CONFIG": "true",
-			"OPENSEARCH_JAVA_OPTS":        "-Xms512m -Xmx512m",
-		},
-		WaitingFor: wait.ForHTTP("/").WithPort("9200/tcp").WithStartupTimeout(4 * time.Minute),
-	}
-
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("start opensearch container: %w", err)
-	}
-
-	host, err := container.Host(ctx)
-	if err != nil {
-		_ = testcontainers.TerminateContainer(container)
-		return nil, fmt.Errorf("opensearch host: %w", err)
-	}
-
-	port, err := container.MappedPort(ctx, "9200/tcp")
-	if err != nil {
-		_ = testcontainers.TerminateContainer(container)
-		return nil, fmt.Errorf("opensearch mapped port: %w", err)
-	}
-
-	return &OpenSearchEnv{
-		Container: container,
-		URL:       fmt.Sprintf("http://%s:%s", host, port.Port()),
-	}, nil
 }
