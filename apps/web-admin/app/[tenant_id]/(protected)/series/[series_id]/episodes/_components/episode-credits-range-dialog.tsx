@@ -108,7 +108,14 @@ export const EpisodeCreditsRangeDialog = ({
       <DialogPortal>
         <DialogBackdrop />
         <DialogViewport>
-          <DialogPopup className="flex max-h-[min(90vh,44rem)] w-[min(92vw,40rem)] flex-col">
+          {/*
+           * The body scrolls between the header and the footer. A viewport
+           * shorter than 30rem, a phone held sideways or a page zoomed to
+           * 400%, leaves the body little or no room between them, so there
+           * the popup lays its parts out at their full height instead and
+           * scrolls them as one, the footer last.
+           */}
+          <DialogPopup className="flex max-h-[min(90vh,44rem)] w-[min(92vw,40rem)] flex-col overflow-y-auto [@media(max-height:30rem)]:block">
             <DialogHeader>
               <DialogTitle className="text-lg font-semibold">
                 {t("admin.series.episodes.credits.dialog_title")}

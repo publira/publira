@@ -22,16 +22,10 @@ const openCreditsDialog = async (page: Page): Promise<Locator> => {
   const apply = dialog.getByRole("button", { exact: true, name: "Apply" });
   await expect(apply).toBeVisible();
   // The episode checklist arrives after the dialog opens, and is what makes
-  // the body between the header and the footer taller than it is allowed to
-  // be.
-  await expect
-    .poll(() =>
-      apply.evaluate((button) => {
-        const body = button.parentElement?.previousElementSibling;
-        return body ? body.scrollHeight > body.clientHeight : false;
-      })
-    )
-    .toBe(true);
+  // the dialog taller than it is allowed to be.
+  await expect(
+    dialog.getByRole("checkbox", { name: /Seed Episode 001-01/u })
+  ).toBeAttached();
   // The popup grows into place as it opens, and a point measured on the
   // way lands outside it.
   await dialog.evaluate((element) =>
@@ -49,8 +43,8 @@ test.describe("admin episode credits dialog", () => {
     const uncovered = await apply.evaluate((button) => {
       const popup = button.closest('[role="dialog"]');
       const body = button.parentElement?.previousElementSibling;
-      if (!(popup && body)) {
-        return ["no dialog"];
+      if (!(popup && body && body.scrollHeight > body.clientHeight)) {
+        return ["no scrolled body"];
       }
       return ["0", "0.5", "1"].filter((position) => {
         body.scrollTop =
@@ -66,13 +60,18 @@ test.describe("admin episode credits dialog", () => {
     expect(uncovered).toEqual([]);
   });
 
-  // The footer's buttons sit in a row at the first width and stack at the
-  // second, which makes the footer taller.
+  // The footer's buttons sit in a row at the first size and stack at the
+  // second, which makes the footer taller. The third is a page zoomed to 400%
+  // on a 1280×1024 screen, too short for the body to scroll between the
+  // header and the footer.
   for (const viewport of [
     { height: 900, width: 1280 },
     { height: 844, width: 390 },
+    { height: 256, width: 320 },
   ]) {
-    test(`keeps the control Tab moves to clear of its footer at ${viewport.width}px wide`, async ({
+    const size = `${viewport.width}×${viewport.height}`;
+
+    test(`keeps the control Tab moves to in view above its footer at ${size}`, async ({
       page,
     }) => {
       await page.setViewportSize(viewport);
@@ -80,30 +79,30 @@ test.describe("admin episode credits dialog", () => {
 
       // Focus is trapped in the dialog, so Tab comes back round to a control
       // it has already been on. Each control outside the footer is listed
-      // with how far its bottom edge reaches past the footer's top edge, and
-      // the list stays empty while none reaches past it.
+      // with how far it reaches past the footer's top edge or out of the
+      // popup, and the list stays empty while none does.
       const tabThrough = async (
         visited: number,
-        behindFooter: readonly string[]
-      ): Promise<{ behindFooter: readonly string[]; visited: number }> => {
+        outOfView: readonly string[]
+      ): Promise<{ outOfView: readonly string[]; visited: number }> => {
         await page.keyboard.press("Tab");
         const focused = await apply.evaluate((button) => {
           const footer = button.parentElement;
+          const popup = button.closest('[role="dialog"]');
           const element = document.activeElement;
           if (
-            !(footer && element instanceof HTMLElement) ||
+            !(footer && popup && element instanceof HTMLElement) ||
             "e2eSeen" in element.dataset
           ) {
             return null;
           }
           element.dataset.e2eSeen = "";
           // Focus passes over the document itself on its way round the trap.
-          if (!button.closest('[role="dialog"]')?.contains(element)) {
-            return { name: "", overlap: 0 };
+          if (!popup.contains(element) || footer.contains(element)) {
+            return { name: "", overflow: 0 };
           }
-          const overlap =
-            element.getBoundingClientRect().bottom -
-            footer.getBoundingClientRect().top;
+          const box = element.getBoundingClientRect();
+          const popupBox = popup.getBoundingClientRect();
           return {
             name:
               element.getAttribute("aria-label") ??
@@ -114,28 +113,42 @@ test.describe("admin episode credits dialog", () => {
                 : undefined) ??
               element.textContent ??
               element.tagName,
-            overlap: footer.contains(element) ? 0 : overlap,
+            overflow: Math.max(
+              box.bottom -
+                Math.min(footer.getBoundingClientRect().top, popupBox.bottom),
+              popupBox.top - box.top
+            ),
           };
         });
         if (!focused) {
-          return { behindFooter, visited };
+          return { outOfView, visited };
         }
         return tabThrough(
           visited + 1,
-          focused.overlap > 0
+          focused.overflow > 0
             ? [
-                ...behindFooter,
-                `${focused.name}: ${Math.ceil(focused.overlap)}px`,
+                ...outOfView,
+                `${focused.name}: ${Math.ceil(focused.overflow)}px`,
               ]
-            : behindFooter
+            : outOfView
         );
       };
-      const { behindFooter, visited } = await tabThrough(0, []);
+      const { outOfView, visited } = await tabThrough(0, []);
 
       // The operations, the credit's fields, the episode checklist, and
       // Cancel.
       expect(visited).toBeGreaterThan(5);
-      expect(behindFooter).toEqual([]);
+      expect(outOfView).toEqual([]);
     });
   }
+
+  test("scrolls to its footer on a viewport too short for it", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ height: 256, width: 320 });
+    const apply = await openCreditsDialog(page);
+
+    await apply.scrollIntoViewIfNeeded();
+    await expect(apply).toBeInViewport({ ratio: 1 });
+  });
 });
