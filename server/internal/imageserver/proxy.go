@@ -20,6 +20,8 @@ import (
 
 const (
 	originPathPrefix        = "/objects/"
+	originSitePublic        = "public"
+	originSiteAdmin         = "admin"
 	originContentTypeHeader = "X-Publira-Origin-Content-Type"
 	imageCacheHeader        = "X-Publira-Image-Cache"
 	imageEncryptionHeader   = "X-Publira-Image-Encryption"
@@ -74,7 +76,7 @@ func startOriginAndProxy(h *Handler) (*http.Server, http.Handler, error) {
 		return nil, nil, err
 	}
 	originMux := http.NewServeMux()
-	originMux.HandleFunc("GET /objects/{key...}", h.serveOrigin)
+	originMux.HandleFunc("GET /objects/{site}/{key...}", h.serveOrigin)
 	origin := &http.Server{
 		Handler:           originMux,
 		ReadHeaderTimeout: originReadHeaderTimeout,
@@ -98,13 +100,27 @@ func startOriginAndProxy(h *Handler) (*http.Server, http.Handler, error) {
 	return origin, proxy, nil
 }
 
+// serveOrigin answers Manael's fetch of an original. Manael reaches it over a
+// request of its own, so the site the image is for travels in the path, and
+// the object is read from that site's store.
 func (h *Handler) serveOrigin(w http.ResponseWriter, r *http.Request) {
 	key := r.PathValue("key")
 	if strings.TrimSpace(key) == "" {
 		http.NotFound(w, r)
 		return
 	}
-	obj, err := h.objects.GetObject(r.Context(), key)
+	var objects ObjectStore
+	switch r.PathValue("site") {
+	case originSitePublic:
+		objects = h.public.Objects
+	case originSiteAdmin:
+		objects = h.admin.Objects
+	}
+	if objects == nil {
+		http.NotFound(w, r)
+		return
+	}
+	obj, err := objects.GetObject(r.Context(), key)
 	if err != nil {
 		if errors.Is(err, ErrObjectNotFound) {
 			http.Error(w, "image not found", http.StatusNotFound)
@@ -140,8 +156,8 @@ func (h *Handler) serveOrigin(w http.ResponseWriter, r *http.Request) {
 // resolveStoreVersion names the object store configuration a cached rendition
 // of objectKey is keyed under. A false return means the response has already
 // been written: there is no store to serve from, or it could not be resolved.
-func (h *Handler) resolveStoreVersion(w http.ResponseWriter, r *http.Request, objectKey string) (string, bool) {
-	versioned, ok := h.objects.(VersionedStore)
+func (h *Handler) resolveStoreVersion(w http.ResponseWriter, r *http.Request, objects ObjectStore, objectKey string) (string, bool) {
+	versioned, ok := objects.(VersionedStore)
 	if !ok {
 		return "", true
 	}
@@ -159,8 +175,8 @@ func (h *Handler) resolveStoreVersion(w http.ResponseWriter, r *http.Request, ob
 	return version, true
 }
 
-func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, objectKey, fallbackContentType, cacheControl string, cipher *imageCipher) {
-	storeVersion, ok := h.resolveStoreVersion(w, r, objectKey)
+func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, adminHost bool, objectKey, fallbackContentType, cacheControl string, cipher *imageCipher) {
+	storeVersion, ok := h.resolveStoreVersion(w, r, h.site(adminHost).Objects, objectKey)
 	if !ok {
 		return
 	}
@@ -175,7 +191,7 @@ func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, objectK
 		limit = defaultMaxConvertedBytes
 	}
 	rec := newLimitedRecorder(limit)
-	h.proxy.ServeHTTP(rec, rewriteOriginRequest(r, objectKey, fallbackContentType))
+	h.proxy.ServeHTTP(rec, rewriteOriginRequest(r, adminHost, objectKey, fallbackContentType))
 	if rec.overflow {
 		h.logger.Error("converted image exceeds size limit", "object_key", objectKey, "limit", limit)
 		writeImage(w, "text/plain; charset=utf-8", "", "miss", http.StatusInternalServerError, []byte("internal server error\n"))
@@ -228,11 +244,15 @@ func (h *Handler) writeConvertedImage(w http.ResponseWriter, contentType, cacheC
 	writeImage(w, "application/octet-stream", cacheControl, cacheStatus, status, encrypted)
 }
 
-func rewriteOriginRequest(r *http.Request, objectKey, contentType string) *http.Request {
+func rewriteOriginRequest(r *http.Request, adminHost bool, objectKey, contentType string) *http.Request {
+	site := originSitePublic
+	if adminHost {
+		site = originSiteAdmin
+	}
 	u := *r.URL
 	u.Scheme = ""
 	u.Host = ""
-	u.Path = originPathPrefix + strings.TrimPrefix(objectKey, "/")
+	u.Path = originPathPrefix + site + "/" + strings.TrimPrefix(objectKey, "/")
 	u.RawPath = ""
 	out := r.Clone(r.Context())
 	out.URL = &u

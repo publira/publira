@@ -265,11 +265,13 @@ GRANT SELECT, INSERT, DELETE ON tenant_email_rejection_entries TO publira_admin;
 -- them.
 GRANT SELECT ON platform_retention_config TO publira_admin, publira_content_stats;
 
--- The image server and the orphan image sweep resolve the object store they
--- read and reclaim from the platform's settings, on the tenant console's pool
--- and the maintenance pool. The secret access key is stored encrypted under
--- keys the database never holds, and neither role may write the row.
-GRANT SELECT ON platform_storage_config TO publira_admin, publira_content_stats;
+-- The object store is resolved from the platform's settings by publira server
+-- as the login of the surface that reads from it — the storefront's images as
+-- publira_public, the tenant console's images and uploads as publira_admin —
+-- and by the orphan image sweep on the maintenance pool. The secret access key
+-- is stored encrypted under keys the database never holds, and none of these
+-- roles may write the row.
+GRANT SELECT ON platform_storage_config TO publira_public, publira_admin, publira_content_stats;
 
 -- The spent MFA challenge purge runs on the maintenance pool and drains the
 -- platform console's spent challenges along with the tenant consoles'. A row
@@ -282,13 +284,12 @@ GRANT SELECT, DELETE, UPDATE (used_at) ON platform_user_mfa_used_challenges TO p
 -- The catalog search engine is read by the worker, which writes every
 -- catalog_index_sync event into the index the search answers from and into the
 -- one being built, by the maintenance role, which builds that index and then
--- moves the search onto it, and by publira server on its admin pool, which
--- every listener of it holds, so a server serving the edge listener alone
--- searches without the platform's login. The password is stored encrypted
--- under keys the database never holds, and the storefront's role is not given
--- the row. Only the build may move the serving configuration or record a
--- failure, and no role here may write what an operator saved.
-GRANT SELECT ON platform_search_config TO publira_admin, publira_outbox, publira_content_stats;
+-- moves the search onto it, and by publira server as the storefront's login,
+-- which the public API's search is answered as. The password is stored
+-- encrypted under keys the database never holds. Only the build may move the
+-- serving configuration or record a failure, and no role here may write what an
+-- operator saved.
+GRANT SELECT ON platform_search_config TO publira_public, publira_outbox, publira_content_stats;
 GRANT UPDATE (
     serving_revision,
     serving_engine,

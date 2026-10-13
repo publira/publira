@@ -141,22 +141,25 @@ type VersionedStore interface {
 // SiteDB is how one of a tenant's two host names reaches the database. The
 // pool belongs to that site's PostgreSQL login — publira_public for the
 // storefront, publira_admin for the console — and Tenants opens the
-// tenant-scoped queries on it.
+// tenant-scoped queries on it. Resolver finds the tenant whose host name of
+// this site a request arrived on, and Objects is the store the site's images
+// are read from, resolved from the platform's settings; both read as that same
+// login, so a site is answered without reading anything as the other one.
 type SiteDB struct {
-	Pool    *sql.DB
-	Tenants TenantScopedQuerierFactory
+	Pool     *sql.DB
+	Resolver ResolverQuerier
+	Tenants  TenantScopedQuerierFactory
+	Objects  ObjectStore
 }
 
 type Handler struct {
-	resolverQuerier ResolverQuerier
-	public          SiteDB
-	admin           SiteDB
-	objects         ObjectStore
-	logger          *slog.Logger
-	tokens          *auth.TokenManager
-	cache           ImageCache
-	proxy           http.Handler
-	maxConverted    int
+	public       SiteDB
+	admin        SiteDB
+	logger       *slog.Logger
+	tokens       *auth.TokenManager
+	cache        ImageCache
+	proxy        http.Handler
+	maxConverted int
 }
 
 type imageCredential struct {
@@ -172,19 +175,17 @@ type imageCredential struct {
 // The handler carries the image routes and nothing else: the health probes
 // belong to the listener it is mounted on, which names a check per pool that
 // listener serves, and the image routes may be one of several things on it.
-func NewHandler(resolver ResolverQuerier, public, admin SiteDB, objects ObjectStore, logger *slog.Logger, tokens *auth.TokenManager) (*Server, error) {
+func NewHandler(public, admin SiteDB, logger *slog.Logger, tokens *auth.TokenManager) (*Server, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	h := &Handler{
-		resolverQuerier: resolver,
-		public:          public,
-		admin:           admin,
-		objects:         objects,
-		logger:          logger,
-		tokens:          tokens,
-		cache:           newImageCacheFromEnv(logger),
-		maxConverted:    defaultMaxConvertedBytes,
+		public:       public,
+		admin:        admin,
+		logger:       logger,
+		tokens:       tokens,
+		cache:        newImageCacheFromEnv(logger),
+		maxConverted: defaultMaxConvertedBytes,
 	}
 	origin, proxy, err := startOriginAndProxy(h)
 	if err != nil {
@@ -331,7 +332,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 
 	// The row is read; the conversion below runs without the connection.
 	cleanup()
-	h.serveConverted(w, r, objectKey, contentTypeFromDB, cacheControl, cipher)
+	h.serveConverted(w, r, adminHost, objectKey, contentTypeFromDB, cacheControl, cipher)
 }
 
 // freeEpisodeImageCipher picks the key material a free body's response is
@@ -593,7 +594,7 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 
 	// The row is read; the conversion below runs without the connection.
 	cleanup()
-	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+	h.serveConverted(w, r, adminHost, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
 // handleGetTenantImage serves a tenant branding image — the logo or the
@@ -650,7 +651,7 @@ func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
 
 	// The row is read; the conversion below runs without the connection.
 	cleanup()
-	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+	h.serveConverted(w, r, adminHost, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
 func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
@@ -707,7 +708,7 @@ func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 
 	// The row is read; the conversion below runs without the connection.
 	cleanup()
-	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+	h.serveConverted(w, r, adminHost, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
 func (h *Handler) handleGetGenreImage(w http.ResponseWriter, r *http.Request) {
@@ -764,7 +765,7 @@ func (h *Handler) handleGetGenreImage(w http.ResponseWriter, r *http.Request) {
 
 	// The row is read; the conversion below runs without the connection.
 	cleanup()
-	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+	h.serveConverted(w, r, adminHost, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
 func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
@@ -821,19 +822,21 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 
 	// The row is read; the conversion below runs without the connection.
 	cleanup()
-	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+	h.serveConverted(w, r, adminHost, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
 // resolveTenantFromHost names the tenant a request belongs to and reports
 // whether it arrived on that tenant's console host: a `domain` match is the
 // storefront and an `admin_domain` match is the console.
 //
-// It runs on the public pool because it has to run before the site is known,
-// and it reads `tenants`, which carries no row-level security and which both
+// Each lookup runs on the pool of the site it looks for, so a storefront host
+// is resolved without the console's login. A console host is looked up as a
+// storefront first, because the site is not known until one of them answers;
+// both read `tenants`, which carries no row-level security and which both
 // logins may select from.
 func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (dbmodels.Tenant, bool, error) {
 	candidates := requestmeta.HostCandidatesFromRequest(r)
-	tenant, err := h.resolverQuerier.GetTenantByDomains(ctx, candidates)
+	tenant, err := h.public.Resolver.GetTenantByDomains(ctx, candidates)
 	if err == nil {
 		tracing.SetTenant(ctx, tenant.PublicID)
 		return tenant, false, nil
@@ -841,7 +844,7 @@ func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (d
 	if !errors.Is(err, sql.ErrNoRows) {
 		return dbmodels.Tenant{}, false, err
 	}
-	tenant, err = h.resolverQuerier.GetAdminTenantByDomains(ctx, candidates)
+	tenant, err = h.admin.Resolver.GetAdminTenantByDomains(ctx, candidates)
 	if err != nil {
 		return dbmodels.Tenant{}, false, err
 	}
@@ -884,8 +887,13 @@ func (h *Handler) tenantFromHost(w http.ResponseWriter, r *http.Request) (dbmode
 // tenantQueries opens the tenant-scoped queries on the pool belonging to the
 // login the site a request arrived on is answered as.
 func (h *Handler) tenantQueries(ctx context.Context, adminHost bool, tenantID uuid.UUID) (TenantScopedQuerier, func(), error) {
+	return h.site(adminHost).Tenants.ForTenant(ctx, tenantID)
+}
+
+// site is the SiteDB of the host a request arrived on.
+func (h *Handler) site(adminHost bool) SiteDB {
 	if adminHost {
-		return h.admin.Tenants.ForTenant(ctx, tenantID)
+		return h.admin
 	}
-	return h.public.Tenants.ForTenant(ctx, tenantID)
+	return h.public
 }

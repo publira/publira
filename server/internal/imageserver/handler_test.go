@@ -260,7 +260,15 @@ func newTestServerWithTokens(t *testing.T, resolver ResolverQuerier, factory Ten
 func newTestServerWithSites(t *testing.T, resolver ResolverQuerier, public, admin SiteDB, store ObjectStore, tokens *auth.TokenManager) *Server {
 	t.Helper()
 	t.Setenv("PUBLIRA_REDIS_URL", "disabled")
-	srv, err := NewHandler(resolver, public, admin, store, nil, tokens)
+	for _, site := range []*SiteDB{&public, &admin} {
+		if site.Resolver == nil {
+			site.Resolver = resolver
+		}
+		if site.Objects == nil {
+			site.Objects = store
+		}
+	}
+	srv, err := NewHandler(public, admin, nil, tokens)
 	if err != nil {
 		t.Fatalf("NewHandler: %v", err)
 	}
@@ -1098,7 +1106,9 @@ func (f recordingFactory) ForTenant(context.Context, uuid.UUID) (TenantScopedQue
 // The two pools are two PostgreSQL logins, and the host a request arrived on
 // is what picks between them. One process serving both sites is only as
 // separated as this choice: a console host answered as publira_public would
-// read the console's rows through the storefront's login.
+// read the console's rows through the storefront's login. The object store is
+// resolved on the same login, so the original is read from the site's own
+// store as well.
 func TestTenantScopedQueriesFollowTheHostTheRequestArrivedOn(t *testing.T) {
 	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
@@ -1115,13 +1125,17 @@ func TestTenantScopedQueriesFollowTheHostTheRequestArrivedOn(t *testing.T) {
 	} {
 		t.Run("a request is answered as "+name, func(t *testing.T) {
 			used := ""
+			stores := map[string]*countingStore{}
+			for _, login := range []string{"publira_public", "publira_admin"} {
+				stores[login] = &countingStore{objects: map[string]storedObject{
+					"creators/avatar.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+				}}
+			}
 			srv := newTestServerWithSites(t,
 				resolver,
-				SiteDB{Tenants: recordingFactory{login: "publira_public", q: queries, used: &used}},
-				SiteDB{Tenants: recordingFactory{login: "publira_admin", q: queries, used: &used}},
-				&countingStore{objects: map[string]storedObject{
-					"creators/avatar.jpg": {data: testJPEG(), contentType: "image/jpeg"},
-				}},
+				SiteDB{Tenants: recordingFactory{login: "publira_public", q: queries, used: &used}, Objects: stores["publira_public"]},
+				SiteDB{Tenants: recordingFactory{login: "publira_admin", q: queries, used: &used}, Objects: stores["publira_admin"]},
+				nil,
 				auth.NewTokenManager([]byte(testMediaJWTSecret)),
 			)
 
@@ -1135,6 +1149,11 @@ func TestTenantScopedQueriesFollowTheHostTheRequestArrivedOn(t *testing.T) {
 			}
 			if used != name {
 				t.Errorf("answered as %q, want %q", used, name)
+			}
+			for login, store := range stores {
+				if gets, want := store.getCount(), login == name; (gets > 0) != want {
+					t.Errorf("%s store read %d times, want reads = %v", login, gets, want)
+				}
 			}
 		})
 	}
@@ -1365,12 +1384,12 @@ func TestRewriteOriginRequestDropsClientOriginContentType(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/images/episodes/x", nil)
 	req.Header.Set(originContentTypeHeader, "text/html")
 
-	cleared := rewriteOriginRequest(req, "obj", "")
+	cleared := rewriteOriginRequest(req, false, "obj", "")
 	if got := cleared.Header.Get(originContentTypeHeader); got != "" {
 		t.Fatalf("empty fallback left client header %q", got)
 	}
 
-	replaced := rewriteOriginRequest(req, "obj", "image/jpeg")
+	replaced := rewriteOriginRequest(req, false, "obj", "image/jpeg")
 	if got := replaced.Header.Get(originContentTypeHeader); got != "image/jpeg" {
 		t.Fatalf("header = %q, want image/jpeg", got)
 	}
@@ -1419,7 +1438,7 @@ func TestServeConvertedRejectsOversizeConversion(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodGet, "/images/episodes/x", nil)
 	rec := httptest.NewRecorder()
-	h.serveConverted(rec, req, "obj", "image/jpeg", "public, max-age=3600", nil)
+	h.serveConverted(rec, req, false, "obj", "image/jpeg", "public, max-age=3600", nil)
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
 	}

@@ -140,7 +140,7 @@ func newTestPublicAPI(t *testing.T) *publicapi.API {
 
 func newTestImageServer(t *testing.T) *imageserver.Server {
 	t.Helper()
-	srv, err := imageserver.NewHandler(nil, imageserver.SiteDB{}, imageserver.SiteDB{}, nil, slog.Default(), nil)
+	srv, err := imageserver.NewHandler(imageserver.SiteDB{}, imageserver.SiteDB{}, slog.Default(), nil)
 	if err != nil {
 		t.Fatalf("imageserver.NewHandler: %v", err)
 	}
