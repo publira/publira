@@ -110,15 +110,55 @@ export const reorderWithKeyboard = async (
   await page.keyboard.press("Space");
 };
 
-/** Select a Combobox or MultiCombobox option by label. */
+/**
+ * The option named `optionLabel` inside the list an open control names in
+ * `aria-controls`. A control carries the attribute only while open, so an
+ * option of the same name in another control on the page — or in the list of
+ * the previous pick, still in the DOM while it fades out — is never the one
+ * chosen.
+ */
+const optionInListOf = async (
+  page: Page,
+  control: Locator,
+  optionLabel: string
+): Promise<Locator> => {
+  const listId = await control.getAttribute("aria-controls");
+  if (!listId) {
+    throw new Error("the open control names no list in aria-controls");
+  }
+  return page
+    .locator(`[id="${listId}"]`)
+    .getByRole("option", { exact: true, name: optionLabel });
+};
+
+/**
+ * Select a Combobox or MultiCombobox option by label.
+ *
+ * The list renders again while it filters what was typed — and again when a
+ * picker that searches as it is typed into receives its results — so the
+ * option found can be detached before the click lands on it. The whole pick is
+ * therefore repeated, from opening the list to clicking the option, until it
+ * goes through, with the option looked up afresh in the list the input names
+ * on every attempt. Pressing an input whose list is already open leaves it
+ * open, so each attempt presses it.
+ */
 export const selectComboboxOption = async (
   page: Page,
   combobox: Locator,
   optionLabel: string
 ): Promise<void> => {
-  await combobox.click();
-  await combobox.fill(optionLabel);
-  await page.getByRole("option", { name: optionLabel }).click();
+  await expect(async () => {
+    await combobox.click();
+    await combobox.fill(optionLabel);
+    await expect(combobox).toHaveAttribute("aria-expanded", "true", {
+      timeout: 2000,
+    });
+    await expect(combobox).toHaveAttribute("aria-controls", /./u, {
+      timeout: 2000,
+    });
+    const option = await optionInListOf(page, combobox, optionLabel);
+    await option.click({ timeout: 2000 });
+  }).toPass();
 };
 
 /**
@@ -167,10 +207,6 @@ export const creditAuthorViaUi = async (
  * until the trigger reports itself open, the way `revealViewerControls`
  * repeats the tap that shows the viewer's controls; a trigger already open is
  * not pressed again, since a second press would close it.
- *
- * The option is looked up inside the list this trigger names in
- * `aria-controls`, which it carries only while open, so an option of the same
- * name in another control on the page is never the one chosen.
  */
 export const selectOption = async (
   page: Page,
@@ -186,14 +222,8 @@ export const selectOption = async (
     });
   }).toPass();
 
-  const listId = await select.getAttribute("aria-controls");
-  if (!listId) {
-    throw new Error("the open select names no list in aria-controls");
-  }
-  await page
-    .locator(`[id="${listId}"]`)
-    .getByRole("option", { exact: true, name: optionLabel })
-    .click();
+  const option = await optionInListOf(page, select, optionLabel);
+  await option.click();
 };
 
 /**
