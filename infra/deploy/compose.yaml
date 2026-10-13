@@ -10,6 +10,10 @@
 # `name:` is fixed, unlike the root compose.yaml, since a host runs one install
 # whose volumes keep their names across every command; `publira` would share
 # them with the development stack, which the root compose.yaml names that.
+#
+# The proxy is alone on the `edge` network with what it forwards to, and every
+# other service is on `default`, so the proxy reaches neither the database nor
+# Valkey.
 
 name: publira-deploy
 
@@ -125,6 +129,7 @@ services:
     volumes:
       - ../proxy/traefik/dynamic/routes.yaml:/etc/traefik/dynamic/routes.yaml:ro
       - ./services.yaml:/etc/traefik/dynamic/services.yaml:ro
+    networks: [edge]
     depends_on:
       - server
       - web-storefront
@@ -141,6 +146,7 @@ services:
       PUBLIRA_ADMIN_DB_URL: postgres://publira_admin:${PUBLIRA_ADMIN_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
       PUBLIRA_PLATFORM_DB_URL: postgres://publira_platform:${PUBLIRA_PLATFORM_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
       PUBLIRA_REDIS_URL: redis://valkey:6379
+    networks: [default, edge]
     depends_on:
       postgres:
         condition: service_healthy
@@ -168,6 +174,7 @@ services:
     environment:
       <<: [*web-app, *tenant-url, *tracing]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_STOREFRONT_AUTH_SECRET:?}
+    networks: [default, edge]
     depends_on:
       - server
       - valkey
@@ -179,6 +186,7 @@ services:
       <<: [*web-app, *tenant-url, *tracing]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_ADMIN_AUTH_SECRET:?}
       PUBLIRA_WEB_SERVICE_TOKEN: ${PUBLIRA_WEB_SERVICE_TOKEN:?}
+    networks: [default, edge]
     depends_on:
       - server
       - valkey
@@ -194,6 +202,7 @@ services:
       <<: [*web-app, *tracing]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_PLATFORM_AUTH_SECRET:-}
       PUBLIRA_WEB_SERVICE_TOKEN: ${PUBLIRA_WEB_SERVICE_TOKEN:?}
+    networks: [default, edge]
     depends_on:
       - server
       - valkey
@@ -245,6 +254,9 @@ secrets:
     environment: PUBLIRA_CONTENT_STATS_DB_PASSWORD
   rustfs-secret-key:
     environment: PUBLIRA_RUSTFS_SECRET_KEY
+
+networks:
+  edge:
 
 volumes:
   postgres-data:

@@ -25,6 +25,8 @@ The Compose file runs the same steps as [Installing](./2-installing.md), which e
 
 The proxy publishes plain HTTP on a port of the host's loopback interface and nothing else, so nothing reaches the install until you put a TLS terminator on the host in front of it. Every other service is reachable only from the others.
 
+The services are on two Docker networks. `edge` holds the proxy and what it forwards to: `server` and the web apps. `default` holds every service but the proxy. The proxy therefore reaches neither the database nor Valkey, and a flaw in it is not a way into either.
+
 The project name is fixed as `publira-deploy`, so the volumes keep their names across every command you run, and one host runs one install.
 
 ## Before you start
@@ -196,10 +198,10 @@ comics.example.com, admin.comics.example.com {
 }
 ```
 
-Unless you tell it otherwise, the proxy records every request with the address the terminator connects from, so the audit log shows one address for everyone, and the limits Publira keeps per client address are shared by every reader. To record the reader's address instead, have the terminator set `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` itself, which Caddy does by default, and set `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env` to the address it reaches the proxy from. A terminator on the host forwarding to `127.0.0.1` reaches it from the gateway of the install's Docker network, which this prints once the install is running:
+Unless you tell it otherwise, the proxy records every request with the address the terminator connects from, so the audit log shows one address for everyone, and the limits Publira keeps per client address are shared by every reader. To record the reader's address instead, have the terminator set `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` itself, which Caddy does by default, and set `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env` to the address it reaches the proxy from. A terminator on the host forwarding to `127.0.0.1` reaches it from the gateway of the install's `edge` network, which this prints once the install is running:
 
 ```bash
-docker network inspect publira-deploy_default --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}'
+docker network inspect publira-deploy_edge --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}'
 ```
 
 Then run `docker compose up -d proxy` to recreate the proxy with it. Several addresses are separated by commas. The network keeps its gateway until it is removed, which `docker compose down` does, so check the value again after one. [A hop in front of the proxy](./4-edge.md#a-hop-in-front-of-the-proxy) explains what trusting the terminator means.

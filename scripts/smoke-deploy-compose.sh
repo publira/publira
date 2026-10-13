@@ -2,8 +2,8 @@
 # smoke-deploy-compose.sh — Bring infra/deploy/compose.yaml up from the images
 # `task docker:verify:full` built, take it through the steps its README
 # documents, and check that the tenant site, the tenant console, and the
-# Platform Console answer through the edge, and that image delivery resizes an
-# image through libvips.
+# Platform Console answer through the edge, that the proxy cannot reach the
+# database or Valkey, and that image delivery resizes an image through libvips.
 #
 # The stack runs under its own project name, so an install on the same host is
 # left alone, and is always removed with its volumes.
@@ -31,8 +31,9 @@ for name in $(compgen -e); do
 done
 
 work="$(mktemp -d)"
+project=publira-deploy-smoke
 compose() {
-  docker compose -p publira-deploy-smoke -f infra/deploy/compose.yaml --env-file "${work}/.env" "$@"
+  docker compose -p "${project}" -f infra/deploy/compose.yaml --env-file "${work}/.env" "$@"
 }
 cleanup() {
   status=$?
@@ -141,6 +142,22 @@ for service in server worker web-storefront web-admin web-platform email-rendere
   fi
 done
 echo "[deploy-smoke] ok: every long-lived process is running"
+
+# The proxy reaches `server` and every web app, and is on the `edge` network
+# alone, which holds neither the database nor Valkey.
+from_proxy() { compose exec -T proxy wget -q -O /dev/null -T 5 "$1" 2> /dev/null; }
+for url in http://server:8000/livez http://web-storefront:3000/livez http://web-admin:4000/livez http://web-platform:4100/livez; do
+  if ! from_proxy "${url}"; then
+    echo "[deploy-smoke] ERROR: the proxy cannot reach ${url}" >&2
+    exit 1
+  fi
+done
+proxy_networks="$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' "$(compose ps -q proxy)")"
+if [ "${proxy_networks}" != "${project}_edge " ]; then
+  echo "[deploy-smoke] ERROR: the proxy is on ${proxy_networks}, want ${project}_edge alone" >&2
+  exit 1
+fi
+echo "[deploy-smoke] ok: the proxy reaches server and the web apps, and not the database or Valkey"
 
 # Image delivery converts and resizes through libvips, which the server binary
 # links with CGO, so a server image whose runtime libvips does not match the
