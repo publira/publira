@@ -16,6 +16,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -1252,23 +1253,29 @@ func (s *apiServer) GetMe(
 	ctx context.Context,
 	req *publirav1.GetMeRequest,
 ) (*publirav1.GetMeResponse, error) {
-	_, user, role, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
+	tenant, user, role, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return nil, err
 	}
-	return &publirav1.GetMeResponse{User: ownAccount(user, role)}, nil
+	account, err := s.ownAccountWithIcon(ctx, s.queriesFor(ctx), tenant.ID, user, role)
+	if err != nil {
+		return nil, err
+	}
+	return &publirav1.GetMeResponse{User: account}, nil
 }
 
-// ownAccount is the account the request authenticated as, in the shape the two
-// RPCs that answer with it speak. The birth date and the email address are on
-// it because these are the only places a User stands for the reader's own
-// account rather than for someone they are looking at.
-func ownAccount(user dbmodels.User, role string) *publirattypesv1.User {
+// ownAccount is the account the request authenticated as, in the shape the
+// RPCs that answer with it speak. The birth date, the email address and the
+// icon are on it because these are the only places a User stands for the
+// reader's own account rather than for someone they are looking at.
+func ownAccount(user dbmodels.User, role string, icon protomapper.UserIcon) *publirattypesv1.User {
 	account := &publirattypesv1.User{
-		PublicId: user.PublicID,
-		Name:     user.Name,
-		Role:     role,
-		Email:    user.Email,
+		PublicId:           user.PublicID,
+		Name:               user.Name,
+		Role:               role,
+		Email:              user.Email,
+		IconImageUpdatedAt: icon.UpdatedAt,
+		IconImageVariants:  icon.Variants,
 	}
 	if user.BirthDate.Valid {
 		account.BirthDate = ageverification.FormatBirthDate(user.BirthDate.Time)
@@ -1367,7 +1374,11 @@ func (s *apiServer) UpdateMe(
 		outcome = "name_and_birth_date_updated"
 	}
 	auth.AuditEvent(ctx, "update_me", "success", tenant.PublicID, user.PublicID, outcome)
-	return &publirav1.UpdateMeResponse{User: ownAccount(updated, role)}, nil
+	account, err := s.ownAccountWithIcon(ctx, s.queriesFor(ctx), tenant.ID, updated, role)
+	if err != nil {
+		return nil, err
+	}
+	return &publirav1.UpdateMeResponse{User: account}, nil
 }
 
 func (s *apiServer) DeleteMe(

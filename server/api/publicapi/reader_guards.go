@@ -77,6 +77,11 @@ const (
 	// provider, but a refused link spends no nonce, so the same sign-in can be
 	// sent again, and each one verifies the token and reads the reader's links.
 	actionLinkIdentity readerAction = "identity.link"
+	// An upload or a removal of the reader's icon. An upload is decoded,
+	// scaled, and stored as an object that stays in the bucket until the
+	// orphan sweep reclaims it, so the budget bounds what one account can leave
+	// there; a removal shares it, so alternating the two is no way around it.
+	actionChangeIcon readerAction = "icon.change"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -113,6 +118,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionUseWaitFreeTicket:              minuteDayRules(policy.WaitFreeTicketUse),
 		actionAgreeToLegalPages:              minuteDayRules(policy.LegalPageAgreement),
 		actionLinkIdentity:                   minuteDayRules(policy.IdentityLink),
+		actionChangeIcon:                     minuteDayRules(policy.IconChange),
 	}
 }
 

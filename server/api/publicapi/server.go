@@ -35,6 +35,7 @@ import (
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/signin"
+	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/tenantconn"
 	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/tracing"
@@ -74,6 +75,9 @@ type apiServer struct {
 	// disposable answers whether an address's domain is on the disposable list
 	// the platform policy names, for a tenant that refuses those.
 	disposable emailrejection.DisposableList
+	// storage stores the icons readers upload. A nil one refuses every upload
+	// as an object store not yet configured.
+	storage storage.Provider
 }
 
 type webPushPublicKeySource interface {
@@ -182,14 +186,15 @@ type API struct {
 // refuse sign-ups against. reval sends the cache tags its writes leave stale; a
 // nil one turns revalidation off. search answers the catalog searches; a nil
 // one is the SQL backend over queries. idTokens says where the ID tokens a
-// reader signs in with are checked against.
+// reader signs in with are checked against. storageProvider stores the icons
+// readers upload.
 //
 // login is the sign-in limit and mail the limit on the mail a form may cause,
 // which the process hands every namespace it serves: the storefront and the
 // tenant console sign in, and mail, the same accounts, and a source reaching
 // all three holds one allowance of each, so the counts have to be one even when
 // they are kept in this process. A nil one counts on its own.
-func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig, login *loginguard.Guard, mail *mailguard.Guard) (*API, error) {
+func New(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig, login *loginguard.Guard, mail *mailguard.Guard) (*API, error) {
 	logger := slog.Default()
 	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
 	guards := newReaderGuards(policy, logger)
@@ -202,6 +207,7 @@ func New(db *sql.DB, queries Querier, encryptor emailsettings.SecretManager, tok
 	}
 	server.login = login
 	server.idTokens = signin.NewVerifier(idTokens)
+	server.storage = storageProvider
 	return &API{server: server}, nil
 }
 
@@ -277,6 +283,7 @@ const maxInboundEmailWebhookRequestBytes = maxInboundEmailWebhookPayload + 1<<20
 // maxPaymentWebhookPayload, which the default holds with room to spare.
 var readLimits = map[string]int{
 	publirav1connect.ContactServiceProcessInboundEmailWebhookProcedure: maxInboundEmailWebhookRequestBytes,
+	publirav1connect.AuthServiceUploadMyIconProcedure:                  uploadMyIconReadMaxBytes,
 }
 
 func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {

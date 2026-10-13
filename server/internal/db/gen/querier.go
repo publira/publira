@@ -1417,6 +1417,9 @@ type Querier interface {
 	// counts pages the same way and in the same order, so the pages this lists
 	// are the pages that route serves.
 	ListEpisodePreviewImagesByEpisodeID(ctx context.Context, arg ListEpisodePreviewImagesByEpisodeIDParams) ([]ListEpisodePreviewImagesByEpisodeIDRow, error)
+	// The episodes whose public comment list shows this account as an author, which
+	// is every list a change to the account's icon leaves stale.
+	ListEpisodePublicIDsWithPublishedCommentsByUser(ctx context.Context, arg ListEpisodePublicIDsWithPublishedCommentsByUserParams) ([]string, error)
 	// ListEpisodeReadThroughDesc walked the other way, to build a previous page.
 	// The order it describes is the same one.
 	ListEpisodeReadThroughAsc(ctx context.Context, arg ListEpisodeReadThroughAscParams) ([]ListEpisodeReadThroughAscRow, error)
@@ -2188,6 +2191,11 @@ type Querier interface {
 	// longer visible, or that the calling surface may not show, disappear from
 	// this member's list without revealing why.
 	ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUserFollowsByCreatedAtDescParams) ([]ListUserFollowsByCreatedAtDescRow, error)
+	// The stored variants of the given icon images, with the time each image was
+	// stored. A caller reads the ids off the accounts it is answering for, so one
+	// query covers a whole page of them; an id the tenant does not hold answers no
+	// rows.
+	ListUserIconImageVariantsByImageIDs(ctx context.Context, arg ListUserIconImageVariantsByImageIDsParams) ([]ListUserIconImageVariantsByImageIDsRow, error)
 	ListUserIdentitiesForUser(ctx context.Context, arg ListUserIdentitiesForUserParams) ([]UserIdentity, error)
 	// The previous-page half of
 	// ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc.

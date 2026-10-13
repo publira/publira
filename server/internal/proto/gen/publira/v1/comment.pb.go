@@ -169,9 +169,12 @@ type EpisodeComment struct {
 	Id         string `protobuf:"bytes,6,opt,name=id,proto3" json:"id,omitempty"`
 	// Set when the author is a creator this episode credits, and unset for
 	// every other comment.
-	Creator       *EpisodeCommentCreator `protobuf:"bytes,7,opt,name=creator,proto3" json:"creator,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Creator *EpisodeCommentCreator `protobuf:"bytes,7,opt,name=creator,proto3" json:"creator,omitempty"`
+	// The author's icon as their account shows it now, and empty for an account
+	// that shows none.
+	AuthorIconImageVariants []*v1.UserIconVariant `protobuf:"bytes,8,rep,name=author_icon_image_variants,json=authorIconImageVariants,proto3" json:"author_icon_image_variants,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *EpisodeComment) Reset() {
@@ -249,6 +252,13 @@ func (x *EpisodeComment) GetId() string {
 func (x *EpisodeComment) GetCreator() *EpisodeCommentCreator {
 	if x != nil {
 		return x.Creator
+	}
+	return nil
+}
+
+func (x *EpisodeComment) GetAuthorIconImageVariants() []*v1.UserIconVariant {
+	if x != nil {
+		return x.AuthorIconImageVariants
 	}
 	return nil
 }
@@ -972,7 +982,7 @@ const file_publira_v1_comment_proto_rawDesc = "" +
 	"\x15EpisodeCommentCreator\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"\xf8\x01\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\xd8\x02\n" +
 	"\x0eEpisodeComment\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x1d\n" +
@@ -982,7 +992,8 @@ const file_publira_v1_comment_proto_rawDesc = "" +
 	"\vauthor_name\x18\x05 \x01(\tR\n" +
 	"authorName\x12\x0e\n" +
 	"\x02id\x18\x06 \x01(\tR\x02id\x12;\n" +
-	"\acreator\x18\a \x01(\v2!.publira.v1.EpisodeCommentCreatorR\acreator\"\xdc\x01\n" +
+	"\acreator\x18\a \x01(\v2!.publira.v1.EpisodeCommentCreatorR\acreator\x12^\n" +
+	"\x1aauthor_icon_image_variants\x18\b \x03(\v2!.publira.types.v1.UserIconVariantR\x17authorIconImageVariants\"\xdc\x01\n" +
 	"\x10MyEpisodeComment\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x1d\n" +
@@ -1078,40 +1089,42 @@ var file_publira_v1_comment_proto_goTypes = []any{
 	(*WithdrawEpisodeCommentResponse)(nil), // 11: publira.v1.WithdrawEpisodeCommentResponse
 	(*ReportEpisodeCommentRequest)(nil),    // 12: publira.v1.ReportEpisodeCommentRequest
 	(*ReportEpisodeCommentResponse)(nil),   // 13: publira.v1.ReportEpisodeCommentResponse
-	(*v1.TenantContext)(nil),               // 14: publira.types.v1.TenantContext
-	(v1.ClientSurface)(0),                  // 15: publira.types.v1.ClientSurface
+	(*v1.UserIconVariant)(nil),             // 14: publira.types.v1.UserIconVariant
+	(*v1.TenantContext)(nil),               // 15: publira.types.v1.TenantContext
+	(v1.ClientSurface)(0),                  // 16: publira.types.v1.ClientSurface
 }
 var file_publira_v1_comment_proto_depIdxs = []int32{
 	1,  // 0: publira.v1.EpisodeComment.creator:type_name -> publira.v1.EpisodeCommentCreator
-	1,  // 1: publira.v1.MyEpisodeComment.creator:type_name -> publira.v1.EpisodeCommentCreator
-	14, // 2: publira.v1.ListEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	15, // 3: publira.v1.ListEpisodeCommentsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	2,  // 4: publira.v1.ListEpisodeCommentsResponse.comments:type_name -> publira.v1.EpisodeComment
-	14, // 5: publira.v1.ListMyEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	15, // 6: publira.v1.ListMyEpisodeCommentsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	3,  // 7: publira.v1.ListMyEpisodeCommentsResponse.comments:type_name -> publira.v1.MyEpisodeComment
-	14, // 8: publira.v1.PostEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	15, // 9: publira.v1.PostEpisodeCommentRequest.surface:type_name -> publira.types.v1.ClientSurface
-	3,  // 10: publira.v1.PostEpisodeCommentResponse.comment:type_name -> publira.v1.MyEpisodeComment
-	14, // 11: publira.v1.WithdrawEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 12: publira.v1.ReportEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 13: publira.v1.ReportEpisodeCommentRequest.reason:type_name -> publira.v1.CommentReportReason
-	15, // 14: publira.v1.ReportEpisodeCommentRequest.surface:type_name -> publira.types.v1.ClientSurface
-	4,  // 15: publira.v1.CommentService.ListEpisodeComments:input_type -> publira.v1.ListEpisodeCommentsRequest
-	6,  // 16: publira.v1.CommentService.ListMyEpisodeComments:input_type -> publira.v1.ListMyEpisodeCommentsRequest
-	8,  // 17: publira.v1.CommentService.PostEpisodeComment:input_type -> publira.v1.PostEpisodeCommentRequest
-	10, // 18: publira.v1.CommentService.WithdrawEpisodeComment:input_type -> publira.v1.WithdrawEpisodeCommentRequest
-	12, // 19: publira.v1.CommentService.ReportEpisodeComment:input_type -> publira.v1.ReportEpisodeCommentRequest
-	5,  // 20: publira.v1.CommentService.ListEpisodeComments:output_type -> publira.v1.ListEpisodeCommentsResponse
-	7,  // 21: publira.v1.CommentService.ListMyEpisodeComments:output_type -> publira.v1.ListMyEpisodeCommentsResponse
-	9,  // 22: publira.v1.CommentService.PostEpisodeComment:output_type -> publira.v1.PostEpisodeCommentResponse
-	11, // 23: publira.v1.CommentService.WithdrawEpisodeComment:output_type -> publira.v1.WithdrawEpisodeCommentResponse
-	13, // 24: publira.v1.CommentService.ReportEpisodeComment:output_type -> publira.v1.ReportEpisodeCommentResponse
-	20, // [20:25] is the sub-list for method output_type
-	15, // [15:20] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	14, // 1: publira.v1.EpisodeComment.author_icon_image_variants:type_name -> publira.types.v1.UserIconVariant
+	1,  // 2: publira.v1.MyEpisodeComment.creator:type_name -> publira.v1.EpisodeCommentCreator
+	15, // 3: publira.v1.ListEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 4: publira.v1.ListEpisodeCommentsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	2,  // 5: publira.v1.ListEpisodeCommentsResponse.comments:type_name -> publira.v1.EpisodeComment
+	15, // 6: publira.v1.ListMyEpisodeCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 7: publira.v1.ListMyEpisodeCommentsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	3,  // 8: publira.v1.ListMyEpisodeCommentsResponse.comments:type_name -> publira.v1.MyEpisodeComment
+	15, // 9: publira.v1.PostEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 10: publira.v1.PostEpisodeCommentRequest.surface:type_name -> publira.types.v1.ClientSurface
+	3,  // 11: publira.v1.PostEpisodeCommentResponse.comment:type_name -> publira.v1.MyEpisodeComment
+	15, // 12: publira.v1.WithdrawEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 13: publira.v1.ReportEpisodeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 14: publira.v1.ReportEpisodeCommentRequest.reason:type_name -> publira.v1.CommentReportReason
+	16, // 15: publira.v1.ReportEpisodeCommentRequest.surface:type_name -> publira.types.v1.ClientSurface
+	4,  // 16: publira.v1.CommentService.ListEpisodeComments:input_type -> publira.v1.ListEpisodeCommentsRequest
+	6,  // 17: publira.v1.CommentService.ListMyEpisodeComments:input_type -> publira.v1.ListMyEpisodeCommentsRequest
+	8,  // 18: publira.v1.CommentService.PostEpisodeComment:input_type -> publira.v1.PostEpisodeCommentRequest
+	10, // 19: publira.v1.CommentService.WithdrawEpisodeComment:input_type -> publira.v1.WithdrawEpisodeCommentRequest
+	12, // 20: publira.v1.CommentService.ReportEpisodeComment:input_type -> publira.v1.ReportEpisodeCommentRequest
+	5,  // 21: publira.v1.CommentService.ListEpisodeComments:output_type -> publira.v1.ListEpisodeCommentsResponse
+	7,  // 22: publira.v1.CommentService.ListMyEpisodeComments:output_type -> publira.v1.ListMyEpisodeCommentsResponse
+	9,  // 23: publira.v1.CommentService.PostEpisodeComment:output_type -> publira.v1.PostEpisodeCommentResponse
+	11, // 24: publira.v1.CommentService.WithdrawEpisodeComment:output_type -> publira.v1.WithdrawEpisodeCommentResponse
+	13, // 25: publira.v1.CommentService.ReportEpisodeComment:output_type -> publira.v1.ReportEpisodeCommentResponse
+	21, // [21:26] is the sub-list for method output_type
+	16, // [16:21] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_comment_proto_init() }

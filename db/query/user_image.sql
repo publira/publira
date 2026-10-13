@@ -54,3 +54,24 @@ JOIN LATERAL (
 WHERE ui.id = $1
     AND ui.tenant_id = $2
 LIMIT 1;
+
+-- name: ListUserIconImageVariantsByImageIDs :many
+-- The stored variants of the given icon images, with the time each image was
+-- stored. A caller reads the ids off the accounts it is answering for, so one
+-- query covers a whole page of them; an id the tenant does not hold answers no
+-- rows.
+SELECT ui.id AS user_image_id,
+    ui.updated_at,
+    uiv.label,
+    uiv.content_type,
+    uiv.width,
+    uiv.height,
+    uiv.file_size_bytes
+FROM user_images ui
+    JOIN user_image_variants uiv ON uiv.tenant_id = ui.tenant_id
+        AND uiv.user_image_id = ui.id
+WHERE ui.tenant_id = sqlc.arg('tenant_id')
+    AND ui.id = ANY(sqlc.arg('image_ids')::uuid[])
+ORDER BY ui.id,
+    uiv.width DESC,
+    uiv.label;

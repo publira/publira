@@ -30,6 +30,7 @@ func platformPolicyToProto(policy platformpolicy.Policy) *publirasplatformv1.Pla
 		WaitFreeTicketUse:              minuteDayToProto(policy.WaitFreeTicketUse),
 		LegalPageAgreement:             minuteDayToProto(policy.LegalPageAgreement),
 		IdentityLink:                   minuteDayToProto(policy.IdentityLink),
+		IconChange:                     minuteDayToProto(policy.IconChange),
 		LoginAttemptsPerAccount:        minuteDayToProto(policy.LoginAttemptsPerAccount),
 		LoginAttemptsPerSource:         hourDayToProto(policy.LoginAttemptsPerSource),
 		MailRequestsPerAddress:         hourDayToProto(policy.MailRequestsPerAddress),
@@ -67,6 +68,7 @@ func platformPolicyFromProto(policy *publirasplatformv1.PlatformPolicy) platform
 		WaitFreeTicketUse:              minuteDayFromProto(policy.GetWaitFreeTicketUse()),
 		LegalPageAgreement:             minuteDayFromProto(policy.GetLegalPageAgreement()),
 		IdentityLink:                   minuteDayFromProto(policy.GetIdentityLink()),
+		IconChange:                     minuteDayFromProto(policy.GetIconChange()),
 		LoginAttemptsPerAccount:        minuteDayFromProto(policy.GetLoginAttemptsPerAccount()),
 		LoginAttemptsPerSource:         hourDayFromProto(policy.GetLoginAttemptsPerSource()),
 		MailRequestsPerAddress:         hourDayFromProto(policy.GetMailRequestsPerAddress()),
@@ -122,8 +124,8 @@ func (s *platformServer) UpdatePlatformPolicy(
 		Policy:           platformPolicyFromProto(req.GetPolicy()),
 		ExpectedRevision: &expectedRevision,
 	}
-	// wait_free_ticket_use, legal_page_agreement, identity_link, the login
-	// limits and the operator MFA requirement reached the policy after the console screens
+	// wait_free_ticket_use, legal_page_agreement, identity_link, icon_change,
+	// the login limits and the operator MFA requirement reached the policy after the console screens
 	// that save it, and those are deployed apart from this server, so a
 	// request that leaves one out keeps what is stored rather than being
 	// refused or switching the requirement off. The stored value is read here and the save is held to
@@ -140,7 +142,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 	// be saved while it is being switched off.
 	requested := req.GetPolicy()
 	enablesOperatorMfaWithoutSecrets := requested.GetMfaRequiredForPlatformOperator() && s.encryptor == nil
-	if requested.GetWaitFreeTicketUse() == nil || requested.GetLegalPageAgreement() == nil || requested.GetIdentityLink() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.MfaRequiredForPlatformOperator == nil || enablesOperatorMfaWithoutSecrets {
+	if requested.GetWaitFreeTicketUse() == nil || requested.GetLegalPageAgreement() == nil || requested.GetIdentityLink() == nil || requested.GetIconChange() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.MfaRequiredForPlatformOperator == nil || enablesOperatorMfaWithoutSecrets {
 		stored, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read platform policy", err)
@@ -160,6 +162,9 @@ func (s *platformServer) UpdatePlatformPolicy(
 		}
 		if requested.GetIdentityLink() == nil {
 			params.Policy.IdentityLink = stored.IdentityLink
+		}
+		if requested.GetIconChange() == nil {
+			params.Policy.IconChange = stored.IconChange
 		}
 		if requested.GetLoginAttemptsPerAccount() == nil {
 			params.Policy.LoginAttemptsPerAccount = stored.LoginAttemptsPerAccount

@@ -32,6 +32,26 @@ message User {
   // public API's GetMe and UpdateMe, so a form can offer the reader their own
   // address, and empty wherever a User names someone else.
   string email = 5;
+  // The account's icon. Set where the public API answers with the caller's
+  // own account as GetMe reads it — GetMe, UpdateMe, UploadMyIcon,
+  // DeleteMyIcon and LoginWithIdToken — and empty wherever a User names
+  // someone else. The variant list is empty, and icon_image_updated_at with
+  // it, for an account that shows no icon.
+  string icon_image_updated_at = 6;
+  repeated UserIconVariant icon_image_variants = 7;
+}
+
+// One stored rendition of a reader's icon, in the shape the tenant's branding
+// images use. A replaced icon is stored under a new URL rather than over the
+// old one, and the old URL stops answering once it is replaced or removed, so
+// a page holding one has to read the account again rather than keep it.
+message UserIconVariant {
+  string label = 1;
+  string url = 2;
+  string content_type = 3;
+  int32 width = 4;
+  int32 height = 5;
+  int64 file_size_bytes = 6;
 }
 
 // AccessToken is a JWT issued by Login. Clients send it as Authorization: Bearer.

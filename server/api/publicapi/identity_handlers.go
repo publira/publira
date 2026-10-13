@@ -199,13 +199,17 @@ func (s *apiServer) LoginWithIdToken(
 	if err != nil {
 		return fail(user.PublicID, "token_issue_failed", err)
 	}
+	account, err := s.ownAccountWithIcon(ctx, txq, tenant.ID, user, role)
+	if err != nil {
+		return fail(user.PublicID, "icon_lookup_failed", err)
+	}
 	if err := tx.Commit(); err != nil {
 		return fail(user.PublicID, "transaction_commit_failed", s.internalDBError(ctx, "failed to commit id token sign-in", err, "tenant_id", tenant.ID.String()))
 	}
 
 	auth.AuditEvent(ctx, action, "success", tenant.PublicID, user.PublicID, signedIn.outcome)
 	return &publirav1.LoginWithIdTokenResponse{
-		User:           ownAccount(user, role),
+		User:           account,
 		AccessToken:    accessToken,
 		AccountCreated: signedIn.outcome == "account_created",
 	}, nil
