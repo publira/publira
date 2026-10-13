@@ -94,7 +94,7 @@ describe("isSetupCompleted", () => {
 });
 
 const unavailable = (): ConnectError =>
-  new ConnectError("connect ECONNREFUSED 127.0.0.1:8100", Code.Unavailable);
+  new ConnectError("connect ECONNREFUSED 127.0.0.1:8000", Code.Unavailable);
 
 const loadSetup = () => import("./setup");
 

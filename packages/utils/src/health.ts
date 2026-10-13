@@ -175,7 +175,9 @@ export const createReadyzResponse = async (
 
 /**
  * Probe an upstream Go API `/readyz` (or another path) over HTTP.
- * `baseUrl` is the service origin (e.g. `http://api:8100`).
+ * `baseUrl` is the API's base URL (e.g. `http://api:8000/api`); an absolute
+ * `path` resolves against its origin, so the probe reaches `/readyz` at the
+ * root rather than under `/api`.
  */
 export const checkUpstreamReadyz = async (
   baseUrl: string,

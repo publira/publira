@@ -95,7 +95,7 @@ describe("createReadyzResponse", () => {
 });
 
 describe("checkUpstreamReadyz", () => {
-  it("resolves when upstream returns 200", async () => {
+  it("probes /readyz at the origin of an /api base URL", async () => {
     vi.stubGlobal(
       "fetch",
       vi
@@ -103,10 +103,10 @@ describe("checkUpstreamReadyz", () => {
         .mockResolvedValue(new Response('{"status":"ok"}', { status: 200 }))
     );
     await expect(
-      checkUpstreamReadyz("http://api.example:8100")
+      checkUpstreamReadyz("http://api.example:8000/api")
     ).resolves.toBeUndefined();
     expect(fetch).toHaveBeenCalledWith(
-      new URL("http://api.example:8100/readyz"),
+      new URL("http://api.example:8000/readyz"),
       expect.objectContaining({ method: "GET" })
     );
   });
@@ -117,7 +117,7 @@ describe("checkUpstreamReadyz", () => {
       vi.fn().mockResolvedValue(new Response("no", { status: 503 }))
     );
     await expect(
-      checkUpstreamReadyz("http://api.example:8100")
+      checkUpstreamReadyz("http://api.example:8000/api")
     ).rejects.toThrow(/HTTP 503/u);
   });
 

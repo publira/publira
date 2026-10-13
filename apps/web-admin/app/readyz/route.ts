@@ -6,7 +6,7 @@ import {
 import type { HealthCheck } from "@publira/utils/health";
 import { connection } from "next/server";
 
-const apiBaseUrl = process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8100";
+const apiBaseUrl = process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8000/api";
 
 const checks: HealthCheck[] = [
   {
