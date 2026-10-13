@@ -137,7 +137,7 @@ func TestParseWebhookRefusesAPostThatDoesNotVerify(t *testing.T) {
 	}{
 		"another signing key": {provider, payload, inboundprovider.Credentials{mailgun.FieldWebhookSigningKey: "another-signing-key"}},
 		"no signing key":      {provider, payload, inboundprovider.Credentials{}},
-		"signed too long ago": {at(signedAt.Add(5*time.Minute + time.Second)), payload, credentials},
+		"signed too long ago": {at(signedAt.Add(8*time.Hour + time.Second)), payload, credentials},
 		"signed in the future": {
 			at(signedAt.Add(-5*time.Minute - time.Second)), payload, credentials,
 		},
@@ -156,6 +156,17 @@ func TestParseWebhookRefusesAPostThatDoesNotVerify(t *testing.T) {
 				t.Fatalf("ParseWebhook error = %v, want ErrInvalidSignature", err)
 			}
 		})
+	}
+}
+
+// Mailgun retries a post it was refused for 8 hours, and a retry may carry
+// the first attempt's timestamp.
+func TestParseWebhookReadsARetryHoursAfterItWasSigned(t *testing.T) {
+	payload, headers, _ := recorded(t, "route_forward.urlencoded")
+	signedAt := time.Unix(recordedPosts["route_forward.urlencoded"].signedAt, 0)
+	msg := parse(t, at(signedAt.Add(7*time.Hour+55*time.Minute)), payload, headers)
+	if msg.MessageID != "CAJ4k2m1+9xQ@mail.example.net" {
+		t.Errorf("MessageID = %q", msg.MessageID)
 	}
 }
 

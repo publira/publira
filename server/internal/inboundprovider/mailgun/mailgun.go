@@ -38,11 +38,17 @@ const (
 	// account's HTTP webhook signing key, which signs every Route post.
 	FieldWebhookSigningKey = "webhook_signing_key"
 
-	// signatureTolerance is how far a request's timestamp may be from now, the
-	// tolerance the Resend provider gives a Svix signature. It bounds how long
-	// a captured request could be replayed; a replay inside it stores nothing
-	// twice, because the mail's Message-ID is already stored.
-	signatureTolerance = 5 * time.Minute
+	// signatureMaxAge is how long ago a request's timestamp may be. Mailgun
+	// retries a Route post the webhook did not accept for 8 hours, and does
+	// not say that a retry is signed anew, so a retry still carrying the first
+	// attempt's timestamp has to verify until the last one. It also bounds how
+	// long a captured request could be replayed; a replay inside it stores
+	// nothing twice, because the mail's Message-ID is already stored.
+	signatureMaxAge = 8 * time.Hour
+
+	// signatureMaxSkew is how far ahead of now a request's timestamp may be,
+	// for a clock that runs behind Mailgun's.
+	signatureMaxSkew = 5 * time.Minute
 
 	// maxFieldBytes bounds one form field, as the SendGrid provider does.
 	// Attachments arrive as file parts that are not read, so the largest
@@ -169,7 +175,8 @@ func (p *Provider) ParseWebhook(_ context.Context, payload []byte, headers http.
 
 // verify checks a Route post's signature: the hex HMAC-SHA256 of the
 // timestamp followed by the token, keyed with the signing key, from a
-// timestamp within the tolerance of now.
+// timestamp no older than signatureMaxAge and no further ahead than
+// signatureMaxSkew.
 func verify(timestamp, token, signature, key string, now time.Time) bool {
 	if timestamp == "" || token == "" || signature == "" {
 		return false
@@ -178,7 +185,7 @@ func verify(timestamp, token, signature, key string, now time.Time) bool {
 	if err != nil {
 		return false
 	}
-	if skew := now.Sub(time.Unix(seconds, 0)); skew > signatureTolerance || skew < -signatureTolerance {
+	if age := now.Sub(time.Unix(seconds, 0)); age > signatureMaxAge || age < -signatureMaxSkew {
 		return false
 	}
 	decoded, err := hex.DecodeString(signature)
