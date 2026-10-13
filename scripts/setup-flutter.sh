@@ -39,8 +39,9 @@ retry() {
 }
 
 # github.com answers an unauthenticated clone from a shared address with a
-# credential prompt every so often, which fails a CI job in seconds. A token
-# makes the request attributable, and it is passed with `git -c` rather than
+# credential prompt every so often (`fatal: could not read Username for
+# 'https://github.com'`), which fails a CI job in seconds. A token makes the
+# request attributable, and it is passed with `git -c` rather than
 # `git clone -c`: the latter would persist the header in the cloned
 # repository's own config, where every later `git` call flutter makes would
 # read it.
