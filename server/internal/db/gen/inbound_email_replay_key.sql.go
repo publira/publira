@@ -25,7 +25,7 @@ INSERT INTO inbound_email_replay_keys (
     $3,
     $4
 )
-ON CONFLICT (tenant_id, provider, replay_key) DO NOTHING
+ON CONFLICT (provider, replay_key) DO NOTHING
 `
 
 type ClaimInboundEmailReplayKeyParams struct {

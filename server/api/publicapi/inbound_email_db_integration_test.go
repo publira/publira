@@ -302,6 +302,17 @@ func TestDBAMailgunSignatureCarriesOneMail(t *testing.T) {
 	if notices := harness.staffNotices(t, seeded.tenant.ID); len(notices) != 1 {
 		t.Fatalf("queued %d staff mails, want 1", len(notices))
 	}
+
+	// Another tenant on the same Mailgun account verifies the same signature.
+	neighbour := harness.newTenant(t, fixture, true)
+	forged.To = "contact+" + neighbour.messagePublicID + "@" + inboundTestDomain
+	payload, headers = signed(forged)
+	if err := harness.deliver(t, neighbour.tenant, mailgun.ID, payload, headers); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("ProcessInboundEmailWebhook (another tenant) error = %v, want unauthenticated", err)
+	}
+	if entries := harness.readerEntries(t, neighbour.tenant.ID); len(entries) != 0 {
+		t.Fatalf("another tenant's reader entries = %+v, want none", entries)
+	}
 }
 
 func runInboundScenarios(t *testing.T, h *inboundHarness, fixture inboundprovidertest.Fixture, providerID string) {

@@ -4,8 +4,11 @@
 -- timestamp and a token, not the fields beside them. The first mail a key
 -- arrives with is recorded by a digest of what was read from it, so a captured
 -- signature cannot carry another mail while it is still accepted; a retry of
--- the same mail reads the same and passes. A row is pruned once its key could
--- no longer verify.
+-- the same mail reads the same and passes. A key is claimed once per provider
+-- rather than once per tenant: Mailgun's signing key is account-wide, so
+-- tenants on one account verify each other's signatures, and a key claimed
+-- under one tenant is refused under every other. A row is pruned once its key
+-- could no longer verify.
 CREATE TABLE inbound_email_replay_keys (
     tenant_id uuid NOT NULL,
     provider character varying(32) NOT NULL,
@@ -20,7 +23,7 @@ CREATE TABLE inbound_email_replay_keys (
 
 -- CONSTRAINT: inbound_email_replay_keys inbound_email_replay_keys_pkey
 ALTER TABLE ONLY inbound_email_replay_keys
-    ADD CONSTRAINT inbound_email_replay_keys_pkey PRIMARY KEY (tenant_id, provider, replay_key);
+    ADD CONSTRAINT inbound_email_replay_keys_pkey PRIMARY KEY (provider, replay_key);
 
 -- INDEX: inbound_email_replay_keys idx_inbound_email_replay_keys_tenant_received_at
 CREATE INDEX idx_inbound_email_replay_keys_tenant_received_at ON inbound_email_replay_keys USING btree (tenant_id, received_at);

@@ -17,7 +17,7 @@ INSERT INTO inbound_email_replay_keys (
     sqlc.arg('replay_key'),
     sqlc.arg('content_sha256')
 )
-ON CONFLICT (tenant_id, provider, replay_key) DO NOTHING;
+ON CONFLICT (provider, replay_key) DO NOTHING;
 
 -- name: GetInboundEmailReplayKeyContent :one
 SELECT content_sha256

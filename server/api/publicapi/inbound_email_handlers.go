@@ -146,8 +146,10 @@ func (s *apiServer) ProcessInboundEmailWebhook(
 // reports whether msg is that mail: a retry reads the same and passes, and a
 // captured signature carrying another mail does not. The mail is compared by
 // what the provider read from it rather than by the request's bytes, which a
-// provider may encode afresh for a retry. The tenant's keys that no signature
-// can still carry are pruned on the way.
+// provider may encode afresh for a retry. A key is claimed once per provider,
+// so a key another tenant holds conflicts with a row this tenant cannot read,
+// and does not pass. The tenant's keys that no signature can still carry are
+// pruned on the way.
 func (s *apiServer) claimInboundReplayKey(
 	ctx context.Context,
 	tenantID uuid.UUID,
@@ -183,6 +185,9 @@ func (s *apiServer) claimInboundReplayKey(
 		Provider:  providerID,
 		ReplayKey: msg.ReplayKey,
 	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
 	if err != nil {
 		return false, fmt.Errorf("read replay key: %w", err)
 	}
