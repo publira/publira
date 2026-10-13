@@ -78,6 +78,11 @@ assert_webhook_delivered "SendGrid post reaches web-storefront intact" localhost
 assert_webhook_delivered "Resend post reaches web-storefront intact" localhost /api/v1/webhook/email/resend web-storefront 1024 "${PUBLIRA_ROUTING_RESEND_HEADERS[@]}"
 assert_webhook_delivered "SendGrid post of 32 MiB reaches web-storefront whole" localhost /api/v1/webhook/email/sendgrid web-storefront 33554432 "${PUBLIRA_ROUTING_SENDGRID_HEADERS[@]}"
 
+# A reader's icon upload is the largest request the public API reads: an image
+# of up to 10 MiB in the base64 of the JSON encoding, and the fields beside it.
+# It has to reach the api backend whole on the tenant site.
+assert_upload_delivered "icon upload of 15029592 bytes reaches api whole" localhost /api/publira.v1.AuthService/UploadMyIcon api 15029592 0
+
 # The episode edit screen posts a whole episode's pages in one upload, which
 # web-admin reads up to 256 MiB of, and the edge gives it 300 seconds to
 # arrive. Spread over 75 seconds, it outlasts the 60 seconds Traefik gives a
