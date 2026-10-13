@@ -19,6 +19,6 @@
 #     -t publira/elasticsearch:local \
 #     .
 
-FROM elasticsearch:9.1.5@sha256:767e028f0bc761d4120487bf36613eecf484dbffd4e62240127e56928a5ef49c
+FROM elasticsearch:9.5.5@sha256:320bef0140dcaa30527babaae9d7a41c0ccc001e97ab87c08171d867b89e8f4f
 
 RUN bin/elasticsearch-plugin install --batch analysis-kuromoji analysis-icu analysis-nori analysis-smartcn
