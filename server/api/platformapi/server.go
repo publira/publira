@@ -240,8 +240,14 @@ func registerPlatformRoutes(mux *http.ServeMux, server *platformServer) {
 	connecthttp.Mount(mux, services, limits...)
 
 	// Signing in and the first-run setup are served without a session, and
-	// the audit log authenticates its caller itself.
-	open := connect.NewServer(traced...)
+	// the audit log authenticates its caller itself. Creating the first
+	// operator is the one of them that hands out the platform, so it is
+	// refused without the web service token, which the Platform Console's
+	// setup screen sends from its server: the edge forwards /api on every
+	// host, and on an install whose operator has not been created yet, or
+	// that runs no Platform Console at all, anyone reaching a tenant's site
+	// would otherwise claim the platform.
+	open := connect.NewServer(slices.Concat(traced, []connect.ServerInterceptor{server.requireServiceTokenForInitialSetup})...)
 	publirasplatformv1connect.RegisterPlatformAuthServiceHandler(open, server)
 	publirasplatformv1connect.RegisterPlatformSetupServiceHandler(open, server)
 	publirasplatformv1connect.RegisterPlatformAuditLogServiceHandler(open, server)

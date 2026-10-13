@@ -70,6 +70,9 @@ func TestServerAnswersEveryNamespaceUnderAPIAlone(t *testing.T) {
 		// Served without a session, and refused for credentials that match no
 		// operator.
 		{"/publira.platform.v1.PlatformAuthService/Login", `{}`, "unauthenticated"},
+		// Served without a session too, and refused without the web service
+		// token, which the Platform Console's setup screen sends.
+		{"/publira.platform.v1.PlatformSetupService/CreateInitialUser", `{}`, "unauthenticated"},
 	} {
 		if got := connectErrorCode(t, base+"/api"+tc.procedure, tc.body); got != tc.want {
 			t.Fatalf("POST /api%s code = %q, want %q", tc.procedure, got, tc.want)

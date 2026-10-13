@@ -49,6 +49,21 @@ export const buildSessionHeaders = (accessToken: string) =>
 type CallOptions = NonNullable<Parameters<(typeof apiClient.auth)["getMe"]>[1]>;
 
 /**
+ * Call options for creating the first operator, which the API takes only from
+ * the console's own server: the web service token rides beside the client's
+ * address, which the setup is still held against.
+ */
+export const buildInitialSetupHeaders = async () => {
+  const forwarded = await readForwardedHeaders();
+  return {
+    headers: {
+      ...forwarded,
+      Authorization: `Bearer ${resolveWebServiceToken()}`,
+    },
+  };
+};
+
+/**
  * Call options for a read the console makes as itself: one of the platform
  * API's platform-level reads, whose answer is the same for every operator and
  * is therefore cached once for all of them in a `"use cache"` scope. The API

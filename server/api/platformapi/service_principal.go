@@ -1,10 +1,13 @@
 package platformapi
 
 import (
+	"context"
+
 	"connectrpc.com/connect/v2"
 
 	"github.com/publira/publira/server/internal/auth"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 // serviceProcedures are the reads a web app may make with its service token:
@@ -49,6 +52,22 @@ func (s *platformServer) serviceActor(headers *connect.Header, procedure string)
 		return platformActor{}, true, serviceProcedureDeniedError()
 	}
 	return platformActor{Service: true}, true, nil
+}
+
+// requireServiceTokenForInitialSetup refuses CreateInitialUser to a caller
+// without the service token, before the handler runs, and lets every other
+// procedure on the same server through.
+func (s *platformServer) requireServiceTokenForInitialSetup(next connect.ServerFunc) connect.ServerFunc {
+	return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {
+		if spec.Procedure == publirasplatformv1connect.PlatformSetupServiceCreateInitialUserProcedure {
+			bearer, ok := auth.BearerTokenFromHeader(rpcmiddleware.RequestHeader(ctx))
+			if !ok || !s.serviceToken.Matches(bearer) {
+				auth.AuditEvent(ctx, "platform_initial_setup", "failure", "", "", "service_token_required")
+				return connect.NewError(connect.CodeUnauthenticated, "the initial operator is created from the Platform Console")
+			}
+		}
+		return next(ctx, spec, stream)
+	}
 }
 
 // requirePerson refuses the service principal where an operator has to be

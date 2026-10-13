@@ -19,7 +19,7 @@ That only holds while each process has the connection URLs of its own roles and 
 
 ### The console APIs
 
-`publira server` serves the tenant console's and the Platform Console's APIs under `/api` on every host, beside the public API, and the edge forwards `/api` to it, so anyone can reach them. Each of their requests is refused before it runs unless it carries an operator's session or the web service token, and the few that run before there is a session — signing in, resetting a password, confirming an email address, and creating the first operator — are limited per client or guarded by the server itself. The web service token is therefore what stands between the internet and every tenant's catalog and the platform's list of readers: keep it to the processes the table below names.
+`publira server` serves the tenant console's and the Platform Console's APIs under `/api` on every host, beside the public API, and the edge forwards `/api` to it, so anyone can reach them. Each of their requests is refused before it runs unless it carries an operator's session or the web service token, the few that run before there is a session — signing in, resetting a password, and confirming an email address — are limited per client or guarded by the server itself, and creating the Platform Console's first operator takes the web service token, which only the Platform Console's server sends. The web service token is therefore what stands between the internet and every tenant's catalog and the platform's list of readers: keep it to the processes the table below names.
 
 ### Where each secret may go
 

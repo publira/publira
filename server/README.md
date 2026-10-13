@@ -299,6 +299,8 @@ On the platform API it runs as a service principal with no operator and no platf
 - `PlatformOperatorService/ListOperators`, `GetOperator`
 - `PlatformUserService/ListEndUsers`, `GetEndUser`
 
+`PlatformSetupService/CreateInitialUser`, which creates the first operator with the `platform_super_admin` role while the platform has none, takes the credential as well, and is refused with `unauthenticated` to any caller without it. The edge forwards `/api` on every host, so an install whose first operator has not been created yet, or that runs no Platform Console at all, would otherwise hand the platform to whoever reaches a tenant's site first. The Platform Console's setup screen sends the credential from its server. `CheckSetupStatus` stays open, since the setup screen asks it before anyone has signed in.
+
 ## Email renderer
 
 - `PUBLIRA_EMAIL_RENDERER_URL`

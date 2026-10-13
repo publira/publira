@@ -12,7 +12,7 @@ import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import type { ResolvedLocaleState } from "@publira/utils/resolved-locale";
 import { cacheTag } from "next/cache";
 
-import { apiClient, buildClientAddressHeaders } from "./api-client";
+import { apiClient, buildInitialSetupHeaders } from "./api-client";
 import { getMessagesFor } from "./messages";
 import { platformSetupStatusCacheTag } from "./setup-status";
 
@@ -193,7 +193,7 @@ export const createInitialUser = async ({
         name,
         password,
       },
-      await buildClientAddressHeaders()
+      await buildInitialSetupHeaders()
     );
     return { ok: true };
   } catch (error) {
