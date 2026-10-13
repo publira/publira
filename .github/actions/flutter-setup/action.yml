@@ -1,0 +1,36 @@
+name: Set up Flutter
+description: Restore the Flutter SDK that FLUTTER_VERSION pins, with the engine artifacts the mobile jobs on this runner's OS build with, and install it through scripts/setup-flutter.sh on a miss.
+
+runs:
+  using: composite
+  steps:
+    # One entry per OS, keyed by the tag, holding the checkout and all of
+    # bin/cache: the Dart SDK the first `flutter` call bootstraps and the engine
+    # artifacts a build would otherwise download. Every job on an OS precaches
+    # the same platforms, so whichever job saves the entry, it holds what each
+    # of them builds with; `Test / Mobile` restores the Android artifacts it
+    # does not use rather than keeping an entry of its own.
+    #
+    # Only `main` saves it, since only its entries are readable from a pull
+    # request or a merge group.
+    - name: Cache / Flutter SDK
+      id: cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/flutter
+        key: flutter-${{ runner.os }}-${{ runner.arch }}-${{ env.FLUTTER_VERSION }}
+
+    - name: Setup / Flutter
+      shell: bash
+      env:
+        FLUTTER_ROOT: ${{ runner.temp }}/flutter
+        PUBLIRA_FLUTTER_PRECACHE: ${{ runner.os == 'macOS' && 'ios' || 'android' }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: bash scripts/setup-flutter.sh
+
+    - name: Cache / Save Flutter SDK
+      if: github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/flutter
+        key: ${{ steps.cache.outputs.cache-primary-key }}

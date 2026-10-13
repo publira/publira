@@ -1,5 +1,10 @@
 name: Set up the Android build
-description: Install Flutter, the JDK, and Task, restore the Gradle cache, and install the app's dependencies, for a job that builds the Android app.
+description: Install the JDK, the Android SDK packages the build needs, the emulator when asked, and Task, restore the Gradle cache, and install the app's dependencies, for a job that builds the Android app. Flutter has to be on PATH already, through the flutter-setup action.
+
+inputs:
+  emulator:
+    description: Also install the emulator and the system image `Test / Mobile E2E` boots, for a job that runs the app on one.
+    default: "false"
 
 outputs:
   gradle-cache-key:
@@ -8,21 +13,95 @@ outputs:
   gradle-cache-hit:
     description: Whether the Gradle cache was restored from that exact key.
     value: ${{ steps.gradle.outputs.cache-hit }}
+  api-level:
+    description: The system image's API level, for the emulator runner; empty without `emulator`.
+    value: ${{ steps.sdk.outputs.api-level }}
+  target:
+    description: The system image's target, for the emulator runner; empty without `emulator`.
+    value: ${{ steps.sdk.outputs.target }}
+  arch:
+    description: The system image's ABI, for the emulator runner; empty without `emulator`.
+    value: ${{ steps.sdk.outputs.arch }}
 
 runs:
   using: composite
   steps:
-    - name: Setup / Flutter
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      run: bash scripts/setup-flutter.sh
-
     - name: Setup / Java
       uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
       with:
         distribution: temurin
         java-version: "25.0.4+101.0.LTS"
+
+    - name: Android SDK / Packages
+      id: sdk
+      shell: bash
+      run: bash mobile/scripts/android-packages.sh plan ${{ inputs.emulator == 'true' && '--emulator' || '' }}
+
+    # Each package has an entry of its own, keyed by its version, restored only
+    # when the runner image lacks it: the image carries a few NDKs and no
+    # emulator, and which ones changes from one image to the next. Only `main`
+    # saves an entry, since only its entries are readable from a pull request or
+    # a merge group.
+    - name: Cache / Android NDK
+      id: ndk
+      if: steps.sdk.outputs.ndk-installed != 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.sdk.outputs.sdk-root }}/ndk/${{ steps.sdk.outputs.ndk }}
+        key: android-ndk-${{ runner.os }}-${{ runner.arch }}-${{ steps.sdk.outputs.ndk }}
+
+    - name: Cache / Android CMake
+      id: cmake
+      if: steps.sdk.outputs.cmake-installed != 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.sdk.outputs.sdk-root }}/cmake/${{ steps.sdk.outputs.cmake }}
+        key: android-cmake-${{ runner.os }}-${{ runner.arch }}-${{ steps.sdk.outputs.cmake }}
+
+    # sdkmanager installs the emulator and the image at their newest revision,
+    # which is known only once it has run. So the newest entry for the image is
+    # restored, sdkmanager updates whichever of the two has moved on since, and
+    # the result is saved under the revisions it ended up with.
+    - name: Cache / Android emulator
+      id: emulator
+      if: inputs.emulator == 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ steps.sdk.outputs.sdk-root }}/emulator
+          ${{ steps.sdk.outputs.sdk-root }}/${{ steps.sdk.outputs.system-image-dir }}
+        key: android-emulator-${{ runner.os }}-${{ runner.arch }}-${{ steps.sdk.outputs.system-image-key }}-
+        restore-keys: |
+          android-emulator-${{ runner.os }}-${{ runner.arch }}-${{ steps.sdk.outputs.system-image-key }}-
+
+    - name: Android SDK / Install
+      id: install
+      shell: bash
+      run: bash mobile/scripts/android-packages.sh install ${{ inputs.emulator == 'true' && '--emulator' || '' }}
+
+    - name: Cache / Save Android NDK
+      if: github.ref == 'refs/heads/main' && steps.sdk.outputs.ndk-installed != 'true' && steps.ndk.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.sdk.outputs.sdk-root }}/ndk/${{ steps.sdk.outputs.ndk }}
+        key: ${{ steps.ndk.outputs.cache-primary-key }}
+
+    - name: Cache / Save Android CMake
+      if: github.ref == 'refs/heads/main' && steps.sdk.outputs.cmake-installed != 'true' && steps.cmake.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.sdk.outputs.sdk-root }}/cmake/${{ steps.sdk.outputs.cmake }}
+        key: ${{ steps.cmake.outputs.cache-primary-key }}
+
+    - name: Cache / Save Android emulator
+      if: >-
+        github.ref == 'refs/heads/main' && inputs.emulator == 'true' && steps.emulator.outputs.cache-matched-key != format('{0}{1}', steps.emulator.outputs.cache-primary-key, steps.install.outputs.emulator-revisions)
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ steps.sdk.outputs.sdk-root }}/emulator
+          ${{ steps.sdk.outputs.sdk-root }}/${{ steps.sdk.outputs.system-image-dir }}
+        key: ${{ steps.emulator.outputs.cache-primary-key }}${{ steps.install.outputs.emulator-revisions }}
 
     # The wrapper fetches gradle-*-bin.zip from services.gradle.org, the only
     # third-party host these jobs still depend on at build time; restoring it

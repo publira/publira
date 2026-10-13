@@ -150,8 +150,8 @@ Implementation:
 
 - Workflow: [`ci.yml`](./ci.yml)
 - Job planning—selected jobs and Docker matrix: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)
-- Flutter SDK setup for the mobile jobs: [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh)
-- Flutter, the JDK, the Gradle cache, and the app's dependencies for the jobs that build the Android app: [`.github/actions/mobile-android-setup`](../actions/mobile-android-setup/action.yml)
+- The Flutter SDK for the mobile jobs, restored from its cache or installed: [`.github/actions/flutter-setup`](../actions/flutter-setup/action.yml), through [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh)
+- The JDK, the Android NDK and CMake, the emulator and its system image, the Gradle cache, and the app's dependencies for the jobs that build the Android app: [`.github/actions/mobile-android-setup`](../actions/mobile-android-setup/action.yml), installing the SDK packages through [`mobile/scripts/android-packages.sh`](../../mobile/scripts/android-packages.sh)
 - Go, the module cache (downloading the modules, retried once, when it misses), and the build cache of the compile a job runs, for every job that uses Go: [`.github/actions/go-setup`](../actions/go-setup/action.yml)
 - Saving that build cache and the Playwright browser cache on `main`, skipped by a run whose commit is no longer `main`'s tip: [`.github/actions/main-cache-save`](../actions/main-cache-save/action.yml)
 - migrate, wait4x, and sqlc from their GitHub releases, cached by tool, version, and architecture, at the versions `ci.yml` sets: [`.github/actions/tool-install`](../actions/tool-install/action.yml)
@@ -225,9 +225,9 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
 | `Test / Bash` | Every tracked Bash file, `scripts/dev-env.sh`, `scripts/dev-env/**`, `e2e/scripts/**`, and their Taskfiles |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
-| `Test / Mobile`, `Test / Mobile Android` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh`, the Android setup action |
-| `Test / Mobile iOS` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh` |
-| `Test / Mobile E2E Build`, `Test / Mobile E2E (<group>)` | mobile, E2E lifecycle scripts, domain proto, server, migrations/seeds, Taskfile, storage init and seed, `scripts/setup-flutter.sh`, the Android setup action |
+| `Test / Mobile`, `Test / Mobile Android` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh`, the Flutter and Android setup actions |
+| `Test / Mobile iOS` | `mobile/**`, `Taskfile.yaml`, `scripts/setup-flutter.sh`, the Flutter setup action |
+| `Test / Mobile E2E Build`, `Test / Mobile E2E (<group>)` | mobile, E2E lifecycle scripts, domain proto, server, migrations/seeds, Taskfile, storage init and seed, `scripts/setup-flutter.sh`, the Flutter and Android setup actions |
 | `Test / E2E` | E2E except routing, the Traefik edge configuration, web apps, email-renderer, packages, locales, server, db, the documentation's PNG screenshots under `docs/`, build inputs, storage init and seed |
 | `Test / E2E Search` | The OpenSearch backend alone: `server/internal/catalogsearch/**`, `server/internal/catalogindex/**`, `server/internal/platformsearch/**`, the outbox handler, the search handlers and the `publiractl search` command, `db/query/catalog_index.sql`, `db/query/platform_search.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, the catalog search and search settings specs with `e2e/src/**` and the Platform Console's search screen, and `db/seeds/**` |
 | `Test / Bootstrap` | `compose.yaml`, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init and seed |
@@ -289,9 +289,7 @@ The job then runs against its own Postgres service and must succeed through `mig
 
 ## Flutter SDK setup
 
-`Test / Mobile`, `Test / Mobile Android`, `Test / Mobile E2E (<group>)`, and `Test / Mobile iOS` install Flutter through [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh), which clones the tag named by `FLUTTER_VERSION` — the `env` block of [`ci.yml`](./ci.yml) is the single source of truth for the version — and bootstraps the Dart SDK. The script takes its destination, its credentials, and the `PATH` entry from the environment, so it installs the same pinned SDK on a workstation as it does on a runner; the jobs give it `github.token` and let it default to `RUNNER_TEMP` and `GITHUB_PATH`.
-
-In CI the clone is authenticated with `github.token`. github.com answers an unauthenticated clone from a shared runner address with a credential prompt often enough to matter (`fatal: could not read Username for 'https://github.com'`), and the job then fails within seconds; an authenticated request is attributed to this repository instead. The token is passed as an `http.<url>.extraheader` on the `git` invocation and not with `git clone -c`, which would persist the header in the cloned repository's own config. On top of that the script retries the clone three times with a short backoff, deleting the partial destination between attempts.
+`Test / Mobile`, `Test / Mobile Android`, `Test / Mobile E2E (<group>)`, and `Test / Mobile iOS` set Flutter up through the [`flutter-setup`](../actions/flutter-setup/action.yml) action, which restores the SDK from its cache or installs it with [`scripts/setup-flutter.sh`](../../scripts/setup-flutter.sh). The version is `FLUTTER_VERSION` in the `env` block of [`ci.yml`](./ci.yml), the single source of truth for it. The script reads `FLUTTER_VERSION`, `FLUTTER_ROOT`, `PUBLIRA_FLUTTER_PRECACHE`, `GITHUB_TOKEN`, and `GITHUB_PATH` from the environment, so it installs the same pinned SDK on a workstation as it does on a runner.
 
 ## Failure triage
 
