@@ -95,6 +95,13 @@ type Querier interface {
 	// Whether an account of the tenant other than the one named already holds the
 	// inbox an address reaches, under any tag.
 	CanonicalEmailHeldByAnotherUserForTenant(ctx context.Context, arg CanonicalEmailHeldByAnotherUserForTenantParams) (bool, error)
+	// The signed keys of inbound email deliveries whose signature does not cover
+	// the mail, and the digest of the mail each first arrived with.
+	//
+	// Expected plans:
+	//   ClaimInboundEmailReplayKey, GetInboundEmailReplayKeyContent -> inbound_email_replay_keys_pkey
+	//   DeleteInboundEmailReplayKeysReceivedBefore -> idx_inbound_email_replay_keys_tenant_received_at
+	ClaimInboundEmailReplayKey(ctx context.Context, arg ClaimInboundEmailReplayKeyParams) (int64, error)
 	// Claim the next due pending rows. SKIP LOCKED lets concurrent workers
 	// drain without waiting on each other's locks. The CTE is required:
 	// FOR UPDATE is not allowed in an IN subquery.
@@ -353,6 +360,7 @@ type Querier interface {
 	DeleteGenre(ctx context.Context, id uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch.
 	DeleteGenreImageVariantsByType(ctx context.Context, arg DeleteGenreImageVariantsByTypeParams) (int64, error)
+	DeleteInboundEmailReplayKeysReceivedBefore(ctx context.Context, arg DeleteInboundEmailReplayKeysReceivedBeforeParams) error
 	// Clears one aspect ratio of an eye-catch, like the series query above.
 	DeleteLabelImageVariantsByType(ctx context.Context, arg DeleteLabelImageVariantsByTypeParams) (int64, error)
 	// The translation's versions go with it (page_versions_tenant_page_translation_id_fkey).
@@ -569,6 +577,7 @@ type Querier interface {
 	// deleted or belongs to somebody else.
 	GetGenreIDByPublicIDForTenant(ctx context.Context, arg GetGenreIDByPublicIDForTenantParams) (uuid.UUID, error)
 	GetGenreImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetGenreImageVariantByTypeAndWidthForTenantParams) (GetGenreImageVariantByTypeAndWidthForTenantRow, error)
+	GetInboundEmailReplayKeyContent(ctx context.Context, arg GetInboundEmailReplayKeyContentParams) ([]byte, error)
 	GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	GetLabelByIDForTenant(ctx context.Context, arg GetLabelByIDForTenantParams) (GetLabelByIDForTenantRow, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)

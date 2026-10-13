@@ -80,6 +80,9 @@ func TestParseWebhookReadsAPostWithoutAttachments(t *testing.T) {
 	if msg.MessageID != "CAJ4k2m1+9xQ@mail.example.net" || msg.ID != msg.MessageID {
 		t.Errorf("MessageID = %q, ID = %q", msg.MessageID, msg.ID)
 	}
+	if msg.ReplayKey != "a3f9c1e07b5d42e8961f0c7d2b4e8a6f31d5c9e2b7a04f6d18" {
+		t.Errorf("ReplayKey = %q, want the signed token", msg.ReplayKey)
+	}
 	want := []string{"0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com"}
 	if !slices.Equal(msg.InReplyTo, want) || !slices.Equal(msg.References, want) {
 		t.Errorf("InReplyTo = %q, References = %q", msg.InReplyTo, msg.References)
@@ -167,6 +170,16 @@ func TestParseWebhookReadsARetryHoursAfterItWasSigned(t *testing.T) {
 	msg := parse(t, at(signedAt.Add(7*time.Hour+55*time.Minute)), payload, headers)
 	if msg.MessageID != "CAJ4k2m1+9xQ@mail.example.net" {
 		t.Errorf("MessageID = %q", msg.MessageID)
+	}
+}
+
+// The token becomes the mail's replay key, which is stored, so a token longer
+// than one is refused even when it is signed.
+func TestParseWebhookRefusesATokenTooLongToKeep(t *testing.T) {
+	mail := inboundprovidertest.Mail{From: "reader@example.net", To: "contact+7Hn3QzW9kPfa@reply.example.com", Text: "Hello"}
+	payload, headers := mailguntest.Multipart(t, mailguntest.Sign(mailguntest.Fields(mail), signingKey, time.Now(), strings.Repeat("0", 257)))
+	if _, err := mailgun.New().ParseWebhook(t.Context(), payload, headers, credentials); !errors.Is(err, inboundprovider.ErrInvalidSignature) {
+		t.Fatalf("ParseWebhook error = %v, want ErrInvalidSignature", err)
 	}
 }
 

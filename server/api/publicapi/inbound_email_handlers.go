@@ -2,6 +2,8 @@ package publicapi
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -9,6 +11,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"connectrpc.com/connect/v2"
@@ -123,10 +126,67 @@ func (s *apiServer) ProcessInboundEmailWebhook(
 		)
 		return acknowledged, nil
 	}
+	if msg.ReplayKey != "" {
+		matches, err := s.claimInboundReplayKey(ctx, tenant.ID, providerID, msg)
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to record an inbound email replay key", err, "tenant_id", tenant.ID.String(), "provider", providerID)
+		}
+		if !matches {
+			s.logger.WarnContext(ctx, "inbound email webhook signature was reused for another mail", "tenant_id", tenant.ID, "provider", providerID)
+			return nil, connect.NewError(connect.CodeUnauthenticated, "invalid inbound email webhook signature")
+		}
+	}
 	if err := s.storeInboundReply(ctx, tenant.ID, config, providerID, msg); err != nil {
 		return nil, err
 	}
 	return acknowledged, nil
+}
+
+// claimInboundReplayKey records the mail msg.ReplayKey first arrived with, and
+// reports whether msg is that mail: a retry reads the same and passes, and a
+// captured signature carrying another mail does not. The mail is compared by
+// what the provider read from it rather than by the request's bytes, which a
+// provider may encode afresh for a retry. The tenant's keys that no signature
+// can still carry are pruned on the way.
+func (s *apiServer) claimInboundReplayKey(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	providerID string,
+	msg inboundprovider.Message,
+) (bool, error) {
+	content, err := json.Marshal(msg)
+	if err != nil {
+		return false, fmt.Errorf("marshal inbound email: %w", err)
+	}
+	digest := sha256.Sum256(content)
+	queries := s.queriesFor(ctx)
+	if err := queries.DeleteInboundEmailReplayKeysReceivedBefore(ctx, dbmodels.DeleteInboundEmailReplayKeysReceivedBeforeParams{
+		TenantID:       tenantID,
+		ReceivedBefore: time.Now().Add(-inboundprovider.ReplayKeyLifetime),
+	}); err != nil {
+		return false, fmt.Errorf("prune replay keys: %w", err)
+	}
+	claimed, err := queries.ClaimInboundEmailReplayKey(ctx, dbmodels.ClaimInboundEmailReplayKeyParams{
+		TenantID:      tenantID,
+		Provider:      providerID,
+		ReplayKey:     msg.ReplayKey,
+		ContentSha256: digest[:],
+	})
+	if err != nil {
+		return false, fmt.Errorf("claim replay key: %w", err)
+	}
+	if claimed > 0 {
+		return true, nil
+	}
+	stored, err := queries.GetInboundEmailReplayKeyContent(ctx, dbmodels.GetInboundEmailReplayKeyContentParams{
+		TenantID:  tenantID,
+		Provider:  providerID,
+		ReplayKey: msg.ReplayKey,
+	})
+	if err != nil {
+		return false, fmt.Errorf("read replay key: %w", err)
+	}
+	return subtle.ConstantTimeCompare(stored, digest[:]) == 1, nil
 }
 
 // storeInboundReply matches msg to its message and stores it there. A mail

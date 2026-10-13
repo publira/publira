@@ -50,6 +50,11 @@ const (
 	// for a clock that runs behind Mailgun's.
 	signatureMaxSkew = 5 * time.Minute
 
+	// maxTokenBytes bounds the token, which becomes the mail's
+	// [inboundprovider.Message.ReplayKey] and is stored as one. Mailgun's are
+	// 50 characters.
+	maxTokenBytes = 256
+
 	// maxFieldBytes bounds one form field, as the SendGrid provider does.
 	// Attachments arrive as file parts that are not read, so the largest
 	// field read is a body of the mail.
@@ -170,6 +175,9 @@ func (p *Provider) ParseWebhook(_ context.Context, payload []byte, headers http.
 	if msg.ID == "" {
 		msg.ID = form["token"]
 	}
+	// The signature covers the timestamp and the token and none of the
+	// fields read above, so the token is what keeps it to this mail.
+	msg.ReplayKey = form["token"]
 	return msg, nil
 }
 
@@ -178,7 +186,7 @@ func (p *Provider) ParseWebhook(_ context.Context, payload []byte, headers http.
 // timestamp no older than signatureMaxAge and no further ahead than
 // signatureMaxSkew.
 func verify(timestamp, token, signature, key string, now time.Time) bool {
-	if timestamp == "" || token == "" || signature == "" {
+	if timestamp == "" || token == "" || len(token) > maxTokenBytes || signature == "" {
 		return false
 	}
 	seconds, err := strconv.ParseInt(timestamp, 10, 64)

@@ -19,6 +19,8 @@ import (
 	"github.com/publira/publira/server/internal/inboundemail"
 	"github.com/publira/publira/server/internal/inboundprovider"
 	"github.com/publira/publira/server/internal/inboundprovider/inboundprovidertest"
+	"github.com/publira/publira/server/internal/inboundprovider/mailgun"
+	"github.com/publira/publira/server/internal/inboundprovider/mailgun/mailguntest"
 	inboundproviders "github.com/publira/publira/server/internal/inboundprovider/providers"
 	"github.com/publira/publira/server/internal/inboundprovider/providers/providerstest"
 	"github.com/publira/publira/server/internal/outbox"
@@ -219,6 +221,86 @@ func TestDBEveryRegisteredInboundProviderStoresAReply(t *testing.T) {
 			harness.server.inboundProviders = inboundprovider.NewRegistry(fixture.Provider())
 			runInboundScenarios(t, harness, fixture, id)
 		})
+	}
+}
+
+// A Mailgun Route post signs a timestamp and a token and not the mail beside
+// them, so a captured signature must not carry another mail, while a retry of
+// the same mail, encoded again with another form boundary, still lands once.
+func TestDBAMailgunSignatureCarriesOneMail(t *testing.T) {
+	harness := newInboundHarness(t)
+	fixture := mailguntest.Fixture{}
+	harness.server.inboundProviders = inboundprovider.NewRegistry(fixture.Provider())
+	seeded := harness.newTenant(t, fixture, true)
+	key := fixture.Credentials()[mailgun.FieldWebhookSigningKey]
+	signedAt := time.Now()
+	signed := func(mail inboundprovidertest.Mail) ([]byte, http.Header) {
+		return mailguntest.Multipart(t, mailguntest.Sign(mailguntest.Fields(mail), key, signedAt, "captured-token"))
+	}
+	mail := inboundprovidertest.Mail{
+		From:      "reader@example.org",
+		To:        "contact+" + seeded.messagePublicID + "@" + inboundTestDomain,
+		Subject:   "Re: About my purchase",
+		Text:      "It opens now, thank you.",
+		MessageID: "reply-" + uuid.NewString() + "@example.org",
+	}
+
+	// A key whose signature expired long ago is forgotten on the way.
+	if _, err := harness.pg.DB.ExecContext(t.Context(), `
+		INSERT INTO inbound_email_replay_keys (tenant_id, provider, replay_key, content_sha256, received_at)
+		VALUES ($1, 'mailgun', 'expired-token', $2, $3)`,
+		seeded.tenant.ID, make([]byte, 32), time.Now().Add(-inboundprovider.ReplayKeyLifetime-time.Minute),
+	); err != nil {
+		t.Fatalf("seed an expired replay key: %v", err)
+	}
+
+	payload, headers := signed(mail)
+	if err := harness.deliver(t, seeded.tenant, mailgun.ID, payload, headers); err != nil {
+		t.Fatalf("ProcessInboundEmailWebhook: %v", err)
+	}
+	var keys []string
+	rows, err := harness.pg.DB.QueryContext(t.Context(), "SELECT replay_key FROM inbound_email_replay_keys WHERE tenant_id = $1", seeded.tenant.ID)
+	if err != nil {
+		t.Fatalf("read replay keys: %v", err)
+	}
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			t.Fatalf("scan replay key: %v", err)
+		}
+		keys = append(keys, key)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read replay keys: %v", err)
+	}
+	if err := rows.Close(); err != nil {
+		t.Fatalf("close replay keys: %v", err)
+	}
+	if len(keys) != 1 || keys[0] != "captured-token" {
+		t.Fatalf("replay keys = %q, want only the one just delivered", keys)
+	}
+	retried, retriedHeaders := signed(mail)
+	if string(retried) == string(payload) {
+		t.Fatal("the retry has the same bytes as the first post, so it proves nothing about encoding")
+	}
+	if err := harness.deliver(t, seeded.tenant, mailgun.ID, retried, retriedHeaders); err != nil {
+		t.Fatalf("ProcessInboundEmailWebhook (retry): %v", err)
+	}
+
+	forged := mail
+	forged.Text = "Please send the refund to another account."
+	forged.MessageID = "forged-" + uuid.NewString() + "@example.org"
+	payload, headers = signed(forged)
+	if err := harness.deliver(t, seeded.tenant, mailgun.ID, payload, headers); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("ProcessInboundEmailWebhook (forged) error = %v, want unauthenticated", err)
+	}
+
+	entries := harness.readerEntries(t, seeded.tenant.ID)
+	if len(entries) != 1 || entries[0].body != mail.Text {
+		t.Fatalf("reader entries = %+v, want only the signed mail", entries)
+	}
+	if notices := harness.staffNotices(t, seeded.tenant.ID); len(notices) != 1 {
+		t.Fatalf("queued %d staff mails, want 1", len(notices))
 	}
 }
 
