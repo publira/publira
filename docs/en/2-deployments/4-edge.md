@@ -46,7 +46,7 @@ An edge that checks the health of what it forwards to, as a load balancer does, 
 
 ### The console APIs are under `/api` too
 
-`publira server` serves the tenant console's and the Platform Console's APIs under `/api` beside the public API, on the port the web apps call, so the edge reaches them on every host it forwards `/api` on. What keeps them from an outsider is their own authentication, as [The console APIs](../3-operations/12-security.md#the-console-apis) describes, not the routing: route `/api` as the table above says, and never to a web app. To keep them off the process the tenants' domains reach as well, run that process with `publira server --role storefront`, and send the console hosts' `/api` and `/images` to another `publira server` that serves the `admin` role.
+`publira server` serves the tenant console's and the Platform Console's APIs under `/api` beside the public API, on the port the web apps call, so the edge reaches them on every host it forwards `/api` on. What keeps them from an outsider is their own authentication, as [The console APIs](../3-operations/12-security.md#the-console-apis) describes, not the routing: route `/api` as the table above says, and never to a web app. To keep them off the process the tenants' domains reach as well, run that process with `publira server --role storefront`, and keep sending the console hosts' `/api` and `/images` to the `publira server` the web apps call, which serves every role.
 
 ### TLS
 

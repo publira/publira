@@ -25,14 +25,14 @@ An install on one host that will not scale the Go processes apart may run the tw
 
 It reads the variables of both, so it is given the union of the `publira server` and `publira worker` rows below. What it gives up is the process boundary: the server and the worker can no longer be scaled independently, and the process the edge forwards internet traffic to also holds the worker's logins, `publira_outbox` among them, which owns River's schema. [`publira server --with-worker`](../../server/cmd/publira/README.md#hosting-the-worker---with-worker) has the details. The Compose file beside this README keeps the two services.
 
-An install that keeps the consoles' APIs and logins out of the process the edge forwards internet traffic to may instead run `publira server` as two processes, each given some of its roles:
+An install that keeps the consoles' APIs and logins out of the process the tenants' domains reach may instead run `publira server` as two processes:
 
 | Process | Image | Serves | Reached by |
 | --- | --- | --- | --- |
 | `publira server --role storefront` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --role storefront` as the container argument | `publira.v1` under `/api`, and the images of every tenant's site, as `publira_public` alone | The edge, on `/api` and `/images` of each tenant's domain |
-| `publira server --role admin,platform` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --role admin,platform` as the container argument | Both consoles' namespaces under `/api`, and the images of every tenant's console | `web-storefront` and `web-admin`, on `/api`; the edge, on `/images` of each console host |
+| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | Everything the one `publira server` above serves | `web-storefront`, `web-admin`, and `web-platform`, on `/api`; the edge, on `/api` and `/images` of each console host |
 
-Together they replace the one `publira server` above, and each reads the `publira server` rows below except where a row says otherwise. The storefront process holds neither console's login nor the web service credential. Every process given roles listens on `:8000` alone, so either can run on a platform that exposes one port per service. [`--role`](../../server/cmd/publira/README.md#serving-some-roles---role) has the details.
+Together they replace the one `publira server` above, and each reads the `publira server` rows below except where a row says otherwise. The storefront process holds neither console's login nor the web service credential. The web apps keep calling a process that serves every role, because `web-admin` calls `publira.v1` for the tenant's theme and catalog as well as `publira.admin.v1`, on the one `PUBLIRA_GRPC_URL` it has. Both listen on `:8000` alone, so either can run on a platform that exposes one port per service. [`--role`](../../server/cmd/publira/README.md#serving-some-roles---role) has the details.
 
 ### Services the processes depend on
 
