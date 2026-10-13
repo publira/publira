@@ -362,6 +362,21 @@ class FileOfflineLibrary implements OfflineLibrary {
     }, notify: true);
   }
 
+  /// Stops writing under the root, completing once nothing does any more.
+  ///
+  /// What was asked before this finishes first; a call made after it is
+  /// answered as on a device with nowhere to write. For whoever removes the
+  /// directory: the app saves a page it fetched without awaiting the save, so
+  /// without this a write can still land in a directory that is being removed.
+  Future<void> close() {
+    return _serialize<void>(() async {
+      _unavailable = true;
+      _home = null;
+      _index = null;
+      _pageBytes = null;
+    });
+  }
+
   StoredEpisode _stored(SavedEpisode episode, Map<String, int> sizes) {
     final keys = episode.pageKeys.toSet();
     return StoredEpisode(
