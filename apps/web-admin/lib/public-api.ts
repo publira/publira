@@ -16,7 +16,7 @@ import { readCurrency } from "./price";
  * and the tag vocabulary in `tag.ts`, which has no admin RPC of its own.
  */
 export const publicApiClient = createPublicApiClient({
-  baseUrl: process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8100",
+  baseUrl: process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8000/api",
   transport: "grpc",
 });
 

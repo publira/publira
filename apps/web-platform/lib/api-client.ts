@@ -20,7 +20,7 @@ import {
 import { resolveWebServiceToken } from "./web-service-token";
 
 // gRPC transport is used for internal Next.js → Go API communication
-const grpcBaseUrl = process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8100";
+const grpcBaseUrl = process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8000/api";
 
 const readForwardedHeaders = async () => {
   const requestHeaders = await headers();

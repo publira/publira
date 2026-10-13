@@ -34,7 +34,7 @@ Series titles, synopses, episode bodies, and the contents of a published page ar
 
 ### API connection
 
-- `PUBLIRA_GRPC_URL` — the internal listener of `publira server`, which every server-side RPC is made on (`http://localhost:8100` when unset)
+- `PUBLIRA_GRPC_URL` — the `/api` base URL on `publira server`, which every server-side RPC is made on (`http://localhost:8000/api` when unset)
 
 ### Request host
 
