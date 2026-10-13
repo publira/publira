@@ -240,9 +240,6 @@ var publicDataTables = []struct {
 	// The inbound mail provider and its credentials, which that webhook reads
 	// on this connection to verify a request.
 	{name: "tenant_inbound_email_config", count: "SELECT count(*) FROM tenant_inbound_email_config"},
-	// The signed keys that webhook records so one signature carries one mail,
-	// on the same connection.
-	{name: "inbound_email_replay_keys", count: "SELECT count(*) FROM inbound_email_replay_keys"},
 	// The auth mails and the staff alerts a reader's comment raises are queued
 	// here on the storefront's connection.
 	{name: "outbox_events", count: "SELECT count(*) FROM outbox_events"},
@@ -393,7 +390,6 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("contact message", "INSERT INTO contact_messages (id, tenant_id, public_id, reply_to_email, body) VALUES ($1, $2, $3, $4, $5)", contactMessageID, first.ID, "CONTACTRLS01", "reader@example.test", "A question for Tenant A.")
 	seed("contact message entry", "INSERT INTO contact_message_entries (id, tenant_id, contact_message_id, direction, body, from_email) VALUES ($1, $2, $3, 'reader', $4, $5)", uuid.Must(uuid.NewV7()), first.ID, contactMessageID, "A follow-up for Tenant A.", "reader@example.test")
 	seed("inbound email settings", "INSERT INTO tenant_inbound_email_config (tenant_id, provider, enabled, domain, credentials_encrypted) VALUES ($1, 'sendgrid', true, 'reply.tenant-a.example.com', '{\"webhook_token\":\"enc:probe\"}')", first.ID)
-	seed("inbound email replay key", "INSERT INTO inbound_email_replay_keys (tenant_id, provider, replay_key, content_sha256) VALUES ($1, 'mailgun', 'rls-probe-token', $2)", first.ID, make([]byte, 32))
 	seed("outbox event", "INSERT INTO outbox_events (id, tenant_id, event_type, payload, idempotency_key) VALUES ($1, $2, 'rls_probe', $3, 'rls:probe')", uuid.Must(uuid.NewV7()), first.ID, `{"tenant_id":"`+first.ID.String()+`"}`)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

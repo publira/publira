@@ -71,7 +71,7 @@ const mailgun: InboundEmailProvider = {
   displayName: "Mailgun",
   fields: [{ name: "webhook_signing_key", required: true, secret: true }],
   id: "mailgun",
-  webhookPath: "/api/v1/webhook/email/mailgun",
+  webhookPath: "/api/v1/webhook/email/mailgun/json",
 };
 
 // A provider no catalog has copy for, so its fields are named as declared.
@@ -290,7 +290,9 @@ describe("TenantInboundEmailSettingsForm", () => {
     ).toBeDefined();
     expect(screen.queryByLabelText("Webhook token")).toBeNull();
     expect(
-      screen.getByText("https://comics.example/api/v1/webhook/email/mailgun")
+      screen.getByText(
+        "https://comics.example/api/v1/webhook/email/mailgun/json"
+      )
     ).toBeDefined();
     expect(
       screen.getByText(

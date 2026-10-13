@@ -1,0 +1,53 @@
+{
+  "Cc": "Sam Reader <sam.reader@example.net>",
+  "Content-Type": "multipart/mixed; boundary=\"_004_DM6PR02MB4433A1B2C3D4E5F6_\"",
+  "Date": "Tue, 6 Oct 2026 01:04:40 +0000",
+  "From": "Alex Reader <alex.reader@example.net>",
+  "In-Reply-To": "<0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>",
+  "Message-Id": "<DM6PR02MB4433A1B2C3D4E5F6@DM6PR02MB.example.outlook.com>",
+  "Mime-Version": "1.0",
+  "Received": "from NAM10-DM6-obe.outbound.protection.outlook.example.com (NAM10-DM6-obe.outbound.protection.outlook.example.com [40.107.93.20]) by mxb.mailgun.org with ESMTP id 6703e1a47d2f9c0b5e8a3d61; Tue, 06 Oct 2026 01:04:52 GMT",
+  "References": "<0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>",
+  "Subject": "Re: About my purchase",
+  "Thread-Topic": "About my purchase",
+  "To": "Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>",
+  "X-Envelope-From": "<alex.reader@example.net>",
+  "X-Mailgun-Incoming": "Yes",
+  "body-plain": "I tried again and it still fails on my tablet. The error says the episode is not available in my region, which seems wrong. A screenshot is attached.\r\n\r\n________________________________\r\nFrom: Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>\r\nSent: Monday, October 5, 2026 6:30 PM\r\nTo: Alex Reader <alex.reader@example.net>\r\nSubject: Re: About my purchase\r\n\r\nWe have restored your purchase. Please open the episode again.\r\n",
+  "content-id-map": "{}",
+  "from": "Alex Reader <alex.reader@example.net>",
+  "message-headers": [
+    [
+      "Received",
+      "from NAM10-DM6-obe.outbound.protection.outlook.example.com (NAM10-DM6-obe.outbound.protection.outlook.example.com [40.107.93.20]) by mxb.mailgun.org with ESMTP id 6703e1a47d2f9c0b5e8a3d61; Tue, 06 Oct 2026 01:04:52 GMT"
+    ],
+    ["X-Envelope-From", "<alex.reader@example.net>"],
+    ["From", "Alex Reader <alex.reader@example.net>"],
+    ["To", "Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>"],
+    ["Cc", "Sam Reader <sam.reader@example.net>"],
+    ["Subject", "=?utf-8?Q?Re:_About_my_purchase?="],
+    ["Thread-Topic", "About my purchase"],
+    ["Date", "Tue, 6 Oct 2026 01:04:40 +0000"],
+    ["Message-Id", "<DM6PR02MB4433A1B2C3D4E5F6@DM6PR02MB.example.outlook.com>"],
+    ["References", "<0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>"],
+    ["In-Reply-To", "<0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>"],
+    [
+      "Content-Type",
+      "multipart/mixed; boundary=\"_004_DM6PR02MB4433A1B2C3D4E5F6_\""
+    ],
+    ["Mime-Version", "1.0"],
+    ["X-Mailgun-Incoming", "Yes"]
+  ],
+  "recipient": "contact+7Hn3QzW9kPfa@reply.example.com",
+  "sender": "alex.reader@example.net",
+  "stripped-signature": "",
+  "stripped-text": "I tried again and it still fails on my tablet. The error says the episode is not available in my region, which seems wrong. A screenshot is attached.",
+  "subject": "Re: About my purchase",
+  "attachments": [
+    {
+      "filename": "screenshot.png",
+      "content-type": "image/png",
+      "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+    }
+  ]
+}

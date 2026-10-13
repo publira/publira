@@ -10,13 +10,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"time"
 )
-
-// ReplayKeyLifetime is how long the inbound flow remembers a
-// [Message.ReplayKey]. A provider that hands one over accepts its signature
-// for no longer than this.
-const ReplayKeyLifetime = 24 * time.Hour
 
 // ErrInvalidSignature reports a request whose signature or token does not
 // verify against the tenant's credentials.
@@ -47,6 +41,9 @@ type Declaration struct {
 	ID          string
 	DisplayName string
 	Fields      []Field
+	// WebhookPathSuffix follows the ID in the webhook path, for a provider
+	// that posts what it signs only to a URL of a given shape.
+	WebhookPathSuffix string
 }
 
 // Field answers the field of d named name.
@@ -71,9 +68,9 @@ func (d Declaration) Missing(c Credentials) []string {
 }
 
 // WebhookPath answers the path on a tenant's storefront that receives the mail
-// the provider id names posts. apps/web-storefront serves it.
-func WebhookPath(id string) string {
-	return "/api/v1/webhook/email/" + id
+// the provider posts. apps/web-storefront serves it.
+func (d Declaration) WebhookPath() string {
+	return "/api/v1/webhook/email/" + d.ID + d.WebhookPathSuffix
 }
 
 // Credentials are a tenant's credential values keyed by [Field.Name].
@@ -120,12 +117,6 @@ type Message struct {
 	// angle brackets, in the order the headers list them.
 	InReplyTo  []string
 	References []string
-	// ReplayKey is the value a provider's signature covers in place of the
-	// request body, as a Mailgun Route post signs a token and not the mail
-	// beside it, or empty for a provider that signs the body or nothing. The
-	// inbound flow accepts a key with the first mail it arrived with only, for
-	// [ReplayKeyLifetime], so a captured signature cannot carry another mail.
-	ReplayKey string
 }
 
 // Ignored is a request about something other than a received mail, such as

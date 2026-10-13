@@ -69,20 +69,22 @@ const resendPost = () => ({
 });
 
 /**
- * A Mailgun Route post of a mail without attachments, which Mailgun sends
- * URL-encoded with its signature among the fields.
+ * A Mailgun Route post to a URL ending in `json`: the mail as one JSON
+ * document, signed in the headers over the whole body.
  */
 const mailgunPost = () => ({
-  body: new URLSearchParams({
+  body: JSON.stringify({
+    attachments: [],
     "body-plain": "Thanks, the episode opens now.",
     from: "Alex Reader <alex.reader@example.net>",
     recipient: "contact+7Hn3QzW9kPfa@reply.example.com",
-    signature:
+  }),
+  headers: {
+    "content-type": "application/json",
+    "x-mailgun-signature":
       "0f3e8a1c5b7d9e2f4a6c8b0d1e3f5a7c9b2d4f6e8a0c1b3d5f7e9a2c4b6d8f0e",
-    timestamp: "1791195151",
-    token: "a3f9c1e07b5d42e8961f0c7d2b4e8a6f31d5c9e2b7a04f6d18",
-  }).toString(),
-  headers: { "content-type": "application/x-www-form-urlencoded" },
+    "x-mailgun-timestamp": "1791195151",
+  },
 });
 
 const post = (
@@ -135,7 +137,7 @@ describe("forwardInboundEmailWebhook", () => {
     });
   });
 
-  it("forwards a Mailgun post with its signed fields intact and answers the 200 Mailgun stops retrying on", async () => {
+  it("forwards a Mailgun post with its signature headers intact and answers the 200 Mailgun stops retrying on", async () => {
     const { body, headers } = mailgunPost();
 
     const response = await forwardInboundEmailWebhook(

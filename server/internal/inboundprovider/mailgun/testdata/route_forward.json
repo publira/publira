@@ -1,0 +1,48 @@
+{
+  "Content-Type": "multipart/alternative; boundary=\"000000000000c1e2f3059a8b7c6d\"",
+  "Date": "Mon, 5 Oct 2026 19:12:18 +0900",
+  "From": "Alex Reader <alex.reader@example.net>",
+  "In-Reply-To": "<0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>",
+  "Message-Id": "<CAJ4k2m1+9xQ@mail.example.net>",
+  "Mime-Version": "1.0",
+  "Received": "by mxa.mailgun.org with SMTP id 6701f2bf0c5a8e3d4b9f1a72; Mon, 05 Oct 2026 10:12:31 GMT",
+  "References": "<0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>",
+  "Subject": "Re: About my purchase",
+  "To": "Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>",
+  "X-Envelope-From": "<alex.reader@example.net>",
+  "X-Mailgun-Incoming": "Yes",
+  "body-html": "<div dir=\"ltr\">Thanks, the episode opens now.<div><br></div><div>Alex</div></div><br><div class=\"gmail_quote\"><div dir=\"ltr\" class=\"gmail_attr\">On Mon, Oct 5, 2026 at 6:30 PM Example Comics &lt;<a href=\"mailto:contact+7Hn3QzW9kPfa@reply.example.com\">contact+7Hn3QzW9kPfa@reply.example.com</a>&gt; wrote:<br></div><blockquote class=\"gmail_quote\" style=\"margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex\">We have restored your purchase. Please open the episode again.</blockquote></div>\r\n",
+  "body-plain": "Thanks, the episode opens now.\r\n\r\nAlex\r\n\r\nOn Mon, Oct 5, 2026 at 6:30 PM Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>\r\nwrote:\r\n\r\n> We have restored your purchase. Please open the episode again.\r\n>\r\n> On 2026-10-05 09:00, you wrote:\r\n> > I bought episode 3 but it is still locked.\r\n>\r\n",
+  "from": "Alex Reader <alex.reader@example.net>",
+  "message-headers": [
+    [
+      "Received",
+      "by mxa.mailgun.org with SMTP id 6701f2bf0c5a8e3d4b9f1a72; Mon, 05 Oct 2026 10:12:31 GMT"
+    ],
+    [
+      "Received",
+      "from mail-qk1-f169.example.net (mail-qk1-f169.example.net [209.85.222.169]) by mxa.mailgun.org with ESMTP id 6701f2bf0c5a8e3d4b9f1a72; Mon, 05 Oct 2026 10:12:31 GMT"
+    ],
+    ["X-Envelope-From", "<alex.reader@example.net>"],
+    ["Mime-Version", "1.0"],
+    ["References", "<0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>"],
+    ["In-Reply-To", "<0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>"],
+    ["From", "Alex Reader <alex.reader@example.net>"],
+    ["Date", "Mon, 5 Oct 2026 19:12:18 +0900"],
+    ["Message-Id", "<CAJ4k2m1+9xQ@mail.example.net>"],
+    ["Subject", "Re: About my purchase"],
+    ["To", "Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>"],
+    [
+      "Content-Type",
+      "multipart/alternative; boundary=\"000000000000c1e2f3059a8b7c6d\""
+    ],
+    ["X-Mailgun-Incoming", "Yes"]
+  ],
+  "recipient": "contact+7Hn3QzW9kPfa@reply.example.com",
+  "sender": "alex.reader@example.net",
+  "stripped-html": "<div dir=\"ltr\">Thanks, the episode opens now.<div><br></div><div>Alex</div></div>",
+  "stripped-signature": "Alex",
+  "stripped-text": "Thanks, the episode opens now.",
+  "subject": "Re: About my purchase",
+  "attachments": []
+}

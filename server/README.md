@@ -187,7 +187,7 @@ The tenant points the inbound domain's MX records at the provider. A domain of i
 
 ### Mailgun
 
-`internal/inboundprovider/mailgun` reads what a Route's `forward()` action posts: the mail already parsed into form fields, as `application/x-www-form-urlencoded`, or as `multipart/form-data` when the mail has attachments. The post carries the whole mail, so nothing is read from Mailgun's API, and the EU and US regions need no setting. Its one field is the HTTP webhook signing key (`webhook_signing_key`, secret and required), found under **Settings → API Security** in Mailgun; for a domain on a subaccount, the subaccount's key and the primary account's both work. In Mailgun, add the inbound domain under **Domains** and point its MX records at the ones Mailgun shows for receiving, then create a Route under **Receiving** with the filter `match_recipient(".*@<inbound domain>")` and the action `forward("https://<tenant-domain>/api/v1/webhook/email/mailgun")`.
+`internal/inboundprovider/mailgun` reads what a Route's `forward()` action posts to a URL ending in `json`: the mail already parsed into one JSON document, attachments included, signed over the whole body in `X-Mailgun-Signature`. The post carries the whole mail, so nothing is read from Mailgun's API, and the EU and US regions need no setting. Its one field is the HTTP webhook signing key (`webhook_signing_key`, secret and required), found under **Settings → API Security** in Mailgun; for a domain on a subaccount, the subaccount's key and the primary account's both work. In Mailgun, add the inbound domain under **Domains** and point its MX records at the ones Mailgun shows for receiving, then create a Route under **Receiving** with the filter `match_recipient(".*@<inbound domain>")` and the action `forward("https://<tenant-domain>/api/v1/webhook/email/mailgun/json")`.
 
 The **Email** page under **Integrations** in `web-admin` is where a tenant administrator does this: it shows the webhook URL to register on the tenant's domain and, once a domain is saved, the reply address pattern `contact+*@<inbound domain>`.
 
@@ -201,7 +201,7 @@ cloudflared tunnel --url http://localhost:3080 --http-host-header localhost:3080
 ngrok http 3080 --host-header=localhost:3080
 ```
 
-The console shows the webhook URL on the tenant's own domain, which no provider can reach on a development machine, so register the tunnel's host in its place: `https://inbound:<token>@<tunnel-host>/api/v1/webhook/email/sendgrid` for SendGrid, `https://<tunnel-host>/api/v1/webhook/email/resend` for Resend, and a Route forwarding to `https://<tunnel-host>/api/v1/webhook/email/mailgun` for Mailgun. The inbound domain still has to be a real one whose MX records you control, such as `reply-dev.<a domain you own>`, pointed at `mx.sendgrid.net` with priority 10 or at the MX records Resend or Mailgun shows for it.
+The console shows the webhook URL on the tenant's own domain, which no provider can reach on a development machine, so register the tunnel's host in its place: `https://inbound:<token>@<tunnel-host>/api/v1/webhook/email/sendgrid` for SendGrid, `https://<tunnel-host>/api/v1/webhook/email/resend` for Resend, and a Route forwarding to `https://<tunnel-host>/api/v1/webhook/email/mailgun/json` for Mailgun. The inbound domain still has to be a real one whose MX records you control, such as `reply-dev.<a domain you own>`, pointed at `mx.sendgrid.net` with priority 10 or at the MX records Resend or Mailgun shows for it.
 
 ### Adding an inbound provider
 

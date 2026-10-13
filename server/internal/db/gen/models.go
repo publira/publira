@@ -407,14 +407,6 @@ type GenreImageVariant struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
-type InboundEmailReplayKey struct {
-	TenantID      uuid.UUID `json:"tenant_id"`
-	Provider      string    `json:"provider"`
-	ReplayKey     string    `json:"replay_key"`
-	ContentSha256 []byte    `json:"content_sha256"`
-	ReceivedAt    time.Time `json:"received_at"`
-}
-
 type ItemRecommendFeature struct {
 	TenantID       uuid.UUID       `json:"tenant_id"`
 	EntityType     string          `json:"entity_type"`

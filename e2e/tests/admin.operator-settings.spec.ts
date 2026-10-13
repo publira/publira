@@ -475,7 +475,7 @@ test.describe("web-admin operator settings", () => {
     ).toBeVisible();
     await expect(
       inbound.getByText(
-        /^https?:\/\/aset\.localhost(?::\d+)?\/api\/v1\/webhook\/email\/mailgun$/u
+        /^https?:\/\/aset\.localhost(?::\d+)?\/api\/v1\/webhook\/email\/mailgun\/json$/u
       )
     ).toBeVisible();
 

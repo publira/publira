@@ -1,13 +1,16 @@
 package mailgun_test
 
 import (
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"net/url"
 	"os"
 	"slices"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -21,14 +24,14 @@ const signingKey = "recorded-signing-key"
 
 var credentials = inboundprovider.Credentials{mailgun.FieldWebhookSigningKey: signingKey}
 
-// recordedPosts are the Route posts in testdata, the content type each was
-// posted with, and the time each was signed at.
+// recordedPosts are the Route posts in testdata, the time each was signed at,
+// and the signature it was posted with.
 var recordedPosts = map[string]struct {
-	contentType string
-	signedAt    int64
+	signedAt  int64
+	signature string
 }{
-	"route_forward.urlencoded": {"application/x-www-form-urlencoded", 1791195151},
-	"route_forward.multipart":  {"multipart/form-data; boundary=f7c2b1d4e9a84c3b", 1791248692},
+	"route_forward.json":            {1791195151, "b4f4cd500e79565f6b0d7c580dbedec44bb0b706bb8ac24679c352ff9c0023ad"},
+	"route_forward_attachment.json": {1791248692, "4fbb03c1354633bb7ad1fa67f0728b9c7fc443e7a4bd55bf375a340a2a0728ee"},
 }
 
 // recorded answers a post a Route made, as it was received, and a provider
@@ -44,7 +47,9 @@ func recorded(t *testing.T, name string) ([]byte, http.Header, *mailgun.Provider
 		t.Fatalf("read %s: %v", name, err)
 	}
 	headers := http.Header{}
-	headers.Set("Content-Type", post.contentType)
+	headers.Set("Content-Type", "application/json")
+	headers.Set("X-Mailgun-Timestamp", strconv.FormatInt(post.signedAt, 10))
+	headers.Set("X-Mailgun-Signature", post.signature)
 	return payload, headers, at(time.Unix(post.signedAt, 0).Add(3 * time.Second))
 }
 
@@ -66,7 +71,7 @@ func parse(t *testing.T, provider *mailgun.Provider, payload []byte, headers htt
 }
 
 func TestParseWebhookReadsAPostWithoutAttachments(t *testing.T) {
-	payload, headers, provider := recorded(t, "route_forward.urlencoded")
+	payload, headers, provider := recorded(t, "route_forward.json")
 	msg := parse(t, provider, payload, headers)
 
 	if msg.From != "alex.reader@example.net" {
@@ -81,9 +86,6 @@ func TestParseWebhookReadsAPostWithoutAttachments(t *testing.T) {
 	if msg.MessageID != "CAJ4k2m1+9xQ@mail.example.net" || msg.ID != msg.MessageID {
 		t.Errorf("MessageID = %q, ID = %q", msg.MessageID, msg.ID)
 	}
-	if msg.ReplayKey != "a3f9c1e07b5d42e8961f0c7d2b4e8a6f31d5c9e2b7a04f6d18" {
-		t.Errorf("ReplayKey = %q, want the signed token", msg.ReplayKey)
-	}
 	want := []string{"0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com"}
 	if !slices.Equal(msg.InReplyTo, want) || !slices.Equal(msg.References, want) {
 		t.Errorf("InReplyTo = %q, References = %q", msg.InReplyTo, msg.References)
@@ -94,7 +96,7 @@ func TestParseWebhookReadsAPostWithoutAttachments(t *testing.T) {
 }
 
 func TestParseWebhookReadsAPostWithAnAttachment(t *testing.T) {
-	payload, headers, provider := recorded(t, "route_forward.multipart")
+	payload, headers, provider := recorded(t, "route_forward_attachment.json")
 	msg := parse(t, provider, payload, headers)
 
 	if msg.From != "alex.reader@example.net" {
@@ -119,55 +121,84 @@ func TestParseWebhookReadsAPostWithAnAttachment(t *testing.T) {
 }
 
 func TestParseWebhookRefusesAPostThatDoesNotVerify(t *testing.T) {
-	payload, headers, provider := recorded(t, "route_forward.urlencoded")
-	signedAt := time.Unix(recordedPosts["route_forward.urlencoded"].signedAt, 0)
-	form, err := url.ParseQuery(string(payload))
-	if err != nil {
-		t.Fatalf("parse the recorded post: %v", err)
-	}
-	altered := func(change func(url.Values)) []byte {
-		values := url.Values{}
-		for name, list := range form {
-			values[name] = slices.Clone(list)
+	payload, headers, provider := recorded(t, "route_forward.json")
+	signedAt := time.Unix(recordedPosts["route_forward.json"].signedAt, 0)
+	altered := func(name, value string) http.Header {
+		changed := headers.Clone()
+		if value == "" {
+			changed.Del(name)
+		} else {
+			changed.Set(name, value)
 		}
-		change(values)
-		return []byte(values.Encode())
+		return changed
 	}
 
 	for name, tc := range map[string]struct {
 		provider    *mailgun.Provider
 		payload     []byte
+		headers     http.Header
 		credentials inboundprovider.Credentials
 	}{
-		"another signing key": {provider, payload, inboundprovider.Credentials{mailgun.FieldWebhookSigningKey: "another-signing-key"}},
-		"no signing key":      {provider, payload, inboundprovider.Credentials{}},
-		"signed too long ago": {at(signedAt.Add(8*time.Hour + time.Second)), payload, credentials},
+		"another signing key": {provider, payload, headers, inboundprovider.Credentials{mailgun.FieldWebhookSigningKey: "another-signing-key"}},
+		"no signing key":      {provider, payload, headers, inboundprovider.Credentials{}},
+		"signed too long ago": {at(signedAt.Add(8*time.Hour + time.Second)), payload, headers, credentials},
 		"signed in the future": {
-			at(signedAt.Add(-5*time.Minute - time.Second)), payload, credentials,
+			at(signedAt.Add(-5*time.Minute - time.Second)), payload, headers, credentials,
 		},
-		"another token": {provider, altered(func(v url.Values) { v.Set("token", strings.Repeat("0", 50)) }), credentials},
-		"another timestamp": {
-			provider, altered(func(v url.Values) { v.Set("timestamp", "1791195150") }), credentials,
+		"another body": {
+			provider, bytes.Replace(payload, []byte("the episode opens now"), []byte("please send a refund"), 1), headers, credentials,
 		},
-		"no signature":        {provider, altered(func(v url.Values) { v.Del("signature") }), credentials},
-		"a signature not hex": {provider, altered(func(v url.Values) { v.Set("signature", "zz") }), credentials},
-		"a timestamp not a number": {
-			provider, altered(func(v url.Values) { v.Set("timestamp", "yesterday") }), credentials,
-		},
+		"another timestamp":        {provider, payload, altered("X-Mailgun-Timestamp", "1791195150"), credentials},
+		"no timestamp":             {provider, payload, altered("X-Mailgun-Timestamp", ""), credentials},
+		"a timestamp not a number": {provider, payload, altered("X-Mailgun-Timestamp", "yesterday"), credentials},
+		"no signature":             {provider, payload, altered("X-Mailgun-Signature", ""), credentials},
+		"a signature not hex":      {provider, payload, altered("X-Mailgun-Signature", "zz"), credentials},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := tc.provider.ParseWebhook(t.Context(), tc.payload, headers, tc.credentials); !errors.Is(err, inboundprovider.ErrInvalidSignature) {
+			if _, err := tc.provider.ParseWebhook(t.Context(), tc.payload, tc.headers, tc.credentials); !errors.Is(err, inboundprovider.ErrInvalidSignature) {
 				t.Fatalf("ParseWebhook error = %v, want ErrInvalidSignature", err)
 			}
 		})
 	}
 }
 
+// Mailgun signs the form a Route posts to a URL not ending in `json`, and
+// every event webhook of the account, over a timestamp and a token alone. A
+// signature of that kind says nothing about the mail beside it, so it does
+// not verify a post.
+func TestParseWebhookRefusesASignatureThatDoesNotCoverTheMail(t *testing.T) {
+	now := time.Now()
+	timestamp := strconv.FormatInt(now.Unix(), 10)
+	const token = "a3f9c1e07b5d42e8961f0c7d2b4e8a6f31d5c9e2b7a04f6d18"
+	mac := hmac.New(sha256.New, []byte(signingKey))
+	mac.Write([]byte(timestamp + token))
+	tokenSignature := hex.EncodeToString(mac.Sum(nil))
+	mail := inboundprovidertest.Mail{From: "reader@example.net", To: "contact+7Hn3QzW9kPfa@reply.example.com", Text: "Please send a refund."}
+
+	t.Run("a form", func(t *testing.T) {
+		form := url.Values{"recipient": {mail.To}, "from": {mail.From}, "body-plain": {mail.Text}, "timestamp": {timestamp}, "token": {token}, "signature": {tokenSignature}}
+		headers := http.Header{}
+		headers.Set("Content-Type", "application/x-www-form-urlencoded")
+		if _, err := mailgun.New().ParseWebhook(t.Context(), []byte(form.Encode()), headers, credentials); !errors.Is(err, inboundprovider.ErrInvalidSignature) {
+			t.Fatalf("ParseWebhook error = %v, want ErrInvalidSignature", err)
+		}
+	})
+	t.Run("JSON under an event's signature", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Set("Content-Type", "application/json")
+		headers.Set("X-Mailgun-Timestamp", timestamp)
+		headers.Set("X-Mailgun-Signature", tokenSignature)
+		if _, err := mailgun.New().ParseWebhook(t.Context(), mailguntest.Encode(t, mailguntest.Document(mail)), headers, credentials); !errors.Is(err, inboundprovider.ErrInvalidSignature) {
+			t.Fatalf("ParseWebhook error = %v, want ErrInvalidSignature", err)
+		}
+	})
+}
+
 // Mailgun retries a post it was refused for 8 hours, and a retry may carry
 // the first attempt's timestamp.
 func TestParseWebhookReadsARetryHoursAfterItWasSigned(t *testing.T) {
-	payload, headers, _ := recorded(t, "route_forward.urlencoded")
-	signedAt := time.Unix(recordedPosts["route_forward.urlencoded"].signedAt, 0)
+	payload, headers, _ := recorded(t, "route_forward.json")
+	signedAt := time.Unix(recordedPosts["route_forward.json"].signedAt, 0)
 	msg := parse(t, at(signedAt.Add(7*time.Hour+55*time.Minute)), payload, headers)
 	if msg.MessageID != "CAJ4k2m1+9xQ@mail.example.net" {
 		t.Errorf("MessageID = %q", msg.MessageID)
@@ -175,15 +206,14 @@ func TestParseWebhookReadsARetryHoursAfterItWasSigned(t *testing.T) {
 }
 
 // A post for a domain on a subaccount carries the subaccount's signature and
-// the primary account's as `parent-signature`, and either key verifies it.
+// the primary account's in `X-Mailgun-Parent-Signature`, and either key
+// verifies it.
 func TestParseWebhookReadsAPostForASubaccountUnderEitherKey(t *testing.T) {
 	mail := inboundprovidertest.Mail{From: "reader@example.net", To: "contact+7Hn3QzW9kPfa@reply.example.com", Text: "Hello"}
-	signedAt := time.Now()
-	timestamp := strconv.FormatInt(signedAt.Unix(), 10)
 	const subaccountKey = "subaccount-signing-key"
-	fields := append(mailguntest.Sign(mailguntest.Fields(mail), subaccountKey, signedAt, "subaccount-token"),
-		mailguntest.Field{Name: "parent-signature", Value: mailguntest.Signature(signingKey, timestamp, "subaccount-token")})
-	payload, headers := mailguntest.Multipart(t, fields)
+	payload := mailguntest.Encode(t, mailguntest.Document(mail))
+	headers := mailguntest.Sign(payload, subaccountKey, time.Now())
+	headers.Set("X-Mailgun-Parent-Signature", mailguntest.Signature(signingKey, headers.Get("X-Mailgun-Timestamp"), payload))
 
 	for name, key := range map[string]string{"the primary account's key": signingKey, "the subaccount's key": subaccountKey} {
 		t.Run(name, func(t *testing.T) {
@@ -201,35 +231,15 @@ func TestParseWebhookReadsAPostForASubaccountUnderEitherKey(t *testing.T) {
 	})
 }
 
-// The token becomes the mail's replay key, which is stored, so a token longer
-// than one is refused even when it is signed.
-func TestParseWebhookRefusesATokenTooLongToKeep(t *testing.T) {
-	mail := inboundprovidertest.Mail{From: "reader@example.net", To: "contact+7Hn3QzW9kPfa@reply.example.com", Text: "Hello"}
-	payload, headers := mailguntest.Multipart(t, mailguntest.Sign(mailguntest.Fields(mail), signingKey, time.Now(), strings.Repeat("0", 257)))
-	if _, err := mailgun.New().ParseWebhook(t.Context(), payload, headers, credentials); !errors.Is(err, inboundprovider.ErrInvalidSignature) {
-		t.Fatalf("ParseWebhook error = %v, want ErrInvalidSignature", err)
-	}
-}
-
-// The signature travels in the form, so a body that is not one carries no
-// signature to verify.
-func TestParseWebhookRefusesARequestThatIsNotAForm(t *testing.T) {
-	headers := http.Header{}
-	headers.Set("Content-Type", "application/json")
-	if _, err := mailgun.New().ParseWebhook(t.Context(), []byte(`{}`), headers, credentials); !errors.Is(err, inboundprovider.ErrInvalidSignature) {
-		t.Fatalf("ParseWebhook error = %v, want ErrInvalidSignature", err)
-	}
-}
-
 func TestParseWebhookFallsBackOnTheHTMLBody(t *testing.T) {
-	fields := []mailguntest.Field{
-		{Name: "recipient", Value: "contact+7Hn3QzW9kPfa@reply.example.com"},
-		{Name: "from", Value: "reader@example.net"},
-		{Name: "body-plain", Value: ""},
-		{Name: "body-html", Value: "<p>It works now.</p><blockquote><p>Please try again.</p></blockquote>"},
+	doc := map[string]any{
+		"recipient":  "contact+7Hn3QzW9kPfa@reply.example.com",
+		"from":       "reader@example.net",
+		"body-plain": "",
+		"body-html":  "<p>It works now.</p><blockquote><p>Please try again.</p></blockquote>",
 	}
-	payload, headers := mailguntest.Multipart(t, mailguntest.Sign(fields, signingKey, time.Now(), "html-token"))
-	msg := parse(t, mailgun.New(), payload, headers)
+	payload := mailguntest.Encode(t, doc)
+	msg := parse(t, mailgun.New(), payload, mailguntest.Sign(payload, signingKey, time.Now()))
 	if got := inboundprovider.StripQuoted(msg.Text); got != "It works now." {
 		t.Errorf("StripQuoted(Text) = %q (Text %q)", got, msg.Text)
 	}
@@ -237,25 +247,24 @@ func TestParseWebhookFallsBackOnTheHTMLBody(t *testing.T) {
 
 func TestParseWebhookRefusesAMailItCannotRead(t *testing.T) {
 	mail := inboundprovidertest.Mail{From: "reader@example.net", To: "contact+7Hn3QzW9kPfa@reply.example.com", Text: "Hello"}
-	for name, change := range map[string]func([]mailguntest.Field) []mailguntest.Field{
-		"no sender": func(fields []mailguntest.Field) []mailguntest.Field {
-			return slices.DeleteFunc(fields, func(f mailguntest.Field) bool {
-				return f.Name == "from" || f.Name == "sender" || f.Name == "From" || f.Name == "message-headers"
-			})
-		},
-		"a header list that is not JSON": func(fields []mailguntest.Field) []mailguntest.Field {
-			for i := range fields {
-				if fields[i].Name == "message-headers" {
-					fields[i].Value = "From: reader@example.net"
-				}
+	withDocument := func(change func(map[string]any)) []byte {
+		doc := mailguntest.Document(mail)
+		change(doc)
+		return mailguntest.Encode(t, doc)
+	}
+	for name, payload := range map[string][]byte{
+		"no sender": withDocument(func(doc map[string]any) {
+			for _, name := range []string{"from", "sender", "From", "message-headers"} {
+				delete(doc, name)
 			}
-			return fields
-		},
+		}),
+		"a header list that is not a list": withDocument(func(doc map[string]any) {
+			doc["message-headers"] = "From: reader@example.net"
+		}),
+		"a body that is not JSON": []byte("recipient=contact%2B7Hn3QzW9kPfa%40reply.example.com"),
 	} {
 		t.Run(name, func(t *testing.T) {
-			fields := change(mailguntest.Fields(mail))
-			payload, headers := mailguntest.Multipart(t, mailguntest.Sign(fields, signingKey, time.Now(), "malformed-token"))
-			if _, err := mailgun.New().ParseWebhook(t.Context(), payload, headers, credentials); !errors.Is(err, inboundprovider.ErrMalformedRequest) {
+			if _, err := mailgun.New().ParseWebhook(t.Context(), payload, mailguntest.Sign(payload, signingKey, time.Now()), credentials); !errors.Is(err, inboundprovider.ErrMalformedRequest) {
 				t.Fatalf("ParseWebhook error = %v, want ErrMalformedRequest", err)
 			}
 		})

@@ -66,6 +66,9 @@ func TestDBInboundEmailProvidersAreListedWithTheirFields(t *testing.T) {
 	if providers[2].WebhookPath != "/api/v1/webhook/email/sendgrid" {
 		t.Errorf("webhook_path = %q", providers[2].WebhookPath)
 	}
+	if providers[0].WebhookPath != "/api/v1/webhook/email/mailgun/json" {
+		t.Errorf("mailgun webhook_path = %q, want the URL a Route posts JSON to", providers[0].WebhookPath)
+	}
 	if len(providers[2].Fields) != 1 || providers[2].Fields[0].Name != sendgrid.FieldWebhookToken || !providers[2].Fields[0].Secret || !providers[2].Fields[0].Required {
 		t.Errorf("sendgrid fields = %v", providers[2].Fields)
 	}
