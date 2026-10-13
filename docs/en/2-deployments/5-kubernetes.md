@@ -99,8 +99,7 @@ kubectl create secret generic web-admin \
   --from-literal=PUBLIRA_WEB_SERVICE_TOKEN="$WEB_SERVICE_TOKEN"
 
 kubectl create secret generic publiractl \
-  --from-literal=PUBLIRA_DB_URL="postgres://postgres:<superuser password>@$DB" \
-  --from-literal=PUBLIRA_PLATFORM_DB_URL="postgres://publira_platform:$PLATFORM_DB_PASSWORD@$DB"
+  --from-literal=PUBLIRA_DB_URL="postgres://postgres:<superuser password>@$DB"
 
 kubectl create secret generic publira-db-roles \
   --from-literal=public="$PUBLIC_DB_PASSWORD" \
@@ -114,10 +113,10 @@ kubectl create secret generic publira-db-roles \
 | Secret | Read by | How |
 | --- | --- | --- |
 | `publira-encryption` | `publira-server`, `publira-worker`, and every `publiractl` run | As environment variables |
-| `publira-server` | `publira-server` | As environment variables |
+| `publira-server` | `publira-server`, and `publiractl setup` | As environment variables. `setup` takes `PUBLIRA_PLATFORM_DB_URL` from it alone, with a `secretKeyRef` |
 | `publira-worker` | `publira-worker` | As environment variables |
 | `web-storefront`, `web-admin` | The web app of the same name | As environment variables |
-| `publiractl` | The `publiractl` Jobs | As environment variables. `PUBLIRA_DB_URL`, the superuser connection, is read by the `db` commands alone, and nothing kept running holds it |
+| `publiractl` | The `db` Jobs | As environment variables. It holds `PUBLIRA_DB_URL`, the superuser connection, alone: the `db` commands are the only ones that read it, so no other `publiractl` command, and nothing kept running, is given it |
 | `publira-db-roles` | The `db roles` Job | As files, one per role, which `db roles` reads with its `--<role>-password-file` flags |
 
 The Secrets in the cluster are not a backup. Keep the encryption keys in your own secret store as well: lose them and every credential the install stored has to be entered again, as [Generate the secrets](./2-installing.md#generate-the-secrets) says. If you keep the secrets in a store the cluster syncs from, such as with an operator that writes Secrets from it, have it write the same Secrets with the same keys.
@@ -200,7 +199,14 @@ kubectl wait --for=condition=Complete --timeout=5m job/publira-db-roles
 kubectl logs job/publira-db-roles
 ```
 
-The log has one line per role. The same Job is how a role's password is rotated later: change it in `publira-db-roles` and in the connection URL that carries it, run the Job again, and restart the Deployment that connects as that role.
+The log has one line per role. The same Job is how a role's password is rotated later: change it in `publira-db-roles` and in the connection URL that carries it, run the Job again, and restart the Deployment that connects as that role. A finished Job does not run again when its manifest is applied, and this one stays for a day after it completes, so delete it first. For `publira_admin`, whose URL `publira-server` carries:
+
+```bash
+kubectl delete job publira-db-roles --ignore-not-found
+kubectl apply -f publira-db-roles.yaml
+kubectl wait --for=condition=Complete --timeout=5m job/publira-db-roles
+kubectl rollout restart deployment/publira-server
+```
 
 ## 4. Start the processes
 
@@ -376,7 +382,7 @@ kubectl rollout status deployment/publira-server deployment/publira-worker deplo
 
 ## 5. Set the install up
 
-`publiractl setup` runs once, either attached to a terminal, where it asks for every value, or as a Job with every value given as a flag. Both connect as `publira_platform` and seal what they save with the encryption keys, so both read the `publira-encryption` Secret the processes read.
+`publiractl setup` runs once, either attached to a terminal, where it asks for every value, or as a Job with every value given as a flag. Both connect as `publira_platform`, with the `PUBLIRA_PLATFORM_DB_URL` of the `publira-server` Secret, and seal what they save with the encryption keys, so both read the `publira-encryption` Secret the processes read. Neither is given the `publiractl` Secret: `setup` never connects as the superuser.
 
 Either way, what it prints goes to the container's log, which your cluster's log collection may keep, so give the administrator a password rather than having one generated: a generated password is printed in the summary. A password typed at the prompt is not echoed, and one given as a file is not printed.
 
@@ -394,10 +400,11 @@ kubectl run publiractl-setup --rm -it --restart=Never \
         "args": ["setup"],
         "stdin": true,
         "tty": true,
-        "envFrom": [
-          {"secretRef": {"name": "publira-encryption"}},
-          {"secretRef": {"name": "publiractl"}}
-        ]
+        "envFrom": [{"secretRef": {"name": "publira-encryption"}}],
+        "env": [{
+          "name": "PUBLIRA_PLATFORM_DB_URL",
+          "valueFrom": {"secretKeyRef": {"name": "publira-server", "key": "PUBLIRA_PLATFORM_DB_URL"}}
+        }]
       }]
     }
   }'
@@ -448,8 +455,12 @@ spec:
           envFrom:
             - secretRef:
                 name: publira-encryption
-            - secretRef:
-                name: publiractl
+          env:
+            - name: PUBLIRA_PLATFORM_DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: publira-server
+                  key: PUBLIRA_PLATFORM_DB_URL
           volumeMounts:
             - name: setup
               mountPath: /run/secrets/setup
@@ -860,7 +871,7 @@ The tenant's domain answers `404`, since the process behind it does not serve th
 
 ## Metrics
 
-`publira server` and `publira worker` serve Prometheus metrics on port `9464` once [Metrics](../3-operations/11-monitoring.md#metrics) turns them on with `OTEL_METRICS_EXPORTER=prometheus` and `OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0`. Each runs in a Pod of its own above, so each listens on that port without colliding. A Pod that runs the two as two containers shares one network namespace, and the second to start cannot listen on a port the first holds: give each its own `OTEL_EXPORTER_PROMETHEUS_PORT`, or keep them in Pods of their own.
+`publira server` and `publira worker` serve Prometheus metrics on port `9464` once [Metrics](../3-operations/11-monitoring.md#metrics) turns them on with `PUBLIRA_METRICS_ENABLED=true`, `OTEL_METRICS_EXPORTER=prometheus`, and `OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0`. Each runs in a Pod of its own above, so each listens on that port without colliding. A Pod that runs the two as two containers shares one network namespace, and the second to start cannot listen on a port the first holds: give each its own `OTEL_EXPORTER_PROMETHEUS_PORT`, or keep them in Pods of their own.
 
 ## Upgrading
 
