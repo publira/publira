@@ -275,12 +275,14 @@ func TestDBCommandsBringUpAnInstallWithoutASuperuser(t *testing.T) {
 // managedAdministrator creates the login a managed PostgreSQL gives its
 // customer in place of a superuser, makes it the owner of the database, as the
 // provider's own tooling does for a database created through it, and returns
-// its URL.
+// its URL. The login is NOINHERIT, the stricter of the two a provider may give,
+// so that db roles cannot lean on a membership it grants the login inheriting
+// by default.
 func managedAdministrator(t *testing.T, superuser string) string {
 	t.Helper()
 	db := openDB(t, superuser)
 	for _, statement := range []string{
-		"CREATE ROLE administrator LOGIN CREATEROLE CREATEDB NOSUPERUSER NOREPLICATION NOBYPASSRLS PASSWORD 'administrator-password'",
+		"CREATE ROLE administrator LOGIN CREATEROLE CREATEDB NOSUPERUSER NOREPLICATION NOBYPASSRLS NOINHERIT PASSWORD 'administrator-password'",
 		"ALTER DATABASE publira OWNER TO administrator",
 	} {
 		if _, err := db.ExecContext(t.Context(), statement); err != nil {

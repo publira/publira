@@ -104,16 +104,17 @@ DROP FUNCTION pg_temp.publira_ensure_role(name, boolean);
 
 -- Membership is what reaches every tenant, so the two tenant-scoped roles are
 -- taken out of publira_rls_bypass if anything ever put them in. The four that
--- work across tenants are made members, and inherit it as every role
--- publira_ensure_role leaves does: a policy applies to the roles whose
--- privileges include its role's, which a membership without INHERIT is not.
+-- work across tenants are made members that inherit it: a policy applies to
+-- the roles whose privileges include its role's, which a membership without
+-- INHERIT is not. A GRANT that leaves INHERIT out takes it from the member's
+-- own attribute, so it is named.
 DO $$
 DECLARE
     role_name name;
 BEGIN
     FOREACH role_name IN ARRAY ARRAY['publira_platform', 'publira_content_stats', 'publira_outbox', 'publira_ticker'] LOOP
         IF NOT pg_has_role(role_name, 'publira_rls_bypass', 'USAGE') THEN
-            EXECUTE format('GRANT publira_rls_bypass TO %I', role_name);
+            EXECUTE format('GRANT publira_rls_bypass TO %I WITH INHERIT TRUE', role_name);
         END IF;
     END LOOP;
     FOREACH role_name IN ARRAY ARRAY['publira_admin', 'publira_public'] LOOP
@@ -129,13 +130,14 @@ $$;
 -- grants as their owner, the transfer by handing them to it. A superuser may
 -- do both outright. Any other connection needs the privileges of
 -- publira_outbox for the first and the right to SET ROLE to it for the second,
--- and a membership gives it both. The role that created publira_outbox may
+-- and a membership gives it both when it names both: a login created NOINHERIT
+-- would otherwise get one it cannot act as the owner through. The role that created publira_outbox may
 -- grant that, and nothing else changes for it: it already owns everything
 -- else in the schema.
 DO $$
 BEGIN
     IF NOT pg_has_role('publira_outbox', 'USAGE') THEN
-        EXECUTE format('GRANT publira_outbox TO %I', current_user);
+        EXECUTE format('GRANT publira_outbox TO %I WITH INHERIT TRUE, SET TRUE', current_user);
     END IF;
 END
 $$;
