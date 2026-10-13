@@ -10,6 +10,13 @@
 # `name:` is fixed, unlike the root compose.yaml, since a host runs one install
 # whose volumes keep their names across every command; `publira` would share
 # them with the development stack, which the root compose.yaml names that.
+#
+# The proxy is alone on the `edge` network with what it forwards to, and every
+# other service is on `default`, so the proxy reaches neither the internal
+# listener of `publira server` nor the database. That needs the two listeners
+# in processes of their own: a container on two networks listens on both, so
+# `server` serves the edge listener alone and `server-internal` the internal
+# one, which only the services on `default` reach.
 
 name: publira-deploy
 
@@ -47,7 +54,7 @@ x-metrics: &metrics
   OTEL_EXPORTER_PROMETHEUS_HOST: ${OTEL_EXPORTER_PROMETHEUS_HOST:-}
 
 x-web-app: &web-app
-  PUBLIRA_GRPC_URL: http://server:8100
+  PUBLIRA_GRPC_URL: http://server-internal:8100
   PNCH_REDIS_URL: redis://valkey:6379
   PNCH_REVALIDATE_TOKEN: ${PUBLIRA_REVALIDATE_TOKEN:?}
 
@@ -125,13 +132,35 @@ services:
     volumes:
       - ../proxy/traefik/dynamic/routes.yaml:/etc/traefik/dynamic/routes.yaml:ro
       - ./services.yaml:/etc/traefik/dynamic/services.yaml:ro
+    networks: [edge]
     depends_on:
       - server
       - web-storefront
       - web-admin
 
+  # The edge listener, which the proxy forwards /api and /images to. It holds
+  # neither the publira_platform login nor the web service token.
   server:
     image: ${PUBLIRA_IMAGE_REGISTRY:?}/publira:${PUBLIRA_IMAGE_TAG:?}
+    command: ["server", "--listener", "edge"]
+    restart: unless-stopped
+    environment:
+      <<: [*secret-encryption, *tenant-url, *revalidate, *tracing, *metrics]
+      PUBLIRA_AUTH_JWT_SECRET: ${PUBLIRA_AUTH_JWT_SECRET:?}
+      PUBLIRA_PUBLIC_DB_URL: postgres://publira_public:${PUBLIRA_PUBLIC_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
+      PUBLIRA_ADMIN_DB_URL: postgres://publira_admin:${PUBLIRA_ADMIN_DB_PASSWORD:?}@postgres:5432/publira?sslmode=disable
+      PUBLIRA_REDIS_URL: redis://valkey:6379
+    networks: [default, edge]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  # The internal listener, which the web apps dial and the proxy cannot reach.
+  server-internal:
+    image: ${PUBLIRA_IMAGE_REGISTRY:?}/publira:${PUBLIRA_IMAGE_TAG:?}
+    command: ["server", "--listener", "internal"]
     restart: unless-stopped
     environment:
       <<: [*secret-encryption, *tenant-url, *revalidate, *tracing, *metrics]
@@ -168,8 +197,9 @@ services:
     environment:
       <<: [*web-app, *tenant-url, *tracing]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_STOREFRONT_AUTH_SECRET:?}
+    networks: [default, edge]
     depends_on:
-      - server
+      - server-internal
       - valkey
 
   web-admin:
@@ -179,8 +209,9 @@ services:
       <<: [*web-app, *tenant-url, *tracing]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_ADMIN_AUTH_SECRET:?}
       PUBLIRA_WEB_SERVICE_TOKEN: ${PUBLIRA_WEB_SERVICE_TOKEN:?}
+    networks: [default, edge]
     depends_on:
-      - server
+      - server-internal
       - valkey
 
   # Optional: the Platform Console. Runs when COMPOSE_PROFILES names
@@ -194,8 +225,9 @@ services:
       <<: [*web-app, *tracing]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_PLATFORM_AUTH_SECRET:-}
       PUBLIRA_WEB_SERVICE_TOKEN: ${PUBLIRA_WEB_SERVICE_TOKEN:?}
+    networks: [default, edge]
     depends_on:
-      - server
+      - server-internal
       - valkey
 
   # Optional: the HTML part of every mail. Runs when COMPOSE_PROFILES names
@@ -245,6 +277,9 @@ secrets:
     environment: PUBLIRA_CONTENT_STATS_DB_PASSWORD
   rustfs-secret-key:
     environment: PUBLIRA_RUSTFS_SECRET_KEY
+
+networks:
+  edge:
 
 volumes:
   postgres-data:
