@@ -466,7 +466,7 @@ func TestSetupRefusesAnSMTPPasswordWithoutAUsername(t *testing.T) {
 func TestSetupRefusesASearchEngineThatFailsItsTest(t *testing.T) {
 	env := startSetupEnv(t)
 	var stderr bytes.Buffer
-	args := append(env.everyFlag(t), "--non-interactive", "--generate-admin-password", "--engine", "opensearch", "--url", "http://"+testutil.FreeAddr(t))
+	args := append(env.everyFlag(t), "--non-interactive", "--generate-admin-password", "--engine", "opensearch", "--url", "http://"+testutil.UnreachableAddr(t))
 	code, _ := runSetup(t, pipedConsole("", &stderr), args...)
 	if code != 1 || !strings.Contains(stderr.String(), "SEARCH_TEST_UNREACHABLE") || !strings.Contains(stderr.String(), "nothing was saved") {
 		t.Fatalf("exit code = %d, stderr = \n%s", code, stderr.String())

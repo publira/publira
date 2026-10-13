@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"regexp"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -195,7 +197,7 @@ func TestServeReturnsListenError(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- Serve(ctx, discardLogger(), []*http.Server{srv}, nil)
+		errCh <- Serve(ctx, discardLogger(), []Listener{{Name: "test", Server: srv}}, nil)
 	}()
 
 	select {
@@ -205,6 +207,52 @@ func TestServeReturnsListenError(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("Serve did not return a listen error")
+	}
+}
+
+// A listener asked for port 0 is given one by the kernel, and the startup log
+// is where that port is reported, so the line names the address bound rather
+// than the one asked for.
+func TestServeLogsTheAddressItBound(t *testing.T) {
+	t.Parallel()
+
+	logs := &lockedBuffer{}
+	srv := New("127.0.0.1:0", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- Serve(ctx, slog.New(slog.NewTextHandler(logs, nil)), []Listener{{Name: "test listener", Server: srv}}, nil)
+	}()
+
+	addr := regexp.MustCompile(`msg="starting test listener" addr=(\S+)`)
+	var m []string
+	for deadline := time.Now().Add(2 * time.Second); m == nil; {
+		if m = addr.FindStringSubmatch(logs.String()); m == nil {
+			if time.Now().After(deadline) {
+				t.Fatalf("no startup line naming the bound address in:\n%s", logs.String())
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+	if strings.HasSuffix(m[1], ":0") {
+		t.Fatalf("startup line names %s, want the port that was bound", m[1])
+	}
+	resp, err := http.Get("http://" + m[1] + "/")
+	if err != nil {
+		t.Fatalf("GET %s: %v", m[1], err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("GET %s status = %d", m[1], resp.StatusCode)
+	}
+
+	cancel()
+	if err := waitServe(t, errCh); err != nil {
+		t.Fatalf("Serve: %v", err)
 	}
 }
 
@@ -462,4 +510,21 @@ func waitServe(t *testing.T, errCh <-chan error) error {
 
 func discardLogger() *slog.Logger {
 	return slog.New(slog.DiscardHandler)
+}
+
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf strings.Builder
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }

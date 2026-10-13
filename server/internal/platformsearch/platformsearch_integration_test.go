@@ -230,7 +230,7 @@ func testTheSearchMovesOntoAnEngineOnceItsIndexIsBuilt(t *testing.T, e *env) {
 // draining.
 func TestAFailedBuildLeavesTheSearchWhereItWas(t *testing.T) {
 	e := newEnv(t)
-	unreachable := "http://" + testutil.FreeAddr(t)
+	unreachable := "http://" + testutil.UnreachableAddr(t)
 	e.save(t, openSearch(unreachable, "publira-catalog"))
 
 	if _, err := e.build(t); err == nil {
@@ -434,7 +434,7 @@ func TestTheConnectionTestReportsAnEngineThatDoesNotAnswer(t *testing.T) {
 		t.Fatalf("Test = (%+v, %v), want it to succeed", result, err)
 	}
 	result, err = tester.Test(ctx, e.platform, auditlog.SystemPlatformActor, platformsearch.TestParams{
-		Settings: platformsearch.Settings{Engine: platformsearch.EngineOpenSearch, URL: "http://" + testutil.FreeAddr(t)},
+		Settings: platformsearch.Settings{Engine: platformsearch.EngineOpenSearch, URL: "http://" + testutil.UnreachableAddr(t)},
 	})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
@@ -571,7 +571,7 @@ func TestAnAnalysisTheEngineRefusesIsNotSaved(t *testing.T) {
 	}
 
 	// An engine that does not answer cannot say, and nothing is saved.
-	unreachable := openSearch("http://"+testutil.FreeAddr(t), alias)
+	unreachable := openSearch("http://"+testutil.UnreachableAddr(t), alias)
 	if _, err := e.saveParams(t, platformsearch.SaveParams{Settings: unreachable, AnalysisMode: platformsearch.AnalysisReplace, Analysis: koreanAnalysis}); !errors.Is(err, platformsearch.ErrAnalysisUnchecked) {
 		t.Fatalf("Save on an engine that does not answer = %v, want ErrAnalysisUnchecked", err)
 	}
