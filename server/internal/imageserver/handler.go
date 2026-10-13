@@ -94,6 +94,7 @@ type ResolverQuerier interface {
 
 type TenantScopedQuerier interface {
 	GetCreatorImageByIDForTenant(ctx context.Context, arg dbmodels.GetCreatorImageByIDForTenantParams) (dbmodels.GetCreatorImageByIDForTenantRow, error)
+	GetUserIconImageByIDForTenant(ctx context.Context, arg dbmodels.GetUserIconImageByIDForTenantParams) (dbmodels.GetUserIconImageByIDForTenantRow, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg dbmodels.GetTenantImageVariantByTypeForTenantParams) (dbmodels.GetTenantImageVariantByTypeForTenantRow, error)
 	GetGenreImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetGenreImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetGenreImageVariantByTypeAndWidthForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error)
@@ -200,6 +201,7 @@ func NewHandler(public, admin SiteDB, logger *slog.Logger, tokens *auth.TokenMan
 	mux.HandleFunc("GET /images/labels/{media_id}/{variant_type}/{width}", h.handleGetLabelImage)
 	mux.HandleFunc("GET /images/series/{media_id}/{variant_type}/{width}", h.handleGetSeriesImage)
 	mux.HandleFunc("GET /images/tenants/{media_id}/{variant_type}", h.handleGetTenantImage)
+	mux.HandleFunc("GET /images/users/{media_id}", h.handleGetUserImage)
 	return &Server{mux: mux, origin: origin}, nil
 }
 
@@ -595,6 +597,61 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 	// The row is read; the conversion below runs without the connection.
 	cleanup()
 	h.serveConverted(w, r, adminHost, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+}
+
+// handleGetUserImage serves a reader's icon, resolved against the tenant whose
+// host the request arrived on. Only the image the account elects is served,
+// so an icon its reader replaced or removed stops being served the moment they
+// do, rather than when the orphan sweep reclaims it. Renditions are not stored
+// per size: Manael resizes the stored image when the request carries its `w`
+// parameter.
+//
+// The response is shared-cacheable, as a creator's icon is: an icon is shown
+// to every reader of a page beside what its account wrote, so it is not one
+// reader's to keep private.
+func (h *Handler) handleGetUserImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	tenant, adminHost, ok := h.tenantFromHost(w, r)
+	if !ok {
+		return
+	}
+
+	mediaID, err := uuid.Parse(r.PathValue("media_id"))
+	if err != nil {
+		http.Error(w, "invalid media_id", http.StatusBadRequest)
+		return
+	}
+
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer cleanup()
+
+	imageRow, err := tenantQueries.GetUserIconImageByIDForTenant(ctx, dbmodels.GetUserIconImageByIDForTenantParams{
+		ID:       mediaID,
+		TenantID: tenant.ID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "image not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to load user image metadata", "error", err, "media_id", mediaID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if strings.TrimSpace(imageRow.ObjectKey) == "" {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	// The row is read; the conversion below runs without the connection.
+	cleanup()
+	h.serveConverted(w, r, adminHost, imageRow.ObjectKey, imageRow.ContentType, publicImageCacheControl, nil)
 }
 
 // handleGetTenantImage serves a tenant branding image — the logo or the

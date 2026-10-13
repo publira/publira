@@ -1266,6 +1266,7 @@ type User struct {
 	EmailVerifiedAt    sql.NullTime   `json:"email_verified_at"`
 	CredentialsVersion int32          `json:"credentials_version"`
 	BirthDate          sql.NullTime   `json:"birth_date"`
+	IconImageID        uuid.NullUUID  `json:"icon_image_id"`
 }
 
 type UserEmailChangeToken struct {
@@ -1303,6 +1304,28 @@ type UserIdentity struct {
 	RefreshTokenEncrypted sql.NullString `json:"refresh_token_encrypted"`
 	RefreshTokenClientID  sql.NullString `json:"refresh_token_client_id"`
 	CreatedAt             time.Time      `json:"created_at"`
+}
+
+type UserImage struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type UserImageVariant struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	UserImageID     uuid.UUID `json:"user_image_id"`
+	Label           string    `json:"label"`
+	StorageProvider string    `json:"storage_provider"`
+	ObjectKey       string    `json:"object_key"`
+	ContentType     string    `json:"content_type"`
+	FileSizeBytes   int64     `json:"file_size_bytes"`
+	Width           int32     `json:"width"`
+	Height          int32     `json:"height"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type UserMfaRecoveryCode struct {

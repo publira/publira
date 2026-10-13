@@ -90,6 +90,27 @@ func (q *Queries) DeleteUnreferencedTenantImages(ctx context.Context, createdBef
 	return result.RowsAffected()
 }
 
+const DeleteUnreferencedUserImages = `-- name: DeleteUnreferencedUserImages :execrows
+DELETE FROM user_images ui
+WHERE ui.created_at < $1
+    AND NOT EXISTS (
+        SELECT 1 FROM users u
+        WHERE u.tenant_id = ui.tenant_id AND u.icon_image_id = ui.id
+    )
+`
+
+// A reader's upload elects the new icon and leaves the previous user_images
+// row behind, and removing the icon leaves the one it cleared, both referenced
+// by nothing. created_at guards the upload still in flight, whose row exists
+// before the account elects it.
+func (q *Queries) DeleteUnreferencedUserImages(ctx context.Context, createdBefore time.Time) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteUnreferencedUserImages, createdBefore)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const ListReferencedObjectKeys = `-- name: ListReferencedObjectKeys :many
 
 WITH candidates AS (
@@ -103,6 +124,7 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
     OR EXISTS (SELECT 1 FROM genre_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM creator_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM episode_image_variants v WHERE v.object_key = c.object_key)
+    OR EXISTS (SELECT 1 FROM user_image_variants v WHERE v.object_key = c.object_key)
 `
 
 // Orphan image reclamation (publiractl job purge-orphan-images).
@@ -127,6 +149,9 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
 //	...SeriesImages / ...TenantImages
 //	  -> no index; one anti-join per run over a table that holds one row per
 //	     entity image
+//	DeleteUnreferencedUserImages
+//	  -> idx_users_tenant_id_icon_image_id, once per user_images row: users
+//	     holds every reader, so the anti-join is a lookup rather than a scan
 //
 // Returns the subset of object_keys that some image variant still names. The
 // caller deletes what it listed from storage and did not get back, so a key

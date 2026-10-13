@@ -160,6 +160,26 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 			args: []any{mustUUID(t), first.tenantID, second.creatorImageID},
 		},
 		{
+			name:       "user_images.user_id",
+			constraint: "user_images_tenant_user_id_fkey",
+			statement:  `INSERT INTO user_images (id, tenant_id, user_id) VALUES ($1, $2, $3)`,
+			args:       []any{mustUUID(t), first.tenantID, second.userID},
+		},
+		{
+			name:       "users.icon_image_id",
+			constraint: "users_tenant_icon_image_id_fkey",
+			statement:  `UPDATE users SET icon_image_id = $2 WHERE id = $1`,
+			args:       []any{first.userID, second.userImageID},
+		},
+		{
+			name:       "user_image_variants.user_image_id",
+			constraint: "user_image_variants_tenant_user_image_id_fkey",
+			statement: `INSERT INTO user_image_variants
+				(id, tenant_id, user_image_id, label, storage_provider, object_key, content_type, file_size_bytes, width, height)
+				VALUES ($1, $2, $3, 'original', 's3', 'tenants/user.png', 'image/png', 1, 512, 512)`,
+			args: []any{mustUUID(t), first.tenantID, second.userImageID},
+		},
+		{
 			name:       "genre_images.genre_id",
 			constraint: "genre_images_tenant_genre_id_fkey",
 			statement:  `INSERT INTO genre_images (id, tenant_id, genre_id) VALUES ($1, $2, $3)`,
@@ -288,6 +308,7 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 	mustExec(t, ctx, db, `UPDATE labels SET eye_catch_image_id = $2 WHERE id = $1`, seeded.labelID, seeded.labelImageID)
 	mustExec(t, ctx, db, `UPDATE genres SET eye_catch_image_id = $2 WHERE id = $1`, seeded.genreID, seeded.genreImageID)
 	mustExec(t, ctx, db, `UPDATE creators SET icon_image_id = $2 WHERE id = $1`, seeded.creatorID, seeded.creatorImageID)
+	mustExec(t, ctx, db, `UPDATE users SET icon_image_id = $2 WHERE id = $1`, seeded.userID, seeded.userImageID)
 
 	cases := []struct {
 		name    string
@@ -312,6 +333,15 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 			deleted:  seeded.creatorImageID,
 			survivor: `SELECT tenant_id, icon_image_id FROM creators WHERE id = $1`,
 			owner:    seeded.creatorID,
+		},
+		// users.tenant_id is nullable, so the untold form would not fail here:
+		// it would quietly take the account out of its tenant.
+		{
+			name:     "users.icon_image_id",
+			delete:   `DELETE FROM user_images WHERE id = $1`,
+			deleted:  seeded.userImageID,
+			survivor: `SELECT tenant_id, icon_image_id FROM users WHERE id = $1`,
+			owner:    seeded.userID,
 		},
 		{
 			name:     "labels.eye_catch_image_id",
@@ -374,6 +404,7 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 type foreignKeyTenant struct {
 	tenantID          uuid.UUID
 	userID            uuid.UUID
+	userImageID       uuid.UUID
 	seriesID          uuid.UUID
 	seriesImageID     uuid.UUID
 	episodeImageID    uuid.UUID
@@ -402,6 +433,9 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 		prefix+"TENANT001", strings.ToLower(prefix)+".example.com", strings.ToLower(prefix)+"-admin.example.com", prefix+" Tenant")
 	seeded.userID = mustInsertUser(t, ctx, db, seeded.tenantID,
 		prefix+"USER00001", strings.ToLower(prefix)+"-reader@example.com", prefix+" Reader")
+	seeded.userImageID = mustUUID(t)
+	mustExec(t, ctx, db, `INSERT INTO user_images (id, tenant_id, user_id) VALUES ($1, $2, $3)`,
+		seeded.userImageID, seeded.tenantID, seeded.userID)
 
 	episodeID := mustInsertEpisode(t, ctx, db, seeded.tenantID, prefix+"EPISODE01", prefix+" Episode")
 	mustQueryRow(t, ctx, db, `SELECT series_id FROM episodes WHERE id = $1`, &seeded.seriesID, episodeID)

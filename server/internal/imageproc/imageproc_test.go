@@ -662,3 +662,127 @@ func TestBuildLogo_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
 		t.Fatal("want error for an image whose declared pixel count exceeds the limit")
 	}
 }
+
+// --- TestBuildUserIcon ---
+
+func TestBuildUserIcon_CropsNonSquareJPEGToSquareJPEG(t *testing.T) {
+	raw := makeJPEG(t, 400, 200)
+	variant, err := imageproc.BuildUserIcon(raw, "image/jpeg", nil)
+	if err != nil {
+		t.Fatalf("BuildUserIcon: %v", err)
+	}
+	if variant.Width != 200 || variant.Height != 200 {
+		t.Fatalf("size = %dx%d, want 200x200", variant.Width, variant.Height)
+	}
+	if variant.ContentType != "image/jpeg" || variant.Extension != ".jpg" {
+		t.Fatalf("format = %q %q, want image/jpeg .jpg", variant.ContentType, variant.Extension)
+	}
+	if variant.Label != "original" {
+		t.Fatalf("label = %q, want original", variant.Label)
+	}
+	cfg, format, err := image.DecodeConfig(bytes.NewReader(variant.Data))
+	if err != nil {
+		t.Fatalf("DecodeConfig: %v", err)
+	}
+	if format != "jpeg" || cfg.Width != 200 || cfg.Height != 200 {
+		t.Fatalf("encoded = %s %dx%d, want jpeg 200x200", format, cfg.Width, cfg.Height)
+	}
+}
+
+func TestBuildUserIcon_StoresAnythingButJPEGAsPNG(t *testing.T) {
+	raw := makePNG(t, 300, 300)
+	variant, err := imageproc.BuildUserIcon(raw, "image/png", nil)
+	if err != nil {
+		t.Fatalf("BuildUserIcon: %v", err)
+	}
+	if variant.ContentType != "image/png" || variant.Extension != ".png" {
+		t.Fatalf("format = %q %q, want image/png .png", variant.ContentType, variant.Extension)
+	}
+	if _, format, err := image.DecodeConfig(bytes.NewReader(variant.Data)); err != nil || format != "png" {
+		t.Fatalf("encoded format = %q (%v), want png", format, err)
+	}
+}
+
+func TestBuildUserIcon_ScalesOversizedSourceDown(t *testing.T) {
+	raw := makePNG(t, 2000, 1600)
+	variant, err := imageproc.BuildUserIcon(raw, "image/png", nil)
+	if err != nil {
+		t.Fatalf("BuildUserIcon: %v", err)
+	}
+	if variant.Width != imageproc.UserIconMaxDimension || variant.Height != imageproc.UserIconMaxDimension {
+		t.Fatalf("size = %dx%d, want %dx%d", variant.Width, variant.Height, imageproc.UserIconMaxDimension, imageproc.UserIconMaxDimension)
+	}
+}
+
+func TestBuildUserIcon_CutsAtTheGivenRectangle(t *testing.T) {
+	raw := makeHalvedPNG(t, 600, 300)
+	variant, err := imageproc.BuildUserIcon(raw, "image/png", &imageproc.CropRect{X: 300, Y: 0, Width: 300, Height: 300})
+	if err != nil {
+		t.Fatalf("BuildUserIcon: %v", err)
+	}
+	if variant.Width != 300 || variant.Height != 300 {
+		t.Fatalf("size = %dx%d, want 300x300", variant.Width, variant.Height)
+	}
+	if r, _, b := sampleCenter(t, variant.Data); r != 0 || b != 255 {
+		t.Fatalf("centre = (r %d, b %d), want the blue right half", r, b)
+	}
+}
+
+func TestBuildUserIcon_FitsASquareInsideAnOffSquareRectangle(t *testing.T) {
+	raw := makePNG(t, 600, 600)
+	variant, err := imageproc.BuildUserIcon(raw, "image/png", &imageproc.CropRect{X: 10, Y: 10, Width: 300, Height: 296})
+	if err != nil {
+		t.Fatalf("BuildUserIcon: %v", err)
+	}
+	if variant.Width != 296 || variant.Height != 296 {
+		t.Fatalf("size = %dx%d, want 296x296", variant.Width, variant.Height)
+	}
+}
+
+func TestBuildUserIcon_RejectsARectangleOutsideTheSource(t *testing.T) {
+	raw := makePNG(t, 300, 300)
+	_, err := imageproc.BuildUserIcon(raw, "image/png", &imageproc.CropRect{X: 100, Y: 100, Width: 300, Height: 300})
+	if !errors.Is(err, imageproc.ErrInvalidCrop) {
+		t.Fatalf("err = %v, want ErrInvalidCrop", err)
+	}
+}
+
+func TestBuildUserIcon_RejectsARectangleBelowTheMinimum(t *testing.T) {
+	raw := makePNG(t, 600, 600)
+	_, err := imageproc.BuildUserIcon(raw, "image/png", &imageproc.CropRect{X: 0, Y: 0, Width: 600, Height: imageproc.UserIconMinDimension - 1})
+	if !errors.Is(err, imageproc.ErrInvalidCrop) {
+		t.Fatalf("err = %v, want ErrInvalidCrop for a selection the source could have covered", err)
+	}
+}
+
+func TestBuildUserIcon_RejectsTooSmallImage(t *testing.T) {
+	raw := makePNG(t, imageproc.UserIconMinDimension-1, 600)
+	_, err := imageproc.BuildUserIcon(raw, "image/png", nil)
+	if err == nil {
+		t.Fatal("want error for an image below the minimum dimension")
+	}
+	if errors.Is(err, imageproc.ErrInvalidCrop) {
+		t.Fatalf("err = %v, want the image blamed rather than a crop that was never given", err)
+	}
+}
+
+func TestBuildUserIcon_RejectsNonImageContentType(t *testing.T) {
+	raw := makePNG(t, 300, 300)
+	if _, err := imageproc.BuildUserIcon(raw, "application/pdf", nil); err == nil {
+		t.Fatal("want error for a non-image content type")
+	}
+}
+
+func TestBuildUserIcon_RejectsEmptyData(t *testing.T) {
+	if _, err := imageproc.BuildUserIcon(nil, "image/png", nil); err == nil {
+		t.Fatal("want error for empty data")
+	}
+}
+
+func TestBuildUserIcon_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
+	raw := pngHeaderWithDeclaredSize(40_000, 40_000)
+
+	if _, err := imageproc.BuildUserIcon(raw, "image/png", nil); err == nil {
+		t.Fatal("want error for an image whose declared pixel count exceeds the limit")
+	}
+}
