@@ -213,7 +213,7 @@ If your install runs images you build yourself, build the new release's from the
 If you decided to [stop the processes](#decide-whether-to-stop-the-processes-first), stop them first, naming `web-platform` and `email-renderer` too if you run them:
 
 ```bash
-docker compose stop server worker web-storefront web-admin
+docker compose stop server web-storefront web-admin
 ```
 
 Then take the backup:
@@ -256,7 +256,7 @@ docker compose exec postgres psql -U postgres -d publira -c "UPDATE schema_migra
 To go back to the release you ran instead:
 
 ```bash
-docker compose stop server worker web-storefront web-admin
+docker compose stop server web-storefront web-admin
 docker compose exec postgres psql -U postgres -d postgres -c 'DROP DATABASE publira' -c 'CREATE DATABASE publira'
 docker compose exec -T postgres pg_restore -U postgres -d publira < publira-before-upgrade.dump
 git checkout <current tag>

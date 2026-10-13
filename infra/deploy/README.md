@@ -23,7 +23,7 @@ An install on one host that will not scale the Go processes apart may run the tw
 | --- | --- | --- | --- |
 | `publira server --with-worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --with-worker` as the container argument | Everything both processes above serve, on the same two listeners (`:8000`, `:8003`) and the same six database logins | What reaches the two processes above |
 
-It reads the variables of both, so it is given the union of the `publira server` and `publira worker` rows below. What it gives up is the process boundary: the server and the worker can no longer be scaled independently, and the process the edge forwards internet traffic to also holds the worker's logins, `publira_outbox` among them, which owns River's schema. [`publira server --with-worker`](../../server/cmd/publira/README.md#hosting-the-worker---with-worker) has the details. The Compose file beside this README keeps the two services.
+It reads the variables of both, so it is given the union of the `publira server` and `publira worker` rows below. What it gives up is the process boundary: the server and the worker can no longer be scaled independently, and the process the edge forwards internet traffic to also holds the worker's logins, `publira_outbox` among them, which owns River's schema. [`publira server --with-worker`](../../server/cmd/publira/README.md#hosting-the-worker---with-worker) has the details. The Compose file beside this README runs this one process. An install runs the two apart when either matters to it: to scale them separately, or to keep the worker's logins out of the process the edge forwards to.
 
 An install that keeps the consoles' APIs and logins out of the process the tenants' domains reach may instead run `publira server` as two processes:
 
@@ -135,7 +135,7 @@ On every later release, run `db migrate` and then `db roles` with that release's
 
 ## Running it with Docker Compose
 
-[`compose.yaml`](compose.yaml) runs an install on one host from the images: PostgreSQL, Valkey, RustFS as the object store, Traefik as the reverse proxy, the four long-lived processes, and `publiractl` as a service that is only ever run by hand. Each process gets the variables in [Environment variables](#environment-variables), under the names given there.
+[`compose.yaml`](compose.yaml) runs an install on one host from the images: PostgreSQL, Valkey, RustFS as the object store, Traefik as the reverse proxy, the web apps, `publira server --with-worker` as the `server` service, and `publiractl` as a service that is only ever run by hand. Each process gets the variables in [Environment variables](#environment-variables), under the names given there, and `server` those of both `publira server` and `publira worker`.
 
 The services share two networks. `edge` holds the proxy and what it forwards to: `server` and the web apps. `default` holds every service but the proxy. The proxy therefore reaches neither the database nor Valkey.
 
@@ -149,7 +149,7 @@ The images are `${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}`, where `<
 
 The optional processes run when `COMPOSE_PROFILES` names them — `web-platform`, `email-renderer`, or both, comma-separated — together with the variables `.env.example` lists under each.
 
-OpenTelemetry export is off unless `.env` turns it on: `PUBLIRA_TRACING_ENABLED`, `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_TRACES_SAMPLER`, and `OTEL_TRACES_SAMPLER_ARG` reach `publira server`, the worker, and the web apps under the same names, and `PUBLIRA_METRICS_ENABLED`, `OTEL_METRICS_EXPORTER`, and `OTEL_EXPORTER_PROMETHEUS_HOST` reach `publira server` and the worker. An empty value is passed as empty, which every process reads as unset. What each one does is in [`server/README.md`](../../server/README.md#distributed-tracing-opentelemetry) and [`packages/tracing`](../../packages/tracing/README.md).
+OpenTelemetry export is off unless `.env` turns it on: `PUBLIRA_TRACING_ENABLED`, `PUBLIRA_DEPLOYMENT_ENVIRONMENT`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_TRACES_SAMPLER`, and `OTEL_TRACES_SAMPLER_ARG` reach `server` and the web apps under the same names, and `PUBLIRA_METRICS_ENABLED`, `OTEL_METRICS_EXPORTER`, and `OTEL_EXPORTER_PROMETHEUS_HOST` reach `server` alone. An empty value is passed as empty, which every process reads as unset. What each one does is in [`server/README.md`](../../server/README.md#distributed-tracing-opentelemetry) and [`packages/tracing`](../../packages/tracing/README.md).
 
 From `infra/deploy/`, an empty install is brought into service with:
 
@@ -179,4 +179,4 @@ On every later release, check out its tag, set `PUBLIRA_IMAGE_TAG` to its versio
 
 The install's state is the two volumes, `postgres-data` and `rustfs-data`, and the encryption keys in `.env`; Valkey keeps nothing. [Backup and restore](../../docs/en/2-deployments/6-backup-and-restore.md#on-the-docker-compose-install) backs them up and brings them back on an empty host.
 
-`task deploy:check` renders the file with every profile and checks that `.env.example` lists exactly what it reads. `task deploy:smoke` takes the images `task docker:verify:full` built through the steps above, under a project name of its own, and checks that the tenant site, the tenant console, and the Platform Console answer through the edge, that the proxy reaches `server` and the web apps and not the database or Valkey, and that image delivery resizes and converts an image through libvips.
+`task deploy:check` renders the file with every profile and checks that `.env.example` lists exactly what it reads. `task deploy:smoke` takes the images `task docker:verify:full` built through the steps above, under a project name of its own, and checks that the tenant site, the tenant console, and the Platform Console answer through the edge, that `server` is the one container of the publira image and answers the readiness of both processes and drains the Outbox, that the proxy reaches `server` and the web apps and not the database or Valkey, and that image delivery resizes and converts an image through libvips.
