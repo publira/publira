@@ -56,7 +56,7 @@ gcloud compute addresses create publira-lb --global
 gcloud compute addresses describe publira-lb --global --format='value(address)'
 ```
 
-Give each Cloud Run resource a service account of its own, and grant each one `roles/secretmanager.secretAccessor` on the secrets it is given below and nothing else.
+Give each Cloud Run resource a service account of its own, each of the three `publiractl` jobs included, and grant each one `roles/secretmanager.secretAccessor` on the secrets it is given below and nothing else.
 
 ## Secrets
 
@@ -115,14 +115,14 @@ Create the two jobs from the release's `publiractl` image, on the same subnet, a
 gcloud run jobs deploy publiractl-migrate \
   --region=us-central1 --image=ghcr.io/publira/publiractl:<tag> --args=db,migrate \
   --network=publira --subnet=publira-run --vpc-egress=all-traffic \
-  --service-account=publiractl@<project>.iam.gserviceaccount.com \
+  --service-account=publiractl-migrate@<project>.iam.gserviceaccount.com \
   --set-secrets=PUBLIRA_DB_URL=publira-superuser-db-url:latest
 
 gcloud run jobs deploy publiractl-roles \
   --region=us-central1 --image=ghcr.io/publira/publiractl:<tag> \
   --args=db,roles,--public-password-file,/run/secrets/public/password,--admin-password-file,/run/secrets/admin/password,--platform-password-file,/run/secrets/platform/password,--outbox-password-file,/run/secrets/outbox/password,--ticker-password-file,/run/secrets/ticker/password,--content-stats-password-file,/run/secrets/content-stats/password \
   --network=publira --subnet=publira-run --vpc-egress=all-traffic \
-  --service-account=publiractl@<project>.iam.gserviceaccount.com \
+  --service-account=publiractl-roles@<project>.iam.gserviceaccount.com \
   --set-secrets=PUBLIRA_DB_URL=publira-superuser-db-url:latest,/run/secrets/public/password=publira-public-db-password:latest,/run/secrets/admin/password=publira-admin-db-password:latest,/run/secrets/platform/password=publira-platform-db-password:latest,/run/secrets/outbox/password=publira-outbox-db-password:latest,/run/secrets/ticker/password=publira-ticker-db-password:latest,/run/secrets/content-stats/password=publira-content-stats-db-password:latest
 
 gcloud run jobs execute publiractl-migrate --region=us-central1 --wait
@@ -192,7 +192,7 @@ gcloud run jobs deploy publiractl-setup \
   --region=us-central1 --image=ghcr.io/publira/publiractl:<tag> \
   --args=setup,--non-interactive,--default-locale,en,--bucket,<bucket>,--endpoint,https://storage.googleapis.com,--region,auto,--force-path-style,--access-key-id,<HMAC access ID>,--secret-access-key-file,/run/secrets/storage/secret,--host,<SMTP host>,--port,587,--encryption,starttls,--username,<SMTP user>,--from-address,no-reply@example.com,--smtp-password-file,/run/secrets/smtp/password,--tenant-name,Example Comics,--domain,comics.example.com,--admin-email,owner@comics.example.com,--admin-name,Owner,--admin-password-file,/run/secrets/admin/password \
   --network=publira --subnet=publira-run --vpc-egress=all-traffic \
-  --service-account=publiractl@<project>.iam.gserviceaccount.com \
+  --service-account=publiractl-setup@<project>.iam.gserviceaccount.com \
   --set-env-vars=PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID=k1,AWS_REQUEST_CHECKSUM_CALCULATION=when_required,AWS_RESPONSE_CHECKSUM_VALIDATION=when_required \
   --set-secrets=PUBLIRA_PLATFORM_DB_URL=publira-platform-db-url:latest,PUBLIRA_SECRET_ENCRYPTION_KEYS=publira-secret-encryption-keys:latest,/run/secrets/storage/secret=publira-storage-secret:latest,/run/secrets/smtp/password=publira-smtp-password:latest,/run/secrets/admin/password=publira-admin-password:latest
 
