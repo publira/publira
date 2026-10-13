@@ -185,11 +185,15 @@ The tenant points the inbound domain's MX records at the provider. A domain of i
 
 `internal/inboundprovider/resend` verifies the Svix signature of an `email.received` event and reads the mail's text and headers from Resend's receiving API, since the event carries only metadata. Its fields are the API key (`api_key`) and the webhook signing secret (`webhook_secret`), both secret and required. In Resend, add the inbound domain for receiving, and register `https://<tenant-domain>/api/v1/webhook/email/resend` as a webhook for `email.received`.
 
+### Mailgun
+
+`internal/inboundprovider/mailgun` reads what a Route's `forward()` action posts: the mail already parsed into form fields, as `application/x-www-form-urlencoded`, or as `multipart/form-data` when the mail has attachments. The post carries the whole mail, so nothing is read from Mailgun's API, and the EU and US regions need no setting. Its one field is the HTTP webhook signing key (`webhook_signing_key`, secret and required), found under **Settings → API Security** in Mailgun, which every post's `timestamp`, `token`, and `signature` fields are verified against. In Mailgun, add the inbound domain under **Domains** and point its MX records at the ones Mailgun shows for receiving, then create a Route under **Receiving** with the filter `match_recipient(".*@<inbound domain>")` and the action `forward("https://<tenant-domain>/api/v1/webhook/email/mailgun")`.
+
 The **Email** page under **Integrations** in `web-admin` is where a tenant administrator does this: it shows the webhook URL to register on the tenant's domain and, once a domain is saved, the reply address pattern `contact+*@<inbound domain>`.
 
 ### Receiving replies on a development machine
 
-Neither provider has a CLI that forwards to `localhost` the way the Stripe and PAY.JP CLIs do: both deliver from the internet, so the edge needs a public HTTPS URL in front of it. Open a tunnel to `localhost:3080` that rewrites the `Host` header to the seed tenant's domain, which is what `web-storefront` resolves the tenant from:
+No provider has a CLI that forwards to `localhost` the way the Stripe and PAY.JP CLIs do: both deliver from the internet, so the edge needs a public HTTPS URL in front of it. Open a tunnel to `localhost:3080` that rewrites the `Host` header to the seed tenant's domain, which is what `web-storefront` resolves the tenant from:
 
 ```bash
 cloudflared tunnel --url http://localhost:3080 --http-host-header localhost:3080
@@ -197,7 +201,7 @@ cloudflared tunnel --url http://localhost:3080 --http-host-header localhost:3080
 ngrok http 3080 --host-header=localhost:3080
 ```
 
-The console shows the webhook URL on the tenant's own domain, which no provider can reach on a development machine, so register the tunnel's host in its place: `https://inbound:<token>@<tunnel-host>/api/v1/webhook/email/sendgrid` for SendGrid, `https://<tunnel-host>/api/v1/webhook/email/resend` for Resend. The inbound domain still has to be a real one whose MX records you control, such as `reply-dev.<a domain you own>`, pointed at `mx.sendgrid.net` with priority 10 or at the MX record Resend shows for it.
+The console shows the webhook URL on the tenant's own domain, which no provider can reach on a development machine, so register the tunnel's host in its place: `https://inbound:<token>@<tunnel-host>/api/v1/webhook/email/sendgrid` for SendGrid, `https://<tunnel-host>/api/v1/webhook/email/resend` for Resend, and a Route forwarding to `https://<tunnel-host>/api/v1/webhook/email/mailgun` for Mailgun. The inbound domain still has to be a real one whose MX records you control, such as `reply-dev.<a domain you own>`, pointed at `mx.sendgrid.net` with priority 10 or at the MX records Resend or Mailgun shows for it.
 
 ### Adding an inbound provider
 

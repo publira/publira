@@ -143,7 +143,7 @@ The checkout button on a paid episode sends the reader to the URL `StartEpisodeC
 
 ### Inbound email
 
-`POST /api/v1/webhook/email/<provider>` receives a reader's emailed reply from the tenant's inbound email provider (`sendgrid` or `resend`) and forwards the raw body and the request headers to `ContactService.ProcessInboundEmailWebhook` with the provider id; the token and the signature are verified only on the API server. How the reply is matched to its contact message is in the [server README](../../server/README.md).
+`POST /api/v1/webhook/email/<provider>` receives a reader's emailed reply from the tenant's inbound email provider (`sendgrid`, `resend`, or `mailgun`) and forwards the raw body and the request headers to `ContactService.ProcessInboundEmailWebhook` with the provider id; the token and the signature are verified only on the API server. How the reply is matched to its contact message is in the [server README](../../server/README.md).
 
 ### Sign in with Apple and Google
 

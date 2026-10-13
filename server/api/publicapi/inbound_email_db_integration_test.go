@@ -363,7 +363,7 @@ func runInboundScenarios(t *testing.T, h *inboundHarness, fixture inboundprovide
 	t.Run("an unregistered provider is not found", func(t *testing.T) {
 		seeded := h.newTenant(t, fixture, true)
 		payload, headers := fixture.Received(t, credentials, reply(seeded))
-		err := h.deliver(t, seeded.tenant, "mailgun", payload, headers)
+		err := h.deliver(t, seeded.tenant, "postmark", payload, headers)
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("ProcessInboundEmailWebhook error = %v, want not_found", err)
 		}
