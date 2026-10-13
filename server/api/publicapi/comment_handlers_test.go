@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -170,16 +171,17 @@ func TestValidateCommentReportNote(t *testing.T) {
 	}
 }
 
-// The creator mark is read inside the page's own statement, so a page of
-// comments costs the tenant, the episode, and the page and nothing per
-// comment. This is the one property of the list a real database cannot show,
-// so it is asserted here: sqlmock fails on any statement it was not told to
-// expect.
+// The creator mark is read inside the page's own statement, and the authors'
+// icons in one statement after it, so a page of comments costs the tenant, the
+// episode, the page, and its icons and nothing per comment. This is the one
+// property of the list a real database cannot show, so it is asserted here:
+// sqlmock fails on any statement it was not told to expect.
 func TestListEpisodeCommentsReadsTheCreatorMarkWithThePage(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	episodeID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
 	creatorID := uuid.Must(uuid.NewV7())
+	iconImageID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Second)
 
 	testServer, mock := newTestPublicServer(t)
@@ -188,12 +190,17 @@ func TestListEpisodeCommentsReadsTheCreatorMarkWithThePage(t *testing.T) {
 		WithArgs(tenantID, sqlmock.AnyArg(), nil, "web").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(0), nil, "published", nil, now, "SERIES001", "Series Title", nil, nil, nil, nil, nil, nil, nil, nil, true, nil, int64(0), "all"))
-	rows := sqlmock.NewRows([]string{"id", "public_id", "body", "created_at", "user_id", "author_public_id", "author_name", "creator_id", "creator_public_id", "creator_name"}).
-		AddRow(uuid.Must(uuid.NewV7()), "COMMENT00001", "From the author.", now, uuid.Must(uuid.NewV7()), "USERCREATOR1", "Account Name", creatorID, "CREATOR00001", "Pen Name").
-		AddRow(uuid.Must(uuid.NewV7()), "COMMENT00002", "From a reader.", now, uuid.Must(uuid.NewV7()), "USERREADER01", "Reader", nil, nil, nil).
-		AddRow(uuid.Must(uuid.NewV7()), "COMMENT00003", "From another reader.", now, uuid.Must(uuid.NewV7()), "USERREADER02", "Reader", nil, nil, nil)
+	authorID := uuid.Must(uuid.NewV7())
+	rows := sqlmock.NewRows([]string{"id", "public_id", "body", "created_at", "user_id", "author_public_id", "author_name", "author_icon_image_id", "creator_id", "creator_public_id", "creator_name"}).
+		AddRow(uuid.Must(uuid.NewV7()), "COMMENT00001", "From the author.", now, authorID, "USERCREATOR1", "Account Name", iconImageID, creatorID, "CREATOR00001", "Pen Name").
+		AddRow(uuid.Must(uuid.NewV7()), "COMMENT00002", "From a reader.", now, uuid.Must(uuid.NewV7()), "USERREADER01", "Reader", nil, nil, nil, nil).
+		AddRow(uuid.Must(uuid.NewV7()), "COMMENT00003", "From the author again.", now, authorID, "USERCREATOR1", "Account Name", iconImageID, creatorID, "CREATOR00001", "Pen Name")
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedEpisodeCommentsByCreatedAtDesc)).
 		WillReturnRows(rows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListUserIconImageVariantsByImageIDs)).
+		WithArgs(tenantID, pq.Array([]uuid.UUID{iconImageID})).
+		WillReturnRows(sqlmock.NewRows([]string{"user_image_id", "updated_at", "label", "content_type", "width", "height", "file_size_bytes"}).
+			AddRow(iconImageID, now, "original", "image/png", int32(256), int32(256), int64(1024)))
 
 	client := publirav1connect.NewCommentServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	res, err := client.ListEpisodeComments(context.Background(), &publirav1.ListEpisodeCommentsRequest{
@@ -209,10 +216,16 @@ func TestListEpisodeCommentsReadsTheCreatorMarkWithThePage(t *testing.T) {
 	if got := res.Comments[0].Creator; got == nil || got.Id != creatorID.String() || got.PublicId != "CREATOR00001" || got.Name != "Pen Name" {
 		t.Fatalf("author's comment creator = %v, want Pen Name", got)
 	}
-	for _, comment := range res.Comments[1:] {
-		if comment.Creator != nil {
-			t.Fatalf("reader's comment %s creator = %v, want none", comment.PublicId, comment.Creator)
+	if got := res.Comments[1].Creator; got != nil {
+		t.Fatalf("reader's comment creator = %v, want none", got)
+	}
+	for _, comment := range []*publirav1.EpisodeComment{res.Comments[0], res.Comments[2]} {
+		if got := comment.AuthorIconImageVariants; len(got) != 1 || got[0].Url != "/images/users/"+iconImageID.String() {
+			t.Fatalf("author's comment %s icon = %v, want the author's icon", comment.PublicId, got)
 		}
+	}
+	if got := res.Comments[1].AuthorIconImageVariants; len(got) != 0 {
+		t.Fatalf("reader's comment icon = %v, want none", got)
 	}
 
 	assertPublicExpectations(t, mock)

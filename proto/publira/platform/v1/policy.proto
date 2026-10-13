@@ -112,6 +112,12 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   MinuteDayLimit identity_link = 13;
+  // How often one reader may ask AuthService.UploadMyIcon or DeleteMyIcon to
+  // change their icon.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  MinuteDayLimit icon_change = 14;
 }
 
 message GetPlatformPolicyRequest {}

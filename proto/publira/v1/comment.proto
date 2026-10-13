@@ -39,6 +39,9 @@ message EpisodeComment {
   // Set when the author is a creator this episode credits, and unset for
   // every other comment.
   EpisodeCommentCreator creator = 7;
+  // The author's icon as their account shows it now, and empty for an account
+  // that shows none.
+  repeated publira.types.v1.UserIconVariant author_icon_image_variants = 8;
 }
 
 // One of the caller's own comments that ListEpisodeComments cannot carry.

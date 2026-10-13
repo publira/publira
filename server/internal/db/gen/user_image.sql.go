@@ -7,8 +7,10 @@ package dbmodels
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const CreateUserImage = `-- name: CreateUserImage :one
@@ -138,6 +140,81 @@ func (q *Queries) GetUserIconImageByIDForTenant(ctx context.Context, arg GetUser
 	var i GetUserIconImageByIDForTenantRow
 	err := row.Scan(&i.ObjectKey, &i.ContentType)
 	return i, err
+}
+
+const ListUserIconImageVariantsByImageIDs = `-- name: ListUserIconImageVariantsByImageIDs :many
+SELECT ui.id AS user_image_id,
+    ui.updated_at,
+    uiv.label,
+    uiv.content_type,
+    uiv.width,
+    uiv.height,
+    uiv.file_size_bytes
+FROM user_images ui
+    JOIN users u ON u.tenant_id = ui.tenant_id
+        AND u.icon_image_id = ui.id
+    JOIN user_image_variants uiv ON uiv.tenant_id = ui.tenant_id
+        AND uiv.user_image_id = ui.id
+WHERE ui.tenant_id = $1
+    AND ui.id = ANY($2::uuid[])
+ORDER BY ui.id,
+    uiv.width DESC,
+    uiv.label
+`
+
+type ListUserIconImageVariantsByImageIDsParams struct {
+	TenantID uuid.UUID   `json:"tenant_id"`
+	ImageIds []uuid.UUID `json:"image_ids"`
+}
+
+type ListUserIconImageVariantsByImageIDsRow struct {
+	UserImageID   uuid.UUID `json:"user_image_id"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	Label         string    `json:"label"`
+	ContentType   string    `json:"content_type"`
+	Width         int32     `json:"width"`
+	Height        int32     `json:"height"`
+	FileSizeBytes int64     `json:"file_size_bytes"`
+}
+
+// The stored variants of the given icon images, with the time each image was
+// stored. A caller reads the ids off the accounts it is answering for, so one
+// query covers a whole page of them; an id the tenant does not hold answers no
+// rows.
+//
+// An image no account elects any longer answers no rows either. The ids were
+// read by an earlier statement, and an icon replaced since then is one
+// image-server already refuses, so its URL would be a broken image in an
+// answer the storefront may cache after the replacement's drop has passed.
+func (q *Queries) ListUserIconImageVariantsByImageIDs(ctx context.Context, arg ListUserIconImageVariantsByImageIDsParams) ([]ListUserIconImageVariantsByImageIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListUserIconImageVariantsByImageIDs, arg.TenantID, pq.Array(arg.ImageIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserIconImageVariantsByImageIDsRow
+	for rows.Next() {
+		var i ListUserIconImageVariantsByImageIDsRow
+		if err := rows.Scan(
+			&i.UserImageID,
+			&i.UpdatedAt,
+			&i.Label,
+			&i.ContentType,
+			&i.Width,
+			&i.Height,
+			&i.FileSizeBytes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const SetUserIconImage = `-- name: SetUserIconImage :execrows

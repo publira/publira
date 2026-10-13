@@ -61,6 +61,7 @@ SELECT c.id,
     c.user_id,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    u.icon_image_id AS author_icon_image_id,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -102,6 +103,7 @@ SELECT c.id,
     c.user_id,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    u.icon_image_id AS author_icon_image_id,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -132,6 +134,18 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
 ORDER BY c.created_at ASC,
     c.id ASC
 LIMIT sqlc.arg('limit');
+
+-- name: ListEpisodePublicIDsWithPublishedCommentsByUser :many
+-- The episodes whose public comment list shows this account as an author, which
+-- is every list a change to the account's icon leaves stale.
+SELECT DISTINCT e.public_id
+FROM episode_comments c
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.user_id = sqlc.arg('user_id')
+    AND c.status = 'published'
+ORDER BY e.public_id;
 
 -- name: ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc :many
 -- The viewer's own comments on one episode that the public list of that episode

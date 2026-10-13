@@ -278,6 +278,36 @@ message UpdateMeResponse {
   publira.types.v1.User user = 1;
 }
 
+// Uploading again replaces the icon, so there is no separate replace RPC. The
+// upload is held to what the admin API's icon uploads are: an image/* of at
+// most 10 MiB, cut to a square of at least 128 px. Either refusal is
+// invalid_argument on icon_data, or on icon_crop when the rectangle is at
+// fault.
+message UploadMyIconRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  bytes icon_data = 2;
+  // Empty is detected from icon_data.
+  string icon_content_type = 3;
+  // Where in the upload the square icon is cut. Omitted, it is cut from the
+  // centre.
+  publira.types.v1.ImageCropRect icon_crop = 4;
+}
+
+// The caller's account with the icon it shows now.
+message UploadMyIconResponse {
+  publira.types.v1.User user = 1;
+}
+
+// Leaves the caller's account with no icon. An account that shows none is
+// answered as it is.
+message DeleteMyIconRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message DeleteMyIconResponse {
+  publira.types.v1.User user = 1;
+}
+
 message DeleteMeRequest {
   publira.types.v1.TenantContext tenant = 1;
   // The account's password. An account without one confirms with a fresh
@@ -474,6 +504,11 @@ service AuthService {
   rpc Logout(LogoutRequest) returns (LogoutResponse) {}
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
   rpc UpdateMe(UpdateMeRequest) returns (UpdateMeResponse) {}
+  // Sets the caller's icon, replacing the one it showed. failed_precondition,
+  // with the STORAGE_NOT_CONFIGURED reason, while the platform has no object
+  // store.
+  rpc UploadMyIcon(UploadMyIconRequest) returns (UploadMyIconResponse) {}
+  rpc DeleteMyIcon(DeleteMyIconRequest) returns (DeleteMyIconResponse) {}
   // Deletes the caller's account. A staff account is deleted too; the tenant's
   // audit entries keep its name and public ID. failed_precondition, with the
   // LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.

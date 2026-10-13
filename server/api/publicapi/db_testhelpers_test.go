@@ -72,6 +72,19 @@ func newPublicDBEnvWithLoginGuard(t *testing.T, login *loginguard.Guard) *public
 func newPublicDBEnvWith(t *testing.T, guards readerGuards, mail *mailguard.Guard, login *loginguard.Guard) *publicDBEnv {
 	t.Helper()
 
+	return newPublicDBEnvConfigured(t, guards, mail, func(api *apiServer, _ *sql.DB) {
+		if login != nil {
+			api.login = login
+		}
+	})
+}
+
+// newPublicDBEnvConfigured starts the server over guards and mail, once
+// configure has set whatever else a case is about on it. configure is handed
+// the pool the server runs on too.
+func newPublicDBEnvConfigured(t *testing.T, guards readerGuards, mail *mailguard.Guard, configure func(*apiServer, *sql.DB)) *publicDBEnv {
+	t.Helper()
+
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	db := pg.OpenPublicDB(t)
@@ -84,9 +97,7 @@ func newPublicDBEnvWith(t *testing.T, guards readerGuards, mail *mailguard.Guard
 	// counters would otherwise be the deployment's shared Redis, where one run
 	// of these tests would charge the budget of the next.
 	api := newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), nil, slog.Default(), guards, mail, nil)
-	if login != nil {
-		api.login = login
-	}
+	configure(api, db)
 	server := httptest.NewServer(handlerFromServer(api))
 	t.Cleanup(server.Close)
 	return &publicDBEnv{Server: server, PG: pg}
@@ -128,6 +139,7 @@ func openPolicy() platformpolicy.Policy {
 	policy.WaitFreeTicketUse = open
 	policy.LegalPageAgreement = open
 	policy.IdentityLink = open
+	policy.IconChange = open
 	return policy
 }
 

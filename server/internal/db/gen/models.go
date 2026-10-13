@@ -600,6 +600,8 @@ type PlatformPolicyConfig struct {
 	LegalPageAgreementLimitPerDay        int32     `json:"legal_page_agreement_limit_per_day"`
 	IdentityLinkLimitPerMinute           int32     `json:"identity_link_limit_per_minute"`
 	IdentityLinkLimitPerDay              int32     `json:"identity_link_limit_per_day"`
+	IconChangeLimitPerMinute             int32     `json:"icon_change_limit_per_minute"`
+	IconChangeLimitPerDay                int32     `json:"icon_change_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {

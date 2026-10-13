@@ -458,3 +458,35 @@ func EyeCatchVariantURL(collection string, imageID uuid.UUID, variantType string
 func TenantImageURL(tenantImageID uuid.UUID, variantType string) string {
 	return fmt.Sprintf("/images/tenants/%s/%s", tenantImageID.String(), variantType)
 }
+
+// UserIcon is the icon one account elects, as a response that names the
+// account carries it. The zero value is an account that shows none.
+type UserIcon struct {
+	UpdatedAt string
+	Variants  []*publirattypesv1.UserIconVariant
+}
+
+// UserIconsByImageID groups the stored variants of several icon images by the
+// image they belong to. The query returns them largest first, so nothing here
+// reorders them.
+//
+// Every variant is served at the image's one URL: image-server answers an
+// icon with its largest variant and scales it for each size a page asks for,
+// so the URL names the image rather than the rendition.
+func UserIconsByImageID(rows []dbmodels.ListUserIconImageVariantsByImageIDsRow) map[uuid.UUID]UserIcon {
+	icons := make(map[uuid.UUID]UserIcon)
+	for _, row := range rows {
+		icon := icons[row.UserImageID]
+		icon.UpdatedAt = row.UpdatedAt.UTC().Format(time.RFC3339)
+		icon.Variants = append(icon.Variants, &publirattypesv1.UserIconVariant{
+			Label:         row.Label,
+			Url:           fmt.Sprintf("/images/users/%s", row.UserImageID.String()),
+			ContentType:   row.ContentType,
+			Width:         row.Width,
+			Height:        row.Height,
+			FileSizeBytes: row.FileSizeBytes,
+		})
+		icons[row.UserImageID] = icon
+	}
+	return icons
+}

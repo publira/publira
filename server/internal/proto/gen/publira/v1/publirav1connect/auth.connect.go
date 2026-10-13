@@ -64,6 +64,10 @@ const (
 	AuthServiceGetMeProcedure = "/publira.v1.AuthService/GetMe"
 	// AuthServiceUpdateMeProcedure is the procedure name of the AuthService's UpdateMe RPC.
 	AuthServiceUpdateMeProcedure = "/publira.v1.AuthService/UpdateMe"
+	// AuthServiceUploadMyIconProcedure is the procedure name of the AuthService's UploadMyIcon RPC.
+	AuthServiceUploadMyIconProcedure = "/publira.v1.AuthService/UploadMyIcon"
+	// AuthServiceDeleteMyIconProcedure is the procedure name of the AuthService's DeleteMyIcon RPC.
+	AuthServiceDeleteMyIconProcedure = "/publira.v1.AuthService/DeleteMyIcon"
 	// AuthServiceDeleteMeProcedure is the procedure name of the AuthService's DeleteMe RPC.
 	AuthServiceDeleteMeProcedure = "/publira.v1.AuthService/DeleteMe"
 	// AuthServiceGetNotificationSettingsProcedure is the procedure name of the AuthService's
@@ -214,6 +218,20 @@ var (
 			Procedure:  AuthServiceUpdateMeProcedure,
 		}
 	})
+	authServiceUploadMyIconSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("UploadMyIcon"),
+			Procedure:  AuthServiceUploadMyIconProcedure,
+		}
+	})
+	authServiceDeleteMyIconSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("DeleteMyIcon"),
+			Procedure:  AuthServiceDeleteMyIconProcedure,
+		}
+	})
 	authServiceDeleteMeSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -318,6 +336,11 @@ type AuthServiceClient interface {
 	Logout(context.Context, *v1.LogoutRequest) (*v1.LogoutResponse, error)
 	GetMe(context.Context, *v1.GetMeRequest) (*v1.GetMeResponse, error)
 	UpdateMe(context.Context, *v1.UpdateMeRequest) (*v1.UpdateMeResponse, error)
+	// Sets the caller's icon, replacing the one it showed. failed_precondition,
+	// with the STORAGE_NOT_CONFIGURED reason, while the platform has no object
+	// store.
+	UploadMyIcon(context.Context, *v1.UploadMyIconRequest) (*v1.UploadMyIconResponse, error)
+	DeleteMyIcon(context.Context, *v1.DeleteMyIconRequest) (*v1.DeleteMyIconResponse, error)
 	// Deletes the caller's account. A staff account is deleted too; the tenant's
 	// audit entries keep its name and public ID. failed_precondition, with the
 	// LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
@@ -369,6 +392,11 @@ type AuthServiceHandler interface {
 	Logout(context.Context, *v1.LogoutRequest) (*v1.LogoutResponse, error)
 	GetMe(context.Context, *v1.GetMeRequest) (*v1.GetMeResponse, error)
 	UpdateMe(context.Context, *v1.UpdateMeRequest) (*v1.UpdateMeResponse, error)
+	// Sets the caller's icon, replacing the one it showed. failed_precondition,
+	// with the STORAGE_NOT_CONFIGURED reason, while the platform has no object
+	// store.
+	UploadMyIcon(context.Context, *v1.UploadMyIconRequest) (*v1.UploadMyIconResponse, error)
+	DeleteMyIcon(context.Context, *v1.DeleteMyIconRequest) (*v1.DeleteMyIconResponse, error)
 	// Deletes the caller's account. A staff account is deleted too; the tenant's
 	// audit entries keep its name and public ID. failed_precondition, with the
 	// LAST_TENANT_ADMIN reason, for the tenant's last active tenant_admin.
@@ -416,6 +444,8 @@ func RegisterAuthServiceHandler(server *connect.Server, svc AuthServiceHandler) 
 		connect.Method{Spec: authServiceLogoutSpec(), Handler: adapter.logout},
 		connect.Method{Spec: authServiceGetMeSpec(), Handler: adapter.getMe},
 		connect.Method{Spec: authServiceUpdateMeSpec(), Handler: adapter.updateMe},
+		connect.Method{Spec: authServiceUploadMyIconSpec(), Handler: adapter.uploadMyIcon},
+		connect.Method{Spec: authServiceDeleteMyIconSpec(), Handler: adapter.deleteMyIcon},
 		connect.Method{Spec: authServiceDeleteMeSpec(), Handler: adapter.deleteMe},
 		connect.Method{Spec: authServiceGetNotificationSettingsSpec(), Handler: adapter.getNotificationSettings},
 		connect.Method{Spec: authServiceUpdateNotificationSettingsSpec(), Handler: adapter.updateNotificationSettings},
@@ -496,6 +526,14 @@ func (UnimplementedAuthServiceHandler) GetMe(context.Context, *v1.GetMeRequest) 
 
 func (UnimplementedAuthServiceHandler) UpdateMe(context.Context, *v1.UpdateMeRequest) (*v1.UpdateMeResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.UpdateMe is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) UploadMyIcon(context.Context, *v1.UploadMyIconRequest) (*v1.UploadMyIconResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.UploadMyIcon is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) DeleteMyIcon(context.Context, *v1.DeleteMyIconRequest) (*v1.DeleteMyIconResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.DeleteMyIcon is not implemented")
 }
 
 func (UnimplementedAuthServiceHandler) DeleteMe(context.Context, *v1.DeleteMeRequest) (*v1.DeleteMeResponse, error) {
@@ -673,6 +711,22 @@ func (c *authServiceClient) GetMe(ctx context.Context, req *v1.GetMeRequest) (*v
 func (c *authServiceClient) UpdateMe(ctx context.Context, req *v1.UpdateMeRequest) (*v1.UpdateMeResponse, error) {
 	var res v1.UpdateMeResponse
 	if err := c.client.CallUnary(ctx, authServiceUpdateMeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) UploadMyIcon(ctx context.Context, req *v1.UploadMyIconRequest) (*v1.UploadMyIconResponse, error) {
+	var res v1.UploadMyIconResponse
+	if err := c.client.CallUnary(ctx, authServiceUploadMyIconSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) DeleteMyIcon(ctx context.Context, req *v1.DeleteMyIconRequest) (*v1.DeleteMyIconResponse, error) {
+	var res v1.DeleteMyIconResponse
+	if err := c.client.CallUnary(ctx, authServiceDeleteMyIconSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -962,6 +1016,30 @@ func (h authServiceHandler) updateMe(ctx context.Context, _ connect.Spec, stream
 		return err
 	}
 	res, err := h.svc.UpdateMe(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) uploadMyIcon(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UploadMyIconRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UploadMyIcon(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) deleteMyIcon(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteMyIconRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteMyIcon(ctx, &req)
 	if err != nil {
 		return err
 	}

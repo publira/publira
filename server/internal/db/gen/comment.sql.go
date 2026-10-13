@@ -716,6 +716,47 @@ func (q *Queries) ListEpisodeCommentsForModerationByCreatedAtDesc(ctx context.Co
 	return items, nil
 }
 
+const ListEpisodePublicIDsWithPublishedCommentsByUser = `-- name: ListEpisodePublicIDsWithPublishedCommentsByUser :many
+SELECT DISTINCT e.public_id
+FROM episode_comments c
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+WHERE c.tenant_id = $1
+    AND c.user_id = $2
+    AND c.status = 'published'
+ORDER BY e.public_id
+`
+
+type ListEpisodePublicIDsWithPublishedCommentsByUserParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+// The episodes whose public comment list shows this account as an author, which
+// is every list a change to the account's icon leaves stale.
+func (q *Queries) ListEpisodePublicIDsWithPublishedCommentsByUser(ctx context.Context, arg ListEpisodePublicIDsWithPublishedCommentsByUserParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, ListEpisodePublicIDsWithPublishedCommentsByUser, arg.TenantID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var public_id string
+		if err := rows.Scan(&public_id); err != nil {
+			return nil, err
+		}
+		items = append(items, public_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListPublishedEpisodeCommentsByCreatedAtAsc = `-- name: ListPublishedEpisodeCommentsByCreatedAtAsc :many
 SELECT c.id,
     c.public_id,
@@ -724,6 +765,7 @@ SELECT c.id,
     c.user_id,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    u.icon_image_id AS author_icon_image_id,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -766,16 +808,17 @@ type ListPublishedEpisodeCommentsByCreatedAtAscParams struct {
 }
 
 type ListPublishedEpisodeCommentsByCreatedAtAscRow struct {
-	ID              uuid.UUID      `json:"id"`
-	PublicID        string         `json:"public_id"`
-	Body            string         `json:"body"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UserID          uuid.UUID      `json:"user_id"`
-	AuthorPublicID  string         `json:"author_public_id"`
-	AuthorName      string         `json:"author_name"`
-	CreatorID       uuid.NullUUID  `json:"creator_id"`
-	CreatorPublicID sql.NullString `json:"creator_public_id"`
-	CreatorName     sql.NullString `json:"creator_name"`
+	ID                uuid.UUID      `json:"id"`
+	PublicID          string         `json:"public_id"`
+	Body              string         `json:"body"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UserID            uuid.UUID      `json:"user_id"`
+	AuthorPublicID    string         `json:"author_public_id"`
+	AuthorName        string         `json:"author_name"`
+	AuthorIconImageID uuid.NullUUID  `json:"author_icon_image_id"`
+	CreatorID         uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID   sql.NullString `json:"creator_public_id"`
+	CreatorName       sql.NullString `json:"creator_name"`
 }
 
 // The previous-page half of ListPublishedEpisodeCommentsByCreatedAtDesc. The
@@ -804,6 +847,7 @@ func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtAsc(ctx context.Context
 			&i.UserID,
 			&i.AuthorPublicID,
 			&i.AuthorName,
+			&i.AuthorIconImageID,
 			&i.CreatorID,
 			&i.CreatorPublicID,
 			&i.CreatorName,
@@ -829,6 +873,7 @@ SELECT c.id,
     c.user_id,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    u.icon_image_id AS author_icon_image_id,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -871,16 +916,17 @@ type ListPublishedEpisodeCommentsByCreatedAtDescParams struct {
 }
 
 type ListPublishedEpisodeCommentsByCreatedAtDescRow struct {
-	ID              uuid.UUID      `json:"id"`
-	PublicID        string         `json:"public_id"`
-	Body            string         `json:"body"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UserID          uuid.UUID      `json:"user_id"`
-	AuthorPublicID  string         `json:"author_public_id"`
-	AuthorName      string         `json:"author_name"`
-	CreatorID       uuid.NullUUID  `json:"creator_id"`
-	CreatorPublicID sql.NullString `json:"creator_public_id"`
-	CreatorName     sql.NullString `json:"creator_name"`
+	ID                uuid.UUID      `json:"id"`
+	PublicID          string         `json:"public_id"`
+	Body              string         `json:"body"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UserID            uuid.UUID      `json:"user_id"`
+	AuthorPublicID    string         `json:"author_public_id"`
+	AuthorName        string         `json:"author_name"`
+	AuthorIconImageID uuid.NullUUID  `json:"author_icon_image_id"`
+	CreatorID         uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID   sql.NullString `json:"creator_public_id"`
+	CreatorName       sql.NullString `json:"creator_name"`
 }
 
 // The public list of one episode. Only 'published' rows appear here, so a
@@ -915,6 +961,7 @@ func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtDesc(ctx context.Contex
 			&i.UserID,
 			&i.AuthorPublicID,
 			&i.AuthorName,
+			&i.AuthorIconImageID,
 			&i.CreatorID,
 			&i.CreatorPublicID,
 			&i.CreatorName,

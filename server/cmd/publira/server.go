@@ -206,9 +206,16 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 			}),
 			SQL: sqlbackend.New(dbmodels.New(pools.public)),
 		}
+		// The object store the reader icons go to is read the way the admin
+		// API reads it, on the pool the uploads are answered on.
+		storageProvider := platformstorage.Provider{Resolver: platformstorage.New(platformstorage.Config{
+			Queries: dbmodels.New(pools.public),
+			Secrets: encryptor,
+			Logger:  logger,
+		}, platformstorage.NewStorage)}
 		// The revalidate client is shared by the two namespaces whose writes
 		// leave a cache entry stale.
-		publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, deps.revalidate, searcher, cfg.idTokens, login, mail)
+		publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), storageProvider, encryptor, tokens, deps.revalidate, searcher, cfg.idTokens, login, mail)
 		if err != nil {
 			return assembledServer{}, failed("failed to initialize public api handler", err)
 		}
