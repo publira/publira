@@ -137,13 +137,14 @@ export const CreateInitialUserResponseSchema: GenMessage<CreateInitialUserRespon
   messageDesc(file_publira_platform_v1_setup, 3);
 
 /**
- * Initial platform setup, served without authentication.
+ * Initial platform setup, served without an operator session.
  *
  * @generated from service publira.platform.v1.PlatformSetupService
  */
 export const PlatformSetupService: GenService<{
   /**
-   * Reports whether the platform has already been set up.
+   * Reports whether the platform has already been set up. It needs no
+   * credential, since the setup screen asks it before anyone has signed in.
    *
    * @generated from rpc publira.platform.v1.PlatformSetupService.CheckSetupStatus
    */
@@ -154,6 +155,11 @@ export const PlatformSetupService: GenService<{
   },
   /**
    * Creates the first operator account, allowed only while no user exists.
+   * The request carries the web service token as
+   * `Authorization: Bearer <token>`, which the Platform Console's setup screen
+   * sends from its server; without it the call is UNAUTHENTICATED, because the
+   * edge forwards /api on every host and anyone reaching a tenant's site would
+   * otherwise claim the platform.
    *
    * @generated from rpc publira.platform.v1.PlatformSetupService.CreateInitialUser
    */
