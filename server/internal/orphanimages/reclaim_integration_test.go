@@ -44,6 +44,8 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	episode := env.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODE00001"})
 	creator := env.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATOR00001"})
 	genre := env.SeedGenre(t, tenant.ID, testutil.GenreSeed{PublicID: "GENRE0000001", Name: "Fantasy"})
+	reader := env.SeedEndUser(t, tenant.ID, "READER000001", "reader@example.com", "Reader")
+	formerReader := env.SeedEndUser(t, tenant.ID, "READER000002", "former@example.com", "Former Reader")
 
 	// Every image an entity still points at, one per table that holds object
 	// keys. None of these may be touched by a run.
@@ -59,6 +61,8 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	seedTenantImage(t, env.DB, tenant.ID, liveTenantIcon, true)
 	liveEpisodePage := "tenants/TENANT001/episodes/EPISODE00001/live-original.webp"
 	seedEpisodeImage(t, env.DB, tenant.ID, episode.ID, liveEpisodePage)
+	liveReaderIcon := "tenants/TENANT001/users/READER000001/live-original.png"
+	seedUserImage(t, env.DB, tenant.ID, reader.ID, liveReaderIcon, true)
 
 	// The image a replacement superseded: its row survived the swap, and
 	// nothing has pointed at it since.
@@ -69,13 +73,22 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	clearedGenreEyeCatch := "tenants/TENANT001/genres/GENRE0000001/cleared-portrait.webp"
 	clearedImageID := seedGenreImage(t, env.DB, tenant.ID, genre.ID, clearedGenreEyeCatch, false)
 
+	// The icon a reader replaced, which the account stopped electing when it
+	// elected the live one, and the icon a reader removed, which the account
+	// was left electing nothing in its place.
+	supersededReaderIcon := "tenants/TENANT001/users/READER000001/superseded-original.png"
+	supersededUserImageID := seedUserImage(t, env.DB, tenant.ID, reader.ID, supersededReaderIcon, false)
+	removedReaderIcon := "tenants/TENANT001/users/READER000002/removed-original.png"
+	removedUserImageID := seedUserImage(t, env.DB, tenant.ID, formerReader.ID, removedReaderIcon, false)
+
 	// The object a rolled-back transaction abandoned: it was uploaded, and the
 	// rows that would have named it were never committed.
 	abandonedObject := "tenants/TENANT001/series/SERIES000001/rolled-back-portrait.webp"
 
 	stored := []string{
 		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveGenreEyeCatch, liveTenantIcon,
-		liveEpisodePage, supersededCreatorIcon, clearedGenreEyeCatch, abandonedObject,
+		liveEpisodePage, liveReaderIcon, supersededCreatorIcon, clearedGenreEyeCatch,
+		supersededReaderIcon, removedReaderIcon, abandonedObject,
 	}
 	for _, key := range stored {
 		if _, err := store.Upload(ctx, storage.UploadRequest{
@@ -116,11 +129,11 @@ func TestReclaimerRunIntegration(t *testing.T) {
 		t.Fatalf("Run with a cutoff ahead of every object: %v", err)
 	}
 
-	if result.RowCount != 2 {
-		t.Fatalf("row count = %d, want the superseded creator image and the cleared genre image", result.RowCount)
+	if result.RowCount != 4 {
+		t.Fatalf("row count = %d, want the superseded creator image, the cleared genre image, and the replaced and the removed reader icon", result.RowCount)
 	}
-	if result.DeletedCount != 3 {
-		t.Fatalf("deleted count = %d, want the superseded, the cleared, and the abandoned object", result.DeletedCount)
+	if result.DeletedCount != 5 {
+		t.Fatalf("deleted count = %d, want the superseded, the cleared, the replaced, the removed, and the abandoned object", result.DeletedCount)
 	}
 	if result.ScannedCount != int64(len(stored)) {
 		t.Fatalf("scanned count = %d, want %d", result.ScannedCount, len(stored))
@@ -128,6 +141,7 @@ func TestReclaimerRunIntegration(t *testing.T) {
 
 	want := slices.Sorted(slices.Values([]string{
 		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveGenreEyeCatch, liveTenantIcon, liveEpisodePage,
+		liveReaderIcon,
 	}))
 	if got := listKeys(t, ctx, store); !slices.Equal(got, want) {
 		t.Fatalf("stored keys = %v, want %v", got, want)
@@ -137,6 +151,12 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	}
 	if imageRowExists(t, env.DB, "genre_images", clearedImageID) {
 		t.Fatal("the cleared genre_images row survived the run")
+	}
+	if imageRowExists(t, env.DB, "user_images", supersededUserImageID) {
+		t.Fatal("the replaced user_images row survived the run")
+	}
+	if imageRowExists(t, env.DB, "user_images", removedUserImageID) {
+		t.Fatal("the removed user_images row survived the run")
 	}
 
 	// Reclamation is idempotent: with nothing left unreferenced, a second run
@@ -295,6 +315,29 @@ func seedTenantImage(t *testing.T, db *sql.DB, tenantID uuid.UUID, objectKey str
 			VALUES ($1, $2)
 			ON CONFLICT (tenant_id) DO UPDATE SET icon_image_id = EXCLUDED.icon_image_id
 		`, tenantID, imageID)
+	}
+	return imageID
+}
+
+// seedUserImage stores one reader icon and its single variant, electing it as
+// the account's icon when inUse. Returns the user_images id.
+func seedUserImage(t *testing.T, db *sql.DB, tenantID, userID uuid.UUID, objectKey string, inUse bool) uuid.UUID {
+	t.Helper()
+
+	imageID := uuid.Must(uuid.NewV7())
+	exec(t, db, `
+		INSERT INTO user_images (id, tenant_id, user_id)
+		VALUES ($1, $2, $3)
+	`, imageID, tenantID, userID)
+	exec(t, db, `
+		INSERT INTO user_image_variants (
+			id, tenant_id, user_image_id, label, storage_provider, object_key,
+			content_type, file_size_bytes, width, height
+		)
+		VALUES ($1, $2, $3, 'original', 's3', $4, 'image/png', 1024, 512, 512)
+	`, uuid.Must(uuid.NewV7()), tenantID, imageID, objectKey)
+	if inUse {
+		exec(t, db, `UPDATE users SET icon_image_id = $1 WHERE id = $2`, imageID, userID)
 	}
 	return imageID
 }

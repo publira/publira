@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_users_tenant_id_icon_image_id;

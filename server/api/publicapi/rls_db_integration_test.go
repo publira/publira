@@ -163,6 +163,10 @@ var publicDataTables = []struct {
 	{name: "content_daily_stats", count: "SELECT count(*) FROM content_daily_stats"},
 	{name: "tenant_rating_totals", count: "SELECT count(*) FROM tenant_rating_totals"},
 	{name: "users", count: "SELECT count(*) FROM users"},
+	// The icon every reader shows beside what they write, which image-server
+	// reads on this connection to serve it.
+	{name: "user_images", count: "SELECT count(*) FROM user_images"},
+	{name: "user_image_variants", count: "SELECT count(*) FROM user_image_variants"},
 	{name: "tenant_user_roles", count: "SELECT count(*) FROM tenant_user_roles"},
 	// A sign-in link, a reset link, and an address change are each answered
 	// by looking one of these up on the storefront's connection.
@@ -332,6 +336,12 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	})
 	env.PG.SeedPurchase(t, first.ID, member.ID, purchasedEpisode.ID, purchasedEpisode.Price)
 	env.PG.SeedCreatorAccount(t, first.ID, creator.ID, member.ID)
+	userImageID := uuid.Must(uuid.NewV7())
+	seed("user image", "INSERT INTO user_images (id, tenant_id, user_id) VALUES ($1, $2, $3)", userImageID, first.ID, member.ID)
+	seed("user image variant", `INSERT INTO user_image_variants
+		(id, tenant_id, user_image_id, label, storage_provider, object_key, content_type, file_size_bytes, width, height)
+		VALUES ($1, $2, $3, 'original', 's3', 'tenants/user.png', 'image/png', 1, 512, 512)`,
+		uuid.Must(uuid.NewV7()), first.ID, userImageID)
 	seed("reader features", "INSERT INTO user_recommend_features (tenant_id, user_id) VALUES ($1, $2)", first.ID, member.ID)
 	seed("series features", "INSERT INTO item_recommend_features (tenant_id, entity_type, entity_id) VALUES ($1, 'series', $2)", first.ID, series.ID)
 	seed("store purchase intent", "INSERT INTO store_purchase_intents (id, tenant_id, user_id, episode_id, price, product_id, currency) VALUES ($1, $2, $3, $4, $5, $6, 'JPY')", uuid.Must(uuid.NewV7()), first.ID, member.ID, episode.ID, 500, "episode_500")

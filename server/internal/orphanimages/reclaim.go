@@ -40,6 +40,7 @@ type Querier interface {
 	DeleteUnreferencedLabelImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedSeriesImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedTenantImages(ctx context.Context, createdBefore time.Time) (int64, error)
+	DeleteUnreferencedUserImages(ctx context.Context, createdBefore time.Time) (int64, error)
 }
 
 // Reclaimer deletes the image rows nothing points at and then the storage
@@ -179,6 +180,7 @@ func (r *Reclaimer) deleteUnreferencedImages(ctx context.Context, cutoff time.Ti
 		{"label_images", r.queries.DeleteUnreferencedLabelImages},
 		{"series_images", r.queries.DeleteUnreferencedSeriesImages},
 		{"tenant_images", r.queries.DeleteUnreferencedTenantImages},
+		{"user_images", r.queries.DeleteUnreferencedUserImages},
 	}
 
 	var total int64

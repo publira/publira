@@ -55,6 +55,8 @@ type stubTenantQueries struct {
 	publicErr        error
 	creator          dbmodels.GetCreatorImageByIDForTenantRow
 	creatorErr       error
+	userIcon         dbmodels.GetUserIconImageByIDForTenantRow
+	userIconKey      dbmodels.GetUserIconImageByIDForTenantParams
 	tenant           dbmodels.GetTenantImageVariantByTypeForTenantRow
 	tenantErr        error
 	tenantKey        tenantVariantKey
@@ -80,6 +82,17 @@ type stubTenantQueries struct {
 
 func (s stubTenantQueries) GetCreatorImageByIDForTenant(context.Context, dbmodels.GetCreatorImageByIDForTenantParams) (dbmodels.GetCreatorImageByIDForTenantRow, error) {
 	return s.creator, s.creatorErr
+}
+
+// GetUserIconImageByIDForTenant answers only for the exact image and tenant
+// the test elected, for the reason tenantVariantKey is matched exactly. An
+// image the account does not elect is the real query's no rows, which is what
+// an unset userIcon stands for.
+func (s stubTenantQueries) GetUserIconImageByIDForTenant(_ context.Context, arg dbmodels.GetUserIconImageByIDForTenantParams) (dbmodels.GetUserIconImageByIDForTenantRow, error) {
+	if s.userIcon.ObjectKey == "" || arg != s.userIconKey {
+		return dbmodels.GetUserIconImageByIDForTenantRow{}, sql.ErrNoRows
+	}
+	return s.userIcon, nil
 }
 
 // tenantVariantKey is the tuple the real query filters on. The stub answers
@@ -1350,6 +1363,67 @@ func TestTenantImageServesStoredIcon(t *testing.T) {
 	}
 }
 
+// A reader's icon is served on either of the tenant's hosts, under the public
+// cache rule a creator's icon is, and only while the account elects it: an
+// image of another tenant, or one its reader replaced or removed, is not found.
+func TestUserImageServesTheElectedIcon(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	otherTenantID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	mediaID := uuid.MustParse("99999999-9999-9999-9999-999999999999")
+	supersededID := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	queries := stubTenantQueries{
+		userIcon: dbmodels.GetUserIconImageByIDForTenantRow{
+			ObjectKey:   "tenants/acme/users/READER000001/icon-original.jpg",
+			ContentType: "image/jpeg",
+		},
+		userIconKey: dbmodels.GetUserIconImageByIDForTenantParams{ID: mediaID, TenantID: tenantID},
+	}
+	store := &countingStore{objects: map[string]storedObject{
+		"tenants/acme/users/READER000001/icon-original.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+	}}
+
+	for name, console := range map[string]bool{"storefront": false, "console": true} {
+		t.Run(name, func(t *testing.T) {
+			for _, tc := range []struct {
+				name     string
+				tenantID uuid.UUID
+				path     string
+				want     int
+			}{
+				{"the elected icon", tenantID, "/images/users/" + mediaID.String(), http.StatusOK},
+				{"an icon the account no longer elects", tenantID, "/images/users/" + supersededID.String(), http.StatusNotFound},
+				{"the icon on another tenant's host", otherTenantID, "/images/users/" + mediaID.String(), http.StatusNotFound},
+				{"a malformed id", tenantID, "/images/users/not-a-uuid", http.StatusBadRequest},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					srv := newTestServer(t,
+						stubResolver{tenant: dbmodels.Tenant{ID: tc.tenantID, Domain: "example.test"}, console: console},
+						stubFactory{q: queries},
+						store,
+					)
+					req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+					req.Host = "example.test"
+					req.Header.Set("Accept", "image/webp")
+					rec := httptest.NewRecorder()
+					srv.ServeHTTP(rec, req)
+					if rec.Code != tc.want {
+						t.Fatalf("status = %d, want %d (body %q)", rec.Code, tc.want, rec.Body.String())
+					}
+					if tc.want != http.StatusOK {
+						return
+					}
+					if got := rec.Header().Get("Cache-Control"); got != "public, max-age=3600" {
+						t.Fatalf("Cache-Control = %q, want public, max-age=3600", got)
+					}
+					if got := rec.Header().Get("Content-Type"); got != "image/webp" {
+						t.Fatalf("Content-Type = %q, want image/webp", got)
+					}
+				})
+			}
+		})
+	}
+}
+
 // The route is keyed by variant_type, so a tenant that stored only an icon must
 // not have it served as its logo.
 func TestTenantImageUnknownVariantTypeReturnsNotFound(t *testing.T) {
@@ -1876,6 +1950,7 @@ func TestImageRoutesRefuseASuspendedTenantUntilResumed(t *testing.T) {
 		"/images/labels/" + mediaID + "/square/320",
 		"/images/series/" + mediaID + "/square/320",
 		"/images/tenants/" + mediaID + "/icon",
+		"/images/users/" + mediaID,
 	}
 	get := func(srv *Server, path string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(http.MethodGet, path, nil)

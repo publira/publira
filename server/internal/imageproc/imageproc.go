@@ -655,6 +655,102 @@ func BuildIcon(raw []byte, contentType string) (Variant, error) {
 	}, nil
 }
 
+// UserIconMaxBytes, UserIconMinDimension, and UserIconMaxDimension constrain
+// a reader's icon upload. The floor keeps an icon from being stored smaller
+// than a high-density screen draws it, and the ceiling bounds what one account
+// stores: anything larger is scaled down to it, and image-server scales it
+// further for each size a page asks for.
+const (
+	UserIconMaxBytes     = 10 << 20
+	UserIconMinDimension = 128
+	UserIconMaxDimension = 512
+)
+
+// BuildUserIcon derives the single variant a reader's icon is stored as.
+//
+// A nil crop takes the square from the centre of the upload; a crop takes it
+// from the named rectangle instead, and the square is then fitted inside that
+// rectangle, so a selection a few pixels off square still stores a square.
+//
+// Input validation:
+//   - within UserIconMaxBytes, image/* content_type
+//   - pixel count within MaxPixels
+//   - crop, when given, lies within the upload
+//   - at least UserIconMinDimension on a side after cropping
+//
+// A JPEG upload stays JPEG and anything else is stored as PNG, so an icon
+// with transparency keeps it and a photograph is not stored losslessly.
+func BuildUserIcon(raw []byte, contentType string, crop *CropRect) (Variant, error) {
+	if len(raw) == 0 {
+		return Variant{}, errors.New("image data is required")
+	}
+	if len(raw) > UserIconMaxBytes {
+		return Variant{}, fmt.Errorf("image size exceeds %d bytes", UserIconMaxBytes)
+	}
+
+	ct := strings.TrimSpace(contentType)
+	if ct == "" {
+		ct = http.DetectContentType(raw)
+	}
+	if !strings.HasPrefix(ct, "image/") {
+		return Variant{}, errors.New("content_type must be image/*")
+	}
+
+	// The declared dimensions are checked before decoding: the byte cap alone
+	// leaves a small PNG or WebP free to claim a huge canvas and exhaust
+	// memory while it is being decoded.
+	cfg, sourceFormat, err := image.DecodeConfig(bytes.NewReader(raw))
+	if err != nil {
+		return Variant{}, errors.New("image is not decodable")
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 {
+		return Variant{}, errors.New("image has invalid dimensions")
+	}
+	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
+		return Variant{}, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
+	}
+
+	src, _, err := image.Decode(bytes.NewReader(raw))
+	if err != nil {
+		return Variant{}, errors.New("image is not decodable")
+	}
+	region := src
+	if crop != nil {
+		region, err = CropImage(src, *crop)
+		if err != nil {
+			return Variant{}, err
+		}
+	}
+
+	square := centerCropToAspect(region, 1, 1)
+	size := min(square.Bounds().Dx(), square.Bounds().Dy())
+	if size < UserIconMinDimension {
+		if crop != nil {
+			return Variant{}, fmt.Errorf("%w: icon crop must be at least %dx%d after fitting to a square", ErrInvalidCrop, UserIconMinDimension, UserIconMinDimension)
+		}
+		return Variant{}, fmt.Errorf("icon image must be at least %dx%d", UserIconMinDimension, UserIconMinDimension)
+	}
+	size = min(size, UserIconMaxDimension)
+
+	outContentType, outExt := "image/png", ".png"
+	if sourceFormatContentType(sourceFormat) == "image/jpeg" {
+		outContentType, outExt = "image/jpeg", ".jpg"
+	}
+	encoded, err := encode(square, size, size, outContentType)
+	if err != nil {
+		return Variant{}, fmt.Errorf("encode user icon: %w", err)
+	}
+
+	return Variant{
+		Label:       "original",
+		ContentType: outContentType,
+		Extension:   outExt,
+		Width:       size,
+		Height:      size,
+		Data:        encoded,
+	}, nil
+}
+
 // LogoMaxBytes, LogoMinDimension, and LogoMaxDimension constrain a tenant logo
 // upload.
 //

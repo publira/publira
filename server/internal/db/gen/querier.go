@@ -315,6 +315,8 @@ type Querier interface {
 	CreateUserEmailChangeToken(ctx context.Context, arg CreateUserEmailChangeTokenParams) (UserEmailChangeToken, error)
 	CreateUserEmailVerificationToken(ctx context.Context, arg CreateUserEmailVerificationTokenParams) (UserEmailVerificationToken, error)
 	CreateUserIdentity(ctx context.Context, arg CreateUserIdentityParams) (UserIdentity, error)
+	CreateUserImage(ctx context.Context, arg CreateUserImageParams) (UserImage, error)
+	CreateUserImageVariant(ctx context.Context, arg CreateUserImageVariantParams) (UserImageVariant, error)
 	CreateUserMfaRecoveryCode(ctx context.Context, arg CreateUserMfaRecoveryCodeParams) error
 	// Agreeing to a version the reader has already agreed to keeps the first
 	// agreement, so a client that sends its agreement twice is answered the same
@@ -387,6 +389,11 @@ type Querier interface {
 	// A tenant image is reachable from either branding slot, and the theme holds
 	// both, so one row can be the icon of one theme and nothing else anywhere.
 	DeleteUnreferencedTenantImages(ctx context.Context, createdBefore time.Time) (int64, error)
+	// A reader's upload elects the new icon and leaves the previous user_images
+	// row behind, and removing the icon leaves the one it cleared, both referenced
+	// by nothing. created_at guards the upload still in flight, whose row exists
+	// before the account elects it.
+	DeleteUnreferencedUserImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	// Deletes the candidates that are still unused. A tag has no management screen
 	// and nothing else to say for itself, so one no series carries is not a tag the
 	// tenant kept — it is one nobody would ever see again.
@@ -898,6 +905,11 @@ type Querier interface {
 	GetUserEmailChangeTokenByHashForTenant(ctx context.Context, arg GetUserEmailChangeTokenByHashForTenantParams) (GetUserEmailChangeTokenByHashForTenantRow, error)
 	GetUserEmailChangeTokenByIDForTenant(ctx context.Context, arg GetUserEmailChangeTokenByIDForTenantParams) (UserEmailChangeToken, error)
 	GetUserEmailVerificationTokenByHashForTenant(ctx context.Context, arg GetUserEmailVerificationTokenByHashForTenantParams) (UserEmailVerificationToken, error)
+	// The stored object behind an account's icon, and only while the account
+	// elects it. A reader who replaces or removes an icon expects it to stop being
+	// shown, so a superseded image is not served in the time before the orphan
+	// sweep reclaims it.
+	GetUserIconImageByIDForTenant(ctx context.Context, arg GetUserIconImageByIDForTenantParams) (GetUserIconImageByIDForTenantRow, error)
 	GetUserIdentityByProviderSubject(ctx context.Context, arg GetUserIdentityByProviderSubjectParams) (UserIdentity, error)
 	GetUserIdentityForUser(ctx context.Context, arg GetUserIdentityForUserParams) (UserIdentity, error)
 	// Admin MFA. Every statement is keyed by user_id alone: the row-level
@@ -1964,6 +1976,9 @@ type Querier interface {
 	//   ...SeriesImages / ...TenantImages
 	//     -> no index; one anti-join per run over a table that holds one row per
 	//        entity image
+	//   DeleteUnreferencedUserImages
+	//     -> idx_users_tenant_id_icon_image_id, once per user_images row: users
+	//        holds every reader, so the anti-join is a lookup rather than a scan
 	// Returns the subset of object_keys that some image variant still names. The
 	// caller deletes what it listed from storage and did not get back, so a key
 	// this misses is a deleted live object: every table that holds an object_key
@@ -2722,6 +2737,11 @@ type Querier interface {
 	// comes back as no rows, which the caller reports as a refusal rather than as
 	// a missing account.
 	SetUserBirthDateByID(ctx context.Context, arg SetUserBirthDateByIDParams) (User, error)
+	// Elects an account's icon, or clears it when icon_image_id is NULL. The image
+	// it replaces is left for the orphan sweep rather than deleted here, so two
+	// uploads racing for the same account need no lock between them: whichever
+	// loses is only one more image nothing elects.
+	SetUserIconImage(ctx context.Context, arg SetUserIconImageParams) (int64, error)
 	// Stores the refresh token an authorization code was exchanged for. No row is
 	// updated when the link went away while the code was being exchanged, or holds
 	// a token already, and the caller revokes the one it got instead.

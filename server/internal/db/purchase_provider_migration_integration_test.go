@@ -61,23 +61,33 @@ func TestPurchaseProviderMigrationKeepsStripePurchases(t *testing.T) {
 	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Series", Published: true})
 	paid := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEA0001", Title: "Paid", Status: testutil.EpisodeStatusPublished})
 	granted := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEA0002", Title: "Granted", Status: testutil.EpisodeStatusPublished})
-	reader := pg.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "reader@tenant-a.example.com", "Reader")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	// The reader is inserted by hand for the same reason the purchases are:
+	// the generated CreateUser reads back every column users has on the newest
+	// schema, which this one predates.
+	readerID := uuid.Must(uuid.NewV7())
+	if _, err := pg.DB.ExecContext(ctx, `
+		INSERT INTO users (id, tenant_id, public_id, email, password_hash, name)
+		VALUES ($1, $2, 'ENDUSERA0001', 'reader@tenant-a.example.com', '', 'Reader')
+	`, readerID, tenant.ID); err != nil {
+		t.Fatalf("insert reader: %v", err)
+	}
 
 	stripePurchaseID := uuid.Must(uuid.NewV7())
 	if _, err := pg.DB.ExecContext(ctx, `
 		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, stripe_checkout_session_id, stripe_payment_intent_id)
 		VALUES ($1, $2, $3, $4, 500, 'cs_test_migrated', 'pi_test_migrated')
-	`, stripePurchaseID, tenant.ID, reader.ID, paid.ID); err != nil {
+	`, stripePurchaseID, tenant.ID, readerID, paid.ID); err != nil {
 		t.Fatalf("insert Stripe purchase: %v", err)
 	}
 	grantID := uuid.Must(uuid.NewV7())
 	if _, err := pg.DB.ExecContext(ctx, `
 		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase)
 		VALUES ($1, $2, $3, $4, 300)
-	`, grantID, tenant.ID, reader.ID, granted.ID); err != nil {
+	`, grantID, tenant.ID, readerID, granted.ID); err != nil {
 		t.Fatalf("insert admin grant: %v", err)
 	}
 	if _, err := pg.DB.ExecContext(ctx, `
@@ -135,7 +145,7 @@ func TestPurchaseProviderMigrationKeepsStripePurchases(t *testing.T) {
 	_, err := pg.DB.ExecContext(ctx, `
 		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, provider, provider_checkout_id)
 		VALUES ($1, $2, $3, $4, 500, 'stripe', 'cs_test_migrated')
-	`, uuid.Must(uuid.NewV7()), tenant.ID, reader.ID, granted.ID)
+	`, uuid.Must(uuid.NewV7()), tenant.ID, readerID, granted.ID)
 	if !isUniqueViolation(err) {
 		t.Fatalf("second purchase of the same checkout: err = %v, want a unique violation", err)
 	}
