@@ -2,7 +2,7 @@
 title: Securing an install
 description: How an install keeps tenants and credentials apart, how to rotate its encryption keys, database passwords, signing keys, and tokens, and what two-step verification and the audit logs cover.
 published: 2026-10-07
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 
 An install holds the credentials of every tenant's payment provider and mail server, the personal data of every reader, and the keys that seal them. This page is for the operator who keeps them safe: what the install relies on to keep them apart, where each secret may go, how to replace each one, and what two-step verification and the audit logs give you. Read it before you need it — each procedure below is easier to run on a quiet day than during an incident.
@@ -17,9 +17,9 @@ No process connects to PostgreSQL as its superuser. Each part of the install con
 
 That only holds while each process has the connection URLs of its own roles and no others. Give the superuser's password to the `publiractl db` commands alone, and never set a process's connection URL to the superuser or to a role it does not use.
 
-### The two listeners
+### The console APIs
 
-`publira server` listens twice. Its edge listener, port `8000`, serves the public API and the images, and is what the edge forwards to. Its internal listener, port `8100`, also serves the tenant console's and the Platform Console's APIs, and is for the web apps alone. Keep it on a network that only the web apps reach, as [Keep the internal listener private](../2-deployments/4-edge.md#keep-the-internal-listener-private) describes: whoever reaches it with the web service token can read every tenant's catalog and the platform's list of readers.
+`publira server` serves the tenant console's and the Platform Console's APIs under `/api` on every host, beside the public API, and the edge forwards `/api` to it, so anyone can reach them. Each of their requests is refused before it runs unless it carries an operator's session or the web service token, the few that run before there is a session — signing in, resetting a password, and confirming an email address — are limited per client or guarded by the server itself, and creating the Platform Console's first operator takes the web service token, which only the Platform Console's server sends. The web service token is therefore what stands between the internet and every tenant's catalog and the platform's list of readers: keep it to the processes the table below names.
 
 ### Where each secret may go
 
@@ -31,7 +31,7 @@ Give each secret only to the processes that read it. A process that does not nee
 | The access token signing key, `PUBLIRA_AUTH_JWT_SECRET` | `publira server` | Everything else | Sign a session for any reader, member of staff, or operator |
 | Each web app's session key, `PUBLIRA_AUTH_SECRET` | That web app | `publira server`, `publira worker` | Read and forge that app's session cookies, which carry the user's access token |
 | The cache revalidation token | `publira server`, `publira worker`, and every web app | `publiractl` | Drop any cached page, as often as they like |
-| The web service token | `publira server`, `web-admin`, `web-platform` | `web-storefront`, `publira worker` | Read, through the internal listener, the catalog of any tenant, unpublished series included, and the platform's tenants, operators, and readers |
+| The web service token | `publira server`, `web-admin`, `web-platform` | `web-storefront`, `publira worker` | Read the catalog of any tenant, unpublished series included, and the platform's tenants, operators, and readers |
 | The superuser's password | The `publiractl db` commands | Every long-lived process | Everything in the database |
 | Each role's password | The processes that connect as that role | The others | What that role reaches |
 
@@ -64,7 +64,7 @@ Once every process runs with both keys, change the primary key to `k2` and resta
 
 The two restarts are separate on purpose. A process that does not have `k2` yet cannot open a value another process has already sealed with it, so while `publira server` or `publira worker` runs more than one instance, or restarts one after the other, switching the primary key in the same step leaves a window in which mail fails or a sign-in is refused.
 
-On a [Docker Compose](../2-deployments/3-docker-compose.md) install, each step is an edit to the two variables in `.env` followed by `docker compose up -d`, which restarts `server`, `server-internal`, and `worker` and leaves the rest running.
+On a [Docker Compose](../2-deployments/3-docker-compose.md) install, each step is an edit to the two variables in `.env` followed by `docker compose up -d`, which restarts `server` and `worker` and leaves the rest running.
 
 ### 3. Seal the stored values again
 

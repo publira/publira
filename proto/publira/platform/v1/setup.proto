@@ -47,10 +47,16 @@ message CreateInitialUserRequest {
 // Response returned after the first operator account is created.
 message CreateInitialUserResponse {}
 
-// Initial platform setup, served without authentication.
+// Initial platform setup, served without an operator session.
 service PlatformSetupService {
-  // Reports whether the platform has already been set up.
+  // Reports whether the platform has already been set up. It needs no
+  // credential, since the setup screen asks it before anyone has signed in.
   rpc CheckSetupStatus(CheckSetupStatusRequest) returns (CheckSetupStatusResponse) {}
   // Creates the first operator account, allowed only while no user exists.
+  // The request carries the web service token as
+  // `Authorization: Bearer <token>`, which the Platform Console's setup screen
+  // sends from its server; without it the call is UNAUTHENTICATED, because the
+  // edge forwards /api on every host and anyone reaching a tenant's site would
+  // otherwise claim the platform.
   rpc CreateInitialUser(CreateInitialUserRequest) returns (CreateInitialUserResponse) {}
 }

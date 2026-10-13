@@ -3,8 +3,7 @@
 # `task docker:verify:full` built, take it through the steps its README
 # documents, and check that the tenant site, the tenant console, and the
 # Platform Console answer through the edge, that the proxy cannot reach the
-# internal listener of `publira server`, and that image delivery resizes an
-# image through libvips.
+# database or Valkey, and that image delivery resizes an image through libvips.
 #
 # The stack runs under its own project name, so an install on the same host is
 # left alone, and is always removed with its volumes.
@@ -32,8 +31,9 @@ for name in $(compgen -e); do
 done
 
 work="$(mktemp -d)"
+project=publira-deploy-smoke
 compose() {
-  docker compose -p publira-deploy-smoke -f infra/deploy/compose.yaml --env-file "${work}/.env" "$@"
+  docker compose -p "${project}" -f infra/deploy/compose.yaml --env-file "${work}/.env" "$@"
 }
 cleanup() {
   status=$?
@@ -133,7 +133,7 @@ expect_page "Platform Console" "platform.localhost"
 
 # A long-lived process that exited or keeps restarting is a failure even when
 # every page above answered.
-for service in server server-internal worker web-storefront web-admin web-platform email-renderer proxy; do
+for service in server worker web-storefront web-admin web-platform email-renderer proxy; do
   state="$(compose ps --all --format '{{.State}}' "${service}")"
   restarts="$(docker inspect --format '{{.RestartCount}}' "$(compose ps --all -q "${service}")")"
   if [ "${state}" != running ] || [ "${restarts}" != 0 ]; then
@@ -143,10 +143,8 @@ for service in server server-internal worker web-storefront web-admin web-platfo
 done
 echo "[deploy-smoke] ok: every long-lived process is running"
 
-# The proxy reaches the edge listener and every web app, and not the internal
-# listener: `server` serves the edge listener alone, and `server-internal` is on
-# no network the proxy is on. The checks that must answer run first, so a
-# refusal below is the network's and not a missing wget's.
+# The proxy reaches `server` and every web app, and is on the `edge` network
+# alone, which holds neither the database nor Valkey.
 from_proxy() { compose exec -T proxy wget -q -O /dev/null -T 5 "$1" 2> /dev/null; }
 for url in http://server:8000/livez http://web-storefront:3000/livez http://web-admin:4000/livez http://web-platform:4100/livez; do
   if ! from_proxy "${url}"; then
@@ -154,13 +152,12 @@ for url in http://server:8000/livez http://web-storefront:3000/livez http://web-
     exit 1
   fi
 done
-for url in http://server:8100/livez http://server-internal:8100/livez; do
-  if from_proxy "${url}"; then
-    echo "[deploy-smoke] ERROR: the proxy reaches the internal listener at ${url}" >&2
-    exit 1
-  fi
-done
-echo "[deploy-smoke] ok: the proxy reaches the edge listener and the web apps, and not the internal listener"
+proxy_networks="$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' "$(compose ps -q proxy)")"
+if [ "${proxy_networks}" != "${project}_edge " ]; then
+  echo "[deploy-smoke] ERROR: the proxy is on ${proxy_networks}, want ${project}_edge alone" >&2
+  exit 1
+fi
+echo "[deploy-smoke] ok: the proxy reaches server and the web apps, and not the database or Valkey"
 
 # Image delivery converts and resizes through libvips, which the server binary
 # links with CGO, so a server image whose runtime libvips does not match the

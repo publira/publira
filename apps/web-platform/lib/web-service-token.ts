@@ -2,7 +2,8 @@
  * The bearer `publira server` accepts from this app, as the app rather than as
  * an operator, on the platform API's platform-level reads: the answers every
  * operator sees alike, which `"use cache"` then keeps once for the platform
- * instead of once per session.
+ * instead of once per session. The setup screen creates the first operator
+ * with it too, since the API refuses that to anyone else.
  *
  * Required. Falling back to the operator's session instead would only move the
  * failure: the reads it signs run inside a shared cache scope, which cannot

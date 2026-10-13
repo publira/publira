@@ -253,7 +253,11 @@ describe("resolveSetupState", () => {
 });
 
 describe("createInitialUser", () => {
-  it("sends the chosen default locale, time zone, and currency and reports success", async () => {
+  beforeEach(() => {
+    vi.stubEnv("PUBLIRA_WEB_SERVICE_TOKEN", "service-token");
+  });
+
+  it("sends the chosen default locale, time zone, and currency with the web service token and reports success", async () => {
     mockCreateInitialUser.mockResolvedValueOnce({});
 
     await expect(
@@ -276,7 +280,12 @@ describe("createInitialUser", () => {
         name: "Admin",
         password: "password",
       },
-      { headers: { "X-Forwarded-For": "203.0.113.7" } }
+      {
+        headers: {
+          Authorization: "Bearer service-token",
+          "X-Forwarded-For": "203.0.113.7",
+        },
+      }
     );
   });
 

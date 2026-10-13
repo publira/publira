@@ -20,9 +20,7 @@ import (
 
 // hosted is what one process runs: the server, the worker, or both.
 type hosted struct {
-	// server names the server's listeners the process serves. Neither is a
-	// process that hosts no server.
-	server serverListeners
+	server bool
 	worker bool
 }
 
@@ -85,8 +83,8 @@ func serve(command string, h hosted) int {
 	// The server's names come first when it is hosted: the first is the
 	// process default, and the server is the process the edge points at.
 	var serviceNames []string
-	if h.server.any() {
-		serviceNames = append(serviceNames, serverServiceNames(h.server)...)
+	if h.server {
+		serviceNames = append(serviceNames, serverServiceNames()...)
 	}
 	if h.worker {
 		serviceNames = append(serviceNames, workerServiceNames()...)
@@ -128,7 +126,7 @@ func serve(command string, h hosted) int {
 		halves = append(halves, built)
 		return true
 	}
-	if h.server.any() && !host(buildServer(deps, h.server)) {
+	if h.server && !host(buildServer(deps)) {
 		return 1
 	}
 	if h.worker && !host(buildWorker(deps)) {

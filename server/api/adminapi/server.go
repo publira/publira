@@ -336,10 +336,10 @@ func (s *adminServer) shareLoginGuard() {
 	s.login = loginguard.NewShared(s.policy, s.logger)
 }
 
-// Register mounts the publira.admin.v1 services on mux. What a mux carries is
-// what its listener serves, so this belongs on the internal listener alone:
-// the edge forwards /api host-agnostically, and a mux the edge reaches would
-// put the console's RPCs on every tenant site.
+// Register mounts the publira.admin.v1 services on mux. The edge forwards /api
+// host-agnostically, so whatever mux this is reached through puts the
+// console's RPCs on every tenant site, and the authentication every one of
+// them runs before its handler is what keeps an outsider out.
 func (a *API) Register(mux *http.ServeMux) {
 	registerAdminRoutes(mux, a.server)
 }

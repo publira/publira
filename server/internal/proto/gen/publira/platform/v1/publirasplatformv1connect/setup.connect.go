@@ -51,9 +51,15 @@ var (
 
 // PlatformSetupServiceClient is a client for the publira.platform.v1.PlatformSetupService service.
 type PlatformSetupServiceClient interface {
-	// Reports whether the platform has already been set up.
+	// Reports whether the platform has already been set up. It needs no
+	// credential, since the setup screen asks it before anyone has signed in.
 	CheckSetupStatus(context.Context, *v1.CheckSetupStatusRequest) (*v1.CheckSetupStatusResponse, error)
 	// Creates the first operator account, allowed only while no user exists.
+	// The request carries the web service token as
+	// `Authorization: Bearer <token>`, which the Platform Console's setup screen
+	// sends from its server; without it the call is UNAUTHENTICATED, because the
+	// edge forwards /api on every host and anyone reaching a tenant's site would
+	// otherwise claim the platform.
 	CreateInitialUser(context.Context, *v1.CreateInitialUserRequest) (*v1.CreateInitialUserResponse, error)
 }
 
@@ -67,9 +73,15 @@ func NewPlatformSetupServiceClient(client *connect.Client) PlatformSetupServiceC
 // PlatformSetupServiceHandler is an implementation of the publira.platform.v1.PlatformSetupService
 // service.
 type PlatformSetupServiceHandler interface {
-	// Reports whether the platform has already been set up.
+	// Reports whether the platform has already been set up. It needs no
+	// credential, since the setup screen asks it before anyone has signed in.
 	CheckSetupStatus(context.Context, *v1.CheckSetupStatusRequest) (*v1.CheckSetupStatusResponse, error)
 	// Creates the first operator account, allowed only while no user exists.
+	// The request carries the web service token as
+	// `Authorization: Bearer <token>`, which the Platform Console's setup screen
+	// sends from its server; without it the call is UNAUTHENTICATED, because the
+	// edge forwards /api on every host and anyone reaching a tenant's site would
+	// otherwise claim the platform.
 	CreateInitialUser(context.Context, *v1.CreateInitialUserRequest) (*v1.CreateInitialUserResponse, error)
 }
 

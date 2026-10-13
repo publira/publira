@@ -2,7 +2,7 @@
 title: Monitoring
 description: Probing every process with /livez and /readyz, the log lines and metrics worth alerting on, and turning on OpenTelemetry metrics and traces.
 published: 2026-10-07
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 
 An install tells you how it is doing in four ways: every process answers a liveness and a readiness check, `publira server` and `publira worker` write a structured log, the same two export OpenTelemetry metrics once you turn them on, and every process but `email-renderer` can export OpenTelemetry traces. This page says what each of them reports, how to wire them into an orchestrator and an alerting system, and what is worth an alert. Which monitoring system receives them is your choice; the page names only what an install sends.
@@ -18,13 +18,12 @@ Every process answers two requests over plain HTTP:
 
 | Process | Port | What `/readyz` checks |
 | --- | --- | --- |
-| `publira server`, internal listener | `8100` (`PUBLIRA_PUBLIC_API_GRPC_ADDR`) | Each of its three database logins: `db.public`, `db.admin`, and `db.platform` |
-| `publira server`, edge listener | `8000` (`PUBLIRA_PUBLIC_API_ADDR`) | The `publira_public` login alone, as `db`: the only one the public API uses |
+| `publira server` | `8000` (`PUBLIRA_PUBLIC_API_ADDR`) | Each of its three database logins: `db.public`, `db.admin`, and `db.platform` |
 | `publira worker` | `8003` (`PUBLIRA_WORKER_ADDR`) | Each of its three database logins: `db.outbox`, `db.ticker`, and `db.content_stats`. It also answers not ready until its job queue has started |
-| `web-storefront`, `web-admin`, `web-platform` | `PORT`: `3000`, `4000`, and `4100` in the images as the repository builds them | `api`, the `/readyz` of `publira server`'s internal listener, at `PUBLIRA_GRPC_URL`; and `redis`, a ping to the shared cache at `PNCH_REDIS_URL`, which always passes while that cache is turned off |
+| `web-storefront`, `web-admin`, `web-platform` | `PORT`: `3000`, `4000`, and `4100` in the images as the repository builds them | `api`, the `/readyz` of `publira server`, on the host `PUBLIRA_GRPC_URL` names; and `redis`, a ping to the shared cache at `PNCH_REDIS_URL`, which always passes while that cache is turned off |
 | `email-renderer` | `8080` (`PORT`) | Nothing: it depends on no other service, so it is ready whenever it is up |
 
-A `publira server --with-worker` process answers on all three ports of the first three rows, each with the checks its row names, so probe it as you would probe the two processes. A `publira server --listener edge` or `--listener internal` process answers on the port of its own listener alone, with the checks that listener's row names.
+A `publira server --with-worker` process answers on both ports of the first two rows, each with the checks its row names, so probe it as you would probe the two processes.
 
 None of them checks the object store, the SMTP server, or the search engine. A failure there shows in the log and in what readers see, not in `/readyz`.
 
@@ -49,7 +48,7 @@ Each check is given two seconds. `publira server` and `publira worker` run their
 
 Point the liveness probe of every process at `/livez`, and its readiness probe at `/readyz`. Never use `/readyz` as a liveness probe: a database that stops answering would make the orchestrator restart every process at once, which does not bring the database back and takes away whatever the processes could still serve from cache.
 
-A web app's `/readyz` fails whenever the internal listener's `/readyz` does, so one database login that stops answering makes every web app not ready together with `publira server`. That is deliberate — a web app that cannot reach a working API cannot serve a page that is not cached — but it means a load balancer that follows readiness stops sending traffic to all of them at once. Decide whether that is what you want from your load balancer before you point it at `/readyz`.
+A web app's `/readyz` fails whenever the `/readyz` of `publira server` does, so one database login that stops answering makes every web app not ready together with `publira server`. That is deliberate — a web app that cannot reach a working API cannot serve a page that is not cached — but it means a load balancer that follows readiness stops sending traffic to all of them at once. Decide whether that is what you want from your load balancer before you point it at `/readyz`.
 
 Give a `/readyz` probe of `publira server` or `publira worker` a timeout longer than six seconds, so that a slow check is reported as the failure it names rather than as a probe timeout. On Kubernetes, the worker's probes look like this:
 
@@ -104,7 +103,7 @@ Choose how they are exported with `OTEL_METRICS_EXPORTER`:
 - **`otlp`**, the default, pushes them every 60 seconds to `OTEL_EXPORTER_OTLP_ENDPOINT`, the same collector address the traces use.
 - **`prometheus`** serves them for a Prometheus scraper at `/metrics` on port `9464`. Set `OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0` as well: the default, `localhost`, cannot be reached from outside the container. When `publira server` and `publira worker` share a network namespace, such as one Kubernetes pod, give each its own `OTEL_EXPORTER_PROMETHEUS_PORT`.
 
-On the [Docker Compose](../2-deployments/3-docker-compose.md) install, set `PUBLIRA_METRICS_ENABLED`, `OTEL_METRICS_EXPORTER`, and `OTEL_EXPORTER_PROMETHEUS_HOST` in `.env`, which passes them to `server`, `server-internal`, and `worker`, and run `docker compose up -d` again. The other variables, and the full list of what is recorded, are in the [metrics reference](https://github.com/publira/publira/blob/main/server/README.md#metrics-opentelemetry). Each process reports under one `service.name`: `publira-api-server` for `publira server` and `publira-worker` for `publira worker`. A `publira server --with-worker` process reports everything under `publira-api-server`.
+On the [Docker Compose](../2-deployments/3-docker-compose.md) install, set `PUBLIRA_METRICS_ENABLED`, `OTEL_METRICS_EXPORTER`, and `OTEL_EXPORTER_PROMETHEUS_HOST` in `.env`, which passes them to `server` and `worker`, and run `docker compose up -d` again. The other variables, and the full list of what is recorded, are in the [metrics reference](https://github.com/publira/publira/blob/main/server/README.md#metrics-opentelemetry). Each process reports under one `service.name`: `publira-api-server` for `publira server` and `publira-worker` for `publira worker`. A `publira server --with-worker` process reports everything under `publira-api-server`.
 
 ### The outbox
 

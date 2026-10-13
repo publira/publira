@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do, and the sample proxy configurations that do it.
 published: 2026-10-06
-updated: 2026-10-12
+updated: 2026-10-13
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -29,24 +29,24 @@ Every tenant has a domain and a console host of its own, and a host name belongs
 
 On every one of those hosts, the path then decides whether the web app answers or `publira server` does, in this order:
 
-| Path | Process |
-| --- | --- |
-| Starting with `/images` | The edge listener of `publira server` |
+| Path                                   | Process                     |
+| -------------------------------------- | --------------------------- |
+| Starting with `/images`                | `publira server`            |
 | `/api/v1`, or starting with `/api/v1/` | The web app the host picked |
-| `/api`, or starting with `/api/` | The edge listener of `publira server` |
-| Anything else | The web app the host picked |
+| `/api`, or starting with `/api/`       | `publira server`            |
+| Anything else                          | The web app the host picked |
 
 `/images` is every image a page shows, and `/api` the public API the browser and the mobile app call. `/api/v1` is the exception: it belongs to the web apps, which answer their own endpoints there, the payment and inbound email webhooks among them. The exception ends at a `/`, so a path such as `/api/v10` or `/api/v1beta` is not part of it and goes to `publira server` with the rest of `/api`. An edge that matches the longest prefix first gets the order right without being told it.
 
-The edge listener of `publira server` is on port `8000`, and its internal listener on port `8100`, unless `PUBLIRA_PUBLIC_API_ADDR` and `PUBLIRA_PUBLIC_API_GRPC_ADDR` give them other addresses, as the [`publira server` reference](https://github.com/publira/publira/blob/main/server/cmd/publira/README.md) lists. The web apps listen on port `3000` (`web-storefront`), `4000` (`web-admin`), and `4100` (`web-platform`) in the images as the repository builds them, unless you set their `PORT`.
+`publira server` is on port `8000`, unless `PUBLIRA_PUBLIC_API_ADDR` gives it another address, as the [`publira server` reference](https://github.com/publira/publira/blob/main/server/cmd/publira/README.md) lists. The web apps listen on port `3000` (`web-storefront`), `4000` (`web-admin`), and `4100` (`web-platform`) in the images as the repository builds them, unless you set their `PORT`.
 
 The edge forwards the path as it arrived, and the `Host` header as the browser sent it. Publira's routes carry the `/api` and `/images` prefixes, and Publira finds the tenant from the host name, so an edge that strips a prefix or rewrites `Host` reaches no tenant at all.
 
 An edge that checks the health of what it forwards to, as a load balancer does, can probe `GET /readyz` on each process. [Health checks](../3-operations/11-monitoring.md#health-checks) says what each one checks, and what pointing a load balancer at it means when the database stops answering.
 
-### Keep the internal listener private
+### The console APIs are under `/api` too
 
-`publira server` listens twice. The edge forwards to its edge listener, port `8000` by default, and to nothing else of it. Its internal listener, port `8100` by default, serves the tenant console's and the Platform Console's APIs to the web apps, and is for them alone. Keep it on a network the edge cannot reach, and never route a host or a path to it.
+`publira server` serves the tenant console's and the Platform Console's APIs under `/api` beside the public API, on the port the web apps call, so the edge reaches them on every host it forwards `/api` on. What keeps them from an outsider is their own authentication, as [The console APIs](../3-operations/12-security.md#the-console-apis) describes, not the routing: route `/api` as the table above says, and never to a web app.
 
 ### TLS
 
@@ -132,7 +132,7 @@ Outside services post to a URL on the tenant's site, under `/api/v1/webhook/`:
 
 ## The sample configurations
 
-The repository ships three sample configurations of a reverse proxy that route requests and handle their headers, bodies, and timeouts as above: one each for Traefik, nginx, and Caddy. Two requirements stay with the install that runs one: a TLS listener, which each sample leaves for you to add, and networks that keep the [internal listener](#keep-the-internal-listener-private) out of the proxy's reach, which no proxy configuration can provide. They are examples, not the definition of the edge. The [Docker Compose](./3-docker-compose.md) install runs the Traefik one, and an install that runs a proxy of its own can start from any of them. An edge built from a managed load balancer, an Ingress, or a Gateway follows the requirements above, and needs none of them.
+The repository ships three sample configurations of a reverse proxy that route requests and handle their headers, bodies, and timeouts as above: one each for Traefik, nginx, and Caddy. One requirement stays with the install that runs one: a TLS listener, which each sample leaves for you to add. They are examples, not the definition of the edge. The [Docker Compose](./3-docker-compose.md) install runs the Traefik one, and an install that runs a proxy of its own can start from any of them. An edge built from a managed load balancer, an Ingress, or a Gateway follows the requirements above, and needs none of them.
 
 | Proxy | Files | Where the backend addresses go | Obtains certificates itself |
 | --- | --- | --- | --- |
@@ -162,7 +162,7 @@ Each sample keeps the backend addresses apart from the routing, and the committe
 | `web-storefront` | `web-storefront`, on the port it listens on |
 | `web-admin` | `web-admin`, on the port it listens on |
 | `web-platform` | `web-platform`, on the port it listens on, when you run it |
-| `api` | The edge listener of `publira server`, port `8000` unless `PUBLIRA_PUBLIC_API_ADDR` sets another |
+| `api` | `publira server`, port `8000` unless `PUBLIRA_PUBLIC_API_ADDR` sets another |
 
 ### The host lists
 

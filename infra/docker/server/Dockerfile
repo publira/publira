@@ -58,10 +58,10 @@ WORKDIR /app
 
 COPY --from=builder /out/publira /app/publira
 
-# The binary configures its listeners (PUBLIRA_PUBLIC_API_ADDR and
-# PUBLIRA_PUBLIC_API_GRPC_ADDR for `server`, PUBLIRA_WORKER_ADDR for
-# `worker`); these are their defaults, as documentation metadata.
-EXPOSE 8000 8100 8003
+# The binary configures its listeners (PUBLIRA_PUBLIC_API_ADDR for `server`,
+# PUBLIRA_WORKER_ADDR for `worker`); these are their defaults, as
+# documentation metadata.
+EXPOSE 8000 8003
 
 # debian-slim has no HEALTHCHECK convention here; orchestrator probes:
 #   liveness  -> GET /livez

@@ -277,7 +277,7 @@ These are URLs reachable inside the private network, not the public ones meant f
 
 ## Web service credential
 
-`PUBLIRA_WEB_SERVICE_TOKEN` is a secret `publira server` shares with the web apps, sent as `Authorization: Bearer <token>`, so that a console can read data every one of its operators sees alike without an operator's session and cache the answer for all of them. It is served on the internal listener only, like the rest of `publira.admin.v1` and `publira.platform.v1`. Unset, the bearer is not recognized and both APIs accept operator sessions alone.
+`PUBLIRA_WEB_SERVICE_TOKEN` is a secret `publira server` shares with the web apps, sent as `Authorization: Bearer <token>`, so that a console can read data every one of its operators sees alike without an operator's session and cache the answer for all of them. Unset, the bearer is not recognized and both APIs accept operator sessions alone.
 
 On the admin API the call runs as a service principal of the tenant the request names, with no user and no role, and only on these RPCs; any other answers `permission_denied`:
 
@@ -298,6 +298,8 @@ On the platform API it runs as a service principal with no operator and no platf
 - `PlatformDashboardService/GetDashboardSummary`
 - `PlatformOperatorService/ListOperators`, `GetOperator`
 - `PlatformUserService/ListEndUsers`, `GetEndUser`
+
+`PlatformSetupService/CreateInitialUser`, which creates the first operator with the `platform_super_admin` role while the platform has none, takes the credential as well, and is refused with `unauthenticated` to any caller without it. The edge forwards `/api` on every host, so an install whose first operator has not been created yet, or that runs no Platform Console at all, would otherwise hand the platform to whoever reaches a tenant's site first. The Platform Console's setup screen sends the credential from its server. `CheckSetupStatus` stays open, since the setup screen asks it before anyone has signed in.
 
 ## Email renderer
 
@@ -749,20 +751,17 @@ The rate is `complete_count / member_view_count` over a range of days. A period 
 
 ## API namespace separation
 
-`publira server` (`server/cmd/publira`) serves all three Connect namespaces and keeps them apart by what it registers on each of its two listeners:
+`publira server` (`server/cmd/publira`) serves all three Connect namespaces under `/api` on one listener, `:8000` (changeable with `PUBLIRA_PUBLIC_API_ADDR`), beside `GET /images/…`, `/livez`, and `/readyz`:
 
-- Edge-facing listener, `:8000` (changeable with `PUBLIRA_PUBLIC_API_ADDR`)
-  - `publira.v1` — `CatalogService`, `AuthService`, and the rest of the public API — under `/api`, plus `GET /images/…`, `/livez`, and `/readyz`
-  - This is what the reverse proxy forwards `/api` and `/images` to, prefixes kept, on every host
-- Internal listener, `:8100` (changeable with `PUBLIRA_PUBLIC_API_GRPC_ADDR`)
-  - All three namespaces: `publira.v1`, `publira.admin.v1` (`AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`), and `publira.platform.v1`
-  - web-storefront, web-admin, and web-platform dial it directly over the private network
+- `publira.v1` — `CatalogService`, `AuthService`, and the rest of the public API
+- `publira.admin.v1` — `AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`, and the rest of the tenant console's API
+- `publira.platform.v1` — the Platform Console's API
 
-The proto packages produce non-colliding procedure paths, so one mux carries all three; the registration is the whole boundary, because a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on the same route. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
+The reverse proxy forwards `/api` and `/images` to it, prefixes kept, on every host, and web-storefront, web-admin, and web-platform dial the same `/api` directly over the private network. The proto packages produce non-colliding procedure paths, so one mux carries all three. The namespaces are kept apart by the login each is answered on and by their authentication, not by where they are reachable: a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on one route, so both consoles' RPCs are reachable through the edge on every tenant site, and each refuses a caller without an operator session or the [web service credential](#web-service-credential) before any handler runs. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
 
 ## Database users
 
-Each namespace connects with its own dedicated PostgreSQL login user, which keeps privileges minimal. `publira server` holds one pool per login and picks the pool by the namespace the procedure path names, so the three never share a connection; an image is answered on the `publira_public` pool on a storefront host and on the `publira_admin` pool on a console host. A server serving its edge listener alone opens no `publira_platform` pool.
+Each namespace connects with its own dedicated PostgreSQL login user, which keeps privileges minimal. `publira server` holds one pool per login and picks the pool by the namespace the procedure path names, so the three never share a connection; an image is answered on the `publira_public` pool on a storefront host and on the `publira_admin` pool on a console host.
 
 | Namespace or process | DB user | Environment variable | Local default |
 | --- | --- | --- | --- |
@@ -806,10 +805,10 @@ Every pool a process opens is bounded by the same three variables, read at start
 | `PUBLIRA_DB_MAX_IDLE_CONNS` | the value of `PUBLIRA_DB_MAX_OPEN_CONNS` | The returned connections a pool keeps open for the next caller, from `0` to `PUBLIRA_DB_MAX_OPEN_CONNS` |
 | `PUBLIRA_DB_CONN_MAX_IDLE_TIME` | `5m` | How long a connection nobody uses is kept before it is closed, as a Go duration. `0` keeps it |
 
-The bound is per pool, not per process. `publira server` and `publira worker` hold three pools each and `publira server --with-worker` holds six, while a server serving one listener holds two for `--listener edge` and three for `--listener internal`, so the database has to accept
+The bound is per pool, not per process. `publira server` and `publira worker` hold three pools each and `publira server --with-worker` holds six, so the database has to accept
 
 ```text
-(3 × server processes + 2 × edge-only server processes + 3 × internal-only server processes + 3 × worker processes) × PUBLIRA_DB_MAX_OPEN_CONNS
+(3 × server processes + 3 × worker processes) × PUBLIRA_DB_MAX_OPEN_CONNS
 ```
 
 connections from them, plus one pool for each `publiractl` command running at the same time, inside `max_connections` less the slots PostgreSQL reserves for superusers (`superuser_reserved_connections`, `3` by default). One server and one worker at the defaults use 60 of PostgreSQL's default 100.
@@ -834,7 +833,7 @@ Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL
   - `GET /livez` — process liveness. Always `200` with a plain `ok`. Intended for a K8s livenessProbe.
   - `GET /readyz` — readiness of the dependencies. `200` when healthy, `503` when not. Intended for a K8s readinessProbe or a load balancer.
   - Server / worker: at minimum a DB `Ping`
-  - `publira server`'s internal listener holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform` — so a failure says which login stopped answering. Its edge-facing listener checks the public pool alone under `db`: that is the only namespace it serves, and the state of the two consoles' pools is not an outsider's to read.
+  - `publira server` holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform` — so a failure says which login stopped answering. The edge forwards `/api` and `/images` alone, so its `/readyz` is not an outsider's to read.
   - Web (`web-admin` / `web-storefront` / `web-platform`): the upstream API's `/readyz` plus Redis (the Redis check is skipped when `PNCH_REDIS_URL` is disabled)
   - Example `/readyz` responses (JSON):
     - Healthy: `{"status":"ok","checks":{"db":{"status":"ok"}}}`

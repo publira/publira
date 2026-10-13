@@ -21,7 +21,7 @@ Image builds are a separate concern and live under [`infra/docker/`](../docker/R
 | `web-storefront` | The public tenant site | `3000` |
 | `web-admin` | The tenant console | `4000` |
 | `web-platform` | The platform console | `4100` |
-| `api` | The edge listener of `publira server`: the public API (Connect RPC plus `/readyz`) and image delivery for the tenant site and the tenant console alike | `8000` |
+| `api` | `publira server`: every Connect namespace under `/api`, and image delivery for the tenant site and the tenant console alike | `8000` |
 
 ### Host rules
 

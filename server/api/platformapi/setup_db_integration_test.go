@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"context"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -17,8 +18,67 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
+// newSetupEnv starts the server with the web service token, which the
+// Platform Console's setup screen creates the first operator with.
+func newSetupEnv(t *testing.T) (*httptest.Server, *testutil.PostgresEnv) {
+	t.Helper()
+	return newDBIntegrationEnvWithServiceToken(t, auth.NewServiceToken(testWebServiceToken))
+}
+
+// withSetupToken carries the web service token, as the setup screen's call
+// does.
+func withSetupToken(ctx context.Context) context.Context {
+	return testutil.WithBearer(ctx, testWebServiceToken)
+}
+
+// The edge forwards /api on every host, so creating the first operator is
+// refused to whoever lacks the web service token, before the handler runs:
+// no bearer, another bearer, an operator's access token, or any bearer on a
+// server given no token at all. Whether setup is complete stays readable to
+// anyone, since the setup screen asks it before anyone has signed in.
+func TestDBCreateInitialUserTakesTheWebServiceTokenAlone(t *testing.T) {
+	request := &publirasplatformv1.CreateInitialUserRequest{
+		Name:          "Initial Admin",
+		Email:         "initial-admin@example.com",
+		Password:      "initial-admin-password",
+		DefaultLocale: "en",
+	}
+	operatorToken, _, err := testutil.TokenManager().Issue("PLATADMIN001", auth.AudiencePlatform, "", auth.RolePlatformSuperAdmin, 0, time.Now())
+	if err != nil {
+		t.Fatalf("issue an operator token: %v", err)
+	}
+	for name, tc := range map[string]struct {
+		configured *auth.ServiceToken
+		ctx        context.Context
+	}{
+		"no bearer":                  {auth.NewServiceToken(testWebServiceToken), context.Background()},
+		"a different token":          {auth.NewServiceToken(testWebServiceToken), testutil.WithBearer(context.Background(), "not-"+testWebServiceToken)},
+		"an operator's access token": {auth.NewServiceToken(testWebServiceToken), testutil.WithBearer(context.Background(), operatorToken)},
+		"a server with no token":     {nil, withSetupToken(context.Background())},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ts, pg := newDBIntegrationEnvWithServiceToken(t, tc.configured)
+			setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+
+			if _, err := setup.CreateInitialUser(tc.ctx, request); connect.CodeOf(err) != connect.CodeUnauthenticated {
+				t.Fatalf("CreateInitialUser code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+			}
+			if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_users"); got != 0 {
+				t.Fatalf("platform_users rows = %d, want the refused setup to add none", got)
+			}
+			status, err := setup.CheckSetupStatus(context.Background(), &publirasplatformv1.CheckSetupStatusRequest{})
+			if err != nil {
+				t.Fatalf("CheckSetupStatus: %v", err)
+			}
+			if status.SetupCompleted {
+				t.Fatal("setup_completed = true after a refused setup, want false")
+			}
+		})
+	}
+}
+
 func TestDBInitialSetupCreatesLoginableSuperAdmin(t *testing.T) {
-	ts, _ := newDBIntegrationEnv(t)
+	ts, _ := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -30,7 +90,7 @@ func TestDBInitialSetupCreatesLoginableSuperAdmin(t *testing.T) {
 		t.Fatal("setup_completed = true on an empty database, want false")
 	}
 
-	if _, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+	if _, err := setup.CreateInitialUser(withSetupToken(context.Background()), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Initial Admin",
 		Email:         "initial-admin@example.com",
 		Password:      "initial-admin-password",
@@ -73,11 +133,11 @@ func TestDBInitialSetupCreatesLoginableSuperAdmin(t *testing.T) {
 }
 
 func TestDBCreateInitialUserRejectsSecondSetup(t *testing.T) {
-	ts, pg := newDBIntegrationEnv(t)
+	ts, pg := newSetupEnv(t)
 	pg.SeedPlatformSuperAdmin(t, "PLATADMIN001", "superadmin@example.com", "Platform Super Admin")
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+	_, err := setup.CreateInitialUser(withSetupToken(context.Background()), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Second Admin",
 		Email:         "second-admin@example.com",
 		Password:      "second-admin-password",
@@ -95,12 +155,12 @@ func TestDBCreateInitialUserRejectsSecondSetup(t *testing.T) {
 // Setup completion is decided by the platform_users count, so even a row that
 // carries no platform role closes the setup endpoint.
 func TestDBCreateInitialUserRejectsWhenRolelessPlatformUserExists(t *testing.T) {
-	ts, pg := newDBIntegrationEnv(t)
+	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	seedPlatformUserWithoutRole(t, pg, "PLATNOROLE01", "no-role@example.com", "No Role")
 
-	_, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+	_, err := setup.CreateInitialUser(withSetupToken(context.Background()), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Initial Admin",
 		Email:         "initial-admin@example.com",
 		Password:      "initial-admin-password",
@@ -121,7 +181,7 @@ func TestDBCreateInitialUserRejectsWhenRolelessPlatformUserExists(t *testing.T) 
 // A platform user carrying no platform role cannot be authenticated even though
 // the credentials themselves are valid.
 func TestDBLoginRejectsPlatformUserWithoutRole(t *testing.T) {
-	ts, pg := newDBIntegrationEnv(t)
+	ts, pg := newSetupEnv(t)
 	seedPlatformUserWithoutRole(t, pg, "PLATNOROLE01", "no-role@example.com", "No Role")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -139,12 +199,12 @@ func TestDBLoginRejectsPlatformUserWithoutRole(t *testing.T) {
 // language to render in before anyone opens the settings screen, and no tenant
 // starts selling in a currency nobody chose.
 func TestDBInitialSetupSavesTheChosenDefaults(t *testing.T) {
-	ts, pg := newDBIntegrationEnv(t)
+	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	if _, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+	if _, err := setup.CreateInitialUser(withSetupToken(context.Background()), &publirasplatformv1.CreateInitialUserRequest{
 		Name:            "Initial Admin",
 		Email:           "initial-admin@example.com",
 		Password:        "initial-admin-password",
@@ -184,10 +244,10 @@ func TestDBInitialSetupSavesTheChosenDefaults(t *testing.T) {
 // A setup that names no currency starts the platform on the built-in one, as a
 // platform settings save that names none would.
 func TestDBInitialSetupWithoutACurrencyStartsOnTheBuiltInOne(t *testing.T) {
-	ts, pg := newDBIntegrationEnv(t)
+	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	if _, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+	if _, err := setup.CreateInitialUser(withSetupToken(context.Background()), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Initial Admin",
 		Email:         "initial-admin@example.com",
 		Password:      "initial-admin-password",
@@ -205,10 +265,10 @@ func TestDBInitialSetupWithoutACurrencyStartsOnTheBuiltInOne(t *testing.T) {
 // platform settings save refuses them, so a rejected setup leaves no
 // administrator and no settings row behind.
 func TestDBCreateInitialUserRejectsACodeThatNamesNoCurrency(t *testing.T) {
-	ts, pg := newDBIntegrationEnv(t)
+	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+	_, err := setup.CreateInitialUser(withSetupToken(context.Background()), &publirasplatformv1.CreateInitialUserRequest{
 		Name:            "Initial Admin",
 		Email:           "initial-admin@example.com",
 		Password:        "initial-admin-password",
@@ -230,12 +290,12 @@ func TestDBCreateInitialUserRejectsACodeThatNamesNoCurrency(t *testing.T) {
 // The zone chosen at setup is the platform default, so a tenant created
 // afterwards without one starts on it.
 func TestDBInitialSetupSavesTheChosenTimezoneForNewTenants(t *testing.T) {
-	ts, pg := newDBIntegrationEnv(t)
+	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	if _, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+	if _, err := setup.CreateInitialUser(withSetupToken(context.Background()), &publirasplatformv1.CreateInitialUserRequest{
 		Name:            "Initial Admin",
 		Email:           "initial-admin@example.com",
 		Password:        "initial-admin-password",
@@ -272,10 +332,10 @@ func TestDBInitialSetupSavesTheChosenTimezoneForNewTenants(t *testing.T) {
 // A setup that names no zone starts the platform on the built-in one, as the
 // settings row did before the zone was asked for.
 func TestDBInitialSetupWithoutATimezoneStartsOnTheBuiltInOne(t *testing.T) {
-	ts, pg := newDBIntegrationEnv(t)
+	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	if _, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+	if _, err := setup.CreateInitialUser(withSetupToken(context.Background()), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Initial Admin",
 		Email:         "initial-admin@example.com",
 		Password:      "initial-admin-password",
@@ -293,10 +353,10 @@ func TestDBInitialSetupWithoutATimezoneStartsOnTheBuiltInOne(t *testing.T) {
 // settings save refuses it, so a rejected setup leaves no administrator and no
 // settings row behind.
 func TestDBCreateInitialUserRejectsANameThatIsNoTimezone(t *testing.T) {
-	ts, pg := newDBIntegrationEnv(t)
+	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+	_, err := setup.CreateInitialUser(withSetupToken(context.Background()), &publirasplatformv1.CreateInitialUserRequest{
 		Name:            "Initial Admin",
 		Email:           "initial-admin@example.com",
 		Password:        "initial-admin-password",
@@ -318,10 +378,10 @@ func TestDBCreateInitialUserRejectsANameThatIsNoTimezone(t *testing.T) {
 // An unsupported code is rejected before any write, so a rejected setup leaves
 // no administrator and no settings row behind.
 func TestDBCreateInitialUserRejectsUnsupportedLocale(t *testing.T) {
-	ts, pg := newDBIntegrationEnv(t)
+	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
-	_, err := setup.CreateInitialUser(context.Background(), &publirasplatformv1.CreateInitialUserRequest{
+	_, err := setup.CreateInitialUser(withSetupToken(context.Background()), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Initial Admin",
 		Email:         "initial-admin@example.com",
 		Password:      "initial-admin-password",
@@ -343,7 +403,7 @@ func TestDBCreateInitialUserRejectsUnsupportedLocale(t *testing.T) {
 // and the later one's upsert overwrote the locale the earlier one saved. Holding
 // the setup lock from outside makes both reach it before either writes.
 func TestDBConcurrentInitialSetupLeavesOneOperator(t *testing.T) {
-	ts, pg := newDBIntegrationEnv(t)
+	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -365,7 +425,7 @@ func TestDBConcurrentInitialSetupLeavesOneOperator(t *testing.T) {
 	var wg sync.WaitGroup
 	for i, msg := range requests {
 		wg.Go(func() {
-			_, errs[i] = setup.CreateInitialUser(ctx, msg)
+			_, errs[i] = setup.CreateInitialUser(withSetupToken(ctx), msg)
 		})
 	}
 
@@ -419,7 +479,7 @@ func setupLockQuery(fn string) string {
 // A settings row can outlive every operator, so setup completes over it: the
 // chosen locale replaces the saved one and the saved time zone is kept.
 func TestDBInitialSetupOverAnOrphanedSettingsRow(t *testing.T) {
-	ts, pg := newDBIntegrationEnv(t)
+	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -431,7 +491,7 @@ func TestDBInitialSetupOverAnOrphanedSettingsRow(t *testing.T) {
 		t.Fatalf("seed platform_config: %v", err)
 	}
 
-	if _, err := setup.CreateInitialUser(ctx, &publirasplatformv1.CreateInitialUserRequest{
+	if _, err := setup.CreateInitialUser(withSetupToken(ctx), &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Initial Admin",
 		Email:         "initial-admin@example.com",
 		Password:      "initial-admin-password",

@@ -2,7 +2,7 @@
 title: Upgrading
 description: Bring a running install to a new release, from the backup before it to the processes of the new release serving.
 published: 2026-10-06
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 
 A release can change the database schema its processes expect, so upgrading an install is more than restarting it on new images. The database goes first: the `publiractl` image of the new release brings the schema and the database roles forward, and only then do the processes of the new release start on it. This page goes through that order, how to check each step, and what to do when a migration fails.
@@ -213,7 +213,7 @@ If your install runs images you build yourself, build the new release's from the
 If you decided to [stop the processes](#decide-whether-to-stop-the-processes-first), stop them first, naming `web-platform` and `email-renderer` too if you run them:
 
 ```bash
-docker compose stop server server-internal worker web-storefront web-admin
+docker compose stop server worker web-storefront web-admin
 ```
 
 Then take the backup:
@@ -256,7 +256,7 @@ docker compose exec postgres psql -U postgres -d publira -c "UPDATE schema_migra
 To go back to the release you ran instead:
 
 ```bash
-docker compose stop server server-internal worker web-storefront web-admin
+docker compose stop server worker web-storefront web-admin
 docker compose exec postgres psql -U postgres -d postgres -c 'DROP DATABASE publira' -c 'CREATE DATABASE publira'
 docker compose exec -T postgres pg_restore -U postgres -d publira < publira-before-upgrade.dump
 git checkout <current tag>
