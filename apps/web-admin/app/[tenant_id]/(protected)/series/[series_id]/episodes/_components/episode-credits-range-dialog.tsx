@@ -108,7 +108,14 @@ export const EpisodeCreditsRangeDialog = ({
       <DialogPortal>
         <DialogBackdrop />
         <DialogViewport>
-          <DialogPopup className="flex max-h-[min(90vh,44rem)] min-h-0 w-[min(92vw,40rem)] scroll-pb-16 flex-col overflow-y-auto">
+          {/*
+           * The body scrolls between the header and the footer. A viewport
+           * shorter than 30rem, a phone held sideways or a page zoomed to
+           * 400%, leaves the body little or no room between them, so there
+           * the popup lays its parts out at their full height instead and
+           * scrolls them as one, the footer last.
+           */}
+          <DialogPopup className="flex max-h-[min(90vh,44rem)] w-[min(92vw,40rem)] flex-col overflow-y-auto [@media(max-height:30rem)]:block">
             <DialogHeader>
               <DialogTitle className="text-lg font-semibold">
                 {t("admin.series.episodes.credits.dialog_title")}
@@ -117,27 +124,25 @@ export const EpisodeCreditsRangeDialog = ({
                 {t("admin.series.episodes.credits.dialog_description")}
               </DialogDescription>
             </DialogHeader>
-            <div className="mt-4">
-              {hasLoaded ? (
-                <EpisodeCreditsRangeForm
-                  action={bulkEditEpisodeCreditsAction}
-                  creatorRoles={catalog.creatorRoles}
-                  creatorRolesErrorMessage={catalog.creatorRolesErrorMessage}
-                  creators={catalog.creators}
-                  creatorsErrorMessage={catalog.creatorsErrorMessage}
-                  episodes={catalog.episodes}
-                  episodesErrorMessage={catalog.episodesErrorMessage}
-                  isEpisodePending={isCatalogPending}
-                  key={sessionKey}
-                  onRetryEpisodes={loadCatalog}
-                  seriesId={seriesId}
-                />
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {t("admin.series.episodes.credits.episodes_loading")}
-                </p>
-              )}
-            </div>
+            {hasLoaded ? (
+              <EpisodeCreditsRangeForm
+                action={bulkEditEpisodeCreditsAction}
+                creatorRoles={catalog.creatorRoles}
+                creatorRolesErrorMessage={catalog.creatorRolesErrorMessage}
+                creators={catalog.creators}
+                creatorsErrorMessage={catalog.creatorsErrorMessage}
+                episodes={catalog.episodes}
+                episodesErrorMessage={catalog.episodesErrorMessage}
+                isEpisodePending={isCatalogPending}
+                key={sessionKey}
+                onRetryEpisodes={loadCatalog}
+                seriesId={seriesId}
+              />
+            ) : (
+              <p className="mt-4 text-xs text-muted-foreground">
+                {t("admin.series.episodes.credits.episodes_loading")}
+              </p>
+            )}
           </DialogPopup>
         </DialogViewport>
       </DialogPortal>
