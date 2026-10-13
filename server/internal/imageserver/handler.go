@@ -833,18 +833,25 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 // is resolved without the console's login. A console host is looked up as a
 // storefront first, because the site is not known until one of them answers;
 // both read `tenants`, which carries no row-level security and which both
-// logins may select from.
+// logins may select from. A site this server was given no SiteDB for is never
+// looked up, so its hosts are not found rather than answered as the other
+// site's login.
 func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (dbmodels.Tenant, bool, error) {
 	candidates := requestmeta.HostCandidatesFromRequest(r)
-	tenant, err := h.public.Resolver.GetTenantByDomains(ctx, candidates)
-	if err == nil {
-		tracing.SetTenant(ctx, tenant.PublicID)
-		return tenant, false, nil
+	if h.public.Resolver != nil {
+		tenant, err := h.public.Resolver.GetTenantByDomains(ctx, candidates)
+		if err == nil {
+			tracing.SetTenant(ctx, tenant.PublicID)
+			return tenant, false, nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return dbmodels.Tenant{}, false, err
+		}
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return dbmodels.Tenant{}, false, err
+	if h.admin.Resolver == nil {
+		return dbmodels.Tenant{}, false, sql.ErrNoRows
 	}
-	tenant, err = h.admin.Resolver.GetAdminTenantByDomains(ctx, candidates)
+	tenant, err := h.admin.Resolver.GetAdminTenantByDomains(ctx, candidates)
 	if err != nil {
 		return dbmodels.Tenant{}, false, err
 	}

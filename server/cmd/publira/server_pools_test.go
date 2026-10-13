@@ -37,11 +37,7 @@ import (
 func TestEachSurfaceReadsItsSettingsOnItsOwnPool(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
-	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Harbor", Published: true})
-	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEA0001", Title: "One", Status: testutil.EpisodeStatusPublished})
-	page := pg.SeedEpisodeImage(t, tenant.ID, episode.ID, 1)
-	preview := "/images/episodes/" + page.String() + "/preview"
+	tenant, preview := seedPreviewPage(t, pg)
 
 	t.Run("the public API searches as publira_public alone", func(t *testing.T) {
 		base := serveOnPools(t, serverPools{
@@ -112,6 +108,19 @@ func TestEachSurfaceReadsItsSettingsOnItsOwnPool(t *testing.T) {
 			t.Fatalf("UploadTenantIcon code = %v (%v), want %v for a platform with no object store saved", code, err, connect.CodeFailedPrecondition)
 		}
 	})
+}
+
+// seedPreviewPage seeds a tenant with a published series and the first page
+// of a published episode, and answers the tenant and the path of that page's
+// preview, which anyone may read.
+func seedPreviewPage(t *testing.T, pg *testutil.PostgresEnv) (testutil.Tenant, string) {
+	t.Helper()
+
+	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Harbor", Published: true})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEA0001", Title: "One", Status: testutil.EpisodeStatusPublished})
+	page := pg.SeedEpisodeImage(t, tenant.ID, episode.ID, 1)
+	return tenant, "/images/episodes/" + page.String() + "/preview"
 }
 
 // serveOnPools serves what `publira server` builds on pools, and answers its

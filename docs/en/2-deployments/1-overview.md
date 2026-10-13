@@ -20,7 +20,7 @@ Every process answers `GET /livez` and `GET /readyz`, so an orchestrator can pro
 
 An install on one host that will never run more than one copy of the server or the worker can run both as one process: `publira server --with-worker` does everything both processes do, on the same two ports, and reads the variables of both. You give up two things. You can no longer scale the server and the worker separately. And the process that faces the internet also holds the worker's three database logins, among them the one that owns the tables of the job queue and may create tables of its own. Keep the two processes apart unless having one fewer to run matters more to you than that.
 
-`publira server` listens on one port, so a platform that exposes one port per service, such as Cloud Run, runs it as it is.
+`publira server` listens on one port, so a platform that exposes one port per service, such as Cloud Run, runs it as one service as it is. You may also run a second `publira server` service behind the load balancer with `--role storefront`, which serves the public API and the images of tenants' sites alone, and route the tenants' domains to it: the process that faces readers then signs in to the database only as the storefront's login, confined to one tenant per request, and holds neither console's login nor the credential the web apps call the consoles with. The first service keeps serving the web apps and the console hosts. The [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#long-lived-processes) lists what each role serves and reads.
 
 ## The services it depends on
 

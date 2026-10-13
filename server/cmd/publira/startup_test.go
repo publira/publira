@@ -17,6 +17,8 @@ import (
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -80,6 +82,116 @@ func TestServerAnswersEveryNamespaceUnderAPIAlone(t *testing.T) {
 		assertRouteRegistered(t, base, tc.procedure, false)
 	}
 	assertRouteRegistered(t, base, "/images/creators/media", true)
+}
+
+// A server given some roles serves those alone: their namespaces under /api,
+// the images of their sites, and readiness for their pools. The URLs of the
+// logins it is not given name a port nothing listens on, so a process that
+// opened one anyway would refuse to start, and the web service token and a
+// sign-in provider's keys are read only where a role reads them.
+func TestServerServesTheStorefrontRoleAlone(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant, preview := seedPreviewPage(t, pg)
+
+	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_PUBLIC_DB_URL":     pg.PublicURL,
+		"PUBLIRA_ADMIN_DB_URL":      unreachableDBURL("publira_admin"),
+		"PUBLIRA_PLATFORM_DB_URL":   unreachableDBURL("publira_platform"),
+		"PUBLIRA_WEB_SERVICE_TOKEN": "",
+		"PUBLIRA_PUBLIC_API_ADDR":   anyLoopbackPort,
+	}, revalidationWithoutPlatformConsole()), "server", "--role", "storefront")
+	base := listenerURL(t, p, "server")
+	p.WaitReady(t, base+"/readyz")
+	assertReadyChecks(t, base+"/readyz", "db.public")
+
+	assertRouteRegistered(t, base, "/api/publira.v1.CatalogService/ListPublishedSeries", true)
+	assertRouteRegistered(t, base, "/api/publira.admin.v1.AdminSeriesService/ListSeries", false)
+	assertRouteRegistered(t, base, "/api/publira.platform.v1.PlatformTenantService/ListTenants", false)
+
+	catalog := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, base+"/api")))
+	if _, err := catalog.SearchPublishedSeries(t.Context(), &publirav1.SearchPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
+		Query:  "Harbor",
+	}); err != nil {
+		t.Fatalf("SearchPublishedSeries: %v", err)
+	}
+	// No object store is saved, so an image the server answers is a 503, and
+	// one it refuses to answer is a 404.
+	assertImageStatus(t, base+preview, tenant.Domain, http.StatusServiceUnavailable)
+	assertImageStatus(t, base+preview, "admin-"+tenant.Domain, http.StatusNotFound)
+
+	if out := p.Output(); strings.Contains(out, "web service token") {
+		t.Fatalf("output reports the web service token, which the storefront role does not read:\n%s", out)
+	}
+	if code := p.Stop(t); code != 0 {
+		t.Fatalf("exit code after SIGTERM = %d, want 0; output:\n%s", code, p.Output())
+	}
+}
+
+func TestServerServesTheConsoleRoles(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant, preview := seedPreviewPage(t, pg)
+
+	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_PUBLIC_DB_URL":   unreachableDBURL("publira_public"),
+		"PUBLIRA_ADMIN_DB_URL":    pg.AdminURL,
+		"PUBLIRA_PLATFORM_DB_URL": pg.PlatformURL,
+		// The public API alone verifies a sign-in provider's ID tokens, so a
+		// value it would refuse is not read here.
+		"PUBLIRA_SIGN_IN_APPLE_KEYS_URL": "not a url",
+		"PUBLIRA_PUBLIC_API_ADDR":        anyLoopbackPort,
+	}, revalidationWithoutPlatformConsole()), "server", "--role", "admin,platform")
+	base := listenerURL(t, p, "server")
+	p.WaitReady(t, base+"/readyz")
+	assertReadyChecks(t, base+"/readyz", "db.admin", "db.platform")
+
+	assertRouteRegistered(t, base, "/api/publira.v1.CatalogService/ListPublishedSeries", false)
+	assertRouteRegistered(t, base, "/api/publira.admin.v1.AdminSeriesService/ListSeries", true)
+	assertRouteRegistered(t, base, "/api/publira.platform.v1.PlatformTenantService/ListTenants", true)
+
+	assertImageStatus(t, base+preview, "admin-"+tenant.Domain, http.StatusServiceUnavailable)
+	assertImageStatus(t, base+preview, tenant.Domain, http.StatusNotFound)
+
+	if out := p.Output(); !strings.Contains(out, "web service token is enabled") {
+		t.Fatalf("output does not report the web service token:\n%s", out)
+	}
+	if code := p.Stop(t); code != 0 {
+		t.Fatalf("exit code after SIGTERM = %d, want 0; output:\n%s", code, p.Output())
+	}
+}
+
+func TestServerServesThePlatformRoleAlone(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_PUBLIC_DB_URL":   unreachableDBURL("publira_public"),
+		"PUBLIRA_ADMIN_DB_URL":    unreachableDBURL("publira_admin"),
+		"PUBLIRA_PLATFORM_DB_URL": pg.PlatformURL,
+		"PUBLIRA_PUBLIC_API_ADDR": anyLoopbackPort,
+	}, revalidationWithoutPlatformConsole()), "server", "--role", "platform")
+	base := listenerURL(t, p, "server")
+	p.WaitReady(t, base+"/readyz")
+	assertReadyChecks(t, base+"/readyz", "db.platform")
+
+	assertRouteRegistered(t, base, "/api/publira.v1.CatalogService/ListPublishedSeries", false)
+	assertRouteRegistered(t, base, "/api/publira.admin.v1.AdminSeriesService/ListSeries", false)
+	assertRouteRegistered(t, base, "/api/publira.platform.v1.PlatformTenantService/ListTenants", true)
+	// Neither site is the platform role's, so image delivery, and with it
+	// PUBLIRA_IMAGE_CACHE_TTL, is not there at all.
+	assertRouteRegistered(t, base, "/images/creators/media", false)
+
+	if code := p.Stop(t); code != 0 {
+		t.Fatalf("exit code after SIGTERM = %d, want 0; output:\n%s", code, p.Output())
+	}
+}
+
+// unreachableDBURL names a port nothing listens on, so opening it fails at
+// once.
+func unreachableDBURL(login string) string {
+	return "postgres://" + login + ":password@127.0.0.1:1/publira?sslmode=disable"
 }
 
 // connectErrorCode answers the code of the Connect error a request to url

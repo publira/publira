@@ -1159,6 +1159,66 @@ func TestTenantScopedQueriesFollowTheHostTheRequestArrivedOn(t *testing.T) {
 	}
 }
 
+// A server that serves one site is given no SiteDB for the other, and a host
+// of that other site is not found rather than answered as the login it has.
+// A console URL carried to a storefront-only server is therefore refused, staff
+// preview and all, and a storefront URL to a console-only one.
+func TestAHostOfASiteTheServerIsNotGivenIsNotFound(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
+	queries := stubTenantQueries{
+		creator: dbmodels.GetCreatorImageByIDForTenantRow{
+			ObjectKey:   "creators/avatar.jpg",
+			ContentType: "image/jpeg",
+		},
+	}
+	storefront := stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}}
+	console := stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}, console: true}
+
+	for _, tc := range []struct {
+		name     string
+		resolver stubResolver
+		served   string
+		want     int
+	}{
+		{"a storefront host on a storefront-only server", storefront, "storefront", http.StatusOK},
+		{"a console host on a storefront-only server", console, "storefront", http.StatusNotFound},
+		{"a console host on a console-only server", console, "console", http.StatusOK},
+		{"a storefront host on a console-only server", storefront, "console", http.StatusNotFound},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("PUBLIRA_REDIS_URL", "disabled")
+			site := SiteDB{
+				Resolver: tc.resolver,
+				Tenants:  stubFactory{q: queries},
+				Objects: &countingStore{objects: map[string]storedObject{
+					"creators/avatar.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+				}},
+			}
+			var public, admin SiteDB
+			if tc.served == "storefront" {
+				public = site
+			} else {
+				admin = site
+			}
+			srv, err := NewHandler(public, admin, nil, auth.NewTokenManager([]byte(testMediaJWTSecret)))
+			if err != nil {
+				t.Fatalf("NewHandler: %v", err)
+			}
+			t.Cleanup(func() { _ = srv.Close() })
+
+			req := httptest.NewRequest(http.MethodGet, "/images/creators/"+mediaID.String(), nil)
+			req.Host = "example.test"
+			req.Header.Set("Accept", "image/webp")
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+			if rec.Code != tc.want {
+				t.Fatalf("status = %d, want %d; body = %q", rec.Code, tc.want, rec.Body.String())
+			}
+		})
+	}
+}
+
 func TestCreatorImageConvertsToWebP(t *testing.T) {
 	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")

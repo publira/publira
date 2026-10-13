@@ -39,19 +39,53 @@ const (
 	defaultPlatformDBURL = "postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable"
 )
 
-// serverServiceNames is one service.name per Connect namespace the server
-// serves, and one for the image routes, so they stay apart in a trace UI now
-// that they share a process. The public namespace's comes first: it is the
-// process default.
-func serverServiceNames() []string {
-	return []string{publicapi.ServiceName, adminapi.ServiceName, platformapi.ServiceName, imageserver.ServiceName}
+// serverRoles is which API surfaces a server process serves. A role is named
+// the way the web app that consumes it is, and carries its Connect namespace,
+// its share of image delivery, and its database login: storefront is
+// publira.v1, the storefront hosts' images, and publira_public; admin is
+// publira.admin.v1, the console hosts' images, and publira_admin; platform is
+// publira.platform.v1 and publira_platform.
+type serverRoles struct {
+	storefront bool
+	admin      bool
+	platform   bool
 }
 
-// buildServer builds the three Connect namespaces and image delivery on one
+// allServerRoles is what server serves unless --role names some.
+var allServerRoles = serverRoles{storefront: true, admin: true, platform: true}
+
+func (r serverRoles) any() bool { return r.storefront || r.admin || r.platform }
+
+// images reports whether the process serves /images: a storefront host's
+// images belong to the storefront role and a console host's to the admin role.
+func (r serverRoles) images() bool { return r.storefront || r.admin }
+
+// serverServiceNames is one service.name per Connect namespace the roles
+// serve, and one for the image routes, so they stay apart in a trace UI now
+// that they share a process. The first is the process default.
+func serverServiceNames(r serverRoles) []string {
+	var names []string
+	if r.storefront {
+		names = append(names, publicapi.ServiceName)
+	}
+	if r.admin {
+		names = append(names, adminapi.ServiceName)
+	}
+	if r.platform {
+		names = append(names, platformapi.ServiceName)
+	}
+	if r.images() {
+		names = append(names, imageserver.ServiceName)
+	}
+	return names
+}
+
+// buildServer builds the Connect namespaces and image delivery of roles on one
 // listener: the reverse proxy forwards /api and /images to it as they are, and
-// the Next.js apps dial the same /api directly.
-func buildServer(deps shared) (half, error) {
-	cfg, err := loadServerConfig()
+// the Next.js apps dial the same /api directly. A role the process does not
+// serve opens no pool and reads no variable of its own.
+func buildServer(deps shared, roles serverRoles) (half, error) {
+	cfg, err := loadServerConfig(roles)
 	if err != nil {
 		return half{}, err
 	}
@@ -64,7 +98,7 @@ func buildServer(deps shared) (half, error) {
 	// is answered as publira_public and its console as publira_admin — so a
 	// mux entry is also a database role, and image delivery shares the pool of
 	// the login it answers as rather than opening a second one for it.
-	pools, err := openServerPools()
+	pools, err := openServerPools(roles)
 	if err != nil {
 		return half{}, failed("failed to initialize db", err)
 	}
@@ -100,159 +134,239 @@ type serverConfig struct {
 	tokens    *auth.TokenManager
 }
 
-func loadServerConfig() (serverConfig, error) {
+func loadServerConfig(roles serverRoles) (serverConfig, error) {
 	// Refused here rather than where Redis is dialled, which falls back to
 	// in-process state and would leave the misconfiguration running.
 	if _, err := redisurl.FromEnv(); err != nil {
 		return serverConfig{}, failed("failed to load config", err)
 	}
-	idTokens, err := signin.VerifierConfigFromEnv()
-	if err != nil {
-		return serverConfig{}, failed("failed to load config", err)
+	var cfg serverConfig
+	// The ID tokens of a sign-in provider are verified by the public API
+	// alone.
+	if roles.storefront {
+		idTokens, err := signin.VerifierConfigFromEnv()
+		if err != nil {
+			return serverConfig{}, failed("failed to load config", err)
+		}
+		cfg.idTokens = idTokens
 	}
 	clientIPs, err := clientip.FromEnv()
 	if err != nil {
 		return serverConfig{}, failed("failed to load config", err)
 	}
+	cfg.clientIPs = clientIPs
 	tokens, err := auth.NewTokenManagerFromEnv()
 	if err != nil {
 		return serverConfig{}, failed("failed to initialize access token manager", err)
 	}
-	return serverConfig{idTokens: idTokens, clientIPs: clientIPs, tokens: tokens}, nil
+	cfg.tokens = tokens
+	return cfg, nil
 }
 
-// assembleServer builds the API and image delivery on pools. Every read is
-// made on the pool of the surface it serves, the platform's settings among
-// them, so which pools a request reaches follows from what it asks for.
+// servedAPIs is what a process serves, nil where its role is not served.
+type servedAPIs struct {
+	public   *publicapi.API
+	admin    *adminapi.API
+	platform *platformapi.API
+	images   *imageserver.Server
+}
+
+// assembleServer builds the API and image delivery of the roles whose pools
+// are open. Every read is made on the pool of the surface it serves, the
+// platform's settings among them, so which pools a request reaches follows
+// from what it asks for, and a role's pool is the whole of what it needs.
 func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembledServer, error) {
 	logger := deps.logger
 	tokens := cfg.tokens
-
 	encryptor := deps.encryptor
 
-	// The search engine is read from the platform's settings on the public
-	// pool, the one the search RPCs are answered on, so the public API holds no
-	// other login to search. The row's password is sealed under keys only this
-	// process holds. The searches themselves run on the same pool when the
-	// engine is SQL.
-	searcher := platformsearch.Searcher{
-		Resolver: platformsearch.NewResolver(platformsearch.ResolverConfig{
-			Queries: dbmodels.New(pools.public),
-			Secrets: encryptor,
-			Logger:  logger,
-		}),
-		SQL: sqlbackend.New(dbmodels.New(pools.public)),
-	}
-
-	// One sign-in limit and one mail limit for the three namespaces. The
+	// One sign-in limit and one mail limit for the namespaces served here. The
 	// storefront and the tenant console sign in and mail the same accounts, and
 	// one source may reach all three, so counters kept in this process when no
 	// Redis is named have to be one set rather than one per namespace. The
-	// policy is read as publira_public, the least of the logins that may read
-	// it.
-	policy := platformpolicy.NewResolver(dbmodels.New(pools.public), platformpolicy.CacheTTL, logger)
+	// policy is read as the least of the logins held here that may read it.
+	policy := platformpolicy.NewResolver(dbmodels.New(pools.leastPrivileged()), platformpolicy.CacheTTL, logger)
 	login := loginguard.NewShared(policy, logger)
 	mail := mailguard.NewShared(policy, logger)
 
-	// The revalidate client is shared by the two namespaces whose writes leave
-	// a cache entry stale.
-	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, deps.revalidate, searcher, cfg.idTokens, login, mail)
-	if err != nil {
-		return assembledServer{}, failed("failed to initialize public api handler", err)
+	var served servedAPIs
+	var drain []func(context.Context) error
+
+	if pools.public != nil {
+		// The search engine is read from the platform's settings on the
+		// public pool, the one the search RPCs are answered on, so the public
+		// API holds no other login to search. The row's password is sealed
+		// under keys only this process holds. The searches themselves run on
+		// the same pool when the engine is SQL.
+		searcher := platformsearch.Searcher{
+			Resolver: platformsearch.NewResolver(platformsearch.ResolverConfig{
+				Queries: dbmodels.New(pools.public),
+				Secrets: encryptor,
+				Logger:  logger,
+			}),
+			SQL: sqlbackend.New(dbmodels.New(pools.public)),
+		}
+		// The revalidate client is shared by the two namespaces whose writes
+		// leave a cache entry stale.
+		publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, deps.revalidate, searcher, cfg.idTokens, login, mail)
+		if err != nil {
+			return assembledServer{}, failed("failed to initialize public api handler", err)
+		}
+		served.public = publicAPI
 	}
 
-	// The object store is read from the platform's settings on the admin pool,
-	// the one the uploads are answered on, so this process starts before an
-	// operator has saved one and an upload until then is refused.
-	storageProvider := platformstorage.Provider{Resolver: platformstorage.New(platformstorage.Config{
-		Queries: dbmodels.New(pools.admin),
-		Secrets: encryptor,
-		Logger:  logger,
-	}, platformstorage.NewStorage)}
-
+	// The web service token is how the web apps call the consoles' APIs, so it
+	// is read only where one of them is served.
+	var webServiceToken *auth.ServiceToken
+	if pools.admin != nil || pools.platform != nil {
+		webServiceToken = newWebServiceToken(logger)
+	}
 	smtpTester := internalsmtp.NewClient()
 
-	webServiceToken := newWebServiceToken(logger)
-
-	adminRecorder := auditlog.NewAsync(dbmodels.New(pools.admin), pools.admin, logger)
-	adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, deps.revalidate, adminRecorder, webServiceToken, login, mail)
-	if err != nil {
-		return assembledServer{}, failed("failed to initialize admin api handler", err)
+	if pools.admin != nil {
+		// The object store is read from the platform's settings on the admin
+		// pool, the one the uploads are answered on, so this process starts
+		// before an operator has saved one and an upload until then is
+		// refused.
+		storageProvider := platformstorage.Provider{Resolver: platformstorage.New(platformstorage.Config{
+			Queries: dbmodels.New(pools.admin),
+			Secrets: encryptor,
+			Logger:  logger,
+		}, platformstorage.NewStorage)}
+		adminRecorder := auditlog.NewAsync(dbmodels.New(pools.admin), pools.admin, logger)
+		adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, deps.revalidate, adminRecorder, webServiceToken, login, mail)
+		if err != nil {
+			return assembledServer{}, failed("failed to initialize admin api handler", err)
+		}
+		served.admin = adminAPI
+		drain = append(drain, adminRecorder.Shutdown)
 	}
 
-	platformRecorder := auditlog.NewAsync(dbmodels.New(pools.platform), nil, logger)
-	platformAPI := platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder, webServiceToken, login, mail)
+	if pools.platform != nil {
+		platformRecorder := auditlog.NewAsync(dbmodels.New(pools.platform), nil, logger)
+		served.platform = platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder, webServiceToken, login, mail)
+		drain = append(drain, platformRecorder.Shutdown)
+	}
 
+	closeImages := func() error { return nil }
 	// Image delivery is built last: nothing after it can fail and leave its
-	// conversion server running.
-	imageHandler, err := imageserver.NewHandler(
-		newImageSite(pools.public, encryptor, logger),
-		newImageSite(pools.admin, encryptor, logger),
-		logger,
-		tokens,
-	)
-	if err != nil {
-		return assembledServer{}, failed("failed to initialize image handler", err)
+	// conversion server running. A site whose role is not served is left
+	// empty, and its hosts are refused rather than answered as the other
+	// site's login.
+	if pools.public != nil || pools.admin != nil {
+		var storefront, console imageserver.SiteDB
+		if pools.public != nil {
+			storefront = newImageSite(pools.public, encryptor, logger)
+		}
+		if pools.admin != nil {
+			console = newImageSite(pools.admin, encryptor, logger)
+		}
+		imageHandler, err := imageserver.NewHandler(storefront, console, logger, tokens)
+		if err != nil {
+			return assembledServer{}, failed("failed to initialize image handler", err)
+		}
+		served.images = imageHandler
+		closeImages = imageHandler.Close
 	}
 
 	return assembledServer{
-		handler: serverHandler(cfg.clientIPs, publicAPI, adminAPI, platformAPI, imageHandler, pools),
-		drain:   []func(context.Context) error{adminRecorder.Shutdown, platformRecorder.Shutdown},
-		close:   imageHandler.Close,
+		handler: serverHandler(cfg.clientIPs, served, pools),
+		drain:   drain,
+		close:   closeImages,
 	}, nil
 }
 
-// serverHandler serves the three Connect namespaces under /api and image
-// delivery under /images, which the edge forwards with their prefixes kept and
-// the web apps dial on the same paths. Nothing is registered at the root, so a
+// serverHandler serves the Connect namespaces under /api and image delivery
+// under /images, which the edge forwards with their prefixes kept and the web
+// apps dial on the same paths. Nothing is registered at the root, so a
 // procedure has one path wherever it is called from. The console namespaces
 // are reachable through the edge on every host, and each of their RPCs refuses
 // a caller without an operator session or the web service token before any
 // handler runs.
 //
-// Readiness names one check per pool: with three logins behind one listener, a
-// single "db" could not say which of them stopped answering. The client address
-// of every request is determined before any handler runs, so the audit log and
-// the per-client limits never read a context without one.
-func serverHandler(clientIPs *clientip.Resolver, publicAPI *publicapi.API, adminAPI *adminapi.API, platformAPI *platformapi.API, images *imageserver.Server, pools serverPools) http.Handler {
+// Readiness names one check per pool: with up to three logins behind one
+// listener, a single "db" could not say which of them stopped answering. The
+// client address of every request is determined before any handler runs, so
+// the audit log and the per-client limits never read a context without one.
+func serverHandler(clientIPs *clientip.Resolver, served servedAPIs, pools serverPools) http.Handler {
 	mux := http.NewServeMux()
-	health.Register(mux,
-		health.WithDBNamed("db.public", pools.public),
-		health.WithDBNamed("db.admin", pools.admin),
-		health.WithDBNamed("db.platform", pools.platform),
-	)
+	var checks []health.Option
+	for _, pool := range []struct {
+		name string
+		db   *sql.DB
+	}{
+		{"db.public", pools.public},
+		{"db.admin", pools.admin},
+		{"db.platform", pools.platform},
+	} {
+		if pool.db != nil {
+			checks = append(checks, health.WithDBNamed(pool.name, pool.db))
+		}
+	}
+	health.Register(mux, checks...)
 	api := http.NewServeMux()
-	publicAPI.Register(api)
-	adminAPI.Register(api)
-	platformAPI.Register(api)
+	if served.public != nil {
+		served.public.Register(api)
+	}
+	if served.admin != nil {
+		served.admin.Register(api)
+	}
+	if served.platform != nil {
+		served.platform.Register(api)
+	}
 	mux.Handle("/api/", http.StripPrefix("/api", api))
-	images.Register(mux)
+	if served.images != nil {
+		served.images.Register(mux)
+	}
 	return clientIPs.Middleware(mux)
 }
 
-// serverPools is one pool per PostgreSQL login this process serves as.
+// serverPools is one pool per PostgreSQL login this process serves as, nil for
+// a role it does not serve.
 type serverPools struct {
 	public   *sql.DB
 	admin    *sql.DB
 	platform *sql.DB
 }
 
-// openServerPools opens one pool per login, closing the ones already open
-// when a later one fails.
-func openServerPools() (serverPools, error) {
-	public, err := sqldb.Open(dbURLFromEnv("PUBLIRA_PUBLIC_DB_URL", defaultPublicDBURL))
-	if err != nil {
-		return serverPools{}, err
+// leastPrivileged is the pool of the least of the logins held: the platform
+// policy is read as it, and every login may read the policy.
+func (p serverPools) leastPrivileged() *sql.DB {
+	switch {
+	case p.public != nil:
+		return p.public
+	case p.admin != nil:
+		return p.admin
+	default:
+		return p.platform
 	}
-	admin, err := sqldb.Open(dbURLFromEnv("PUBLIRA_ADMIN_DB_URL", defaultAdminDBURL))
-	if err != nil {
-		return serverPools{}, errors.Join(err, public.Close())
+}
+
+// openServerPools opens the pool of each role served, closing the ones
+// already open when a later one fails. The variable of a role not served is
+// never read.
+func openServerPools(roles serverRoles) (serverPools, error) {
+	var pools serverPools
+	for _, login := range []struct {
+		served   bool
+		env      string
+		fallback string
+		pool     **sql.DB
+	}{
+		{roles.storefront, "PUBLIRA_PUBLIC_DB_URL", defaultPublicDBURL, &pools.public},
+		{roles.admin, "PUBLIRA_ADMIN_DB_URL", defaultAdminDBURL, &pools.admin},
+		{roles.platform, "PUBLIRA_PLATFORM_DB_URL", defaultPlatformDBURL, &pools.platform},
+	} {
+		if !login.served {
+			continue
+		}
+		db, err := sqldb.Open(dbURLFromEnv(login.env, login.fallback))
+		if err != nil {
+			return serverPools{}, errors.Join(err, pools.close())
+		}
+		*login.pool = db
 	}
-	platform, err := sqldb.Open(dbURLFromEnv("PUBLIRA_PLATFORM_DB_URL", defaultPlatformDBURL))
-	if err != nil {
-		return serverPools{}, errors.Join(err, public.Close(), admin.Close())
-	}
-	return serverPools{public: public, admin: admin, platform: platform}, nil
+	return pools, nil
 }
 
 func (p serverPools) close() error {

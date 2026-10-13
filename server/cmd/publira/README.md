@@ -7,7 +7,7 @@ The binary behind both of a deployment's long-lived Go processes. The first argu
 | `publira server` | The API and image delivery, on one port  |
 | `publira worker` | The Outbox drain and every scheduled job |
 
-`publira server --with-worker` runs both in one process; see [Hosting the worker](#hosting-the-worker---with-worker). Without a command, with a command other than these two, or with any further argument — `--with-worker` after `server` aside — the binary prints its usage to stderr and exits with status 2. With the three Next.js apps, a deployment therefore runs five processes, and both Go ones come from one image ([`infra/docker/server/Dockerfile`](../../../infra/docker/server/Dockerfile)). [`publiractl`](../publiractl/README.md), the command an operator runs by hand, stays a binary of its own because it has to work on a deployment that serves nothing.
+`publira server --with-worker` runs both in one process; see [Hosting the worker](#hosting-the-worker---with-worker). `publira server --role` serves some of its API surfaces alone; see [Serving some roles](#serving-some-roles---role). Without a command, with a command other than these two, or with any further argument — `--role` and `--with-worker` after `server` aside — the binary prints its usage to stderr and exits with status 2. With the three Next.js apps, a deployment therefore runs five processes, and both Go ones come from one image ([`infra/docker/server/Dockerfile`](../../../infra/docker/server/Dockerfile)). [`publiractl`](../publiractl/README.md), the command an operator runs by hand, stays a binary of its own because it has to work on a deployment that serves nothing.
 
 ## publira server
 
@@ -50,16 +50,16 @@ Manael uses libvips, so building and running require `libvips-dev` (at runtime, 
 ### Main environment variables
 
 - `PUBLIRA_PUBLIC_API_ADDR` (optional, `:8000` when unset. The one listener)
-- `PUBLIRA_PUBLIC_DB_URL` / `PUBLIRA_ADMIN_DB_URL` / `PUBLIRA_PLATFORM_DB_URL` (optional; a development default is used when unset. One per login; the process never falls back from one to another, and image delivery and the search engine's settings use the first two)
+- `PUBLIRA_PUBLIC_DB_URL` / `PUBLIRA_ADMIN_DB_URL` / `PUBLIRA_PLATFORM_DB_URL` (optional; a development default is used when unset. One per login; the process never falls back from one to another, and image delivery and the search engine's settings use the first two. A process given [`--role`](#serving-some-roles---role) reads only its roles' ones)
 - `PUBLIRA_DB_MAX_OPEN_CONNS` / `PUBLIRA_DB_MAX_IDLE_CONNS` / `PUBLIRA_DB_CONN_MAX_IDLE_TIME` (optional, `10`, the first one's value, and `5m` when unset. Bound each of its pools on its own; see [Connection pools](../../README.md#connection-pools) for sizing the database)
 - `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes. The HS256 signing key for access tokens, which the image routes verify as well. The process fails to start when it is unset. For the details, see the [repository README](../../../README.md#api-access-token-signing-key-publira_auth_jwt_secret))
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional. Encrypt and decrypt the stored SMTP, payment, object store, search engine, and FCM secrets)
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (optional. The ambient credential for an object store saved without an access key. The store itself comes from the platform's settings; see [Image storage configuration](../../README.md#image-storage-configuration))
 - `PUBLIRA_REDIS_URL` (optional. Where the image conversion cache and the counters behind the reader write limits, the step-up password limit, and the mail limits are kept. Unset / `disabled` / `off` / `false` keeps the cache in memory and limits each instance on its own, which is looser than a shared limit by the number of instances. A `redis://` URL carrying a password stops the process at startup, because that scheme has no TLS: use `rediss://`)
-- `PUBLIRA_IMAGE_CACHE_TTL` (optional. The TTL of a converted image. A Go duration or a number of seconds. Default `1h`)
+- `PUBLIRA_IMAGE_CACHE_TTL` (optional. The TTL of a converted image. A Go duration or a number of seconds. Default `1h`. Read only where the `storefront` or the `admin` role is served)
 - `PUBLIRA_REVALIDATE_TOKEN` (optional, the shared token sent in the `X-Revalidate-Token` header)
 - `PUBLIRA_WEB_STOREFRONT_INTERNAL_URL` / `PUBLIRA_WEB_ADMIN_INTERNAL_URL` / `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (optional, the private network URL of each Next.js app `PUBLIRA_REVALIDATE_TOKEN` sends cache tags to. An app left unset is not sent anything; the token with none of them stops the process at startup)
-- `PUBLIRA_WEB_SERVICE_TOKEN` (optional. The bearer the web apps call the tenant console's tenant-level reads and the Platform Console's platform-level reads with as themselves rather than as an operator. It is also what the Platform Console's setup screen creates the first operator with, and `CreateInitialUser` is refused without it. Unset, the admin and platform APIs accept operator sessions alone, and no first operator can be created. Logged at startup as `web service token is enabled` or `disabled`; see [Web service credential](../../README.md#web-service-credential))
+- `PUBLIRA_WEB_SERVICE_TOKEN` (optional, read only where the `admin` or the `platform` role is served. The bearer the web apps call the tenant console's tenant-level reads and the Platform Console's platform-level reads with as themselves rather than as an operator. It is also what the Platform Console's setup screen creates the first operator with, and `CreateInitialUser` is refused without it. Unset, the admin and platform APIs accept operator sessions alone, and no first operator can be created. Logged at startup as `web service token is enabled` or `disabled`; see [Web service credential](../../README.md#web-service-credential))
 - `PUBLIRA_TRUSTED_PROXIES` (optional. The addresses and CIDR ranges, separated by commas or spaces, of the proxies whose `Forwarded` and `X-Forwarded-For` entries are believed when finding the client address the sign-in log and the audit log record and the per-client limits count, and whose rightmost `host=` of `Forwarded`, or else rightmost `X-Forwarded-Host`, names the tenant an image request is for. From any other peer, the tenant is found from `Host` alone. Unset, the loopback, private, and link-local ranges; set, it replaces them. A value that is not an address or a range, or a range covering every address, stops the process at startup. See [The proxies Publira trusts](../../../docs/en/2-deployments/4-edge.md#the-proxies-publira-trusts))
 - `PUBLIRA_FORWARDED_HEADER_ENABLED` (optional, `true` when unset. `false` reads the client address from `X-Forwarded-For` alone, and an image request's host from `X-Forwarded-Host` and `Host` alone, for proxies that pass on a `Forwarded` header the caller sent; otherwise `Forwarded` is read ahead of them. A value that is not a boolean stops the process at startup)
 - `PUBLIRA_TENANT_URL_SCHEME` (optional, the scheme of every tenant host, set to the value `publira worker` runs with. Here it builds the storefront URL a payment provider returns the browser to)
@@ -107,6 +107,25 @@ The publication state and the price are not considered, so a draft, a scheduled,
 | Marking one's own notifications as read, signing out, and changing one's password and email address | Yes | Yes | Yes |
 
 The server checks mutating RPCs in a shared interceptor, so a rejected call never starts a DB update, an audit log entry, or an email.
+
+### Serving some roles (`--role`)
+
+```bash
+publira server --role storefront
+publira server --role admin,platform
+```
+
+serves the named API surfaces alone. A role is named the way the web app that consumes it is, and a process serves exactly the namespaces, the image delivery, and the database login of the roles it was given; without the flag it serves all three. The flag decides what a process serves and nothing about ports or networks: every process listens on `PUBLIRA_PUBLIC_API_ADDR` alone.
+
+| `--role` | Registers under `/api` | Image delivery on `/images` | Opens | Reads |
+| --- | --- | --- | --- | --- |
+| `storefront` | `publira.v1` | Storefront hosts, as `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `PUBLIRA_IMAGE_CACHE_TTL` |
+| `admin` | `publira.admin.v1` | Console hosts, as `publira_admin`, staff preview included | `PUBLIRA_ADMIN_DB_URL` | `PUBLIRA_WEB_SERVICE_TOKEN`, `PUBLIRA_IMAGE_CACHE_TTL` |
+| `platform` | `publira.platform.v1` | None | `PUBLIRA_PLATFORM_DB_URL` | `PUBLIRA_WEB_SERVICE_TOKEN` |
+
+Roles combine with a comma, or with the flag given again. A role opens its own pool and no other, and a variable only one role reads is not read without that role; the sign-in providers' key URLs, which the public API alone verifies ID tokens with, are read only with `storefront`. `/images` is registered when `storefront` or `admin` is served, and a host of a site whose role the process does not serve is answered `404` rather than as the other site's login, so a `storefront` process never honours a staff preview. `/readyz` names one check per pool the process holds, and the spans report under the names of the namespaces it serves. An unknown role, an empty one, or a role named twice prints the usage and exits with status 2, and `--with-worker` combines with any set of roles.
+
+The process the reverse proxy forwards internet traffic to can therefore run `--role storefront`: it holds `publira_public` alone, serves neither console's API, and takes no web service token. Another process without the flag keeps serving the web apps, which reach every surface they use through one `PUBLIRA_GRPC_URL` — `web-admin` calls `publira.v1` for the tenant's theme and catalog as well as `publira.admin.v1` — and the edge forwards a console host's `/api` and `/images` to it: the images a console page shows are the `admin` role's, and a `storefront` process answers them `404`.
 
 ### Hosting the worker (`--with-worker`)
 
