@@ -72,6 +72,23 @@ describe("legalPageAgreementRedirect", () => {
       })
     ).toBe("/en/settings/agreement?returnTo=%2Fsettings%2Fnotifications");
   });
+
+  it("never sends the reader on from the agreement screen itself", () => {
+    for (const pathname of [
+      "/settings/agreement",
+      "/en/settings/agreement",
+      "/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/en/settings/agreement",
+    ]) {
+      expect(
+        legalPageAgreementRedirect({
+          agreementPath,
+          exemptPaths,
+          pathname,
+          search: "returnTo=%2Fmy",
+        })
+      ).toBeNull();
+    }
+  });
 });
 
 describe("legalPageAgreementExemptPaths", () => {

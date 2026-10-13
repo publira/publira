@@ -25,19 +25,21 @@ export const legalPageAgreementExemptPaths = (
 ): string[] | null =>
   owedPageHrefs.length === 0 ? null : [...owedPageHrefs, ACCOUNT_DELETION_PATH];
 
+/** Whether a bare `pathname` is the agreement screen or a path under it. */
+const isLegalPageAgreementPath = (pathname: string): boolean =>
+  pathname === LEGAL_PAGE_AGREEMENT_PATH ||
+  pathname.startsWith(`${LEGAL_PAGE_AGREEMENT_PATH}/`);
+
 /**
  * Where the agreement screen sends the reader once they agree, from a
  * sanitized `returnTo`. The screen itself is never one: a reader who owes
  * nothing is sent on from it, so returning to it would only send them on
  * again.
  */
-export const legalPageAgreementReturnTo = (returnTo: string): string => {
-  const pathname = returnTo.split(/[?#]/u, 1)[0] ?? "";
-  return pathname === LEGAL_PAGE_AGREEMENT_PATH ||
-    pathname.startsWith(`${LEGAL_PAGE_AGREEMENT_PATH}/`)
+export const legalPageAgreementReturnTo = (returnTo: string): string =>
+  isLegalPageAgreementPath(returnTo.split(/[?#]/u, 1)[0] ?? "")
     ? "/"
     : returnTo;
-};
 
 /**
  * The agreement screen's URL, carrying where the reader goes once they agree.
@@ -51,7 +53,14 @@ export const legalPageAgreementHref = (
 
 /**
  * Where a reader who owes an agreement is sent from `pathname`, or `null` on
- * one of {@link legalPageAgreementExemptPaths}.
+ * one of {@link legalPageAgreementExemptPaths} and on the agreement screen
+ * itself.
+ *
+ * The site's layout is never rendered for the agreement screen, so a gate that
+ * reports it as its path is one Next.js kept from the page the reader was sent
+ * from, holding what the server read for that page. Sending the reader on from
+ * there would make the agreement screen their `returnTo`, which it turns into
+ * the top page.
  *
  * `pathname` is what `usePathname()` reports, in either the rewritten or the
  * public shape.
@@ -68,7 +77,10 @@ export const legalPageAgreementRedirect = ({
   search: string;
 }): string | null => {
   const barePathname = toBarePathname(pathname);
-  if (exemptPaths.includes(barePathname)) {
+  if (
+    isLegalPageAgreementPath(barePathname) ||
+    exemptPaths.includes(barePathname)
+  ) {
     return null;
   }
 
