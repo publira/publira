@@ -60,6 +60,9 @@ export PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET:-publira-bootstrap-onl
 # refuses to start without, and which publira server admits to those reads.
 # Exported here for the same reason as the lines above.
 export PUBLIRA_WEB_SERVICE_TOKEN="${PUBLIRA_WEB_SERVICE_TOKEN:-publira-bootstrap-only-insecure-web-service-token}"
+# Where the Next.js apps make every server-side RPC: `/api` on the one port
+# publira server listens on.
+export PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL:-http://127.0.0.1:8000/api}"
 export PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET:-publira}"
 export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:${PUBLIRA_BOOTSTRAP_RUSTFS_PORT}"
 export PUBLIRA_S3_FORCE_PATH_STYLE="true"
@@ -77,7 +80,7 @@ PUBLIRA_BOOTSTRAP_STOP_INTERVAL_SEC="${PUBLIRA_BOOTSTRAP_STOP_INTERVAL_SEC:-1}"
 
 # Ports `task dev` listens on. Fixed, not configurable: the Next.js apps carry
 # their port in the `dev` script of each apps/*/package.json.
-PUBLIRA_BOOTSTRAP_DEV_PORTS=(3000 4000 4100 8000 8100)
+PUBLIRA_BOOTSTRAP_DEV_PORTS=(3000 4000 4100 8000)
 
 bootstrap_log() {
   printf '[bootstrap] %s\n' "$*"
@@ -177,8 +180,7 @@ assert_equals() {
 # the seed tenant domain.
 bootstrap_probes() {
   cat << 'EOF'
-server/edge	http://127.0.0.1:8000/readyz	json
-server/internal	http://127.0.0.1:8100/readyz	json
+server	http://127.0.0.1:8000/readyz	json
 web-storefront/livez	http://localhost:3000/livez	text
 web-storefront/readyz	http://localhost:3000/readyz	json
 web-admin/livez	http://localhost:4000/livez	text

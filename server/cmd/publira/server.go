@@ -32,49 +32,25 @@ import (
 )
 
 const (
-	defaultEdgeAddr     = ":8000"
-	defaultInternalAddr = ":8100"
+	defaultAddr = ":8000"
 
 	defaultPublicDBURL   = "postgres://publira_public:publicpass@db:5432/publira?sslmode=disable"
 	defaultAdminDBURL    = "postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable"
 	defaultPlatformDBURL = "postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable"
 )
 
-// serverListeners is which of the server's two listeners a process serves.
-type serverListeners struct {
-	edge     bool
-	internal bool
+// serverServiceNames is one service.name per Connect namespace the server
+// serves, and one for the image routes, so they stay apart in a trace UI now
+// that they share a process. The public namespace's comes first: it is the
+// process default.
+func serverServiceNames() []string {
+	return []string{publicapi.ServiceName, adminapi.ServiceName, platformapi.ServiceName, imageserver.ServiceName}
 }
 
-// bothListeners is what server serves unless --listener names one.
-var bothListeners = serverListeners{edge: true, internal: true}
-
-func (l serverListeners) any() bool { return l.edge || l.internal }
-
-// serverServiceNames is one service.name per Connect namespace the listeners
-// serve, and one for the image routes, so they stay apart in a trace UI now
-// that they share a process. The public namespace's comes first: both
-// listeners serve it, and it is the process default.
-func serverServiceNames(l serverListeners) []string {
-	names := []string{publicapi.ServiceName}
-	if l.internal {
-		names = append(names, adminapi.ServiceName, platformapi.ServiceName)
-	}
-	if l.edge {
-		names = append(names, imageserver.ServiceName)
-	}
-	return names
-}
-
-// buildServer builds the API and image delivery for the listeners l names:
-// the edge listener carries what the reverse proxy forwards, /api and /images
-// alike, and the internal listener carries the three Connect namespaces the
-// Next.js apps dial directly. What only one listener uses — the platform pool,
-// the console APIs and the web service token for the internal one, image
-// delivery for the edge — is built only when that listener is served, so a
-// process serving the edge alone holds no login that bypasses row-level
-// security and reads no variable it would not use.
-func buildServer(deps shared, l serverListeners) (_ half, err error) {
+// buildServer builds the three Connect namespaces and image delivery on one
+// listener: the reverse proxy forwards /api and /images to it as they are, and
+// the Next.js apps dial the same /api directly.
+func buildServer(deps shared) (_ half, err error) {
 	logger := deps.logger
 
 	// Refused here rather than where Redis is dialled, which falls back to
@@ -103,10 +79,8 @@ func buildServer(deps shared, l serverListeners) (_ half, err error) {
 	// names, or for an image by the host it arrived on — a tenant's storefront
 	// is answered as publira_public and its console as publira_admin — so a
 	// mux entry is also a database role, and image delivery shares the pool of
-	// the login it answers as rather than opening a second one for it. The
-	// platform pool serves the Platform Console's namespace alone, so only the
-	// internal listener opens it.
-	pools, err := openServerPools(l.internal)
+	// the login it answers as rather than opening a second one for it.
+	pools, err := openServerPools()
 	if err != nil {
 		return half{}, failed("failed to initialize db", err)
 	}
@@ -121,9 +95,8 @@ func buildServer(deps shared, l serverListeners) (_ half, err error) {
 	// The search engine is read from the platform's settings on the admin pool,
 	// whose login is granted that row and none of the platform's other
 	// credentials, so the storefront's role holds neither the engine's password
-	// nor a way to read it, and the edge listener needs no platform pool to
-	// search. The searches themselves run on the public pool when the engine is
-	// SQL.
+	// nor a way to read it. The searches themselves run on the public pool when
+	// the engine is SQL.
 	searcher := platformsearch.Searcher{
 		Resolver: platformsearch.NewResolver(platformsearch.ResolverConfig{
 			Queries: dbmodels.New(pools.admin),
@@ -150,109 +123,90 @@ func buildServer(deps shared, l serverListeners) (_ half, err error) {
 		return half{}, failed("failed to initialize public api handler", err)
 	}
 
-	built := half{close: pools.close}
+	// The object store is read from the platform's settings on the platform
+	// pool, so this process starts before an operator has saved one and an
+	// upload until then is refused.
+	storageProvider := platformstorage.Provider{Resolver: platformstorage.New(platformstorage.Config{
+		Queries: dbmodels.New(pools.platform),
+		Secrets: encryptor,
+		Logger:  logger,
+	}, platformstorage.NewStorage)}
 
-	if l.internal {
-		// The object store is read from the platform's settings on the platform
-		// pool, so this process starts before an operator has saved one and an
-		// upload until then is refused.
-		storageProvider := platformstorage.Provider{Resolver: platformstorage.New(platformstorage.Config{
-			Queries: dbmodels.New(pools.platform),
-			Secrets: encryptor,
-			Logger:  logger,
-		}, platformstorage.NewStorage)}
+	smtpTester := internalsmtp.NewClient()
 
-		smtpTester := internalsmtp.NewClient()
+	webServiceToken := newWebServiceToken(logger)
 
-		webServiceToken := newWebServiceToken(logger)
-
-		adminRecorder := auditlog.NewAsync(dbmodels.New(pools.admin), pools.admin, logger)
-		adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, deps.revalidate, adminRecorder, webServiceToken, login, mail)
-		if err != nil {
-			return half{}, failed("failed to initialize admin api handler", err)
-		}
-
-		platformRecorder := auditlog.NewAsync(dbmodels.New(pools.platform), nil, logger)
-		platformAPI := platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder, webServiceToken, login, mail)
-
-		internalAddr := addrFromEnv("PUBLIRA_PUBLIC_API_GRPC_ADDR", defaultInternalAddr)
-		built.listeners = append(built.listeners, httpserver.Listener{Name: "server (internal)", Server: httpserver.New(internalAddr, internalHandler(clientIPs, publicAPI, adminAPI, platformAPI, pools))})
-		built.drain = []func(context.Context) error{adminRecorder.Shutdown, platformRecorder.Shutdown}
+	adminRecorder := auditlog.NewAsync(dbmodels.New(pools.admin), pools.admin, logger)
+	adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, deps.revalidate, adminRecorder, webServiceToken, login, mail)
+	if err != nil {
+		return half{}, failed("failed to initialize admin api handler", err)
 	}
+
+	platformRecorder := auditlog.NewAsync(dbmodels.New(pools.platform), nil, logger)
+	platformAPI := platformapi.NewWithAsyncRecorder(pools.platform, dbmodels.New(pools.platform), logger, encryptor, smtpTester, tokens, platformRecorder, webServiceToken, login, mail)
 
 	// Image delivery is built last: nothing after it can fail and leave its
 	// conversion server running.
-	if l.edge {
-		imageHandler, err := imageserver.NewHandler(
-			dbmodels.New(pools.public),
-			imageserver.SiteDB{Pool: pools.public, Tenants: imageserver.NewDBTenantScopedFactory(pools.public, logger)},
-			imageserver.SiteDB{Pool: pools.admin, Tenants: imageserver.NewDBTenantScopedFactory(pools.admin, logger)},
-			newImageObjectStore(encryptor, pools.admin, logger),
-			logger,
-			tokens,
-		)
-		if err != nil {
-			return half{}, failed("failed to initialize image handler", err)
-		}
-
-		edgeAddr := addrFromEnv("PUBLIRA_PUBLIC_API_ADDR", defaultEdgeAddr)
-		built.listeners = append(built.listeners, httpserver.Listener{Name: "server (edge)", Server: httpserver.New(edgeAddr, edgeHandler(clientIPs, publicAPI, imageHandler, pools))})
-		built.close = func() error {
-			return errors.Join(imageHandler.Close(), pools.close())
-		}
+	imageHandler, err := imageserver.NewHandler(
+		dbmodels.New(pools.public),
+		imageserver.SiteDB{Pool: pools.public, Tenants: imageserver.NewDBTenantScopedFactory(pools.public, logger)},
+		imageserver.SiteDB{Pool: pools.admin, Tenants: imageserver.NewDBTenantScopedFactory(pools.admin, logger)},
+		newImageObjectStore(encryptor, pools.admin, logger),
+		logger,
+		tokens,
+	)
+	if err != nil {
+		return half{}, failed("failed to initialize image handler", err)
 	}
 
-	return built, nil
+	addr := addrFromEnv("PUBLIRA_PUBLIC_API_ADDR", defaultAddr)
+	return half{
+		listeners: []httpserver.Listener{{Name: "server", Server: httpserver.New(addr, serverHandler(clientIPs, publicAPI, adminAPI, platformAPI, imageHandler, pools))}},
+		drain:     []func(context.Context) error{adminRecorder.Shutdown, platformRecorder.Shutdown},
+		close: func() error {
+			return errors.Join(imageHandler.Close(), pools.close())
+		},
+	}, nil
 }
 
-// edgeHandler serves what the internet may reach: the public API under /api
-// and image delivery under /images, which the edge forwards with their
-// prefixes kept. Registering either console namespace here would publish its
-// RPCs on every tenant site, and readiness names only the public pool, the one
-// whose state an outsider may read.
+// serverHandler serves the three Connect namespaces under /api and image
+// delivery under /images, which the edge forwards with their prefixes kept and
+// the web apps dial on the same paths. Nothing is registered at the root, so a
+// procedure has one path wherever it is called from. The console namespaces
+// are reachable through the edge on every host, and each of their RPCs refuses
+// a caller without an operator session or the web service token before any
+// handler runs.
 //
-// Both listeners determine the client address of every request before any
-// handler runs, so the audit log and the per-client limits never read a
-// context without one.
-func edgeHandler(clientIPs *clientip.Resolver, publicAPI *publicapi.API, images *imageserver.Server, pools serverPools) http.Handler {
-	mux := http.NewServeMux()
-	health.Register(mux, health.WithDB(pools.public))
-	api := http.NewServeMux()
-	publicAPI.Register(api)
-	mux.Handle("/api/", http.StripPrefix("/api", api))
-	images.Register(mux)
-	return clientIPs.Middleware(mux)
-}
-
-// internalHandler serves all three namespaces to the Next.js apps, which dial
-// it directly over the private network. Readiness names one check per pool:
-// with three logins behind one listener, a single "db" could not say which of
-// them stopped answering.
-func internalHandler(clientIPs *clientip.Resolver, publicAPI *publicapi.API, adminAPI *adminapi.API, platformAPI *platformapi.API, pools serverPools) http.Handler {
+// Readiness names one check per pool: with three logins behind one listener, a
+// single "db" could not say which of them stopped answering. The client address
+// of every request is determined before any handler runs, so the audit log and
+// the per-client limits never read a context without one.
+func serverHandler(clientIPs *clientip.Resolver, publicAPI *publicapi.API, adminAPI *adminapi.API, platformAPI *platformapi.API, images *imageserver.Server, pools serverPools) http.Handler {
 	mux := http.NewServeMux()
 	health.Register(mux,
 		health.WithDBNamed("db.public", pools.public),
 		health.WithDBNamed("db.admin", pools.admin),
 		health.WithDBNamed("db.platform", pools.platform),
 	)
-	publicAPI.Register(mux)
-	adminAPI.Register(mux)
-	platformAPI.Register(mux)
+	api := http.NewServeMux()
+	publicAPI.Register(api)
+	adminAPI.Register(api)
+	platformAPI.Register(api)
+	mux.Handle("/api/", http.StripPrefix("/api", api))
+	images.Register(mux)
 	return clientIPs.Middleware(mux)
 }
 
-// serverPools is one pool per PostgreSQL login this process serves as. The
-// platform pool is nil in a process that serves the edge listener alone.
+// serverPools is one pool per PostgreSQL login this process serves as.
 type serverPools struct {
 	public   *sql.DB
 	admin    *sql.DB
 	platform *sql.DB
 }
 
-// openServerPools opens the public and the admin pool, which both listeners
-// answer on, and the platform pool when withPlatform asks for it. A pool left
-// unopened is nil, and its variable is never read.
-func openServerPools(withPlatform bool) (serverPools, error) {
+// openServerPools opens one pool per login, closing the ones already open
+// when a later one fails.
+func openServerPools() (serverPools, error) {
 	public, err := sqldb.Open(dbURLFromEnv("PUBLIRA_PUBLIC_DB_URL", defaultPublicDBURL))
 	if err != nil {
 		return serverPools{}, err
@@ -261,15 +215,11 @@ func openServerPools(withPlatform bool) (serverPools, error) {
 	if err != nil {
 		return serverPools{}, errors.Join(err, public.Close())
 	}
-	pools := serverPools{public: public, admin: admin}
-	if !withPlatform {
-		return pools, nil
-	}
-	pools.platform, err = sqldb.Open(dbURLFromEnv("PUBLIRA_PLATFORM_DB_URL", defaultPlatformDBURL))
+	platform, err := sqldb.Open(dbURLFromEnv("PUBLIRA_PLATFORM_DB_URL", defaultPlatformDBURL))
 	if err != nil {
 		return serverPools{}, errors.Join(err, public.Close(), admin.Close())
 	}
-	return pools, nil
+	return serverPools{public: public, admin: admin, platform: platform}, nil
 }
 
 func (p serverPools) close() error {

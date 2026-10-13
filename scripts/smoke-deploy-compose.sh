@@ -2,8 +2,7 @@
 # smoke-deploy-compose.sh — Bring infra/deploy/compose.yaml up from the images
 # `task docker:verify:full` built, take it through the steps its README
 # documents, and check that the tenant site, the tenant console, and the
-# Platform Console answer through the edge, that the proxy cannot reach the
-# internal listener of `publira server`, and that image delivery resizes an
+# Platform Console answer through the edge, and that image delivery resizes an
 # image through libvips.
 #
 # The stack runs under its own project name, so an install on the same host is
@@ -133,7 +132,7 @@ expect_page "Platform Console" "platform.localhost"
 
 # A long-lived process that exited or keeps restarting is a failure even when
 # every page above answered.
-for service in server server-internal worker web-storefront web-admin web-platform email-renderer proxy; do
+for service in server worker web-storefront web-admin web-platform email-renderer proxy; do
   state="$(compose ps --all --format '{{.State}}' "${service}")"
   restarts="$(docker inspect --format '{{.RestartCount}}' "$(compose ps --all -q "${service}")")"
   if [ "${state}" != running ] || [ "${restarts}" != 0 ]; then
@@ -142,25 +141,6 @@ for service in server server-internal worker web-storefront web-admin web-platfo
   fi
 done
 echo "[deploy-smoke] ok: every long-lived process is running"
-
-# The proxy reaches the edge listener and every web app, and not the internal
-# listener: `server` serves the edge listener alone, and `server-internal` is on
-# no network the proxy is on. The checks that must answer run first, so a
-# refusal below is the network's and not a missing wget's.
-from_proxy() { compose exec -T proxy wget -q -O /dev/null -T 5 "$1" 2> /dev/null; }
-for url in http://server:8000/livez http://web-storefront:3000/livez http://web-admin:4000/livez http://web-platform:4100/livez; do
-  if ! from_proxy "${url}"; then
-    echo "[deploy-smoke] ERROR: the proxy cannot reach ${url}" >&2
-    exit 1
-  fi
-done
-for url in http://server:8100/livez http://server-internal:8100/livez; do
-  if from_proxy "${url}"; then
-    echo "[deploy-smoke] ERROR: the proxy reaches the internal listener at ${url}" >&2
-    exit 1
-  fi
-done
-echo "[deploy-smoke] ok: the proxy reaches the edge listener and the web apps, and not the internal listener"
 
 # Image delivery converts and resizes through libvips, which the server binary
 # links with CGO, so a server image whose runtime libvips does not match the

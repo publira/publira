@@ -89,10 +89,13 @@ export const WEB_STOREFRONT_INTERNAL_URL = envUrl(
   WEB_STOREFRONT_BASE_URL
 );
 
-/** Public API gRPC/Connect origin used by web-storefront (readyz probe target). */
+/**
+ * `/api` on `publira server`, the base URL the web apps make every server-side
+ * RPC on, for a spec that calls a procedure the way they do.
+ */
 export const PUBLIC_API_BASE_URL = envUrl(
   "PUBLIRA_E2E_PUBLIC_API_BASE_URL",
-  "http://127.0.0.1:8100"
+  "http://127.0.0.1:8000/api"
 );
 
 /**

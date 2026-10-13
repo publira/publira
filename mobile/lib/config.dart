@@ -34,8 +34,8 @@ class AppConfig {
     );
   }
 
-  /// The edge listener of `publira server` (not the internal gRPC port),
-  /// which serves the public API under `/api` and the images under `/images`.
+  /// `publira server` itself, which serves the public API under `/api` and the
+  /// images under `/images`.
   static const defaultBaseUrl = 'http://127.0.0.1:8000';
 
   /// Dev-seed tenant host (`db/seeds/dev/001_tenant_users.sql`), on the Dev

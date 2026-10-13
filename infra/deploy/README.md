@@ -12,7 +12,7 @@ Every release publishes its images as `ghcr.io/publira/<name>:<version>`, built 
 | --- | --- | --- | --- |
 | `web-storefront` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-storefront` | The public tenant site | The edge, on each tenant's domain |
 | `web-admin` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-admin` | The tenant console | The edge, on each tenant's console host: the one it was given with `--admin-domain`, or `admin.<domain>` without one |
-| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | The public API and image delivery on its edge listener (`:8000`), and every Connect namespace on its internal listener (`:8100`) | The edge, on `/api` and `/images`; `web-storefront` and `web-admin`, on the internal listener |
+| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | Every Connect namespace under `/api`, and image delivery under `/images`, on `:8000` | The edge, on `/api` and `/images`; `web-storefront` and `web-admin`, on `/api` |
 | `publira worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker` as the container argument | The Outbox drain — mail, push, cache revalidation — and every scheduled job | Nothing; it serves `/livez` and `/readyz` on `:8003` |
 
 Every one of them serves `GET /livez` and `GET /readyz` for the orchestrator's probes.
@@ -21,18 +21,9 @@ An install on one host that will not scale the Go processes apart may run the tw
 
 | Process | Image | Serves | Reached by |
 | --- | --- | --- | --- |
-| `publira server --with-worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --with-worker` as the container argument | Everything both processes above serve, on the same three listeners (`:8000`, `:8100`, `:8003`) and the same six database logins | What reaches the two processes above |
+| `publira server --with-worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --with-worker` as the container argument | Everything both processes above serve, on the same two listeners (`:8000`, `:8003`) and the same six database logins | What reaches the two processes above |
 
 It reads the variables of both, so it is given the union of the `publira server` and `publira worker` rows below. What it gives up is the process boundary: the server and the worker can no longer be scaled independently, and the process the edge forwards internet traffic to also holds the worker's logins, `publira_outbox` among them, which owns River's schema. [`publira server --with-worker`](../../server/cmd/publira/README.md#hosting-the-worker---with-worker) has the details. The Compose file beside this README keeps the two services.
-
-An install that keeps the internet-facing process apart from the one the web apps call, or that runs on a platform exposing one port per workload, may instead run `publira server` as two processes, one per listener:
-
-| Process | Image | Serves | Reached by |
-| --- | --- | --- | --- |
-| `publira server --listener edge` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --listener edge` as the container argument | The public API and image delivery on the edge listener (`:8000`), as `publira_public` and `publira_admin` alone | The reverse proxy, on `/api` and `/images` |
-| `publira server --listener internal` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --listener internal` as the container argument | Every Connect namespace on the internal listener (`:8100`) | `web-storefront` and `web-admin` |
-
-Together they replace the one `publira server` above, and each reads the `publira server` rows below except where a row says otherwise. The edge process holds no `publira_platform` login and no web service credential, serves neither console's API, and can be scaled and probed apart from the internal one. [`--listener`](../../server/cmd/publira/README.md#serving-one-listener---listener) has the details.
 
 ### Services the processes depend on
 
@@ -67,9 +58,9 @@ Each row is one value, set under the name each process reads it by.
 | --- | --- | --- | --- | --- | --- |
 | The secret encryption keys | — | — | `PUBLIRA_SECRET_ENCRYPTION_KEYS`, `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` | the same | the same |
 | The cache revalidation token | `PNCH_REVALIDATE_TOKEN` | `PNCH_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | — |
-| The web service credential, also set on `web-platform` when it runs; not read by `publira server --listener edge` | — | `PUBLIRA_WEB_SERVICE_TOKEN` | `PUBLIRA_WEB_SERVICE_TOKEN` | — | — |
+| The web service credential, also set on `web-platform` when it runs | — | `PUBLIRA_WEB_SERVICE_TOKEN` | `PUBLIRA_WEB_SERVICE_TOKEN` | — | — |
 | The Redis URL | `PNCH_REDIS_URL` | `PNCH_REDIS_URL` | `PUBLIRA_REDIS_URL` | — | — |
-| The `publira_platform` connection, not read by `publira server --listener edge` | — | — | `PUBLIRA_PLATFORM_DB_URL` | — | `PUBLIRA_PLATFORM_DB_URL` |
+| The `publira_platform` connection | — | — | `PUBLIRA_PLATFORM_DB_URL` | — | `PUBLIRA_PLATFORM_DB_URL` |
 | The AWS credential, when the object store is saved without an access key | — | — | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` for a temporary credential | the same | the same |
 
 The secret encryption keys seal the SMTP password, the object store's access key, the Web Push private key, and each tenant's payment and push credentials; a process given other keys cannot read what `publiractl` stored. Their format is in [`server/README.md`](../../server/README.md#secret-encryption-configuration-aes-gcm).
@@ -78,7 +69,7 @@ The secret encryption keys seal the SMTP password, the object store's access key
 
 | Process | Variable | Value |
 | --- | --- | --- |
-| `web-storefront`, `web-admin` | `PUBLIRA_GRPC_URL` | The internal listener of `publira server`, such as `http://publira-server:8100` |
+| `web-storefront`, `web-admin` | `PUBLIRA_GRPC_URL` | `/api` on `publira server`, such as `http://publira-server:8000/api` |
 | `web-storefront`, `web-admin` | `PUBLIRA_AUTH_SECRET` | The key the app seals its session cookie with, at least 32 bytes. The two apps need not share one |
 | `publira server` | `PUBLIRA_AUTH_JWT_SECRET` | The key access tokens are signed with, at least 32 bytes |
 | `publira server` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL` | The `publira_public` and `publira_admin` connections |
@@ -129,15 +120,13 @@ Before the first step, provision the dependency services: a PostgreSQL database 
 
    Its summary names the tenant site and the tenant console, and prints the administrator's password when it generated one.
 
-5. **Put the edge in front** of `web-storefront`, `web-admin`, and the edge listener of `publira server`, routing the tenant's domain and its console host and terminating TLS for both, as [Edge](../../docs/en/2-deployments/4-edge.md#what-the-edge-has-to-do) states; the sample configurations take the two names in `PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS`. The administrator signs in to the tenant console at `https://admin.<domain>`.
+5. **Put the edge in front** of `web-storefront`, `web-admin`, and `publira server`, routing the tenant's domain and its console host and terminating TLS for both, as [Edge](../../docs/en/2-deployments/4-edge.md#what-the-edge-has-to-do) states; the sample configurations take the two names in `PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS`. The administrator signs in to the tenant console at `https://admin.<domain>`.
 
 On every later release, run `db migrate` and then `db roles` with that release's publiractl image before its processes start. [Upgrading](../../docs/en/2-deployments/5-upgrading.md) is the full procedure, with the backup before it and what to do when a migration fails.
 
 ## Running it with Docker Compose
 
-[`compose.yaml`](compose.yaml) runs an install on one host from the images: PostgreSQL, Valkey, RustFS as the object store, Traefik as the reverse proxy, the four long-lived processes with `publira server` [run as two](#long-lived-processes), and `publiractl` as a service that is only ever run by hand. Each process gets the variables in [Environment variables](#environment-variables), under the names given there.
-
-The services share two networks. `edge` holds the proxy and what it forwards to: `server`, which runs `publira server --listener edge`, and the web apps. `default` holds every service but the proxy, `server-internal` among them, which runs `publira server --listener internal`. The proxy therefore reaches the edge listener and the web apps, and neither the internal listener nor the database. The two server processes open up to 50 connections between them, and the worker 30, within PostgreSQL's default 100.
+[`compose.yaml`](compose.yaml) runs an install on one host from the images: PostgreSQL, Valkey, RustFS as the object store, Traefik as the reverse proxy, the four long-lived processes, and `publiractl` as a service that is only ever run by hand. Each process gets the variables in [Environment variables](#environment-variables), under the names given there.
 
 | File | What it holds |
 | --- | --- |
@@ -145,7 +134,7 @@ The services share two networks. `edge` holds the proxy and what it forwards to:
 | [`.env.example`](.env.example) | Every variable `compose.yaml` reads. Copy it to `.env` beside it and fill in every empty value; a required one left empty stops `docker compose` before anything starts |
 | [`services.yaml`](services.yaml) | Traefik's backend addresses, naming the Compose services. The routing is [`routes.yaml`](../proxy/traefik/dynamic/routes.yaml), mounted as it stands |
 
-The images are `${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}`, where `<name>` is `publira`, `publiractl`, `web-storefront`, `web-admin`, `web-platform`, or `email-renderer`. `.env.example` sets the registry to `ghcr.io/publira`, where every release publishes them, and leaves the tag to be set to the release the checkout is at; images built from changed code take their own registry and tag, and `task docker:verify:full` builds them all as `publira/<name>:local`. The edge publishes plain HTTP on `127.0.0.1:${PUBLIRA_EDGE_PORT}`, which whatever terminates TLS on the host forwards to, and routes the hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` and no others. `PUBLIRA_EDGE_TRUSTED_PROXIES` lists, separated by commas, the addresses the edge trusts to name the client address in `X-Forwarded-For`: the gateway of the `edge` network, which a terminator on the host reaches it from. Empty, it trusts none, and records every request with the terminator's address. `PUBLIRA_TENANT_URL_SCHEME` is the scheme of tenant links. Empty means https.
+The images are `${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}`, where `<name>` is `publira`, `publiractl`, `web-storefront`, `web-admin`, `web-platform`, or `email-renderer`. `.env.example` sets the registry to `ghcr.io/publira`, where every release publishes them, and leaves the tag to be set to the release the checkout is at; images built from changed code take their own registry and tag, and `task docker:verify:full` builds them all as `publira/<name>:local`. The edge publishes plain HTTP on `127.0.0.1:${PUBLIRA_EDGE_PORT}`, which whatever terminates TLS on the host forwards to, and routes the hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` and no others. `PUBLIRA_EDGE_TRUSTED_PROXIES` lists, separated by commas, the addresses the edge trusts to name the client address in `X-Forwarded-For`: the gateway of the install's Docker network, which a terminator on the host reaches it from. Empty, it trusts none, and records every request with the terminator's address. `PUBLIRA_TENANT_URL_SCHEME` is the scheme of tenant links. Empty means https.
 
 The optional processes run when `COMPOSE_PROFILES` names them — `web-platform`, `email-renderer`, or both, comma-separated — together with the variables `.env.example` lists under each.
 
@@ -179,4 +168,4 @@ On every later release, check out its tag, set `PUBLIRA_IMAGE_TAG` to its versio
 
 The install's state is the two volumes, `postgres-data` and `rustfs-data`, and the encryption keys in `.env`; Valkey keeps nothing. [Backup and restore](../../docs/en/2-deployments/6-backup-and-restore.md#on-the-docker-compose-install) backs them up and brings them back on an empty host.
 
-`task deploy:check` renders the file with every profile and checks that `.env.example` lists exactly what it reads. `task deploy:smoke` takes the images `task docker:verify:full` built through the steps above, under a project name of its own, and checks that the tenant site, the tenant console, and the Platform Console answer through the edge, that the proxy reaches the edge listener and the web apps and not the internal listener, and that image delivery resizes and converts an image through libvips.
+`task deploy:check` renders the file with every profile and checks that `.env.example` lists exactly what it reads. `task deploy:smoke` takes the images `task docker:verify:full` built through the steps above, under a project name of its own, and checks that the tenant site, the tenant console, and the Platform Console answer through the edge, and that image delivery resizes and converts an image through libvips.

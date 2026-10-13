@@ -85,7 +85,7 @@ start_profile() {
   local port
   for port in \
     "${PUBLIRA_WEB_STOREFRONT_PORT}" "${PUBLIRA_WEB_ADMIN_PORT}" "${PUBLIRA_WEB_PLATFORM_PORT}" \
-    "${PUBLIRA_PUBLIC_API_PORT}" "${PUBLIRA_PUBLIC_API_GRPC_PORT}" \
+    "${PUBLIRA_PUBLIC_API_PORT}" \
     "${PUBLIRA_EMAIL_RENDERER_PORT}" "${PUBLIRA_WORKER_PORT}" \
     "${PUBLIRA_EDGE_PORT}"; do
     if ss -ltn 2> /dev/null | grep -qE ":${port}\\b" || netstat -ltn 2> /dev/null | grep -qE ":${port}\\b"; then
@@ -117,13 +117,12 @@ start_profile() {
     AWS_REGION="${AWS_REGION:-}"
   )
 
-  # One process serves the API and the images: the edge forwards `/api` and
-  # `/images` to its edge listener, and the Next.js apps dial its internal one.
+  # One process serves the API and the images on one port: the edge forwards
+  # `/api` and `/images` to it, and the Next.js apps dial its `/api` directly.
   # The Redis URL is the image conversion cache's; the rate limit counters use
   # it too once it is there.
   dev_env_start_background "${run_dir}" server "${tracing[@]}" "${object_store[@]}" \
     PUBLIRA_PUBLIC_API_ADDR=":${PUBLIRA_PUBLIC_API_PORT}" \
-    PUBLIRA_PUBLIC_API_GRPC_ADDR=":${PUBLIRA_PUBLIC_API_GRPC_PORT}" \
     PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL}" \
     PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL}" \
     PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL}" \

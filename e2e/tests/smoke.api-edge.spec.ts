@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
+import { SEED_TENANT_ID } from "../src/scenarios/auth";
 import {
   WEB_ADMIN_BASE_URL,
   WEB_STOREFRONT_BASE_URL,
@@ -18,38 +19,75 @@ const edgeHosts = [
   ["the platform console", WEB_PLATFORM_BASE_URL],
 ] as const;
 
+interface EdgeAnswer {
+  code: string | undefined;
+  status: number;
+}
+
 /**
  * The request is sent from inside the page so it carries that page's Host, and
  * because `*.localhost` names are resolved by Chromium rather than by the
- * machine the runner is on.
+ * machine the runner is on. It carries no session cookie of the API's own, so
+ * a console procedure sees an anonymous caller.
  */
-const postThroughEdge = (page: Page, procedure: string): Promise<number> =>
-  page.evaluate(async (path) => {
-    const response = await fetch(path, {
-      body: "{}",
-      headers: { "Content-Type": "application/json" },
-      method: "POST",
-    });
-    return response.status;
-  }, procedure);
+const postThroughEdge = (
+  page: Page,
+  procedure: string,
+  body: object = {}
+): Promise<EdgeAnswer> =>
+  page.evaluate(
+    async ([path, json]) => {
+      const response = await fetch(path, {
+        body: json,
+        credentials: "omit",
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      let answer: unknown = null;
+      try {
+        answer = await response.json();
+      } catch {
+        // Anything but a Connect error leaves the code undefined.
+      }
+      const code =
+        typeof answer === "object" &&
+        answer !== null &&
+        "code" in answer &&
+        typeof answer.code === "string"
+          ? answer.code
+          : undefined;
+      return { code, status: response.status };
+    },
+    [procedure, JSON.stringify(body)] as const
+  );
 
 /**
- * One process serves all three Connect namespaces, and the edge forwards
- * `/api` to it on every host. Neither the port nor the protocol separates the
- * namespaces — a Connect handler answers gRPC, gRPC-Web and the Connect
- * protocol on one route — so the only thing keeping the two console APIs off
- * the internet is what the edge-facing listener has registered.
+ * One process serves all three Connect namespaces under `/api`, and the edge
+ * forwards `/api` to it on every host, so the console namespaces are reachable
+ * from the internet. What keeps an outsider out of them is their own
+ * authentication, which refuses an anonymous caller before any handler runs.
+ * The tenant console's procedure names a tenant that exists, because the
+ * tenant is looked up before the caller is.
  */
-test.describe("the edge serves the public API namespace alone", () => {
+test.describe("the edge forwards every API namespace", () => {
   for (const [label, baseUrl] of edgeHosts) {
-    test(`refuses the console namespaces on ${label}`, async ({ page }) => {
+    test(`refuses an anonymous caller of the console namespaces on ${label}`, async ({
+      page,
+    }) => {
       await page.goto(baseUrl);
 
-      expect(await postThroughEdge(page, ADMIN_PROCEDURE)).toBe(404);
-      expect(await postThroughEdge(page, PLATFORM_PROCEDURE)).toBe(404);
-      // The public namespace is reachable on the same host and the same path
-      // prefix, so a 404 above is the registration and not a broken route.
-      expect(await postThroughEdge(page, CATALOG_PROCEDURE)).not.toBe(404);
+      const unauthenticated = { code: "unauthenticated", status: 401 };
+      expect(
+        await postThroughEdge(page, ADMIN_PROCEDURE, {
+          tenant: { tenantId: SEED_TENANT_ID },
+        })
+      ).toEqual(unauthenticated);
+      expect(await postThroughEdge(page, PLATFORM_PROCEDURE)).toEqual(
+        unauthenticated
+      );
+      // The public namespace is answered on the same host and path prefix.
+      const catalog = await postThroughEdge(page, CATALOG_PROCEDURE);
+      expect(catalog.status).not.toBe(404);
     });
   }
 });

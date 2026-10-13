@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"slices"
 	"strings"
 	"testing"
 
@@ -49,14 +48,11 @@ func TestRunRejectsArgumentsTheCommandDoesNotTake(t *testing.T) {
 		reason string
 	}{
 		{[]string{"server", "--port", "8000"}, "flag provided but not defined: -port"},
-		{[]string{"server", "extra"}, "server takes no arguments other than --listener and --with-worker"},
-		{[]string{"server", "--with-worker", "extra"}, "server takes no arguments other than --listener and --with-worker"},
-		{[]string{"server", "--listener", "worker"}, `--listener must be edge or internal, not "worker"`},
-		{[]string{"server", "--listener", "edge,internal"}, `--listener must be edge or internal, not "edge,internal"`},
-		{[]string{"server", "--listener"}, "flag needs an argument: -listener"},
+		{[]string{"server", "extra"}, "server takes no arguments other than --with-worker"},
+		{[]string{"server", "--with-worker", "extra"}, "server takes no arguments other than --with-worker"},
+		{[]string{"server", "--listener", "edge"}, "flag provided but not defined: -listener"},
 		{[]string{"worker", "extra"}, "worker takes no arguments"},
 		{[]string{"worker", "--with-worker"}, "worker takes no arguments"},
-		{[]string{"worker", "--listener", "edge"}, "worker takes no arguments"},
 		{[]string{"--with-worker"}, `unknown command "--with-worker"`},
 	} {
 		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
@@ -75,20 +71,16 @@ func TestRunRejectsArgumentsTheCommandDoesNotTake(t *testing.T) {
 	}
 }
 
-// Without --listener the server serves both listeners, as it did before the
-// flag existed, and --with-worker adds the worker to whichever it serves.
+// --with-worker adds the worker to the server.
 func TestParseServerFlags(t *testing.T) {
 	for _, tc := range []struct {
 		args []string
 		want hosted
 	}{
-		{nil, hosted{server: bothListeners}},
-		{[]string{"--with-worker"}, hosted{server: bothListeners, worker: true}},
-		{[]string{"-with-worker"}, hosted{server: bothListeners, worker: true}},
-		{[]string{"--with-worker=false"}, hosted{server: bothListeners}},
-		{[]string{"--listener", "edge"}, hosted{server: serverListeners{edge: true}}},
-		{[]string{"--listener=internal"}, hosted{server: serverListeners{internal: true}}},
-		{[]string{"--listener", "edge", "--with-worker"}, hosted{server: serverListeners{edge: true}, worker: true}},
+		{nil, hosted{server: true}},
+		{[]string{"--with-worker"}, hosted{server: true, worker: true}},
+		{[]string{"-with-worker"}, hosted{server: true, worker: true}},
+		{[]string{"--with-worker=false"}, hosted{server: true}},
 	} {
 		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
 			got, err := parseServerFlags(tc.args)
@@ -104,72 +96,37 @@ func TestParseServerFlags(t *testing.T) {
 
 func TestUsageListsEveryCommandAndFlag(t *testing.T) {
 	out := usage()
-	for _, entry := range []string{"server", "worker", "--listener", "--with-worker"} {
+	for _, entry := range []string{"server", "worker", "--with-worker"} {
 		if !strings.Contains(out, "  "+entry+" ") {
 			t.Fatalf("usage text is missing %q", entry)
 		}
 	}
 }
 
-// A process serving one listener reports under the names of what that
-// listener serves, and the public namespace, which both serve, stays the
-// process default.
-func TestServerServiceNamesFollowTheListeners(t *testing.T) {
-	for _, tc := range []struct {
-		name      string
-		listeners serverListeners
-		want      []string
-	}{
-		{"both", bothListeners, []string{publicapi.ServiceName, adminapi.ServiceName, platformapi.ServiceName, imageserver.ServiceName}},
-		{"edge", serverListeners{edge: true}, []string{publicapi.ServiceName, imageserver.ServiceName}},
-		{"internal", serverListeners{internal: true}, []string{publicapi.ServiceName, adminapi.ServiceName, platformapi.ServiceName}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := serverServiceNames(tc.listeners); !slices.Equal(got, tc.want) {
-				t.Fatalf("serverServiceNames(%+v) = %v, want %v", tc.listeners, got, tc.want)
-			}
-		})
-	}
-}
-
-// The edge forwards /api and /images to this process host-agnostically and a
-// Connect handler answers gRPC, gRPC-Web and the Connect protocol on one
-// route, so what keeps the two console namespaces off the internet is the
-// registration and nothing else. These two tests are that boundary.
-func TestEdgeListenerServesThePublicNamespaceAndImagesAlone(t *testing.T) {
-	ts := httptest.NewServer(edgeHandler(clientip.New(clientip.Config{TrustedProxies: clientip.DefaultTrustedProxies}), newTestPublicAPI(t), newTestImageServer(t), serverPools{}))
-	t.Cleanup(ts.Close)
-
-	assertRouteRegistered(t, ts.URL, "/api/publira.v1.CatalogService/ListPublishedSeries", true)
-	assertRouteRegistered(t, ts.URL, "/images/creators/media", true)
-	assertRouteRegistered(t, ts.URL, "/readyz", true)
-	assertRouteRegistered(t, ts.URL, "/api/publira.admin.v1.AdminSeriesService/ListSeries", false)
-	assertRouteRegistered(t, ts.URL, "/api/publira.admin.v1.AdminAuthService/GetMe", false)
-	assertRouteRegistered(t, ts.URL, "/api/publira.platform.v1.PlatformTenantService/ListTenants", false)
-	assertRouteRegistered(t, ts.URL, "/api/publira.platform.v1.PlatformSetupService/CheckSetupStatus", false)
-	// The edge keeps the /api prefix, so the same procedure at the root is
-	// not a second way in.
-	assertRouteRegistered(t, ts.URL, "/publira.v1.CatalogService/ListPublishedSeries", false)
-}
-
-func TestInternalListenerServesAllThreeNamespaces(t *testing.T) {
-	publicAPI := newTestPublicAPI(t)
+// One listener serves every namespace under /api and the images beside it.
+// The edge forwards /api and /images to it host-agnostically, so a console
+// procedure is reachable on every tenant site and is kept from an outsider by
+// its own authentication, not by the mux.
+func TestServerHandlerServesEveryNamespaceUnderAPI(t *testing.T) {
 	adminAPI, err := adminapi.New(nil, nil, nil, slog.Default(), nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("adminapi.New: %v", err)
 	}
 	platformAPI := platformapi.New(nil, nil, slog.Default(), nil, nil, nil)
 
-	ts := httptest.NewServer(internalHandler(clientip.New(clientip.Config{TrustedProxies: clientip.DefaultTrustedProxies}), publicAPI, adminAPI, platformAPI, serverPools{}))
+	ts := httptest.NewServer(serverHandler(clientip.New(clientip.Config{TrustedProxies: clientip.DefaultTrustedProxies}), newTestPublicAPI(t), adminAPI, platformAPI, newTestImageServer(t), serverPools{}))
 	t.Cleanup(ts.Close)
 
-	assertRouteRegistered(t, ts.URL, "/publira.v1.CatalogService/ListPublishedSeries", true)
-	assertRouteRegistered(t, ts.URL, "/publira.admin.v1.AdminSeriesService/ListSeries", true)
-	assertRouteRegistered(t, ts.URL, "/publira.platform.v1.PlatformTenantService/ListTenants", true)
+	assertRouteRegistered(t, ts.URL, "/api/publira.v1.CatalogService/ListPublishedSeries", true)
+	assertRouteRegistered(t, ts.URL, "/api/publira.admin.v1.AdminSeriesService/ListSeries", true)
+	assertRouteRegistered(t, ts.URL, "/api/publira.platform.v1.PlatformTenantService/ListTenants", true)
+	assertRouteRegistered(t, ts.URL, "/images/creators/media", true)
 	assertRouteRegistered(t, ts.URL, "/readyz", true)
-	// The apps fetch no image over the private network; a browser asks for it
-	// on the origin of the page it is reading, which is the edge's.
-	assertRouteRegistered(t, ts.URL, "/images/creators/media", false)
+	// The /api prefix is the one path of a procedure, so the same procedure
+	// at the root is not a second way in.
+	assertRouteRegistered(t, ts.URL, "/publira.v1.CatalogService/ListPublishedSeries", false)
+	assertRouteRegistered(t, ts.URL, "/publira.admin.v1.AdminSeriesService/ListSeries", false)
+	assertRouteRegistered(t, ts.URL, "/publira.platform.v1.PlatformTenantService/ListTenants", false)
 }
 
 func newTestPublicAPI(t *testing.T) *publicapi.API {

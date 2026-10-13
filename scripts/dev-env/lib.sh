@@ -15,7 +15,7 @@ DEV_ENV_SLOT_MAX=15
 # profile is local state nothing in the repository reads and recreating one
 # costs less than keeping every superseded shape loadable. Raise it in the same
 # commit as a change to what a profile holds.
-DEV_ENV_PROFILE_VERSION=4
+DEV_ENV_PROFILE_VERSION=5
 
 dev_env_error() {
   printf 'dev-env: %s\n' "$*" >&2
@@ -343,7 +343,6 @@ dev_env_write_profile() {
     printf 'PUBLIRA_WEB_ADMIN_PORT=%s\n' "$((port_base + 1))"
     printf 'PUBLIRA_WEB_PLATFORM_PORT=%s\n' "$((port_base + 2))"
     printf 'PUBLIRA_PUBLIC_API_PORT=%s\n' "$((port_base + 10))"
-    printf 'PUBLIRA_PUBLIC_API_GRPC_PORT=%s\n' "$((port_base + 11))"
     printf 'PUBLIRA_EMAIL_RENDERER_PORT=%s\n' "$((port_base + 30))"
     printf 'PUBLIRA_WORKER_PORT=%s\n' "$((port_base + 40))"
     # The profile's front door: a browser asks for `/images…` and `/api…` on
@@ -351,7 +350,7 @@ dev_env_write_profile() {
     # both paths are the server's. The platform console URL below is therefore
     # the edge's.
     printf 'PUBLIRA_EDGE_PORT=%s\n' "$((port_base + 50))"
-    printf 'PUBLIRA_GRPC_URL=http://127.0.0.1:%s\n' "$((port_base + 11))"
+    printf 'PUBLIRA_GRPC_URL=http://127.0.0.1:%s/api\n' "$((port_base + 10))"
     printf 'PUBLIRA_WEB_STOREFRONT_INTERNAL_URL=http://127.0.0.1:%s\n' "${port_base}"
     printf 'PUBLIRA_WEB_ADMIN_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 1))"
     printf 'PUBLIRA_WEB_PLATFORM_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 2))"
@@ -408,7 +407,6 @@ dev_env_load_profile() {
     PUBLIRA_AUTH_JWT_SECRET PUBLIRA_REVALIDATE_TOKEN PUBLIRA_WEB_SERVICE_TOKEN \
     PUBLIRA_WEB_STOREFRONT_PORT \
     PUBLIRA_WEB_ADMIN_PORT PUBLIRA_WEB_PLATFORM_PORT PUBLIRA_PUBLIC_API_PORT \
-    PUBLIRA_PUBLIC_API_GRPC_PORT \
     PUBLIRA_EMAIL_RENDERER_PORT PUBLIRA_WORKER_PORT PUBLIRA_EDGE_PORT \
     PUBLIRA_GRPC_URL \
     PUBLIRA_WEB_STOREFRONT_INTERNAL_URL PUBLIRA_WEB_ADMIN_INTERNAL_URL PUBLIRA_WEB_PLATFORM_INTERNAL_URL \

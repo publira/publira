@@ -21,7 +21,7 @@ http:
         servers:
           - url: "http://web-platform:4100"
 
-    # The server's edge listener, which /api and /images reach as they are.
+    # publira server, which /api and /images reach as they are.
     api:
       loadBalancer:
         servers:

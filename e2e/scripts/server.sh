@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Start/stop only the server process, the one that answers the API and the
-# images: `/api` and `/images` reach its edge listener as they are, and the
-# Next.js apps dial its internal listener.
+# images on one port: `/api` and `/images` reach it as they are, and the
+# Next.js apps dial its `/api` directly.
 #
 # start-apps.sh uses it for the normal lifecycle; the outage scenarios
 # (e2e/src/server.ts) use it to take the backend down mid-run and bring it
@@ -18,7 +18,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 READY_TIMEOUT_SEC="${PUBLIRA_E2E_API_READY_TIMEOUT_SEC:-60}"
 
 server_readyz_url() {
-  printf 'http://127.0.0.1:%s/readyz' "${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}"
+  printf 'http://127.0.0.1:%s/readyz' "${PUBLIRA_E2E_PUBLIC_API_PORT}"
 }
 
 server_is_ready() {
@@ -41,14 +41,13 @@ start_server() {
     exit 1
   fi
 
-  e2e_log "starting server (edge :${PUBLIRA_E2E_PUBLIC_API_PORT}, internal :${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT})"
+  e2e_log "starting server (:${PUBLIRA_E2E_PUBLIC_API_PORT})"
   start_process_group "server" "${REPO_ROOT}/server" "${LOG_DIR}/server.log" \
     env \
     PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL}" \
     PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL}" \
     PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL}" \
     PUBLIRA_PUBLIC_API_ADDR=":${PUBLIRA_E2E_PUBLIC_API_PORT}" \
-    PUBLIRA_PUBLIC_API_GRPC_ADDR=":${PUBLIRA_E2E_PUBLIC_API_GRPC_PORT}" \
     PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
     PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
     PUBLIRA_TENANT_URL_SCHEME="${PUBLIRA_TENANT_URL_SCHEME}" \

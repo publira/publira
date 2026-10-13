@@ -126,7 +126,7 @@ The edge is whatever receives readers' requests and forwards them to the process
 
 - `admin.<domain>`, or the console host you chose, to `web-admin`.
 - The tenant's domain to `web-storefront`.
-- `/api` and `/images` on either host to the edge listener of `publira server`, port `8000` by default, except `/api/v1`, which belongs to the web app the host picked.
+- `/api` and `/images` on either host to `publira server`, port `8000` by default, except `/api/v1`, which belongs to the web app the host picked.
 
 Terminate TLS for both host names at the edge. [What the edge has to do](./4-edge.md#what-the-edge-has-to-do) states the rest of what it needs, whatever it is built from: the headers it passes on and the ones it removes, the client address, and the uploads and webhooks it has to let through. The repository's [sample configurations](./4-edge.md#the-sample-configurations) for Traefik, nginx, and Caddy are one way of doing all of it.
 
