@@ -213,7 +213,10 @@ On a host with the checkout at the release of the backup, put `.env` back beside
 
 ```bash
 docker compose up -d --wait postgres
-docker compose exec -T postgres pg_restore -U postgres -d publira --no-owner --no-acl --single-transaction < publira.dump
+docker compose exec -T postgres sh -c 'cat > /tmp/publira.dump' < publira.dump
+docker compose exec -T postgres sh -c "pg_restore --list /tmp/publira.dump | grep -v ' POLICY public [^ ]* publira_rls_bypass ' > /tmp/publira.list"
+docker compose exec -T postgres pg_restore -U postgres -d publira --no-owner --no-acl --single-transaction --use-list=/tmp/publira.list /tmp/publira.dump
+docker compose exec -T postgres rm /tmp/publira.dump /tmp/publira.list
 docker compose run --rm publiractl db roles \
   --public-password-file /run/secrets/public-db-password \
   --admin-password-file /run/secrets/admin-db-password \
@@ -225,7 +228,7 @@ docker compose run --rm --no-deps -T --entrypoint tar rustfs -xzf - -C /data < p
 docker compose up -d
 ```
 
-PostgreSQL creates the `publira` database empty on its first start, and the restore fills it. The archive goes into the RustFS volume before RustFS first starts, with the bucket and every object in it. Valkey keeps nothing, so it starts empty.
+PostgreSQL creates the `publira` database empty on its first start, and the restore fills it. The archive is copied into the container so that `pg_restore` can leave out the `publira_rls_bypass` policies, as in [Restore the database](#1-restore-the-database), and `db roles` puts them back. The archive goes into the RustFS volume before RustFS first starts, with the bucket and every object in it. Valkey keeps nothing, so it starts empty.
 
 The commands expect a host where the install's two volumes do not exist yet. To restore over an install that is still on the host, remove it and its volumes first, with `docker compose down -v`. That deletes every row and every image it holds, so run it only with the backup at hand.
 
