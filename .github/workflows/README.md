@@ -3,7 +3,6 @@
 | Workflow | File | Purpose |
 | --- | --- | --- |
 | `CI` | [`ci.yml`](./ci.yml) | Validation jobs described below. |
-| `Skills Update` | [`skills-update.yml`](./skills-update.yml) | Weekly pull requests that update agent skills. |
 | `Organize issues` | [`organize-issues.yml`](./organize-issues.yml) | Issue-maintenance automation. |
 | `Review` | [`review.yml`](./review.yml) | Review-support automation. |
 | `Release notes` | [`release-notes.yml`](./release-notes.yml) | The Upgrade notes of every pull request, checked, and collected into the release a tag publishes. |
