@@ -1,18 +1,22 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/DATA-DOG/go-sqlmock"
 
 	"github.com/publira/publira/server/api/adminapi"
 	"github.com/publira/publira/server/api/platformapi"
 	"github.com/publira/publira/server/api/publicapi"
 	"github.com/publira/publira/server/internal/clientip"
 	"github.com/publira/publira/server/internal/imageserver"
-	"github.com/publira/publira/server/internal/signin"
 )
 
 func TestRunWithoutCommand(t *testing.T) {
@@ -48,9 +52,17 @@ func TestRunRejectsArgumentsTheCommandDoesNotTake(t *testing.T) {
 		reason string
 	}{
 		{[]string{"server", "--port", "8000"}, "flag provided but not defined: -port"},
-		{[]string{"server", "extra"}, "server takes no arguments other than --with-worker"},
-		{[]string{"server", "--with-worker", "extra"}, "server takes no arguments other than --with-worker"},
+		{[]string{"server", "extra"}, "server takes no arguments other than --role and --with-worker"},
+		{[]string{"server", "--with-worker", "extra"}, "server takes no arguments other than --role and --with-worker"},
 		{[]string{"server", "--listener", "edge"}, "flag provided but not defined: -listener"},
+		{[]string{"server", "--role", "worker"}, `--role must be storefront, admin, or platform, not "worker"`},
+		{[]string{"server", "--role", "edge"}, `--role must be storefront, admin, or platform, not "edge"`},
+		{[]string{"server", "--role", ""}, "--role names an empty role"},
+		{[]string{"server", "--role", "storefront,"}, "--role names an empty role"},
+		{[]string{"server", "--role", "admin,admin"}, `--role names "admin" twice`},
+		{[]string{"server", "--role", "admin", "--role", "admin"}, `--role names "admin" twice`},
+		{[]string{"server", "--role"}, "flag needs an argument: -role"},
+		{[]string{"worker", "--role", "storefront"}, "worker takes no arguments"},
 		{[]string{"worker", "extra"}, "worker takes no arguments"},
 		{[]string{"worker", "--with-worker"}, "worker takes no arguments"},
 		{[]string{"--with-worker"}, `unknown command "--with-worker"`},
@@ -71,16 +83,22 @@ func TestRunRejectsArgumentsTheCommandDoesNotTake(t *testing.T) {
 	}
 }
 
-// --with-worker adds the worker to the server.
+// Without --role the server serves all three surfaces, and --with-worker adds
+// the worker to whichever it serves.
 func TestParseServerFlags(t *testing.T) {
 	for _, tc := range []struct {
 		args []string
 		want hosted
 	}{
-		{nil, hosted{server: true}},
-		{[]string{"--with-worker"}, hosted{server: true, worker: true}},
-		{[]string{"-with-worker"}, hosted{server: true, worker: true}},
-		{[]string{"--with-worker=false"}, hosted{server: true}},
+		{nil, hosted{server: allServerRoles}},
+		{[]string{"--with-worker"}, hosted{server: allServerRoles, worker: true}},
+		{[]string{"-with-worker"}, hosted{server: allServerRoles, worker: true}},
+		{[]string{"--with-worker=false"}, hosted{server: allServerRoles}},
+		{[]string{"--role", "storefront"}, hosted{server: serverRoles{storefront: true}}},
+		{[]string{"--role=admin,platform"}, hosted{server: serverRoles{admin: true, platform: true}}},
+		{[]string{"--role", "platform", "--role", "storefront"}, hosted{server: serverRoles{storefront: true, platform: true}}},
+		{[]string{"--role", "admin, storefront,platform"}, hosted{server: allServerRoles}},
+		{[]string{"--role", "storefront", "--with-worker"}, hosted{server: serverRoles{storefront: true}, worker: true}},
 	} {
 		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
 			got, err := parseServerFlags(tc.args)
@@ -96,56 +114,110 @@ func TestParseServerFlags(t *testing.T) {
 
 func TestUsageListsEveryCommandAndFlag(t *testing.T) {
 	out := usage()
-	for _, entry := range []string{"server", "worker", "--with-worker"} {
+	for _, entry := range []string{"server", "worker", "--role", "--with-worker"} {
 		if !strings.Contains(out, "  "+entry+" ") {
 			t.Fatalf("usage text is missing %q", entry)
 		}
 	}
 }
 
-// One listener serves every namespace under /api and the images beside it.
-// The edge forwards /api and /images to it host-agnostically, so a console
-// procedure is reachable on every tenant site and is kept from an outsider by
-// its own authentication, not by the mux.
-func TestServerHandlerServesEveryNamespaceUnderAPI(t *testing.T) {
-	adminAPI, err := adminapi.New(nil, nil, nil, slog.Default(), nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("adminapi.New: %v", err)
+// A process reports under the names of what its roles serve, the first of
+// them its default.
+func TestServerServiceNamesFollowTheRoles(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		roles serverRoles
+		want  []string
+	}{
+		{"all", allServerRoles, []string{publicapi.ServiceName, adminapi.ServiceName, platformapi.ServiceName, imageserver.ServiceName}},
+		{"storefront", serverRoles{storefront: true}, []string{publicapi.ServiceName, imageserver.ServiceName}},
+		{"admin", serverRoles{admin: true}, []string{adminapi.ServiceName, imageserver.ServiceName}},
+		{"platform", serverRoles{platform: true}, []string{platformapi.ServiceName}},
+		{"admin,platform", serverRoles{admin: true, platform: true}, []string{adminapi.ServiceName, platformapi.ServiceName, imageserver.ServiceName}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := serverServiceNames(tc.roles); !slices.Equal(got, tc.want) {
+				t.Fatalf("serverServiceNames(%+v) = %v, want %v", tc.roles, got, tc.want)
+			}
+		})
 	}
-	platformAPI := platformapi.New(nil, nil, slog.Default(), nil, nil, nil)
-
-	ts := httptest.NewServer(serverHandler(clientip.New(clientip.Config{TrustedProxies: clientip.DefaultTrustedProxies}), newTestPublicAPI(t), adminAPI, platformAPI, newTestImageServer(t), serverPools{}))
-	t.Cleanup(ts.Close)
-
-	assertRouteRegistered(t, ts.URL, "/api/publira.v1.CatalogService/ListPublishedSeries", true)
-	assertRouteRegistered(t, ts.URL, "/api/publira.admin.v1.AdminSeriesService/ListSeries", true)
-	assertRouteRegistered(t, ts.URL, "/api/publira.platform.v1.PlatformTenantService/ListTenants", true)
-	assertRouteRegistered(t, ts.URL, "/images/creators/media", true)
-	assertRouteRegistered(t, ts.URL, "/readyz", true)
-	// The /api prefix is the one path of a procedure, so the same procedure
-	// at the root is not a second way in.
-	assertRouteRegistered(t, ts.URL, "/publira.v1.CatalogService/ListPublishedSeries", false)
-	assertRouteRegistered(t, ts.URL, "/publira.admin.v1.AdminSeriesService/ListSeries", false)
-	assertRouteRegistered(t, ts.URL, "/publira.platform.v1.PlatformTenantService/ListTenants", false)
 }
 
-func newTestPublicAPI(t *testing.T) *publicapi.API {
-	t.Helper()
-	api, err := publicapi.New(nil, nil, nil, nil, nil, nil, signin.VerifierConfig{}, nil, nil)
-	if err != nil {
-		t.Fatalf("publicapi.New: %v", err)
+// One listener serves the namespaces of the roles a process was given under
+// /api, and the images when a role with a site is among them. The edge
+// forwards /api and /images to it host-agnostically, so a console procedure a
+// process serves is reachable on every tenant site and is kept from an
+// outsider by its own authentication, while one it does not serve is not
+// there at all. Readiness names the pools the roles hold, and no other.
+func TestServerHandlerServesWhatItsRolesServe(t *testing.T) {
+	const (
+		public   = "/api/publira.v1.CatalogService/ListPublishedSeries"
+		admin    = "/api/publira.admin.v1.AdminSeriesService/ListSeries"
+		platform = "/api/publira.platform.v1.PlatformTenantService/ListTenants"
+		images   = "/images/creators/media"
+	)
+	for _, tc := range []struct {
+		name   string
+		roles  serverRoles
+		routes []string
+		checks []string
+	}{
+		{"all", allServerRoles, []string{public, admin, platform, images}, []string{"db.public", "db.admin", "db.platform"}},
+		{"storefront", serverRoles{storefront: true}, []string{public, images}, []string{"db.public"}},
+		{"admin", serverRoles{admin: true}, []string{admin, images}, []string{"db.admin"}},
+		{"platform", serverRoles{platform: true}, []string{platform}, []string{"db.platform"}},
+		{"admin,platform", serverRoles{admin: true, platform: true}, []string{admin, platform, images}, []string{"db.admin", "db.platform"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("PUBLIRA_REDIS_URL", "disabled")
+			var pools serverPools
+			if tc.roles.storefront {
+				pools.public = newPingOnlyPool(t)
+			}
+			if tc.roles.admin {
+				pools.admin = newPingOnlyPool(t)
+			}
+			if tc.roles.platform {
+				pools.platform = newPingOnlyPool(t)
+			}
+			built, err := assembleServer(shared{logger: slog.Default()}, serverConfig{
+				clientIPs: clientip.New(clientip.Config{TrustedProxies: clientip.DefaultTrustedProxies}),
+			}, pools)
+			if err != nil {
+				t.Fatalf("assembleServer: %v", err)
+			}
+			ts := httptest.NewServer(built.handler)
+			t.Cleanup(func() {
+				ts.Close()
+				for _, drain := range built.drain {
+					_ = drain(context.Background())
+				}
+				_ = built.close()
+			})
+
+			for _, route := range []string{public, admin, platform, images} {
+				assertRouteRegistered(t, ts.URL, route, slices.Contains(tc.routes, route))
+				// The /api prefix is the one path of a procedure, so the same
+				// procedure at the root is not a second way in.
+				if strings.HasPrefix(route, "/api/") {
+					assertRouteRegistered(t, ts.URL, strings.TrimPrefix(route, "/api"), false)
+				}
+			}
+			assertReadyChecks(t, ts.URL+"/readyz", tc.checks...)
+		})
 	}
-	return api
 }
 
-func newTestImageServer(t *testing.T) *imageserver.Server {
+// newPingOnlyPool stands in for a role's pool where only what is built on it
+// is under test: it answers a ping and nothing else.
+func newPingOnlyPool(t *testing.T) *sql.DB {
 	t.Helper()
-	srv, err := imageserver.NewHandler(imageserver.SiteDB{}, imageserver.SiteDB{}, slog.Default(), nil)
+	db, _, err := sqlmock.New()
 	if err != nil {
-		t.Fatalf("imageserver.NewHandler: %v", err)
+		t.Fatalf("sqlmock.New: %v", err)
 	}
-	t.Cleanup(func() { _ = srv.Close() })
-	return srv
+	t.Cleanup(func() { _ = db.Close() })
+	return db
 }
 
 // assertRouteRegistered asks with POST for a health probe, which the probe

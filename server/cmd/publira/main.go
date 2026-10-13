@@ -16,6 +16,11 @@
 // an install that will not scale the two apart. It is a flag on server rather
 // than a third command because the server is the process the reverse proxy
 // points at, and the worker riding in it is an extension of that process.
+//
+// server --role storefront, admin, or platform, in any combination, serves
+// those API surfaces alone, each with its namespace, its share of image
+// delivery, and its database login, for an install that keeps the process the
+// edge forwards to from holding the consoles' logins.
 package main
 
 import (
@@ -24,6 +29,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -65,14 +71,49 @@ func parseServerFlags(args []string) (hosted, error) {
 	// command's instead.
 	fs.SetOutput(io.Discard)
 	var withWorker bool
+	var roles serverRoles
+	named := false
 	fs.BoolVar(&withWorker, "with-worker", false, "")
+	fs.Func("role", "", func(value string) error {
+		named = true
+		return roles.add(value)
+	})
 	if err := fs.Parse(args); err != nil {
 		return hosted{}, err
 	}
 	if fs.NArg() > 0 {
-		return hosted{}, errors.New("server takes no arguments other than --with-worker")
+		return hosted{}, errors.New("server takes no arguments other than --role and --with-worker")
 	}
-	return hosted{server: true, worker: withWorker}, nil
+	if !named {
+		roles = allServerRoles
+	}
+	return hosted{server: roles, worker: withWorker}, nil
+}
+
+// add takes one --role value, a comma-separated list of roles. A list that
+// names nothing, an unknown role, or a role already named is a mistake rather
+// than a setting, so it is refused instead of narrowed to what it could mean.
+func (r *serverRoles) add(value string) error {
+	for name := range strings.SplitSeq(value, ",") {
+		var role *bool
+		switch strings.TrimSpace(name) {
+		case "storefront":
+			role = &r.storefront
+		case "admin":
+			role = &r.admin
+		case "platform":
+			role = &r.platform
+		case "":
+			return errors.New("--role names an empty role; name storefront, admin, or platform")
+		default:
+			return fmt.Errorf("--role must be storefront, admin, or platform, not %q", name)
+		}
+		if *role {
+			return fmt.Errorf("--role names %q twice", strings.TrimSpace(name))
+		}
+		*role = true
+	}
+	return nil
 }
 
 // usageError reports a bad invocation on w, followed by the usage text, and
@@ -84,9 +125,10 @@ func usageError(w io.Writer, reason string) int {
 
 func usage() string {
 	return "\nUsage: publira <command> [flags]\n\nCommands:\n" +
-		"  server         Serve the API and image delivery to the edge and the Next.js apps\n" +
-		"  worker         Drain the Outbox and run every scheduled job\n" +
+		"  server                Serve the API and image delivery to the edge and the Next.js apps\n" +
+		"  worker                Drain the Outbox and run every scheduled job\n" +
 		"\nFlags of server:\n" +
-		"  --with-worker  Host the worker in the same process as well\n" +
+		"  --role <role>[,...]   Serve storefront, admin, or platform alone instead of all three\n" +
+		"  --with-worker         Host the worker in the same process as well\n" +
 		"\nEvery command reads its settings from the environment.\n"
 }

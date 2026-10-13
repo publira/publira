@@ -25,6 +25,15 @@ An install on one host that will not scale the Go processes apart may run the tw
 
 It reads the variables of both, so it is given the union of the `publira server` and `publira worker` rows below. What it gives up is the process boundary: the server and the worker can no longer be scaled independently, and the process the edge forwards internet traffic to also holds the worker's logins, `publira_outbox` among them, which owns River's schema. [`publira server --with-worker`](../../server/cmd/publira/README.md#hosting-the-worker---with-worker) has the details. The Compose file beside this README keeps the two services.
 
+An install that keeps the consoles' APIs and logins out of the process the edge forwards internet traffic to may instead run `publira server` as two processes, each given some of its roles:
+
+| Process | Image | Serves | Reached by |
+| --- | --- | --- | --- |
+| `publira server --role storefront` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --role storefront` as the container argument | `publira.v1` under `/api`, and the images of every tenant's site, as `publira_public` alone | The edge, on `/api` and `/images` of each tenant's domain |
+| `publira server --role admin,platform` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --role admin,platform` as the container argument | Both consoles' namespaces under `/api`, and the images of every tenant's console | `web-storefront` and `web-admin`, on `/api`; the edge, on `/images` of each console host |
+
+Together they replace the one `publira server` above, and each reads the `publira server` rows below except where a row says otherwise. The storefront process holds neither console's login nor the web service credential. Every process given roles listens on `:8000` alone, so either can run on a platform that exposes one port per service. [`--role`](../../server/cmd/publira/README.md#serving-some-roles---role) has the details.
+
 ### Services the processes depend on
 
 | Service | Used by | What it holds |
@@ -58,9 +67,9 @@ Each row is one value, set under the name each process reads it by.
 | --- | --- | --- | --- | --- | --- |
 | The secret encryption keys | — | — | `PUBLIRA_SECRET_ENCRYPTION_KEYS`, `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` | the same | the same |
 | The cache revalidation token | `PNCH_REVALIDATE_TOKEN` | `PNCH_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | — |
-| The web service credential, also set on `web-platform` when it runs | — | `PUBLIRA_WEB_SERVICE_TOKEN` | `PUBLIRA_WEB_SERVICE_TOKEN` | — | — |
+| The web service credential, also set on `web-platform` when it runs; not read by `publira server --role storefront` | — | `PUBLIRA_WEB_SERVICE_TOKEN` | `PUBLIRA_WEB_SERVICE_TOKEN` | — | — |
 | The Redis URL | `PNCH_REDIS_URL` | `PNCH_REDIS_URL` | `PUBLIRA_REDIS_URL` | — | — |
-| The `publira_platform` connection | — | — | `PUBLIRA_PLATFORM_DB_URL` | — | `PUBLIRA_PLATFORM_DB_URL` |
+| The `publira_platform` connection, not read by `publira server --role storefront` | — | — | `PUBLIRA_PLATFORM_DB_URL` | — | `PUBLIRA_PLATFORM_DB_URL` |
 | The AWS credential, when the object store is saved without an access key | — | — | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` for a temporary credential | the same | the same |
 
 The secret encryption keys seal the SMTP password, the object store's access key, the Web Push private key, and each tenant's payment and push credentials; a process given other keys cannot read what `publiractl` stored. Their format is in [`server/README.md`](../../server/README.md#secret-encryption-configuration-aes-gcm).
@@ -72,7 +81,7 @@ The secret encryption keys seal the SMTP password, the object store's access key
 | `web-storefront`, `web-admin` | `PUBLIRA_GRPC_URL` | `/api` on `publira server`, such as `http://publira-server:8000/api` |
 | `web-storefront`, `web-admin` | `PUBLIRA_AUTH_SECRET` | The key the app seals its session cookie with, at least 32 bytes. The two apps need not share one |
 | `publira server` | `PUBLIRA_AUTH_JWT_SECRET` | The key access tokens are signed with, at least 32 bytes |
-| `publira server` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL` | The `publira_public` and `publira_admin` connections |
+| `publira server` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL` | The `publira_public` and `publira_admin` connections. A process given `--role` reads only the connection of each role it serves, as the `publira_platform` one is read only with `platform` |
 | `publira server`, `publira worker` | `PUBLIRA_WEB_STOREFRONT_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL` | The private network URLs of `web-storefront` and `web-admin`, such as `http://web-storefront:3000`, where the cache revalidation is sent |
 | `publira worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The `publira_outbox`, `publira_ticker`, and `publira_content_stats` connections |
 | `publiractl` | `PUBLIRA_DB_URL` | The superuser connection, read by the `db` commands alone |

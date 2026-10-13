@@ -805,10 +805,10 @@ Every pool a process opens is bounded by the same three variables, read at start
 | `PUBLIRA_DB_MAX_IDLE_CONNS` | the value of `PUBLIRA_DB_MAX_OPEN_CONNS` | The returned connections a pool keeps open for the next caller, from `0` to `PUBLIRA_DB_MAX_OPEN_CONNS` |
 | `PUBLIRA_DB_CONN_MAX_IDLE_TIME` | `5m` | How long a connection nobody uses is kept before it is closed, as a Go duration. `0` keeps it |
 
-The bound is per pool, not per process. `publira server` and `publira worker` hold three pools each and `publira server --with-worker` holds six, so the database has to accept
+The bound is per pool, not per process. `publira server` and `publira worker` hold three pools each and `publira server --with-worker` holds six, while a server given [`--role`](cmd/publira/README.md#serving-some-roles---role) holds one per role, so the database has to accept
 
 ```text
-(3 × server processes + 3 × worker processes) × PUBLIRA_DB_MAX_OPEN_CONNS
+(the pools of every server and worker process, summed) × PUBLIRA_DB_MAX_OPEN_CONNS
 ```
 
 connections from them, plus one pool for each `publiractl` command running at the same time, inside `max_connections` less the slots PostgreSQL reserves for superusers (`superuser_reserved_connections`, `3` by default). One server and one worker at the defaults use 60 of PostgreSQL's default 100.
