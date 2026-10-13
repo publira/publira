@@ -50,26 +50,10 @@ func serverServiceNames() []string {
 // buildServer builds the three Connect namespaces and image delivery on one
 // listener: the reverse proxy forwards /api and /images to it as they are, and
 // the Next.js apps dial the same /api directly.
-func buildServer(deps shared) (_ half, err error) {
-	logger := deps.logger
-
-	// Refused here rather than where Redis is dialled, which falls back to
-	// in-process state and would leave the misconfiguration running.
-	if _, err := redisurl.FromEnv(); err != nil {
-		return half{}, failed("failed to load config", err)
-	}
-	idTokens, err := signin.VerifierConfigFromEnv()
+func buildServer(deps shared) (half, error) {
+	cfg, err := loadServerConfig()
 	if err != nil {
-		return half{}, failed("failed to load config", err)
-	}
-	clientIPs, err := clientip.FromEnv()
-	if err != nil {
-		return half{}, failed("failed to load config", err)
-	}
-
-	tokens, err := auth.NewTokenManagerFromEnv()
-	if err != nil {
-		return half{}, failed("failed to initialize access token manager", err)
+		return half{}, err
 	}
 
 	// One pool per PostgreSQL login, because the login is what the database
@@ -84,22 +68,76 @@ func buildServer(deps shared) (_ half, err error) {
 	if err != nil {
 		return half{}, failed("failed to initialize db", err)
 	}
-	defer func() {
-		if err != nil {
-			_ = pools.close()
-		}
-	}()
+	built, err := assembleServer(deps, cfg, pools)
+	if err != nil {
+		_ = pools.close()
+		return half{}, err
+	}
+	addr := addrFromEnv("PUBLIRA_PUBLIC_API_ADDR", defaultAddr)
+	return half{
+		listeners: []httpserver.Listener{{Name: "server", Server: httpserver.New(addr, built.handler)}},
+		drain:     built.drain,
+		close: func() error {
+			return errors.Join(built.close(), pools.close())
+		},
+	}, nil
+}
+
+// assembledServer is what the server serves on pools, before it is given a
+// listener.
+type assembledServer struct {
+	handler http.Handler
+	drain   []func(context.Context) error
+	// close releases what was built on the pools, and not the pools.
+	close func() error
+}
+
+// serverConfig is what the server reads from the environment before it opens
+// a pool, so a misconfiguration is refused without reaching the database.
+type serverConfig struct {
+	idTokens  signin.VerifierConfig
+	clientIPs *clientip.Resolver
+	tokens    *auth.TokenManager
+}
+
+func loadServerConfig() (serverConfig, error) {
+	// Refused here rather than where Redis is dialled, which falls back to
+	// in-process state and would leave the misconfiguration running.
+	if _, err := redisurl.FromEnv(); err != nil {
+		return serverConfig{}, failed("failed to load config", err)
+	}
+	idTokens, err := signin.VerifierConfigFromEnv()
+	if err != nil {
+		return serverConfig{}, failed("failed to load config", err)
+	}
+	clientIPs, err := clientip.FromEnv()
+	if err != nil {
+		return serverConfig{}, failed("failed to load config", err)
+	}
+	tokens, err := auth.NewTokenManagerFromEnv()
+	if err != nil {
+		return serverConfig{}, failed("failed to initialize access token manager", err)
+	}
+	return serverConfig{idTokens: idTokens, clientIPs: clientIPs, tokens: tokens}, nil
+}
+
+// assembleServer builds the API and image delivery on pools. Every read is
+// made on the pool of the surface it serves, the platform's settings among
+// them, so which pools a request reaches follows from what it asks for.
+func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembledServer, error) {
+	logger := deps.logger
+	tokens := cfg.tokens
 
 	encryptor := deps.encryptor
 
-	// The search engine is read from the platform's settings on the admin pool,
-	// whose login is granted that row and none of the platform's other
-	// credentials, so the storefront's role holds neither the engine's password
-	// nor a way to read it. The searches themselves run on the public pool when
-	// the engine is SQL.
+	// The search engine is read from the platform's settings on the public
+	// pool, the one the search RPCs are answered on, so the public API holds no
+	// other login to search. The row's password is sealed under keys only this
+	// process holds. The searches themselves run on the same pool when the
+	// engine is SQL.
 	searcher := platformsearch.Searcher{
 		Resolver: platformsearch.NewResolver(platformsearch.ResolverConfig{
-			Queries: dbmodels.New(pools.admin),
+			Queries: dbmodels.New(pools.public),
 			Secrets: encryptor,
 			Logger:  logger,
 		}),
@@ -118,16 +156,16 @@ func buildServer(deps shared) (_ half, err error) {
 
 	// The revalidate client is shared by the two namespaces whose writes leave
 	// a cache entry stale.
-	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, deps.revalidate, searcher, idTokens, login, mail)
+	publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), encryptor, tokens, deps.revalidate, searcher, cfg.idTokens, login, mail)
 	if err != nil {
-		return half{}, failed("failed to initialize public api handler", err)
+		return assembledServer{}, failed("failed to initialize public api handler", err)
 	}
 
-	// The object store is read from the platform's settings on the platform
-	// pool, so this process starts before an operator has saved one and an
-	// upload until then is refused.
+	// The object store is read from the platform's settings on the admin pool,
+	// the one the uploads are answered on, so this process starts before an
+	// operator has saved one and an upload until then is refused.
 	storageProvider := platformstorage.Provider{Resolver: platformstorage.New(platformstorage.Config{
-		Queries: dbmodels.New(pools.platform),
+		Queries: dbmodels.New(pools.admin),
 		Secrets: encryptor,
 		Logger:  logger,
 	}, platformstorage.NewStorage)}
@@ -139,7 +177,7 @@ func buildServer(deps shared) (_ half, err error) {
 	adminRecorder := auditlog.NewAsync(dbmodels.New(pools.admin), pools.admin, logger)
 	adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, deps.revalidate, adminRecorder, webServiceToken, login, mail)
 	if err != nil {
-		return half{}, failed("failed to initialize admin api handler", err)
+		return assembledServer{}, failed("failed to initialize admin api handler", err)
 	}
 
 	platformRecorder := auditlog.NewAsync(dbmodels.New(pools.platform), nil, logger)
@@ -148,24 +186,19 @@ func buildServer(deps shared) (_ half, err error) {
 	// Image delivery is built last: nothing after it can fail and leave its
 	// conversion server running.
 	imageHandler, err := imageserver.NewHandler(
-		dbmodels.New(pools.public),
-		imageserver.SiteDB{Pool: pools.public, Tenants: imageserver.NewDBTenantScopedFactory(pools.public, logger)},
-		imageserver.SiteDB{Pool: pools.admin, Tenants: imageserver.NewDBTenantScopedFactory(pools.admin, logger)},
-		newImageObjectStore(encryptor, pools.admin, logger),
+		newImageSite(pools.public, encryptor, logger),
+		newImageSite(pools.admin, encryptor, logger),
 		logger,
 		tokens,
 	)
 	if err != nil {
-		return half{}, failed("failed to initialize image handler", err)
+		return assembledServer{}, failed("failed to initialize image handler", err)
 	}
 
-	addr := addrFromEnv("PUBLIRA_PUBLIC_API_ADDR", defaultAddr)
-	return half{
-		listeners: []httpserver.Listener{{Name: "server", Server: httpserver.New(addr, serverHandler(clientIPs, publicAPI, adminAPI, platformAPI, imageHandler, pools))}},
-		drain:     []func(context.Context) error{adminRecorder.Shutdown, platformRecorder.Shutdown},
-		close: func() error {
-			return errors.Join(imageHandler.Close(), pools.close())
-		},
+	return assembledServer{
+		handler: serverHandler(cfg.clientIPs, publicAPI, adminAPI, platformAPI, imageHandler, pools),
+		drain:   []func(context.Context) error{adminRecorder.Shutdown, platformRecorder.Shutdown},
+		close:   imageHandler.Close,
 	}, nil
 }
 
@@ -232,14 +265,25 @@ func (p serverPools) close() error {
 	return errors.Join(errs...)
 }
 
+// newImageSite is how image delivery answers the site that pool's login
+// belongs to: the host lookup, the tenant-scoped queries, and the object
+// store's settings are all read on pool, so the site is answered without the
+// other site's login.
+func newImageSite(pool *sql.DB, secrets platformstorage.SecretManager, logger *slog.Logger) imageserver.SiteDB {
+	return imageserver.SiteDB{
+		Pool:     pool,
+		Resolver: dbmodels.New(pool),
+		Tenants:  imageserver.NewDBTenantScopedFactory(pool, logger),
+		Objects:  newImageObjectStore(secrets, pool, logger),
+	}
+}
+
 // newImageObjectStore reads every image from the store the platform's
-// settings name. They are read on the admin pool, whose login is granted that
-// one platform table and nothing else of the platform's: image delivery
-// answers a console host as that login already, and the storefront pool is
-// not granted the table at all.
-func newImageObjectStore(secrets platformstorage.SecretManager, admin *sql.DB, logger *slog.Logger) imageserver.ObjectStore {
+// settings name, read on pool. Both site logins are granted that one platform
+// table; the access key in it is sealed under keys only this process holds.
+func newImageObjectStore(secrets platformstorage.SecretManager, pool *sql.DB, logger *slog.Logger) imageserver.ObjectStore {
 	resolver := platformstorage.New(platformstorage.Config{
-		Queries: dbmodels.New(admin),
+		Queries: dbmodels.New(pool),
 		Secrets: secrets,
 		Logger:  logger,
 	}, func(ctx context.Context, snapshot platformstorage.Snapshot) (imageserver.ObjectStore, error) {

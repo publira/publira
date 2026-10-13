@@ -79,20 +79,20 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 // policy the storefront's and the tenant console's rate limits and the
 // tenant-admin MFA requirement come from, the retention defaults the tenant
 // console and the purge batches resolve a tenant's periods from, the object
-// store the image server and the orphan image sweep resolve, the search
-// engine the server's search answers from and the maintenance role builds the
-// catalog index on, and the spent
-// operator MFA challenges it purges. The object store and the search engine hold
-// their secret encrypted under keys the database does not have. The storefront also
-// reads the Web Push settings, but only the columns that publish the public
-// key, which TestPublicRoleReadsOnlyThePublishedWebPushColumns holds it to,
+// store each site's images and the tenant console's uploads are read from and
+// the orphan image sweep resolves, the search engine the storefront's search
+// answers from and the maintenance role builds the catalog index on, and the
+// spent operator MFA challenges it purges. The object store and the search
+// engine hold their secret encrypted under keys the database does not have.
+// The storefront also reads the Web Push settings, but only the columns that
+// publish the public key, which TestPublicRoleReadsOnlyThePublishedWebPushColumns holds it to,
 // the tenant console the platform relay's from address and nothing else of
 // it, which TestAdminRoleReadsOnlyThePlatformSMTPFromAddress holds it to, and
 // all three the platform's default currency and nothing else of its settings,
 // which TestTenantRolesReadOnlyThePlatformDefaultCurrency holds them to.
 var readablePlatformTables = map[string][]string{
-	"publira_public":        {"platform_config", "platform_policy_config", "platform_webpush_config"},
-	"publira_admin":         {"platform_config", "platform_policy_config", "platform_retention_config", "platform_search_config", "platform_smtp_config", "platform_storage_config"},
+	"publira_public":        {"platform_config", "platform_policy_config", "platform_search_config", "platform_storage_config", "platform_webpush_config"},
+	"publira_admin":         {"platform_config", "platform_policy_config", "platform_retention_config", "platform_smtp_config", "platform_storage_config"},
 	"publira_content_stats": {"platform_config", "platform_retention_config", "platform_search_config", "platform_storage_config", "platform_user_mfa_used_challenges"},
 }
 

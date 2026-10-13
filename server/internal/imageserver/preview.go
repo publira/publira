@@ -82,16 +82,17 @@ func (h *Handler) handleGetEpisodePreviewImage(w http.ResponseWriter, r *http.Re
 
 	// The row is read; the conversion below runs without the connection.
 	cleanup()
-	h.servePreview(w, r, page.ObjectKey)
+	h.servePreview(w, r, adminHost, page.ObjectKey)
 }
 
 // servePreview answers with the preview rendered from objectKey, rendering it
 // on a cache miss and keeping the result in the cache the converted renditions
 // share.
-func (h *Handler) servePreview(w http.ResponseWriter, r *http.Request, objectKey string) {
+func (h *Handler) servePreview(w http.ResponseWriter, r *http.Request, adminHost bool, objectKey string) {
 	ctx := r.Context()
+	objects := h.site(adminHost).Objects
 
-	storeVersion, ok := h.resolveStoreVersion(w, r, objectKey)
+	storeVersion, ok := h.resolveStoreVersion(w, r, objects, objectKey)
 	if !ok {
 		return
 	}
@@ -101,7 +102,7 @@ func (h *Handler) servePreview(w http.ResponseWriter, r *http.Request, objectKey
 		return
 	}
 
-	obj, err := h.objects.GetObject(ctx, objectKey)
+	obj, err := objects.GetObject(ctx, objectKey)
 	if err != nil {
 		if errors.Is(err, ErrObjectNotFound) {
 			writeImage(w, "text/plain; charset=utf-8", "", "miss", http.StatusNotFound, []byte("image not found\n"))
