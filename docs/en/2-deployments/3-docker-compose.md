@@ -5,7 +5,7 @@ published: 2026-10-06
 updated: 2026-10-13
 ---
 
-The repository ships a Compose file that runs a whole install on one host: the services Publira depends on, the four processes, and a reverse proxy in front of them, already wired together. It is the shortest way to a working install, and this page takes you from an empty host to the first sign-in to the tenant console.
+The repository ships a Compose file that runs a whole install on one host: the services Publira depends on, the processes of an install, and a reverse proxy in front of them, already wired together. It is the shortest way to a working install, and this page takes you from an empty host to the first sign-in to the tenant console.
 
 The Compose file runs the same steps as [Installing](./2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach. This page covers what is particular to the Compose file: what it runs, what you fill in, and the commands that bring it up. The full list of variables it reads is in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#running-it-with-docker-compose).
 
@@ -19,9 +19,12 @@ The Compose file runs the same steps as [Installing](./2-installing.md), which e
 | `valkey` | Valkey, holding the image conversion cache, the rate limit counters, and the web apps' cache | Nothing; it starts empty after every restart |
 | `rustfs` | [RustFS](https://github.com/rustfs/rustfs), an S3-compatible object store, holding every uploaded image | The `rustfs-data` volume |
 | `proxy` | Traefik, the reverse proxy, with the repository's own routing | Nothing |
-| `server`, `worker`, `web-storefront`, `web-admin` | The four processes the [Overview](./1-overview.md) describes | Nothing |
+| `server` | `publira server` and `publira worker` as one process, `publira server --with-worker`, which the [Overview](./1-overview.md#what-an-install-runs) describes | Nothing |
+| `web-storefront`, `web-admin` | The public site and the tenant console | Nothing |
 | `web-platform`, `email-renderer` | The optional processes, which run only when you turn them on | Nothing |
 | `publiractl` | The command-line tool, never kept running: you run it with `docker compose run --rm publiractl <command>` | Nothing |
+
+The server and the worker run as one process, so the host runs one container fewer. Run them as two instead when either matters to your install: to scale them separately, or to keep the worker's database logins out of the process the proxy forwards to. The [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables) lists the variables each of the two reads.
 
 The proxy publishes plain HTTP on a port of the host's loopback interface and nothing else, so nothing reaches the install until you put a TLS terminator on the host in front of it. Every other service is reachable only from the others.
 

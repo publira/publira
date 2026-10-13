@@ -2,6 +2,7 @@
 title: Backup and restore
 description: What an install keeps and has to be backed up, how to take a backup that restores, and how to bring an install back on empty services.
 published: 2026-10-06
+updated: 2026-10-13
 ---
 
 An install keeps its state in three places: the PostgreSQL database, the object store bucket, and the secret encryption keys, which only you hold. Restored without the others, each one is incomplete: rows name images the bucket does not have, the bucket holds images no row names, and the credentials in the database are sealed with keys nobody has. This page names what to back up and why, how to take a backup that restores into a working install, and how to bring an install back from it on empty services.
@@ -191,17 +192,17 @@ The [Docker Compose](./3-docker-compose.md) install keeps the database in the `p
 ### Take a backup
 
 ```bash
-docker compose stop worker
+docker compose stop server
 docker compose exec -T postgres pg_dump -U postgres --format=custom publira > publira.dump
 docker compose run --rm -T publiractl db version > publira.version
 docker compose stop rustfs
 docker compose run --rm --no-deps -T --entrypoint tar rustfs -czf - -C /data . > publira-bucket.tar.gz
-docker compose start rustfs worker
+docker compose start rustfs server
 ```
 
-The worker is stopped for the reason in [Stop the worker](#1-stop-the-worker). `-T` keeps the output from passing through a terminal, which would corrupt it.
+The worker is stopped for the reason in [Stop the worker](#1-stop-the-worker). It runs inside `server`, so the API stops with it, and the tenant sites and consoles do not answer until `server` starts again. `-T` keeps the output from passing through a terminal, which would corrupt it.
 
-The bucket is backed up as the files RustFS keeps in its volume, rather than object by object, since the RustFS image carries no S3 client. RustFS has to be stopped while they are copied, or the archive could hold an object it was halfway through writing. For that time, uploads in the console fail, and images that Valkey has not cached do not load; the rest of the site keeps serving. The checkout pins the RustFS image, so the same checkout restores the archive with the same RustFS.
+The bucket is backed up as the files RustFS keeps in its volume, rather than object by object, since the RustFS image carries no S3 client. RustFS has to be stopped while they are copied, or the archive could hold an object it was halfway through writing. The checkout pins the RustFS image, so the same checkout restores the archive with the same RustFS.
 
 Copy `publira.dump`, `publira.version`, and `publira-bucket.tar.gz` off the host, and keep the copy of `.env` you made at install somewhere other than both the host and those files.
 

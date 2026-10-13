@@ -2,8 +2,9 @@
 # smoke-deploy-compose.sh — Bring infra/deploy/compose.yaml up from the images
 # `task docker:verify:full` built, take it through the steps its README
 # documents, and check that the tenant site, the tenant console, and the
-# Platform Console answer through the edge, that the proxy cannot reach the
-# database or Valkey, and that image delivery resizes an image through libvips.
+# Platform Console answer through the edge, that `server` hosts the worker,
+# that the proxy cannot reach the database or Valkey, and that image delivery
+# resizes an image through libvips.
 #
 # The stack runs under its own project name, so an install on the same host is
 # left alone, and is always removed with its volumes.
@@ -133,7 +134,7 @@ expect_page "Platform Console" "platform.localhost"
 
 # A long-lived process that exited or keeps restarting is a failure even when
 # every page above answered.
-for service in server worker web-storefront web-admin web-platform email-renderer proxy; do
+for service in server web-storefront web-admin web-platform email-renderer proxy; do
   state="$(compose ps --all --format '{{.State}}' "${service}")"
   restarts="$(docker inspect --format '{{.RestartCount}}' "$(compose ps --all -q "${service}")")"
   if [ "${state}" != running ] || [ "${restarts}" != 0 ]; then
@@ -142,6 +143,48 @@ for service in server worker web-storefront web-admin web-platform email-rendere
   fi
 done
 echo "[deploy-smoke] ok: every long-lived process is running"
+
+# `server` runs with the worker hosted in it, so it is the one container of the
+# publira image, and it answers the readiness of both: the server's pools on
+# :8000 and the worker's on :8003. The proxy, on the `edge` network with it,
+# asks.
+publira_services="$(compose ps --format '{{.Service}} {{.Image}}' | awk '$2 ~ /\/publira:/ { print $1 }')"
+if [ "${publira_services}" != server ]; then
+  echo "[deploy-smoke] ERROR: the publira image runs as $(paste -sd, - <<< "${publira_services:-nothing}"), want server alone" >&2
+  exit 1
+fi
+expect_ready() {
+  local port="$1" body check
+  shift
+  body="$(compose exec -T proxy wget -q -O - -T 5 "http://server:${port}/readyz" 2> /dev/null || true)"
+  for check in "$@"; do
+    if ! grep -qF "\"${check}\":{\"status\":\"ok\"}" <<< "${body}"; then
+      echo "[deploy-smoke] ERROR: server:${port}/readyz answered ${body:-nothing}, want ${check} ok" >&2
+      return 1
+    fi
+  done
+}
+expect_ready 8000 db.public db.admin db.platform
+expect_ready 8003 db.outbox db.ticker db.content_stats
+
+# The Outbox drain runs in `server`: an `outbox_test` entry, which its handler
+# completes without a side effect, is done once the drain has claimed it.
+event_id="$(compose exec -T postgres psql -U postgres -d publira -v ON_ERROR_STOP=1 -qtA -c "
+  INSERT INTO outbox_events (id, event_type, idempotency_key)
+  VALUES (gen_random_uuid(), 'outbox_test', 'deploy-smoke')
+  RETURNING id")"
+deadline=$((SECONDS + timeout))
+event_status=""
+while [ "${SECONDS}" -lt "${deadline}" ]; do
+  event_status="$(compose exec -T postgres psql -U postgres -d publira -qtA -c "SELECT status FROM outbox_events WHERE id = '${event_id}'")"
+  [ "${event_status}" = "done" ] && break
+  sleep 2
+done
+if [ "${event_status}" != "done" ]; then
+  echo "[deploy-smoke] ERROR: the outbox_test entry is ${event_status:-missing}, want done" >&2
+  exit 1
+fi
+echo "[deploy-smoke] ok: server answers the readiness of both processes and drains the Outbox"
 
 # The proxy reaches `server` and every web app, and is on the `edge` network
 # alone, which holds neither the database nor Valkey.

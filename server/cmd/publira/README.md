@@ -133,13 +133,13 @@ The process the reverse proxy forwards internet traffic to can therefore run `--
 publira server --with-worker
 ```
 
-runs everything [`publira worker`](#publira-worker) runs inside this process as well, for an install on one host that will not scale the two apart: the Go side becomes one container, or one systemd unit, instead of two. The flag chooses what the process hosts, and every value still comes from the environment. The image's default command stays `server`, and [`infra/deploy/compose.yaml`](../../../infra/deploy/compose.yaml) still runs the two as separate services.
+runs everything [`publira worker`](#publira-worker) runs inside this process as well, for an install on one host that will not scale the two apart: the Go side becomes one container, or one systemd unit, instead of two. The flag chooses what the process hosts, and every value still comes from the environment. The image's default command stays `server`; [`infra/deploy/compose.yaml`](../../../infra/deploy/compose.yaml) runs its `server` service with the flag.
 
 Nothing is merged. The process holds all six pools, one per login, and serves both listeners — the server's `:8000` and the worker's `:8003` — each with the `/livez` and `/readyz` it answers with in a process of its own, so an orchestrator's probes and the reverse proxy's routing are unchanged. It therefore reads the union of both processes' environment variables: the ones [above](#main-environment-variables) and the ones [under the worker](#main-environment-variables-1). The process does not start when either half cannot, just as that half does not start on its own. One `SIGTERM` stops the whole process within the same 30-second window either process takes alone.
 
 Every `service.name` of both processes is kept: the Connect namespaces, the image routes, `publira-worker` for the Outbox drain, and one per job. The process default is `publira-api-server`, so the metrics — the Outbox instruments among them — and the database and outbound HTTP spans that belong to no namespace or job report under that name.
 
-The trade-off is the process boundary. Two processes can be scaled independently; one cannot, and adding a replica adds both. And the process the reverse proxy forwards internet traffic to also holds the worker's logins, `publira_outbox` among them, which owns River's schema and holds `CREATE` on the `public` schema. Keep the two processes apart wherever running one more is not the larger cost.
+The trade-off is the process boundary. Two processes can be scaled independently; one cannot, and adding a replica adds both. And the process the reverse proxy forwards internet traffic to also holds the worker's logins, `publira_outbox` among them, which owns River's schema and holds `CREATE` on the `public` schema. Run the two apart when either matters to the install: to scale them separately, or to keep the worker's logins out of the process the edge forwards to.
 
 ## publira worker
 
