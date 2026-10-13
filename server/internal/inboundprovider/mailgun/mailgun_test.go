@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -171,6 +172,33 @@ func TestParseWebhookReadsARetryHoursAfterItWasSigned(t *testing.T) {
 	if msg.MessageID != "CAJ4k2m1+9xQ@mail.example.net" {
 		t.Errorf("MessageID = %q", msg.MessageID)
 	}
+}
+
+// A post for a domain on a subaccount carries the subaccount's signature and
+// the primary account's as `parent-signature`, and either key verifies it.
+func TestParseWebhookReadsAPostForASubaccountUnderEitherKey(t *testing.T) {
+	mail := inboundprovidertest.Mail{From: "reader@example.net", To: "contact+7Hn3QzW9kPfa@reply.example.com", Text: "Hello"}
+	signedAt := time.Now()
+	timestamp := strconv.FormatInt(signedAt.Unix(), 10)
+	const subaccountKey = "subaccount-signing-key"
+	fields := append(mailguntest.Sign(mailguntest.Fields(mail), subaccountKey, signedAt, "subaccount-token"),
+		mailguntest.Field{Name: "parent-signature", Value: mailguntest.Signature(signingKey, timestamp, "subaccount-token")})
+	payload, headers := mailguntest.Multipart(t, fields)
+
+	for name, key := range map[string]string{"the primary account's key": signingKey, "the subaccount's key": subaccountKey} {
+		t.Run(name, func(t *testing.T) {
+			credentials := inboundprovider.Credentials{mailgun.FieldWebhookSigningKey: key}
+			if _, err := mailgun.New().ParseWebhook(t.Context(), payload, headers, credentials); err != nil {
+				t.Fatalf("ParseWebhook: %v", err)
+			}
+		})
+	}
+	t.Run("another key", func(t *testing.T) {
+		credentials := inboundprovider.Credentials{mailgun.FieldWebhookSigningKey: "another-signing-key"}
+		if _, err := mailgun.New().ParseWebhook(t.Context(), payload, headers, credentials); !errors.Is(err, inboundprovider.ErrInvalidSignature) {
+			t.Fatalf("ParseWebhook error = %v, want ErrInvalidSignature", err)
+		}
+	})
 }
 
 // The token becomes the mail's replay key, which is stored, so a token longer

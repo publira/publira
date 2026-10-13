@@ -35,7 +35,10 @@ const (
 	ID = "mailgun"
 
 	// FieldWebhookSigningKey is the credential field Mailgun declares: the
-	// account's HTTP webhook signing key, which signs every Route post.
+	// account's HTTP webhook signing key, which signs every Route post. A post
+	// for a domain on a subaccount is signed with the subaccount's key and
+	// again, as `parent-signature`, with the primary account's, so either key
+	// verifies it.
 	FieldWebhookSigningKey = "webhook_signing_key"
 
 	// signatureMaxAge is how long ago a request's timestamp may be. Mailgun
@@ -66,18 +69,19 @@ const (
 // name, so `To` and `Cc` arrive that way; the rest of those, the stripped
 // bodies, and the attachments are not kept.
 var fields = map[string]bool{
-	"body-html":       true,
-	"body-plain":      true,
-	"cc":              true,
-	"from":            true,
-	"message-headers": true,
-	"recipient":       true,
-	"sender":          true,
-	"signature":       true,
-	"subject":         true,
-	"timestamp":       true,
-	"to":              true,
-	"token":           true,
+	"body-html":        true,
+	"body-plain":       true,
+	"cc":               true,
+	"from":             true,
+	"message-headers":  true,
+	"parent-signature": true,
+	"recipient":        true,
+	"sender":           true,
+	"signature":        true,
+	"subject":          true,
+	"timestamp":        true,
+	"to":               true,
+	"token":            true,
 }
 
 // Provider is Mailgun's receiving.
@@ -130,7 +134,7 @@ func (p *Provider) ParseWebhook(_ context.Context, payload []byte, headers http.
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", inboundprovider.ErrInvalidSignature, err)
 	}
-	if !verify(form["timestamp"], form["token"], form["signature"], key, p.now()) {
+	if !verify(form["timestamp"], form["token"], key, p.now(), form["signature"], form["parent-signature"]) {
 		return nil, inboundprovider.ErrInvalidSignature
 	}
 
@@ -181,12 +185,12 @@ func (p *Provider) ParseWebhook(_ context.Context, payload []byte, headers http.
 	return msg, nil
 }
 
-// verify checks a Route post's signature: the hex HMAC-SHA256 of the
-// timestamp followed by the token, keyed with the signing key, from a
-// timestamp no older than signatureMaxAge and no further ahead than
-// signatureMaxSkew.
-func verify(timestamp, token, signature, key string, now time.Time) bool {
-	if timestamp == "" || token == "" || len(token) > maxTokenBytes || signature == "" {
+// verify checks a Route post's signatures: one of them has to be the hex
+// HMAC-SHA256 of the timestamp followed by the token, keyed with the signing
+// key, from a timestamp no older than signatureMaxAge and no further ahead
+// than signatureMaxSkew.
+func verify(timestamp, token, key string, now time.Time, signatures ...string) bool {
+	if timestamp == "" || token == "" || len(token) > maxTokenBytes {
 		return false
 	}
 	seconds, err := strconv.ParseInt(timestamp, 10, 64)
@@ -196,13 +200,16 @@ func verify(timestamp, token, signature, key string, now time.Time) bool {
 	if age := now.Sub(time.Unix(seconds, 0)); age > signatureMaxAge || age < -signatureMaxSkew {
 		return false
 	}
-	decoded, err := hex.DecodeString(signature)
-	if err != nil {
-		return false
-	}
 	mac := hmac.New(sha256.New, []byte(key))
 	mac.Write([]byte(timestamp + token))
-	return hmac.Equal(decoded, mac.Sum(nil))
+	want := mac.Sum(nil)
+	for _, signature := range signatures {
+		decoded, err := hex.DecodeString(signature)
+		if err == nil && signature != "" && hmac.Equal(decoded, want) {
+			return true
+		}
+	}
+	return false
 }
 
 // readForm reads the fields of a Route post that ParseWebhook uses. Mailgun
