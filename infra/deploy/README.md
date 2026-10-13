@@ -175,7 +175,7 @@ docker compose run --rm publiractl setup \
 
 The `publiractl` service carries each role's password from `.env` in `/run/secrets/`, and the RustFS secret key as `rustfs-secret-key`. `setup` asks for the rest on the terminal.
 
-On every later release, check out its tag, set `PUBLIRA_IMAGE_TAG` to its version, the tag without the `v`, then run `docker compose pull` followed by `docker compose pull publiractl`, which the first leaves out since it sits in a profile of its own, then `db migrate`, `db roles` with no flags, `docker compose up -d`, and `docker compose restart proxy`, which mounts the routing as single files that a checkout replaces. [Upgrading](../../docs/en/2-deployments/5-upgrading.md#on-the-docker-compose-install) is the full procedure.
+On every later release, check out its tag, set `PUBLIRA_IMAGE_TAG` to its version, the tag without the `v`, then run `docker compose pull` followed by `docker compose pull publiractl`, which the first leaves out since it sits in a profile of its own, then `db migrate`, `db roles` with no flags, `docker compose up -d --remove-orphans`, which also removes the container of a service the release dropped, and `docker compose restart proxy`, which mounts the routing as single files that a checkout replaces. [Upgrading](../../docs/en/2-deployments/5-upgrading.md#on-the-docker-compose-install) is the full procedure.
 
 The install's state is the two volumes, `postgres-data` and `rustfs-data`, and the encryption keys in `.env`; Valkey keeps nothing. [Backup and restore](../../docs/en/2-deployments/6-backup-and-restore.md#on-the-docker-compose-install) backs them up and brings them back on an empty host.
 

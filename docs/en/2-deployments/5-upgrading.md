@@ -193,6 +193,8 @@ git diff <current tag> <new tag> -- .env.example
 git checkout <new tag>
 ```
 
+When the release notes say the release removes a service from the Compose file, stop that service with `docker compose stop <service>` before the checkout, while the file still names it. After the checkout no `docker compose` command reaches it, so it would keep running the release you ran, against the schema of the new one, until [step 5](#5-start-the-new-release) removes it.
+
 `.env` is not tracked, so the checkout leaves it as it is. The diff shows every variable the new release added to the Compose file or stopped reading: add the new ones to `.env`. A required one left empty stops every `docker compose` command and names the variable.
 
 Then set `PUBLIRA_IMAGE_TAG` in `.env` to the new release's version, the tag without its `v`.
@@ -236,12 +238,12 @@ If the release adds a role, pass its password the way you did at install, as `--
 ### 5. Start the new release
 
 ```bash
-docker compose up -d
+docker compose up -d --remove-orphans
 docker compose restart proxy
 docker compose ps
 ```
 
-`up -d` recreates every container whose image or settings changed. The proxy needs the restart besides: it mounts the routing files of the checkout one by one, and `git checkout` replaces those files with new ones, so a proxy left running keeps reading the routing of the release you ran.
+`up -d` recreates every container whose image or settings changed, and `--remove-orphans` removes the container of any service the new release's Compose file no longer has. The proxy needs the restart besides: it mounts the routing files of the checkout one by one, and `git checkout` replaces those files with new ones, so a proxy left running keeps reading the routing of the release you ran.
 
 Then check the install as in [step 5](#5-check-the-install), running `db version` as `docker compose run --rm publiractl db version`.
 
@@ -262,7 +264,7 @@ docker compose exec -T postgres pg_restore -U postgres -d publira < publira-befo
 git checkout <current tag>
 ```
 
-Set `PUBLIRA_IMAGE_TAG` back to the release you ran, and start it with `docker compose up -d` and `docker compose restart proxy`.
+Set `PUBLIRA_IMAGE_TAG` back to the release you ran, and start it with `docker compose up -d --remove-orphans` and `docker compose restart proxy`.
 
 ## Next steps
 
