@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect/v2"
+	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
@@ -173,6 +174,23 @@ func TestDBUploadMyIconSetsReplacesAndRemovesTheReadersIcon(t *testing.T) {
 	}
 	if me := env.getMe(t, tenant, reader); iconURL(t, me.IconImageVariants) != second {
 		t.Fatalf("GetMe after the replacement = %v, want %s", me.IconImageVariants, second)
+	}
+	// A page that read the account before the replacement still holds the old
+	// image's id, and image-server refuses that image now, so the variants it
+	// asks for next answer nothing rather than a broken URL.
+	superseded, err := uuid.Parse(strings.TrimPrefix(first, "/images/users/"))
+	if err != nil {
+		t.Fatalf("icon URL %q names no image id: %v", first, err)
+	}
+	rows, err := dbmodels.New(env.PG.DB).ListUserIconImageVariantsByImageIDs(context.Background(), dbmodels.ListUserIconImageVariantsByImageIDsParams{
+		TenantID: tenant.ID,
+		ImageIds: []uuid.UUID{superseded},
+	})
+	if err != nil {
+		t.Fatalf("ListUserIconImageVariantsByImageIDs: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("variants of the replaced icon = %v, want none", rows)
 	}
 
 	if removed := env.deleteMyIcon(t, tenant, reader); len(removed.IconImageVariants) != 0 || removed.IconImageUpdatedAt != "" {

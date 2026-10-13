@@ -60,6 +60,11 @@ LIMIT 1;
 -- stored. A caller reads the ids off the accounts it is answering for, so one
 -- query covers a whole page of them; an id the tenant does not hold answers no
 -- rows.
+--
+-- An image no account elects any longer answers no rows either. The ids were
+-- read by an earlier statement, and an icon replaced since then is one
+-- image-server already refuses, so its URL would be a broken image in an
+-- answer the storefront may cache after the replacement's drop has passed.
 SELECT ui.id AS user_image_id,
     ui.updated_at,
     uiv.label,
@@ -68,6 +73,8 @@ SELECT ui.id AS user_image_id,
     uiv.height,
     uiv.file_size_bytes
 FROM user_images ui
+    JOIN users u ON u.tenant_id = ui.tenant_id
+        AND u.icon_image_id = ui.id
     JOIN user_image_variants uiv ON uiv.tenant_id = ui.tenant_id
         AND uiv.user_image_id = ui.id
 WHERE ui.tenant_id = sqlc.arg('tenant_id')

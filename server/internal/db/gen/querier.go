@@ -2195,6 +2195,11 @@ type Querier interface {
 	// stored. A caller reads the ids off the accounts it is answering for, so one
 	// query covers a whole page of them; an id the tenant does not hold answers no
 	// rows.
+	//
+	// An image no account elects any longer answers no rows either. The ids were
+	// read by an earlier statement, and an icon replaced since then is one
+	// image-server already refuses, so its URL would be a broken image in an
+	// answer the storefront may cache after the replacement's drop has passed.
 	ListUserIconImageVariantsByImageIDs(ctx context.Context, arg ListUserIconImageVariantsByImageIDsParams) ([]ListUserIconImageVariantsByImageIDsRow, error)
 	ListUserIdentitiesForUser(ctx context.Context, arg ListUserIdentitiesForUserParams) ([]UserIdentity, error)
 	// The previous-page half of
