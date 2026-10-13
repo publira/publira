@@ -108,7 +108,7 @@ export const EpisodeCreditsRangeDialog = ({
       <DialogPortal>
         <DialogBackdrop />
         <DialogViewport>
-          <DialogPopup className="flex max-h-[min(90vh,44rem)] min-h-0 w-[min(92vw,40rem)] scroll-pb-16 flex-col overflow-y-auto">
+          <DialogPopup className="flex max-h-[min(90vh,44rem)] w-[min(92vw,40rem)] flex-col">
             <DialogHeader>
               <DialogTitle className="text-lg font-semibold">
                 {t("admin.series.episodes.credits.dialog_title")}
@@ -117,27 +117,25 @@ export const EpisodeCreditsRangeDialog = ({
                 {t("admin.series.episodes.credits.dialog_description")}
               </DialogDescription>
             </DialogHeader>
-            <div className="mt-4">
-              {hasLoaded ? (
-                <EpisodeCreditsRangeForm
-                  action={bulkEditEpisodeCreditsAction}
-                  creatorRoles={catalog.creatorRoles}
-                  creatorRolesErrorMessage={catalog.creatorRolesErrorMessage}
-                  creators={catalog.creators}
-                  creatorsErrorMessage={catalog.creatorsErrorMessage}
-                  episodes={catalog.episodes}
-                  episodesErrorMessage={catalog.episodesErrorMessage}
-                  isEpisodePending={isCatalogPending}
-                  key={sessionKey}
-                  onRetryEpisodes={loadCatalog}
-                  seriesId={seriesId}
-                />
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {t("admin.series.episodes.credits.episodes_loading")}
-                </p>
-              )}
-            </div>
+            {hasLoaded ? (
+              <EpisodeCreditsRangeForm
+                action={bulkEditEpisodeCreditsAction}
+                creatorRoles={catalog.creatorRoles}
+                creatorRolesErrorMessage={catalog.creatorRolesErrorMessage}
+                creators={catalog.creators}
+                creatorsErrorMessage={catalog.creatorsErrorMessage}
+                episodes={catalog.episodes}
+                episodesErrorMessage={catalog.episodesErrorMessage}
+                isEpisodePending={isCatalogPending}
+                key={sessionKey}
+                onRetryEpisodes={loadCatalog}
+                seriesId={seriesId}
+              />
+            ) : (
+              <p className="mt-4 text-xs text-muted-foreground">
+                {t("admin.series.episodes.credits.episodes_loading")}
+              </p>
+            )}
           </DialogPopup>
         </DialogViewport>
       </DialogPortal>

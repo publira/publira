@@ -398,22 +398,34 @@ const EpisodeSelectionFields = ({
 };
 
 /**
- * The dialog's footer, kept in view while the dialog scrolls under it. A
- * sticky box stops at the scroll container's padding edge, so `bottom-0`
- * would leave the popup's `p-5` below it as a strip the scrolled rows show
- * through. The negative inset carries it down to the popup's edge, and the
- * negative margin and the padding of the same size keep the buttons where
- * the popup's own padding would have put them.
+ * The part of the dialog that scrolls, between its header and its footer.
+ * The footer is not inside it, so a control focused here is scrolled into
+ * view above the footer whatever height the footer's buttons stack to. The
+ * negative inline margin and the padding of the same size reach the popup's
+ * edges, so a control's focus ring is not cut off at the sides, and the
+ * scroll padding keeps the ring of a control scrolled into view clear of the
+ * top and the bottom edge.
+ */
+export const EpisodeCreditsRangeBody = ({
+  children,
+}: {
+  children: ReactNode;
+}) => (
+  <div className="-mx-5 mt-4 grid min-h-0 scroll-py-4 gap-5 overflow-y-auto border-y border-border px-5 py-4">
+    {children}
+  </div>
+);
+
+/**
+ * The dialog's footer, under `EpisodeCreditsRangeBody` rather than over it.
+ * Its parent is a column the popup's height bounds, and `shrink-0` leaves
+ * all of the shrinking to the body.
  */
 export const EpisodeCreditsRangeFooter = ({
   children,
 }: {
   children: ReactNode;
-}) => (
-  <DialogFooter className="sticky -bottom-5 z-10 -mb-5 border-t border-border bg-card pt-4 pb-5">
-    {children}
-  </DialogFooter>
-);
+}) => <DialogFooter className="mt-0 shrink-0 pt-4">{children}</DialogFooter>;
 
 export interface EpisodeCreditsRangeEditorProps {
   canSubmit: boolean;
@@ -500,7 +512,7 @@ export const EpisodeCreditsRangeEditor = ({
   const t = useClientMessages();
 
   return (
-    <form action={formAction} className="grid gap-5">
+    <form action={formAction} className="flex min-h-0 flex-col">
       <input name="tenant_id" type="hidden" value={hidden.tenantId} />
       <input name="series_id" type="hidden" value={hidden.seriesId} />
       <input name="operation" type="hidden" value={hidden.operation} />
@@ -517,105 +529,111 @@ export const EpisodeCreditsRangeEditor = ({
       <input name="to_role_id" type="hidden" value={hidden.to.roleId} />
       <input name="share" type="hidden" value={hidden.share} />
 
-      <Fieldset className="grid gap-5" disabled={isPending}>
-        <Field>
-          <FieldLabel>
-            {t("admin.series.episodes.credits.operation")}
-          </FieldLabel>
-          <FieldContent>
-            <RadioGroup
-              items={[
-                {
-                  description: t(
-                    "admin.series.episodes.credits.operation_add_description"
-                  ),
-                  label: t("admin.series.episodes.credits.operation_add"),
-                  value: "add",
-                },
-                {
-                  description: t(
-                    "admin.series.episodes.credits.operation_replace_description"
-                  ),
-                  label: t("admin.series.episodes.credits.operation_replace"),
-                  value: "replace",
-                },
-                {
-                  description: t(
-                    "admin.series.episodes.credits.operation_remove_description"
-                  ),
-                  label: t("admin.series.episodes.credits.operation_remove"),
-                  value: "remove",
-                },
-                {
-                  description: t(
-                    "admin.series.episodes.credits.operation_set_share_description"
-                  ),
-                  label: t("admin.series.episodes.credits.operation_set_share"),
-                  value: "set_share",
-                },
-              ]}
-              onValueChange={onOperationChange}
-              value={operation}
-            />
-          </FieldContent>
-        </Field>
+      <EpisodeCreditsRangeBody>
+        <Fieldset className="grid gap-5" disabled={isPending}>
+          <Field>
+            <FieldLabel>
+              {t("admin.series.episodes.credits.operation")}
+            </FieldLabel>
+            <FieldContent>
+              <RadioGroup
+                items={[
+                  {
+                    description: t(
+                      "admin.series.episodes.credits.operation_add_description"
+                    ),
+                    label: t("admin.series.episodes.credits.operation_add"),
+                    value: "add",
+                  },
+                  {
+                    description: t(
+                      "admin.series.episodes.credits.operation_replace_description"
+                    ),
+                    label: t("admin.series.episodes.credits.operation_replace"),
+                    value: "replace",
+                  },
+                  {
+                    description: t(
+                      "admin.series.episodes.credits.operation_remove_description"
+                    ),
+                    label: t("admin.series.episodes.credits.operation_remove"),
+                    value: "remove",
+                  },
+                  {
+                    description: t(
+                      "admin.series.episodes.credits.operation_set_share_description"
+                    ),
+                    label: t(
+                      "admin.series.episodes.credits.operation_set_share"
+                    ),
+                    value: "set_share",
+                  },
+                ]}
+                onValueChange={onOperationChange}
+                value={operation}
+              />
+            </FieldContent>
+          </Field>
 
-        <CreditTargetFields
-          credit={credit}
-          creatorItems={creatorItems}
-          from={from}
-          onCreditChange={onCreditChange}
-          onFromChange={onFromChange}
-          onShareChange={onShareChange}
-          onToChange={onToChange}
-          operation={operation}
-          roleItems={roleItems}
-          shareText={shareText}
-          to={to}
-        />
+          <CreditTargetFields
+            credit={credit}
+            creatorItems={creatorItems}
+            from={from}
+            onCreditChange={onCreditChange}
+            onFromChange={onFromChange}
+            onShareChange={onShareChange}
+            onToChange={onToChange}
+            operation={operation}
+            roleItems={roleItems}
+            shareText={shareText}
+            to={to}
+          />
 
-        <EpisodeSelectionFields
-          episodes={episodes}
-          episodesEmpty={episodesEmpty}
-          episodesErrorMessage={episodesErrorMessage}
-          isEpisodePending={isEpisodePending}
-          onClearSelection={onClearSelection}
-          onRetryEpisodes={onRetryEpisodes}
-          onSelectMany={onSelectMany}
-          onToggle={onToggle}
-          selectedCount={selectedCount}
-          selectedIds={selectedIds}
-          selectionTooMany={selectionTooMany}
-        />
-      </Fieldset>
+          <EpisodeSelectionFields
+            episodes={episodes}
+            episodesEmpty={episodesEmpty}
+            episodesErrorMessage={episodesErrorMessage}
+            isEpisodePending={isEpisodePending}
+            onClearSelection={onClearSelection}
+            onRetryEpisodes={onRetryEpisodes}
+            onSelectMany={onSelectMany}
+            onToggle={onToggle}
+            selectedCount={selectedCount}
+            selectedIds={selectedIds}
+            selectionTooMany={selectionTooMany}
+          />
+        </Fieldset>
 
-      {creatorsErrorMessage ? (
-        <FormMessage variant="destructive">{creatorsErrorMessage}</FormMessage>
-      ) : null}
-      {creatorRolesErrorMessage ? (
-        <FormMessage variant="destructive">
-          {creatorRolesErrorMessage}
-        </FormMessage>
-      ) : null}
-      {creatorsEmpty ? (
-        <p className="text-xs text-muted-foreground">
-          {t("admin.series.form.creators_empty")}
-        </p>
-      ) : null}
-      {creatorRolesEmpty ? (
-        <p className="text-xs text-muted-foreground">
-          {t("admin.series.form.creator_roles_empty")}
-        </p>
-      ) : null}
-      {replaceSame ? (
-        <FormMessage variant="destructive">
-          {t("admin.series.episodes.credits.validation.replace_same")}
-        </FormMessage>
-      ) : null}
-      {preview ? <p className="text-sm text-foreground">{preview}</p> : null}
-      {errorMessage ? (
-        <FormMessage variant="destructive">{errorMessage}</FormMessage>
-      ) : null}
+        {creatorsErrorMessage ? (
+          <FormMessage variant="destructive">
+            {creatorsErrorMessage}
+          </FormMessage>
+        ) : null}
+        {creatorRolesErrorMessage ? (
+          <FormMessage variant="destructive">
+            {creatorRolesErrorMessage}
+          </FormMessage>
+        ) : null}
+        {creatorsEmpty ? (
+          <p className="text-xs text-muted-foreground">
+            {t("admin.series.form.creators_empty")}
+          </p>
+        ) : null}
+        {creatorRolesEmpty ? (
+          <p className="text-xs text-muted-foreground">
+            {t("admin.series.form.creator_roles_empty")}
+          </p>
+        ) : null}
+        {replaceSame ? (
+          <FormMessage variant="destructive">
+            {t("admin.series.episodes.credits.validation.replace_same")}
+          </FormMessage>
+        ) : null}
+        {preview ? <p className="text-sm text-foreground">{preview}</p> : null}
+        {errorMessage ? (
+          <FormMessage variant="destructive">{errorMessage}</FormMessage>
+        ) : null}
+      </EpisodeCreditsRangeBody>
 
       <EpisodeCreditsRangeFooter>
         <DialogClose

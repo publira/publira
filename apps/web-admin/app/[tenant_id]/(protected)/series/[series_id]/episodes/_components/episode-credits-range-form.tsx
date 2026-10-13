@@ -22,6 +22,7 @@ import type {
   EpisodeCreditRangeOption,
 } from "../episode-types";
 import {
+  EpisodeCreditsRangeBody,
   EpisodeCreditsRangeEditor,
   EpisodeCreditsRangeFooter,
   OPERATIONS,
@@ -267,8 +268,10 @@ export const EpisodeCreditsRangeForm = ({
 
   if (state?.ok) {
     return (
-      <div className="grid gap-5">
-        <EpisodeCreditsRangeResult episodes={episodes} result={state} />
+      <div className="flex min-h-0 flex-col">
+        <EpisodeCreditsRangeBody>
+          <EpisodeCreditsRangeResult episodes={episodes} result={state} />
+        </EpisodeCreditsRangeBody>
         <EpisodeCreditsRangeFooter>
           <DialogClose
             render={
