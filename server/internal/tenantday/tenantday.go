@@ -30,8 +30,8 @@ type Tenant struct {
 // no usable zone of its own falls back to the platform default, which is read
 // at most once and only when that actually happens.
 //
-// The connection must use a role with BYPASSRLS (or be a superuser): the
-// callers are batches that span every tenant.
+// The connection must use a role that reaches every tenant: the callers are
+// batches that span every tenant.
 func List(ctx context.Context, db *sql.DB) ([]Tenant, error) {
 	platformDefault := platformconfig.DefaultTimeZoneFunc(ctx, dbmodels.New(db))
 

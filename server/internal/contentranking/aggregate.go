@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/ageverification"
+	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/tenantday"
 	"github.com/publira/publira/server/internal/tenantlock"
 )
@@ -89,9 +90,9 @@ const (
 	recencyHalfLifeDays = 3
 )
 
-// Aggregator rebuilds content_ranking_snapshots from content_daily_stats.
-// Its database connection must use a role with BYPASSRLS (or be a superuser),
-// because one run spans every tenant.
+// Aggregator rebuilds content_ranking_snapshots from content_daily_stats. Its
+// database connection must use a role that reaches every tenant, because one
+// run spans every tenant: [dbroles.RequireEveryTenant] refuses any other.
 type Aggregator struct {
 	db *sql.DB
 }
@@ -170,7 +171,7 @@ func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 	if itemLimit <= 0 {
 		itemLimit = DefaultItemLimit
 	}
-	if err := requireBypassRLS(ctx, a.db, "ranking aggregation"); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, a.db, "ranking aggregation"); err != nil {
 		return Result{}, err
 	}
 
@@ -216,30 +217,10 @@ func (a *Aggregator) RunTenant(ctx context.Context, tenantID uuid.UUID, referenc
 	if itemLimit <= 0 {
 		itemLimit = DefaultItemLimit
 	}
-	if err := requireBypassRLS(ctx, a.db, "ranking aggregation"); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, a.db, "ranking aggregation"); err != nil {
 		return 0, 0, err
 	}
 	return a.rankTenant(ctx, tenantID, referenceDate, itemLimit)
-}
-
-// requireBypassRLS refuses a connection that row-level security would scope to
-// one tenant. Both the aggregation and the purge span every tenant, and under
-// a tenant-scoped role they would silently do a fraction of their work; task
-// names the caller in the error.
-func requireBypassRLS(ctx context.Context, db *sql.DB, task string) error {
-	var bypasses bool
-	err := db.QueryRowContext(ctx, `
-		SELECT rolsuper OR rolbypassrls
-		FROM pg_roles
-		WHERE rolname = current_user
-	`).Scan(&bypasses)
-	if err != nil {
-		return fmt.Errorf("check database role: %w", err)
-	}
-	if !bypasses {
-		return fmt.Errorf("%s requires a database role with BYPASSRLS", task)
-	}
-	return nil
 }
 
 // rankTenant writes every window, entity type, genre, surface, and age rating

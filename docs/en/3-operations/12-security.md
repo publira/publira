@@ -13,9 +13,9 @@ Generating the secrets for the first time is part of [Installing](../2-deploymen
 
 ### The database roles
 
-No process connects to PostgreSQL as its superuser. Each part of the install connects as one of six roles that `publiractl db roles` creates, and each role reaches only what that part needs, as [The database roles](../2-deployments/2-installing.md#the-database-roles) describes. The roles that answer readers and a tenant's staff are bound by row-level security to the tenant a request names, so a defect in those paths cannot read another tenant's rows, and the operators' password hashes and the platform's mail credentials are out of reach of every role but `publira_platform` and the worker role that sends the platform's mail. The tenant console's role reads the address the platform's mail is sent from, and nothing else of the platform's mail settings.
+No process connects to PostgreSQL as the [administrative login](../2-deployments/2-installing.md#provision-the-services) the `publiractl db` commands use. Each part of the install connects as one of six roles that `publiractl db roles` creates, and each role reaches only what that part needs, as [The database roles](../2-deployments/2-installing.md#the-database-roles) describes. The roles that answer readers and a tenant's staff are bound by row-level security to the tenant a request names, so a defect in those paths cannot read another tenant's rows, and the operators' password hashes and the platform's mail credentials are out of reach of every role but `publira_platform` and the worker role that sends the platform's mail. The tenant console's role reads the address the platform's mail is sent from, and nothing else of the platform's mail settings.
 
-That only holds while each process has the connection URLs of its own roles and no others. Give the superuser's password to the `publiractl db` commands alone, and never set a process's connection URL to the superuser or to a role it does not use.
+That only holds while each process has the connection URLs of its own roles and no others. Give the administrative login's password to the `publiractl db` commands alone, and never set a process's connection URL to that login or to a role it does not use.
 
 ### The console APIs
 
@@ -32,7 +32,7 @@ Give each secret only to the processes that read it. A process that does not nee
 | Each web app's session key, `PUBLIRA_AUTH_SECRET` | That web app | `publira server`, `publira worker` | Read and forge that app's session cookies, which carry the user's access token |
 | The cache revalidation token | `publira server`, `publira worker`, and every web app | `publiractl` | Drop any cached page, as often as they like |
 | The web service token | `publira server`, `web-admin`, `web-platform` | `web-storefront`, `publira worker` | Read the catalog of any tenant, unpublished series included, and the platform's tenants, operators, and readers |
-| The superuser's password | The `publiractl db` commands | Every long-lived process | Everything in the database |
+| The administrative login's password | The `publiractl db` commands | Every long-lived process | Everything in the database |
 | Each role's password | The processes that connect as that role | The others | What that role reaches |
 
 The web apps may share one session key, but give each its own, as the Compose file does: then replacing one signs out only that app's users.
@@ -68,7 +68,7 @@ On a [Docker Compose](../2-deployments/3-docker-compose.md) install, each step i
 
 ### 3. Seal the stored values again
 
-Run `publiractl db reseal` on the superuser connection, with the same two variables the processes now have:
+Run `publiractl db reseal` on the administrative login's connection, with the same two variables the processes now have:
 
 ```bash
 publiractl db reseal
@@ -86,7 +86,7 @@ k2 (primary)  0         3           0
 
 `RESEALED` counts the values that key had sealed and the primary key now seals, `ON PRIMARY` the values the primary key had sealed already, and `UNREADABLE` the values no key in the list opens. To see the same table without writing anything, run `publiractl db reseal --dry-run`.
 
-On a [Docker Compose](../2-deployments/3-docker-compose.md) install, the `publiractl` service already has the superuser connection and the keys from `.env`:
+On a [Docker Compose](../2-deployments/3-docker-compose.md) install, the `publiractl` service already has the administrative connection and the keys from `.env`:
 
 ```bash
 docker compose run --rm publiractl db reseal
@@ -118,7 +118,7 @@ A role has one password at a time, so a rotation is the change in PostgreSQL fol
 | `publira_content_stats` | `publira worker`, and `publiractl job` |
 
 1. Generate a new password with `openssl rand -hex 32`. Connection URLs carry it unescaped, which is why it is hex.
-2. Run `publiractl db roles` on the superuser connection with that role's flag alone. Every other role keeps its password:
+2. Run `publiractl db roles` on the administrative login's connection with that role's flag alone. Every other role keeps its password:
 
    ```bash
    publiractl db roles --admin-password-file /run/secrets/publira-admin-db-password
@@ -141,9 +141,9 @@ docker compose up -d
 
 `docker compose up -d` restarts only the processes whose connection URLs changed.
 
-### The superuser's password
+### The administrative login's password
 
-`publiractl` does not manage the superuser. Change its password in PostgreSQL, with `ALTER ROLE postgres PASSWORD '<new password>'` in `psql` or through your database provider, and then the `PUBLIRA_DB_URL` you run the `db` commands with. No long-lived process uses it, so nothing restarts.
+`publiractl` does not manage the administrative login. Change its password in PostgreSQL, with `ALTER ROLE postgres PASSWORD '<new password>'` in `psql` or through your database provider, and then the `PUBLIRA_DB_URL` you run the `db` commands with. No long-lived process uses it, so nothing restarts.
 
 On a Docker Compose install, PostgreSQL reads `PUBLIRA_POSTGRES_PASSWORD` only when it creates its volume, so changing `.env` alone changes nothing. Run `ALTER ROLE` with `docker compose exec postgres psql -U postgres -d publira`, then set the same value in `.env`. The next `docker compose up -d` restarts the `postgres` container, since its variables changed, which interrupts every process for a few seconds.
 

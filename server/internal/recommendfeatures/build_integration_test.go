@@ -301,8 +301,8 @@ func TestRunRejectsTenantScopedRole(t *testing.T) {
 	pg.SeedTenant(t, "FEATRLS00001", "rls-features.example.com", "RLS Feature Tenant")
 
 	_, err := New(pg.OpenAdminDB(t)).Run(context.Background(), buildOptions())
-	if err == nil || !strings.Contains(err.Error(), "BYPASSRLS") {
-		t.Fatalf("Run error = %v, want BYPASSRLS requirement", err)
+	if err == nil || !strings.Contains(err.Error(), "reaches every tenant") {
+		t.Fatalf("Run error = %v, want the every-tenant requirement", err)
 	}
 }
 

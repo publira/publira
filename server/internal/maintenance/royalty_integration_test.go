@@ -186,8 +186,9 @@ func TestRoyaltyStatementCloseStartsWhereTheClosedMonthEnded(t *testing.T) {
 	}
 }
 
-// Row-level security would hide every tenant's config from a role without
-// BYPASSRLS, and a pass that saw none would succeed having closed nothing.
+// Row-level security would hide every tenant's config from a role that does not
+// reach every tenant, and a pass that saw none would succeed having closed
+// nothing.
 func TestRoyaltyStatementCloseRefusesARoleUnderRowLevelSecurity(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

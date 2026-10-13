@@ -14,14 +14,15 @@ import (
 
 	"github.com/publira/publira/server/internal/contentevents"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/tenantday"
 	"github.com/publira/publira/server/internal/tenantlock"
 )
 
 // Aggregator rebuilds content_daily_stats from content_events, purchases and
-// episode_comments.
-// Its database connection must use a role with BYPASSRLS (or be a superuser),
-// because each run reads and writes every tenant.
+// episode_comments. Its database connection must use a role that reaches every
+// tenant, because each run reads and writes every tenant:
+// [dbroles.RequireEveryTenant] refuses any other.
 type Aggregator struct {
 	db  *sql.DB
 	now func() time.Time
@@ -82,7 +83,7 @@ func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 	if a == nil || a.db == nil {
 		return Result{}, errors.New("content stats aggregator requires a database")
 	}
-	if err := a.requireBypassRLS(ctx); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, a.db, "content stats aggregation"); err != nil {
 		return Result{}, err
 	}
 
@@ -139,7 +140,7 @@ func (a *Aggregator) RunTenant(ctx context.Context, tenant tenantday.Tenant, sta
 	if a == nil || a.db == nil {
 		return 0, errors.New("content stats aggregator requires a database")
 	}
-	if err := a.requireBypassRLS(ctx); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, a.db, "content stats aggregation"); err != nil {
 		return 0, err
 	}
 	return a.aggregateTenant(ctx, tenant, statDate.Format(time.DateOnly))
@@ -158,22 +159,6 @@ func EventsGone(tenant tenantday.Tenant, statDate, cutoff time.Time) (bool, erro
 	}
 	start := time.Date(statDate.Year(), statDate.Month(), statDate.Day(), 0, 0, 0, 0, location)
 	return start.Before(cutoff), nil
-}
-
-func (a *Aggregator) requireBypassRLS(ctx context.Context) error {
-	var bypasses bool
-	err := a.db.QueryRowContext(ctx, `
-		SELECT rolsuper OR rolbypassrls
-		FROM pg_roles
-		WHERE rolname = current_user
-	`).Scan(&bypasses)
-	if err != nil {
-		return fmt.Errorf("check database role: %w", err)
-	}
-	if !bypasses {
-		return errors.New("content stats aggregation requires a database role with BYPASSRLS")
-	}
-	return nil
 }
 
 func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenant, statDate string) (int64, error) {

@@ -58,7 +58,7 @@ If you decided to stop the processes, stop them now, before the backup.
 pg_dump --format=custom --file=publira-before-upgrade.dump --dbname="$PUBLIRA_DB_URL"
 ```
 
-`PUBLIRA_DB_URL` is the superuser connection `db migrate` uses, and `pg_dump` has to be the major version of your PostgreSQL server or newer. A snapshot from a managed PostgreSQL does the same job. The migrations change nothing in the object store, in Valkey, or in your secrets, so the database is the part to back up right before them. Keep the backup until the new release has served for a while.
+`PUBLIRA_DB_URL` is the connection of the [administrative login](./2-installing.md#provision-the-services) `db migrate` uses, and `pg_dump` has to be the major version of your PostgreSQL server or newer. A snapshot from a managed PostgreSQL does the same job. The migrations change nothing in the object store, in Valkey, or in your secrets, so the database is the part to back up right before them. Keep the backup until the new release has served for a while.
 
 ### 2. Apply the migrations
 
@@ -143,13 +143,13 @@ When PostgreSQL refused the migration for a cause outside it — the disk filled
 
    The same list is under `db/migrations/` of the new tag on GitHub.
 
-2. If the failed migration creates an index `CONCURRENTLY`, drop the invalid index it left, as the superuser:
+2. If the failed migration creates an index `CONCURRENTLY`, drop the invalid index it left, as the administrative login:
 
    ```sql
    DROP INDEX CONCURRENTLY IF EXISTS <index name>;
    ```
 
-3. Set the record back, as the superuser:
+3. Set the record back, as the administrative login:
 
    ```sql
    UPDATE schema_migrations SET version = <previous version>, dirty = false;

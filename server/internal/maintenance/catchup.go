@@ -2,7 +2,6 @@ package maintenance
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/contentranking"
 	"github.com/publira/publira/server/internal/contentstats"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/recommendfeatures"
 	"github.com/publira/publira/server/internal/tenantday"
 )
@@ -177,7 +177,7 @@ func catchUp(ctx context.Context, deps Deps, link catchUpLink) error {
 
 	// Under row-level security the progress would read as empty, and the pass
 	// would succeed having rebuilt nothing.
-	if err := requireBypassRLS(ctx, deps.DB); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, deps.DB, "maintenance"); err != nil {
 		return err
 	}
 	queries := dbmodels.New(deps.DB)
@@ -297,21 +297,6 @@ func skipLost(ctx context.Context, logger *slog.Logger, queries *dbmodels.Querie
 		"through", through.Format(time.DateOnly),
 	)
 	return day, nil
-}
-
-func requireBypassRLS(ctx context.Context, db *sql.DB) error {
-	var bypasses bool
-	if err := db.QueryRowContext(ctx, `
-		SELECT rolsuper OR rolbypassrls
-		FROM pg_roles
-		WHERE rolname = current_user
-	`).Scan(&bypasses); err != nil {
-		return fmt.Errorf("check database role: %w", err)
-	}
-	if !bypasses {
-		return errors.New("maintenance requires a database role with BYPASSRLS")
-	}
-	return nil
 }
 
 // civilDate reads a stored date as midnight UTC of that day, the form tenantday

@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 
+	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/retention"
 )
 
@@ -22,9 +23,10 @@ import (
 // row carries a whole leaderboard in its items array rather than one event.
 const DefaultPurgeChunkSize = 1000
 
-// Purger deletes ranking snapshots whose period has fallen out of its
-// tenant's retention period. Its database connection must use a role with BYPASSRLS
-// (or be a superuser), because one run spans every tenant.
+// Purger deletes ranking snapshots whose period has fallen out of its tenant's
+// retention period. Its database connection must use a role that reaches every
+// tenant, because one run spans every tenant: [dbroles.RequireEveryTenant]
+// refuses any other.
 type Purger struct {
 	db *sql.DB
 }
@@ -109,7 +111,7 @@ func (p *Purger) Run(ctx context.Context, opts PurgeOptions) (PurgeResult, error
 	if chunkSize <= 0 {
 		chunkSize = DefaultPurgeChunkSize
 	}
-	if err := requireBypassRLS(ctx, p.db, "ranking snapshot purge"); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, p.db, "ranking snapshot purge"); err != nil {
 		return PurgeResult{}, err
 	}
 

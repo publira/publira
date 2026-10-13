@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/googleplay"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/storepurchase"
@@ -50,7 +51,7 @@ func (s GooglePlayVoidedPurchaseSync) run(ctx context.Context, deps Deps, now ti
 
 	// Under row-level security the tenants would read as none, and the pass
 	// would succeed having taken nothing back.
-	if err := requireBypassRLS(ctx, deps.DB); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, deps.DB, "maintenance"); err != nil {
 		return err
 	}
 	queries := dbmodels.New(deps.DB)

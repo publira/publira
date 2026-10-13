@@ -2,7 +2,7 @@
 title: Installing
 description: Bring an empty install into service, from the services it depends on to the first sign-in to the tenant console.
 published: 2026-10-06
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 
 This page takes an install from nothing to a tenant console its first administrator signs in to. It follows the order the steps have to run in and explains what each one decides; the full list of variables each process reads, and every flag of `publiractl`, stay in the reference linked from each step.
@@ -23,7 +23,7 @@ To run the whole install on one host, the Compose file in the repository provisi
 
 Create these before the first step. Publira creates everything inside them, so each one starts empty.
 
-- **A PostgreSQL database**, and a superuser login on it. Only `publiractl db migrate` and `publiractl db roles` connect as the superuser: `db roles` creates the login roles and an event trigger, which only a superuser may do. No long-lived process ever uses this login.
+- **A PostgreSQL database**, and an administrative login that owns it and may create roles. On a PostgreSQL server you run yourself, that is its superuser. A managed PostgreSQL that keeps the superuser to itself gives you a login of this kind instead, such as Cloud SQL's `postgres` user, and Publira needs no more than that: no superuser, and no role that bypasses row-level security. Only the `publiractl db` commands connect as this login, and no long-lived process ever uses it.
 - **A Valkey instance**, or any server that speaks the Redis protocol. `publira server`, `web-storefront`, and `web-admin` share it for the image conversion cache, the rate limit counters, and the web apps' cache. A connection that carries a password has to use `rediss://`, with TLS: `publira server` refuses to start on a `redis://` URL with a password in it.
 - **An empty bucket** in an S3-compatible object store, and a credential that can read and write it. Every uploaded image is kept there. `publiractl setup` saves the bucket and the credential, so the processes need nothing else to reach it. If the processes should use a credential from their environment instead, such as an instance role, leave the access key out at setup and give `publira server`, `publira worker`, and `publiractl` the `AWS_*` variables.
 - **An SMTP server**: its host, port, encryption, and the address mail is sent from, and the user name and password to sign in with, unless it relays without credentials, as a local MTA or a relay that trusts the host's address does. Reader sign-up, password reset, and administrator invitations all go through it.
@@ -46,7 +46,7 @@ The encryption keys need the most care. `publiractl setup` seals the SMTP passwo
 
 ## The database roles
 
-The processes never connect as the superuser. `publiractl db roles` creates six login roles, and each part of the install connects as the one that matches what it does:
+The processes never connect as the administrative login. `publiractl db roles` creates six login roles, and each part of the install connects as the one that matches what it does:
 
 | Role | Connects for | What it can reach |
 | --- | --- | --- |
@@ -63,13 +63,13 @@ The split is what keeps one tenant's data away from another's. The two roles tha
 
 ### 1. Apply the migrations
 
-Run `db migrate` on the superuser connection. It creates the schema, and exits without changing anything when there is nothing to apply.
+Run `db migrate` on the administrative login's connection. It creates the schema, and exits without changing anything when there is nothing to apply.
 
 ```bash
 docker run --rm -e PUBLIRA_DB_URL ghcr.io/publira/publiractl:<tag> db migrate
 ```
 
-`PUBLIRA_DB_URL` is the superuser connection, such as `postgres://postgres:<password>@db.internal:5432/publira?sslmode=require`.
+`PUBLIRA_DB_URL` is that connection, such as `postgres://postgres:<password>@db.internal:5432/publira?sslmode=require`.
 
 ### 2. Create the roles
 

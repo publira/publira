@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -13,39 +15,87 @@ import (
 // episode_rating_counts, so migrating up from it creates both rating tallies.
 const beforeRatingCountsVersion = 20260910114009
 
+const grantsProbeUp = `
+CREATE TABLE platform_grants_probe (id integer PRIMARY KEY);
+CREATE TABLE tenant_grants_probe (tenant_id uuid NOT NULL, id integer NOT NULL, PRIMARY KEY (tenant_id, id));
+ALTER TABLE tenant_grants_probe ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_grants_probe_tenant_isolation ON tenant_grants_probe
+    USING (tenant_id = (NULLIF(current_setting('app.current_tenant_id', true), ''))::uuid)
+    WITH CHECK (tenant_id = (NULLIF(current_setting('app.current_tenant_id', true), ''))::uuid);
+`
+
 // A deployment applies migrations to a database the seed ran on long ago, and
-// every table they create arrives under the seed's ALTER DEFAULT PRIVILEGES.
-// The seed's corrections have to reach those tables without the seed running
-// again, or a new platform_ table would be readable from a storefront request.
-func TestSeedRevokesReachTablesALaterMigrationCreates(t *testing.T) {
+// runs the seed again right after them, as every upgrade does with db roles.
+// In between, a table a migration created reaches no app role at all, so a new
+// platform_ table is never readable from a storefront request. Once the seed
+// has run, the table reaches each role the way the tables before it do: the
+// grants with their corrections, and every tenant's rows for the roles that
+// work across tenants.
+func TestSeedReachesTablesALaterMigrationCreatesWhenItRunsAgain(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	t.Cleanup(func() { pg.Reset(t) })
 
 	pg.MigrateTo(t, beforeRatingCountsVersion)
 	pg.MigrateUpWith(t, map[string]string{
-		"99991231235959_platform_grants_probe.up.sql":   "CREATE TABLE platform_grants_probe (id integer PRIMARY KEY);",
-		"99991231235959_platform_grants_probe.down.sql": "DROP TABLE platform_grants_probe;",
+		"99991231235959_grants_probe.up.sql":   grantsProbeUp,
+		"99991231235959_grants_probe.down.sql": "DROP TABLE tenant_grants_probe; DROP TABLE platform_grants_probe;",
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// The platform role still reads it, so the refusals below come from the
-	// revoke rather than from a table the default privileges never reached.
-	var count int
-	if err := pg.OpenPlatformDB(t).QueryRowContext(ctx, "SELECT count(*) FROM platform_grants_probe").Scan(&count); err != nil {
-		t.Fatalf("read platform_grants_probe as the platform role: %v", err)
+	tenants := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+	for i, tenant := range tenants {
+		if _, err := pg.DB.ExecContext(ctx, "INSERT INTO tenant_grants_probe VALUES ($1, $2)", tenant, i); err != nil {
+			t.Fatalf("seed tenant_grants_probe: %v", err)
+		}
 	}
 
+	platform := pg.OpenPlatformDB(t)
+	contentStats := pg.OpenContentStatsDB(t)
+	public := pg.OpenPublicDB(t)
+	admin := pg.OpenAdminDB(t)
+	everyRole := map[string]*sql.DB{
+		"publira_platform":      platform,
+		"publira_content_stats": contentStats,
+		"publira_public":        public,
+		"publira_admin":         admin,
+	}
+	for role, conn := range everyRole {
+		assertRefused(t, ctx, conn, role, "SELECT count(*) FROM platform_grants_probe")
+		assertRefused(t, ctx, conn, role, "SELECT count(*) FROM tenant_grants_probe")
+	}
+
+	pg.ApplyRoles(t)
+
+	// The platform role reads it now, so the refusals below come from the
+	// revoke rather than from a table the grants never reached.
+	var count int
+	if err := platform.QueryRowContext(ctx, "SELECT count(*) FROM platform_grants_probe").Scan(&count); err != nil {
+		t.Fatalf("read platform_grants_probe as the platform role: %v", err)
+	}
 	for role, conn := range map[string]*sql.DB{
-		"publira_public": pg.OpenPublicDB(t),
-		"publira_admin":  pg.OpenAdminDB(t),
+		"publira_public": public,
+		"publira_admin":  admin,
 	} {
 		assertRefused(t, ctx, conn, role, "SELECT count(*) FROM platform_grants_probe")
 		assertRefused(t, ctx, conn, role, "INSERT INTO platform_grants_probe VALUES (1)")
 		for _, table := range []string{"episode_rating_counts", "series_rating_counts"} {
 			assertRefused(t, ctx, conn, role, "DELETE FROM "+table)
+		}
+	}
+
+	for role, conn := range everyRole {
+		want := len(tenants)
+		if role == "publira_public" || role == "publira_admin" {
+			want = 0
+		}
+		if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM tenant_grants_probe").Scan(&count); err != nil {
+			t.Fatalf("read tenant_grants_probe as %s: %v", role, err)
+		}
+		if count != want {
+			t.Errorf("%s with no tenant set reads %d rows of tenant_grants_probe, want %d", role, count, want)
 		}
 	}
 }

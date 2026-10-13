@@ -11,6 +11,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/royalties"
 	"github.com/publira/publira/server/internal/tenantday"
 )
@@ -37,7 +38,7 @@ func (s RoyaltyStatementClose) run(ctx context.Context, deps Deps, now time.Time
 
 	// Under row-level security the configs would read as empty, and the pass
 	// would succeed having closed nothing.
-	if err := requireBypassRLS(ctx, deps.DB); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, deps.DB, "maintenance"); err != nil {
 		return err
 	}
 	queries := dbmodels.New(deps.DB)

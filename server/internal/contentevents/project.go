@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dbroles"
 )
 
 // DefaultProjectionBatchSize bounds one projection statement, the same trade
@@ -23,8 +24,8 @@ type projectionQuerier interface {
 // none. The request path writes that event beside the read it came from and
 // swallows its failure, so this is what closes the gap a lost write leaves.
 //
-// Its database connection must use a role with BYPASSRLS (or be a superuser),
-// because one run spans every tenant.
+// Its database connection must use a role that reaches every tenant, because
+// one run spans every tenant: [dbroles.RequireEveryTenant] refuses any other.
 type Projector struct {
 	db      *sql.DB
 	queries projectionQuerier
@@ -73,7 +74,7 @@ func (p *Projector) Run(ctx context.Context, opts ProjectionOptions) (Projection
 	if batchSize <= 0 {
 		batchSize = DefaultProjectionBatchSize
 	}
-	if err := p.requireBypassRLS(ctx); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, p.db, "episode read projection"); err != nil {
 		return ProjectionResult{}, err
 	}
 
@@ -96,20 +97,4 @@ func (p *Projector) Run(ctx context.Context, opts ProjectionOptions) (Projection
 			return result, err
 		}
 	}
-}
-
-func (p *Projector) requireBypassRLS(ctx context.Context) error {
-	var bypasses bool
-	err := p.db.QueryRowContext(ctx, `
-		SELECT rolsuper OR rolbypassrls
-		FROM pg_roles
-		WHERE rolname = current_user
-	`).Scan(&bypasses)
-	if err != nil {
-		return fmt.Errorf("check database role: %w", err)
-	}
-	if !bypasses {
-		return errors.New("episode read projection requires a database role with BYPASSRLS")
-	}
-	return nil
 }

@@ -90,8 +90,8 @@ func (s *platformServer) authenticatePlatformSession(
 // delivered by the resident worker: the password reset as a request the worker
 // turns into its mail, the email change mails in the transaction that writes
 // what they announce. The rows carry no tenant_id: a platform operator belongs
-// to no tenant, and publira_platform is BYPASSRLS, so the insert is not subject
-// to the tenant-isolation policy.
+// to no tenant, and publira_platform reaches every tenant, so the insert is not
+// held to the tenant-isolation policy.
 
 // queuePlatformPasswordResetRequest records a password link asked for: a reset
 // from the platform console's form, where it is the handler's only write, or the
