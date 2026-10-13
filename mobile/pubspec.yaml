@@ -39,7 +39,7 @@ dependencies:
   # Formats the catalog's MessageFormat 2 messages (see lib/l10n/message_format.dart).
   messageformat: 0.1.0
   sign_in_with_apple: 8.2.0
-  google_sign_in_android: 7.2.17
+  google_sign_in_android: 7.2.18
   google_sign_in_ios: 6.3.6
   google_sign_in_platform_interface: 3.1.0
   package_info_plus: 10.2.2
