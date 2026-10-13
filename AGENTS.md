@@ -110,7 +110,7 @@ Entries in `.agents/skills/*` listed in `skills-lock.json` are vendored (overwri
 - Reading for general knowledge / reference is fine
 - When this repository's policy conflicts with a skill, **prefer this file (and `apps/AGENTS.md` / domain `*/AGENTS.md`)**
 
-Auto-update: `.github/workflows/skills-update.yml` runs weekly `npx skills update -p -y` and opens a PR when there is a diff.
+Auto-update: the maintenance bot in publira/agents runs `npx skills update -p -y` weekly and opens a pull request when there is a diff.
 
 Skills owned by this repository live under `skills/*`; `.agents/skills/*` and `.claude/skills/*` reach them through relative symlinks. Edit the canonical copy under `skills/`, and keep its links relative so both paths resolve. In-repo skills:
 
