@@ -2448,7 +2448,7 @@
       },
       "inbound_email": {
         "title": "收件",
-        "description": "通过SendGrid或Resend，将读者对咨询答复的回信接收到控制台。密钥为只写：再次进入时，您只能看到它的状态和掩码，看不到具体的值。",
+        "description": "通过SendGrid、Resend或Mailgun，将读者对咨询答复的回信接收到控制台。密钥为只写：再次进入时，您只能看到它的状态和掩码，看不到具体的值。",
         "section_error": "无法显示收件设置",
         "provider": "收件服务商",
         "provider_description": "读者的回信将通过此处选择的服务商接收，凭据在下方填写。",
@@ -2460,6 +2460,7 @@
         "domain_description": "读者回信发送到的域名。使用reply.example.com这样的专用域名，主域名目前收到的邮件将保持不变。",
         "domain_sendgrid_description": "请在DNS中将该域名的MX记录指向mx.sendgrid.net，优先级为10。",
         "domain_resend_description": "请在Resend的Domains中添加该域名并开启接收，然后将Resend显示的MX记录添加到DNS。",
+        "domain_mailgun_description": "请在Mailgun的Domains中添加该域名，然后将Mailgun显示的用于接收的MX记录添加到DNS。",
         "fields": {
           "sendgrid": {
             "webhook_token": "Webhook令牌"
@@ -2467,6 +2468,9 @@
           "resend": {
             "api_key": "API密钥",
             "webhook_secret": "Webhook签名密钥"
+          },
+          "mailgun": {
+            "webhook_signing_key": "HTTP Webhook签名密钥"
           }
         },
         "field_sources": {
@@ -2476,12 +2480,16 @@
           "resend": {
             "api_key": "在Resend控制台的API Keys中创建的、具有Full access权限的API密钥。回信内容将使用此密钥从Resend读取。",
             "webhook_secret": "在Resend中登记下方URL后，该webhook显示的签名密钥（whsec_…）。"
+          },
+          "mailgun": {
+            "webhook_signing_key": "Mailgun控制台Settings → API Security中显示的HTTP webhook signing key。Mailgun转发每封邮件时都会用它签名，签名不匹配的邮件将被拒绝。"
           }
         },
         "webhook_url": "Webhook URL",
         "webhook_url_description": "请在{$provider}中将此URL登记为接收邮件的发送地址。",
         "webhook_url_sendgrid_description": "请在SendGrid的Settings → Inbound Parse中添加收件域名，并将此URL指定为Destination URL，同时把<token>替换为上方保存的webhook令牌。",
         "webhook_url_resend_description": "请在Resend的Webhooks中将此URL添加为email.received事件的发送地址，然后在上方保存其显示的签名密钥。",
+        "webhook_url_mailgun_description": "请在Mailgun的Receiving中创建路由，将Expression type设为Match Recipient并指定收件域名的所有地址（例如.*@reply.example.com），然后将Forward指定为此URL。",
         "reply_address": "回复地址",
         "reply_address_description": "答复会请读者回信到此格式的地址，其中*为咨询的ID。收件域名上的所有地址都必须能送达服务商。",
         "copy_webhook_url": "复制webhook URL",

@@ -464,10 +464,22 @@ test.describe("web-admin operator settings", () => {
     await expect(inbound.getByText(INBOUND_UNSET_MESSAGE)).toBeVisible();
     expect(inboundEmailSettings()).toBe("none");
 
-    // Resend is offered beside SendGrid, with its own fields and URL.
+    // Mailgun comes first in id order, with its signing key and the URL as
+    // it is.
     const provider = inbound.getByRole("combobox", {
       name: "Inbound email provider",
     });
+    await expect(provider).toContainText("Mailgun");
+    await expect(
+      inbound.getByLabel(/^HTTP webhook signing key/u)
+    ).toBeVisible();
+    await expect(
+      inbound.getByText(
+        /^https?:\/\/aset\.localhost(?::\d+)?\/api\/v1\/webhook\/email\/mailgun$/u
+      )
+    ).toBeVisible();
+
+    // Resend is offered beside it, with its own fields and URL.
     await provider.click();
     await page.getByRole("option", { name: "Resend" }).click();
     await expect(inbound.getByLabel(/^API key/u)).toBeVisible();

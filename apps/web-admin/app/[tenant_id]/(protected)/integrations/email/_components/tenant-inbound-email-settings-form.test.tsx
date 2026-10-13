@@ -67,6 +67,13 @@ const sendgrid: InboundEmailProvider = {
   webhookPath: "/api/v1/webhook/email/sendgrid",
 };
 
+const mailgun: InboundEmailProvider = {
+  displayName: "Mailgun",
+  fields: [{ name: "webhook_signing_key", required: true, secret: true }],
+  id: "mailgun",
+  webhookPath: "/api/v1/webhook/email/mailgun",
+};
+
 // A provider no catalog has copy for, so its fields are named as declared.
 const exampleMail: InboundEmailProvider = {
   displayName: "Example Mail",
@@ -78,7 +85,7 @@ const exampleMail: InboundEmailProvider = {
   webhookPath: "/api/v1/webhook/email/examplemail",
 };
 
-const providers = [resend, sendgrid];
+const providers = [mailgun, resend, sendgrid];
 
 const resendFields = (
   apiKeyHint: string,
@@ -167,9 +174,8 @@ describe("TenantInboundEmailSettingsForm", () => {
     expect(
       screen.getByRole("combobox", { name: "Inbound email provider" })
         .textContent
-    ).toContain("Resend");
-    expect(screen.getByLabelText("API key")).toBeDefined();
-    expect(screen.getByLabelText("Webhook signing secret")).toBeDefined();
+    ).toContain("Mailgun");
+    expect(screen.getByLabelText("HTTP webhook signing key")).toBeDefined();
     expect(screen.queryByText("Reply address")).toBeNull();
   });
 
@@ -262,6 +268,38 @@ describe("TenantInboundEmailSettingsForm", () => {
     expect(
       screen.getByText(
         "In SendGrid, add the inbound domain under Settings → Inbound Parse with this URL as the destination URL, putting the webhook token stored above in place of <token>."
+      )
+    ).toBeDefined();
+  });
+
+  it("names Mailgun's signing key and has a route forward to the webhook URL as it is", async () => {
+    render(
+      <TenantInboundEmailSettingsForm
+        canEdit
+        initialSettings={emptyTenantInboundEmailSettings}
+        providers={providers}
+        tenantId="TENANT001"
+        webhookOrigin="https://comics.example"
+      />
+    );
+
+    await chooseProvider("Mailgun");
+
+    expect(
+      await screen.findByLabelText("HTTP webhook signing key")
+    ).toBeDefined();
+    expect(screen.queryByLabelText("Webhook token")).toBeNull();
+    expect(
+      screen.getByText("https://comics.example/api/v1/webhook/email/mailgun")
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "In Mailgun, add the domain under Domains, then add the MX records Mailgun shows for receiving to your DNS."
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "In Mailgun, create a route under Receiving with the expression type Match Recipient for every address on the inbound domain, such as .*@reply.example.com, and Forward set to this URL."
       )
     ).toBeDefined();
   });

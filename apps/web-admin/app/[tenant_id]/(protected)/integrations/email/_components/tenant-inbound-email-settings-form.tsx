@@ -151,6 +151,11 @@ const InboundEmailCredentialName = ({
         <Message message="admin.settings.inbound_email.fields.resend.webhook_secret" />
       );
     }
+    case "mailgun.webhook_signing_key": {
+      return (
+        <Message message="admin.settings.inbound_email.fields.mailgun.webhook_signing_key" />
+      );
+    }
     default: {
       return field;
     }
@@ -193,6 +198,15 @@ const InboundEmailCredentialSource = ({
         </FieldDescription>
       );
     }
+    case "mailgun.webhook_signing_key": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.inbound_email.field_sources.mailgun.webhook_signing_key" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
     default: {
       return null;
     }
@@ -220,6 +234,15 @@ const InboundEmailDomainNote = ({ provider }: { provider: string }) => {
         </FieldDescription>
       );
     }
+    case "mailgun": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.inbound_email.domain_mailgun_description" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
     default: {
       return null;
     }
@@ -241,6 +264,11 @@ const InboundEmailWebhookNote = ({
     case "resend": {
       return (
         <Message message="admin.settings.inbound_email.webhook_url_resend_description" />
+      );
+    }
+    case "mailgun": {
+      return (
+        <Message message="admin.settings.inbound_email.webhook_url_mailgun_description" />
       );
     }
     default: {

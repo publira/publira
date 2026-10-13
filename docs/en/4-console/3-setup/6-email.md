@@ -2,7 +2,7 @@
 title: Email
 description: Send the tenant's mail through the publisher's own SMTP server, and receive readers' replies to contact messages back in the console.
 published: 2026-10-07
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 
 The tenant sends mail to its readers and its staff: address confirmations, password resets, invitations, replies to contact messages. Until a Tenant admin sets up a server of the tenant's own, all of it goes out through the platform's mail server, from the platform's address, which the operator chooses. **Integrations** › **Email** sends it through the publisher's own SMTP server instead, from an address on the publisher's domain.
@@ -56,11 +56,11 @@ Every save is recorded in the [audit log](./7-audit-log.md) as **Email settings 
 
 ## Readers' replies to contact messages
 
-An answer to a contact message reaches the reader by mail. Until the tenant receives mail of its own, the answer's reply-to address is the address of the staff member who answered, so a reader who writes back reaches that person's mailbox and the console never sees the reply. The **Inbound email** section of **Integrations** › **Email** brings those replies back into the console, under the message they answer, through SendGrid or Resend.
+An answer to a contact message reaches the reader by mail. Until the tenant receives mail of its own, the answer's reply-to address is the address of the staff member who answered, so a reader who writes back reaches that person's mailbox and the console never sees the reply. The **Inbound email** section of **Integrations** › **Email** brings those replies back into the console, under the message they answer, through SendGrid, Resend, or Mailgun.
 
 ### Before you start
 
-- An account with SendGrid or Resend.
+- An account with SendGrid, Resend, or Mailgun.
 - A domain for replies whose DNS you can change, such as `reply.comics.example.com`. Its MX record will point at the provider, so mail sent to it reaches no other mailbox. A subdomain of its own keeps the mail the publisher's main domain already receives where it is.
 - The site reachable from the internet: the provider posts each reply to the site's own domain. An IP allowlist, a sign-in prompt, or a bot challenge in front of the site has to let these requests through, as [Webhooks](../../2-deployments/4-edge.md#webhooks) describes for the operator.
 
@@ -70,6 +70,7 @@ An answer to a contact message reaches the reader by mail. Until the tenant rece
 2. Set up the provider. The section shows a **Webhook URL** on the site's domain, with a button to copy it.
    - **SendGrid**: make up a long random string and enter it as **Webhook token**. In your DNS, point the domain's MX record at `mx.sendgrid.net` with priority 10. In SendGrid, add the domain under **Settings** › **Inbound Parse** with the **Webhook URL** as the destination URL, putting the token in place of `<token>`: SendGrid signs nothing, so the token in the URL is how the site tells its requests from anyone else's.
    - **Resend**: create an API key with **Full access** under **API Keys** and enter it as **API key**; replies are read from Resend with it. Add the domain under **Domains**, turn on receiving for it, and add the MX record Resend shows to your DNS. Under **Webhooks**, add the **Webhook URL** for the `email.received` event, and enter the signing secret Resend shows for it (`whsec_…`) as **Webhook signing secret**.
+   - **Mailgun**: copy the **HTTP webhook signing key** from **Settings** › **API Security** and enter it under the same name; Mailgun signs every reply it posts with it, and a post whose signature does not match is refused. Add the domain under **Domains** and add the MX records Mailgun shows for receiving to your DNS. Under **Receiving**, create a route with the expression type **Match Recipient** and a recipient that covers every address on the domain, such as `.*@reply.comics.example.com`, and tick **Forward** with the **Webhook URL**. The same steps apply to an account in Mailgun's EU region.
 3. Choose **Save**. The section turns **Ready** and shows the **Reply address**, `contact+*@` followed by the domain: each answer from then on asks the reader to reply to an address of that form, where `*` is the message's ID, and the reply appears under that message.
 
 ![The Inbound email section with Enable ticked: Inbound email provider, Inbound domain, the provider's credentials, the Webhook URL with a button to copy it, and Save.](./email-inbound.png)

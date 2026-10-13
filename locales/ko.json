@@ -2448,7 +2448,7 @@
       },
       "inbound_email": {
         "title": "수신 메일",
-        "description": "문의에 보낸 답변에 독자가 회신한 메일을 SendGrid 또는 Resend를 통해 콘솔로 받습니다. 시크릿은 쓰기 전용이므로 다시 열면 상태와 마스킹만 보이고 값은 보이지 않습니다.",
+        "description": "문의에 보낸 답변에 독자가 회신한 메일을 SendGrid, Resend 또는 Mailgun을 통해 콘솔로 받습니다. 시크릿은 쓰기 전용이므로 다시 열면 상태와 마스킹만 보이고 값은 보이지 않습니다.",
         "section_error": "수신 메일 설정을 표시할 수 없습니다",
         "provider": "수신 메일 제공자",
         "provider_description": "독자의 회신은 여기에서 선택한 제공자로 받습니다. 인증 정보는 아래 항목에서 등록합니다.",
@@ -2460,6 +2460,7 @@
         "domain_description": "독자의 회신이 전송되는 도메인입니다. reply.example.com처럼 전용 도메인을 쓰면 기본 도메인으로 받고 있는 메일은 그대로 유지됩니다.",
         "domain_sendgrid_description": "DNS에서 이 도메인의 MX 레코드를 우선순위 10으로 mx.sendgrid.net에 연결해 주세요.",
         "domain_resend_description": "Resend의 Domains에서 이 도메인을 추가하고 수신을 켠 다음, Resend에 표시되는 MX 레코드를 DNS에 추가해 주세요.",
+        "domain_mailgun_description": "Mailgun의 Domains에서 이 도메인을 추가한 다음, Mailgun에 표시되는 수신용 MX 레코드를 DNS에 추가해 주세요.",
         "fields": {
           "sendgrid": {
             "webhook_token": "웹훅 토큰"
@@ -2467,6 +2468,9 @@
           "resend": {
             "api_key": "API 키",
             "webhook_secret": "웹훅 서명 시크릿"
+          },
+          "mailgun": {
+            "webhook_signing_key": "HTTP 웹훅 서명 키"
           }
         },
         "field_sources": {
@@ -2476,12 +2480,16 @@
           "resend": {
             "api_key": "Resend 대시보드의 API Keys에서 만든 Full access 권한의 API 키입니다. 회신 내용은 이 키로 Resend에서 읽어 옵니다.",
             "webhook_secret": "아래 URL을 Resend에 등록하면 해당 웹훅에 표시되는 서명 시크릿(whsec_…)입니다."
+          },
+          "mailgun": {
+            "webhook_signing_key": "Mailgun 대시보드의 Settings → API Security에 표시되는 HTTP webhook signing key입니다. Mailgun은 전달하는 메일마다 이 키로 서명하며, 서명이 일치하지 않는 메일은 거부됩니다."
           }
         },
         "webhook_url": "웹훅 URL",
         "webhook_url_description": "{$provider}에 수신한 메일을 보낼 곳으로 이 URL을 등록해 주세요.",
         "webhook_url_sendgrid_description": "SendGrid의 Settings → Inbound Parse에서 수신 도메인을 추가하고 이 URL을 Destination URL로 지정해 주세요. <token> 부분은 위에 저장한 웹훅 토큰으로 바꿉니다.",
         "webhook_url_resend_description": "Resend의 Webhooks에서 이 URL을 email.received 이벤트의 전송 대상으로 추가하고, 표시되는 서명 시크릿을 위 항목에 저장해 주세요.",
+        "webhook_url_mailgun_description": "Mailgun의 Receiving에서 라우트를 만들고, Expression type을 Match Recipient로 하여 수신 도메인의 모든 주소(예: .*@reply.example.com)를 지정한 다음 Forward에 이 URL을 지정해 주세요.",
         "reply_address": "회신 주소",
         "reply_address_description": "답변에서는 독자에게 이 형식의 주소로 회신하도록 요청합니다. * 부분은 문의의 ID입니다. 수신 도메인의 모든 주소가 제공자에게 도착하도록 설정해 주세요.",
         "copy_webhook_url": "웹훅 URL 복사",
