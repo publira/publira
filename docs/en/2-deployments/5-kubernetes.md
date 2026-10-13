@@ -534,6 +534,8 @@ For an Ingress, the solver is `http01: {ingress: {ingressClassName: <your class>
 
 ### With a Gateway
 
+The routes use two features the Gateway API marks Extended, which an implementation can conform to the API without supporting: `HTTPRouteSchemeRedirect`, for the redirect to HTTPS, and `HTTPRouteRequestTimeout`, for the time an upload is given. The Gateway API's [Implementations](https://gateway-api.sigs.k8s.io/docs/implementations/) page compares the features each implementation supports and links its conformance report. Envoy Gateway supports both. On an implementation that lacks one, do that part with what it offers in its own resources, or use [an Ingress](#with-an-ingress) instead.
+
 The Gateway has one HTTPS listener per host name, each with the Secret its certificate goes in, and one plain HTTP listener, which redirects to HTTPS and answers the ACME challenge. The `cert-manager.io/cluster-issuer` annotation has cert-manager issue a certificate for every HTTPS listener into the Secret the listener names:
 
 ```yaml
@@ -641,7 +643,7 @@ spec:
         - type: RequestRedirect
           requestRedirect:
             scheme: https
-            statusCode: 308
+            statusCode: 301
 ```
 
 - **The removed headers.** `traceparent`, `tracestate`, and `baggage` are removed as [Trace context](./4-edge.md#trace-context) requires. A Gateway passes on a `Forwarded` and an `X-Forwarded-Host` the caller sent unless told otherwise, and Publira would read both, as [The client address](./4-edge.md#the-client-address) and [The host the request was sent to](./4-edge.md#the-host-the-request-was-sent-to) describe; removing them here leaves `PUBLIRA_FORWARDED_HEADER_ENABLED` at its default on every process.
