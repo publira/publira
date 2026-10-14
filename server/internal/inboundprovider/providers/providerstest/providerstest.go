@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/publira/publira/server/internal/inboundprovider/inboundprovidertest"
+	"github.com/publira/publira/server/internal/inboundprovider/mailgun"
+	"github.com/publira/publira/server/internal/inboundprovider/mailgun/mailguntest"
 	"github.com/publira/publira/server/internal/inboundprovider/resend"
 	"github.com/publira/publira/server/internal/inboundprovider/resend/resendtest"
 	"github.com/publira/publira/server/internal/inboundprovider/sendgrid"
@@ -13,6 +15,7 @@ import (
 )
 
 var fixtures = map[string]func(testing.TB) inboundprovidertest.Fixture{
+	mailgun.ID:  func(testing.TB) inboundprovidertest.Fixture { return mailguntest.Fixture{} },
 	resend.ID:   func(t testing.TB) inboundprovidertest.Fixture { return resendtest.NewFixture(t) },
 	sendgrid.ID: func(testing.TB) inboundprovidertest.Fixture { return sendgridtest.Fixture{} },
 }

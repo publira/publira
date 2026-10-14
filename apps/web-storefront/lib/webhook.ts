@@ -55,6 +55,9 @@ export const parseWebhookPath = (
  * Answer the sender of a webhook from the API server's verdict: a status it
  * will not retry for a request that can never be accepted, and one it retries
  * while the tenant or the server cannot take it yet.
+ *
+ * An accepted request is answered 200: a Mailgun Route retries any other
+ * status but 406 for 8 hours, and every other provider takes any 2xx.
  */
 export const answerWebhook = async (
   kind: WebhookKind,
@@ -91,5 +94,5 @@ export const answerWebhook = async (
     );
   }
 
-  return new NextResponse(null, { status: 204 });
+  return new NextResponse(null, { status: 200 });
 };

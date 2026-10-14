@@ -62,14 +62,15 @@ const readBoundedBody = async (
 /**
  * Forward an inbound email provider's request to the API server without
  * inspecting it: the exact bytes and every header go through — the content
- * type a multipart post is split by, SendGrid's basic auth token in
+ * type a form post is read by, SendGrid's basic auth token in
  * `Authorization`, Resend's Svix signature headers — and the API server
  * verifies and reads the mail with the credentials the provider declares.
  *
  * A body past {@link MAX_INBOUND_EMAIL_PAYLOAD_BYTES} is acknowledged and
  * dropped, as the API server does with a payload past the same bound: SendGrid
  * redelivers anything it is refused for three days, and a mail that size would
- * be refused every time.
+ * be refused every time. It is acknowledged with the 200 an accepted request
+ * gets, the one status Mailgun stops retrying on.
  *
  * The same-origin check does not apply. A provider sends no browser session
  * cookie; the token or the signature is what authenticates the request.
@@ -92,7 +93,7 @@ export const forwardInboundEmailWebhook = async (
       "[web-storefront] inbound email webhook body exceeds the payload limit and was dropped",
       { provider: path.provider, tenantId: path.tenantId }
     );
-    return new NextResponse(null, { status: 204 });
+    return new NextResponse(null, { status: 200 });
   }
 
   return answerWebhook("email", () =>

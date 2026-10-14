@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/inboundemail"
+	"github.com/publira/publira/server/internal/inboundprovider/mailgun"
 	"github.com/publira/publira/server/internal/inboundprovider/resend"
 	"github.com/publira/publira/server/internal/inboundprovider/sendgrid"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -59,14 +60,17 @@ func TestDBInboundEmailProvidersAreListedWithTheirFields(t *testing.T) {
 		t.Fatalf("ListInboundEmailProviders: %v", err)
 	}
 	providers := resp.Providers
-	if len(providers) != 2 || providers[0].Id != resend.ID || providers[1].Id != sendgrid.ID {
-		t.Fatalf("providers = %v, want resend and sendgrid in id order", providers)
+	if len(providers) != 3 || providers[0].Id != mailgun.ID || providers[1].Id != resend.ID || providers[2].Id != sendgrid.ID {
+		t.Fatalf("providers = %v, want mailgun, resend, and sendgrid in id order", providers)
 	}
-	if providers[1].WebhookPath != "/api/v1/webhook/email/sendgrid" {
-		t.Errorf("webhook_path = %q", providers[1].WebhookPath)
+	if providers[2].WebhookPath != "/api/v1/webhook/email/sendgrid" {
+		t.Errorf("webhook_path = %q", providers[2].WebhookPath)
 	}
-	if len(providers[1].Fields) != 1 || providers[1].Fields[0].Name != sendgrid.FieldWebhookToken || !providers[1].Fields[0].Secret || !providers[1].Fields[0].Required {
-		t.Errorf("sendgrid fields = %v", providers[1].Fields)
+	if providers[0].WebhookPath != "/api/v1/webhook/email/mailgun/json" {
+		t.Errorf("mailgun webhook_path = %q, want the URL a Route posts JSON to", providers[0].WebhookPath)
+	}
+	if len(providers[2].Fields) != 1 || providers[2].Fields[0].Name != sendgrid.FieldWebhookToken || !providers[2].Fields[0].Secret || !providers[2].Fields[0].Required {
+		t.Errorf("sendgrid fields = %v", providers[2].Fields)
 	}
 }
 
@@ -143,7 +147,7 @@ func TestDBInboundEmailSettingsRefuseWhatCannotReceiveMail(t *testing.T) {
 		},
 		"no token":            {Provider: sendgrid.ID, Enabled: true, Domain: "reply.example.com"},
 		"an invalid domain":   {Provider: sendgrid.ID, Domain: "reply example com"},
-		"an unknown provider": {Provider: "mailgun", Domain: "reply.example.com"},
+		"an unknown provider": {Provider: "postmark", Domain: "reply.example.com"},
 		"an undeclared field": {
 			Provider: sendgrid.ID,
 			Fields:   []*publiraadminv1.InboundEmailCredentialFieldUpdate{replaceInboundField(resend.FieldAPIKey, "re_key")},

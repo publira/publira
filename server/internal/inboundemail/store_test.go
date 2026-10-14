@@ -124,7 +124,7 @@ func TestStoreRefusesToEnableWhatCannotReceiveMail(t *testing.T) {
 	}{
 		"no domain":            {UpdateInput{Provider: sendgrid.ID, Enabled: true, Fields: token}, ErrDomainRequired},
 		"no token":             {UpdateInput{Provider: sendgrid.ID, Enabled: true, Domain: "reply.example.com"}, ErrFieldsRequired},
-		"an unknown provider":  {UpdateInput{Provider: "mailgun", Domain: "reply.example.com"}, ErrInvalidProvider},
+		"an unknown provider":  {UpdateInput{Provider: "postmark", Domain: "reply.example.com"}, ErrInvalidProvider},
 		"an undeclared field":  {UpdateInput{Provider: sendgrid.ID, Fields: []FieldUpdate{replace("api_key", "x")}}, ErrUnknownField},
 		"a field given twice":  {UpdateInput{Provider: sendgrid.ID, Fields: append(token, token...)}, ErrDuplicateField},
 		"a blank replacement":  {UpdateInput{Provider: sendgrid.ID, Fields: []FieldUpdate{replace(sendgrid.FieldWebhookToken, " ")}}, ErrSecretRequired},

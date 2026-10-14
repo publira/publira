@@ -68,6 +68,25 @@ const resendPost = () => ({
   },
 });
 
+/**
+ * A Mailgun Route post to a URL ending in `json`: the mail as one JSON
+ * document, signed in the headers over the whole body.
+ */
+const mailgunPost = () => ({
+  body: JSON.stringify({
+    attachments: [],
+    "body-plain": "Thanks, the episode opens now.",
+    from: "Alex Reader <alex.reader@example.net>",
+    recipient: "contact+7Hn3QzW9kPfa@reply.example.com",
+  }),
+  headers: {
+    "content-type": "application/json",
+    "x-mailgun-signature":
+      "0f3e8a1c5b7d9e2f4a6c8b0d1e3f5a7c9b2d4f6e8a0c1b3d5f7e9a2c4b6d8f0e",
+    "x-mailgun-timestamp": "1791195151",
+  },
+});
+
 const post = (
   provider: string,
   { body, headers }: { body: BodyInit; headers: Record<string, string> }
@@ -92,7 +111,7 @@ describe("forwardInboundEmailWebhook", () => {
       { provider: "sendgrid", tenantId: TENANT_ID }
     );
 
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(200);
     expect(mockProcessInboundEmailWebhook).toHaveBeenCalledWith({
       headers,
       payload: new TextEncoder().encode(body),
@@ -109,11 +128,28 @@ describe("forwardInboundEmailWebhook", () => {
       { provider: "resend", tenantId: TENANT_ID }
     );
 
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(200);
     expect(mockProcessInboundEmailWebhook).toHaveBeenCalledWith({
       headers,
       payload: new TextEncoder().encode(body),
       provider: "resend",
+      tenant: { tenantId: TENANT_ID },
+    });
+  });
+
+  it("forwards a Mailgun post with its signature headers intact and answers the 200 Mailgun stops retrying on", async () => {
+    const { body, headers } = mailgunPost();
+
+    const response = await forwardInboundEmailWebhook(
+      post("mailgun", { body, headers }),
+      { provider: "mailgun", tenantId: TENANT_ID }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockProcessInboundEmailWebhook).toHaveBeenCalledWith({
+      headers,
+      payload: new TextEncoder().encode(body),
+      provider: "mailgun",
       tenant: { tenantId: TENANT_ID },
     });
   });
@@ -217,7 +253,7 @@ describe("forwardInboundEmailWebhook", () => {
         tenantId: TENANT_ID,
       });
 
-      expect(response.status).toBe(204);
+      expect(response.status).toBe(200);
       expect(
         mockProcessInboundEmailWebhook.mock.calls[0]?.[0].payload.byteLength
       ).toBe(MAX_INBOUND_EMAIL_PAYLOAD_BYTES);
@@ -234,7 +270,7 @@ describe("forwardInboundEmailWebhook", () => {
         tenantId: TENANT_ID,
       });
 
-      expect(response.status).toBe(204);
+      expect(response.status).toBe(200);
       expect(mockProcessInboundEmailWebhook).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledOnce();
       expect(read.bytes).toBeLessThan(MAX_INBOUND_EMAIL_PAYLOAD_BYTES * 2);

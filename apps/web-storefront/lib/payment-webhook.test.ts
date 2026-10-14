@@ -43,7 +43,7 @@ describe("forwardPaymentWebhook", () => {
       tenantId: TENANT_ID,
     });
 
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(200);
     expect(mockProcessPaymentWebhook).toHaveBeenCalledWith({
       headers: {
         "content-type": "application/json",
@@ -61,7 +61,7 @@ describe("forwardPaymentWebhook", () => {
       tenantId: TENANT_ID,
     });
 
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(200);
     expect(mockProcessPaymentWebhook).toHaveBeenCalledWith(
       expect.objectContaining({ provider: "pay_jp" })
     );
@@ -139,7 +139,7 @@ describe("forwardAppStoreNotification", () => {
       tenantId: TENANT_ID,
     });
 
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(200);
     expect(mockProcessAppStoreNotification).toHaveBeenCalledWith({
       payload: new TextEncoder().encode(
         '{"signedPayload":"eyJhbGciOiJFUzI1NiJ9.e30.sig"}'

@@ -47,7 +47,7 @@ func inboundEmailProviderToProto(provider inboundprovider.Provider) *publiraadmi
 		Id:          declaration.ID,
 		DisplayName: declaration.DisplayName,
 		Fields:      fields,
-		WebhookPath: inboundprovider.WebhookPath(declaration.ID),
+		WebhookPath: declaration.WebhookPath(),
 	}
 }
 

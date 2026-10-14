@@ -663,7 +663,10 @@
     {
       "name": "The inbound email providers' webhooks",
       "web": {
-        "routes": ["api/v1/webhook/email/[provider]"],
+        "routes": [
+          "api/v1/webhook/email/[provider]",
+          "api/v1/webhook/email/mailgun/json"
+        ],
         "rpcs": ["ProcessInboundEmailWebhook"]
       },
       "exception": "The inbound email provider's servers call it with a reader's emailed reply; no reader reaches it."
