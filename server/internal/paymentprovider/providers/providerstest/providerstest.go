@@ -14,7 +14,7 @@ import (
 
 var fixtures = map[string]func(testing.TB) paymentprovidertest.Fixture{
 	payjp.ID:  func(t testing.TB) paymentprovidertest.Fixture { return payjptest.NewFixture(t) },
-	stripe.ID: func(testing.TB) paymentprovidertest.Fixture { return stripetest.Fixture{} },
+	stripe.ID: func(t testing.TB) paymentprovidertest.Fixture { return stripetest.NewFixture(t) },
 }
 
 // Fixture answers a new contract fixture of the provider registered as id,

@@ -103,7 +103,7 @@ func TestParseNotification(t *testing.T) {
 }
 
 func TestParseNotificationReadsDisputesAndExpiredCheckouts(t *testing.T) {
-	fixture := stripetest.Fixture{}
+	fixture := stripetest.NewFixture(t)
 	credentials := fixture.Credentials()
 	checkout := paymentprovidertest.Checkout{
 		CheckoutID: "cs_expired",
@@ -170,4 +170,46 @@ func TestParseNotificationReadsDisputesAndExpiredCheckouts(t *testing.T) {
 			t.Fatalf("event = %T, want Ignored", event)
 		}
 	})
+}
+
+// Stripe reports a canceled refund only as refund.updated, which it also sends
+// for every other change of a refund.
+func TestParseNotificationReadsACanceledRefundFromItsUpdate(t *testing.T) {
+	fixture := stripetest.NewFixture(t)
+	credentials := fixture.Credentials()
+	fixture.API.SetPaymentIntent(credentials[stripe.FieldSecretKey], "pi_canceled_refund", 500, "JPY")
+	updated := func(status string) paymentprovider.Event {
+		t.Helper()
+		payload, headers := stripetest.SignedEvent(t, credentials[stripe.FieldWebhookSecret], "refund.updated", map[string]any{
+			"id":             "re_canceled",
+			"object":         "refund",
+			"amount":         500,
+			"currency":       "jpy",
+			"payment_intent": "pi_canceled_refund",
+			"status":         status,
+		})
+		event, err := fixture.Provider().ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification of a %s refund: %v", status, err)
+		}
+		return event
+	}
+
+	failed, ok := updated("canceled").(paymentprovider.RefundFailed)
+	if !ok {
+		t.Fatal("a canceled refund is not a RefundFailed")
+	}
+	if failed.PaymentID != "pi_canceled_refund" || failed.AmountRefunded != 0 || failed.Currency != "JPY" {
+		t.Fatalf("failed refund = %+v, want nothing staying refunded on pi_canceled_refund in JPY", failed)
+	}
+	for _, status := range []string{"pending", "requires_action", "succeeded"} {
+		if event := updated(status); !isIgnored(event) {
+			t.Fatalf("a %s refund's update = %T, want Ignored", status, event)
+		}
+	}
+}
+
+func isIgnored(event paymentprovider.Event) bool {
+	_, ok := event.(paymentprovider.Ignored)
+	return ok
 }

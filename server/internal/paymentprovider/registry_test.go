@@ -20,6 +20,10 @@ func (declaredProvider) ParseNotification(context.Context, []byte, http.Header, 
 	return Ignored{}, nil
 }
 
+func (declaredProvider) Refund(context.Context, Credentials, RefundRequest) (bool, error) {
+	return false, nil
+}
+
 func TestRegistryLooksUpProvidersByID(t *testing.T) {
 	registry := NewRegistry(
 		declaredProvider{Declaration{ID: "zeta", Currencies: []string{"JPY"}}},

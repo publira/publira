@@ -1142,6 +1142,13 @@ type Querier interface {
 	InsertTenantEmailRejectionEntries(ctx context.Context, arg InsertTenantEmailRejectionEntriesParams) error
 	// No ON CONFLICT clause, for the same reason as InsertPlatformRetentionConfig.
 	InsertTenantRetentionSettings(ctx context.Context, arg InsertTenantRetentionSettingsParams) (TenantRetentionSetting, error)
+	// Takes back the revocation RevokePurchaseForStaff made when the refund it was
+	// made for did not happen, and moves the purchase on to staff's next attempt
+	// when next_attempt is set: the provider refused or failed the refund, and
+	// under the same idempotency key would only answer that again. A purchase a
+	// refund has covered in full since, or that something else revoked, is left
+	// alone.
+	LiftStaffRevocation(ctx context.Context, arg LiftStaffRevocationParams) (uuid.UUID, error)
 	ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error)
 	// Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
 	// query; backward uses ASC so idx_access_tickets_staff_tenant_created_at can be
@@ -1907,6 +1914,20 @@ type Querier interface {
 	// spelled out rather than written as a row value.
 	// cursor rules: proto/README.md.
 	ListPublishedTagsByTenantDesc(ctx context.Context, arg ListPublishedTagsByTenantDescParams) ([]ListPublishedTagsByTenantDescRow, error)
+	ListPurchaseIDsForTenantAsc(ctx context.Context, arg ListPurchaseIDsForTenantAscParams) ([]ListPurchaseIDsForTenantAscRow, error)
+	// The console's purchase list is (purchased_at, id) DESC. A forward page reads
+	// ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
+	// both over idx_purchases_tenant_purchased_at_id, and the handler puts the
+	// ascending rows back into display order. id is a UUIDv7, so the order stays
+	// unique when purchased_at ties. These read the keys alone, and
+	// ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
+	// proto/README.md.
+	ListPurchaseIDsForTenantDesc(ctx context.Context, arg ListPurchaseIDsForTenantDescParams) ([]ListPurchaseIDsForTenantDescRow, error)
+	// What the console shows of each purchase named, in no particular order. The
+	// buyer is joined within the tenant, so the purchase of a reader who has since
+	// deleted their account, which keeps no user, answers no buyer rather than no
+	// row.
+	ListPurchasesForTenantByIDs(ctx context.Context, arg ListPurchasesForTenantByIDsParams) ([]ListPurchasesForTenantByIDsRow, error)
 	// One page of the devices to push one notification to, ordered by recipient
 	// and token after the previous page's last pair (the nil UUID and an empty
 	// token for the first page). The walk runs over the notification's recipients
@@ -2628,6 +2649,21 @@ type Querier interface {
 	// nothing the idempotency key reads. A reader or an episode deleted since the
 	// checkout started records nothing, since there is no next checkout to key.
 	RecordExpiredCheckout(ctx context.Context, arg RecordExpiredCheckoutParams) error
+	// Records that a refund of the purchase's payment failed after the provider
+	// accepted it, taking the total that stays refunded from the provider as it
+	// now stands, which is the one place a recorded amount goes down. Once that
+	// total falls short of the price, the purchase is no longer refunded in full,
+	// and a revocation that came from a refund, the provider's or the one staff
+	// asked for, is lifted with it, so the reader keeps what they still pay for,
+	// and lifting staff's moves the purchase on to staff's next attempt, which a
+	// new request is sent under: the provider would answer the failed one again.
+	// A total of nothing is still recorded as an amount rather than as no refund:
+	// royalty_uncarried_refunds reads a purchase with an amount, which is how a
+	// refund a closed statement already carried is carried back. A dispute keeps
+	// its revocation. Nothing matches a payment of another tenant,
+	// another provider, no purchase here, or a total in a currency other than the
+	// purchase's, which says nothing comparable to its price.
+	RecordFailedRefundOnPurchase(ctx context.Context, arg RecordFailedRefundOnPurchaseParams) (Purchase, error)
 	// A paged handler records how far it has got after each page, so a run
 	// that ends before the event is finished leaves the next one a place to
 	// resume from. Only the run that holds the claim may move it.
@@ -2710,6 +2746,10 @@ type Querier interface {
 	ReleaseUnappliedDispute(ctx context.Context, arg ReleaseUnappliedDisputeParams) error
 	ReleaseUnappliedRefund(ctx context.Context, arg ReleaseUnappliedRefundParams) error
 	ReleaseUnappliedStoreRefund(ctx context.Context, arg ReleaseUnappliedStoreRefundParams) error
+	// Sets a held refund to the total that stays refunded once one of the refunds
+	// it counted has failed, the one place a held amount goes down. Nothing is
+	// held for the payment in the ordinary case, and nothing changes then.
+	ReplaceUnappliedRefund(ctx context.Context, arg ReplaceUnappliedRefundParams) error
 	ResetPlatformUserMfaTotpFailures(ctx context.Context, platformUserID uuid.UUID) error
 	ResetUserMfaTotpFailures(ctx context.Context, userID uuid.UUID) error
 	// Staff deciding one report, either way. It names 'open' as the state it moves
@@ -2732,6 +2772,14 @@ type Querier interface {
 	// Staff tickets only, as GetAccessTicketForTenant: revoking a wait-for-free
 	// ticket would take away a read the reader was entitled to.
 	RevokeAccessTicketForTenant(ctx context.Context, arg RevokeAccessTicketForTenantParams) (AccessTicket, error)
+	// Revokes a purchase staff are about to refund, before the provider is asked,
+	// so that whatever the provider reports about the refund lands on a purchase
+	// already revoked. It answers no row when there is nothing for this call to
+	// change: staff revoked it already, which a second request racing the first
+	// finds once that one commits, or the reader's dispute revoked it first, which
+	// the dispute keeps. A refund recorded first gives way to staff while its
+	// instant stays.
+	RevokePurchaseForStaff(ctx context.Context, arg RevokePurchaseForStaffParams) (uuid.UUID, error)
 	// Stores where the reader stopped, after checking publication and body access
 	// in the same statement, so a viewer that saves on its way out cannot write a
 	// position for an episode that was unpublished or a rental that has expired.

@@ -12,6 +12,7 @@ import (
 
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
+	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider"
@@ -182,6 +183,28 @@ func (c *contractTenant) RefundedAmount(t *testing.T) int32 {
 		t.Fatalf("read refunded amount: %v", err)
 	}
 	return amount.Int32
+}
+
+func (c *contractTenant) RevokeAsStaff(t *testing.T) {
+	t.Helper()
+	if _, err := dbmodels.New(c.harness.pg.DB).RevokePurchaseForStaff(context.Background(), dbmodels.RevokePurchaseForStaffParams{
+		TenantID: c.purchase.TenantID,
+		ID:       c.purchaseID(t),
+	}); err != nil {
+		t.Fatalf("revoke the purchase as staff: %v", err)
+	}
+}
+
+// purchaseID answers the id of the tenant's only purchase.
+func (c *contractTenant) purchaseID(t *testing.T) uuid.UUID {
+	t.Helper()
+	var id uuid.UUID
+	if err := c.harness.pg.DB.QueryRowContext(context.Background(),
+		`SELECT id FROM purchases WHERE tenant_id = $1`, c.purchase.TenantID,
+	).Scan(&id); err != nil {
+		t.Fatalf("read the purchase: %v", err)
+	}
+	return id
 }
 
 func (c *contractTenant) HeldRefunds(t *testing.T) int {

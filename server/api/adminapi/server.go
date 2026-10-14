@@ -462,6 +462,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 	publiraadminv1connect.RegisterAdminAnnouncementServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminNotificationServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminAccessTicketServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminPurchaseServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminCommentServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminContactServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminRoyaltyServiceHandler(services, server)

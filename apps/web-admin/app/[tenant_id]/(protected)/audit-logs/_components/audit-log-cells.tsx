@@ -247,6 +247,9 @@ const readerActionName = (action: string) => {
     case "access_ticket_revoked": {
       return <Message message="admin.audit.actions.access_ticket_revoked" />;
     }
+    case "purchase_refunded": {
+      return <Message message="admin.audit.actions.purchase_refunded" />;
+    }
     case "royalty_config_updated": {
       return <Message message="admin.audit.actions.royalty_config_updated" />;
     }
@@ -493,6 +496,9 @@ const catalogTargetName = (targetType: string) => {
     }
     case "page_translation": {
       return <Message message="admin.audit.targets.page_translation" />;
+    }
+    case "purchase": {
+      return <Message message="admin.audit.targets.purchase" />;
     }
     case "series": {
       return <Message message="admin.audit.targets.series" />;

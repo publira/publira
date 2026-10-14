@@ -474,6 +474,10 @@ func (s *apiServer) ProcessPaymentWebhook(
 		if err := s.recordRefund(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
 			return nil, err
 		}
+	case paymentprovider.RefundFailed:
+		if err := s.recordFailedRefund(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
+			return nil, err
+		}
 	case paymentprovider.Disputed:
 		if err := s.recordDispute(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
 			return nil, err
@@ -591,6 +595,75 @@ func (s *apiServer) recordRefund(
 		"purchase_id", purchase.ID,
 		"refunded_amount", purchase.RefundedAmount.Int32,
 		"fully_refunded", purchase.RefundedAt.Valid,
+	)
+	return nil
+}
+
+// recordFailedRefund writes down that a refund of a payment failed, which can
+// reopen the purchase a refund closed.
+func (s *apiServer) recordFailedRefund(
+	ctx context.Context,
+	queries Querier,
+	tenantID uuid.UUID,
+	providerID string,
+	event paymentprovider.RefundFailed,
+) error {
+	if event.Currency == "" || event.AmountRefunded < 0 || event.AmountRefunded > math.MaxInt32 {
+		s.logger.WarnContext(ctx, "a failed refund reported no comparable amount that stays refunded and is not recorded",
+			"tenant_id", tenantID,
+			"event_id", event.ID,
+			"payment_id", event.PaymentID,
+			"currency", event.Currency,
+			"amount_refunded", event.AmountRefunded,
+		)
+		return nil
+	}
+	purchase, err := queries.RecordFailedRefundOnPurchase(ctx, dbmodels.RecordFailedRefundOnPurchaseParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: event.PaymentID,
+		Currency:          event.Currency,
+		RefundedAmount:    int32(event.AmountRefunded),
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		// A refund held for a purchase that is not here yet is all that
+		// remains to correct: it is set to what stays refunded, or released
+		// when that is nothing, so the purchase it is applied to later is not
+		// refunded by the failed one.
+		if event.AmountRefunded == 0 {
+			if err := queries.ReleaseUnappliedRefund(ctx, dbmodels.ReleaseUnappliedRefundParams{
+				TenantID:          tenantID,
+				Provider:          providerID,
+				ProviderPaymentID: event.PaymentID,
+			}); err != nil {
+				return s.internalDBError(ctx, "failed to release a held refund that failed", err, "event_id", event.ID, "payment_id", event.PaymentID)
+			}
+		} else if err := queries.ReplaceUnappliedRefund(ctx, dbmodels.ReplaceUnappliedRefundParams{
+			TenantID:          tenantID,
+			Provider:          providerID,
+			ProviderPaymentID: event.PaymentID,
+			RefundedAmount:    int32(event.AmountRefunded),
+			Currency:          event.Currency,
+		}); err != nil {
+			return s.internalDBError(ctx, "failed to correct a held refund one of whose refunds failed", err, "event_id", event.ID, "payment_id", event.PaymentID)
+		}
+		s.logger.WarnContext(ctx, "a failed refund matches no purchase",
+			"tenant_id", tenantID,
+			"event_id", event.ID,
+			"payment_id", event.PaymentID,
+			"currency", event.Currency,
+		)
+		return nil
+	}
+	if err != nil {
+		return s.internalDBError(ctx, "failed to record a failed refund", err, "event_id", event.ID, "payment_id", event.PaymentID)
+	}
+	s.logger.InfoContext(ctx, "recorded a failed refund on a purchase",
+		"tenant_id", tenantID,
+		"event_id", event.ID,
+		"purchase_id", purchase.ID,
+		"refunded_amount", purchase.RefundedAmount.Int32,
+		"revoked", purchase.RevokedAt.Valid,
 	)
 	return nil
 }

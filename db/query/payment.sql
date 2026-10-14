@@ -306,6 +306,64 @@ FROM refund
 WHERE p.id = refund.id
 RETURNING p.*;
 
+-- name: LiftStaffRevocation :one
+-- Takes back the revocation RevokePurchaseForStaff made when the refund it was
+-- made for did not happen, and moves the purchase on to staff's next attempt
+-- when next_attempt is set: the provider refused or failed the refund, and
+-- under the same idempotency key would only answer that again. A purchase a
+-- refund has covered in full since, or that something else revoked, is left
+-- alone.
+UPDATE purchases
+SET revoked_at = NULL,
+    revocation_reason = NULL,
+    staff_refund_attempt = staff_refund_attempt + CASE WHEN sqlc.arg('next_attempt')::boolean THEN 1 ELSE 0 END
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND revocation_reason = 'staff'
+    AND refunded_at IS NULL
+RETURNING id;
+
+-- name: RecordFailedRefundOnPurchase :one
+-- Records that a refund of the purchase's payment failed after the provider
+-- accepted it, taking the total that stays refunded from the provider as it
+-- now stands, which is the one place a recorded amount goes down. Once that
+-- total falls short of the price, the purchase is no longer refunded in full,
+-- and a revocation that came from a refund, the provider's or the one staff
+-- asked for, is lifted with it, so the reader keeps what they still pay for,
+-- and lifting staff's moves the purchase on to staff's next attempt, which a
+-- new request is sent under: the provider would answer the failed one again.
+-- A total of nothing is still recorded as an amount rather than as no refund:
+-- royalty_uncarried_refunds reads a purchase with an amount, which is how a
+-- refund a closed statement already carried is carried back. A dispute keeps
+-- its revocation. Nothing matches a payment of another tenant,
+-- another provider, no purchase here, or a total in a currency other than the
+-- purchase's, which says nothing comparable to its price.
+UPDATE purchases p
+SET refunded_amount = sqlc.arg('refunded_amount')::integer,
+    refunded_at = CASE
+        WHEN sqlc.arg('refunded_amount')::integer >= p.price_at_purchase THEN p.refunded_at
+    END,
+    revoked_at = CASE
+        WHEN sqlc.arg('refunded_amount')::integer < p.price_at_purchase
+            AND p.revocation_reason IN ('refund', 'staff') THEN NULL
+        ELSE p.revoked_at
+    END,
+    revocation_reason = CASE
+        WHEN sqlc.arg('refunded_amount')::integer < p.price_at_purchase
+            AND p.revocation_reason IN ('refund', 'staff') THEN NULL
+        ELSE p.revocation_reason
+    END,
+    staff_refund_attempt = p.staff_refund_attempt + CASE
+        WHEN sqlc.arg('refunded_amount')::integer < p.price_at_purchase
+            AND p.revocation_reason = 'staff' THEN 1
+        ELSE 0
+    END
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND p.provider = sqlc.arg('provider')::text
+    AND p.provider_payment_id = sqlc.arg('provider_payment_id')::text
+    AND p.currency = sqlc.arg('currency')::text
+RETURNING p.*;
+
 -- name: HoldUnappliedRefund :exec
 -- Keeps a refund whose purchase is not here yet, so the notification that
 -- creates the purchase can still apply it. The provider's payment is the
@@ -398,6 +456,18 @@ SET refunded_amount = refund.amount,
 FROM refund
 WHERE p.id = refund.id
 RETURNING p.*;
+
+-- name: ReplaceUnappliedRefund :exec
+-- Sets a held refund to the total that stays refunded once one of the refunds
+-- it counted has failed, the one place a held amount goes down. Nothing is
+-- held for the payment in the ordinary case, and nothing changes then.
+UPDATE unapplied_refunds
+SET refunded_amount = sqlc.arg('refunded_amount')::integer,
+    currency = sqlc.arg('currency')::text,
+    received_at = NOW()
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND provider = sqlc.arg('provider')::text
+    AND provider_payment_id = sqlc.arg('provider_payment_id')::text;
 
 -- name: ReleaseUnappliedRefund :exec
 DELETE FROM unapplied_refunds
@@ -495,3 +565,168 @@ FROM expired_checkouts
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND user_id = sqlc.arg('user_id')
     AND episode_id = sqlc.arg('episode_id');
+
+-- The console's purchase list is (purchased_at, id) DESC. A forward page reads
+-- ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
+-- both over idx_purchases_tenant_purchased_at_id, and the handler puts the
+-- ascending rows back into display order. id is a UUIDv7, so the order stays
+-- unique when purchased_at ties. These read the keys alone, and
+-- ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
+-- proto/README.md.
+-- name: ListPurchaseIDsForTenantDesc :many
+SELECT p.id,
+    p.purchased_at
+FROM purchases p
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('series_id')::uuid IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM episodes e
+            WHERE e.tenant_id = p.tenant_id
+                AND e.id = p.episode_id
+                AND e.series_id = sqlc.narg('series_id')::uuid
+        )
+    )
+    AND (
+        sqlc.narg('episode_id')::uuid IS NULL
+        OR p.episode_id = sqlc.narg('episode_id')::uuid
+    )
+    AND (
+        sqlc.narg('reader_email')::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM users u
+            WHERE u.tenant_id = p.tenant_id
+                AND u.id = p.user_id
+                AND lower(u.email) = lower(sqlc.narg('reader_email')::text)
+        )
+    )
+    AND (
+        sqlc.narg('purchased_from')::timestamptz IS NULL
+        OR p.purchased_at >= sqlc.narg('purchased_from')::timestamptz
+    )
+    AND (
+        sqlc.narg('purchased_to')::timestamptz IS NULL
+        OR p.purchased_at < sqlc.narg('purchased_to')::timestamptz
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) <= (sqlc.narg('cursor_purchased_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) < (sqlc.narg('cursor_purchased_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY p.purchased_at DESC,
+    p.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPurchaseIDsForTenantAsc :many
+SELECT p.id,
+    p.purchased_at
+FROM purchases p
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('series_id')::uuid IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM episodes e
+            WHERE e.tenant_id = p.tenant_id
+                AND e.id = p.episode_id
+                AND e.series_id = sqlc.narg('series_id')::uuid
+        )
+    )
+    AND (
+        sqlc.narg('episode_id')::uuid IS NULL
+        OR p.episode_id = sqlc.narg('episode_id')::uuid
+    )
+    AND (
+        sqlc.narg('reader_email')::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM users u
+            WHERE u.tenant_id = p.tenant_id
+                AND u.id = p.user_id
+                AND lower(u.email) = lower(sqlc.narg('reader_email')::text)
+        )
+    )
+    AND (
+        sqlc.narg('purchased_from')::timestamptz IS NULL
+        OR p.purchased_at >= sqlc.narg('purchased_from')::timestamptz
+    )
+    AND (
+        sqlc.narg('purchased_to')::timestamptz IS NULL
+        OR p.purchased_at < sqlc.narg('purchased_to')::timestamptz
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) >= (sqlc.narg('cursor_purchased_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) > (sqlc.narg('cursor_purchased_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY p.purchased_at ASC,
+    p.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPurchasesForTenantByIDs :many
+-- What the console shows of each purchase named, in no particular order. The
+-- buyer is joined within the tenant, so the purchase of a reader who has since
+-- deleted their account, which keeps no user, answers no buyer rather than no
+-- row.
+SELECT p.id,
+    p.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    u.public_id AS reader_public_id,
+    u.name AS reader_name,
+    u.email AS reader_email,
+    p.price_at_purchase,
+    p.currency,
+    p.purchased_at,
+    p.expires_at,
+    p.provider,
+    p.provider_payment_id,
+    p.store,
+    p.is_test,
+    p.refunded_amount,
+    p.refunded_at,
+    p.revoked_at,
+    p.revocation_reason,
+    p.staff_refund_attempt
+FROM purchases p
+    JOIN episodes e ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+    LEFT JOIN users u ON u.tenant_id = p.tenant_id
+    AND u.id = p.user_id
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND p.id = ANY(sqlc.arg('ids')::uuid[]);
+
+-- name: RevokePurchaseForStaff :one
+-- Revokes a purchase staff are about to refund, before the provider is asked,
+-- so that whatever the provider reports about the refund lands on a purchase
+-- already revoked. It answers no row when there is nothing for this call to
+-- change: staff revoked it already, which a second request racing the first
+-- finds once that one commits, or the reader's dispute revoked it first, which
+-- the dispute keeps. A refund recorded first gives way to staff while its
+-- instant stays.
+UPDATE purchases
+SET revoked_at = COALESCE(revoked_at, NOW()),
+    revocation_reason = 'staff'
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND revocation_reason IS DISTINCT FROM 'staff'
+    AND revocation_reason IS DISTINCT FROM 'dispute'
+RETURNING id;

@@ -22,6 +22,11 @@ var ErrInvalidSignature = errors.New("payment notification signature is invalid"
 // read as the event its type names.
 var ErrMalformedNotification = errors.New("payment notification is malformed")
 
+// ErrRefundRefused reports a refund the provider will not make for a reason
+// another attempt does not change, such as a payment the tenant's account does
+// not hold or one the reader has disputed.
+var ErrRefundRefused = errors.New("the payment provider refused the refund")
+
 // Field is one credential a provider needs from a tenant.
 type Field struct {
 	// Name is the key the value is stored and passed under.
@@ -131,9 +136,19 @@ type CheckoutRequest struct {
 	IdempotencyKey string
 }
 
+// RefundRequest asks for whatever of one payment has not been refunded yet.
+type RefundRequest struct {
+	// PaymentID is the provider's id of the payment, as [PurchaseCompleted]
+	// named it.
+	PaymentID string
+	// IdempotencyKey is the same for every attempt to refund the same
+	// purchase, so that a retried request refunds nothing twice.
+	IdempotencyKey string
+}
+
 // Event is what a notification means to the purchase flow: one of
-// [PurchaseCompleted], [Refunded], [Disputed], [CheckoutExpired], or
-// [Ignored].
+// [PurchaseCompleted], [Refunded], [RefundFailed], [Disputed],
+// [CheckoutExpired], or [Ignored].
 type Event interface {
 	// NotificationID is the provider's id of the notification, for logs.
 	NotificationID() string
@@ -167,6 +182,20 @@ type Refunded struct {
 	Currency string
 }
 
+// RefundFailed reports a refund of one payment that failed or was canceled
+// after the provider had accepted it, so the money it promised never went back
+// to the reader.
+type RefundFailed struct {
+	ID        string
+	PaymentID string
+	// AmountRefunded is the total that stays refunded on the payment once the
+	// failed refund no longer counts, in the minor unit of Currency, as the
+	// provider's API reports it.
+	AmountRefunded int64
+	// Currency is the ISO 4217 code of AmountRefunded, in capitals.
+	Currency string
+}
+
 // Disputed reports that the reader has disputed one payment with their bank.
 type Disputed struct {
 	ID        string
@@ -190,12 +219,14 @@ type Ignored struct {
 
 func (e PurchaseCompleted) NotificationID() string { return e.ID }
 func (e Refunded) NotificationID() string          { return e.ID }
+func (e RefundFailed) NotificationID() string      { return e.ID }
 func (e Disputed) NotificationID() string          { return e.ID }
 func (e CheckoutExpired) NotificationID() string   { return e.ID }
 func (e Ignored) NotificationID() string           { return e.ID }
 
 func (PurchaseCompleted) isEvent() {}
 func (Refunded) isEvent()          {}
+func (RefundFailed) isEvent()      {}
 func (Disputed) isEvent()          {}
 func (CheckoutExpired) isEvent()   {}
 func (Ignored) isEvent()           {}
@@ -211,4 +242,15 @@ type Provider interface {
 	// answers [ErrInvalidSignature] for a notification that does not verify
 	// and [ErrMalformedNotification] for one that verifies but cannot be read.
 	ParseNotification(ctx context.Context, payload []byte, headers http.Header, credentials Credentials) (Event, error)
+	// Refund returns to the reader whatever of a payment has not been refunded
+	// yet, and reports whether it refunded anything. A payment already
+	// refunded in full, in the provider's dashboard or by an earlier request,
+	// is false and no error, so a request made again succeeds without
+	// refunding anything; one the provider answers from its idempotency key
+	// reports the refund that key made. It answers [ErrRefundRefused] for a
+	// refund the provider will not make, and for one it answers as failed or
+	// canceled at once. What it refunded reaches the purchase flow as the
+	// provider's [Refunded] notification, as a refund made in the provider's
+	// own dashboard does, and a refund that fails later as [RefundFailed].
+	Refund(ctx context.Context, credentials Credentials, req RefundRequest) (bool, error)
 }

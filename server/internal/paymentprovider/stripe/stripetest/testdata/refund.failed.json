@@ -1,0 +1,28 @@
+{
+  "id": "evt_1QfJr8Lk4f8bA7xYqP2wRf7K",
+  "object": "event",
+  "api_version": "",
+  "created": 1767830460,
+  "data": {
+    "object": {
+      "id": "re_1QfJr7Lk4f8bA7xY0Ckq3cZa",
+      "object": "refund",
+      "amount": 500,
+      "charge": "ch_3QfJpzLk4f8bA7xY1H0bZ9mT",
+      "created": 1767830455,
+      "currency": "jpy",
+      "failure_reason": "expired_or_canceled_card",
+      "metadata": {},
+      "payment_intent": "pi_3QfJpzLk4f8bA7xY1q8nXv2L",
+      "reason": "requested_by_customer",
+      "status": "failed"
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "refund.failed"
+}

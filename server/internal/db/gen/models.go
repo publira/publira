@@ -787,6 +787,7 @@ type Purchase struct {
 	Currency           string         `json:"currency"`
 	RevokedAt          sql.NullTime   `json:"revoked_at"`
 	RevocationReason   sql.NullString `json:"revocation_reason"`
+	StaffRefundAttempt int32          `json:"staff_refund_attempt"`
 }
 
 type RoyaltyStatement struct {
