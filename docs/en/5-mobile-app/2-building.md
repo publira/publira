@@ -12,7 +12,7 @@ Every flag the command accepts is listed in the [mobile app reference](https://g
 
 ### The address the app connects to
 
-Export the origin of the tenant's site as `PUBLIRA_BASE_URL`. The app asks it for the API under `/api` and for images under `/images`, which the install's reverse proxy already routes:
+Export the origin of the tenant's site as `PUBLIRA_BASE_URL`. The app asks it for the API under `/rpc` and for images under `/images`, which the install's reverse proxy already routes:
 
 ```bash
 export PUBLIRA_BASE_URL=https://reader.example.com

@@ -31,7 +31,7 @@ void main() {
     );
 
     expect(await resolver.resolve(), _tenantId);
-    expect(sent.url.path, '/api/publira.v1.DomainService/GetTenantByDomain');
+    expect(sent.url.path, '/rpc/publira.v1.DomainService/GetTenantByDomain');
     expect(jsonDecode(sent.body), const {
       'domains': ['localhost'],
     });

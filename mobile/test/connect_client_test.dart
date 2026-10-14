@@ -295,7 +295,7 @@ void main() {
 
     expect(
       sent.url.toString(),
-      'https://example.test/api/publira.v1.CatalogService/ListPublishedSeries',
+      'https://example.test/rpc/publira.v1.CatalogService/ListPublishedSeries',
     );
     expect(sent.method, 'POST');
     expect(sent.headers['connect-protocol-version'], '1');
@@ -304,7 +304,7 @@ void main() {
     expect(jsonDecode(sent.body), const {'limit': 20});
   });
 
-  test('unary sends the procedure under /api on the base origin', () async {
+  test('unary sends the procedure under /rpc on the base origin', () async {
     late http.Request sent;
     final client = ConnectClient(
       baseUrl: 'http://127.0.0.1:8000',
@@ -318,7 +318,7 @@ void main() {
 
     expect(
       sent.url.toString(),
-      'http://127.0.0.1:8000/api/publira.v1.DomainService/GetTenantByDomain',
+      'http://127.0.0.1:8000/rpc/publira.v1.DomainService/GetTenantByDomain',
     );
   });
 

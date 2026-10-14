@@ -102,7 +102,7 @@ collect_failure_artifacts() {
       -H 'content-type: application/json' \
       -H 'connect-protocol-version: 1' \
       --data "{\"domains\":[\"${PUBLIRA_TENANT_HOST}\"]}" \
-      "http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_PORT}/api/publira.v1.DomainService/GetTenantByDomain" || true
+      "http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_PORT}/rpc/publira.v1.DomainService/GetTenantByDomain" || true
     echo
     echo "=== ping ${host_address} from the device ==="
     adb -s "${device}" shell ping -c 3 -W 2 "${host_address}" || true

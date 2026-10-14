@@ -34,7 +34,7 @@ class AppConfig {
     );
   }
 
-  /// `publira server` itself, which serves the public API under `/api` and the
+  /// `publira server` itself, which serves the public API under `/rpc` and the
   /// images under `/images`.
   static const defaultBaseUrl = 'http://127.0.0.1:8000';
 

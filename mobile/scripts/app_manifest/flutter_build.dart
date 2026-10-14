@@ -125,7 +125,7 @@ List<String> flutterBuildArguments(
   } else {
     // A release Android build refuses cleartext traffic, so a store build
     // reaching its API over http:// would fail only on the reader's device.
-    // The app puts `/api` and `/images` on the origin alone, so anything
+    // The app puts `/rpc` and `/images` on the origin alone, so anything
     // after it would be dropped without a word.
     final uri = Uri.tryParse(baseUrl);
     final schemes = production ? const ['https'] : const ['http', 'https'];
