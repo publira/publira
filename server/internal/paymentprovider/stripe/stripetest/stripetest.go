@@ -133,6 +133,17 @@ func (a *API) SetRefunded(secretKey, id string, amount int64) {
 	a.intent(secretKey, id).refunded = amount
 }
 
+// setCurrency makes currency the one the payment intent id under secretKey is
+// in, unless it is in one already, as a refund that arrives before the
+// checkout does needs it to be.
+func (a *API) setCurrency(secretKey, id, currency string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if intent := a.intent(secretKey, id); intent.currency == "" {
+		intent.currency = strings.ToLower(currency)
+	}
+}
+
 // FailNextRefund makes the next refund created on the payment intent id under
 // secretKey one Stripe answers as failed, which refunds nothing.
 func (a *API) FailNextRefund(secretKey, id string) {
@@ -354,6 +365,7 @@ func (f *Fixture) CheckoutCompleted(t testing.TB, credentials paymentprovider.Cr
 func (f *Fixture) Refunded(t testing.TB, credentials paymentprovider.Credentials, refund paymentprovidertest.Refund) ([]byte, http.Header) {
 	t.Helper()
 	f.API.SetRefunded(credentials[stripe.FieldSecretKey], refund.PaymentID, refund.AmountRefunded)
+	f.API.setCurrency(credentials[stripe.FieldSecretKey], refund.PaymentID, refund.Currency)
 	return recorded(t, credentials, "charge.refunded.json", map[string]any{
 		"amount_refunded": refund.AmountRefunded,
 		"currency":        strings.ToLower(refund.Currency),
@@ -375,6 +387,7 @@ func (f *Fixture) FailNextRefund(_ testing.TB, credentials paymentprovider.Crede
 func (f *Fixture) RefundFailed(t testing.TB, credentials paymentprovider.Credentials, refund paymentprovidertest.Refund) ([]byte, http.Header) {
 	t.Helper()
 	f.API.SetRefunded(credentials[stripe.FieldSecretKey], refund.PaymentID, refund.AmountRefunded)
+	f.API.setCurrency(credentials[stripe.FieldSecretKey], refund.PaymentID, refund.Currency)
 	return recorded(t, credentials, "refund.failed.json", map[string]any{
 		"currency":       strings.ToLower(refund.Currency),
 		"payment_intent": refund.PaymentID,

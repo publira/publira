@@ -459,6 +459,35 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 		}
 	})
 
+	t.Run("a refund that fails before its purchase corrects the held refund", func(t *testing.T) {
+		tenant := newTenant(t, credentials)
+		paymentID := id("payment_held_refund_failed")
+		for _, total := range []int64{200, 500} {
+			refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: total})
+			if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
+				t.Fatalf("refund to %d: %v", total, err)
+			}
+		}
+		failed, failedHeaders := fixture.RefundFailed(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 200})
+		if err := tenant.Deliver(t, failed, failedHeaders); err != nil {
+			t.Fatalf("failed refund: %v", err)
+		}
+		checkout, checkoutHeaders := fixture.CheckoutCompleted(t, credentials, Checkout{
+			CheckoutID: id("checkout_held_refund_failed"),
+			PaymentID:  paymentID,
+			Purchase:   tenant.Purchase(),
+		})
+		if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
+			t.Fatalf("checkout: %v", err)
+		}
+		if got := tenant.RefundedAmount(t); got != 200 {
+			t.Fatalf("refunded amount = %d, want the 200 that stays refunded", got)
+		}
+		if !tenant.OpensEpisode(t) {
+			t.Fatal("a purchase refunded in part does not open the episode")
+		}
+	})
+
 	t.Run("a full refund that fails reopens the purchase", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
 		paymentID := id("payment_refund_reopened")

@@ -68,7 +68,9 @@ type AdminPurchaseServiceClient interface {
 	// Asks the provider the reader paid through to refund whatever of the
 	// payment it has not refunded yet, and revokes the purchase at once, with
 	// staff as the reason; the amount refunded is recorded when the provider's
-	// notification of it arrives. A purchase already refunded in full or
+	// notification of it arrives, and a refund the provider reports failed or
+	// canceled takes the revocation back. Asking again after that is a new
+	// attempt, which the provider is sent under a new idempotency key. A purchase already refunded in full or
 	// revoked by staff comes back as it is, without a second request to the
 	// provider, and so does one the provider reports refunded in full already,
 	// which is left for that notification to revoke. A store purchase, a purchase made without a payment, a disputed
@@ -95,7 +97,9 @@ type AdminPurchaseServiceHandler interface {
 	// Asks the provider the reader paid through to refund whatever of the
 	// payment it has not refunded yet, and revokes the purchase at once, with
 	// staff as the reason; the amount refunded is recorded when the provider's
-	// notification of it arrives. A purchase already refunded in full or
+	// notification of it arrives, and a refund the provider reports failed or
+	// canceled takes the revocation back. Asking again after that is a new
+	// attempt, which the provider is sent under a new idempotency key. A purchase already refunded in full or
 	// revoked by staff comes back as it is, without a second request to the
 	// provider, and so does one the provider reports refunded in full already,
 	// which is left for that notification to revoke. A store purchase, a purchase made without a payment, a disputed

@@ -208,7 +208,7 @@ func (p *Provider) ParseNotification(ctx context.Context, payload []byte, header
 	switch event.Type {
 	case stripego.EventTypeChargeRefunded:
 		return refundedEvent(&event)
-	case stripego.EventTypeRefundFailed:
+	case stripego.EventTypeRefundFailed, stripego.EventTypeRefundUpdated:
 		return p.refundFailedEvent(ctx, credentials, &event)
 	case stripego.EventTypeChargeDisputeCreated:
 		return disputedEvent(&event)
@@ -241,13 +241,17 @@ func refundedEvent(event *stripego.Event) (paymentprovider.Event, error) {
 	}, nil
 }
 
-// refundFailedEvent reads the payment of a refund that failed, and the total
-// that stays refunded on it from the payment's charge: the event is about the
-// refund alone.
+// refundFailedEvent reads a refund that failed, which refund.failed reports,
+// or that was canceled, which only refund.updated does, and the total that
+// stays refunded on its payment from the payment's charge: the event is about
+// the refund alone. Any other update of a refund is ignored.
 func (p *Provider) refundFailedEvent(ctx context.Context, credentials paymentprovider.Credentials, event *stripego.Event) (paymentprovider.Event, error) {
 	var refund stripego.Refund
 	if err := json.Unmarshal(event.Data.Raw, &refund); err != nil {
 		return nil, fmt.Errorf("%w: refund: %v", paymentprovider.ErrMalformedNotification, err)
+	}
+	if refund.Status != stripego.RefundStatusFailed && refund.Status != stripego.RefundStatusCanceled {
+		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
 	}
 	paymentIntentID := ""
 	if refund.PaymentIntent != nil {

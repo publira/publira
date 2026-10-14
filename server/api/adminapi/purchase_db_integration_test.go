@@ -551,3 +551,83 @@ func TestDBRevokePurchaseForStaffTakesOverOnlyTheRefundsOwnNotification(t *testi
 		t.Fatalf("reason of a disputed purchase = %q, want dispute", got)
 	}
 }
+
+// Once Stripe has refused or failed a staff refund, asking again is a new
+// attempt under a new idempotency key: under the old one Stripe would only
+// answer the failure again.
+func TestDBRefundPurchaseRetriesAFailedRefundUnderANewKey(t *testing.T) {
+	f := newPurchaseFixture(t)
+	purchasedAt := time.Now().Add(-time.Hour)
+	keys := func(paymentID string) []string {
+		var keys []string
+		for _, refund := range f.stripe.Refunds() {
+			if refund.PaymentIntentID == paymentID {
+				keys = append(keys, refund.IdempotencyKey)
+			}
+		}
+		return keys
+	}
+
+	t.Run("a refund Stripe failed at once", func(t *testing.T) {
+		purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: purchasedAt, paymentID: "pi_failed_at_once"})
+		f.stripe.FailNextRefund(purchaseTestSecretKey, "pi_failed_at_once")
+		_, err := f.refund(purchaseID)
+		assertConnectCode(t, "the first RefundPurchase", err, connect.CodeFailedPrecondition)
+
+		purchase, err := f.refund(purchaseID)
+		if err != nil {
+			t.Fatalf("RefundPurchase again: %v", err)
+		}
+		if purchase.RevocationReason != publiraadminv1.PurchaseRevocationReason_PURCHASE_REVOCATION_REASON_STAFF {
+			t.Fatalf("purchase = %+v, want revoked by staff", purchase)
+		}
+		if got := keys("pi_failed_at_once"); len(got) != 2 || got[0] == got[1] {
+			t.Fatalf("idempotency keys = %v, want two different ones", got)
+		}
+		if got := f.stripe.RefundedTotal(purchaseTestSecretKey, "pi_failed_at_once"); got != 500 {
+			t.Fatalf("refunded total = %d, want 500", got)
+		}
+		if got := f.refundAudits(t, purchaseID); got != 1 {
+			t.Fatalf("audit entries = %d, want 1", got)
+		}
+	})
+
+	t.Run("a refund that failed after Stripe accepted it", func(t *testing.T) {
+		purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.bob, episode: f.episodeB, purchasedAt: purchasedAt, paymentID: "pi_failed_later"})
+		if _, err := f.refund(purchaseID); err != nil {
+			t.Fatalf("RefundPurchase: %v", err)
+		}
+		// Stripe's notification that the refund failed, as the webhook
+		// records it.
+		f.stripe.SetRefunded(purchaseTestSecretKey, "pi_failed_later", 0)
+		if _, err := dbmodels.New(f.env.PG.DB).RecordFailedRefundOnPurchase(context.Background(), dbmodels.RecordFailedRefundOnPurchaseParams{
+			TenantID:          f.admin.Tenant.ID,
+			Provider:          stripe.ID,
+			ProviderPaymentID: "pi_failed_later",
+			Currency:          "JPY",
+			RefundedAmount:    0,
+		}); err != nil {
+			t.Fatalf("record the failed refund: %v", err)
+		}
+		reopened, err := f.client().GetPurchase(f.ctx(), &publiraadminv1.GetPurchaseRequest{Tenant: f.admin.tenantContext(), PurchaseId: purchaseID.String()})
+		if err != nil {
+			t.Fatalf("GetPurchase: %v", err)
+		}
+		if reopened.Purchase.RevokedAt != "" || !reopened.Purchase.Refundable {
+			t.Fatalf("purchase after its refund failed = %+v, want open and refundable", reopened.Purchase)
+		}
+
+		if _, err := f.refund(purchaseID); err != nil {
+			t.Fatalf("RefundPurchase again: %v", err)
+		}
+		if got := keys("pi_failed_later"); len(got) != 2 || got[0] == got[1] {
+			t.Fatalf("idempotency keys = %v, want two different ones", got)
+		}
+		if got := f.stripe.RefundedTotal(purchaseTestSecretKey, "pi_failed_later"); got != 500 {
+			t.Fatalf("refunded total = %d, want 500", got)
+		}
+		if got := f.refundAudits(t, purchaseID); got != 2 {
+			t.Fatalf("audit entries = %d, want one per attempt", got)
+		}
+	})
+}

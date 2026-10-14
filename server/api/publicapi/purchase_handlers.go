@@ -608,11 +608,12 @@ func (s *apiServer) recordFailedRefund(
 	providerID string,
 	event paymentprovider.RefundFailed,
 ) error {
-	if event.AmountRefunded < 0 || event.AmountRefunded > math.MaxInt32 {
-		s.logger.WarnContext(ctx, "a failed refund reported an amount that stays refunded out of range and is not recorded",
+	if event.Currency == "" || event.AmountRefunded < 0 || event.AmountRefunded > math.MaxInt32 {
+		s.logger.WarnContext(ctx, "a failed refund reported no comparable amount that stays refunded and is not recorded",
 			"tenant_id", tenantID,
 			"event_id", event.ID,
 			"payment_id", event.PaymentID,
+			"currency", event.Currency,
 			"amount_refunded", event.AmountRefunded,
 		)
 		return nil
@@ -626,8 +627,9 @@ func (s *apiServer) recordFailedRefund(
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		// A refund held for a purchase that is not here yet is all that
-		// remains to correct, and one that no longer refunds anything has
-		// nothing left to apply.
+		// remains to correct: it is set to what stays refunded, or released
+		// when that is nothing, so the purchase it is applied to later is not
+		// refunded by the failed one.
 		if event.AmountRefunded == 0 {
 			if err := queries.ReleaseUnappliedRefund(ctx, dbmodels.ReleaseUnappliedRefundParams{
 				TenantID:          tenantID,
@@ -636,6 +638,14 @@ func (s *apiServer) recordFailedRefund(
 			}); err != nil {
 				return s.internalDBError(ctx, "failed to release a held refund that failed", err, "event_id", event.ID, "payment_id", event.PaymentID)
 			}
+		} else if err := queries.ReplaceUnappliedRefund(ctx, dbmodels.ReplaceUnappliedRefundParams{
+			TenantID:          tenantID,
+			Provider:          providerID,
+			ProviderPaymentID: event.PaymentID,
+			RefundedAmount:    int32(event.AmountRefunded),
+			Currency:          event.Currency,
+		}); err != nil {
+			return s.internalDBError(ctx, "failed to correct a held refund one of whose refunds failed", err, "event_id", event.ID, "payment_id", event.PaymentID)
 		}
 		s.logger.WarnContext(ctx, "a failed refund matches no purchase",
 			"tenant_id", tenantID,

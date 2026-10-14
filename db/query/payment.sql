@@ -306,13 +306,32 @@ FROM refund
 WHERE p.id = refund.id
 RETURNING p.*;
 
+-- name: LiftStaffRevocation :one
+-- Takes back the revocation RevokePurchaseForStaff made when the refund it was
+-- made for did not happen, and moves the purchase on to staff's next attempt
+-- when next_attempt is set: the provider refused or failed the refund, and
+-- under the same idempotency key would only answer that again. A purchase a
+-- refund has covered in full since, or that something else revoked, is left
+-- alone.
+UPDATE purchases
+SET revoked_at = NULL,
+    revocation_reason = NULL,
+    staff_refund_attempt = staff_refund_attempt + CASE WHEN sqlc.arg('next_attempt')::boolean THEN 1 ELSE 0 END
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND revocation_reason = 'staff'
+    AND refunded_at IS NULL
+RETURNING id;
+
 -- name: RecordFailedRefundOnPurchase :one
 -- Records that a refund of the purchase's payment failed after the provider
 -- accepted it, taking the total that stays refunded from the provider as it
 -- now stands, which is the one place a recorded amount goes down. Once that
 -- total falls short of the price, the purchase is no longer refunded in full,
 -- and a revocation that came from a refund, the provider's or the one staff
--- asked for, is lifted with it, so the reader keeps what they still pay for.
+-- asked for, is lifted with it, so the reader keeps what they still pay for,
+-- and lifting staff's moves the purchase on to staff's next attempt, which a
+-- new request is sent under: the provider would answer the failed one again.
 -- A total of nothing is still recorded as an amount rather than as no refund:
 -- royalty_uncarried_refunds reads a purchase with an amount, which is how a
 -- refund a closed statement already carried is carried back. A dispute keeps
@@ -333,6 +352,11 @@ SET refunded_amount = sqlc.arg('refunded_amount')::integer,
         WHEN sqlc.arg('refunded_amount')::integer < p.price_at_purchase
             AND p.revocation_reason IN ('refund', 'staff') THEN NULL
         ELSE p.revocation_reason
+    END,
+    staff_refund_attempt = p.staff_refund_attempt + CASE
+        WHEN sqlc.arg('refunded_amount')::integer < p.price_at_purchase
+            AND p.revocation_reason = 'staff' THEN 1
+        ELSE 0
     END
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.provider = sqlc.arg('provider')::text
@@ -432,6 +456,18 @@ SET refunded_amount = refund.amount,
 FROM refund
 WHERE p.id = refund.id
 RETURNING p.*;
+
+-- name: ReplaceUnappliedRefund :exec
+-- Sets a held refund to the total that stays refunded once one of the refunds
+-- it counted has failed, the one place a held amount goes down. Nothing is
+-- held for the payment in the ordinary case, and nothing changes then.
+UPDATE unapplied_refunds
+SET refunded_amount = sqlc.arg('refunded_amount')::integer,
+    currency = sqlc.arg('currency')::text,
+    received_at = NOW()
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND provider = sqlc.arg('provider')::text
+    AND provider_payment_id = sqlc.arg('provider_payment_id')::text;
 
 -- name: ReleaseUnappliedRefund :exec
 DELETE FROM unapplied_refunds
@@ -666,7 +702,8 @@ SELECT p.id,
     p.refunded_amount,
     p.refunded_at,
     p.revoked_at,
-    p.revocation_reason
+    p.revocation_reason,
+    p.staff_refund_attempt
 FROM purchases p
     JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
@@ -678,12 +715,13 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.id = ANY(sqlc.arg('ids')::uuid[]);
 
 -- name: RevokePurchaseForStaff :one
--- Revokes a purchase staff have refunded, and answers no row when there is
--- nothing for this call to change: staff revoked it already, which a second
--- request racing the first finds once that one commits, or the reader's
--- dispute revoked it first, which the dispute keeps. A refund recorded in
--- between is the provider's notification of the refund staff asked for, so
--- its reason gives way to staff while the instant stays.
+-- Revokes a purchase staff are about to refund, before the provider is asked,
+-- so that whatever the provider reports about the refund lands on a purchase
+-- already revoked. It answers no row when there is nothing for this call to
+-- change: staff revoked it already, which a second request racing the first
+-- finds once that one commits, or the reader's dispute revoked it first, which
+-- the dispute keeps. A refund recorded first gives way to staff while its
+-- instant stays.
 UPDATE purchases
 SET revoked_at = COALESCE(revoked_at, NOW()),
     revocation_reason = 'staff'

@@ -26,7 +26,7 @@ WHERE d.tenant_id = p.tenant_id
     AND p.tenant_id = $1
     AND p.provider = $2::text
     AND p.provider_payment_id = $3::text
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt
 `
 
 type ApplyUnappliedDisputeToPurchaseParams struct {
@@ -61,6 +61,7 @@ func (q *Queries) ApplyUnappliedDisputeToPurchase(ctx context.Context, arg Apply
 		&i.Currency,
 		&i.RevokedAt,
 		&i.RevocationReason,
+		&i.StaffRefundAttempt,
 	)
 	return i, err
 }
@@ -109,7 +110,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt
 `
 
 type ApplyUnappliedRefundToPurchaseParams struct {
@@ -147,6 +148,7 @@ func (q *Queries) ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyU
 		&i.Currency,
 		&i.RevokedAt,
 		&i.RevocationReason,
+		&i.StaffRefundAttempt,
 	)
 	return i, err
 }
@@ -179,7 +181,7 @@ VALUES (
     $11::text
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt
 `
 
 type CreatePurchaseFromProviderCheckoutParams struct {
@@ -234,6 +236,7 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 		&i.Currency,
 		&i.RevokedAt,
 		&i.RevocationReason,
+		&i.StaffRefundAttempt,
 	)
 	return i, err
 }
@@ -517,6 +520,37 @@ func (q *Queries) HoldUnappliedRefund(ctx context.Context, arg HoldUnappliedRefu
 		arg.Currency,
 	)
 	return err
+}
+
+const LiftStaffRevocation = `-- name: LiftStaffRevocation :one
+UPDATE purchases
+SET revoked_at = NULL,
+    revocation_reason = NULL,
+    staff_refund_attempt = staff_refund_attempt + CASE WHEN $1::boolean THEN 1 ELSE 0 END
+WHERE tenant_id = $2
+    AND id = $3
+    AND revocation_reason = 'staff'
+    AND refunded_at IS NULL
+RETURNING id
+`
+
+type LiftStaffRevocationParams struct {
+	NextAttempt bool      `json:"next_attempt"`
+	TenantID    uuid.UUID `json:"tenant_id"`
+	ID          uuid.UUID `json:"id"`
+}
+
+// Takes back the revocation RevokePurchaseForStaff made when the refund it was
+// made for did not happen, and moves the purchase on to staff's next attempt
+// when next_attempt is set: the provider refused or failed the refund, and
+// under the same idempotency key would only answer that again. A purchase a
+// refund has covered in full since, or that something else revoked, is left
+// alone.
+func (q *Queries) LiftStaffRevocation(ctx context.Context, arg LiftStaffRevocationParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, LiftStaffRevocation, arg.NextAttempt, arg.TenantID, arg.ID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const ListMyPurchasesAsc = `-- name: ListMyPurchasesAsc :many
@@ -1003,7 +1037,8 @@ SELECT p.id,
     p.refunded_amount,
     p.refunded_at,
     p.revoked_at,
-    p.revocation_reason
+    p.revocation_reason,
+    p.staff_refund_attempt
 FROM purchases p
     JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
@@ -1021,27 +1056,28 @@ type ListPurchasesForTenantByIDsParams struct {
 }
 
 type ListPurchasesForTenantByIDsRow struct {
-	ID                uuid.UUID      `json:"id"`
-	EpisodeID         uuid.UUID      `json:"episode_id"`
-	EpisodePublicID   string         `json:"episode_public_id"`
-	EpisodeTitle      string         `json:"episode_title"`
-	SeriesPublicID    string         `json:"series_public_id"`
-	SeriesTitle       string         `json:"series_title"`
-	ReaderPublicID    sql.NullString `json:"reader_public_id"`
-	ReaderName        sql.NullString `json:"reader_name"`
-	ReaderEmail       sql.NullString `json:"reader_email"`
-	PriceAtPurchase   int32          `json:"price_at_purchase"`
-	Currency          string         `json:"currency"`
-	PurchasedAt       time.Time      `json:"purchased_at"`
-	ExpiresAt         sql.NullTime   `json:"expires_at"`
-	Provider          sql.NullString `json:"provider"`
-	ProviderPaymentID sql.NullString `json:"provider_payment_id"`
-	Store             sql.NullString `json:"store"`
-	IsTest            bool           `json:"is_test"`
-	RefundedAmount    sql.NullInt32  `json:"refunded_amount"`
-	RefundedAt        sql.NullTime   `json:"refunded_at"`
-	RevokedAt         sql.NullTime   `json:"revoked_at"`
-	RevocationReason  sql.NullString `json:"revocation_reason"`
+	ID                 uuid.UUID      `json:"id"`
+	EpisodeID          uuid.UUID      `json:"episode_id"`
+	EpisodePublicID    string         `json:"episode_public_id"`
+	EpisodeTitle       string         `json:"episode_title"`
+	SeriesPublicID     string         `json:"series_public_id"`
+	SeriesTitle        string         `json:"series_title"`
+	ReaderPublicID     sql.NullString `json:"reader_public_id"`
+	ReaderName         sql.NullString `json:"reader_name"`
+	ReaderEmail        sql.NullString `json:"reader_email"`
+	PriceAtPurchase    int32          `json:"price_at_purchase"`
+	Currency           string         `json:"currency"`
+	PurchasedAt        time.Time      `json:"purchased_at"`
+	ExpiresAt          sql.NullTime   `json:"expires_at"`
+	Provider           sql.NullString `json:"provider"`
+	ProviderPaymentID  sql.NullString `json:"provider_payment_id"`
+	Store              sql.NullString `json:"store"`
+	IsTest             bool           `json:"is_test"`
+	RefundedAmount     sql.NullInt32  `json:"refunded_amount"`
+	RefundedAt         sql.NullTime   `json:"refunded_at"`
+	RevokedAt          sql.NullTime   `json:"revoked_at"`
+	RevocationReason   sql.NullString `json:"revocation_reason"`
+	StaffRefundAttempt int32          `json:"staff_refund_attempt"`
 }
 
 // What the console shows of each purchase named, in no particular order. The
@@ -1079,6 +1115,7 @@ func (q *Queries) ListPurchasesForTenantByIDs(ctx context.Context, arg ListPurch
 			&i.RefundedAt,
 			&i.RevokedAt,
 			&i.RevocationReason,
+			&i.StaffRefundAttempt,
 		); err != nil {
 			return nil, err
 		}
@@ -1126,7 +1163,7 @@ SET revoked_at = COALESCE(revoked_at, NOW()),
 WHERE tenant_id = $1
     AND provider = $2::text
     AND provider_payment_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt
 `
 
 type RecordDisputeOnPurchaseParams struct {
@@ -1162,6 +1199,7 @@ func (q *Queries) RecordDisputeOnPurchase(ctx context.Context, arg RecordDispute
 		&i.Currency,
 		&i.RevokedAt,
 		&i.RevocationReason,
+		&i.StaffRefundAttempt,
 	)
 	return i, err
 }
@@ -1229,12 +1267,17 @@ SET refunded_amount = $1::integer,
         WHEN $1::integer < p.price_at_purchase
             AND p.revocation_reason IN ('refund', 'staff') THEN NULL
         ELSE p.revocation_reason
+    END,
+    staff_refund_attempt = p.staff_refund_attempt + CASE
+        WHEN $1::integer < p.price_at_purchase
+            AND p.revocation_reason = 'staff' THEN 1
+        ELSE 0
     END
 WHERE p.tenant_id = $2
     AND p.provider = $3::text
     AND p.provider_payment_id = $4::text
     AND p.currency = $5::text
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt
 `
 
 type RecordFailedRefundOnPurchaseParams struct {
@@ -1250,7 +1293,9 @@ type RecordFailedRefundOnPurchaseParams struct {
 // now stands, which is the one place a recorded amount goes down. Once that
 // total falls short of the price, the purchase is no longer refunded in full,
 // and a revocation that came from a refund, the provider's or the one staff
-// asked for, is lifted with it, so the reader keeps what they still pay for.
+// asked for, is lifted with it, so the reader keeps what they still pay for,
+// and lifting staff's moves the purchase on to staff's next attempt, which a
+// new request is sent under: the provider would answer the failed one again.
 // A total of nothing is still recorded as an amount rather than as no refund:
 // royalty_uncarried_refunds reads a purchase with an amount, which is how a
 // refund a closed statement already carried is carried back. A dispute keeps
@@ -1285,6 +1330,7 @@ func (q *Queries) RecordFailedRefundOnPurchase(ctx context.Context, arg RecordFa
 		&i.Currency,
 		&i.RevokedAt,
 		&i.RevocationReason,
+		&i.StaffRefundAttempt,
 	)
 	return i, err
 }
@@ -1322,7 +1368,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt
 `
 
 type RecordRefundOnPurchaseParams struct {
@@ -1375,6 +1421,7 @@ func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOn
 		&i.Currency,
 		&i.RevokedAt,
 		&i.RevocationReason,
+		&i.StaffRefundAttempt,
 	)
 	return i, err
 }
@@ -1415,6 +1462,38 @@ func (q *Queries) ReleaseUnappliedRefund(ctx context.Context, arg ReleaseUnappli
 	return err
 }
 
+const ReplaceUnappliedRefund = `-- name: ReplaceUnappliedRefund :exec
+UPDATE unapplied_refunds
+SET refunded_amount = $1::integer,
+    currency = $2::text,
+    received_at = NOW()
+WHERE tenant_id = $3
+    AND provider = $4::text
+    AND provider_payment_id = $5::text
+`
+
+type ReplaceUnappliedRefundParams struct {
+	RefundedAmount    int32     `json:"refunded_amount"`
+	Currency          string    `json:"currency"`
+	TenantID          uuid.UUID `json:"tenant_id"`
+	Provider          string    `json:"provider"`
+	ProviderPaymentID string    `json:"provider_payment_id"`
+}
+
+// Sets a held refund to the total that stays refunded once one of the refunds
+// it counted has failed, the one place a held amount goes down. Nothing is
+// held for the payment in the ordinary case, and nothing changes then.
+func (q *Queries) ReplaceUnappliedRefund(ctx context.Context, arg ReplaceUnappliedRefundParams) error {
+	_, err := q.db.ExecContext(ctx, ReplaceUnappliedRefund,
+		arg.RefundedAmount,
+		arg.Currency,
+		arg.TenantID,
+		arg.Provider,
+		arg.ProviderPaymentID,
+	)
+	return err
+}
+
 const RevokePurchaseForStaff = `-- name: RevokePurchaseForStaff :one
 UPDATE purchases
 SET revoked_at = COALESCE(revoked_at, NOW()),
@@ -1431,12 +1510,13 @@ type RevokePurchaseForStaffParams struct {
 	ID       uuid.UUID `json:"id"`
 }
 
-// Revokes a purchase staff have refunded, and answers no row when there is
-// nothing for this call to change: staff revoked it already, which a second
-// request racing the first finds once that one commits, or the reader's
-// dispute revoked it first, which the dispute keeps. A refund recorded in
-// between is the provider's notification of the refund staff asked for, so
-// its reason gives way to staff while the instant stays.
+// Revokes a purchase staff are about to refund, before the provider is asked,
+// so that whatever the provider reports about the refund lands on a purchase
+// already revoked. It answers no row when there is nothing for this call to
+// change: staff revoked it already, which a second request racing the first
+// finds once that one commits, or the reader's dispute revoked it first, which
+// the dispute keeps. A refund recorded first gives way to staff while its
+// instant stays.
 func (q *Queries) RevokePurchaseForStaff(ctx context.Context, arg RevokePurchaseForStaffParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, RevokePurchaseForStaff, arg.TenantID, arg.ID)
 	var id uuid.UUID
