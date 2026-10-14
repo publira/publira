@@ -2,9 +2,11 @@
 -- replies readers mail back.
 --
 -- Expected plans:
---   CreateContactMessageEntry, CreateReaderContactMessageEntry
+--   CreateContactMessageEntry
 --     -> contact_message_entries_pkey and
 --        contact_message_entries_tenant_message_id_key for the uniqueness checks
+--   CreateReaderContactMessageEntry
+--     -> the same, and contact_message_entries_tenant_delivery_key_key
 --   ListContactMessageEntriesByMessageIDs
 --     -> contact_message_entries_tenant_message_id_key
 --   ListContactMessageEntries, ListContactMessageEntryMessageIDsBefore
@@ -37,9 +39,10 @@ RETURNING *;
 -- name: CreateReaderContactMessageEntry :one
 -- A reply the reader mailed back, as the inbound webhook stores it. A provider
 -- delivers a mail again whenever it is not sure the first delivery landed, so
--- a Message-ID already stored is a redelivery: nothing is written and no row
--- comes back. A mail that came in without one cannot be told from a new one
--- and is stored each time.
+-- a Message-ID or a delivery key already stored is a redelivery: nothing is
+-- written and no row comes back. The conflict names no target because either
+-- unique index can be the one that recognises it. A mail that came in with
+-- neither cannot be told from a new one and is stored each time.
 INSERT INTO contact_message_entries (
     id,
     tenant_id,
@@ -47,6 +50,7 @@ INSERT INTO contact_message_entries (
     direction,
     body,
     message_id,
+    delivery_key,
     from_email
 ) VALUES (
     sqlc.arg('id'),
@@ -55,9 +59,10 @@ INSERT INTO contact_message_entries (
     'reader',
     sqlc.arg('body'),
     sqlc.narg('message_id'),
+    sqlc.narg('delivery_key'),
     sqlc.arg('from_email')
 )
-ON CONFLICT (tenant_id, message_id) DO NOTHING
+ON CONFLICT DO NOTHING
 RETURNING *;
 
 -- name: ListContactMessageEntriesByMessageIDs :many

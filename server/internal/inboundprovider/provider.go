@@ -113,6 +113,14 @@ type Message struct {
 	// MessageID is the mail's Message-ID without its angle brackets, or empty
 	// when it carries none.
 	MessageID string
+	// DeliveryKey names this delivery of the mail: a redelivery of it, or a
+	// replay of the request that carried it, repeats the key, and another
+	// receipt of the same text does not. It is empty for a provider that has
+	// nothing of the kind. It is kept apart from MessageID, which later
+	// replies name in In-Reply-To and References and so has to be the mail's
+	// own; the key only recognises a mail that arrives again, which matters
+	// for one that carries no Message-ID.
+	DeliveryKey string
 	// InReplyTo and References are the ids those headers name, without their
 	// angle brackets, in the order the headers list them.
 	InReplyTo  []string

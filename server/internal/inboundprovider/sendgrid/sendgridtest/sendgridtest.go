@@ -4,6 +4,7 @@ package sendgridtest
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -79,10 +80,11 @@ func BasicAuth(token string) string {
 }
 
 // HeaderBlock answers the raw header block of mail, as Inbound Parse posts it
-// in its `headers` field.
+// in its `headers` field. Each call is another receipt of mail, with a
+// Received line of its own.
 func HeaderBlock(mail inboundprovidertest.Mail) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Received: from mail.example.net by mx.sendgrid.net\r\n")
+	fmt.Fprintf(&b, "Received: from mail.example.net by mx.sendgrid.net with ESMTP id %s\r\n", rand.Text())
 	fmt.Fprintf(&b, "From: Reader <%s>\r\n", mail.From)
 	fmt.Fprintf(&b, "To: %s\r\n", mail.To)
 	fmt.Fprintf(&b, "Subject: %s\r\n", mail.Subject)

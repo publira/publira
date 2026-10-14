@@ -8,6 +8,7 @@
 package mailgun
 
 import (
+	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -49,7 +50,7 @@ const (
 	// not say that a retry is signed anew, so a retry still carrying the first
 	// attempt's timestamp has to verify until the last one. The signature
 	// covers the body, so a request replayed inside it is the same mail, and
-	// stores nothing twice once its Message-ID is stored.
+	// stores nothing twice once its Message-ID or its delivery key is stored.
 	signatureMaxAge = 8 * time.Hour
 
 	// signatureMaxSkew is how far ahead of now a request's timestamp may be,
@@ -121,8 +122,7 @@ func (p *Provider) ParseWebhook(_ context.Context, payload []byte, headers http.
 	if mediaType, _, err := mime.ParseMediaType(headers.Get("Content-Type")); err != nil || mediaType != "application/json" {
 		return nil, fmt.Errorf("%w: the request is not the JSON a Route signs", inboundprovider.ErrInvalidSignature)
 	}
-	signature := headers.Get("X-Mailgun-Signature")
-	if !verify(headers.Get("X-Mailgun-Timestamp"), payload, key, p.now(), signature, headers.Get("X-Mailgun-Parent-Signature")) {
+	if !verify(headers.Get("X-Mailgun-Timestamp"), payload, key, p.now(), headers.Get("X-Mailgun-Signature"), headers.Get("X-Mailgun-Parent-Signature")) {
 		return nil, inboundprovider.ErrInvalidSignature
 	}
 
@@ -131,13 +131,21 @@ func (p *Provider) ParseWebhook(_ context.Context, payload []byte, headers http.
 		return nil, fmt.Errorf("%w: decode the post: %w", inboundprovider.ErrMalformedRequest, err)
 	}
 	header := textproto.MIMEHeader{}
+	var block bytes.Buffer
 	for _, pair := range doc.MessageHeaders {
 		if len(pair) == 2 {
 			header.Add(pair[0], pair[1])
+			block.WriteString(pair[0] + ": " + pair[1] + "\r\n")
 		}
 	}
 
-	msg := inboundprovider.Message{Text: doc.BodyPlain}
+	// A Route post carries no id of its own, and a retry may be signed anew,
+	// so the delivery key comes from the header Mailgun received the mail
+	// with, in the order it lists it.
+	msg := inboundprovider.Message{
+		Text:        doc.BodyPlain,
+		DeliveryKey: inboundprovider.HeaderDeliveryKey(block.Bytes()),
+	}
 	if strings.TrimSpace(msg.Text) == "" {
 		msg.Text = inboundprovider.HTMLToText(doc.BodyHTML)
 	}
@@ -158,7 +166,7 @@ func (p *Provider) ParseWebhook(_ context.Context, payload []byte, headers http.
 	}
 	msg.ID = msg.MessageID
 	if msg.ID == "" {
-		msg.ID = signature
+		msg.ID = msg.DeliveryKey
 	}
 	return msg, nil
 }

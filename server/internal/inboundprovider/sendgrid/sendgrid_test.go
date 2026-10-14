@@ -1,6 +1,7 @@
 package sendgrid_test
 
 import (
+	"bytes"
 	"errors"
 	"net/http"
 	"os"
@@ -93,6 +94,26 @@ func TestParseWebhookReadsTheRawMIMEForm(t *testing.T) {
 	want := "I tried again and it still fails on my tablet. The error says the episode is not available in my region, which seems wrong."
 	if got := inboundprovider.StripQuoted(msg.Text); got != want {
 		t.Errorf("StripQuoted(Text) = %q, want %q", got, want)
+	}
+}
+
+// Inbound Parse posts no id of its own. A redelivery of a mail is the same
+// receipt of it whatever boundary its form is written with, and names the same
+// delivery.
+func TestParseWebhookNamesARedeliveryAsTheSameDelivery(t *testing.T) {
+	for _, name := range []string{"inbound_parse.multipart", "inbound_parse_raw.multipart"} {
+		t.Run(name, func(t *testing.T) {
+			payload, headers := recorded(t, name)
+			first := parse(t, payload, headers)
+			if first.DeliveryKey == "" {
+				t.Fatal("DeliveryKey is empty")
+			}
+			redelivered := bytes.ReplaceAll(payload, []byte("xYzZY"), []byte("aBcCB"))
+			headers.Set("Content-Type", "multipart/form-data; boundary=aBcCB")
+			if again := parse(t, redelivered, headers); again.DeliveryKey != first.DeliveryKey {
+				t.Errorf("DeliveryKey of the redelivery = %q, want %q", again.DeliveryKey, first.DeliveryKey)
+			}
+		})
 	}
 }
 

@@ -35,7 +35,7 @@ INSERT INTO contact_message_entries (
     $7,
     $8
 )
-RETURNING id, tenant_id, contact_message_id, direction, author_id, body, message_id, created_at, from_email
+RETURNING id, tenant_id, contact_message_id, direction, author_id, body, message_id, created_at, from_email, delivery_key
 `
 
 type CreateContactMessageEntryParams struct {
@@ -54,9 +54,11 @@ type CreateContactMessageEntryParams struct {
 //
 // Expected plans:
 //
-//	CreateContactMessageEntry, CreateReaderContactMessageEntry
+//	CreateContactMessageEntry
 //	  -> contact_message_entries_pkey and
 //	     contact_message_entries_tenant_message_id_key for the uniqueness checks
+//	CreateReaderContactMessageEntry
+//	  -> the same, and contact_message_entries_tenant_delivery_key_key
 //	ListContactMessageEntriesByMessageIDs
 //	  -> contact_message_entries_tenant_message_id_key
 //	ListContactMessageEntries, ListContactMessageEntryMessageIDsBefore
@@ -85,6 +87,7 @@ func (q *Queries) CreateContactMessageEntry(ctx context.Context, arg CreateConta
 		&i.MessageID,
 		&i.CreatedAt,
 		&i.FromEmail,
+		&i.DeliveryKey,
 	)
 	return i, err
 }
@@ -97,6 +100,7 @@ INSERT INTO contact_message_entries (
     direction,
     body,
     message_id,
+    delivery_key,
     from_email
 ) VALUES (
     $1,
@@ -105,10 +109,11 @@ INSERT INTO contact_message_entries (
     'reader',
     $4,
     $5,
-    $6
+    $6,
+    $7
 )
-ON CONFLICT (tenant_id, message_id) DO NOTHING
-RETURNING id, tenant_id, contact_message_id, direction, author_id, body, message_id, created_at, from_email
+ON CONFLICT DO NOTHING
+RETURNING id, tenant_id, contact_message_id, direction, author_id, body, message_id, created_at, from_email, delivery_key
 `
 
 type CreateReaderContactMessageEntryParams struct {
@@ -117,14 +122,16 @@ type CreateReaderContactMessageEntryParams struct {
 	ContactMessageID uuid.UUID      `json:"contact_message_id"`
 	Body             string         `json:"body"`
 	MessageID        sql.NullString `json:"message_id"`
+	DeliveryKey      sql.NullString `json:"delivery_key"`
 	FromEmail        sql.NullString `json:"from_email"`
 }
 
 // A reply the reader mailed back, as the inbound webhook stores it. A provider
 // delivers a mail again whenever it is not sure the first delivery landed, so
-// a Message-ID already stored is a redelivery: nothing is written and no row
-// comes back. A mail that came in without one cannot be told from a new one
-// and is stored each time.
+// a Message-ID or a delivery key already stored is a redelivery: nothing is
+// written and no row comes back. The conflict names no target because either
+// unique index can be the one that recognises it. A mail that came in with
+// neither cannot be told from a new one and is stored each time.
 func (q *Queries) CreateReaderContactMessageEntry(ctx context.Context, arg CreateReaderContactMessageEntryParams) (ContactMessageEntry, error) {
 	row := q.db.QueryRowContext(ctx, CreateReaderContactMessageEntry,
 		arg.ID,
@@ -132,6 +139,7 @@ func (q *Queries) CreateReaderContactMessageEntry(ctx context.Context, arg Creat
 		arg.ContactMessageID,
 		arg.Body,
 		arg.MessageID,
+		arg.DeliveryKey,
 		arg.FromEmail,
 	)
 	var i ContactMessageEntry
@@ -145,12 +153,13 @@ func (q *Queries) CreateReaderContactMessageEntry(ctx context.Context, arg Creat
 		&i.MessageID,
 		&i.CreatedAt,
 		&i.FromEmail,
+		&i.DeliveryKey,
 	)
 	return i, err
 }
 
 const GetContactMessageEntryForTenant = `-- name: GetContactMessageEntryForTenant :one
-SELECT e.id, e.tenant_id, e.contact_message_id, e.direction, e.author_id, e.body, e.message_id, e.created_at, e.from_email,
+SELECT e.id, e.tenant_id, e.contact_message_id, e.direction, e.author_id, e.body, e.message_id, e.created_at, e.from_email, e.delivery_key,
     u.email AS author_email,
     u.status AS author_status
 FROM contact_message_entries e
@@ -175,6 +184,7 @@ type GetContactMessageEntryForTenantRow struct {
 	MessageID        sql.NullString `json:"message_id"`
 	CreatedAt        time.Time      `json:"created_at"`
 	FromEmail        sql.NullString `json:"from_email"`
+	DeliveryKey      sql.NullString `json:"delivery_key"`
 	AuthorEmail      sql.NullString `json:"author_email"`
 	AuthorStatus     sql.NullString `json:"author_status"`
 }
@@ -194,6 +204,7 @@ func (q *Queries) GetContactMessageEntryForTenant(ctx context.Context, arg GetCo
 		&i.MessageID,
 		&i.CreatedAt,
 		&i.FromEmail,
+		&i.DeliveryKey,
 		&i.AuthorEmail,
 		&i.AuthorStatus,
 	)
@@ -201,7 +212,7 @@ func (q *Queries) GetContactMessageEntryForTenant(ctx context.Context, arg GetCo
 }
 
 const ListContactMessageEntries = `-- name: ListContactMessageEntries :many
-SELECT e.id, e.tenant_id, e.contact_message_id, e.direction, e.author_id, e.body, e.message_id, e.created_at, e.from_email,
+SELECT e.id, e.tenant_id, e.contact_message_id, e.direction, e.author_id, e.body, e.message_id, e.created_at, e.from_email, e.delivery_key,
     u.public_id AS author_public_id,
     u.name AS author_name
 FROM contact_message_entries e
@@ -228,6 +239,7 @@ type ListContactMessageEntriesRow struct {
 	MessageID        sql.NullString `json:"message_id"`
 	CreatedAt        time.Time      `json:"created_at"`
 	FromEmail        sql.NullString `json:"from_email"`
+	DeliveryKey      sql.NullString `json:"delivery_key"`
 	AuthorPublicID   sql.NullString `json:"author_public_id"`
 	AuthorName       sql.NullString `json:"author_name"`
 }
@@ -254,6 +266,7 @@ func (q *Queries) ListContactMessageEntries(ctx context.Context, arg ListContact
 			&i.MessageID,
 			&i.CreatedAt,
 			&i.FromEmail,
+			&i.DeliveryKey,
 			&i.AuthorPublicID,
 			&i.AuthorName,
 		); err != nil {

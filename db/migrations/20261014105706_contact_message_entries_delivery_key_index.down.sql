@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS contact_message_entries_tenant_delivery_key_key;

@@ -2,7 +2,9 @@ package inboundprovider
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -180,6 +182,17 @@ func ApplyHeader(msg *Message, header mail.Header) {
 	}
 	msg.InReplyTo = ParseMessageIDs(header.Get("In-Reply-To"))
 	msg.References = ParseMessageIDs(header.Get("References"))
+}
+
+// HeaderDeliveryKey answers a [Message.DeliveryKey] derived from a mail's
+// header as the provider received it, for a provider that posts no id of its
+// own: the SHA-256 of the header, in hex. The header holds the Received line
+// the provider's MX added when it accepted the mail, which names that receipt
+// by the MX's queue id and the time, so every post of one receipt repeats the
+// key and the same text mailed again does not.
+func HeaderDeliveryKey(header []byte) string {
+	sum := sha256.Sum256(header)
+	return hex.EncodeToString(sum[:])
 }
 
 // ReadHeaderBlock reads a raw header block, as SendGrid posts it apart from the

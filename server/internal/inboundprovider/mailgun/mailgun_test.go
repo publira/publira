@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -202,6 +203,30 @@ func TestParseWebhookReadsARetryHoursAfterItWasSigned(t *testing.T) {
 	msg := parse(t, at(signedAt.Add(7*time.Hour+55*time.Minute)), payload, headers)
 	if msg.MessageID != "CAJ4k2m1+9xQ@mail.example.net" {
 		t.Errorf("MessageID = %q", msg.MessageID)
+	}
+}
+
+// A Route post carries no id of its own. A retry of it is the same receipt of
+// the same mail however it is signed and encoded, and names the same delivery.
+func TestParseWebhookNamesARetryAsTheSameDelivery(t *testing.T) {
+	payload, headers, provider := recorded(t, "route_forward.json")
+	first := parse(t, provider, payload, headers)
+	if first.DeliveryKey == "" {
+		t.Fatal("DeliveryKey is empty")
+	}
+
+	var doc map[string]any
+	if err := json.Unmarshal(payload, &doc); err != nil {
+		t.Fatalf("decode the recorded post: %v", err)
+	}
+	retry := mailguntest.Encode(t, doc)
+	if bytes.Equal(retry, payload) {
+		t.Fatal("the retry is encoded as the recorded post was")
+	}
+	signedAt := time.Unix(recordedPosts["route_forward.json"].signedAt, 0).Add(time.Hour)
+	again := parse(t, at(signedAt), retry, mailguntest.Sign(retry, signingKey, signedAt))
+	if again.DeliveryKey != first.DeliveryKey {
+		t.Errorf("DeliveryKey of the retry = %q, want %q", again.DeliveryKey, first.DeliveryKey)
 	}
 }
 

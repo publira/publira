@@ -111,6 +111,35 @@ func RunParse(t *testing.T, fixture Fixture) {
 		}
 	})
 
+	t.Run("a request read again names the same delivery", func(t *testing.T) {
+		withoutID := mail
+		withoutID.MessageID = ""
+		read := func(payload []byte, headers http.Header) inboundprovider.Message {
+			t.Helper()
+			result, err := provider.ParseWebhook(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseWebhook: %v", err)
+			}
+			msg, ok := result.(inboundprovider.Message)
+			if !ok {
+				t.Fatalf("result = %T, want Message", result)
+			}
+			return msg
+		}
+		payload, headers := fixture.Received(t, credentials, withoutID)
+		first := read(payload, headers)
+		if first.DeliveryKey == "" {
+			t.Skip("the provider names no delivery")
+		}
+		if again := read(payload, headers); again.DeliveryKey != first.DeliveryKey {
+			t.Errorf("DeliveryKey of the same request read again = %q, want %q", again.DeliveryKey, first.DeliveryKey)
+		}
+		payload, headers = fixture.Received(t, credentials, withoutID)
+		if other := read(payload, headers); other.DeliveryKey == first.DeliveryKey {
+			t.Errorf("DeliveryKey of another receipt of the same mail = %q, the same as the first", other.DeliveryKey)
+		}
+	})
+
 	t.Run("an unrelated request is ignored", func(t *testing.T) {
 		payload, headers, ok := fixture.Unrelated(t, credentials)
 		if !ok {
