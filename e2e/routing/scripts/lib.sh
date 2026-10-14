@@ -157,6 +157,7 @@ fi
 PUBLIRA_ROUTING_ROUTERS=(
   web-storefront
   web-admin
+  rpc
   api
   images
 )

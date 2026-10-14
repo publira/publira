@@ -31,12 +31,30 @@ assert_unrouted "unlisted numbered admin host" GET admin2.localhost /series
 assert_unrouted "unlisted platform host" GET platform.example.com /tenants
 assert_unrouted "unlisted site host" GET unknown-tenant.localhost /
 assert_unrouted "unlisted host with port" GET unknown-tenant.localhost:3080 /
+assert_unrouted "unlisted host on /rpc" GET unknown-tenant.localhost /rpc/foo
+assert_unrouted "unlisted host on bare /rpc" GET unknown-tenant.localhost /rpc
 assert_unrouted "unlisted host on /api" GET unknown-tenant.localhost /api/foo
 assert_unrouted "unlisted host on /api/v1" POST unknown-tenant.localhost /api/v1/revalidate
 assert_unrouted "unlisted host on /images" GET admin.example.com /images/cover
 
-# /api reaches the server :8000 with the path intact, on every listed host:
+# /rpc reaches the server :8000 with the path intact, on every listed host:
 # the server's own routes carry the prefix.
+assert_route "rpc keeps /rpc" GET localhost /rpc api /rpc
+assert_route "rpc keeps /rpc/" GET localhost /rpc/ api /rpc/
+assert_route "rpc keeps a procedure path" GET localhost /rpc/publira.v1.CatalogService/ListPublishedSeries api /rpc/publira.v1.CatalogService/ListPublishedSeries
+assert_route "rpc keeps a deeper path" GET localhost /rpc/foo/bar api /rpc/foo/bar
+assert_route "rpc on admin host" GET admin.localhost /rpc/foo api /rpc/foo
+assert_route "rpc on platform host" GET platform.localhost /rpc/foo api /rpc/foo
+assert_route "rpc on a site host of no convention" GET reader.example.org /rpc/foo api /rpc/foo
+assert_route "rpc on a console host of no convention" GET studio.example.com /rpc/foo api /rpc/foo
+assert_route "rpc on a platform host of no convention" GET operators.example.net /rpc/foo api /rpc/foo
+
+# The prefix ends at the path segment: /rpcabc is a path of the app the host
+# rules picked.
+assert_route "rpcabc stays on web-storefront" GET localhost /rpcabc web-storefront /rpcabc
+
+# /api, the prefix the server had before /rpc, is routed the same way until
+# 0.2.0, for the clients not yet on /rpc.
 assert_route "api keeps /api" GET localhost /api api /api
 assert_route "api keeps /api/" GET localhost /api/ api /api/
 assert_route "api keeps a procedure path" GET localhost /api/publira.v1.CatalogService/ListPublishedSeries api /api/publira.v1.CatalogService/ListPublishedSeries
@@ -80,8 +98,9 @@ assert_webhook_delivered "SendGrid post of 32 MiB reaches web-storefront whole" 
 
 # A reader's icon upload is the largest request the public API reads: an image
 # of up to 10 MiB in the base64 of the JSON encoding, and the fields beside it.
-# It has to reach the api backend whole on the tenant site.
-assert_upload_delivered "icon upload of 15029592 bytes reaches api whole" localhost /api/publira.v1.AuthService/UploadMyIcon api 15029592 0
+# It has to reach the api backend whole on the tenant site, under either prefix.
+assert_upload_delivered "icon upload of 15029592 bytes reaches api whole" localhost /rpc/publira.v1.AuthService/UploadMyIcon api 15029592 0
+assert_upload_delivered "icon upload of 15029592 bytes under /api reaches api whole" localhost /api/publira.v1.AuthService/UploadMyIcon api 15029592 0
 
 # The episode edit screen posts a whole episode's pages in one upload, which
 # web-admin reads up to 256 MiB of, and the edge gives it 300 seconds to
@@ -97,6 +116,7 @@ assert_upload_delivered "page upload of 256 MiB over 75 seconds reaches web-admi
 assert_trace_context_stripped "web-storefront drops trace context" GET localhost / web-storefront /
 assert_trace_context_stripped "web-admin drops trace context" GET admin.localhost / web-admin /
 assert_trace_context_stripped "web-platform drops trace context" GET platform.localhost / web-platform /
+assert_trace_context_stripped "rpc drops trace context" GET localhost /rpc/foo api /rpc/foo
 assert_trace_context_stripped "api drops trace context" GET localhost /api/foo api /api/foo
 assert_trace_context_stripped "api on admin host drops trace context" GET admin.localhost /api/foo api /api/foo
 assert_trace_context_stripped "revalidate drops trace context" POST localhost /api/v1/revalidate web-storefront /api/v1/revalidate
@@ -112,6 +132,7 @@ assert_trace_context_stripped "images on admin host drop trace context" GET admi
 assert_forwarded_headers "web-storefront is given the edge's forwarded headers" GET localhost / web-storefront
 assert_forwarded_headers "web-admin is given the edge's forwarded headers" GET admin.localhost / web-admin
 assert_forwarded_headers "web-platform is given the edge's forwarded headers" GET platform.localhost / web-platform
+assert_forwarded_headers "rpc is given the edge's forwarded headers" GET localhost /rpc/foo api
 assert_forwarded_headers "api is given the edge's forwarded headers" GET localhost /api/foo api
 assert_forwarded_headers "images are given the edge's forwarded headers" GET localhost /images/cover api
 assert_forwarded_headers "images on admin host are given the edge's forwarded headers" GET admin.localhost /images/cover api

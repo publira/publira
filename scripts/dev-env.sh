@@ -118,7 +118,8 @@ start_profile() {
   )
 
   # One process serves the API and the images on one port: the edge forwards
-  # `/api` and `/images` to it, and the Next.js apps dial its `/api` directly.
+  # `/rpc`, `/api`, and `/images` to it, and the Next.js apps dial its `/api`
+  # directly.
   # The Redis URL is the image conversion cache's; the rate limit counters use
   # it too once it is there.
   dev_env_start_background "${run_dir}" server "${tracing[@]}" "${object_store[@]}" \

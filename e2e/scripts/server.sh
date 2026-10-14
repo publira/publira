@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Start/stop only the server process, the one that answers the API and the
-# images on one port: `/api` and `/images` reach it as they are, and the
-# Next.js apps dial its `/api` directly.
+# images on one port: `/rpc`, `/api`, and `/images` reach it as they are, and
+# the Next.js apps dial its `/api` directly.
 #
 # start-apps.sh uses it for the normal lifecycle; the outage scenarios
 # (e2e/src/server.ts) use it to take the backend down mid-run and bring it

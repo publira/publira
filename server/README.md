@@ -303,7 +303,7 @@ On the platform API it runs as a service principal with no operator and no platf
 - `PlatformOperatorService/ListOperators`, `GetOperator`
 - `PlatformUserService/ListEndUsers`, `GetEndUser`
 
-`PlatformSetupService/CreateInitialUser`, which creates the first operator with the `platform_super_admin` role while the platform has none, takes the credential as well, and is refused with `unauthenticated` to any caller without it. The edge forwards `/api` on every host, so an install whose first operator has not been created yet, or that runs no Platform Console at all, would otherwise hand the platform to whoever reaches a tenant's site first. The Platform Console's setup screen sends the credential from its server. `CheckSetupStatus` stays open, since the setup screen asks it before anyone has signed in.
+`PlatformSetupService/CreateInitialUser`, which creates the first operator with the `platform_super_admin` role while the platform has none, takes the credential as well, and is refused with `unauthenticated` to any caller without it. The edge forwards `/rpc` and `/api` on every host, so an install whose first operator has not been created yet, or that runs no Platform Console at all, would otherwise hand the platform to whoever reaches a tenant's site first. The Platform Console's setup screen sends the credential from its server. `CheckSetupStatus` stays open, since the setup screen asks it before anyone has signed in.
 
 ## Email renderer
 
@@ -755,13 +755,13 @@ The rate is `complete_count / member_view_count` over a range of days. A period 
 
 ## API namespace separation
 
-`publira server` (`server/cmd/publira`) serves all three Connect namespaces under `/api` on one listener, `:8000` (changeable with `PUBLIRA_PUBLIC_API_ADDR`), beside `GET /images/…`, `/livez`, and `/readyz`:
+`publira server` (`server/cmd/publira`) serves all three Connect namespaces under `/rpc` on one listener, and under `/api` as well until 0.2.0 removes it, `:8000` (changeable with `PUBLIRA_PUBLIC_API_ADDR`), beside `GET /images/…`, `/livez`, and `/readyz`:
 
 - `publira.v1` — `CatalogService`, `AuthService`, and the rest of the public API
 - `publira.admin.v1` — `AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`, and the rest of the tenant console's API
 - `publira.platform.v1` — the Platform Console's API
 
-The reverse proxy forwards `/api` and `/images` to it, prefixes kept, on every host, and web-storefront, web-admin, and web-platform dial the same `/api` directly over the private network. The proto packages produce non-colliding procedure paths, so one mux carries all three. The namespaces are kept apart by the login each is answered on and by their authentication, not by where they are reachable: a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on one route, so both consoles' RPCs are reachable through the edge on every tenant site, and each refuses a caller without an operator session or the [web service credential](#web-service-credential) before any handler runs. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
+The reverse proxy forwards `/rpc`, `/api`, and `/images` to it, prefixes kept, on every host, and web-storefront, web-admin, and web-platform dial the same listener directly over the private network. The proto packages produce non-colliding procedure paths, so one mux carries all three. The namespaces are kept apart by the login each is answered on and by their authentication, not by where they are reachable: a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on one route, so both consoles' RPCs are reachable through the edge on every tenant site, and each refuses a caller without an operator session or the [web service credential](#web-service-credential) before any handler runs. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
 
 ## Database users
 
@@ -837,7 +837,7 @@ Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL
   - `GET /livez` — process liveness. Always `200` with a plain `ok`. Intended for a K8s livenessProbe.
   - `GET /readyz` — readiness of the dependencies. `200` when healthy, `503` when not. Intended for a K8s readinessProbe or a load balancer.
   - Server / worker: at minimum a DB `Ping`
-  - `publira server` holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform` — so a failure says which login stopped answering. The edge forwards `/api` and `/images` alone, so its `/readyz` is not an outsider's to read.
+  - `publira server` holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform` — so a failure says which login stopped answering. The edge forwards `/rpc`, `/api`, and `/images` alone, so its `/readyz` is not an outsider's to read.
   - Web (`web-admin` / `web-storefront` / `web-platform`): the upstream API's `/readyz` plus Redis (the Redis check is skipped when `PNCH_REDIS_URL` is disabled)
   - Example `/readyz` responses (JSON):
     - Healthy: `{"status":"ok","checks":{"db":{"status":"ok"}}}`

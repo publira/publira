@@ -32,6 +32,7 @@ var unreachableFirstSegments = map[string]struct{}{
 	"api":     {},
 	"livez":   {},
 	"readyz":  {},
+	"rpc":     {},
 	"sitemap": {},
 }
 

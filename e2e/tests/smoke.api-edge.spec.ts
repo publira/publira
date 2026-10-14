@@ -8,10 +8,13 @@ import {
   WEB_PLATFORM_BASE_URL,
 } from "../src/urls";
 
-const CATALOG_PROCEDURE = "/api/publira.v1.CatalogService/ListPublishedSeries";
-const ADMIN_PROCEDURE = "/api/publira.admin.v1.AdminSeriesService/ListSeries";
+const CATALOG_PROCEDURE = "/publira.v1.CatalogService/ListPublishedSeries";
+const ADMIN_PROCEDURE = "/publira.admin.v1.AdminSeriesService/ListSeries";
 const PLATFORM_PROCEDURE =
-  "/api/publira.platform.v1.PlatformTenantService/ListTenants";
+  "/publira.platform.v1.PlatformTenantService/ListTenants";
+
+/** `/api` is the prefix before `/rpc`, served beside it until 0.2.0. */
+const prefixes = ["/rpc", "/api"] as const;
 
 const edgeHosts = [
   ["the tenant site", WEB_STOREFRONT_BASE_URL],
@@ -62,8 +65,8 @@ const postThroughEdge = (
   );
 
 /**
- * One process serves all three Connect namespaces under `/api`, and the edge
- * forwards `/api` to it on every host, so the console namespaces are reachable
+ * One process serves all three Connect namespaces under `/rpc` and `/api`, and
+ * the edge forwards both to it on every host, so the console namespaces are reachable
  * from the internet. What keeps an outsider out of them is their own
  * authentication, which refuses an anonymous caller before any handler runs.
  * The tenant console's procedure names a tenant that exists, because the
@@ -71,23 +74,25 @@ const postThroughEdge = (
  */
 test.describe("the edge forwards every API namespace", () => {
   for (const [label, baseUrl] of edgeHosts) {
-    test(`refuses an anonymous caller of the console namespaces on ${label}`, async ({
-      page,
-    }) => {
-      await page.goto(baseUrl);
+    for (const prefix of prefixes) {
+      test(`refuses an anonymous caller of the console namespaces under ${prefix} on ${label}`, async ({
+        page,
+      }) => {
+        await page.goto(baseUrl);
 
-      const unauthenticated = { code: "unauthenticated", status: 401 };
-      expect(
-        await postThroughEdge(page, ADMIN_PROCEDURE, {
-          tenant: { tenantId: SEED_TENANT_ID },
-        })
-      ).toEqual(unauthenticated);
-      expect(await postThroughEdge(page, PLATFORM_PROCEDURE)).toEqual(
-        unauthenticated
-      );
-      // The public namespace is answered on the same host and path prefix.
-      const catalog = await postThroughEdge(page, CATALOG_PROCEDURE);
-      expect(catalog.status).not.toBe(404);
-    });
+        const unauthenticated = { code: "unauthenticated", status: 401 };
+        expect(
+          await postThroughEdge(page, prefix + ADMIN_PROCEDURE, {
+            tenant: { tenantId: SEED_TENANT_ID },
+          })
+        ).toEqual(unauthenticated);
+        expect(
+          await postThroughEdge(page, prefix + PLATFORM_PROCEDURE)
+        ).toEqual(unauthenticated);
+        // The public namespace is answered on the same host and path prefix.
+        const catalog = await postThroughEdge(page, prefix + CATALOG_PROCEDURE);
+        expect(catalog.status).not.toBe(404);
+      });
+    }
   }
 });

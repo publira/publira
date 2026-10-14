@@ -283,13 +283,13 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 	}, nil
 }
 
-// serverHandler serves the Connect namespaces under /api and image delivery
+// serverHandler serves the Connect namespaces under /rpc and image delivery
 // under /images, which the edge forwards with their prefixes kept and the web
 // apps dial on the same paths. Nothing is registered at the root, so a
-// procedure has one path wherever it is called from. The console namespaces
-// are reachable through the edge on every host, and each of their RPCs refuses
-// a caller without an operator session or the web service token before any
-// handler runs.
+// procedure has the same path wherever it is called from. The console
+// namespaces are reachable through the edge on every host, and each of their
+// RPCs refuses a caller without an operator session or the web service token
+// before any handler runs.
 //
 // Readiness names one check per pool: with up to three logins behind one
 // listener, a single "db" could not say which of them stopped answering. The
@@ -321,7 +321,11 @@ func serverHandler(clientIPs *clientip.Resolver, served servedAPIs, pools server
 	if served.platform != nil {
 		served.platform.Register(api)
 	}
-	mux.Handle("/api/", http.StripPrefix("/api", api))
+	// /api serves the same namespaces for the clients not yet on /rpc, and is
+	// removed in 0.2.0.
+	for _, prefix := range []string{"/rpc", "/api"} {
+		mux.Handle(prefix+"/", http.StripPrefix(prefix, api))
+	}
 	if served.images != nil {
 		served.images.Register(mux)
 	}
