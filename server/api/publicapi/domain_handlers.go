@@ -44,9 +44,14 @@ func (s *apiServer) GetTenantByDomain(
 	if err != nil {
 		return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
 	}
+	supportedLocales, err := locale.ResolveSupported(tenant.SupportedLocales)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant supported locales name an unsupported locale", err, "tenant_id", tenant.ID.String())
+	}
 
 	return &publirav1.GetTenantByDomainResponse{
-		TenantId:      tenant.ID.String(),
-		DefaultLocale: defaultLocale,
+		TenantId:         tenant.ID.String(),
+		DefaultLocale:    defaultLocale,
+		SupportedLocales: supportedLocales,
 	}, nil
 }

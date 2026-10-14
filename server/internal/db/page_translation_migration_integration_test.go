@@ -68,8 +68,8 @@ func TestPageTranslationMigrationKeepsExistingPages(t *testing.T) {
 	defer cancel()
 	db := pg.DB
 
-	japanese := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	english := pg.SeedTenant(t, "TENANTB", "tenant-b.example.com", "Tenant B")
+	japanese := pg.SeedTenantOnOlderSchema(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	english := pg.SeedTenantOnOlderSchema(t, "TENANTB", "tenant-b.example.com", "Tenant B")
 	mustExec(t, ctx, db, `UPDATE tenants SET default_locale = 'en' WHERE id = $1`, english.ID)
 
 	terms := insertLegacyPage(t, ctx, db, japanese.ID, "/terms", "Terms of Service", 2, true)

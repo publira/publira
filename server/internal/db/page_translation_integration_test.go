@@ -158,7 +158,7 @@ func TestPageTranslationForFallsBackToTheDefaultThenTheOldest(t *testing.T) {
 		t.Fatalf("translation for fr = %v, want the default-locale ja one %v", got, fixture.japanese)
 	}
 
-	mustExec(t, ctx, pg.DB, `UPDATE tenants SET default_locale = 'fr' WHERE id = $1`, fixture.tenantID)
+	mustExec(t, ctx, pg.DB, `UPDATE tenants SET default_locale = 'fr', supported_locales = supported_locales || 'fr'::text WHERE id = $1`, fixture.tenantID)
 	mustExec(t, ctx, pg.DB, `UPDATE page_translations SET created_at = now() - interval '1 day' WHERE id = $1`, fixture.english)
 	if got := pick("fr"); got != fixture.english {
 		t.Fatalf("translation for fr with no fr default = %v, want the oldest en one %v", got, fixture.english)

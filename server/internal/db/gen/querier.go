@@ -305,9 +305,9 @@ type Querier interface {
 	// second insert of the same one is no row and the caller reads the first.
 	CreateStorePurchase(ctx context.Context, arg CreateStorePurchaseParams) (Purchase, error)
 	// Tenant creation for platform administrators.
-	// default_locale has no column DEFAULT, so the caller always passes it
-	// explicitly. timezone is not left to its column DEFAULT either: the
-	// platform default is applied explicitly.
+	// default_locale and supported_locales have no column DEFAULT, so the caller
+	// always passes them explicitly. timezone is not left to its column DEFAULT
+	// either: the platform default is applied explicitly.
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	CreateTenantAdminInvitation(ctx context.Context, arg CreateTenantAdminInvitationParams) (TenantAdminInvitation, error)
 	CreateTenantConfig(ctx context.Context, arg CreateTenantConfigParams) (TenantConfig, error)
@@ -2883,8 +2883,10 @@ type Querier interface {
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)
 	UpdateTenantCommunityLimitOverrides(ctx context.Context, arg UpdateTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)
 	UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfigParams) (TenantConfig, error)
-	// No row when the tenant already has that locale, for the reason
-	// UpdateTenantTimezone gives.
+	// The default and the set it belongs to are written in one statement, so the
+	// CHECK that the set holds the default sees them together and neither can be
+	// saved apart from the other. No row when the tenant already has both, for the
+	// reason UpdateTenantTimezone gives.
 	UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenantDefaultLocaleParams) (Tenant, error)
 	// Update the tenant name and its domains.
 	UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error)

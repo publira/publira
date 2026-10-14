@@ -30,7 +30,8 @@ INSERT INTO tenants (
     admin_domain,
     name,
     status,
-    default_locale
+    default_locale,
+    supported_locales
 )
 VALUES
     (
@@ -40,7 +41,8 @@ VALUES
         'admin.social.localhost:' || :'tenant_port',
         'Social Sign-in Tenant',
         'active',
-        'en'
+        'en',
+        ARRAY['ja', 'en', 'ko', 'zh-Hans', 'zh-Hant']
     ),
     (
         '018f1050-0001-7000-8000-000000000002'::uuid,
@@ -49,7 +51,8 @@ VALUES
         'admin.social-consent.localhost:' || :'tenant_port',
         'Social Consent Tenant',
         'active',
-        'en'
+        'en',
+        ARRAY['ja', 'en', 'ko', 'zh-Hans', 'zh-Hant']
     );
 
 INSERT INTO tenant_google_sign_in_config (tenant_id, enabled, web_client_id)

@@ -108,7 +108,8 @@ func (s *adminServer) unchangedTenant(txCtx context.Context, tenantID uuid.UUID)
 }
 
 // tenantDefaultLocaleRevalidateTags lists the public site caches that render
-// tenant-facing copy, so a default locale change is reflected right away.
+// tenant-facing copy, so a change to the default locale or to the locales the
+// site offers is reflected right away.
 func tenantDefaultLocaleRevalidateTags(tenantID string) []string {
 	return tenantTimezoneRevalidateTags(tenantID)
 }
@@ -125,14 +126,30 @@ func (s *adminServer) GetTenantDefaultLocale(
 		return nil, err
 	}
 
-	defaultLocale, err := locale.Resolve(tenant.DefaultLocale)
+	defaultLocale, supportedLocales, err := s.tenantLocales(ctx, tenant)
 	if err != nil {
-		return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
+		return nil, err
 	}
 
 	return &publiraadminv1.GetTenantDefaultLocaleResponse{
-		DefaultLocale: defaultLocale,
+		DefaultLocale:    defaultLocale,
+		SupportedLocales: supportedLocales,
 	}, nil
+}
+
+// tenantLocales resolves the stored default locale and the locales the
+// tenant's site offers, failing on either rather than answering a language the
+// tenant did not choose.
+func (s *adminServer) tenantLocales(ctx context.Context, tenant dbmodels.Tenant) (string, []string, error) {
+	defaultLocale, err := locale.Resolve(tenant.DefaultLocale)
+	if err != nil {
+		return "", nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
+	}
+	supportedLocales, err := locale.ResolveSupported(tenant.SupportedLocales)
+	if err != nil {
+		return "", nil, s.internalError(ctx, "tenant supported locales name an unsupported locale", err, "tenant_id", tenant.ID.String())
+	}
+	return defaultLocale, supportedLocales, nil
 }
 
 func (s *adminServer) UpdateTenantDefaultLocale(
@@ -152,12 +169,17 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
+	supportedLocales, err := locale.NormalizeSupported(defaultLocale, req.SupportedLocales)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
+	}
 
 	var updated dbmodels.Tenant
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
 		row, err := s.queriesFor(txCtx).UpdateTenantDefaultLocale(txCtx, dbmodels.UpdateTenantDefaultLocaleParams{
-			ID:            tenant.ID,
-			DefaultLocale: defaultLocale,
+			ID:               tenant.ID,
+			DefaultLocale:    defaultLocale,
+			SupportedLocales: supportedLocales,
 		})
 		if errors.Is(err, sql.ErrNoRows) {
 			updated, err = s.unchangedTenant(txCtx, tenant.ID)
@@ -177,13 +199,14 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 
 	// The stored row rather than the request: what the console renders next is
 	// what the update actually persisted.
-	savedLocale, err := locale.Resolve(updated.DefaultLocale)
+	savedLocale, savedSupportedLocales, err := s.tenantLocales(ctx, updated)
 	if err != nil {
-		return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
+		return nil, err
 	}
 
 	return &publiraadminv1.UpdateTenantDefaultLocaleResponse{
-		DefaultLocale: savedLocale,
+		DefaultLocale:    savedLocale,
+		SupportedLocales: savedSupportedLocales,
 	}, nil
 }
 

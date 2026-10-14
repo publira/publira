@@ -29,12 +29,16 @@ func (s *apiServer) GetTenant(
 
 	queries := s.queriesFor(ctx)
 
-	// Unlike the copy below, the locale is not optional: it decides which
-	// language every string on the site is read in, so a stored value this
+	// Unlike the copy below, the locales are not optional: they decide which
+	// languages every string on the site is read in, so a stored value this
 	// build cannot render is reported instead of silently becoming another.
 	defaultLocale, err := locale.Resolve(tenant.DefaultLocale)
 	if err != nil {
 		return nil, s.internalError(ctx, "tenant default locale is not a supported locale", err, "tenant_id", tenant.ID.String())
+	}
+	supportedLocales, err := locale.ResolveSupported(tenant.SupportedLocales)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant supported locales name an unsupported locale", err, "tenant_id", tenant.ID.String())
 	}
 
 	// Fetch tenant config (optional)
@@ -137,6 +141,7 @@ func (s *apiServer) GetTenant(
 		Theme:                     theme,
 		Timezone:                  tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 		DefaultLocale:             defaultLocale,
+		SupportedLocales:          supportedLocales,
 		AcceptsPayments:           acceptsPayments,
 		Currency:                  currency,
 		AgeVerification:           ageVerification,

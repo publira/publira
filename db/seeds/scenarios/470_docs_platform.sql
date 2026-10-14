@@ -37,7 +37,8 @@ INSERT INTO tenants (
     name,
     status,
     default_locale,
-    created_at
+    created_at,
+    supported_locales
 )
 VALUES
     (
@@ -48,7 +49,8 @@ VALUES
         'Platform Docs Tenant',
         'active',
         'en',
-        TIMESTAMPTZ '2026-02-02 09:00:00+00'
+        TIMESTAMPTZ '2026-02-02 09:00:00+00',
+        ARRAY['ja', 'en', 'ko', 'zh-Hans', 'zh-Hant']
     ),
     (
         '018f1090-0007-7000-8000-000000000002'::uuid,
@@ -58,7 +60,8 @@ VALUES
         'Suspended Docs Tenant',
         'suspended',
         'en',
-        TIMESTAMPTZ '2026-02-03 09:00:00+00'
+        TIMESTAMPTZ '2026-02-03 09:00:00+00',
+        ARRAY['ja', 'en', 'ko', 'zh-Hans', 'zh-Hant']
     )
 ON CONFLICT (public_id) DO UPDATE
 SET domain = EXCLUDED.domain,
@@ -66,6 +69,7 @@ SET domain = EXCLUDED.domain,
     name = EXCLUDED.name,
     status = EXCLUDED.status,
     default_locale = EXCLUDED.default_locale,
+    supported_locales = EXCLUDED.supported_locales,
     created_at = EXCLUDED.created_at;
 
 -- Three members of staff, one in each role, and two readers.

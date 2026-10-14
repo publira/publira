@@ -155,3 +155,80 @@ func TestGeneratedLocalesMatchIndex(t *testing.T) {
 		t.Fatalf("Supported = %q, want %q from locales/index.json", Supported, want)
 	}
 }
+
+func TestNormalizeSupportedStoresTheSetInRegistryOrder(t *testing.T) {
+	tests := []struct {
+		name          string
+		defaultLocale string
+		raw           []string
+		want          []string
+	}{
+		{name: "default alone", defaultLocale: "en", raw: []string{"en"}, want: []string{"en"}},
+		{name: "reordered", defaultLocale: "en", raw: []string{"zh-Hant", "en", "ja"}, want: []string{"ja", "en", "zh-Hant"}},
+		{name: "duplicates dropped", defaultLocale: "ja", raw: []string{"ja", "ko", "ja", " ko "}, want: []string{"ja", "ko"}},
+		{name: "every locale", defaultLocale: "ko", raw: slices.Clone(Supported), want: Supported},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NormalizeSupported(tt.defaultLocale, tt.raw)
+			if err != nil {
+				t.Fatalf("NormalizeSupported(%q, %q): %v", tt.defaultLocale, tt.raw, err)
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Fatalf("NormalizeSupported(%q, %q) = %q, want %q", tt.defaultLocale, tt.raw, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeSupportedRejectsUnusableSets(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  []string
+		want error
+	}{
+		{name: "nil", raw: nil, want: ErrSupportedRequired},
+		{name: "empty", raw: []string{}, want: ErrSupportedRequired},
+		{name: "blank element", raw: []string{"ja", " "}, want: ErrInvalidSupported},
+		{name: "unsupported code", raw: []string{"ja", "fr"}, want: ErrInvalidSupported},
+		{name: "wrong case", raw: []string{"ja", "EN"}, want: ErrInvalidSupported},
+		{name: "default left out", raw: []string{"en", "ko"}, want: ErrDefaultNotSupported},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NormalizeSupported("ja", tt.raw)
+			if !errors.Is(err, tt.want) {
+				t.Fatalf("NormalizeSupported(%q) error = %v, want %v", tt.raw, err, tt.want)
+			}
+			if got != nil {
+				t.Fatalf("NormalizeSupported(%q) = %q, want nil", tt.raw, got)
+			}
+		})
+	}
+}
+
+func TestResolveSupportedAnswersTheStoredSetInRegistryOrder(t *testing.T) {
+	got, err := ResolveSupported([]string{"zh-Hans", "ja"})
+	if err != nil {
+		t.Fatalf("ResolveSupported: %v", err)
+	}
+	if want := []string{"ja", "zh-Hans"}; !slices.Equal(got, want) {
+		t.Fatalf("ResolveSupported = %q, want %q", got, want)
+	}
+}
+
+func TestResolveSupportedRejectsUnusableStoredSets(t *testing.T) {
+	for name, stored := range map[string][]string{
+		"empty":            {},
+		"unsupported code": {"ja", "fr"},
+		"blank element":    {"ja", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ResolveSupported(stored); !errors.Is(err, ErrSupportedUnresolved) {
+				t.Fatalf("ResolveSupported(%q) error = %v, want ErrSupportedUnresolved", stored, err)
+			}
+		})
+	}
+}

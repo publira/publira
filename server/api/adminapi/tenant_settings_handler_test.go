@@ -12,10 +12,12 @@ import (
 	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 
 	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/locale"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -79,7 +81,7 @@ func TestUpdateTenantTimezonePersistsIANAName(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja"))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja", testSupportedLocalesRow))
 	expectAdminAuditLogInsert(mock)
 	mock.ExpectCommit()
 
@@ -114,7 +116,7 @@ func TestUpdateTenantTimezoneRecordsItsInvalidationBeforeCommitting(t *testing.T
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja"))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja", testSupportedLocalesRow))
 	expectAdminAuditLogInsert(mock)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
@@ -148,7 +150,7 @@ func TestUpdateTenantTimezoneRollsBackWhenItsInvalidationCannotBeRecorded(t *tes
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja"))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja", testSupportedLocalesRow))
 	expectAdminAuditLogInsert(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WillReturnError(sql.ErrConnDone)
@@ -266,6 +268,9 @@ func TestGetTenantDefaultLocaleReturnsConfiguredValue(t *testing.T) {
 	if resp.DefaultLocale != "en" {
 		t.Fatalf("default_locale = %q, want en", resp.DefaultLocale)
 	}
+	if !slices.Equal(resp.SupportedLocales, locale.Supported) {
+		t.Fatalf("supported_locales = %q, want %q", resp.SupportedLocales, locale.Supported)
+	}
 	assertExpectations(t, mock)
 }
 
@@ -314,17 +319,20 @@ func TestUpdateTenantDefaultLocalePersistsSupportedCode(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
+	// The default and the set go in the one UPDATE, the set deduplicated and
+	// in registry order.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantDefaultLocale)).
-		WithArgs("en", tenantID).
+		WithArgs("en", pq.Array([]string{"en", "ko"}), tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "UTC", "en"))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "UTC", "en", "{en,ko}"))
 	expectAdminAuditLogInsert(mock)
 	mock.ExpectCommit()
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	resp, err := client.UpdateTenantDefaultLocale(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantDefaultLocaleRequest{
-		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		DefaultLocale: "  en  ",
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		DefaultLocale:    "  en  ",
+		SupportedLocales: []string{"ko", "en", " ko "},
 	})
 	if err != nil {
 		t.Fatalf("UpdateTenantDefaultLocale: %v", err)
@@ -332,7 +340,46 @@ func TestUpdateTenantDefaultLocalePersistsSupportedCode(t *testing.T) {
 	if resp.DefaultLocale != "en" {
 		t.Fatalf("default_locale = %q, want en", resp.DefaultLocale)
 	}
+	if want := []string{"en", "ko"}; !slices.Equal(resp.SupportedLocales, want) {
+		t.Fatalf("supported_locales = %q, want %q", resp.SupportedLocales, want)
+	}
 	assertExpectations(t, mock)
+}
+
+func TestUpdateTenantDefaultLocaleRejectsUnusableSupportedLocales(t *testing.T) {
+	tests := []struct {
+		name             string
+		supportedLocales []string
+	}{
+		{name: "empty", supportedLocales: nil},
+		{name: "default left out", supportedLocales: []string{"en", "ko"}},
+		{name: "unknown code", supportedLocales: []string{"ja", "fr"}},
+		{name: "blank element", supportedLocales: []string{"ja", ""}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, mock := newTestAdminServer(t)
+			now := time.Now()
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+			expectTenantLookup(mock, tenantID, "TENANT001", now)
+			expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+			client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			_, err := client.UpdateTenantDefaultLocale(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateTenantDefaultLocaleRequest{
+				Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				DefaultLocale:    "ja",
+				SupportedLocales: tt.supportedLocales,
+			})
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInvalidArgument, err)
+			}
+			// No UPDATE is expected: the stored values must survive a rejected request.
+			assertExpectations(t, mock)
+		})
+	}
 }
 
 func TestUpdateTenantDefaultLocaleRejectsInvalidValues(t *testing.T) {

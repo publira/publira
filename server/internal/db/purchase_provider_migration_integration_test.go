@@ -57,7 +57,7 @@ func TestPurchaseProviderMigrationKeepsStripePurchases(t *testing.T) {
 	pg.MigrateTo(t, beforePurchaseProviderVersion)
 	t.Cleanup(func() { pg.MigrateUp(t) })
 
-	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	tenant := pg.SeedTenantOnOlderSchema(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Series", Published: true})
 	paid := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEA0001", Title: "Paid", Status: testutil.EpisodeStatusPublished})
 	granted := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEA0002", Title: "Granted", Status: testutil.EpisodeStatusPublished})

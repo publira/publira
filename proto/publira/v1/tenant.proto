@@ -107,6 +107,11 @@ message GetTenantResponse {
   // 500 is 500 yen in JPY and 5.00 dollars in USD. Never empty: a tenant that
   // has saved no payment settings sells in the platform's default currency.
   string currency = 23;
+  // UI locale codes the tenant's site offers its readers, in the order of the
+  // locale registry (locales/index.json). Always holds default_locale, so it is
+  // never empty; like default_locale, a stored code naming no supported locale
+  // fails this RPC rather than being left out.
+  repeated string supported_locales = 24;
 }
 
 // How a client signs a reader in with Apple. The iOS app signs in with its own

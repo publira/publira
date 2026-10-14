@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/publira/publira/server/internal/ageverification"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -506,6 +508,9 @@ func TestGetTenantReturnsConfiguredDefaultLocale(t *testing.T) {
 	}
 	if resp.DefaultLocale != "en" {
 		t.Fatalf("default_locale = %q, want en", resp.DefaultLocale)
+	}
+	if !slices.Equal(resp.SupportedLocales, locale.Supported) {
+		t.Fatalf("supported_locales = %q, want %q", resp.SupportedLocales, locale.Supported)
 	}
 	assertPublicExpectations(t, mock)
 }

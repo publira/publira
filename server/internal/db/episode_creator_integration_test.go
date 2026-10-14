@@ -72,7 +72,7 @@ func TestEpisodeCreatorsMigrationBackFillsFromTheSeries(t *testing.T) {
 	// it finds rather than rows written through it.
 	pg.MigrateTo(t, creatorRolesVersion)
 
-	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	tenant := pg.SeedTenantOnOlderSchema(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	credited := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Credited Series", Published: true})
 	uncredited := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00002", Title: "Uncredited Series", Published: true})
 	originalAuthor := pg.SeedCreator(t, tenant.ID, testutil.CreatorSeed{PublicID: "CREATORA0001", Name: "Aoi Sakura"})

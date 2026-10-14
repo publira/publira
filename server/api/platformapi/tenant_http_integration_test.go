@@ -14,6 +14,7 @@ import (
 	"connectrpc.com/connect/v2/connectproto"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -115,14 +116,14 @@ func TestCreateTenantRetriesDuplicatePublicID(t *testing.T) {
 	expectTenantHosts(mock, false, false)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
-		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default, "ja").
+		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default, "ja", pq.Array([]string{"ja"})).
 		WillReturnError(duplicatePublicIDError())
 	expectPublicIDAttemptRolledBack(mock)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
-		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default, "ja").
+		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default, "ja", pq.Array([]string{"ja"})).
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
-			AddRow(tenantID, "4ERDqTx5YB8m", "dup.example.com", "Duplicate Tenant", now, "active", nil, "UTC", "ja"))
+			AddRow(tenantID, "4ERDqTx5YB8m", "dup.example.com", "Duplicate Tenant", now, "active", nil, "UTC", "ja", testSupportedLocalesRow))
 	expectPublicIDAttemptReleased(mock)
 	expectDefaultCreatorRoleInserts(mock, tenantID, now)
 	expectIntegrationAuditLogInsert(mock)
@@ -156,7 +157,7 @@ func TestCreateTenantPublicIDAttemptsExhaustedIsInternal(t *testing.T) {
 	for range publicid.MaxAttempts {
 		expectPublicIDAttempt(mock)
 		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
-			WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default, "ja").
+			WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default, "ja", pq.Array([]string{"ja"})).
 			WillReturnError(duplicatePublicIDError())
 		expectPublicIDAttemptRolledBack(mock)
 	}
@@ -185,7 +186,7 @@ func TestCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 	expectTenantHosts(mock, false, false)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "existing.example.com", Valid: true}, sql.NullString{}, "Domain Duplicate Tenant", tenanttz.Default, "ja").
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "existing.example.com", Valid: true}, sql.NullString{}, "Domain Duplicate Tenant", tenanttz.Default, "ja", pq.Array([]string{"ja"})).
 		WillReturnError(duplicateDomainError())
 	mock.ExpectRollback()
 
@@ -212,7 +213,7 @@ func TestCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 	expectTenantHosts(mock, false, false)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "sub001.example.com", Valid: true}, sql.NullString{String: "admin.sub001.example.com", Valid: true}, "Subdomain Duplicate Tenant", tenanttz.Default, "ja").
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "sub001.example.com", Valid: true}, sql.NullString{String: "admin.sub001.example.com", Valid: true}, "Subdomain Duplicate Tenant", tenanttz.Default, "ja", pq.Array([]string{"ja"})).
 		WillReturnError(duplicateAdminDomainError())
 	mock.ExpectRollback()
 
@@ -252,7 +253,8 @@ func TestCreateTenantTakenConsoleHostReturnsAlreadyExists(t *testing.T) {
 }
 
 // The locale stored is the one the request names, not the platform default:
-// the settings row here says "ja" and the tenant is still created as "en".
+// the settings row here says "ja" and the tenant is still created as "en". A
+// request that names no supported locales starts the tenant on that one alone.
 func TestCreateTenantStoresRequestedLocale(t *testing.T) {
 	ts, mock := newIntegrationTestServer(t)
 	now := time.Now()
@@ -264,9 +266,9 @@ func TestCreateTenantStoresRequestedLocale(t *testing.T) {
 	expectTenantHosts(mock, false, false)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "en.example.com", Valid: true}, sql.NullString{}, "English Tenant", tenanttz.Default, "en").
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "en.example.com", Valid: true}, sql.NullString{}, "English Tenant", tenanttz.Default, "en", pq.Array([]string{"en"})).
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
-			AddRow(tenantID, "4ERDqTx5YB8m", "en.example.com", "English Tenant", now, "active", nil, "UTC", "en"))
+			AddRow(tenantID, "4ERDqTx5YB8m", "en.example.com", "English Tenant", now, "active", nil, "UTC", "en", testSupportedLocalesRow))
 	expectPublicIDAttemptReleased(mock)
 	expectDefaultCreatorRoleInserts(mock, tenantID, now)
 	expectIntegrationAuditLogInsert(mock)
@@ -281,6 +283,73 @@ func TestCreateTenantStoresRequestedLocale(t *testing.T) {
 		t.Fatalf("tenant.public_id = %q, want 4ERDqTx5YB8m", resp.Tenant.PublicId)
 	}
 	assertIntegrationExpectations(t, mock)
+}
+
+// The set a request names is stored deduplicated and in registry order, beside
+// the default it has to hold.
+func TestCreateTenantStoresRequestedSupportedLocales(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+	mock.ExpectBegin()
+	expectPlatformConfigLookup(mock, tenanttz.Default, "ja", now)
+	expectTenantHosts(mock, false, false)
+	expectPublicIDAttempt(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenant)).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "multi.example.com", Valid: true}, sql.NullString{}, "Multilingual Tenant", tenanttz.Default, "en", pq.Array([]string{"ja", "en", "zh-Hant"})).
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
+			AddRow(tenantID, "4ERDqTx5YB8m", "multi.example.com", "Multilingual Tenant", now, "active", nil, "UTC", "en", "{ja,en,zh-Hant}"))
+	expectPublicIDAttemptReleased(mock)
+	expectDefaultCreatorRoleInserts(mock, tenantID, now)
+	expectIntegrationAuditLogInsert(mock)
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	if _, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.CreateTenantRequest{
+		Name:             "Multilingual Tenant",
+		Domain:           "multi.example.com",
+		DefaultLocale:    "en",
+		SupportedLocales: []string{"zh-Hant", "en", "ja", "en"},
+	}); err != nil {
+		t.Fatalf("CreateTenant: %v", err)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+// A set the registry cannot serve, or one that leaves the default out, is
+// rejected before the transaction opens.
+func TestCreateTenantRejectsUnusableSupportedLocales(t *testing.T) {
+	tests := []struct {
+		name             string
+		supportedLocales []string
+	}{
+		{name: "default left out", supportedLocales: []string{"en", "ko"}},
+		{name: "unknown code", supportedLocales: []string{"ja", "fr"}},
+		{name: "blank element", supportedLocales: []string{"ja", " "}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, mock := newIntegrationTestServer(t)
+			now := time.Now()
+			expectIntegrationAuth(mock, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), integrationPlatformRole, now)
+
+			client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+			_, err := client.CreateTenant(testutil.WithBearer(context.Background(), issueTestPlatformToken("PLATUSER001", integrationPlatformRole)), &publirasplatformv1.CreateTenantRequest{
+				Name:             "New Tenant",
+				Domain:           "new.example.com",
+				DefaultLocale:    "ja",
+				SupportedLocales: tt.supportedLocales,
+			})
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("CreateTenant code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+			}
+			assertFieldViolation(t, err, "supported_locales")
+			assertIntegrationExpectations(t, mock)
+		})
+	}
 }
 
 // A create request that names no locale, or an unsupported one, is rejected
@@ -329,7 +398,7 @@ func TestSuspendTenantSuccess(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
 		WithArgs(id, "suspended").
-		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "ACTIVE01", "active.example.com", "Active Tenant", now, "suspended", nil, "UTC", "ja"))
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "ACTIVE01", "active.example.com", "Active Tenant", now, "suspended", nil, "UTC", "ja", testSupportedLocalesRow))
 	expectIntegrationAuditLogInsert(mock)
 	mock.ExpectCommit()
 
@@ -377,7 +446,7 @@ func TestResumeTenantSuccess(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantStatus)).
 		WithArgs(id, "active").
-		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "SUSP001", "suspended.example.com", "Suspended Tenant", now, "active", nil, "UTC", "ja"))
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "SUSP001", "suspended.example.com", "Suspended Tenant", now, "active", nil, "UTC", "ja", testSupportedLocalesRow))
 	expectIntegrationAuditLogInsert(mock)
 	mock.ExpectCommit()
 

@@ -34,7 +34,8 @@ INSERT INTO tenants (
     admin_domain,
     name,
     status,
-    default_locale
+    default_locale,
+    supported_locales
 )
 SELECT
     ts.id,
@@ -43,7 +44,8 @@ SELECT
     'admin.consent.localhost:' || :'tenant_port',
     'Consent Tenant',
     'active',
-    'en'
+    'en',
+    ARRAY['ja', 'en', 'ko', 'zh-Hans', 'zh-Hant']
 FROM tenant_seed ts;
 
 INSERT INTO pages (id, tenant_id, slug)
@@ -187,7 +189,8 @@ INSERT INTO tenants (
     admin_domain,
     name,
     status,
-    default_locale
+    default_locale,
+    supported_locales
 )
 VALUES (
     '018f0ff0-0001-7000-8000-000000000002'::uuid,
@@ -196,7 +199,8 @@ VALUES (
     'admin.shared-consent.localhost:' || :'tenant_port',
     'Shared Consent Tenant',
     'active',
-    'en'
+    'en',
+    ARRAY['ja', 'en', 'ko', 'zh-Hans', 'zh-Hant']
 );
 
 INSERT INTO pages (id, tenant_id, slug)

@@ -42,11 +42,11 @@ LIMIT sqlc.arg('limit');
 
 -- name: CreateTenant :one
 -- Tenant creation for platform administrators.
--- default_locale has no column DEFAULT, so the caller always passes it
--- explicitly. timezone is not left to its column DEFAULT either: the
--- platform default is applied explicitly.
-INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
-VALUES (sqlc.arg('id'), sqlc.arg('public_id'), sqlc.arg('domain'), sqlc.narg('admin_domain'), sqlc.arg('name'), 'active', sqlc.arg('timezone'), sqlc.arg('default_locale'))
+-- default_locale and supported_locales have no column DEFAULT, so the caller
+-- always passes them explicitly. timezone is not left to its column DEFAULT
+-- either: the platform default is applied explicitly.
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale, supported_locales)
+VALUES (sqlc.arg('id'), sqlc.arg('public_id'), sqlc.arg('domain'), sqlc.narg('admin_domain'), sqlc.arg('name'), 'active', sqlc.arg('timezone'), sqlc.arg('default_locale'), sqlc.arg('supported_locales')::text[])
 RETURNING *;
 
 -- name: UpdateTenantStatus :one
@@ -74,12 +74,18 @@ WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: UpdateTenantDefaultLocale :one
--- No row when the tenant already has that locale, for the reason
--- UpdateTenantTimezone gives.
+-- The default and the set it belongs to are written in one statement, so the
+-- CHECK that the set holds the default sees them together and neither can be
+-- saved apart from the other. No row when the tenant already has both, for the
+-- reason UpdateTenantTimezone gives.
 UPDATE tenants
-SET default_locale = sqlc.arg('default_locale')
+SET default_locale = sqlc.arg('default_locale'),
+    supported_locales = sqlc.arg('supported_locales')::text[]
 WHERE id = sqlc.arg('id')
-    AND default_locale <> sqlc.arg('default_locale')
+    AND (
+        default_locale <> sqlc.arg('default_locale')
+        OR supported_locales <> sqlc.arg('supported_locales')::text[]
+    )
 RETURNING *;
 
 -- name: GetTenantByDomains :one

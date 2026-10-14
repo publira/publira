@@ -21,7 +21,8 @@ INSERT INTO tenants (
     admin_domain,
     name,
     status,
-    default_locale
+    default_locale,
+    supported_locales
 )
 SELECT
     ts.id,
@@ -30,14 +31,16 @@ SELECT
     'admin.sign-in.localhost:' || :'tenant_port',
     'Sign-in Providers Tenant',
     'active',
-    'en'
+    'en',
+    ARRAY['ja', 'en', 'ko', 'zh-Hans', 'zh-Hant']
 FROM tenant_seed ts
 ON CONFLICT (public_id) DO UPDATE
 SET domain = EXCLUDED.domain,
     admin_domain = EXCLUDED.admin_domain,
     name = EXCLUDED.name,
     status = EXCLUDED.status,
-    default_locale = EXCLUDED.default_locale;
+    default_locale = EXCLUDED.default_locale,
+    supported_locales = EXCLUDED.supported_locales;
 
 \set seed_tenant SgnnTNNTAAA1
 \ir ../creator_roles.sql

@@ -97,8 +97,8 @@ func insertTenantWithLocale(ctx context.Context, db *sql.DB, defaultLocale strin
 	hex := strings.ReplaceAll(id.String(), "-", "")
 	slug := hex[len(hex)-12:]
 	_, err = db.ExecContext(ctx, `
-		INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale)
-		VALUES ($1, $2, $3, $4, 'Locale Tenant', 'active', $5)
+		INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale, supported_locales)
+		VALUES ($1, $2, $3, $4, 'Locale Tenant', 'active', $5, ARRAY[$5])
 	`, id, slug, slug+".example.com", "admin-"+slug+".example.com", defaultLocale)
 	return err
 }

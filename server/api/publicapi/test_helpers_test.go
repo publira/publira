@@ -62,8 +62,12 @@ func (p *testStorageProvider) Upload(_ context.Context, req storage.UploadReques
 	}, nil
 }
 
+// testSupportedLocalesRow is a tenants.supported_locales value as the driver
+// returns it: every locale, the set a tenant that predates the choice offers.
+const testSupportedLocalesRow = "{ja,en,ko,zh-Hans,zh-Hant}"
+
 func publicTenantColumns() []string {
-	return []string{"id", "public_id", "domain", "name", "created_at", "status", "admin_domain", "timezone", "default_locale"}
+	return []string{"id", "public_id", "domain", "name", "created_at", "status", "admin_domain", "timezone", "default_locale", "supported_locales"}
 }
 
 // episodeNeighbor is one row of the neighbour read GetEpisodeDetail performs
@@ -172,7 +176,7 @@ func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, pu
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-			AddRow(tenantID, publicID, "tenant.example", "Tenant", now, "active", nil, timezone, defaultLocale))
+			AddRow(tenantID, publicID, "tenant.example", "Tenant", now, "active", nil, timezone, defaultLocale, testSupportedLocalesRow))
 }
 
 // assertSeriesPublicIDs compares a series list against the public ids it should

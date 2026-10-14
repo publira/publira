@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/domain.proto.
  */
 export const file_publira_v1_domain: GenFile = /*@__PURE__*/
-  fileDesc("ChdwdWJsaXJhL3YxL2RvbWFpbi5wcm90bxIKcHVibGlyYS52MSIrChhHZXRUZW5hbnRCeURvbWFpblJlcXVlc3QSDwoHZG9tYWlucxgBIAMoCSJGChlHZXRUZW5hbnRCeURvbWFpblJlc3BvbnNlEhEKCXRlbmFudF9pZBgBIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgCIAEoCTJzCg1Eb21haW5TZXJ2aWNlEmIKEUdldFRlbmFudEJ5RG9tYWluEiQucHVibGlyYS52MS5HZXRUZW5hbnRCeURvbWFpblJlcXVlc3QaJS5wdWJsaXJhLnYxLkdldFRlbmFudEJ5RG9tYWluUmVzcG9uc2UiAEJLWklnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM");
+  fileDesc("ChdwdWJsaXJhL3YxL2RvbWFpbi5wcm90bxIKcHVibGlyYS52MSIrChhHZXRUZW5hbnRCeURvbWFpblJlcXVlc3QSDwoHZG9tYWlucxgBIAMoCSJhChlHZXRUZW5hbnRCeURvbWFpblJlc3BvbnNlEhEKCXRlbmFudF9pZBgBIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgCIAEoCRIZChFzdXBwb3J0ZWRfbG9jYWxlcxgDIAMoCTJzCg1Eb21haW5TZXJ2aWNlEmIKEUdldFRlbmFudEJ5RG9tYWluEiQucHVibGlyYS52MS5HZXRUZW5hbnRCeURvbWFpblJlcXVlc3QaJS5wdWJsaXJhLnYxLkdldFRlbmFudEJ5RG9tYWluUmVzcG9uc2UiAEJLWklnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM");
 
 /**
  * @generated from message publira.v1.GetTenantByDomainRequest
@@ -48,6 +48,15 @@ export type GetTenantByDomainResponse = Message<"publira.v1.GetTenantByDomainRes
    * @generated from field: string default_locale = 2;
    */
   defaultLocale: string;
+
+  /**
+   * The UI locale codes the tenant's site offers, in registry order, so the
+   * host proxy can tell a locale prefix the tenant serves from one it does not
+   * in the same round trip. Always holds default_locale.
+   *
+   * @generated from field: repeated string supported_locales = 3;
+   */
+  supportedLocales: string[];
 };
 
 /**

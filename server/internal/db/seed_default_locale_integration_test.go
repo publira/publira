@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lib/pq"
+
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -37,6 +39,33 @@ func TestSeedsNameSupportedDefaultLocales(t *testing.T) {
 
 	assertStoredLocalesResolve(ctx, t, pg.DB, "tenants", `SELECT public_id, default_locale FROM tenants`)
 	assertStoredLocalesResolve(ctx, t, pg.DB, "platform_config", `SELECT 'singleton', default_locale FROM platform_config`)
+	assertStoredSupportedLocalesResolve(ctx, t, pg.DB)
+}
+
+// The same holds for the locales a seeded tenant offers: a set naming a code
+// the registry does not know fails every read of the tenant.
+func assertStoredSupportedLocalesResolve(ctx context.Context, t *testing.T, db *sql.DB) {
+	t.Helper()
+
+	rows, err := db.QueryContext(ctx, `SELECT public_id, supported_locales FROM tenants`)
+	if err != nil {
+		t.Fatalf("read tenants supported_locales: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+
+	for rows.Next() {
+		var row string
+		var stored []string
+		if err := rows.Scan(&row, pq.Array(&stored)); err != nil {
+			t.Fatalf("scan tenants supported_locales: %v", err)
+		}
+		if _, err := locale.ResolveSupported(stored); err != nil {
+			t.Errorf("tenants row %s seeds supported_locales %q, which names an unsupported locale: %v", row, stored, err)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate tenants supported_locales: %v", err)
+	}
 }
 
 // seedSQLFiles lists the seeds that carry application data, in the order

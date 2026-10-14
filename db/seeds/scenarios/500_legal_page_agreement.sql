@@ -28,7 +28,8 @@ INSERT INTO tenants (
     admin_domain,
     name,
     status,
-    default_locale
+    default_locale,
+    supported_locales
 )
 VALUES (
     '018f10b0-0001-7000-8000-000000000001'::uuid,
@@ -37,7 +38,8 @@ VALUES (
     'admin.agree.localhost:' || :'tenant_port',
     'Agreement Tenant',
     'active',
-    'en'
+    'en',
+    ARRAY['ja', 'en', 'ko', 'zh-Hans', 'zh-Hant']
 );
 
 INSERT INTO pages (id, tenant_id, slug)

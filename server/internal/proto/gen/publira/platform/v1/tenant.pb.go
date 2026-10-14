@@ -357,8 +357,12 @@ type CreateTenantRequest struct {
 	// never picks a language on the caller's behalf, so a blank or unsupported
 	// code is rejected instead of falling back to a default.
 	DefaultLocale string `protobuf:"bytes,6,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// UI locale codes the new tenant's site offers, under the same rules as
+	// publira.admin.v1.UpdateTenantDefaultLocaleRequest. Empty starts the tenant
+	// on default_locale alone.
+	SupportedLocales []string `protobuf:"bytes,7,rep,name=supported_locales,json=supportedLocales,proto3" json:"supported_locales,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CreateTenantRequest) Reset() {
@@ -424,6 +428,13 @@ func (x *CreateTenantRequest) GetDefaultLocale() string {
 		return x.DefaultLocale
 	}
 	return ""
+}
+
+func (x *CreateTenantRequest) GetSupportedLocales() []string {
+	if x != nil {
+		return x.SupportedLocales
+	}
+	return nil
 }
 
 type CreateTenantResponse struct {
@@ -1850,13 +1861,14 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x10GetTenantRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"H\n" +
 	"\x11GetTenantResponse\x123\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"\xc3\x01\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"\xf0\x01\n" +
 	"\x13CreateTenantRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06domain\x18\x03 \x01(\tR\x06domain\x120\n" +
 	"\x14initial_admin_emails\x18\x04 \x03(\tR\x12initialAdminEmails\x12!\n" +
 	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomain\x12%\n" +
-	"\x0edefault_locale\x18\x06 \x01(\tR\rdefaultLocaleJ\x04\b\x02\x10\x03\"K\n" +
+	"\x0edefault_locale\x18\x06 \x01(\tR\rdefaultLocale\x12+\n" +
+	"\x11supported_locales\x18\a \x03(\tR\x10supportedLocalesJ\x04\b\x02\x10\x03\"K\n" +
 	"\x14CreateTenantResponse\x123\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"D\n" +
 	"\x14SuspendTenantRequest\x12\x1b\n" +

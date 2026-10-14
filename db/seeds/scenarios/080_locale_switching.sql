@@ -15,7 +15,7 @@
 WITH tenant_seed AS (
     SELECT '018f0f40-0001-7000-8000-000000000001'::uuid AS id
 )
-INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale)
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale, supported_locales)
 SELECT
     ts.id,
     'LangTNNTAAA1',
@@ -23,14 +23,16 @@ SELECT
     'admin.locale.localhost:' || :'tenant_port',
     'Locale Tenant',
     'active',
-    'ja'
+    'ja',
+    ARRAY['ja', 'en', 'ko', 'zh-Hans', 'zh-Hant']
 FROM tenant_seed ts
 ON CONFLICT (public_id) DO UPDATE
 SET domain = EXCLUDED.domain,
     admin_domain = EXCLUDED.admin_domain,
     name = EXCLUDED.name,
     status = EXCLUDED.status,
-    default_locale = EXCLUDED.default_locale;
+    default_locale = EXCLUDED.default_locale,
+    supported_locales = EXCLUDED.supported_locales;
 
 \set seed_tenant LangTNNTAAA1
 \ir ../creator_roles.sql

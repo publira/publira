@@ -130,8 +130,12 @@ const (
 	integrationPlatformRole = "platform_operator"
 )
 
+// testSupportedLocalesRow is a tenants.supported_locales value as the driver
+// returns it: every locale, the set a tenant that predates the choice offers.
+const testSupportedLocalesRow = "{ja,en,ko,zh-Hans,zh-Hant}"
+
 func integrationTenantColumns() []string {
-	return []string{"id", "public_id", "domain", "name", "created_at", "status", "admin_domain", "timezone", "default_locale"}
+	return []string{"id", "public_id", "domain", "name", "created_at", "status", "admin_domain", "timezone", "default_locale", "supported_locales"}
 }
 
 func platformConfigColumns() []string {

@@ -4,10 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockFindTenantDisplayLocale,
   mockGetAccessToken,
+  mockGetTenantDefaultLocaleApi,
   mockUpdateTenantDefaultLocaleApi,
 } = vi.hoisted(() => ({
   mockFindTenantDisplayLocale: vi.fn(),
   mockGetAccessToken: vi.fn(),
+  mockGetTenantDefaultLocaleApi: vi.fn(),
   mockUpdateTenantDefaultLocaleApi: vi.fn(),
 }));
 
@@ -22,6 +24,7 @@ vi.mock("./public-api", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     tenantSettings: {
+      getTenantDefaultLocale: mockGetTenantDefaultLocaleApi,
       updateTenantDefaultLocale: mockUpdateTenantDefaultLocaleApi,
     },
   },
@@ -35,6 +38,10 @@ describe("tenant-default-locale", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockGetAccessToken.mockResolvedValue("session-token");
+    mockGetTenantDefaultLocaleApi.mockResolvedValue({
+      defaultLocale: "ja",
+      supportedLocales: ["ja", "ko"],
+    });
   });
 
   it("returns the default locale the public tenant read answered with", async () => {
@@ -63,7 +70,7 @@ describe("tenant-default-locale", () => {
     expect(result).not.toHaveProperty("defaultLocale");
   });
 
-  it("returns the saved default locale on a successful update", async () => {
+  it("keeps the languages the site offers and adds the new default to them", async () => {
     mockUpdateTenantDefaultLocaleApi.mockResolvedValueOnce({
       defaultLocale: "en",
     });
@@ -80,8 +87,16 @@ describe("tenant-default-locale", () => {
     );
 
     expect(result).toEqual({ defaultLocale: "en", ok: true });
+    expect(mockGetTenantDefaultLocaleApi).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
     expect(mockUpdateTenantDefaultLocaleApi).toHaveBeenCalledWith(
-      { defaultLocale: "en", tenant: { tenantId: "TENANT001" } },
+      {
+        defaultLocale: "en",
+        supportedLocales: ["ja", "ko", "en"],
+        tenant: { tenantId: "TENANT001" },
+      },
       { headers: { Authorization: "Bearer session-token" } }
     );
   });

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"slices"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 )
 
+// The set is answered in registry order whatever order the row holds it in.
 func TestGetTenantByDomainReturnsDefaultLocale(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 	tenantID := uuid.Must(uuid.NewV7())
@@ -24,7 +26,7 @@ func TestGetTenantByDomainReturnsDefaultLocale(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByDomains)).
 		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", "en"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", "en", "{zh-Hant,en,ja}"))
 
 	client := publirav1connect.NewDomainServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{
@@ -38,6 +40,30 @@ func TestGetTenantByDomainReturnsDefaultLocale(t *testing.T) {
 	}
 	if resp.DefaultLocale != "en" {
 		t.Fatalf("default_locale = %q, want en", resp.DefaultLocale)
+	}
+	if want := []string{"ja", "en", "zh-Hant"}; !slices.Equal(resp.SupportedLocales, want) {
+		t.Fatalf("supported_locales = %q, want %q", resp.SupportedLocales, want)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+// A stored set naming a locale this build cannot serve fails the request too,
+// rather than reaching the host proxy narrowed to the codes it does know.
+func TestGetTenantByDomainFailsOnAnUnusableStoredSupportedLocale(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByDomains)).
+		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", "ja", "{ja,fr}"))
+
+	client := publirav1connect.NewDomainServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{
+		Domains: []string{"tenant.example.com"},
+	})
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetTenantByDomain code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -63,7 +89,7 @@ func TestGetTenantByDomainFailsOnAnUnusableStoredLocale(t *testing.T) {
 
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByDomains)).
 				WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-					AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", tt.stored))
+					AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", tt.stored, testSupportedLocalesRow))
 
 			client := publirav1connect.NewDomainServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 			_, err := client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{
