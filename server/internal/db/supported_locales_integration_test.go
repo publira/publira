@@ -13,7 +13,7 @@ import (
 )
 
 // The last migration before tenants stored the locales their site offers.
-const beforeSupportedLocalesVersion = 20261013170631
+const beforeSupportedLocalesVersion = 20261014105706
 
 // Every tenant saved before the column existed served every locale there was,
 // so it keeps all five: a URL a reader reached the day before the upgrade still
