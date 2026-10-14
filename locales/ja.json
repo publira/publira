@@ -1271,6 +1271,8 @@
       "mobile_push_label": "モバイルプッシュ",
       "pages_label": "ページ",
       "payment_label": "決済",
+      "payments": "決済",
+      "purchases_label": "購入",
       "readers": "読者",
       "readers_label": "読者",
       "reports": "レポート",
@@ -3274,6 +3276,95 @@
         "button": "CSVをダウンロード",
         "row_label": "{$period}のCSVをダウンロード",
         "open_month_note": "CSVは月を締めるとダウンロードできます。"
+      }
+    },
+    "purchases": {
+      "title": "購入",
+      "page_description": "読者によるエピソードの購入を探し、支払いに使われた決済サービスを通じて返金します。",
+      "item_label": "購入",
+      "list_error": "購入一覧を表示できませんでした",
+      "list_failed": "購入一覧の取得に失敗しました。時間をおいて再試行してください。",
+      "detail_title": "購入",
+      "detail_error": "購入を表示できませんでした",
+      "detail_failed": "購入の取得に失敗しました。時間をおいて再試行してください。",
+      "close": "閉じる",
+      "not_found": "この購入は見つかりませんでした。開いたリンクを確認してください。",
+      "empty_title": "表示する購入はありません。",
+      "empty_description": "読者がエピソードを購入すると、ここに表示されます。絞り込み条件を指定している場合は減らしてみてください。",
+      "pagination_aria": "購入一覧のページ送り",
+      "pagination_description": "新しい順に、1ページあたり{$count :integer}件まで表示します。",
+      "period_invalid": "期間の終了日が開始日より前になっています。終了日には開始日以降の日を指定してください。",
+      "view_aria": "{$reader}による{$episode}の購入を表示",
+      "reader_deleted": "削除されたアカウント",
+      "test_payment": "テスト",
+      "columns": {
+        "purchased_at": "購入日時",
+        "reader": "読者",
+        "episode": "エピソード",
+        "amount": "金額",
+        "paid_through": "支払い方法",
+        "status": "状態",
+        "actions": "操作"
+      },
+      "paid_through": {
+        "none": "支払いなし",
+        "app_store": "App Store",
+        "google_play": "Google Play"
+      },
+      "status": {
+        "active": "有効",
+        "expired": "期限切れ",
+        "partly_refunded": "一部返金",
+        "refunding": "返金依頼済み",
+        "refunded": "返金済み",
+        "disputed": "異議申し立て"
+      },
+      "filter": {
+        "description": "読者のメールアドレス、シリーズ、エピソード、購入日で購入を探します。日付はテナントのタイムゾーン（{$time_zone}）の暦日として解釈します。",
+        "email": "読者のメールアドレス",
+        "email_placeholder": "reader@example.com",
+        "series": "シリーズのpublic_id",
+        "series_placeholder": "例: SeedSERSAAA1",
+        "episode": "エピソードのpublic_id",
+        "episode_placeholder": "例: SeedEPSDAAA1",
+        "from": "開始日",
+        "to": "終了日",
+        "apply": "適用",
+        "reset": "リセット"
+      },
+      "expires_at": "閲覧期限",
+      "expires_never": "期限なし",
+      "refunded_amount": "返金額",
+      "revoked_at": "読者への公開終了",
+      "revocation_reason": {
+        "refund": "決済サービスで返金",
+        "dispute": "読者がカード会社に異議を申し立て",
+        "staff": "スタッフが返金"
+      },
+      "purchase_id": "購入ID",
+      "copy_purchase_id": "購入IDをコピー",
+      "not_refundable": {
+        "store": "アプリ内での購入は、ここではなくAppleまたはGoogleが返金します。",
+        "no_payment": "この購入は支払いなしで行われたため、返金するものはありません。",
+        "dispute": "読者がこの支払いについてカード会社に異議を申し立てています。決済サービスのダッシュボードで対応してください。",
+        "provider": "テナントは現在この決済サービスで支払いを受け付けていないため、ここでは返金できません。決済サービスのダッシュボードで返金してください。"
+      },
+      "refund_pending": "返金を依頼し、読者はこのエピソードを読めなくなりました。返金額は決済サービスからの通知が届くと表示されます。",
+      "refund": "返金",
+      "refunding": "返金中…",
+      "refund_confirm_title": "この購入を返金しますか？",
+      "refund_confirm_description": "読者が支払った金額の返金を決済サービスに依頼し、読者はすぐにこのエピソードを読めなくなります。返金は取り消せません。",
+      "refund_confirm_action": "返金する",
+      "reason": "理由",
+      "reason_description": "返金とあわせて監査ログに記録されます。",
+      "reason_placeholder": "例: 読者が誤って同じエピソードを2回購入した",
+      "refunded": "返金を依頼しました。",
+      "refund_failed": "購入の返金に失敗しました。時間をおいて再試行してください。",
+      "refund_refused": "この購入は返金できません。決済サービスが返金を拒否したか、この購入はコンソールから返金できなくなっています。",
+      "validation": {
+        "refund_target": "返金対象が不正です。",
+        "reason_required": "返金の理由を入力してください。",
+        "reason_too_long": "理由は1,000文字以内で入力してください。"
       }
     }
   },

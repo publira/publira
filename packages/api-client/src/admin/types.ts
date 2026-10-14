@@ -34,6 +34,7 @@ export type {
   TenantStorePaymentSettings,
   TenantStoreProduct,
 } from "../gen/publira/admin/v1/payment_pb.js";
+export type { AdminPurchase } from "../gen/publira/admin/v1/purchase_pb.js";
 export type {
   RoyaltyConfig,
   RoyaltyStatement,

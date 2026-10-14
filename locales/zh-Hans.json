@@ -1271,6 +1271,8 @@
       "mobile_push_label": "移动推送",
       "pages_label": "页面",
       "payment_label": "支付",
+      "payments": "支付",
+      "purchases_label": "购买记录",
       "readers": "读者",
       "readers_label": "读者",
       "reports": "报表",
@@ -3274,6 +3276,95 @@
         "button": "下载CSV",
         "row_label": "下载{$period}的CSV",
         "open_month_note": "该月结算后即可下载CSV。"
+      }
+    },
+    "purchases": {
+      "title": "购买记录",
+      "page_description": "查找读者购买的章节，并通过其付款时使用的支付服务退款。",
+      "item_label": "购买记录",
+      "list_error": "无法显示购买记录",
+      "list_failed": "无法加载购买记录。请稍后再试。",
+      "detail_title": "购买记录",
+      "detail_error": "无法显示这条购买记录",
+      "detail_failed": "无法加载这条购买记录。请稍后再试。",
+      "close": "关闭",
+      "not_found": "未找到这条购买记录。请检查打开的链接。",
+      "empty_title": "没有可显示的购买记录。",
+      "empty_description": "读者购买章节后会显示在这里。如果设置了筛选条件，请尝试减少条件。",
+      "pagination_aria": "购买记录分页",
+      "pagination_description": "每页最多显示{$count :integer}条，按时间从新到旧排列。",
+      "period_invalid": "时间段的结束日期早于开始日期。请将结束日期设为开始日期当天或之后。",
+      "view_aria": "查看{$reader}对{$episode}的购买",
+      "reader_deleted": "已删除的账号",
+      "test_payment": "测试",
+      "columns": {
+        "purchased_at": "购买时间",
+        "reader": "读者",
+        "episode": "章节",
+        "amount": "金额",
+        "paid_through": "支付方式",
+        "status": "状态",
+        "actions": "操作"
+      },
+      "paid_through": {
+        "none": "未付款",
+        "app_store": "App Store",
+        "google_play": "Google Play"
+      },
+      "status": {
+        "active": "有效",
+        "expired": "已过期",
+        "partly_refunded": "部分退款",
+        "refunding": "已申请退款",
+        "refunded": "已退款",
+        "disputed": "有争议"
+      },
+      "filter": {
+        "description": "按读者的邮箱地址、系列、章节或购买日期查找购买记录。日期按租户时区（{$time_zone}）的日历日解释。",
+        "email": "读者邮箱地址",
+        "email_placeholder": "reader@example.com",
+        "series": "系列public_id",
+        "series_placeholder": "例如：SeedSERSAAA1",
+        "episode": "章节public_id",
+        "episode_placeholder": "例如：SeedEPSDAAA1",
+        "from": "开始",
+        "to": "结束",
+        "apply": "应用",
+        "reset": "重置"
+      },
+      "expires_at": "可阅读至",
+      "expires_never": "无期限",
+      "refunded_amount": "已退金额",
+      "revoked_at": "对读者关闭",
+      "revocation_reason": {
+        "refund": "通过支付服务退款",
+        "dispute": "读者向银行提出争议",
+        "staff": "由工作人员退款"
+      },
+      "purchase_id": "购买ID",
+      "copy_purchase_id": "复制购买ID",
+      "not_refundable": {
+        "store": "应用内购买由Apple或Google退款，无法在此处退款。",
+        "no_payment": "这次购买没有付款，因此无需退款。",
+        "dispute": "读者已就这笔付款向银行提出争议。请在支付服务的控制台中处理。",
+        "provider": "租户目前未通过该支付服务收款，因此无法在此处退款。请在支付服务的控制台中退款。"
+      },
+      "refund_pending": "已申请退款，读者已无法阅读该章节。支付服务报告后会显示退款金额。",
+      "refund": "退款",
+      "refunding": "正在退款…",
+      "refund_confirm_title": "要为这次购买退款吗？",
+      "refund_confirm_description": "将请求支付服务向读者退还其支付的金额，读者将立即无法阅读该章节。退款无法撤销。",
+      "refund_confirm_action": "退款",
+      "reason": "理由",
+      "reason_description": "将与退款一同记录在审计日志中。",
+      "reason_placeholder": "例如：读者误将同一章节购买了两次",
+      "refunded": "已申请退款。",
+      "refund_failed": "无法为这次购买退款。请稍后再试。",
+      "refund_refused": "无法为这次购买退款。支付服务拒绝了退款，或这次购买已无法从控制台退款。",
+      "validation": {
+        "refund_target": "要退款的购买记录无效。",
+        "reason_required": "请输入退款理由。",
+        "reason_too_long": "理由请控制在1,000个字符以内。"
       }
     }
   },

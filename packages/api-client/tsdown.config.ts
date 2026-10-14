@@ -22,6 +22,7 @@ export default defineConfig({
     "src/admin/client.ts",
     "src/admin/auth.ts",
     "src/admin/access-ticket.ts",
+    "src/admin/purchase.ts",
     "src/admin/royalty.ts",
     "src/admin/series.ts",
     "src/admin/tenant.ts",

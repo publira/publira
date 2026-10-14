@@ -35,6 +35,7 @@ export { MinimizeIcon } from "./minimize-icon";
 export { PaletteIcon } from "./palette-icon";
 export { PenLineIcon } from "./pen-line-icon";
 export { PlusIcon } from "./plus-icon";
+export { ReceiptIcon } from "./receipt-icon";
 export { ScrollTextIcon } from "./scroll-text-icon";
 export { SearchIcon } from "./search-icon";
 export { SendIcon } from "./send-icon";

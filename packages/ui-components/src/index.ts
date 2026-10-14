@@ -58,6 +58,15 @@ export {
   DialogTrigger,
 } from "./dialog";
 export {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "./drawer";
+export {
   EmptyState,
   EmptyStateActions,
   EmptyStateDescription,

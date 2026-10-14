@@ -161,7 +161,7 @@ What each store needs, from the key the install verifies purchases with to testi
 
 ## Refunds
 
-A refund is made where the reader paid: in the Stripe or PAY.JP dashboard for a purchase on the site, and by Apple or Google for a purchase in the app. Nothing is done in the console, and Publira does not tell the reader.
+A purchase on the site is refunded from the console, as [Refunding from the console](#refunding-from-the-console) describes, or in the Stripe or PAY.JP dashboard. A purchase in the app is refunded by Apple or Google. Publira does not tell the reader either way.
 
 - **A full refund** closes the episode to the reader. The purchase stays in their **Purchase history**, marked **Refunded**, and they can buy the episode again.
 - **A partial refund** leaves the episode open until the refunds on the payment add up to its price. It still lowers the sales the episode's Authors are paid royalties on.
@@ -173,6 +173,14 @@ Each refund reaches the install the way its purchase did:
 - **Google Play** does not send refunds. The install reads Google Play's voided purchases once an hour, for the last 30 days, so a refunded purchase can keep its episode open for up to an hour. This runs in `publira worker`, which the operator keeps running, as [Overview](../2-deployments/1-overview.md) describes; without it, Google Play refunds are not applied.
 
 A refund that arrives before the purchase it reverses is kept, and applied when the purchase is recorded.
+
+### Refunding from the console
+
+**Payments** › **Purchases** lists the tenant's purchases, newest first, and narrows them by the reader's email address, the series, the episode, and the days they were made on, in the tenant's time zone. **View** opens a purchase beside the list with what the reader paid, where they paid it, and what has been refunded so far. Only a tenant admin sees the screen.
+
+**Refund** asks the provider the reader paid through to give back what they paid, once you have written a reason; the reason is recorded in the audit log with the refund. The episode closes to the reader at once, and the purchase shows **Refund requested** until the provider reports the refund through the webhook, when it shows **Refunded**. A refund the provider refuses, or one that fails after the provider accepted it, opens the episode to the reader again.
+
+The console offers no refund for a purchase made in the app, one the reader disputed with their bank, or one paid through a provider the tenant no longer takes payments through: refund those where the reader paid.
 
 ## Disputes
 
@@ -193,7 +201,7 @@ A purchase made in the provider's test mode opens the episode but is recorded as
 3. On the site, sign in with a reader account that holds no console role, open the episode, and choose **Buy this episode**.
 4. Pay with a test card. `4242 4242 4242 4242`, with any future expiry date and any three-digit security code, works with both providers. PAY.JP then shows its test 3-D Secure screen, where you choose the outcome.
 5. Back on the episode, wait for it to open, then check that it is listed under **Purchases**. If it does not open within a minute, read the delivery in the provider's dashboard, as [When a payment does not open the episode](#when-a-payment-does-not-open-the-episode) describes.
-6. Refund the payment in full from the provider's dashboard, which proves that refunds reach the install too. Reload the episode: it is locked again, and **Buy this episode** is back.
+6. Refund the purchase from **Payments** › **Purchases**, or the payment in full from the provider's dashboard, which proves that refunds reach the install too. Reload the episode: it is locked again, and **Buy this episode** is back.
 
 When both pass, set the test series' **Shown on** to **Not shown anywhere**. Then replace the test secret key with the live one, register the webhook in live mode, enter its signing secret or token, and save.
 
