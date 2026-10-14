@@ -627,7 +627,7 @@ Use `--dart-define` to switch the test API and tenant host.
 
 | Definition | Default | Meaning |
 | --- | --- | --- |
-| `PUBLIRA_BASE_URL` | `http://127.0.0.1:8000` | The origin the app asks for the public API under `/api` and for images under `/images`: the tenant's site, or `publira server` itself, on its one port |
+| `PUBLIRA_BASE_URL` | `http://127.0.0.1:8000` | The origin the app asks for the public API under `/rpc` and for images under `/images`: the tenant's site, or `publira server` itself, on its one port |
 | `PUBLIRA_TENANT_HOST` | `localhost:3080` | Host passed to `GetTenantByDomain`; the development seed stores `localhost` on the edge port, `3080` in the Dev Container. Sent with the image requests as `X-Forwarded-Host`. A production build must pass the manifest's `tenant.host` |
 | `PUBLIRA_GOOGLE_IOS_CLIENT_ID` | Unset | The Google iOS client whose URL scheme the build registered; `task mobile:build` passes the manifest's `ios.googleSignInClientId` |
 | `PUBLIRA_LIVE_API` | Unset | Whether integration tests run their live group against the actual API |

@@ -58,7 +58,7 @@ call_public_api() {
   local -a headers=(-H 'content-type: application/json')
   [[ -z "${tenant}" ]] || headers+=(-H "x-publira-tenant-id: ${tenant}")
   response="$(curl -sS --fail-with-body "${headers[@]}" --data "${body}" \
-    "http://127.0.0.1:${PUBLIRA_PUBLIC_API_PORT}/api/publira.v1.${procedure}")" ||
+    "http://127.0.0.1:${PUBLIRA_PUBLIC_API_PORT}/rpc/publira.v1.${procedure}")" ||
     dev_env_die "${procedure} failed: ${response}"
   printf '%s\n' "${response}"
 }

@@ -3,7 +3,7 @@
 // On a phone the app holds the address of `publira server` and calls it
 // itself. A browser holds a page to the origin it came from, so this serves
 // what `flutter build web` produced and hands on the two prefixes the app asks
-// the server for -- `/api/...` and `/images/...` -- to the development
+// the server for -- `/rpc/...` and `/images/...` -- to the development
 // profile's own server.
 //
 // Every header the app set travels as it was written. That is the whole point
@@ -18,7 +18,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-const _serverPrefixes = ['/api/', '/images/'];
+const _serverPrefixes = ['/rpc/', '/images/'];
 
 /// Headers that describe one hop and are not passed on to the next.
 const _hopByHopHeaders = <String>{

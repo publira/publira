@@ -34,7 +34,7 @@ class ConnectClient {
     this.timeout = const Duration(seconds: 10),
   }) : _http = httpClient ?? http.Client();
 
-  /// The origin the public API is served from, under `/api`.
+  /// The origin the public API is served from, under `/rpc`.
   final String baseUrl;
   final Duration timeout;
 
@@ -86,7 +86,7 @@ class ConnectClient {
     String? accessToken,
     Map<String, String> headers = const {},
   }) async {
-    final uri = Uri.parse(baseUrl).replace(path: '/api$procedure');
+    final uri = Uri.parse(baseUrl).replace(path: '/rpc$procedure');
     final requestHeaders = <String, String>{
       ...headers,
       'content-type': 'application/json',
