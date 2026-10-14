@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// Why a purchase stopped opening its episode.
+enum PurchaseRevocationReason {
+  // The purchase has not been revoked.
+  PURCHASE_REVOCATION_REASON_UNSPECIFIED = 0;
+  // The money went back to the reader in full.
+  PURCHASE_REVOCATION_REASON_REFUND = 1;
+  // The reader disputed the charge with their bank.
+  PURCHASE_REVOCATION_REASON_DISPUTE = 2;
+  // Staff refunded it through RefundPurchase.
+  PURCHASE_REVOCATION_REASON_STAFF = 3;
+}
+
+// A reader's purchase of one episode, as tenant staff see it.
+message AdminPurchase {
+  // The purchase's primary key, a UUID.
+  string id = 1;
+  string episode_id = 2;
+  string episode_public_id = 3;
+  string episode_title = 4;
+  string series_public_id = 5;
+  string series_title = 6;
+  // The buyer. All three are empty once the reader has deleted their account,
+  // which keeps the purchase but not who made it.
+  string reader_public_id = 7;
+  string reader_name = 8;
+  string reader_email = 9;
+  // What the reader paid, in the minor unit of currency.
+  int64 price = 10;
+  // The ISO 4217 code, in capitals, of the currency the reader paid in.
+  string currency = 11;
+  // RFC3339.
+  string purchased_at = 12;
+  // RFC3339; empty when the reading period does not run out.
+  string expires_at = 13;
+  // The payment provider the reader paid through, as its declaration names
+  // it ("stripe", "payjp"). Empty for a purchase made in a store or granted
+  // without a payment.
+  string provider = 14;
+  // The store that charged the reader ("app_store", "google_play"). Empty for
+  // every other purchase.
+  string store = 15;
+  // True for a payment made in the provider's or the store's test mode, which
+  // no money reached the tenant through.
+  bool test = 16;
+  // The total the provider has reported refunded so far, in the minor unit of
+  // currency. Zero while no refund has been reported.
+  int64 refunded_amount = 17;
+  // RFC3339; set once the refunded total reaches the price.
+  string refunded_at = 18;
+  // RFC3339; empty while the purchase still opens its episode, as long as its
+  // reading period has not run out.
+  string revoked_at = 19;
+  PurchaseRevocationReason revocation_reason = 20;
+  // True when RefundPurchase would ask the provider for a refund: the reader
+  // paid through the tenant's current, enabled payment provider, and the
+  // purchase is neither refunded in full, revoked, nor disputed. A store
+  // purchase is refunded through the store and never here.
+  bool refundable = 21;
+}
+
+// Cursor pagination, newest purchase first. Field shape and token rules:
+// proto/README.md. Every filter left empty is no filter, and changing one
+// starts again from the first page.
+message ListPurchasesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+  // Only purchases of an episode of this series.
+  string series_public_id = 4;
+  // Only purchases of this episode.
+  string episode_public_id = 5;
+  // Only purchases by the reader whose account holds this address, matched
+  // whole but regardless of case.
+  string reader_email = 6;
+  // RFC3339. Only purchases made at or after this instant.
+  string purchased_from = 7;
+  // RFC3339. Only purchases made before this instant.
+  string purchased_to = 8;
+}
+
+message ListPurchasesResponse {
+  repeated AdminPurchase purchases = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message GetPurchaseRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string purchase_id = 2;
+}
+
+message GetPurchaseResponse {
+  AdminPurchase purchase = 1;
+}
+
+message RefundPurchaseRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string purchase_id = 2;
+}
+
+message RefundPurchaseResponse {
+  AdminPurchase purchase = 1;
+}
+
+service AdminPurchaseService {
+  // Minimum role: tenant_admin.
+  rpc ListPurchases(ListPurchasesRequest) returns (ListPurchasesResponse) {}
+  // Minimum role: tenant_admin.
+  rpc GetPurchase(GetPurchaseRequest) returns (GetPurchaseResponse) {}
+  // Asks the provider the reader paid through to refund whatever of the
+  // payment it has not refunded yet, and revokes the purchase at once, with
+  // staff as the reason; the amount refunded is recorded when the provider's
+  // notification of it arrives. A purchase already refunded in full or
+  // revoked by staff comes back as it is, without a second request to the
+  // provider. A store purchase, a purchase made without a payment, a disputed
+  // one, and one paid through a provider the tenant no longer has enabled are
+  // failed_precondition, as is a refund the provider refuses.
+  //
+  // Minimum role: tenant_admin.
+  rpc RefundPurchase(RefundPurchaseRequest) returns (RefundPurchaseResponse) {}
+}

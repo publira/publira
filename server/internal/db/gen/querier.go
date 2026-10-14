@@ -1907,6 +1907,20 @@ type Querier interface {
 	// spelled out rather than written as a row value.
 	// cursor rules: proto/README.md.
 	ListPublishedTagsByTenantDesc(ctx context.Context, arg ListPublishedTagsByTenantDescParams) ([]ListPublishedTagsByTenantDescRow, error)
+	ListPurchaseIDsForTenantAsc(ctx context.Context, arg ListPurchaseIDsForTenantAscParams) ([]ListPurchaseIDsForTenantAscRow, error)
+	// The console's purchase list is (purchased_at, id) DESC. A forward page reads
+	// ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
+	// both over idx_purchases_tenant_purchased_at_id, and the handler puts the
+	// ascending rows back into display order. id is a UUIDv7, so the order stays
+	// unique when purchased_at ties. These read the keys alone, and
+	// ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
+	// proto/README.md.
+	ListPurchaseIDsForTenantDesc(ctx context.Context, arg ListPurchaseIDsForTenantDescParams) ([]ListPurchaseIDsForTenantDescRow, error)
+	// What the console shows of each purchase named, in no particular order. The
+	// buyer is joined within the tenant, so the purchase of a reader who has since
+	// deleted their account, which keeps no user, answers no buyer rather than no
+	// row.
+	ListPurchasesForTenantByIDs(ctx context.Context, arg ListPurchasesForTenantByIDsParams) ([]ListPurchasesForTenantByIDsRow, error)
 	// One page of the devices to push one notification to, ordered by recipient
 	// and token after the previous page's last pair (the nil UUID and an empty
 	// token for the first page). The walk runs over the notification's recipients
@@ -2732,6 +2746,10 @@ type Querier interface {
 	// Staff tickets only, as GetAccessTicketForTenant: revoking a wait-for-free
 	// ticket would take away a read the reader was entitled to.
 	RevokeAccessTicketForTenant(ctx context.Context, arg RevokeAccessTicketForTenantParams) (AccessTicket, error)
+	// Revokes a purchase staff have refunded, before the provider's notification
+	// of the refund arrives. A purchase something revoked first keeps the instant
+	// and the reason it was given, as it does when a dispute or a refund follows.
+	RevokePurchaseForStaff(ctx context.Context, arg RevokePurchaseForStaffParams) (uuid.UUID, error)
 	// Stores where the reader stopped, after checking publication and body access
 	// in the same statement, so a viewer that saves on its way out cannot write a
 	// position for an episode that was unpublished or a rental that has expired.

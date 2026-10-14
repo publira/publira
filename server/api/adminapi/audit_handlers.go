@@ -125,7 +125,9 @@ func (s *adminServer) auditLogPage(
 	return mapAuditLogDescRows(rows), nil
 }
 
-func parseAuditLogTimeFilter(name, value string) (sql.NullTime, error) {
+// parseTimeFilter reads an RFC3339 instant a list request may filter by,
+// answering NULL for an empty one.
+func parseTimeFilter(name, value string) (sql.NullTime, error) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
 		return sql.NullTime{}, nil
@@ -157,12 +159,12 @@ func (s *adminServer) ListAuditLogs(
 		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 
-	createdFrom, err := parseAuditLogTimeFilter("created_from", req.CreatedFrom)
+	createdFrom, err := parseTimeFilter("created_from", req.CreatedFrom)
 	if err != nil {
 		return nil, err
 	}
 
-	createdTo, err := parseAuditLogTimeFilter("created_to", req.CreatedTo)
+	createdTo, err := parseTimeFilter("created_to", req.CreatedTo)
 	if err != nil {
 		return nil, err
 	}

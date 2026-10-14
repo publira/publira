@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const ApplyUnappliedDisputeToPurchase = `-- name: ApplyUnappliedDisputeToPurchase :one
@@ -764,6 +765,334 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 	return items, nil
 }
 
+const ListPurchaseIDsForTenantAsc = `-- name: ListPurchaseIDsForTenantAsc :many
+SELECT p.id,
+    p.purchased_at
+FROM purchases p
+WHERE p.tenant_id = $1
+    AND (
+        $2::uuid IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM episodes e
+            WHERE e.tenant_id = p.tenant_id
+                AND e.id = p.episode_id
+                AND e.series_id = $2::uuid
+        )
+    )
+    AND (
+        $3::uuid IS NULL
+        OR p.episode_id = $3::uuid
+    )
+    AND (
+        $4::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM users u
+            WHERE u.tenant_id = p.tenant_id
+                AND u.id = p.user_id
+                AND lower(u.email) = lower($4::text)
+        )
+    )
+    AND (
+        $5::timestamptz IS NULL
+        OR p.purchased_at >= $5::timestamptz
+    )
+    AND (
+        $6::timestamptz IS NULL
+        OR p.purchased_at < $6::timestamptz
+    )
+    AND (
+        $7::uuid IS NULL
+        OR (
+            $8::boolean
+            AND (p.purchased_at, p.id) >= ($9::timestamptz, $7::uuid)
+        )
+        OR (
+            NOT $8::boolean
+            AND (p.purchased_at, p.id) > ($9::timestamptz, $7::uuid)
+        )
+    )
+ORDER BY p.purchased_at ASC,
+    p.id ASC
+LIMIT $10
+`
+
+type ListPurchaseIDsForTenantAscParams struct {
+	TenantID          uuid.UUID      `json:"tenant_id"`
+	SeriesID          uuid.NullUUID  `json:"series_id"`
+	EpisodeID         uuid.NullUUID  `json:"episode_id"`
+	ReaderEmail       sql.NullString `json:"reader_email"`
+	PurchasedFrom     sql.NullTime   `json:"purchased_from"`
+	PurchasedTo       sql.NullTime   `json:"purchased_to"`
+	CursorID          uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive   bool           `json:"cursor_inclusive"`
+	CursorPurchasedAt sql.NullTime   `json:"cursor_purchased_at"`
+	Limit             int32          `json:"limit"`
+}
+
+type ListPurchaseIDsForTenantAscRow struct {
+	ID          uuid.UUID `json:"id"`
+	PurchasedAt time.Time `json:"purchased_at"`
+}
+
+func (q *Queries) ListPurchaseIDsForTenantAsc(ctx context.Context, arg ListPurchaseIDsForTenantAscParams) ([]ListPurchaseIDsForTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPurchaseIDsForTenantAsc,
+		arg.TenantID,
+		arg.SeriesID,
+		arg.EpisodeID,
+		arg.ReaderEmail,
+		arg.PurchasedFrom,
+		arg.PurchasedTo,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorPurchasedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPurchaseIDsForTenantAscRow
+	for rows.Next() {
+		var i ListPurchaseIDsForTenantAscRow
+		if err := rows.Scan(&i.ID, &i.PurchasedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListPurchaseIDsForTenantDesc = `-- name: ListPurchaseIDsForTenantDesc :many
+SELECT p.id,
+    p.purchased_at
+FROM purchases p
+WHERE p.tenant_id = $1
+    AND (
+        $2::uuid IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM episodes e
+            WHERE e.tenant_id = p.tenant_id
+                AND e.id = p.episode_id
+                AND e.series_id = $2::uuid
+        )
+    )
+    AND (
+        $3::uuid IS NULL
+        OR p.episode_id = $3::uuid
+    )
+    AND (
+        $4::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM users u
+            WHERE u.tenant_id = p.tenant_id
+                AND u.id = p.user_id
+                AND lower(u.email) = lower($4::text)
+        )
+    )
+    AND (
+        $5::timestamptz IS NULL
+        OR p.purchased_at >= $5::timestamptz
+    )
+    AND (
+        $6::timestamptz IS NULL
+        OR p.purchased_at < $6::timestamptz
+    )
+    AND (
+        $7::uuid IS NULL
+        OR (
+            $8::boolean
+            AND (p.purchased_at, p.id) <= ($9::timestamptz, $7::uuid)
+        )
+        OR (
+            NOT $8::boolean
+            AND (p.purchased_at, p.id) < ($9::timestamptz, $7::uuid)
+        )
+    )
+ORDER BY p.purchased_at DESC,
+    p.id DESC
+LIMIT $10
+`
+
+type ListPurchaseIDsForTenantDescParams struct {
+	TenantID          uuid.UUID      `json:"tenant_id"`
+	SeriesID          uuid.NullUUID  `json:"series_id"`
+	EpisodeID         uuid.NullUUID  `json:"episode_id"`
+	ReaderEmail       sql.NullString `json:"reader_email"`
+	PurchasedFrom     sql.NullTime   `json:"purchased_from"`
+	PurchasedTo       sql.NullTime   `json:"purchased_to"`
+	CursorID          uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive   bool           `json:"cursor_inclusive"`
+	CursorPurchasedAt sql.NullTime   `json:"cursor_purchased_at"`
+	Limit             int32          `json:"limit"`
+}
+
+type ListPurchaseIDsForTenantDescRow struct {
+	ID          uuid.UUID `json:"id"`
+	PurchasedAt time.Time `json:"purchased_at"`
+}
+
+// The console's purchase list is (purchased_at, id) DESC. A forward page reads
+// ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
+// both over idx_purchases_tenant_purchased_at_id, and the handler puts the
+// ascending rows back into display order. id is a UUIDv7, so the order stays
+// unique when purchased_at ties. These read the keys alone, and
+// ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
+// proto/README.md.
+func (q *Queries) ListPurchaseIDsForTenantDesc(ctx context.Context, arg ListPurchaseIDsForTenantDescParams) ([]ListPurchaseIDsForTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPurchaseIDsForTenantDesc,
+		arg.TenantID,
+		arg.SeriesID,
+		arg.EpisodeID,
+		arg.ReaderEmail,
+		arg.PurchasedFrom,
+		arg.PurchasedTo,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorPurchasedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPurchaseIDsForTenantDescRow
+	for rows.Next() {
+		var i ListPurchaseIDsForTenantDescRow
+		if err := rows.Scan(&i.ID, &i.PurchasedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListPurchasesForTenantByIDs = `-- name: ListPurchasesForTenantByIDs :many
+SELECT p.id,
+    p.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    u.public_id AS reader_public_id,
+    u.name AS reader_name,
+    u.email AS reader_email,
+    p.price_at_purchase,
+    p.currency,
+    p.purchased_at,
+    p.expires_at,
+    p.provider,
+    p.provider_payment_id,
+    p.store,
+    p.is_test,
+    p.refunded_amount,
+    p.refunded_at,
+    p.revoked_at,
+    p.revocation_reason
+FROM purchases p
+    JOIN episodes e ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+    LEFT JOIN users u ON u.tenant_id = p.tenant_id
+    AND u.id = p.user_id
+WHERE p.tenant_id = $1
+    AND p.id = ANY($2::uuid[])
+`
+
+type ListPurchasesForTenantByIDsParams struct {
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Ids      []uuid.UUID `json:"ids"`
+}
+
+type ListPurchasesForTenantByIDsRow struct {
+	ID                uuid.UUID      `json:"id"`
+	EpisodeID         uuid.UUID      `json:"episode_id"`
+	EpisodePublicID   string         `json:"episode_public_id"`
+	EpisodeTitle      string         `json:"episode_title"`
+	SeriesPublicID    string         `json:"series_public_id"`
+	SeriesTitle       string         `json:"series_title"`
+	ReaderPublicID    sql.NullString `json:"reader_public_id"`
+	ReaderName        sql.NullString `json:"reader_name"`
+	ReaderEmail       sql.NullString `json:"reader_email"`
+	PriceAtPurchase   int32          `json:"price_at_purchase"`
+	Currency          string         `json:"currency"`
+	PurchasedAt       time.Time      `json:"purchased_at"`
+	ExpiresAt         sql.NullTime   `json:"expires_at"`
+	Provider          sql.NullString `json:"provider"`
+	ProviderPaymentID sql.NullString `json:"provider_payment_id"`
+	Store             sql.NullString `json:"store"`
+	IsTest            bool           `json:"is_test"`
+	RefundedAmount    sql.NullInt32  `json:"refunded_amount"`
+	RefundedAt        sql.NullTime   `json:"refunded_at"`
+	RevokedAt         sql.NullTime   `json:"revoked_at"`
+	RevocationReason  sql.NullString `json:"revocation_reason"`
+}
+
+// What the console shows of each purchase named, in no particular order. The
+// buyer is joined within the tenant, so the purchase of a reader who has since
+// deleted their account, which keeps no user, answers no buyer rather than no
+// row.
+func (q *Queries) ListPurchasesForTenantByIDs(ctx context.Context, arg ListPurchasesForTenantByIDsParams) ([]ListPurchasesForTenantByIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListPurchasesForTenantByIDs, arg.TenantID, pq.Array(arg.Ids))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPurchasesForTenantByIDsRow
+	for rows.Next() {
+		var i ListPurchasesForTenantByIDsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.EpisodeID,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+			&i.ReaderPublicID,
+			&i.ReaderName,
+			&i.ReaderEmail,
+			&i.PriceAtPurchase,
+			&i.Currency,
+			&i.PurchasedAt,
+			&i.ExpiresAt,
+			&i.Provider,
+			&i.ProviderPaymentID,
+			&i.Store,
+			&i.IsTest,
+			&i.RefundedAmount,
+			&i.RefundedAt,
+			&i.RevokedAt,
+			&i.RevocationReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const LockTenantCurrency = `-- name: LockTenantCurrency :exec
 SELECT pg_advisory_xact_lock(hashtextextended('tenant-currency:' || $1::uuid::text, 0))
 `
@@ -1009,6 +1338,30 @@ type ReleaseUnappliedRefundParams struct {
 func (q *Queries) ReleaseUnappliedRefund(ctx context.Context, arg ReleaseUnappliedRefundParams) error {
 	_, err := q.db.ExecContext(ctx, ReleaseUnappliedRefund, arg.TenantID, arg.Provider, arg.ProviderPaymentID)
 	return err
+}
+
+const RevokePurchaseForStaff = `-- name: RevokePurchaseForStaff :one
+UPDATE purchases
+SET revoked_at = COALESCE(revoked_at, NOW()),
+    revocation_reason = COALESCE(revocation_reason, 'staff')
+WHERE tenant_id = $1
+    AND id = $2
+RETURNING id
+`
+
+type RevokePurchaseForStaffParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+// Revokes a purchase staff have refunded, before the provider's notification
+// of the refund arrives. A purchase something revoked first keeps the instant
+// and the reason it was given, as it does when a dispute or a refund follows.
+func (q *Queries) RevokePurchaseForStaff(ctx context.Context, arg RevokePurchaseForStaffParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, RevokePurchaseForStaff, arg.TenantID, arg.ID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const TenantHasPurchases = `-- name: TenantHasPurchases :one

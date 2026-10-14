@@ -17,6 +17,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/paymentprovider"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -73,9 +74,20 @@ func newAdminDBEnvWithLoginGuard(t *testing.T, login *loginguard.Guard) *adminDB
 	return newAdminDBEnvWith(t, &testStorageProvider{}, openMailGuard(), nil, login)
 }
 
+// newAdminDBEnvWithPaymentProviders is newAdminDBEnv for the cases that call
+// a payment provider, which registry points at a fake of its API.
+func newAdminDBEnvWithPaymentProviders(t *testing.T, registry *paymentprovider.Registry) *adminDBEnv {
+	t.Helper()
+
+	return newAdminDBEnvWith(t, &testStorageProvider{}, openMailGuard(), nil, nil, func(server *adminServer) {
+		server.paymentProviders = registry
+	})
+}
+
 // newAdminDBEnvWith starts the server, over login when it is not nil. A nil
-// login keeps the built-in limits over counters of the server's own.
-func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.Guard, serviceToken *auth.ServiceToken, login *loginguard.Guard) *adminDBEnv {
+// login keeps the built-in limits over counters of the server's own. Each of
+// configure changes the server before it starts serving.
+func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.Guard, serviceToken *auth.ServiceToken, login *loginguard.Guard, configure ...func(*adminServer)) *adminDBEnv {
 	t.Helper()
 
 	pg := testutil.StartPostgres(t)
@@ -89,6 +101,9 @@ func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.
 	api.server.serviceToken = serviceToken
 	if login != nil {
 		api.server.login = login
+	}
+	for _, configure := range configure {
+		configure(api.server)
 	}
 	server := httptest.NewServer(handlerFromServer(api.server))
 	t.Cleanup(server.Close)

@@ -495,3 +495,161 @@ FROM expired_checkouts
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND user_id = sqlc.arg('user_id')
     AND episode_id = sqlc.arg('episode_id');
+
+-- The console's purchase list is (purchased_at, id) DESC. A forward page reads
+-- ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
+-- both over idx_purchases_tenant_purchased_at_id, and the handler puts the
+-- ascending rows back into display order. id is a UUIDv7, so the order stays
+-- unique when purchased_at ties. These read the keys alone, and
+-- ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
+-- proto/README.md.
+-- name: ListPurchaseIDsForTenantDesc :many
+SELECT p.id,
+    p.purchased_at
+FROM purchases p
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('series_id')::uuid IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM episodes e
+            WHERE e.tenant_id = p.tenant_id
+                AND e.id = p.episode_id
+                AND e.series_id = sqlc.narg('series_id')::uuid
+        )
+    )
+    AND (
+        sqlc.narg('episode_id')::uuid IS NULL
+        OR p.episode_id = sqlc.narg('episode_id')::uuid
+    )
+    AND (
+        sqlc.narg('reader_email')::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM users u
+            WHERE u.tenant_id = p.tenant_id
+                AND u.id = p.user_id
+                AND lower(u.email) = lower(sqlc.narg('reader_email')::text)
+        )
+    )
+    AND (
+        sqlc.narg('purchased_from')::timestamptz IS NULL
+        OR p.purchased_at >= sqlc.narg('purchased_from')::timestamptz
+    )
+    AND (
+        sqlc.narg('purchased_to')::timestamptz IS NULL
+        OR p.purchased_at < sqlc.narg('purchased_to')::timestamptz
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) <= (sqlc.narg('cursor_purchased_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) < (sqlc.narg('cursor_purchased_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY p.purchased_at DESC,
+    p.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPurchaseIDsForTenantAsc :many
+SELECT p.id,
+    p.purchased_at
+FROM purchases p
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('series_id')::uuid IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM episodes e
+            WHERE e.tenant_id = p.tenant_id
+                AND e.id = p.episode_id
+                AND e.series_id = sqlc.narg('series_id')::uuid
+        )
+    )
+    AND (
+        sqlc.narg('episode_id')::uuid IS NULL
+        OR p.episode_id = sqlc.narg('episode_id')::uuid
+    )
+    AND (
+        sqlc.narg('reader_email')::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM users u
+            WHERE u.tenant_id = p.tenant_id
+                AND u.id = p.user_id
+                AND lower(u.email) = lower(sqlc.narg('reader_email')::text)
+        )
+    )
+    AND (
+        sqlc.narg('purchased_from')::timestamptz IS NULL
+        OR p.purchased_at >= sqlc.narg('purchased_from')::timestamptz
+    )
+    AND (
+        sqlc.narg('purchased_to')::timestamptz IS NULL
+        OR p.purchased_at < sqlc.narg('purchased_to')::timestamptz
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) >= (sqlc.narg('cursor_purchased_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) > (sqlc.narg('cursor_purchased_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY p.purchased_at ASC,
+    p.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPurchasesForTenantByIDs :many
+-- What the console shows of each purchase named, in no particular order. The
+-- buyer is joined within the tenant, so the purchase of a reader who has since
+-- deleted their account, which keeps no user, answers no buyer rather than no
+-- row.
+SELECT p.id,
+    p.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    u.public_id AS reader_public_id,
+    u.name AS reader_name,
+    u.email AS reader_email,
+    p.price_at_purchase,
+    p.currency,
+    p.purchased_at,
+    p.expires_at,
+    p.provider,
+    p.provider_payment_id,
+    p.store,
+    p.is_test,
+    p.refunded_amount,
+    p.refunded_at,
+    p.revoked_at,
+    p.revocation_reason
+FROM purchases p
+    JOIN episodes e ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+    JOIN series s ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+    LEFT JOIN users u ON u.tenant_id = p.tenant_id
+    AND u.id = p.user_id
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND p.id = ANY(sqlc.arg('ids')::uuid[]);
+
+-- name: RevokePurchaseForStaff :one
+-- Revokes a purchase staff have refunded, before the provider's notification
+-- of the refund arrives. A purchase something revoked first keeps the instant
+-- and the reason it was given, as it does when a dispute or a refund follows.
+UPDATE purchases
+SET revoked_at = COALESCE(revoked_at, NOW()),
+    revocation_reason = COALESCE(revocation_reason, 'staff')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+RETURNING id;
