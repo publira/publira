@@ -68,6 +68,7 @@ var tenantFlags = map[string]string{
 	platformtenants.FieldDomain:             "--domain",
 	platformtenants.FieldAdminDomain:        "--admin-domain",
 	platformtenants.FieldDefaultLocale:      "--default-locale",
+	platformtenants.FieldSupportedLocales:   "--supported-locale",
 	platformtenants.FieldTimezone:           "--timezone",
 	platformtenants.FieldInitialAdminEmails: "--initial-admin-email",
 	tenantmembers.FieldUserPublicID:         "--user",
@@ -129,6 +130,10 @@ func setupTenantCreate(f *commandFlags) func(context.Context, *commandEnv) error
 	f.StringVar(&params.Domain, "domain", "", "the host the tenant's site is served on")
 	f.StringVar(&params.AdminDomain, "admin-domain", "", "the host the tenant's console is served on, if not the default one")
 	f.StringVar(&params.DefaultLocale, "default-locale", "", "the tenant's language, one of "+strings.Join(locale.Supported, ", "))
+	f.Func("supported-locale", "a language the tenant's site offers, --default-locale among them; repeat for several, or leave out to offer --default-locale alone", func(code string) error {
+		params.SupportedLocales = append(params.SupportedLocales, code)
+		return nil
+	})
 	f.StringVar(&params.Timezone, "timezone", "", "the IANA time zone the tenant starts on, if not the platform's default")
 	f.Func("initial-admin-email", "an address to invite as the tenant's administrator; repeat for several", func(email string) error {
 		params.InitialAdminEmails = append(params.InitialAdminEmails, email)
@@ -186,6 +191,7 @@ func setupTenantShow(f *commandFlags) func(context.Context, *commandEnv) error {
 			fmt.Fprintf(&b, "Admin domain:\t%s\n", adminDomain)
 			fmt.Fprintf(&b, "Time zone:\t%s\n", tenant.Timezone)
 			fmt.Fprintf(&b, "Default locale:\t%s\n", tenant.DefaultLocale)
+			fmt.Fprintf(&b, "Supported locales:\t%s\n", strings.Join(tenant.SupportedLocales, ", "))
 			fmt.Fprintf(&b, "Created:\t%s\n", formatTime(tenant.CreatedAt))
 			return printTable(env.stdout, b.String())
 		})
