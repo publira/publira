@@ -43,6 +43,8 @@ A new tenant starts on the platform's default time zone, which is `UTC` unless t
 
 Readers see the ticked languages alone. The site's **Language** menu lists them, and so do the sitemap and the language links search engines read. An address in a language that is switched off, from a bookmark or a search result, opens the same page in the default language instead.
 
+The tenant's app follows the same choice. It has no **Language** menu and reads the languages set on the reader's device instead: it opens in the first of them the site offers, and in the default language when the site offers none of them.
+
 **Default language** is the language the site and this console start in for someone who has not chosen one. A reader or a member of staff who has already chosen a language keeps it. The default language is also:
 
 - the language of the mail the tenant sends, invitations to new staff included;

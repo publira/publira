@@ -16,6 +16,7 @@ void main() {
     WidgetTester tester, {
     required List<Locale> deviceLocales,
     ValueListenable<String?>? tenantDefaultLocale,
+    ValueListenable<List<String>?>? tenantSupportedLocales,
     String initialLocation = '/no-such-page',
   }) async {
     tester.platformDispatcher.localesTestValue = deviceLocales;
@@ -29,6 +30,7 @@ void main() {
         ),
         auth: fakeAuthController(),
         tenantDefaultLocale: tenantDefaultLocale,
+        tenantSupportedLocales: tenantSupportedLocales,
       ),
     );
     await tester.pump();
@@ -114,6 +116,43 @@ void main() {
     );
 
     expect(find.text('Page not found'), findsOneWidget);
+  });
+
+  testWidgets('a device language the tenant does not offer is passed over', (
+    tester,
+  ) async {
+    await pumpApp(
+      tester,
+      deviceLocales: const [Locale('ko', 'KR'), Locale('en', 'US')],
+      tenantDefaultLocale: ValueNotifier<String?>('ja'),
+      tenantSupportedLocales: ValueNotifier<List<String>?>(const ['ja', 'en']),
+    );
+
+    expect(find.text('Page not found'), findsOneWidget);
+  });
+
+  testWidgets('the offered languages are applied once the lookup answers', (
+    tester,
+  ) async {
+    final tenantDefaultLocale = ValueNotifier<String?>(null);
+    addTearDown(tenantDefaultLocale.dispose);
+    final tenantSupportedLocales = ValueNotifier<List<String>?>(null);
+    addTearDown(tenantSupportedLocales.dispose);
+    await pumpApp(
+      tester,
+      deviceLocales: const [Locale('ko', 'KR')],
+      tenantDefaultLocale: tenantDefaultLocale,
+      tenantSupportedLocales: tenantSupportedLocales,
+    );
+
+    expect(find.text('ページが見つかりません'), findsNothing);
+    expect(find.text('Page not found'), findsNothing);
+
+    tenantDefaultLocale.value = 'ja';
+    tenantSupportedLocales.value = const ['ja', 'en'];
+    await tester.pump();
+
+    expect(find.text('ページが見つかりません'), findsOneWidget);
   });
 
   testWidgets('changing the device language while running re-renders', (

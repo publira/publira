@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -302,6 +303,8 @@ void main() {
     Future<void> pumpApp(
       WidgetTester tester, {
       String initialLocation = AppRoutes.catalog,
+      ValueListenable<String?>? tenantDefaultLocale,
+      ValueListenable<List<String>?>? tenantSupportedLocales,
     }) async {
       router = createAppRouter(initialLocation: initialLocation);
       await tester.pumpWidget(
@@ -310,6 +313,8 @@ void main() {
           catalog: FakeCatalogRepository(series: fixtureSeries),
           auth: auth,
           legalPageAgreements: agreements,
+          tenantDefaultLocale: tenantDefaultLocale,
+          tenantSupportedLocales: tenantSupportedLocales,
           offline: InMemoryOfflineLibrary(),
           pages: FakePageRepository(
             pages: const [
@@ -505,6 +510,59 @@ void main() {
 
       expect(location(), AppRoutes.agreementDelete);
       expect(find.byType(DeleteAccountScreen), findsOneWidget);
+    });
+
+    // What a reader owes is read per translation, so the language the app
+    // settles on can owe what the one it opened in did not. Owing nothing at
+    // first keeps the agreement screen, which reads again in its own
+    // language, from being the one that asks.
+    testWidgets('asks again in a language the tenant offers once the lookup '
+        'answers', (tester) async {
+      repository.owedLegalPages = const [];
+      tester.platformDispatcher.localesTestValue = const [Locale('ko', 'KR')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      final tenantDefaultLocale = ValueNotifier<String?>(null);
+      addTearDown(tenantDefaultLocale.dispose);
+      final tenantSupportedLocales = ValueNotifier<List<String>?>(null);
+      addTearDown(tenantSupportedLocales.dispose);
+      await pumpApp(
+        tester,
+        tenantDefaultLocale: tenantDefaultLocale,
+        tenantSupportedLocales: tenantSupportedLocales,
+      );
+
+      final before = List.of(repository.owedLegalPagesLocales);
+      expect(before, everyElement('ko'));
+
+      tenantDefaultLocale.value = 'ja';
+      tenantSupportedLocales.value = const ['ja', 'en'];
+      await tester.pumpAndSettle();
+
+      expect(repository.owedLegalPagesLocales, [...before, 'ja']);
+    });
+
+    testWidgets('does not ask again when the lookup leaves the language as it '
+        'was', (tester) async {
+      repository.owedLegalPages = const [];
+      tester.platformDispatcher.localesTestValue = const [Locale('en', 'US')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      final tenantDefaultLocale = ValueNotifier<String?>(null);
+      addTearDown(tenantDefaultLocale.dispose);
+      final tenantSupportedLocales = ValueNotifier<List<String>?>(null);
+      addTearDown(tenantSupportedLocales.dispose);
+      await pumpApp(
+        tester,
+        tenantDefaultLocale: tenantDefaultLocale,
+        tenantSupportedLocales: tenantSupportedLocales,
+      );
+      final before = List.of(repository.owedLegalPagesLocales);
+      expect(before, everyElement('en'));
+
+      tenantDefaultLocale.value = 'ja';
+      tenantSupportedLocales.value = const ['ja', 'en'];
+      await tester.pumpAndSettle();
+
+      expect(repository.owedLegalPagesLocales, before);
     });
 
     testWidgets('a reader who owes nothing is never asked', (tester) async {
