@@ -20,5 +20,9 @@ Uri? userIconUrl(Object? variants, AppConfig config) {
   if (url is! String || url.trim().isEmpty) {
     return null;
   }
-  return config.imageUri(url.trim());
+  try {
+    return config.imageUri(url.trim());
+  } on FormatException {
+    return null;
+  }
 }
