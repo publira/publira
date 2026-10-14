@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
@@ -23,6 +25,12 @@ const storefrontUrl = (pathname: string): string =>
 
 const RENAMED_DISPLAY_NAME = "Renamed Settings Member";
 
+/** A square photograph well above the 128px the API stores an icon from. */
+const ICON_FIXTURE = path.join(
+  import.meta.dirname,
+  "../fixtures/eye-catch/square-1200x1200.jpg"
+);
+
 /** Every screen the member area keeps behind a session. */
 const MEMBER_PATHS = [
   "/my",
@@ -35,7 +43,9 @@ const MEMBER_PATHS = [
 const signIn = (page: Page, returnTo: string): Promise<void> =>
   signInAsMember(page, MEMBER_SETTINGS_MEMBER, returnTo);
 
-const memberField = (column: "email" | "name" | "password_hash"): string =>
+const memberField = (
+  column: "email" | "icon_image_id" | "name" | "password_hash"
+): string =>
   querySql(
     `SELECT ${column} FROM users WHERE public_id = '${MEMBER_SETTINGS_MEMBER.publicId}';`
   );
@@ -168,6 +178,53 @@ test.describe("web-storefront member settings", () => {
     await expect(
       page.getByRole("menu").getByText(RENAMED_DISPLAY_NAME)
     ).toBeVisible();
+  });
+
+  test("the basic settings screen sets, replaces, and removes the icon the header shows", async ({
+    page,
+  }) => {
+    await signIn(page, "/settings");
+
+    const accountMenu = page.getByRole("button", { name: "Account menu" });
+    const settingsIcon = page.getByRole("img", { name: "Your icon" });
+    // An account with no icon shows the stand-in in both places.
+    await expect(
+      page.getByRole("button", { name: "Upload icon" })
+    ).toBeVisible();
+    await expect(settingsIcon).toBeHidden();
+    await expect(accountMenu.locator("img")).toHaveCount(0);
+
+    await page.locator('input[type="file"]').setInputFiles(ICON_FIXTURE);
+
+    await expectFlash(page, "status", "Your icon has been updated.");
+    await expect(settingsIcon).toBeVisible();
+    await expect(accountMenu.locator("img")).toBeVisible();
+    const firstImage = memberField("icon_image_id");
+    expect(firstImage).not.toBe("");
+    // The image the page draws is one the edge actually serves.
+    expect(
+      await settingsIcon.evaluate(
+        (image: HTMLImageElement) => image.naturalWidth
+      )
+    ).toBeGreaterThan(0);
+
+    // Uploading again replaces the icon rather than asking to remove it first.
+    await page.locator('input[type="file"]').setInputFiles(ICON_FIXTURE);
+    await expectFlash(page, "status", "Your icon has been updated.");
+    await expect.poll(() => memberField("icon_image_id")).not.toBe(firstImage);
+
+    await page.reload();
+    await expect(settingsIcon).toBeVisible();
+
+    await page.getByRole("button", { name: "Remove icon" }).click();
+
+    await expectFlash(page, "status", "Your icon has been removed.");
+    await expect(settingsIcon).toBeHidden();
+    await expect(accountMenu.locator("img")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Upload icon" })
+    ).toBeVisible();
+    expect(memberField("icon_image_id")).toBe("");
   });
 
   test("the notification screen turns email notifications off and keeps them off", async ({

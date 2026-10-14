@@ -14,6 +14,7 @@ const {
   mockCreateUser,
   mockLogin,
   mockDeleteMe,
+  mockDeleteMyIcon,
   mockLogout,
   mockGetMe,
   mockGetNotificationSettings,
@@ -23,6 +24,7 @@ const {
   mockRequestEmailChange,
   mockResolveAccessToken,
   mockUpdateMe,
+  mockUploadMyIcon,
   mockVerifyUserEmail,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
@@ -30,6 +32,7 @@ const {
   mockConfirmEmailChange: vi.fn(),
   mockCreateUser: vi.fn(),
   mockDeleteMe: vi.fn(),
+  mockDeleteMyIcon: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetNotificationSettings: vi.fn(),
   mockLinkIdentity: vi.fn(),
@@ -40,6 +43,7 @@ const {
   mockRequestEmailChange: vi.fn(),
   mockResolveAccessToken: vi.fn(),
   mockUpdateMe: vi.fn(),
+  mockUploadMyIcon: vi.fn(),
   mockVerifyUserEmail: vi.fn(),
 }));
 
@@ -56,6 +60,7 @@ vi.mock("./api-client", () => ({
       confirmEmailChange: mockConfirmEmailChange,
       createUser: mockCreateUser,
       deleteMe: mockDeleteMe,
+      deleteMyIcon: mockDeleteMyIcon,
       getMe: mockGetMe,
       getNotificationSettings: mockGetNotificationSettings,
       linkIdentity: mockLinkIdentity,
@@ -65,6 +70,7 @@ vi.mock("./api-client", () => ({
       logout: mockLogout,
       requestEmailChange: mockRequestEmailChange,
       updateMe: mockUpdateMe,
+      uploadMyIcon: mockUploadMyIcon,
       verifyUserEmail: mockVerifyUserEmail,
     },
   },
@@ -79,6 +85,27 @@ vi.mock("./api-client", () => ({
 const importAuth = () => import("./auth");
 
 const DROPPED_ENTRY = { expire: 0, revalidate: 0, stale: 0 };
+
+const ICON_URL = "/images/users/U001/icon/original.png";
+
+/** An account as the API answers it once an icon is set. */
+const ICON_USER = {
+  birthDate: "",
+  email: "alice@example.com",
+  iconImageVariants: [
+    {
+      contentType: "image/png",
+      fileSizeBytes: 2048n,
+      height: 512,
+      label: "original",
+      url: ICON_URL,
+      width: 512,
+    },
+  ],
+  name: "Alice",
+  publicId: "U001",
+  role: "reader",
+};
 
 describe("web-storefront auth", () => {
   beforeEach(() => {
@@ -537,7 +564,9 @@ describe("web-storefront auth", () => {
 
   it("isSessionRejected: false when the API still answers for the session", async () => {
     const { isSessionRejected } = await importAuth();
-    mockGetMe.mockResolvedValueOnce({ user: { name: "Reader" } });
+    mockGetMe.mockResolvedValueOnce({
+      user: { iconImageVariants: [], name: "Reader" },
+    });
 
     await expect(isSessionRejected("TENANT001")).resolves.toBe(false);
   });
@@ -584,6 +613,7 @@ describe("web-storefront auth", () => {
         user: {
           birthDate: "1990-04-02",
           email: "alice@example.com",
+          iconImageVariants: [],
           name: "Alice",
           publicId: "U001",
           role: "reader",
@@ -593,6 +623,7 @@ describe("web-storefront auth", () => {
     await expect(getMe("TENANT001")).resolves.toEqual({
       birthDate: "1990-04-02",
       email: "alice@example.com",
+      icon: null,
       name: "Alice",
       publicId: "U001",
       role: "reader",
@@ -607,6 +638,145 @@ describe("web-storefront auth", () => {
 
     await expect(getMe("TENANT001")).rejects.toBe(thrown);
     expect(mockGetMe).toHaveBeenCalledOnce();
+  });
+
+  it("getMe: carries the icon the account shows", async () => {
+    const { getMe } = await importAuth();
+    mockGetMe.mockResolvedValueOnce({ user: ICON_USER });
+
+    await expect(getMe("TENANT001")).resolves.toMatchObject({
+      icon: { height: 512, url: ICON_URL, width: 512 },
+    });
+  });
+
+  it("uploadMyIcon: sends the image and answers the account with its new icon", async () => {
+    const { uploadMyIcon } = await importAuth();
+    mockUploadMyIcon.mockResolvedValueOnce({ user: ICON_USER });
+    const data = new Uint8Array([1, 2, 3]);
+
+    await expect(
+      uploadMyIcon("TENANT001", { contentType: "image/png", data })
+    ).resolves.toMatchObject({
+      me: { icon: { url: ICON_URL } },
+      ok: true,
+    });
+    expect(mockUploadMyIcon).toHaveBeenCalledWith(
+      {
+        iconContentType: "image/png",
+        iconData: data,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it.each([
+    ["icon_data", "image"],
+    ["icon_crop", "image"],
+  ] as const)(
+    "uploadMyIcon: names an image the API refuses (%s)",
+    async (field, refusal) => {
+      const { uploadMyIcon } = await importAuth();
+      mockUploadMyIcon.mockRejectedValueOnce(
+        new ConnectError("refused", Code.InvalidArgument, undefined, [
+          { desc: BadRequestSchema, value: { fieldViolations: [{ field }] } },
+        ])
+      );
+
+      await expect(
+        uploadMyIcon("TENANT001", {
+          contentType: "image/png",
+          data: new Uint8Array([1]),
+        })
+      ).resolves.toEqual({ ok: false, refusal });
+    }
+  );
+
+  it("uploadMyIcon: names an install with no object store", async () => {
+    const { uploadMyIcon } = await importAuth();
+    mockUploadMyIcon.mockRejectedValueOnce(
+      new ConnectError("storage", Code.FailedPrecondition, undefined, [
+        {
+          desc: ErrorInfoSchema,
+          value: { domain: "publira", reason: "STORAGE_NOT_CONFIGURED" },
+        },
+      ])
+    );
+
+    await expect(
+      uploadMyIcon("TENANT001", {
+        contentType: "image/png",
+        data: new Uint8Array([1]),
+      })
+    ).resolves.toEqual({ ok: false, refusal: "storage-not-configured" });
+  });
+
+  it("uploadMyIcon: hands any other refusal back by its disposition", async () => {
+    const { uploadMyIcon } = await importAuth();
+    mockUploadMyIcon.mockRejectedValueOnce(
+      new ConnectError("slow down", Code.ResourceExhausted)
+    );
+
+    await expect(
+      uploadMyIcon("TENANT001", {
+        contentType: "image/png",
+        data: new Uint8Array([1]),
+      })
+    ).resolves.toEqual({ ok: false, refusal: "rate-limited" });
+  });
+
+  it("uploadMyIcon: lets an unclassified failure reach the error boundary", async () => {
+    const { uploadMyIcon } = await importAuth();
+    const thrown = new ConnectError("boom", Code.Internal);
+    mockUploadMyIcon.mockRejectedValueOnce(thrown);
+
+    await expect(
+      uploadMyIcon("TENANT001", {
+        contentType: "image/png",
+        data: new Uint8Array([1]),
+      })
+    ).rejects.toBe(thrown);
+  });
+
+  it("uploadMyIcon: refuses without asking when the browser holds no session", async () => {
+    const { uploadMyIcon } = await importAuth();
+    mockResolveAccessToken.mockResolvedValueOnce("");
+
+    await expect(
+      uploadMyIcon("TENANT001", {
+        contentType: "image/png",
+        data: new Uint8Array([1]),
+      })
+    ).resolves.toEqual({ ok: false, refusal: "unauthenticated" });
+    expect(mockUploadMyIcon).not.toHaveBeenCalled();
+  });
+
+  it("deleteMyIcon: answers the account with no icon", async () => {
+    const { deleteMyIcon } = await importAuth();
+    mockDeleteMyIcon.mockResolvedValueOnce({
+      user: { ...ICON_USER, iconImageVariants: [] },
+    });
+
+    await expect(deleteMyIcon("TENANT001")).resolves.toMatchObject({
+      me: { icon: null },
+      ok: true,
+    });
+    expect(mockDeleteMyIcon).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it("deleteMyIcon: hands an expired session back as a refusal", async () => {
+    const { deleteMyIcon } = await importAuth();
+    mockDeleteMyIcon.mockRejectedValueOnce(
+      new ConnectError("expired", Code.Unauthenticated)
+    );
+
+    await expect(deleteMyIcon("TENANT001")).resolves.toEqual({
+      ok: false,
+      refusal: "unauthenticated",
+    });
   });
 
   it("updateMe: expected error is null", async () => {

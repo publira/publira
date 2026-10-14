@@ -9,8 +9,10 @@ import {
   rpcErrorHasFieldViolation,
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
+import type { RpcErrorDisposition } from "@publira/api-client/errors";
 import { IdentityProvider } from "@publira/api-client/public/auth";
 import type { LinkedIdentity } from "@publira/api-client/public/auth";
+import type { User } from "@publira/api-client/public/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheLife } from "next/cache";
 import pRetry, { AbortError } from "p-retry";
@@ -50,11 +52,24 @@ export interface PublicSession {
   expiresAt: Date;
 }
 
+/** The stored rendition of a reader's icon. */
+export interface AccountIcon {
+  height: number;
+  url: string;
+  width: number;
+}
+
 export interface MeInfo {
   /** `YYYY-MM-DD`, and empty when the reader has given none. */
   birthDate: string;
   /** The address the account signs in with. */
   email: string;
+  /**
+   * The icon the account shows, or `null` for one that shows none. Its URL
+   * stops answering once the icon is replaced or removed, so it is read with
+   * the account rather than kept.
+   */
+  icon: AccountIcon | null;
   name: string;
   publicId: string;
   role: string;
@@ -787,6 +802,25 @@ const isStaleSessionReadError = (error: unknown): boolean =>
  */
 const GET_ME_RETRY_MIN_TIMEOUT_MS = 100;
 
+/**
+ * The account as the profile screens read it. An icon is stored as a single
+ * rendition, so the first variant is the icon.
+ */
+const toMeInfo = (user: User): MeInfo => {
+  const [variant] = user.iconImageVariants;
+
+  return {
+    birthDate: user.birthDate,
+    email: user.email,
+    icon: variant
+      ? { height: variant.height, url: variant.url, width: variant.width }
+      : null,
+    name: user.name,
+    publicId: user.publicId,
+    role: user.role,
+  };
+};
+
 export const getMe = async (
   tenantId: string,
   accessToken?: string
@@ -807,17 +841,7 @@ export const getMe = async (
             buildSessionHeaders(sid)
           );
 
-          if (!response.user) {
-            return null;
-          }
-
-          return {
-            birthDate: response.user.birthDate,
-            email: response.user.email,
-            name: response.user.name,
-            publicId: response.user.publicId,
-            role: response.user.role,
-          };
+          return response.user ? toMeInfo(response.user) : null;
         } catch (error) {
           if (isStaleSessionReadError(error)) {
             throw error;
@@ -884,17 +908,7 @@ export const updateMe = async (
       buildSessionHeaders(sid)
     );
 
-    if (!response.user) {
-      return null;
-    }
-
-    return {
-      birthDate: response.user.birthDate,
-      email: response.user.email,
-      name: response.user.name,
-      publicId: response.user.publicId,
-      role: response.user.role,
-    };
+    return response.user ? toMeInfo(response.user) : null;
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
@@ -903,6 +917,93 @@ export const updateMe = async (
       return null;
     }
     throw error;
+  }
+};
+
+/** An image the reader picked for their icon. */
+export interface IconUpload {
+  contentType: string;
+  data: Uint8Array;
+}
+
+/**
+ * What became of an icon change. `image` is an upload the API would not make
+ * an icon of, and `storage-not-configured` an install with no object store
+ * saved yet, which the reader can do nothing about; every other refusal keeps
+ * its disposition so it is worded the way the shared RPC copy words it.
+ *
+ * A session the API turns away is one of those refusals rather than a throw:
+ * the change is sent by a `fetch` from the settings screen, which shows the
+ * outcome where the reader made it instead of following a redirect.
+ */
+export type IconChangeOutcome =
+  | { me: MeInfo | null; ok: true }
+  | {
+      ok: false;
+      refusal: "image" | "storage-not-configured" | RpcErrorDisposition;
+    };
+
+const iconChangeRefusal = (
+  error: unknown
+): Extract<IconChangeOutcome, { ok: false }> => {
+  rethrowUnclassifiedRpcError(error);
+  if (
+    rpcErrorHasFieldViolation(error, "icon_data") ||
+    rpcErrorHasFieldViolation(error, "icon_crop")
+  ) {
+    return { ok: false, refusal: "image" };
+  }
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.storageNotConfigured)) {
+    return { ok: false, refusal: "storage-not-configured" };
+  }
+  return { ok: false, refusal: rpcErrorDisposition(error) };
+};
+
+/**
+ * Set the signed-in reader's icon, replacing the one they had. The API cuts
+ * the square from the centre of the upload.
+ */
+export const uploadMyIcon = async (
+  tenantId: string,
+  { contentType, data }: IconUpload,
+  accessToken?: string
+): Promise<IconChangeOutcome> => {
+  const sid = await resolveAccessToken(accessToken);
+  if (!sid) {
+    return { ok: false, refusal: "unauthenticated" };
+  }
+
+  try {
+    const response = await apiClient.auth.uploadMyIcon(
+      { iconContentType: contentType, iconData: data, tenant: { tenantId } },
+      buildSessionHeaders(sid)
+    );
+
+    return { me: response.user ? toMeInfo(response.user) : null, ok: true };
+  } catch (error) {
+    return iconChangeRefusal(error);
+  }
+};
+
+/** Leave the signed-in reader's account with no icon. */
+export const deleteMyIcon = async (
+  tenantId: string,
+  accessToken?: string
+): Promise<IconChangeOutcome> => {
+  const sid = await resolveAccessToken(accessToken);
+  if (!sid) {
+    return { ok: false, refusal: "unauthenticated" };
+  }
+
+  try {
+    const response = await apiClient.auth.deleteMyIcon(
+      { tenant: { tenantId } },
+      buildSessionHeaders(sid)
+    );
+
+    return { me: response.user ? toMeInfo(response.user) : null, ok: true };
+  } catch (error) {
+    return iconChangeRefusal(error);
   }
 };
 

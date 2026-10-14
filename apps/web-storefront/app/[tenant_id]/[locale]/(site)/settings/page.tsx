@@ -1,5 +1,5 @@
 import type { Locale } from "@publira/i18n";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatPlainDate } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { redirect } from "next/navigation";
@@ -22,6 +22,7 @@ import { getTenantAgeVerification, getTenantSignInClients } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
+import { AccountIconField } from "./_components/account-icon-field";
 import { updateProfileAction } from "./_lib/actions";
 import {
   buildSettingsPath,
@@ -171,6 +172,10 @@ const ProfileSection = async () => {
       <h2 className="mb-4 text-lg font-semibold">
         {t("storefront.settings.profile_heading")}
       </h2>
+      {/* Saved as soon as it changes, so it stands outside the form's Save. */}
+      <div className="mb-6">
+        <AccountIconField icon={me?.icon ?? null} locale={locale} />
+      </div>
       <form action={updateProfileAction} className="space-y-4">
         <LocaleField />
         <input name="tenantId" type="hidden" value={tenantId} />
@@ -217,6 +222,10 @@ const ProfileSection = async () => {
 const ProfileSectionFallback = () => (
   <section className="space-y-4 border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-32" />
+    <div className="flex items-center gap-4">
+      <Skeleton className="size-20 rounded-full" />
+      <Skeleton className="h-8 w-32 pointer-coarse:h-11" />
+    </div>
     <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
   </section>
 );

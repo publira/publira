@@ -1,8 +1,9 @@
 /**
  * Records created by `db/seeds/scenarios/070_member_settings.sql`.
  *
- * The suite rewrites this member's display name, notification preference,
- * follow list, and password, so it owns an account no other spec signs in as.
+ * The suite rewrites this member's display name, icon, notification
+ * preference, follow list, and password, so it owns an account no other spec
+ * signs in as.
  * Re-applying the scenario is what puts those values back.
  */
 

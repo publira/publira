@@ -1,8 +1,8 @@
 -- Scenario: a member whose own account the settings E2E may rewrite
 --
--- `storefront.member-settings.spec.ts` renames the reader, turns their email
--- notifications off, submits an email change, changes their password, and
--- follows a series. The dev seed member cannot absorb that: `storefront.auth` signs
+-- `storefront.member-settings.spec.ts` renames the reader, sets and removes
+-- their icon, turns their email notifications off, submits an email change,
+-- changes their password, and follows a series. The dev seed member cannot absorb that: `storefront.auth` signs
 -- in with its address, `announcements.pagination` reads its announcement list,
 -- and both run beside this suite under `workers: 3`.
 --
@@ -42,7 +42,10 @@ SET tenant_id = EXCLUDED.tenant_id,
     password_hash = EXCLUDED.password_hash,
     name = EXCLUDED.name,
     status = EXCLUDED.status,
-    email_verified_at = EXCLUDED.email_verified_at;
+    email_verified_at = EXCLUDED.email_verified_at,
+    -- The screen opens on the stand-in for an account with no icon. The image
+    -- an upload stored is left for the orphan sweep, as a removal leaves it.
+    icon_image_id = NULL;
 
 -- No row means the API's own default, which is what the screen opens on. The
 -- suite writes one by saving the notification form.
