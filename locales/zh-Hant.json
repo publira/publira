@@ -105,7 +105,8 @@
       "preview": "感謝您購買{$episode_title}。",
       "purchased_at": "購買時間：{$purchased_at}",
       "series": "系列：{$series_title}",
-      "subject": "{$tenant_name}購買成功"
+      "subject": "{$tenant_name}購買成功",
+      "test_notice": "這是在支付服務測試模式下的購買，未產生任何扣款。"
     },
     "reader_email_change_confirmation": {
       "action": "確認電子郵件地址變更",

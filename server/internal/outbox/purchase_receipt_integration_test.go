@@ -73,6 +73,12 @@ func newPurchaseReceiptEnv(t *testing.T, ctx context.Context) purchaseReceiptEnv
 // purchasedAt.
 func (e purchaseReceiptEnv) purchase(t *testing.T, ctx context.Context, checkoutID string, purchasedAt time.Time, expiresAt sql.NullTime) dbmodels.Purchase {
 	t.Helper()
+	return e.purchaseIn(t, ctx, checkoutID, purchasedAt, expiresAt, false)
+}
+
+// purchaseIn is purchase in live or in the provider's test mode.
+func (e purchaseReceiptEnv) purchaseIn(t *testing.T, ctx context.Context, checkoutID string, purchasedAt time.Time, expiresAt sql.NullTime, test bool) dbmodels.Purchase {
+	t.Helper()
 
 	purchase, err := e.queries.CreatePurchaseFromProviderCheckout(ctx, dbmodels.CreatePurchaseFromProviderCheckoutParams{
 		ID:                 uuid.New(),
@@ -83,6 +89,7 @@ func (e purchaseReceiptEnv) purchase(t *testing.T, ctx context.Context, checkout
 		ExpiresAt:          expiresAt,
 		Provider:           "stripe",
 		ProviderCheckoutID: checkoutID,
+		IsTest:             test,
 		Currency:           "JPY",
 	})
 	if err != nil {
@@ -179,6 +186,12 @@ func TestPurchaseReceiptEmailTellsTheReaderWhatTheyBought(t *testing.T) {
 	if request.Data["amount"] != int64(500) || request.Data["currency"] != "JPY" {
 		t.Errorf("amount = %#v %#v, want 500 JPY", request.Data["amount"], request.Data["currency"])
 	}
+	if request.Data["is_test"] != false {
+		t.Errorf("is_test = %#v, want false for a live purchase", request.Data["is_test"])
+	}
+	if strings.Contains(sent.Text, "test mode") {
+		t.Errorf("a live purchase's mail calls it a test:\n%s", sent.Text)
+	}
 	if request.Data["purchased_at"] != "2030-01-15T12:00:00Z" || request.Data["expires_at"] != "2030-01-17T12:00:00Z" {
 		t.Errorf("instants = %v and %v, want the stored ones in RFC 3339", request.Data["purchased_at"], request.Data["expires_at"])
 	}
@@ -202,6 +215,31 @@ func TestPurchaseReceiptEmailNamesNoEndForAPurchaseWithoutOne(t *testing.T) {
 	}
 	if text := mailer.sent[0].email.Text; strings.Contains(text, "Readable until") {
 		t.Errorf("the mail names an end the purchase does not have:\n%s", text)
+	}
+}
+
+// The documented setup ends with a purchase in the provider's test mode, and
+// its receipt must not read as a record of money taken.
+func TestPurchaseReceiptEmailSaysATestPurchaseChargedNothing(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	env := newPurchaseReceiptEnv(t, ctx)
+	purchase := env.purchaseIn(t, ctx, "cs_receipt_test", time.Now(), sql.NullTime{}, true)
+
+	mailer := &recordingMailer{}
+	renderer := &recordingRenderer{}
+	if err := env.handler(mailer, renderer)(ctx, env.event(t, purchase.ID)); err != nil {
+		t.Fatalf("purchase receipt handler: %v", err)
+	}
+	if len(mailer.sent) != 1 {
+		t.Fatalf("sent %d mails, want 1", len(mailer.sent))
+	}
+	if text := mailer.sent[0].email.Text; !strings.Contains(text, "test mode. No money was charged.") {
+		t.Errorf("the mail does not say the test purchase charged nothing:\n%s", text)
+	}
+	if got := renderer.requests[0].Data["is_test"]; got != true {
+		t.Errorf("is_test = %#v, want true", got)
 	}
 }
 

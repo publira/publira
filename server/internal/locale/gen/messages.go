@@ -614,6 +614,13 @@ var Messages = map[string]map[string]string{
 		"zh-Hans": "{$tenant_name}购买成功",
 		"zh-Hant": "{$tenant_name}購買成功",
 	},
+	"email.purchase_receipt.test_notice": {
+		"ja":      "これは決済サービスのテストモードでの購入です。料金は請求されていません。",
+		"en":      "This was a purchase in the payment provider's test mode. No money was charged.",
+		"ko":      "결제 서비스의 테스트 모드에서 진행된 구매입니다. 요금은 청구되지 않았습니다.",
+		"zh-Hans": "这是在支付服务测试模式下的购买，未产生任何扣款。",
+		"zh-Hant": "這是在支付服務測試模式下的購買，未產生任何扣款。",
+	},
 	"email.reader_email_change_confirmation.action": {
 		"ja":      "メールアドレス変更を確認する",
 		"en":      "Confirm email address change",

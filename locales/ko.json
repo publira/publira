@@ -105,7 +105,8 @@
       "preview": "{$episode_title} 구매가 완료되었습니다.",
       "purchased_at": "구매 일시: {$purchased_at}",
       "series": "시리즈: {$series_title}",
-      "subject": "{$tenant_name} 구매 완료"
+      "subject": "{$tenant_name} 구매 완료",
+      "test_notice": "결제 서비스의 테스트 모드에서 진행된 구매입니다. 요금은 청구되지 않았습니다."
     },
     "reader_email_change_confirmation": {
       "action": "이메일 주소 변경 확인하기",

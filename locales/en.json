@@ -105,7 +105,8 @@
       "preview": "Thank you for buying {$episode_title}.",
       "purchased_at": "Purchased: {$purchased_at}",
       "series": "Series: {$series_title}",
-      "subject": "{$tenant_name} purchase receipt"
+      "subject": "{$tenant_name} purchase receipt",
+      "test_notice": "This was a purchase in the payment provider's test mode. No money was charged."
     },
     "reader_email_change_confirmation": {
       "action": "Confirm email address change",

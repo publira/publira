@@ -105,7 +105,8 @@
       "preview": "感谢您购买{$episode_title}。",
       "purchased_at": "购买时间：{$purchased_at}",
       "series": "系列：{$series_title}",
-      "subject": "{$tenant_name}购买成功"
+      "subject": "{$tenant_name}购买成功",
+      "test_notice": "这是在支付服务测试模式下的购买，未产生任何扣款。"
     },
     "reader_email_change_confirmation": {
       "action": "确认邮箱地址变更",

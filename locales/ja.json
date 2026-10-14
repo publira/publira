@@ -105,7 +105,8 @@
       "preview": "{$episode_title}をご購入いただきありがとうございます。",
       "purchased_at": "購入日時: {$purchased_at}",
       "series": "シリーズ: {$series_title}",
-      "subject": "{$tenant_name}購入完了"
+      "subject": "{$tenant_name}購入完了",
+      "test_notice": "これは決済サービスのテストモードでの購入です。料金は請求されていません。"
     },
     "reader_email_change_confirmation": {
       "action": "メールアドレス変更を確認する",

@@ -240,6 +240,7 @@ SELECT
     p.currency,
     p.purchased_at,
     p.expires_at,
+    p.is_test,
     e.title AS episode_title,
     s.title AS series_title,
     u.email AS reader_email

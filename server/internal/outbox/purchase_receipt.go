@@ -112,7 +112,8 @@ func purchaseReceiptEmailIDs(event dbmodels.OutboxEvent) (uuid.UUID, uuid.UUID, 
 // minor unit with its currency, and the instants as RFC 3339, so the HTML part
 // and the plain-text part each write them in the tenant's locale and zone. A
 // purchase with no reading period reaches the mail with an empty expires_at,
-// which is what the copy leaves the line out on.
+// which is what the copy leaves the line out on, and a purchase paid in the
+// provider's test mode with is_test, which the copy says took no money.
 func purchaseReceiptEmailRequest(
 	delivery tenantDelivery,
 	receipt dbmodels.GetPurchaseReceiptForTenantRow,
@@ -130,6 +131,7 @@ func purchaseReceiptEmailRequest(
 			"currency":      receipt.Currency,
 			"episode_title": receipt.EpisodeTitle,
 			"expires_at":    expiresAt,
+			"is_test":       receipt.IsTest,
 			"library_url":   libraryURL,
 			"purchased_at":  receipt.PurchasedAt.UTC().Format(time.RFC3339Nano),
 			"series_title":  receipt.SeriesTitle,

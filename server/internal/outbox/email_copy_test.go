@@ -300,6 +300,7 @@ var emailCopyCases = []struct {
 				"currency":      "JPY",
 				"episode_title": "Episode 1",
 				"expires_at":    "2030-01-17T12:00:00Z",
+				"is_test":       false,
 				"library_url":   "https://reader.example.test/my/library",
 				"purchased_at":  copyPurchasedAt,
 				"series_title":  "The Lighthouse Keeper",
@@ -317,6 +318,25 @@ var emailCopyCases = []struct {
 				"currency":      "USD",
 				"episode_title": "Episode 1",
 				"expires_at":    "",
+				"is_test":       false,
+				"library_url":   "https://reader.example.test/my/library",
+				"purchased_at":  copyPurchasedAt,
+				"series_title":  "The Lighthouse Keeper",
+				"tenant_name":   "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "purchase_receipt for a purchase in the provider's test mode",
+		subjects: map[string]string{"en": "Aoto Press purchase receipt", "ja": "Aoto Press購入完了"},
+		request: emailrenderer.Request{
+			Template: "purchase_receipt",
+			Data: map[string]any{
+				"amount":        int64(100),
+				"currency":      "JPY",
+				"episode_title": "Episode 1",
+				"expires_at":    "",
+				"is_test":       true,
 				"library_url":   "https://reader.example.test/my/library",
 				"purchased_at":  copyPurchasedAt,
 				"series_title":  "The Lighthouse Keeper",
@@ -438,8 +458,9 @@ func TestEmailCopyQuotesTheMessageAStaffReplyAnswers(t *testing.T) {
 }
 
 // A receipt states the purchase in the tenant's language and zone: the price
-// as the locale writes the currency, with its code beside the symbol, and the
-// end of the reading period only for a purchase that has one.
+// as the locale writes the currency, with its code beside the symbol, the end
+// of the reading period only for a purchase that has one, and that no money was
+// taken for a purchase in the provider's test mode.
 func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 	for _, testCase := range []struct {
 		name      string
@@ -447,6 +468,7 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 		amount    int64
 		currency  string
 		expiresAt string
+		isTest    bool
 		wantText  string
 	}{
 		{
@@ -479,6 +501,22 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
 				"このメールはAoto Pressから送信されています。",
 		},
+		{
+			name:     "in English for a test-mode purchase",
+			locale:   "en",
+			amount:   100,
+			currency: "JPY",
+			isTest:   true,
+			wantText: "Aoto Press\n\nThank you for your purchase\n\n" +
+				"Here is the receipt for your purchase on Aoto Press.\n\n" +
+				"This was a purchase in the payment provider's test mode. No money was charged.\n\n" +
+				"Series: The Lighthouse Keeper\n\nEpisode: Episode 1\n\n" +
+				"Price paid: ¥100 (JPY)\n\n" +
+				"Purchased: Jan 15, 2030, 9:00\u202fPM\n\n" +
+				"Open your purchases https://reader.example.test/my/library\n\n" +
+				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
+				"This email was sent by Aoto Press.",
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			email, err := emailCopy(emailrenderer.Request{
@@ -489,6 +527,7 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 					"currency":      testCase.currency,
 					"episode_title": "Episode 1",
 					"expires_at":    testCase.expiresAt,
+					"is_test":       testCase.isTest,
 					"library_url":   "https://reader.example.test/my/library",
 					"purchased_at":  copyPurchasedAt,
 					"series_title":  "The Lighthouse Keeper",
@@ -597,6 +636,7 @@ func TestEmailCopyRefusesAMailItCannotWord(t *testing.T) {
 			"currency":      "XYZ",
 			"episode_title": "Episode 1",
 			"expires_at":    "",
+			"is_test":       false,
 			"library_url":   "https://reader.example.test/my/library",
 			"purchased_at":  copyPurchasedAt,
 			"series_title":  "The Lighthouse Keeper",

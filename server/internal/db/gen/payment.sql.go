@@ -265,6 +265,7 @@ SELECT
     p.currency,
     p.purchased_at,
     p.expires_at,
+    p.is_test,
     e.title AS episode_title,
     s.title AS series_title,
     u.email AS reader_email
@@ -293,6 +294,7 @@ type GetPurchaseReceiptForTenantRow struct {
 	Currency        string         `json:"currency"`
 	PurchasedAt     time.Time      `json:"purchased_at"`
 	ExpiresAt       sql.NullTime   `json:"expires_at"`
+	IsTest          bool           `json:"is_test"`
 	EpisodeTitle    string         `json:"episode_title"`
 	SeriesTitle     string         `json:"series_title"`
 	ReaderEmail     sql.NullString `json:"reader_email"`
@@ -311,6 +313,7 @@ func (q *Queries) GetPurchaseReceiptForTenant(ctx context.Context, arg GetPurcha
 		&i.Currency,
 		&i.PurchasedAt,
 		&i.ExpiresAt,
+		&i.IsTest,
 		&i.EpisodeTitle,
 		&i.SeriesTitle,
 		&i.ReaderEmail,
