@@ -99,3 +99,41 @@ func TestSeedReachesTablesALaterMigrationCreatesWhenItRunsAgain(t *testing.T) {
 		}
 	}
 }
+
+// A policy named publira_rls_bypass that says anything but what the seed puts
+// there, here one widened to every role, is replaced the next time the seed
+// runs, so a storefront connection does not keep every tenant's rows through
+// it.
+func TestSeedRepairsABypassPolicyThatSaysSomethingElse(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Cleanup(func() { pg.Reset(t) })
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	pg.SeedTenant(t, "TENANT001", "first.example.com", "First")
+	if _, err := pg.DB.ExecContext(ctx, "ALTER POLICY publira_rls_bypass ON creator_roles TO PUBLIC"); err != nil {
+		t.Fatalf("widen the policy: %v", err)
+	}
+	public := pg.OpenPublicDB(t)
+	countCreatorRoles := func() int {
+		t.Helper()
+		var count int
+		if err := public.QueryRowContext(ctx, "SELECT count(*) FROM creator_roles").Scan(&count); err != nil {
+			t.Fatalf("read creator_roles as publira_public: %v", err)
+		}
+		return count
+	}
+	// The widened policy lets the storefront role read rows with no tenant
+	// set, so the zero below is the repair's doing.
+	if countCreatorRoles() == 0 {
+		t.Fatal("publira_public reads no creator_roles through the widened policy")
+	}
+
+	pg.ApplyRoles(t)
+
+	if count := countCreatorRoles(); count != 0 {
+		t.Errorf("publira_public with no tenant set reads %d rows of creator_roles after the seed ran again, want 0", count)
+	}
+}

@@ -771,7 +771,7 @@ Each namespace connects with its own dedicated PostgreSQL login user, which keep
 | worker | `publira_outbox` | `PUBLIRA_WORKER_DB_URL` | `postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable` |
 | worker periodic jobs | `publira_ticker` | `PUBLIRA_TICKER_DB_URL` | `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` |
 | worker maintenance jobs | `publira_content_stats` | `PUBLIRA_CONTENT_STATS_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| publiractl db | the owner of the database and the schema (the superuser locally) | `PUBLIRA_DB_URL`, with no fallback | none: the command refuses to run without it |
+| publiractl db | the owner of the database and the schema, with `CREATEROLE` (the superuser locally) | `PUBLIRA_DB_URL`, with no fallback | none: the command refuses to run without it |
 | publiractl job project-episode-reads | `publira_content_stats` | `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`, falling back to `PUBLIRA_CONTENT_EVENTS_DB_URL` → `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | publiractl job aggregate-content-stats | `publira_content_stats` | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | publiractl job aggregate-rankings | `publira_content_stats` | `PUBLIRA_CONTENT_RANKING_DB_URL`, falling back to `PUBLIRA_CONTENT_STATS_DB_URL` → `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |

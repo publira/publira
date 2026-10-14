@@ -8,8 +8,8 @@
 -- the schema and have CREATEROLE, which is what a managed PostgreSQL such as
 -- Cloud SQL gives its customer. No role here carries BYPASSRLS, which only a
 -- role holding it may give: the roles that work across tenants are members of
--- publira_rls_bypass, and the end of this file puts a policy letting that
--- role's members through on every table under row-level security.
+-- publira_rls_bypass, and this file puts a policy letting that role's members
+-- through on every table under row-level security.
 
 -- publira_ensure_role leaves a role with exactly the attributes given and the
 -- rest denied. ALTER ROLE changes only the attributes it names, so a role that
@@ -65,9 +65,8 @@ $$;
 DO $$
 BEGIN
     -- The roles that work across tenants are its members. It cannot log in,
-    -- and the policies at the end of this file name it rather than each
-    -- member, so a role is given or denied every tenant's rows by its
-    -- membership alone.
+    -- and the policies further down name it rather than each member, so a
+    -- role is given or denied every tenant's rows by its membership alone.
     PERFORM pg_temp.publira_ensure_role('publira_rls_bypass', false);
 
     -- Platform API user: works across tenants.
@@ -238,6 +237,56 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public'
         AND c.relkind IN ('r', 'p', 'v', 'm', 'f');
+END
+$$;
+
+-- publira_rls_bypass's members reach every tenant's rows through a policy of
+-- that name on every table under row-level security. Permissive policies are
+-- combined with OR, so for those members a table's tenant isolation policy
+-- becomes `... OR true`, which the planner folds away; a role outside it is
+-- not one the policy applies to, so its own queries are planned as before.
+-- The grants still decide what each member may do to a table: this policy only
+-- decides which rows, as BYPASSRLS would.
+--
+-- Like the grants, this reaches a table a later migration creates when this
+-- directory runs again. Until then, the members see none of its rows. A policy
+-- of that name that says anything else, such as one widened to PUBLIC, is
+-- replaced; one that already says this is left alone, since replacing it would
+-- lock the table against the processes serving from it.
+--
+-- It runs before the grants that name a table, which are the statements that
+-- fail on a database a rollback took behind them.
+DO $$
+DECLARE
+    relation regclass;
+BEGIN
+    FOR relation IN
+        SELECT c.oid
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+            AND c.relkind IN ('r', 'p')
+            AND c.relrowsecurity
+            AND NOT EXISTS (
+                SELECT 1
+                FROM pg_policy p
+                WHERE p.polrelid = c.oid
+                    AND p.polname = 'publira_rls_bypass'
+                    AND p.polpermissive
+                    AND p.polcmd = '*'
+                    AND p.polroles = ARRAY['publira_rls_bypass'::regrole::oid]
+                    AND pg_get_expr(p.polqual, p.polrelid) = 'true'
+                    AND pg_get_expr(p.polwithcheck, p.polrelid) = 'true'
+            )
+    LOOP
+        IF EXISTS (SELECT 1 FROM pg_policy WHERE polrelid = relation AND polname = 'publira_rls_bypass') THEN
+            EXECUTE format('DROP POLICY publira_rls_bypass ON %s', relation);
+        END IF;
+        EXECUTE format(
+            'CREATE POLICY publira_rls_bypass ON %s AS PERMISSIVE FOR ALL TO publira_rls_bypass USING (true) WITH CHECK (true)',
+            relation
+        );
+    END LOOP;
 END
 $$;
 
@@ -417,39 +466,3 @@ GRANT UPDATE (pinned) ON announcements TO publira_ticker;
 -- else of a row that carries the tenant's own catalog.
 GRANT UPDATE (publication_revalidated_at) ON series TO publira_ticker;
 GRANT SELECT, INSERT ON notifications, platform_notifications, outbox_events TO publira_ticker;
-
--- publira_rls_bypass's members reach every tenant's rows through a policy of
--- that name on every table under row-level security. Permissive policies are
--- combined with OR, so for those members a table's tenant isolation policy
--- becomes `... OR true`, which the planner folds away; a role outside it is
--- not one the policy applies to, so its own queries are planned as before.
--- The grants still decide what each member may do to a table: this policy only
--- decides which rows, as BYPASSRLS would.
---
--- Like the grants, this reaches a table a later migration creates when this
--- directory runs again. Until then, the members see none of its rows.
-DO $$
-DECLARE
-    relation regclass;
-BEGIN
-    FOR relation IN
-        SELECT c.oid
-        FROM pg_class c
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = 'public'
-            AND c.relkind IN ('r', 'p')
-            AND c.relrowsecurity
-            AND NOT EXISTS (
-                SELECT 1
-                FROM pg_policy p
-                WHERE p.polrelid = c.oid
-                    AND p.polname = 'publira_rls_bypass'
-            )
-    LOOP
-        EXECUTE format(
-            'CREATE POLICY publira_rls_bypass ON %s AS PERMISSIVE FOR ALL TO publira_rls_bypass USING (true) WITH CHECK (true)',
-            relation
-        );
-    END LOOP;
-END
-$$;
