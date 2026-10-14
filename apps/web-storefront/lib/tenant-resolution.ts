@@ -146,6 +146,11 @@ export const createTenantResolver = (
       if (isTenantSuspendedRpcError(error)) {
         return SUSPENDED_TENANT;
       }
+      // A held tenant whose tag moved keeps serving what was read rather than
+      // taking the host down until the API answers again.
+      if (cached?.tenant) {
+        return cached.tenant;
+      }
 
       throw error;
     }

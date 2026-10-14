@@ -236,6 +236,56 @@ describe("createTenantResolver", () => {
     expect(readRevalidatedAt).toHaveBeenCalledWith(`tenant:${TENANT_ID}:site`);
   });
 
+  it("keeps serving a held tenant when the read its moved tag asks for fails", async () => {
+    let revalidatedAt: number | undefined = 0;
+    const { advance, getTenantByDomain, now, resolver } = setupRevalidation(
+      () => revalidatedAt
+    );
+
+    await resolver(["shop.example.com"]);
+    advance(10);
+    revalidatedAt = now();
+    getTenantByDomain.mockRejectedValueOnce(
+      new ConnectError("upstream unavailable", Code.Unavailable)
+    );
+    advance(10);
+
+    await expect(resolver(["shop.example.com"])).resolves.toMatchObject({
+      supportedLocales: ["ja", "en", "ko"],
+      tenantId: TENANT_ID,
+    });
+    expect(getTenantByDomain).toHaveBeenCalledTimes(2);
+  });
+
+  it("answers a suspension even while a tenant is held", async () => {
+    let revalidatedAt: number | undefined = 0;
+    const { advance, getTenantByDomain, now, resolver } = setupRevalidation(
+      () => revalidatedAt
+    );
+
+    await resolver(["shop.example.com"]);
+    advance(10);
+    revalidatedAt = now();
+    getTenantByDomain.mockRejectedValueOnce(
+      new ConnectError(
+        "tenant is suspended",
+        Code.FailedPrecondition,
+        undefined,
+        [
+          {
+            desc: ErrorInfoSchema,
+            value: { domain: "publira", reason: "TENANT_SUSPENDED" },
+          },
+        ]
+      )
+    );
+    advance(10);
+
+    await expect(resolver(["shop.example.com"])).resolves.toBe(
+      SUSPENDED_TENANT
+    );
+  });
+
   it("keeps a held tenant whose site tag has not moved since the lookup", async () => {
     const { getTenantByDomain, resolver } = setupRevalidation(() => 0);
 
