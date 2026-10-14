@@ -25,11 +25,11 @@ Every member of the staff holds one of three roles, and the console shows each o
 
 | Role | What it may do |
 | --- | --- |
-| **Tenant admin** | Everything in the console: the staff, every setting of the tenant, its integrations with mail, payments, push notifications, and sign-in, readers' accounts, royalties, and the audit log |
+| **Tenant admin** | Everything in the console: the staff, every setting of the tenant, its integrations with mail, payments, push notifications, and sign-in, readers' accounts, purchases and their refunds, royalties, and the audit log |
 | **Editor** | Write the catalog and the site's pages and announcements, and moderate comments |
 | **Auditor** | See what an Editor works on, and the tenant's settings, without changing any of it |
 
-![A Tenant admin's sidebar: Dashboard, then the Catalog, Site, Readers, Reports, Integrations, and Administration groups with every screen in each.](./index-sidebar.png)
+![A Tenant admin's sidebar: Dashboard, then the Catalog, Site, Readers, Reports, Payments, Integrations, and Administration groups with every screen in each.](./index-sidebar.png)
 
 A Tenant admin gives the other staff their roles under **Members**. [A tenant's staff](../3-operations/3-tenant-staff.md#the-three-roles) describes the roles in full.
 

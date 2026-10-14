@@ -24,6 +24,7 @@ const sidebarEntries = [
   "Access tickets",
   "Read-through",
   "Royalties",
+  "Purchases",
   "Email",
   "Payments",
   "Mobile push",
@@ -80,6 +81,7 @@ test.describe("web-admin console navigation", () => {
       "Site",
       "Readers",
       "Reports",
+      "Payments",
       "Integrations",
       "Administration",
     ]);
