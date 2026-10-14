@@ -582,7 +582,7 @@ The sign-in screen also offers a button for each provider `GetTenant` answers in
 
 ## Account icon
 
-The top of the account screen shows the reader's icon, or a person glyph for an account with none and for an icon whose URL has stopped answering. **Upload icon** (**Change icon** once there is one) picks an image from the photo library with [`image_picker`](https://pub.dev/packages/image_picker) and sends it to `AuthService/UploadMyIcon`; **Remove icon** sends `DeleteMyIcon`. Each change is saved as it is made, and the session takes the account the API answers with, so every screen that draws the reader shows the change.
+The account screen shows the reader's icon and changes it: an image from the photo library ([`image_picker`](https://pub.dev/packages/image_picker)) goes to `AuthService/UploadMyIcon`, and removal sends `AuthService/DeleteMyIcon`.
 
 ## Sign-up
 
