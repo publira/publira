@@ -2,6 +2,20 @@
 -- always one of them, so the language an unprefixed URL is served in, and the
 -- language the tenant's mail is sent in, is never one the site does not offer.
 
+-- FUNCTION: text_array_has_blank_element
+-- Whether any element of the array is blank in the sense the default_locale
+-- CHECK uses, so the set refuses exactly the values the default refuses. A CHECK
+-- cannot hold the subquery that looks at every element itself.
+CREATE FUNCTION text_array_has_blank_element(elements text[]) RETURNS boolean
+    LANGUAGE sql
+    IMMUTABLE
+    PARALLEL SAFE
+    SECURITY INVOKER
+AS $$
+    SELECT COALESCE(bool_or(btrim(element) = ''), false)
+    FROM unnest(elements) AS element
+$$;
+
 -- COLUMN: tenants supported_locales
 -- Every tenant saved before this column existed served every locale the
 -- registry knew, so it keeps all of them and no URL a reader can reach today
@@ -13,26 +27,20 @@ ALTER TABLE tenants
 ALTER TABLE tenants
     ALTER COLUMN supported_locales DROP DEFAULT;
 
--- A default saved before this migration only had to be non-blank. One padded
--- with whitespace is read as its trimmed code, so it is stored as that code
--- from now on and meets its own in the set. One naming a code the registry
--- does not know joins the set as it is: every read of that tenant already
--- fails on it, and the upgrade must not fail with it.
-UPDATE tenants
-SET default_locale = btrim(default_locale)
-WHERE default_locale <> btrim(default_locale);
-
+-- A default the registry does not name as it is stored — padded, or a code it
+-- does not know — joins its own tenant's set as it is. Every value the previous
+-- schema accepted as a default is one the CHECK below accepts as an element, so
+-- no such row can stop the upgrade, and reading the tenant goes on answering
+-- what it answered before.
 UPDATE tenants
 SET supported_locales = supported_locales || default_locale
 WHERE NOT (default_locale = ANY (supported_locales));
 
 -- CONSTRAINT: tenants tenants_supported_locales_check
--- Joining on a space and matching non-space runs rejects an empty set, a NULL
--- or blank element, and an element padded with whitespace, which a CHECK could
--- not otherwise express without a subquery.
 ALTER TABLE ONLY tenants
     ADD CONSTRAINT tenants_supported_locales_check CHECK (
-        (array_position(supported_locales, NULL::text) IS NULL)
-        AND (array_to_string(supported_locales, ' '::text) ~ '^\S+( \S+)*$'::text)
+        (cardinality(supported_locales) > 0)
+        AND (array_position(supported_locales, NULL::text) IS NULL)
+        AND (NOT text_array_has_blank_element(supported_locales))
         AND (default_locale = ANY (supported_locales))
     );

@@ -3,3 +3,5 @@ ALTER TABLE ONLY tenants
 
 ALTER TABLE tenants
     DROP COLUMN supported_locales;
+
+DROP FUNCTION text_array_has_blank_element(text[]);
