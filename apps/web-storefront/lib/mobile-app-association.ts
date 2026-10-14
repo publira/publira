@@ -139,44 +139,82 @@ const associationRouteParamsSchema = z.object({
 
 /**
  * Answer an association document for the tenant `proxy.ts` rewrote the
- * request onto. `toDocument` is handed the locales the tenant offers beside its
- * apps, and returns `undefined` where the tenant has no app on the platform,
- * which is a 404 rather than a document naming some other app. An API that
- * could not be asked is a 503, so a verifier retries instead of recording that
- * the site claims no app.
+ * request onto. `readDocument` answers `undefined` where the tenant has no app
+ * on the platform, which is a 404 rather than a document naming some other app.
+ * An API that could not be asked is a 503, so a verifier retries instead of
+ * recording that the site claims no app.
  */
-export const respondWithMobileAppAssociation = async (
+const respondWithDocument = async (
   params: unknown,
-  toDocument: (
-    association: TenantMobileAppAssociation,
-    supportedLocales: readonly Locale[]
-  ) => unknown
+  readDocument: (tenantId: string) => Promise<CachedReadResult<unknown>>
 ): Promise<Response> => {
   const parsed = parseRouteParams(associationRouteParamsSchema, params);
   if (!parsed) {
     return new Response("Not Found", { status: 404 });
   }
 
-  const [association, tenant] = await Promise.all([
-    getTenantMobileAppAssociation(parsed.tenant_id),
-    getTenantSiteInfo(parsed.tenant_id),
-  ]);
-  if (!(association.ok && tenant)) {
+  const document = await readDocument(parsed.tenant_id);
+  if (!document.ok) {
     return new Response("Service Unavailable", {
       headers: { "Cache-Control": "no-store", "Retry-After": "30" },
       status: 503,
     });
   }
 
-  const document = toDocument(association.value, tenant.supportedLocales);
-  if (document === undefined) {
+  if (document.value === undefined) {
     return new Response("Not Found", {
       headers: { "Cache-Control": CACHE_CONTROL },
       status: 404,
     });
   }
 
-  return Response.json(document, {
+  return Response.json(document.value, {
     headers: { "Cache-Control": CACHE_CONTROL },
   });
 };
+
+/**
+ * `/.well-known/assetlinks.json`. It names the app and nothing about the site,
+ * so it reads the association alone: Android's domain verification does not
+ * wait on any other tenant setting.
+ */
+export const respondWithAssetLinks = (params: unknown): Promise<Response> =>
+  respondWithDocument(params, async (tenantId) => {
+    const association = await getTenantMobileAppAssociation(tenantId);
+    if (!association.ok) {
+      return association;
+    }
+
+    const { android } = association.value;
+    return { ok: true, value: android ? toAssetLinks(android) : undefined };
+  });
+
+/**
+ * `/.well-known/apple-app-site-association`, whose paths are claimed under the
+ * prefix of each locale the tenant offers, so it also reads those locales.
+ */
+export const respondWithAppleAppSiteAssociation = (
+  params: unknown
+): Promise<Response> =>
+  respondWithDocument(params, async (tenantId) => {
+    const [association, tenant] = await Promise.all([
+      getTenantMobileAppAssociation(tenantId),
+      getTenantSiteInfo(tenantId),
+    ]);
+    if (!association.ok) {
+      return association;
+    }
+
+    const { ios } = association.value;
+    if (!ios) {
+      return { ok: true, value: undefined };
+    }
+    if (!tenant) {
+      return { message: "The tenant's locales are unavailable.", ok: false };
+    }
+
+    return {
+      ok: true,
+      value: toAppleAppSiteAssociation(ios, tenant.supportedLocales),
+    };
+  });

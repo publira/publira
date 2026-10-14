@@ -103,6 +103,15 @@ describe("GET /.well-known/assetlinks.json", () => {
     expect(response.headers.get("Retry-After")).toBe("30");
   });
 
+  it("names the app while the tenant's other settings cannot be read", async () => {
+    mockGetTenantSiteInfo.mockResolvedValue(null);
+
+    const response = await get(TENANT_A);
+
+    expect(response.status).toBe(200);
+    expect(mockGetTenantSiteInfo).not.toHaveBeenCalled();
+  });
+
   it("answers 404 without asking the API for a segment that is not a tenant", async () => {
     const responses = await Promise.all(
       ["favicon.ico", STATIC_PARAM_PLACEHOLDER, ""].map((segment) =>
