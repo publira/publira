@@ -14,11 +14,13 @@ import type { Locale } from "@publira/i18n";
 import { parseInstant } from "@publira/utils";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
+import { toAccountIcon } from "./account-icon";
 import {
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import type { AccountIcon } from "./auth";
 import { applyCacheTag, tenantEpisodeCommentsTag } from "./cache-tags";
 import { getMessagesFor } from "./messages";
 import { localizedReadFailure } from "./read-failure";
@@ -50,6 +52,8 @@ const OWN_COMMENT_PAGE_SIZE = 100;
  * `proto/publira/v1/comment.proto`).
  */
 export interface EpisodeCommentItem {
+  /** The author's icon as their account shows it now, or `null` for none. */
+  authorIcon: AccountIcon | null;
   /** Empty on the viewer's own rows the public list does not carry. */
   authorPublicId: string;
   authorName: string;
@@ -94,6 +98,13 @@ export interface ListEpisodeCommentsInput {
   token?: string;
 }
 
+/** The viewer as their own comments are rendered under. */
+export interface OwnCommentAuthor {
+  icon: AccountIcon | null;
+  name: string;
+  publicId: string;
+}
+
 const emptyPage: EpisodeCommentPage = {
   comments: [],
   nextToken: "",
@@ -108,7 +119,13 @@ const emptyPage: EpisodeCommentPage = {
  */
 type RawEpisodeComment = Pick<
   EpisodeComment,
-  "authorName" | "authorPublicId" | "body" | "createdAt" | "creator" | "id"
+  | "authorIconImageVariants"
+  | "authorName"
+  | "authorPublicId"
+  | "body"
+  | "createdAt"
+  | "creator"
+  | "id"
 >;
 
 /** The generated `MyEpisodeComment` fields {@link toOwnComment} reads. */
@@ -118,6 +135,7 @@ type RawMyEpisodeComment = Pick<
 >;
 
 const toPublicComment = (comment: RawEpisodeComment): EpisodeCommentItem => ({
+  authorIcon: toAccountIcon(comment.authorIconImageVariants ?? []),
   authorName: comment.authorName ?? "",
   authorPublicId: comment.authorPublicId ?? "",
   awaitingApproval: false,
@@ -130,12 +148,13 @@ const toPublicComment = (comment: RawEpisodeComment): EpisodeCommentItem => ({
 
 /**
  * The viewer's own comment, given the author the message leaves out: it is the
- * caller, so the API does not repeat their name back to them.
+ * caller, so the API does not repeat their name or icon back to them.
  */
 const toOwnComment = (
   comment: RawMyEpisodeComment,
-  author: { name: string; publicId: string }
+  author: OwnCommentAuthor
 ): EpisodeCommentItem => ({
+  authorIcon: author.icon,
   authorName: author.name,
   authorPublicId: author.publicId,
   awaitingApproval: comment.awaitingApproval === true,
@@ -195,8 +214,8 @@ export const listEpisodeComments = async (
 };
 
 export interface ListMyEpisodeCommentsInput extends ListEpisodeCommentsInput {
-  /** The viewer, so their own rows can carry the name the message omits. */
-  author: { name: string; publicId: string };
+  /** The viewer, so their own rows can carry the author the message omits. */
+  author: OwnCommentAuthor;
 }
 
 /**
