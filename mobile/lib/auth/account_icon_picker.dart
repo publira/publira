@@ -1,18 +1,32 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// Where the image a reader makes their icon comes from.
 abstract class AccountIconPicker {
-  /// The bytes of the image the reader picked, or `null` when they picked
+  /// The bytes of the image [reader] picked, or `null` when they picked
   /// none.
-  Future<Uint8List?> pick();
+  Future<Uint8List?> pick({required String reader});
 
-  /// The image a pick handed over after the platform had ended the app under
-  /// the picker, which no [pick] call was left to receive, or `null` when
-  /// there is none.
-  Future<Uint8List?> recover();
+  /// The image a pick [reader] started handed over after the platform had
+  /// ended the app under the picker, which no [pick] call was left to
+  /// receive, or `null` when there is none.
+  ///
+  /// A kept pick that another reader started is dropped rather than handed
+  /// over: the app can open signed in as somebody else, and their photo is
+  /// not this reader's icon.
+  Future<Uint8List?> recover({required String reader});
 }
+
+/// Resolves the directory the reader a pick is open for is written under.
+/// Injected so a test can point one at a temporary directory instead of the
+/// app's own.
+typedef AccountIconPickerRootResolver = Future<Directory> Function();
+
+Future<Directory> _applicationSupportRoot() => getApplicationSupportDirectory();
 
 /// [AccountIconPicker] backed by the `image_picker` plugin's photo library.
 ///
@@ -21,8 +35,15 @@ abstract class AccountIconPicker {
 /// chosen. `Info.plist` carries `NSPhotoLibraryUsageDescription` all the same,
 /// because the App Store asks it of every app that links the picker.
 class PluginAccountIconPicker implements AccountIconPicker {
-  PluginAccountIconPicker({ImagePicker? picker})
-    : _picker = picker ?? ImagePicker();
+  PluginAccountIconPicker({
+    ImagePicker? picker,
+    this._root = _applicationSupportRoot,
+  }) : _picker = picker ?? ImagePicker();
+
+  /// The file that names the reader a pick is open for, for as long as it is
+  /// open. A pick that returns removes it, so one left behind belongs to a
+  /// pick the platform ended the app under.
+  static const _ownerFileName = 'account-icon-pick-reader';
 
   /// The longest side the picker scales an image down to.
   ///
@@ -40,31 +61,71 @@ class PluginAccountIconPicker implements AccountIconPicker {
   static const _maxDimension = 4096.0;
 
   final ImagePicker _picker;
-
-  @override
-  Future<Uint8List?> pick() async {
-    final file = await _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: _maxDimension,
-      maxHeight: _maxDimension,
-      imageQuality: 90,
-      // Leaves the photo library's permission unasked: the picker hands over
-      // only the image the reader chose.
-      requestFullMetadata: false,
-    );
-    return file?.readAsBytes();
-  }
+  final AccountIconPickerRootResolver _root;
 
   /// Android can end the app's activity while the picker is open, and the
   /// plugin then keeps the pick for the next launch. No other platform ends
   /// the app under it, and the plugin implements the lookup only there.
+  static bool get _keepsLostPicks =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
   @override
-  Future<Uint8List?> recover() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+  Future<Uint8List?> pick({required String reader}) async {
+    final owner = _keepsLostPicks ? await _ownerFile() : null;
+    if (owner != null) {
+      await owner.parent.create(recursive: true);
+      await owner.writeAsString(reader);
+    }
+    try {
+      final file = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: _maxDimension,
+        maxHeight: _maxDimension,
+        imageQuality: 90,
+        // Leaves the photo library's permission unasked: the picker hands
+        // over only the image the reader chose.
+        requestFullMetadata: false,
+      );
+      return await file?.readAsBytes();
+    } finally {
+      await _delete(owner);
+    }
+  }
+
+  @override
+  Future<Uint8List?> recover({required String reader}) async {
+    if (!_keepsLostPicks) {
       return null;
     }
+    // Read first, whoever it belongs to: the plugin hands a kept pick over
+    // once, so one that is dropped here is gone for good.
     final lost = await _picker.retrieveLostData();
-    return lost.file?.readAsBytes();
+    final owner = await _ownerFile();
+    String? startedBy;
+    try {
+      startedBy = (await owner.readAsString()).trim();
+    } on FileSystemException {
+      startedBy = null;
+    }
+    await _delete(owner);
+    final file = lost.file;
+    if (file == null || startedBy != reader) {
+      return null;
+    }
+    return file.readAsBytes();
+  }
+
+  Future<File> _ownerFile() async {
+    final dir = await _root();
+    return File('${dir.path}/$_ownerFileName');
+  }
+
+  Future<void> _delete(File? file) async {
+    try {
+      await file?.delete();
+    } on FileSystemException {
+      // Already gone.
+    }
   }
 }
 

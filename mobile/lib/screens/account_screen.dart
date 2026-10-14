@@ -68,6 +68,7 @@ class AccountScreen extends StatelessWidget {
                     // account is not reported on another's screen.
                     _IconSection(
                       key: ValueKey(('icon', session.userPublicId)),
+                      readerId: session.userPublicId,
                       iconUrl: session.userIconUrl,
                     ),
                     const Divider(height: 1),
@@ -189,8 +190,13 @@ Future<void> signOut(BuildContext context) async {
 /// save it, and the session takes the icon the API answers with, so every
 /// screen that draws the reader shows the change.
 class _IconSection extends StatefulWidget {
-  const _IconSection({super.key, required this.iconUrl});
+  const _IconSection({
+    super.key,
+    required this.readerId,
+    required this.iconUrl,
+  });
 
+  final String readerId;
   final Uri? iconUrl;
 
   @override
@@ -336,7 +342,7 @@ class _IconSectionState extends State<_IconSection> {
     });
     final Uint8List? bytes;
     try {
-      bytes = await picker.pick();
+      bytes = await picker.pick(reader: widget.readerId);
     } on Exception {
       if (mounted) {
         setState(() {
@@ -361,7 +367,7 @@ class _IconSectionState extends State<_IconSection> {
   Future<void> _recover(AccountIconPicker picker) async {
     final Uint8List? bytes;
     try {
-      bytes = await picker.recover();
+      bytes = await picker.recover(reader: widget.readerId);
     } on Exception {
       return;
     }

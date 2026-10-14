@@ -16,6 +16,10 @@ class FakeAccountIconPicker implements AccountIconPicker {
 
   var picked = 0;
 
+  /// The reader each [pick] and [recover] was asked for, in order.
+  final pickedFor = <String>[];
+  final recoveredFor = <String>[];
+
   /// What [recover] hands over once, standing in for a pick Android kept
   /// after ending the app under the picker.
   Uint8List? lost;
@@ -24,7 +28,8 @@ class FakeAccountIconPicker implements AccountIconPicker {
   Completer<void>? recoverGate;
 
   @override
-  Future<Uint8List?> pick() async {
+  Future<Uint8List?> pick({required String reader}) async {
+    pickedFor.add(reader);
     final failure = this.failure;
     if (failure != null) {
       throw failure;
@@ -33,7 +38,8 @@ class FakeAccountIconPicker implements AccountIconPicker {
   }
 
   @override
-  Future<Uint8List?> recover() async {
+  Future<Uint8List?> recover({required String reader}) async {
+    recoveredFor.add(reader);
     await recoverGate?.future;
     final lost = this.lost;
     this.lost = null;

@@ -82,12 +82,14 @@ void main() {
   ) async {
     final first = pngIcon();
     final second = jpegIcon(width: 640, height: 480);
-    await pumpAccount(tester, picker: FakeAccountIconPicker([first, second]));
+    final picker = FakeAccountIconPicker([first, second]);
+    await pumpAccount(tester, picker: picker);
 
     await tester.tap(upload);
     await pumpUntilFound(tester, shown);
 
     expect(repository.iconUploads.single.bytes, same(first));
+    expect(picker.pickedFor, [fakeSession.userPublicId]);
     expect(repository.iconUploads.single.contentType, 'image/png');
     expect(auth.session?.userIconUrl, FakeAuthRepository.uploadedIconUrl(1));
     expect(store.session?.userIconUrl, FakeAuthRepository.uploadedIconUrl(1));
@@ -251,6 +253,7 @@ void main() {
     expect(auth.session?.userIconUrl, FakeAuthRepository.uploadedIconUrl(1));
     expect(find.text('Your icon has been updated.'), findsOneWidget);
     expect(picker.picked, 0);
+    expect(picker.recoveredFor, [fakeSession.userPublicId]);
   });
 
   testWidgets('a pick made while a kept one is recovered is sent after it', (
