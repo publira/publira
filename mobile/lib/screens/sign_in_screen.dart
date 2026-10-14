@@ -221,6 +221,8 @@ class _SignInScreenState extends State<SignInScreen> {
       AuthFailureKind.birthDateAlreadySet ||
       AuthFailureKind.linkInvalid ||
       AuthFailureKind.linkExpired ||
+      AuthFailureKind.iconRefused ||
+      AuthFailureKind.storageNotConfigured ||
       AuthFailureKind.unexpected => messages.signInFailed,
     };
   }

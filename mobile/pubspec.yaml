@@ -43,6 +43,9 @@ dependencies:
   google_sign_in_ios: 6.3.7
   google_sign_in_platform_interface: 3.1.0
   package_info_plus: 10.2.2
+  # The photo a reader picks for their account icon (see
+  # lib/auth/account_icon_picker.dart).
+  image_picker: 1.2.4
 
 dev_dependencies:
   flutter_test:

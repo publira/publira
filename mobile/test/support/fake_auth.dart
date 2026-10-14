@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
@@ -202,6 +203,24 @@ class FakeAuthRepository implements AuthRepository {
 
   /// The names [updateName] has been asked for, in order.
   final renames = <String>[];
+
+  /// The images [uploadIcon] has been sent, in order.
+  final iconUploads = <AccountIconUpload>[];
+
+  /// How many times [removeIcon] has been asked.
+  var iconRemovals = 0;
+
+  /// Thrown by [uploadIcon] and [removeIcon] in place of changing the icon.
+  AuthFailure? iconFailure;
+
+  /// Held open by a test that needs to see the screen while [uploadIcon] or
+  /// [removeIcon] is in flight.
+  Completer<void>? iconGate;
+
+  /// The icon URL the account shows after each upload, numbered by the
+  /// upload, since the API stores a replaced icon under a new URL.
+  static Uri uploadedIconUrl(int upload) =>
+      Uri.parse('http://images.test/user-icons/$upload.png');
 
   /// Held open by a test that needs to act while [changePassword] is in
   /// flight.
@@ -554,6 +573,39 @@ class FakeAuthRepository implements AuthRepository {
       userPublicId: session.userPublicId,
       userName: name,
       userIconUrl: session.userIconUrl,
+    );
+  }
+
+  @override
+  Future<AuthSession> uploadIcon(
+    AuthSession session,
+    AccountIconUpload upload,
+  ) async {
+    iconUploads.add(upload);
+    return _changeIcon(session, uploadedIconUrl(iconUploads.length));
+  }
+
+  @override
+  Future<AuthSession> removeIcon(AuthSession session) async {
+    iconRemovals++;
+    return _changeIcon(session, null);
+  }
+
+  Future<AuthSession> _changeIcon(AuthSession session, Uri? iconUrl) async {
+    await iconGate?.future;
+    final failure = iconFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    this.session = this.session.withUser(
+      userPublicId: this.session.userPublicId,
+      userName: this.session.userName,
+      userIconUrl: iconUrl,
+    );
+    return session.withUser(
+      userPublicId: session.userPublicId,
+      userName: session.userName,
+      userIconUrl: iconUrl,
     );
   }
 

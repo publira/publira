@@ -62,18 +62,22 @@ class ConnectClient {
   /// Calls [procedure] with [body].
   ///
   /// [accessToken] replaces the client's own reader for this one call, which
-  /// is how a stored token gets checked before the app adopts it.
+  /// is how a stored token gets checked before the app adopts it. [timeout]
+  /// replaces the client's own for a call that carries more than a few
+  /// fields, such as an image.
   Future<Map<String, Object?>> unary(
     String procedure,
     Map<String, Object?> body, {
     String? tenantId,
     String? accessToken,
+    Duration? timeout,
   }) async {
     final response = await exchange(
       procedure,
       body,
       tenantId: tenantId,
       accessToken: accessToken,
+      timeout: timeout,
     );
     return response.body;
   }
@@ -85,6 +89,7 @@ class ConnectClient {
     String? tenantId,
     String? accessToken,
     Map<String, String> headers = const {},
+    Duration? timeout,
   }) async {
     final uri = Uri.parse(baseUrl).replace(path: '/rpc$procedure');
     final requestHeaders = <String, String>{
@@ -105,7 +110,7 @@ class ConnectClient {
     try {
       response = await _http
           .post(uri, headers: requestHeaders, body: jsonEncode(body))
-          .timeout(timeout);
+          .timeout(timeout ?? this.timeout);
     } on TimeoutException {
       throw const ConnectException(
         code: 'deadline_exceeded',

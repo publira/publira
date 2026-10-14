@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/auth/account_icon.dart';
+import 'package:publira/auth/account_icon_picker.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/reader_age.dart';
@@ -61,6 +64,13 @@ class AccountScreen extends StatelessWidget {
                   key: const ValueKey('account-list'),
                   padding: padding,
                   children: [
+                    // Keyed by the reader, so a change in flight for one
+                    // account is not reported on another's screen.
+                    _IconSection(
+                      key: ValueKey(('icon', session.userPublicId)),
+                      iconUrl: session.userIconUrl,
+                    ),
+                    const Divider(height: 1),
                     ListTile(
                       key: const ValueKey('account-name'),
                       title: AutospacedText(messages.accountName),
@@ -170,6 +180,212 @@ Future<void> signOut(BuildContext context) async {
     await push.handleSignOut();
   }
   await auth.signOut();
+}
+
+/// The reader's icon, or the fallback an account without one gets, and the
+/// controls that upload, replace, and remove it.
+///
+/// Each change is saved as soon as it is made, the way the site's settings
+/// save it, and the session takes the icon the API answers with, so every
+/// screen that draws the reader shows the change.
+class _IconSection extends StatefulWidget {
+  const _IconSection({super.key, required this.iconUrl});
+
+  final Uri? iconUrl;
+
+  @override
+  State<_IconSection> createState() => _IconSectionState();
+}
+
+enum _IconChange { upload, remove }
+
+class _IconSectionState extends State<_IconSection> {
+  static const _radius = 40.0;
+
+  _IconChange? _changing;
+  String? _failure;
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    final theme = Theme.of(context);
+    final picker = AccountIconPickerScope.maybeOf(context);
+    final iconUrl = widget.iconUrl;
+    final failure = _failure;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+      child: Column(
+        children: [
+          Semantics(
+            image: true,
+            label: messages.accountIconAlt,
+            child: CircleAvatar(
+              key: ValueKey(
+                iconUrl == null ? 'account-icon-fallback' : 'account-icon',
+              ),
+              radius: _radius,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              // Decoded no larger than the circle, for the reason a cover is.
+              foregroundImage: iconUrl == null
+                  ? null
+                  : ResizeImage.resizeIfNeeded(
+                      (_radius * 2 * MediaQuery.devicePixelRatioOf(context))
+                          .round(),
+                      null,
+                      NetworkImage(
+                        iconUrl.toString(),
+                        headers: AuthScope.of(context).imageRequestHeaders,
+                      ),
+                    ),
+              // A URL that has stopped answering leaves the fallback showing.
+              onForegroundImageError: iconUrl == null ? null : (_, _) {},
+              child: Icon(
+                Icons.person_outline,
+                size: _radius,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          if (picker != null) ...[
+            const SizedBox(height: 16),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton(
+                  key: const ValueKey('account-icon-upload'),
+                  onPressed: _changing == null
+                      ? () => unawaited(_upload(picker))
+                      : null,
+                  child: AutospacedText(
+                    _changing == _IconChange.upload
+                        ? messages.accountIconUploading
+                        : iconUrl == null
+                        ? messages.accountIconUpload
+                        : messages.accountIconReplace,
+                  ),
+                ),
+                if (iconUrl != null)
+                  TextButton(
+                    key: const ValueKey('account-icon-remove'),
+                    onPressed: _changing == null
+                        ? () => unawaited(_remove())
+                        : null,
+                    child: AutospacedText(
+                      _changing == _IconChange.remove
+                          ? messages.accountIconRemoving
+                          : messages.accountIconRemove,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            AutospacedText(
+              messages.accountIconHelp,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          if (failure != null) ...[
+            const SizedBox(height: 8),
+            AutospacedText(
+              failure,
+              key: const ValueKey('account-icon-failure'),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _upload(AccountIconPicker picker) async {
+    final messages = AppMessages.of(context);
+    final auth = AuthScope.of(context);
+    setState(() => _failure = null);
+    final Uint8List? bytes;
+    try {
+      bytes = await picker.pick();
+    } on Exception {
+      if (mounted) {
+        setState(() => _failure = messages.accountIconUploadFailed);
+      }
+      return;
+    }
+    if (bytes == null || !mounted) {
+      return;
+    }
+    final (upload, problem) = prepareAccountIcon(bytes);
+    if (upload == null) {
+      setState(() {
+        _failure = switch (problem) {
+          AccountIconProblem.tooLarge => messages.accountIconTooLarge,
+          AccountIconProblem.tooSmall => messages.accountIconTooSmall,
+          AccountIconProblem.unsupported ||
+          null => messages.accountIconUnsupported,
+        };
+      });
+      return;
+    }
+    setState(() => _changing = _IconChange.upload);
+    await _change(
+      () => auth.uploadIcon(upload),
+      done: messages.accountIconUploaded,
+      failed: messages.accountIconUploadFailed,
+    );
+  }
+
+  Future<void> _remove() async {
+    final messages = AppMessages.of(context);
+    final auth = AuthScope.of(context);
+    setState(() {
+      _changing = _IconChange.remove;
+      _failure = null;
+    });
+    await _change(
+      auth.removeIcon,
+      done: messages.accountIconRemoved,
+      failed: messages.accountIconRemoveFailed,
+    );
+  }
+
+  /// Runs [call] and says how it went: [done] in a snack bar, or why it
+  /// failed below the controls, with [failed] for anything the reader can do
+  /// nothing about but try again.
+  Future<void> _change(
+    Future<void> Function() call, {
+    required String done,
+    required String failed,
+  }) async {
+    final messages = AppMessages.of(context);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      await call();
+      messenger?.showSnackBar(SnackBar(content: AutospacedText(done)));
+      if (mounted) {
+        setState(() => _changing = null);
+      }
+    } on AuthFailure catch (failure) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _changing = null;
+        _failure = switch (failure.kind) {
+          AuthFailureKind.iconRefused => messages.accountIconRefused,
+          AuthFailureKind.storageNotConfigured =>
+            messages.accountIconStorageUnavailable,
+          AuthFailureKind.network => messages.errorsRpcUnavailable,
+          AuthFailureKind.rateLimited => messages.errorsRpcRateLimited,
+          _ => failed,
+        };
+      });
+    }
+  }
 }
 
 /// The way to every episode the reader has bought, which the API keeps for

@@ -37,6 +37,10 @@ const providerAlreadyLinkedReason = 'PROVIDER_ALREADY_LINKED';
 /// of the tenant's terms of service or privacy policy that asks every reader.
 const legalPageAgreementRequiredReason = 'LEGAL_PAGE_AGREEMENT_REQUIRED';
 
+/// The ErrorInfo reason the API refuses an upload with, under
+/// `failed_precondition`, while the platform has no object store.
+const storageNotConfiguredReason = 'STORAGE_NOT_CONFIGURED';
+
 /// The ErrorInfo reason `WaitFreeService` refuses a series with when its
 /// wait-for-free rule is off.
 const waitFreeNotOfferedReason = 'WAIT_FREE_NOT_OFFERED';

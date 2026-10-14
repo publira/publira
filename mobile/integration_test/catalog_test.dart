@@ -11,6 +11,7 @@ import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/app.dart';
+import 'package:publira/auth/account_icon_picker.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/session_store.dart';
@@ -27,9 +28,11 @@ import 'package:publira/router.dart';
 import 'package:publira/screens/ranking_screen.dart';
 
 import '../test/support/connect_fixture_server.dart';
+import '../test/support/fake_account_icon_picker.dart';
 import '../test/support/fake_auth.dart';
 import '../test/support/fake_links.dart';
 import '../test/support/fake_purchase.dart';
+import '../test/support/icon_images.dart';
 import '../test/support/live_api_precondition.dart';
 import '../test/support/pump_until.dart';
 import '../test/support/tap.dart';
@@ -215,6 +218,7 @@ void main() {
       AuthSession? session,
       FakeCheckoutLauncher? checkoutLauncher,
       FakeIncomingLinks? incomingLinks,
+      AccountIconPicker? iconPicker,
     }) async {
       final offline = FileOfflineLibrary(
         tenantHost: 'localhost',
@@ -225,6 +229,7 @@ void main() {
         PubliraApp.fromConfig(
           checkoutLauncher: checkoutLauncher,
           incomingLinks: incomingLinks,
+          iconPicker: iconPicker,
           config:
               config ??
               AppConfig(
@@ -1586,6 +1591,67 @@ void main() {
         });
       },
     );
+
+    testApp('a member uploads, replaces, and removes the icon in the app', (
+      tester,
+    ) async {
+      await withFailureScreenshot(tester, 'fixture-account-icon', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.signIn,
+          iconPicker: FakeAccountIconPicker([
+            pngIcon(),
+            webpIcon(WebpForm.extended, width: 640, height: 480),
+          ]),
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('sign-in-submit')),
+        );
+        await signIn(tester);
+        await pumpUntilFound(tester, signedInAccountEntry());
+        await tapReachable(tester, find.byKey(const ValueKey('tab-account')));
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('account-icon-fallback')),
+        );
+
+        final upload = find.byKey(const ValueKey('account-icon-upload'));
+        await tapReachable(tester, upload);
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('account-icon')),
+        );
+        expect(server.iconUploads.single.contentType, 'image/png');
+        final uploaded = server.memberIconPath;
+        expect(uploaded, isNotNull);
+
+        await tapReachable(tester, upload);
+        await pumpUntilTrue(
+          tester,
+          () => server.iconUploads.length == 2,
+          description: 'the replacing upload',
+        );
+        expect(server.iconUploads.last.contentType, 'image/webp');
+        expect(server.memberIconPath, isNot(uploaded));
+
+        // The controls stay off until the app has taken the API's answer.
+        final remove = find.byKey(const ValueKey('account-icon-remove'));
+        await pumpUntilTrue(
+          tester,
+          () => tester.widget<TextButton>(remove).onPressed != null,
+          description: 'the replaced icon taken',
+        );
+        await tapReachable(tester, remove);
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('account-icon-fallback')),
+        );
+        expect(server.iconRemovals, 1);
+        expect(server.memberIconPath, isNull);
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
 
     testApp('an email change is requested and its link opens the app', (
       tester,
