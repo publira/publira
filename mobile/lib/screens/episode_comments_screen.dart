@@ -40,6 +40,7 @@ class _Section {
     required this.mode,
     required this.page,
     required this.comments,
+    this.ownIds = const {},
     this.episodeInternalId = '',
     this.ownFailure,
   });
@@ -52,6 +53,15 @@ class _Section {
 
   /// The public page with the reader's own comments placed among it by date.
   final List<EpisodeComment> comments;
+
+  /// Which of [comments] came from the reader's own list, which names no
+  /// author.
+  ///
+  /// They are named when the section is built rather than when it is loaded,
+  /// from the session as it stands then: the launch reads the account again
+  /// under the same token, and what that read brings — the icon above all —
+  /// has to reach rows that were loaded before it answered.
+  final Set<String> ownIds;
 
   /// Why the reader's own comments could not be read, `null` when they were.
   /// The public list still renders: dropping those rows silently would take
@@ -180,19 +190,17 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
       throw ownFailure!;
     }
 
+    final unpublished = [if (own != null && viewer != null) ...own];
+    final published = {for (final comment in page.comments) comment.id};
     return _Section(
       mode: mode,
       page: page,
       episodeInternalId: episodeInternalId,
-      comments: mergeOwnComments(page, [
-        if (own != null && viewer != null)
-          for (final comment in own)
-            comment.byAuthor(
-              id: viewer.id,
-              name: viewer.name,
-              iconUrl: viewer.iconUrl,
-            ),
-      ]),
+      comments: mergeOwnComments(page, unpublished),
+      ownIds: {
+        for (final comment in unpublished)
+          if (!published.contains(comment.id)) comment.id,
+      },
       ownFailure: ownFailure?.kind,
     );
   }
@@ -327,7 +335,13 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
             for (final comment in section.comments)
               _CommentTile(
                 key: ValueKey('comment-tile-${comment.id}'),
-                comment: comment,
+                comment: viewer != null && section.ownIds.contains(comment.id)
+                    ? comment.byAuthor(
+                        id: viewer.id,
+                        name: viewer.name,
+                        iconUrl: viewer.iconUrl,
+                      )
+                    : comment,
                 comments: comments,
                 viewer: viewer,
                 onWithdrawn: _reload,

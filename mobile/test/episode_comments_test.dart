@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/app.dart';
+import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/models/episode_comment.dart';
@@ -71,12 +74,16 @@ void main() {
     comments = FakeCommentRepository();
   });
 
-  Future<void> pumpComments(WidgetTester tester, {AuthSession? session}) async {
+  Future<void> pumpComments(
+    WidgetTester tester, {
+    AuthSession? session,
+    AuthController? auth,
+  }) async {
     await tester.pumpWidget(
       PubliraApp(
         router: createAppRouter(initialLocation: commentsPath),
         catalog: catalog,
-        auth: fakeAuthController(session: session),
+        auth: auth ?? fakeAuthController(session: session),
         comments: comments,
       ),
     );
@@ -195,6 +202,50 @@ void main() {
       // A published comment of theirs that staff take down arrives through
       // this list instead, and it has to look the way it did before.
       expect(iconUrlIn(tester, tile), 'http://127.0.0.1:8000/images/users/2');
+    },
+  );
+
+  testWidgets(
+    "the reader's own comment takes the icon the launch reads after the list",
+    (tester) async {
+      comments
+        ..mode = CommentMode.approvalRequired
+        ..own = [
+          EpisodeComment(
+            id: 'comment-pending',
+            body: 'Still waiting.',
+            createdAt: DateTime.utc(2026, 9, 8, 12),
+            awaitingApproval: true,
+          ),
+        ];
+      // A session saved without the icon, which the launch reads again under
+      // the same token once the list is already on screen.
+      final repository = FakeAuthRepository(
+        session: fakeSession.withUser(
+          userPublicId: fakeSession.userPublicId,
+          userName: fakeSession.userName,
+          userIconUrl: Uri.parse('http://127.0.0.1:8000/images/users/3'),
+        ),
+      )..refreshGate = Completer<void>();
+      await pumpComments(
+        tester,
+        auth: fakeAuthController(
+          storedSession: fakeSession,
+          repository: repository,
+        ),
+      );
+
+      final tile = find.byKey(const ValueKey('comment-tile-comment-pending'));
+      await pumpUntilFound(tester, tile);
+      expect(iconUrlIn(tester, tile), isNull);
+
+      repository.refreshGate!.complete();
+      await pumpUntilTrue(
+        tester,
+        () => iconUrlIn(tester, tile) != null,
+        description: 'the refreshed icon to reach the row',
+      );
+      expect(iconUrlIn(tester, tile), 'http://127.0.0.1:8000/images/users/3');
     },
   );
 
