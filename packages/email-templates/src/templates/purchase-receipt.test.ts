@@ -9,6 +9,7 @@ const data = {
   currency: "JPY",
   episode_title: "The First Night",
   expires_at: "2030-01-17T12:00:00Z",
+  is_test: false,
   library_url: "https://aoto.example.com/my/library",
   purchased_at: "2030-01-15T12:00:00Z",
   series_title: "The Lighthouse Keeper",
@@ -59,6 +60,16 @@ describe("purchaseReceiptDataSchema", () => {
     ).toBe(false);
     expect(
       purchaseReceiptDataSchema.safeParse({ ...data, currency: "XYZ" }).success
+    ).toBe(false);
+  });
+
+  it("rejects a test flag that is missing or not a boolean", () => {
+    expect(
+      purchaseReceiptDataSchema.safeParse({ ...data, is_test: undefined })
+        .success
+    ).toBe(false);
+    expect(
+      purchaseReceiptDataSchema.safeParse({ ...data, is_test: "false" }).success
     ).toBe(false);
   });
 
@@ -114,6 +125,15 @@ describe("PurchaseReceiptEmail", () => {
     const html = await render("en", { expires_at: "" });
 
     expect(html).not.toContain("Readable until");
+  });
+
+  // The documented setup ends with a test purchase, and its receipt must not
+  // read as a record of money taken.
+  it("says a purchase in the provider's test mode charged nothing", async () => {
+    expect(await render("en", { is_test: true })).toContain(
+      "test mode. No money was charged."
+    );
+    expect(await render("en")).not.toContain("test mode");
   });
 
   it("the ja mail comes from the Japanese catalog", async () => {

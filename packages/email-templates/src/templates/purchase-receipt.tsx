@@ -16,6 +16,7 @@ import {
   EmailFallbackLink,
   EmailHeading,
   EmailIntro,
+  EmailMeta,
 } from "../text";
 import { displayNameField, httpUrlField, instantField } from "./fields";
 
@@ -45,6 +46,8 @@ export const purchaseReceiptDataSchema = z.object({
   episode_title: catalogTitleField("episode_title"),
   /** Empty for a purchase with no reading period. */
   expires_at: z.union([z.literal(""), instantField("expires_at")]),
+  /** Whether the purchase was paid in the payment provider's test mode. */
+  is_test: z.boolean({ error: "is_test must be a boolean" }),
   library_url: httpUrlField("library_url"),
   purchased_at: instantField("purchased_at"),
   series_title: catalogTitleField("series_title"),
@@ -72,7 +75,9 @@ export const purchaseReceiptPreview = (
  * The receipt a reader is sent for a purchase. The price names its currency by
  * code beside the symbol, because a symbol such as `$` stands for more than
  * one currency, and a purchase with no reading period has no line saying when
- * it ends.
+ * it ends. A purchase paid in the provider's test mode, which the documented
+ * setup asks an operator to make, says it charged nothing, so its price paid is
+ * not read as money taken.
  */
 export const PurchaseReceiptEmail = ({
   data,
@@ -94,6 +99,11 @@ export const PurchaseReceiptEmail = ({
         tenant_name: data.tenant_name,
       })}
     </EmailIntro>
+    {data.is_test ? (
+      <EmailMeta>
+        {emailMessage(messages, "email.purchase_receipt.test_notice")}
+      </EmailMeta>
+    ) : null}
     <EmailDetail>
       {emailMessage(messages, "email.purchase_receipt.series", {
         series_title: data.series_title,
