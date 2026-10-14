@@ -270,8 +270,8 @@ catalogs:
       specifier: 2.9.1
       version: 2.9.1
     zod:
-      specifier: 4.6.5
-      version: 4.6.5
+      specifier: 4.6.6
+      version: 4.6.6
 
 patchedDependencies:
   '@connectrpc/connect-node@2.2.0': 9410b10e39ac6e5b1b22cd07a255b49d5bdc8efa070214b744d6af3a140aa5e7
@@ -439,7 +439,7 @@ importers:
         version: 1.0.5
       zod:
         specifier: 'catalog:'
-        version: 4.6.5
+        version: 4.6.6
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -527,7 +527,7 @@ importers:
         version: 1.0.5
       zod:
         specifier: 'catalog:'
-        version: 4.6.5
+        version: 4.6.6
     devDependencies:
       '@buf/googleapis_googleapis.bufbuild_es':
         specifier: 'catalog:'
@@ -633,7 +633,7 @@ importers:
         version: 1.0.5
       zod:
         specifier: 'catalog:'
-        version: 4.6.5
+        version: 4.6.6
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -766,7 +766,7 @@ importers:
         version: 1.0.5
       zod:
         specifier: 'catalog:'
-        version: 4.6.5
+        version: 4.6.6
     devDependencies:
       '@publira/brand':
         specifier: workspace:*
@@ -1047,7 +1047,7 @@ importers:
         version: 0.4.0
       zod:
         specifier: 'catalog:'
-        version: 4.6.5
+        version: 4.6.6
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -4499,6 +4499,17 @@ packages:
           targets:
             - cpu: x64
               os: win32
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-cs0lP74MJTnVIgjtCY1Ht4/ywyunYpXY5rWwzgZ9y6U=
+            type: binary
+            url: https://unofficial-builds.nodejs.org/download/release/v24.22.0/node-v24.22.0-linux-x64-musl.tar.gz
+          targets:
+            - cpu: x64
+              os: linux
+              libc: musl
     version: 24.22.0
     hasBin: true
 
@@ -5521,6 +5532,9 @@ packages:
 
   zod@4.6.5:
     resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
+
+  zod@4.6.6:
+    resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -9620,7 +9634,7 @@ snapshots:
       string-width: 8.3.0
       which-command: 0.1.0
       yaml: 2.9.1
-      zod: 4.6.5
+      zod: 4.6.6
     optionalDependencies:
       eslint: 9.39.5(jiti@2.7.0)(supports-color@7.2.0)
       oxfmt: 0.72.0
@@ -9862,5 +9876,7 @@ snapshots:
       yuku-core: 0.18.1
 
   zod@4.6.5: {}
+
+  zod@4.6.6: {}
 
   zwitch@2.0.4: {}
