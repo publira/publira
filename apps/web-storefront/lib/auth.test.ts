@@ -649,6 +649,45 @@ describe("web-storefront auth", () => {
     });
   });
 
+  it("getMyAccount: reads the account under the tag the account Actions refresh", async () => {
+    const { getMyAccount } = await importAuth();
+    mockGetMe.mockResolvedValueOnce({ user: ICON_USER });
+
+    await expect(getMyAccount("TENANT001")).resolves.toMatchObject({
+      icon: { url: ICON_URL },
+      name: "Alice",
+    });
+    expect(mockCacheTag).toHaveBeenCalledWith("tenant:TENANT001:account");
+  });
+
+  it("getMyAccount: null without asking when the browser holds no session", async () => {
+    const { getMyAccount } = await importAuth();
+    mockResolveAccessToken.mockResolvedValueOnce("");
+
+    await expect(getMyAccount("TENANT001")).resolves.toBeNull();
+    expect(mockGetMe).not.toHaveBeenCalled();
+  });
+
+  it("getMyAccount: null for a session the API turns away, kept out of the cache", async () => {
+    const { getMyAccount } = await importAuth();
+    mockGetMe.mockRejectedValueOnce(
+      new ConnectError("expired", Code.Unauthenticated)
+    );
+
+    await expect(getMyAccount("TENANT001")).resolves.toBeNull();
+    expect(mockCacheLife).toHaveBeenCalledWith(DROPPED_ENTRY);
+  });
+
+  it("getMyAccount: throws outside the cached read for an unclassified failure", async () => {
+    const { getMyAccount } = await importAuth();
+    mockGetMe.mockRejectedValueOnce(new ConnectError("boom", Code.Internal));
+
+    await expect(getMyAccount("TENANT001")).rejects.toThrow(
+      "The account could not be read."
+    );
+    expect(mockCacheLife).toHaveBeenCalledWith(DROPPED_ENTRY);
+  });
+
   it("uploadMyIcon: sends the image and answers the account with its new icon", async () => {
     const { uploadMyIcon } = await importAuth();
     mockUploadMyIcon.mockResolvedValueOnce({ user: ICON_USER });

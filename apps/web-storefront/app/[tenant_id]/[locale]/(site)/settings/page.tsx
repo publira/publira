@@ -174,7 +174,11 @@ const ProfileSection = async () => {
       </h2>
       {/* Saved as soon as it changes, so it stands outside the form's Save. */}
       <div className="mb-6">
-        <AccountIconField icon={me?.icon ?? null} locale={locale} />
+        <AccountIconField
+          icon={me?.icon ?? null}
+          locale={locale}
+          tenantId={tenantId}
+        />
       </div>
       <form action={updateProfileAction} className="space-y-4">
         <LocaleField />

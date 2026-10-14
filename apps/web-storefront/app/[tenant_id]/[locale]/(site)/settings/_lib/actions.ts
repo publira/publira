@@ -3,10 +3,11 @@
 import type { Locale } from "@publira/i18n";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { updateMe } from "#lib/auth";
+import { accountCacheTag, updateMe } from "#lib/auth";
 import { birthDateFormSchema, tenantIdFormSchema } from "#lib/auth-input";
 import {
   requirePublicSession,
@@ -91,6 +92,8 @@ export const updateProfileAction = async (
     redirect(errorPath);
   }
 
+  // The site header names the reader from the private account read.
+  updateTag(accountCacheTag(tenantId));
   const successPath = await buildSettingsPath(
     locale,
     tenantId,

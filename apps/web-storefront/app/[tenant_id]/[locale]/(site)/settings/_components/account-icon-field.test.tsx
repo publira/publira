@@ -7,13 +7,15 @@ import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
 import { AccountIconField } from "./account-icon-field";
 
-const { mockCheckImage, mockRefresh } = vi.hoisted(() => ({
+const { mockCheckImage, mockRemoveIcon, mockUploadIcon } = vi.hoisted(() => ({
   mockCheckImage: vi.fn(),
-  mockRefresh: vi.fn(),
+  mockRemoveIcon: vi.fn(),
+  mockUploadIcon: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: mockRefresh }),
+vi.mock("../_lib/icon-actions", () => ({
+  removeIconAction: mockRemoveIcon,
+  uploadIconAction: mockUploadIcon,
 }));
 
 vi.mock("#lib/account-icon", async (importOriginal) => ({
@@ -21,14 +23,9 @@ vi.mock("#lib/account-icon", async (importOriginal) => ({
   checkAccountIconImage: mockCheckImage,
 }));
 
+const TENANT_ID = "11111111-1111-4111-8111-111111111111";
+
 const ICON = { height: 512, url: "/images/users/U001/icon-1.png", width: 512 };
-
-const mockFetch = vi.fn<typeof fetch>();
-
-const answer = (status: number, body: unknown) =>
-  mockFetch.mockResolvedValueOnce(
-    new Response(body === null ? null : JSON.stringify(body), { status })
-  );
 
 const fileInput = () =>
   document.querySelector<HTMLInputElement>('input[type="file"]');
@@ -47,21 +44,28 @@ const pick = async (file: File) => {
 const png = () =>
   new File([new Uint8Array([1, 2, 3])], "icon.png", { type: "image/png" });
 
+/** The form the Action was called with. */
+const sentForm = (action: typeof mockUploadIcon): FormData => {
+  const [form] = action.mock.calls[0] ?? [];
+  if (!(form instanceof FormData)) {
+    throw new Error("the Action was not called with a form");
+  }
+  return form;
+};
+
 beforeEach(() => {
-  vi.stubGlobal("fetch", mockFetch);
   mockCheckImage.mockResolvedValue(null);
 });
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  vi.unstubAllGlobals();
 });
 
 describe("AccountIconField", () => {
   it("offers an upload and no removal to an account with no icon", async () => {
     await renderWithClientMessages(
-      <AccountIconField icon={null} locale="en" />
+      <AccountIconField icon={null} locale="en" tenantId={TENANT_ID} />
     );
 
     expect(
@@ -73,7 +77,7 @@ describe("AccountIconField", () => {
 
   it("shows the icon with a change and a removal once one is set", async () => {
     await renderWithClientMessages(
-      <AccountIconField icon={ICON} locale="en" />
+      <AccountIconField icon={ICON} locale="en" tenantId={TENANT_ID} />
     );
 
     expect(
@@ -85,10 +89,13 @@ describe("AccountIconField", () => {
     );
   });
 
-  it("uploads the picked image and reads the account again", async () => {
-    answer(200, { message: "Your icon has been updated." });
+  it("uploads the picked image for this tenant and locale", async () => {
+    mockUploadIcon.mockResolvedValueOnce({
+      message: "Your icon has been updated.",
+      ok: true,
+    });
     await renderWithClientMessages(
-      <AccountIconField icon={null} locale="en" />
+      <AccountIconField icon={null} locale="en" tenantId={TENANT_ID} />
     );
     await screen.findByRole("button", { name: "Upload icon" });
 
@@ -96,12 +103,10 @@ describe("AccountIconField", () => {
     await pick(file);
 
     expect(await screen.findByText("Your icon has been updated.")).toBeTruthy();
-    const [url, init] = mockFetch.mock.calls[0] ?? [];
-    expect(url).toBe("/api/v1/me/icon?locale=en");
-    expect(init?.method).toBe("POST");
-    expect(init?.body).toBeInstanceOf(FormData);
-    expect((init?.body as FormData | undefined)?.get("icon")).toBe(file);
-    expect(mockRefresh).toHaveBeenCalledOnce();
+    const form = sentForm(mockUploadIcon);
+    expect(form.get("icon")).toBe(file);
+    expect(form.get("locale")).toBe("en");
+    expect(form.get("tenantId")).toBe(TENANT_ID);
   });
 
   it.each([
@@ -116,25 +121,25 @@ describe("AccountIconField", () => {
     async (problem, message) => {
       mockCheckImage.mockResolvedValueOnce(problem);
       await renderWithClientMessages(
-        <AccountIconField icon={null} locale="en" />
+        <AccountIconField icon={null} locale="en" tenantId={TENANT_ID} />
       );
       await screen.findByRole("button", { name: "Upload icon" });
 
       await pick(png());
 
       expect(await screen.findByText(message)).toBeTruthy();
-      expect(mockFetch).not.toHaveBeenCalled();
-      expect(mockRefresh).not.toHaveBeenCalled();
+      expect(mockUploadIcon).not.toHaveBeenCalled();
     }
   );
 
-  it("shows the refusal the server words", async () => {
-    answer(400, {
+  it("shows the refusal the Action words", async () => {
+    mockUploadIcon.mockResolvedValueOnce({
       message:
         "This image cannot be used as an icon. Select a JPEG, PNG, or WebP image no larger than 10MB and at least 128x128px.",
+      ok: false,
     });
     await renderWithClientMessages(
-      <AccountIconField icon={null} locale="en" />
+      <AccountIconField icon={null} locale="en" tenantId={TENANT_ID} />
     );
     await screen.findByRole("button", { name: "Upload icon" });
 
@@ -145,13 +150,12 @@ describe("AccountIconField", () => {
         "This image cannot be used as an icon. Select a JPEG, PNG, or WebP image no larger than 10MB and at least 128x128px."
       )
     ).toBeTruthy();
-    expect(mockRefresh).not.toHaveBeenCalled();
   });
 
-  it("words a refusal with no message as a failed upload", async () => {
-    answer(403, null);
+  it("words an Action that never answered as a failed upload", async () => {
+    mockUploadIcon.mockRejectedValueOnce(new TypeError("Failed to fetch"));
     await renderWithClientMessages(
-      <AccountIconField icon={null} locale="en" />
+      <AccountIconField icon={null} locale="en" tenantId={TENANT_ID} />
     );
     await screen.findByRole("button", { name: "Upload icon" });
 
@@ -164,26 +168,13 @@ describe("AccountIconField", () => {
     ).toBeTruthy();
   });
 
-  it("words a request that never arrived as a failed upload", async () => {
-    mockFetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+  it("removes the icon in the reader's language", async () => {
+    mockRemoveIcon.mockResolvedValueOnce({
+      message: "アイコンを削除しました。",
+      ok: true,
+    });
     await renderWithClientMessages(
-      <AccountIconField icon={null} locale="en" />
-    );
-    await screen.findByRole("button", { name: "Upload icon" });
-
-    await pick(png());
-
-    expect(
-      await screen.findByText(
-        "Could not update your icon. Please try again later."
-      )
-    ).toBeTruthy();
-  });
-
-  it("removes the icon in the reader's language and reads the account again", async () => {
-    answer(200, { message: "アイコンを削除しました。" });
-    await renderWithClientMessages(
-      <AccountIconField icon={ICON} locale="ja" />,
+      <AccountIconField icon={ICON} locale="ja" tenantId={TENANT_ID} />,
       "ja"
     );
 
@@ -195,9 +186,8 @@ describe("AccountIconField", () => {
     });
 
     expect(await screen.findByText("アイコンを削除しました。")).toBeTruthy();
-    const [url, init] = mockFetch.mock.calls[0] ?? [];
-    expect(url).toBe("/api/v1/me/icon?locale=ja");
-    expect(init?.method).toBe("DELETE");
-    expect(mockRefresh).toHaveBeenCalledOnce();
+    const form = sentForm(mockRemoveIcon);
+    expect(form.get("locale")).toBe("ja");
+    expect(form.get("tenantId")).toBe(TENANT_ID);
   });
 });

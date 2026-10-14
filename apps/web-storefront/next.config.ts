@@ -22,6 +22,12 @@ const nextConfig: NextConfig = {
     // above `MAX_INBOUND_EMAIL_PAYLOAD_BYTES` in `lib/inbound-email-webhook.ts`,
     // which explains the margin.
     proxyClientMaxBodySize: "33mb",
+    // A reader's icon reaches its Server Action as an image of up to 10 MiB
+    // (`ACCOUNT_ICON_MAX_BYTES` in `lib/account-icon.ts`); the extra MiB holds
+    // the multipart framing and the fields sent beside it.
+    serverActions: {
+      bodySizeLimit: "11mb",
+    },
     turbopackRustReactCompiler: true,
     // Retries Next-managed navigation, prefetch, and Server Actions; not direct client requests.
     useOffline: true,

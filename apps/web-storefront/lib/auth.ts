@@ -25,6 +25,7 @@ import {
 } from "./api-client";
 import {
   applyCacheTag,
+  tenantAccountTag,
   tenantEmailChangeConfirmationTag,
   tenantEmailVerificationTag,
 } from "./cache-tags";
@@ -862,6 +863,60 @@ export const getMe = async (
     }
     throw error;
   }
+};
+
+/**
+ * Tag the private account read carries, so `updateTag` in the Server Actions
+ * that change the name or the icon refreshes the site header with them.
+ */
+export const accountCacheTag = tenantAccountTag;
+
+const readMyAccount = async (
+  tenantId: string,
+  sessionId: string
+): Promise<{ me: MeInfo | null; unexpected: boolean }> => {
+  "use cache: private";
+  applyCacheTag(accountCacheTag(tenantId));
+
+  if (!sessionId) {
+    return { me: null, unexpected: false };
+  }
+
+  try {
+    const response = await apiClient.auth.getMe(
+      { tenant: { tenantId } },
+      buildSessionHeaders(sessionId)
+    );
+
+    return {
+      me: response.user ? toMeInfo(response.user) : null,
+      unexpected: false,
+    };
+  } catch (error) {
+    dropFailedCacheEntry();
+    return { me: null, unexpected: !isExpectedNullableRpcError(error) };
+  }
+};
+
+/**
+ * The signed-in reader's account as the site header shows it, or `null` for a
+ * browser with no session or one the API turns away.
+ *
+ * Read through the private cache, so the header's several parts share one
+ * `GetMe` and an Action that changes the account refreshes it with
+ * {@link accountCacheTag}.
+ */
+export const getMyAccount = async (
+  tenantId: string
+): Promise<MeInfo | null> => {
+  const { me, unexpected } = await readMyAccount(
+    tenantId,
+    await resolveAccessToken()
+  );
+  if (unexpected) {
+    throw new Error("The account could not be read.");
+  }
+  return me;
 };
 
 /**
