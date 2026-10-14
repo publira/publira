@@ -41,7 +41,7 @@ func (e refundWebhookEnv) deliverSigned(t *testing.T, payload []byte, headers ht
 
 func (e refundWebhookEnv) deliverDispute(t *testing.T, paymentIntentID string) {
 	t.Helper()
-	payload, headers := stripetest.Fixture{}.Disputed(t, stripeFixtureCredentials, paymentIntentID)
+	payload, headers := stripetest.NewFixture(t).Disputed(t, stripeFixtureCredentials, paymentIntentID)
 	e.deliverSigned(t, payload, headers)
 }
 
@@ -236,7 +236,7 @@ func TestDBStartEpisodeCheckoutStartsAFreshCheckoutAfterOneExpires(t *testing.T)
 	}
 	expire := func(checkoutID string) {
 		t.Helper()
-		payload, headers := stripetest.Fixture{}.CheckoutExpired(t, stripeFixtureCredentials, paymentprovidertest.Checkout{
+		payload, headers := stripetest.NewFixture(t).CheckoutExpired(t, stripeFixtureCredentials, paymentprovidertest.Checkout{
 			CheckoutID: checkoutID,
 			Purchase: paymentprovider.Purchase{
 				TenantID:  tenant.ID,

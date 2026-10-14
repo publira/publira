@@ -284,7 +284,7 @@ func (p *Provider) refundedEvent(ctx context.Context, credentials paymentprovide
 	// purchase flow records the total refunded on the payment.
 	total, err := p.refundedTotal(ctx, credentials, refund.PaymentFlowID)
 	if err != nil {
-		return nil, err
+		return nil, apiError("payment flow refunds", err)
 	}
 	if total == 0 {
 		return paymentprovider.Ignored{ID: event.ID, Type: event.Type}, nil
@@ -310,7 +310,7 @@ func (p *Provider) refundedTotal(ctx context.Context, credentials paymentprovide
 	for {
 		res, err := payjpv2.Extract(client.GetPaymentFlowRefundsWithResponse(ctx, paymentFlowID, params))
 		if err != nil {
-			return 0, apiError("payment flow refunds", err)
+			return 0, err
 		}
 		if res.Result == nil {
 			return 0, errors.New("payjp returned no refund list")
@@ -326,6 +326,53 @@ func (p *Provider) refundedTotal(ctx context.Context, credentials paymentprovide
 		last := res.Result.Data[len(res.Result.Data)-1].Id
 		params.StartingAfter = &last
 	}
+}
+
+// Refund refunds what the payment flow has received and not yet refunded.
+// PAY.JP refunds the whole amount received when none is named, which a flow
+// refunded in part already would refuse, so the remainder is named instead.
+func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Credentials, req paymentprovider.RefundRequest) error {
+	client, err := p.client(credentials)
+	if err != nil {
+		return err
+	}
+	res, err := payjpv2.Extract(client.GetPaymentFlowWithResponse(ctx, req.PaymentID))
+	if err != nil {
+		return refundError("payment flow", err)
+	}
+	if res.Result == nil {
+		return errors.New("payjp returned no payment flow")
+	}
+	if res.Result.AmountReceived == nil {
+		return fmt.Errorf("%w: the payment flow has received nothing", paymentprovider.ErrRefundRefused)
+	}
+	refunded, err := p.refundedTotal(ctx, credentials, req.PaymentID)
+	if err != nil {
+		return refundError("payment flow refunds", err)
+	}
+	remaining := *res.Result.AmountReceived - int(refunded)
+	if remaining <= 0 {
+		return nil
+	}
+	// The remainder is part of the key: a retry that finds the same remainder
+	// is the same request, and one that finds a refund made in between asks
+	// for less, which PAY.JP would refuse under a key it has seen.
+	idempotencyKey := req.IdempotencyKey + ":" + strconv.Itoa(remaining)
+	body := payjpv2.PaymentRefundCreateRequest{PaymentFlowId: req.PaymentID, Amount: &remaining}
+	if _, err := payjpv2.Extract(client.CreatePaymentRefundWithResponse(ctx, body, payjpv2.WithIdempotencyKey(idempotencyKey))); err != nil {
+		return refundError("payment refund", err)
+	}
+	return nil
+}
+
+// refundError reads an answer the API gives for a request it will not carry
+// out, as opposed to one it failed to answer, as a refund it refuses.
+func refundError(object string, err error) error {
+	var apiErr *payjpv2.APIError
+	if errors.As(err, &apiErr) && apiErr.StatusCode >= http.StatusBadRequest && apiErr.StatusCode < http.StatusInternalServerError && apiErr.StatusCode != http.StatusTooManyRequests {
+		return fmt.Errorf("%w: %s: %v", paymentprovider.ErrRefundRefused, object, err)
+	}
+	return fmt.Errorf("%s: %w", object, err)
 }
 
 // apiError reads an object the API does not have under the tenant's key as a

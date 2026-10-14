@@ -22,6 +22,11 @@ var ErrInvalidSignature = errors.New("payment notification signature is invalid"
 // read as the event its type names.
 var ErrMalformedNotification = errors.New("payment notification is malformed")
 
+// ErrRefundRefused reports a refund the provider will not make for a reason
+// another attempt does not change, such as a payment the tenant's account does
+// not hold or one the reader has disputed.
+var ErrRefundRefused = errors.New("the payment provider refused the refund")
+
 // Field is one credential a provider needs from a tenant.
 type Field struct {
 	// Name is the key the value is stored and passed under.
@@ -131,6 +136,16 @@ type CheckoutRequest struct {
 	IdempotencyKey string
 }
 
+// RefundRequest asks for whatever of one payment has not been refunded yet.
+type RefundRequest struct {
+	// PaymentID is the provider's id of the payment, as [PurchaseCompleted]
+	// named it.
+	PaymentID string
+	// IdempotencyKey is the same for every attempt to refund the same
+	// purchase, so that a retried request refunds nothing twice.
+	IdempotencyKey string
+}
+
 // Event is what a notification means to the purchase flow: one of
 // [PurchaseCompleted], [Refunded], [Disputed], [CheckoutExpired], or
 // [Ignored].
@@ -211,4 +226,11 @@ type Provider interface {
 	// answers [ErrInvalidSignature] for a notification that does not verify
 	// and [ErrMalformedNotification] for one that verifies but cannot be read.
 	ParseNotification(ctx context.Context, payload []byte, headers http.Header, credentials Credentials) (Event, error)
+	// Refund returns to the reader whatever of a payment has not been refunded
+	// yet. A payment already refunded in full is no error, so a request made
+	// again after one that went through succeeds without refunding anything.
+	// It answers [ErrRefundRefused] for a refund the provider will not make.
+	// What it refunded reaches the purchase flow as the provider's [Refunded]
+	// notification, as a refund made in the provider's own dashboard does.
+	Refund(ctx context.Context, credentials Credentials, req RefundRequest) error
 }

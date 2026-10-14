@@ -51,11 +51,45 @@ var currencies = []string{
 }
 
 // Provider is Stripe Checkout.
-type Provider struct{}
+type Provider struct {
+	// backends point the client at another API origin, and are nil for
+	// Stripe's own.
+	backends *stripego.Backends
+}
+
+// Option configures a [Provider].
+type Option func(*Provider)
+
+// WithAPIURL points the provider at another Stripe API origin, as a test's
+// fake of it. The client logs nothing, since a test that asks the fake for a
+// refund it refuses means to be refused.
+func WithAPIURL(apiURL string) Option {
+	return func(p *Provider) {
+		p.backends = stripego.NewBackendsWithConfig(&stripego.BackendConfig{
+			URL:           stripego.String(apiURL),
+			LeveledLogger: &stripego.LeveledLogger{Level: stripego.LevelNull},
+		})
+	}
+}
 
 // New answers the Stripe provider.
-func New() *Provider {
-	return &Provider{}
+func New(options ...Option) *Provider {
+	p := &Provider{}
+	for _, option := range options {
+		option(p)
+	}
+	return p
+}
+
+func (p *Provider) client(credentials paymentprovider.Credentials) (*stripego.Client, error) {
+	secretKey := strings.TrimSpace(credentials[FieldSecretKey])
+	if secretKey == "" {
+		return nil, errors.New("stripe secret key is not configured")
+	}
+	if p.backends == nil {
+		return stripego.NewClient(secretKey), nil
+	}
+	return stripego.NewClient(secretKey, stripego.WithBackends(p.backends)), nil
 }
 
 func (*Provider) Declaration() paymentprovider.Declaration {
@@ -71,10 +105,10 @@ func (*Provider) Declaration() paymentprovider.Declaration {
 	}
 }
 
-func (*Provider) StartCheckout(ctx context.Context, credentials paymentprovider.Credentials, req paymentprovider.CheckoutRequest) (string, error) {
-	secretKey := strings.TrimSpace(credentials[FieldSecretKey])
-	if secretKey == "" {
-		return "", errors.New("stripe secret key is not configured")
+func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovider.Credentials, req paymentprovider.CheckoutRequest) (string, error) {
+	client, err := p.client(credentials)
+	if err != nil {
+		return "", err
 	}
 	successURL, err := withSessionID(req.SuccessURL)
 	if err != nil {
@@ -97,7 +131,7 @@ func (*Provider) StartCheckout(ctx context.Context, credentials paymentprovider.
 		SuccessURL: stripego.String(successURL),
 	}
 	params.SetIdempotencyKey(req.IdempotencyKey)
-	session, err := stripego.NewClient(secretKey).V1CheckoutSessions.Create(ctx, params)
+	session, err := client.V1CheckoutSessions.Create(ctx, params)
 	if err != nil {
 		return "", err
 	}
@@ -131,6 +165,32 @@ func purchaseMetadata(purchase paymentprovider.Purchase) map[string]string {
 		metadata[MetadataReadingPeriodHours] = strconv.FormatInt(int64(purchase.ReadingPeriodHours), 10)
 	}
 	return metadata
+}
+
+// Refund refunds the payment intent, leaving the amount out so that Stripe
+// refunds whatever of it is left.
+func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Credentials, req paymentprovider.RefundRequest) error {
+	client, err := p.client(credentials)
+	if err != nil {
+		return err
+	}
+	params := &stripego.RefundCreateParams{PaymentIntent: stripego.String(req.PaymentID)}
+	params.SetIdempotencyKey(req.IdempotencyKey)
+	_, err = client.V1Refunds.Create(ctx, params)
+	var stripeErr *stripego.Error
+	if !errors.As(err, &stripeErr) {
+		return err
+	}
+	switch {
+	// Stripe keeps an idempotency key for a day, so a repeat after that is a
+	// new request, refused because the earlier one went through.
+	case stripeErr.Code == stripego.ErrorCodeChargeAlreadyRefunded:
+		return nil
+	case stripeErr.Type == stripego.ErrorTypeInvalidRequest && stripeErr.HTTPStatusCode < http.StatusInternalServerError:
+		return fmt.Errorf("%w: %s", paymentprovider.ErrRefundRefused, stripeErr.Msg)
+	default:
+		return err
+	}
 }
 
 func (*Provider) ParseNotification(_ context.Context, payload []byte, headers http.Header, credentials paymentprovider.Credentials) (paymentprovider.Event, error) {

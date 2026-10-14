@@ -1,8 +1,8 @@
 // Package paymentprovidertest is the contract every payment provider passes.
-// A provider supplies a [Fixture] of its notifications, and of its API where
-// the provider reads it; [RunParse] checks the provider reads them, and [Run]
-// checks the purchase flow does the right thing with them against a real
-// database.
+// A provider supplies a [Fixture] of its notifications and of its API;
+// [RunParse] checks the provider reads the notifications and refunds through
+// the API, and [Run] checks the purchase flow does the right thing with the
+// notifications against a real database.
 package paymentprovidertest
 
 import (
@@ -56,6 +56,9 @@ type Fixture interface {
 	// Refunded answers the notification of a refund, and makes the refund part
 	// of what the provider's API reports for the payment.
 	Refunded(t testing.TB, credentials paymentprovider.Credentials, refund Refund) ([]byte, http.Header)
+	// RefundedTotal answers the total the provider's API reports refunded on
+	// the payment, in the minor unit of its currency.
+	RefundedTotal(t testing.TB, credentials paymentprovider.Credentials, paymentID string) int64
 	// Unrelated answers a notification the purchase flow has no use for.
 	Unrelated(t testing.TB, credentials paymentprovider.Credentials) ([]byte, http.Header)
 }
@@ -176,6 +179,49 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 		if _, ok := event.(paymentprovider.Ignored); !ok {
 			t.Fatalf("event = %T, want Ignored", event)
+		}
+	})
+
+	t.Run("a refund returns the whole payment once however often it is asked for", func(t *testing.T) {
+		paid := checkout
+		paid.PaymentID = "payment_refund_" + strings.ToLower(currency)
+		fixture.CheckoutCompleted(t, credentials, paid)
+		// The second key stands for a repeat made after the provider has
+		// forgotten the first.
+		key := "refund_contract_" + strings.ToLower(currency)
+		for _, key := range []string{key, key, key + "_later"} {
+			if err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key}); err != nil {
+				t.Fatalf("Refund with key %q: %v", key, err)
+			}
+			if got, want := fixture.RefundedTotal(t, credentials, paid.PaymentID), int64(paid.Purchase.Price); got != want {
+				t.Fatalf("refunded total after the key %q = %d, want %d", key, got, want)
+			}
+		}
+	})
+
+	t.Run("a refund after a partial one returns the rest", func(t *testing.T) {
+		paid := checkout
+		paid.PaymentID = "payment_refund_rest_" + strings.ToLower(currency)
+		fixture.CheckoutCompleted(t, credentials, paid)
+		fixture.Refunded(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 200})
+		if err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_rest_" + strings.ToLower(currency)}); err != nil {
+			t.Fatalf("Refund: %v", err)
+		}
+		if got, want := fixture.RefundedTotal(t, credentials, paid.PaymentID), int64(paid.Purchase.Price); got != want {
+			t.Fatalf("refunded total = %d, want %d", got, want)
+		}
+	})
+
+	t.Run("a refund of a payment the account does not hold is refused", func(t *testing.T) {
+		paid := checkout
+		paid.PaymentID = "payment_refund_other_" + strings.ToLower(currency)
+		fixture.CheckoutCompleted(t, fixture.OtherCredentials(), paid)
+		err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_other_" + strings.ToLower(currency)})
+		if !errors.Is(err, paymentprovider.ErrRefundRefused) {
+			t.Fatalf("Refund error = %v, want ErrRefundRefused", err)
+		}
+		if got := fixture.RefundedTotal(t, fixture.OtherCredentials(), paid.PaymentID); got != 0 {
+			t.Fatalf("refunded total under the other account = %d, want 0", got)
 		}
 	})
 

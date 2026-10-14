@@ -103,7 +103,7 @@ func TestParseNotification(t *testing.T) {
 }
 
 func TestParseNotificationReadsDisputesAndExpiredCheckouts(t *testing.T) {
-	fixture := stripetest.Fixture{}
+	fixture := stripetest.NewFixture(t)
 	credentials := fixture.Credentials()
 	checkout := paymentprovidertest.Checkout{
 		CheckoutID: "cs_expired",

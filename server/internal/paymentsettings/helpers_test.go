@@ -159,6 +159,10 @@ func (declaredProvider) ParseNotification(context.Context, []byte, http.Header, 
 	return paymentprovider.Ignored{}, nil
 }
 
+func (declaredProvider) Refund(context.Context, paymentprovider.Credentials, paymentprovider.RefundRequest) error {
+	return nil
+}
+
 func testRegistry() *paymentprovider.Registry {
 	return paymentprovider.NewRegistry(
 		stripe.New(),
