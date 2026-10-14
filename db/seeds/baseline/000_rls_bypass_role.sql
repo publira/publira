@@ -120,6 +120,13 @@ BEGIN
         IF pg_has_role(role_name, 'publira_rls_bypass', 'MEMBER') THEN
             EXECUTE format('REVOKE publira_rls_bypass FROM %I', role_name);
         END IF;
+        -- REVOKE takes back only this login's own grant, so one another role
+        -- granted, or a membership through a role in between, would survive it
+        -- with no more than a warning.
+        IF pg_has_role(role_name, 'publira_rls_bypass', 'MEMBER') THEN
+            RAISE EXCEPTION '% is still a member of publira_rls_bypass', role_name
+                USING HINT = 'Revoke the membership another role granted, or the role it goes through, by hand.';
+        END IF;
     END LOOP;
 END
 $$;

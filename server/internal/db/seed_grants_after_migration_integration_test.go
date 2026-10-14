@@ -3,11 +3,13 @@ package dbtest
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -135,5 +137,43 @@ func TestSeedRepairsABypassPolicyThatSaysSomethingElse(t *testing.T) {
 
 	if count := countCreatorRoles(); count != 0 {
 		t.Errorf("publira_public with no tenant set reads %d rows of creator_roles after the seed ran again, want 0", count)
+	}
+}
+
+// A tenant-scoped role that reaches publira_rls_bypass through a role in
+// between keeps every tenant's rows however often the seed revokes its own
+// grant, so the seed refuses to finish rather than leave it so.
+func TestSeedRefusesATenantRoleStillInTheBypassRole(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Cleanup(func() { pg.Reset(t) })
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Roles belong to the cluster, which the snapshot Reset restores does not
+	// cover, so the role in between is dropped again whatever happens.
+	for _, statement := range []string{
+		"CREATE ROLE bypass_go_between NOLOGIN",
+		"GRANT publira_rls_bypass TO bypass_go_between",
+		"GRANT bypass_go_between TO publira_public",
+	} {
+		if _, err := pg.DB.ExecContext(ctx, statement); err != nil {
+			t.Fatalf("%s: %v", statement, err)
+		}
+	}
+	t.Cleanup(func() {
+		if _, err := pg.DB.ExecContext(context.Background(), "DROP ROLE bypass_go_between"); err != nil {
+			t.Errorf("drop the role in between: %v", err)
+		}
+	})
+
+	dir, err := dbroles.RepoDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = dbroles.Apply(ctx, pg.DB, dir, nil)
+	if err == nil || !strings.Contains(err.Error(), "publira_public is still a member of publira_rls_bypass") {
+		t.Fatalf("Apply error = %v, want the refusal naming publira_public", err)
 	}
 }
