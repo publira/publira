@@ -6,7 +6,11 @@ import {
   withLocalePrefix,
 } from "./locale-path";
 import type { LocaleAlternates } from "./locale-path";
-import { getTenantDefaultLocale, getTenantPublicOrigin } from "./tenant";
+import {
+  getTenantDefaultLocale,
+  getTenantPublicOrigin,
+  getTenantSupportedLocales,
+} from "./tenant";
 
 /** Canonical public path for a known tenant, including from Server Actions. */
 export const tenantLocalePath = async (
@@ -59,8 +63,11 @@ export const tenantLocaleAlternates = async (
     return undefined;
   }
 
-  const defaultLocale = await getTenantDefaultLocale(tenantId);
-  return localeAlternates(currentLocale, defaultLocale, href);
+  const [defaultLocale, supportedLocales] = await Promise.all([
+    getTenantDefaultLocale(tenantId),
+    getTenantSupportedLocales(tenantId),
+  ]);
+  return localeAlternates(currentLocale, defaultLocale, supportedLocales, href);
 };
 
 /**
@@ -80,9 +87,13 @@ export const tenantPublishedLocaleAlternates = async (
     return undefined;
   }
 
-  const defaultLocale = await getTenantDefaultLocale(tenantId);
+  const [defaultLocale, supportedLocales] = await Promise.all([
+    getTenantDefaultLocale(tenantId),
+    getTenantSupportedLocales(tenantId),
+  ]);
   return publishedLocaleAlternates(
     defaultLocale,
+    supportedLocales,
     href,
     publishedLocales,
     servedLocale

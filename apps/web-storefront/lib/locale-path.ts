@@ -14,7 +14,7 @@
  * Components, and tests all share one implementation.
  */
 
-import { getLocales, isLocale } from "@publira/i18n";
+import { isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 
 import { isTenantIdFormat } from "./tenant-id-format";
@@ -112,8 +112,8 @@ export const withLocalePrefix = (
  * The `alternates` a page's metadata carries, as paths against `metadataBase`.
  *
  * `languages` lists the locales the page actually publishes. A page that exists
- * in every locale fills every key; a tenant page fills only its published
- * translations, plus `x-default`.
+ * in every locale the tenant offers fills a key for each; a tenant page fills
+ * only its published translations among them, plus `x-default`.
  */
 export interface LocaleAlternates {
   canonical: string;
@@ -122,7 +122,8 @@ export interface LocaleAlternates {
 
 /**
  * The canonical path of one page in `locale`, and the same page in every
- * supported locale, with `x-default` at the tenant default's unprefixed path.
+ * locale the tenant offers, with `x-default` at the tenant default's
+ * unprefixed path.
  *
  * `href` is the bare path of the page itself, without a query string: a
  * cursor, a sort order, or a filter names a view of the page, not another one.
@@ -130,14 +131,15 @@ export interface LocaleAlternates {
 export const localeAlternates = (
   locale: Locale,
   defaultLocale: Locale,
+  supportedLocales: readonly Locale[],
   href: string
 ): LocaleAlternates => {
   const languages = Object.fromEntries(
-    getLocales().map((code) => [
+    supportedLocales.map((code) => [
       code,
       withLocalePrefix(code, defaultLocale, href),
     ])
-  ) as Record<Locale, string>;
+  ) as Partial<Record<Locale, string>>;
 
   return {
     canonical: withLocalePrefix(locale, defaultLocale, href),
@@ -150,12 +152,15 @@ export const localeAlternates = (
  *
  * A locale with no published translation is left out: that URL serves another
  * language, and listing it would tell a search engine the translation exists.
+ * So is a translation in a locale the tenant does not offer, whose URL
+ * redirects to the default.
  * The canonical URL is the served language's own address, so a fallback URL is
  * not indexed as a second copy. `x-default` is the tenant default's public
  * path when that locale is published, and the served language's path otherwise.
  */
 export const publishedLocaleAlternates = (
   defaultLocale: Locale,
+  supportedLocales: readonly Locale[],
   href: string,
   publishedLocales: readonly Locale[],
   servedLocale: Locale
@@ -163,7 +168,7 @@ export const publishedLocaleAlternates = (
   const published = new Set<Locale>([...publishedLocales, servedLocale]);
 
   const languages: Partial<Record<Locale, string>> = {};
-  for (const code of getLocales()) {
+  for (const code of supportedLocales) {
     if (published.has(code)) {
       languages[code] = withLocalePrefix(code, defaultLocale, href);
     }

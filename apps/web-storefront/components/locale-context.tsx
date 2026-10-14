@@ -27,15 +27,27 @@ export const LocaleContextProvider = ({
   locale: Promise<Locale>;
 }) => <LocaleContext value={locale}>{children}</LocaleContext>;
 
-export const TenantDefaultLocaleContextProvider = ({
+/**
+ * The locales the tenant's site offers, which decide what the language
+ * switcher lists. It resolves to `null` while the tenant read is unavailable.
+ */
+const TenantSupportedLocalesContext = createContext<Promise<
+  readonly Locale[] | null
+> | null>(null);
+
+export const TenantLocalesContextProvider = ({
   children,
   defaultLocale,
+  supportedLocales,
 }: {
   children: ReactNode;
   defaultLocale: Promise<Locale | null>;
+  supportedLocales: Promise<readonly Locale[] | null>;
 }) => (
   <TenantDefaultLocaleContext value={defaultLocale}>
-    {children}
+    <TenantSupportedLocalesContext value={supportedLocales}>
+      {children}
+    </TenantSupportedLocalesContext>
   </TenantDefaultLocaleContext>
 );
 
@@ -63,9 +75,24 @@ export const useTenantDefaultLocale = (): Locale | null => {
   const defaultLocale = use(TenantDefaultLocaleContext);
   if (!defaultLocale) {
     throw new Error(
-      "useTenantDefaultLocale must be called under <TenantDefaultLocaleProvider>: the tenant's stored default comes from GetTenant, and there is nothing to guess it from."
+      "useTenantDefaultLocale must be called under <TenantLocalesProvider>: the tenant's stored default comes from GetTenant, and there is nothing to guess it from."
     );
   }
 
   return use(defaultLocale);
+};
+
+/**
+ * The locales the tenant's site offers, or `null` while they are unavailable.
+ * This suspends, the way {@link useTenantDefaultLocale} does.
+ */
+export const useTenantSupportedLocales = (): readonly Locale[] | null => {
+  const supportedLocales = use(TenantSupportedLocalesContext);
+  if (!supportedLocales) {
+    throw new Error(
+      "useTenantSupportedLocales must be called under <TenantLocalesProvider>: the locales the tenant offers come from GetTenant, and there is nothing to guess them from."
+    );
+  }
+
+  return use(supportedLocales);
 };

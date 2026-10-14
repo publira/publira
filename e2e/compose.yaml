@@ -183,6 +183,7 @@ services:
         app-links.localhost
         aset.localhost
         banner.localhost
+        bilingual.localhost
         comment.localhost
         consent.localhost
         desk.localhost
@@ -211,6 +212,7 @@ services:
         admin.app-links.localhost
         admin.aset.localhost
         admin.banner.localhost
+        admin.bilingual.localhost
         admin.comment.localhost
         admin.consent.localhost
         admin.desk.localhost

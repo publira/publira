@@ -483,6 +483,15 @@ export const WEB_ADMIN_JAPANESE_DEFAULT_BASE_URL = envUrl(
   withHostname(WEB_ADMIN_BASE_URL, "admin.locale.localhost")
 );
 
+/**
+ * Public site of the tenant that offers Japanese and English alone, from the
+ * same scenario seed.
+ */
+export const WEB_STOREFRONT_BILINGUAL_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_BILINGUAL_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "bilingual.localhost")
+);
+
 /** Host that maps to no tenant at all. */
 export const WEB_STOREFRONT_UNKNOWN_TENANT_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_STOREFRONT_UNKNOWN_TENANT_BASE_URL",

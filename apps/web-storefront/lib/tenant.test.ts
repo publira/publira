@@ -12,9 +12,11 @@ import {
   getTenantDisplayTimeZone,
   getTenantLegalPages,
   getTenantLinkDefaultLocale,
+  getTenantLinkSupportedLocales,
   getTenantPublicOrigin,
   getTenantSignInClients,
   getTenantSiteInfo,
+  getTenantSupportedLocales,
   getTenantTheme,
   getTenantWebPushPublicKey,
   readConsentPageVersionIds,
@@ -51,6 +53,7 @@ const tenantResponse = {
   defaultLocale: "en",
   siteDescription: "",
   siteTagline: "",
+  supportedLocales: ["ja", "en"],
   tenantDomain: "example.test",
   tenantName: "Example Tenant",
   tenantPublicId: "TENANT_PUBLIC",
@@ -465,5 +468,54 @@ describe("tenant", () => {
     );
 
     await expect(getTenantLinkDefaultLocale("TENANT_001")).resolves.toBeNull();
+  });
+
+  it("List the locales the site offers in registry order, its default among them", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      defaultLocale: "ko",
+      supportedLocales: ["en", "ja"],
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.supportedLocales).toStrictEqual(["ja", "en", "ko"]);
+  });
+
+  it("refuses an offered locale this build serves no catalog for", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      supportedLocales: ["en", "fr"],
+    });
+
+    await expect(getTenantSiteInfo("TENANT_001")).resolves.toBeNull();
+  });
+
+  it("Return the locales the tenant offers", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    await expect(
+      getTenantSupportedLocales("TENANT_001")
+    ).resolves.toStrictEqual(["ja", "en"]);
+  });
+
+  it("reports an unreadable tenant instead of listing locales", async () => {
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
+
+    await expect(getTenantSupportedLocales("TENANT_001")).rejects.toThrow(
+      "tenant supported locales are unavailable"
+    );
+  });
+
+  it("List no locales for the switcher while the tenant cannot be obtained", async () => {
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
+
+    await expect(
+      getTenantLinkSupportedLocales("TENANT_001")
+    ).resolves.toBeNull();
   });
 });

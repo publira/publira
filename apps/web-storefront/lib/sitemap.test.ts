@@ -47,8 +47,18 @@ vi.mock("./tenant", () => ({
 
 const TENANT_ID = "019d008d-184d-7d31-a78a-89728a746e38";
 const ORIGIN = "https://shop.example.com";
-const ADDRESS = { defaultLocale: "en", origin: ORIGIN } as const;
+const ADDRESS = {
+  defaultLocale: "en",
+  origin: ORIGIN,
+  supportedLocales: getLocales(),
+} as const;
 const LOCALE_COUNT = getLocales().length;
+/** A tenant that offers Japanese and English, Japanese being its default. */
+const BILINGUAL_ADDRESS = {
+  defaultLocale: "ja",
+  origin: ORIGIN,
+  supportedLocales: ["ja", "en"],
+} as const;
 
 const entry = (overrides: {
   kind: SitemapEntryKind;
@@ -104,7 +114,10 @@ beforeEach(() => {
   mockGetTenantSiteInfo.mockReset();
   mockListSitemapEntries.mockReset();
   mockGetTenantPublicOrigin.mockResolvedValue(ORIGIN);
-  mockGetTenantSiteInfo.mockResolvedValue({ defaultLocale: "en" });
+  mockGetTenantSiteInfo.mockResolvedValue({
+    defaultLocale: "en",
+    supportedLocales: getLocales(),
+  });
 });
 
 describe("toSitemapEntryItem", () => {
@@ -185,6 +198,20 @@ describe("renderSitemapUrlset", () => {
         `<xhtml:link rel="alternate" hreflang="x-default" href="${ORIGIN}/series/SERIES000001"/><lastmod>2026-09-28T01:02:03Z</lastmod></url>`
       )
     ).toBe(LOCALE_COUNT);
+  });
+
+  it("lists a page only in the locales the tenant offers", () => {
+    const xml = renderSitemapUrlset(BILINGUAL_ADDRESS, [
+      { href: "/series/SERIES000001" },
+    ]);
+
+    expect(countOf(xml, "<url>")).toBe(2);
+    expect(xml).toContain(`<url><loc>${ORIGIN}/series/SERIES000001</loc>`);
+    expect(xml).toContain(`<url><loc>${ORIGIN}/en/series/SERIES000001</loc>`);
+    expect(countOf(xml, 'hreflang="ja"')).toBe(2);
+    expect(countOf(xml, 'hreflang="en"')).toBe(2);
+    expect(xml).not.toContain('hreflang="ko"');
+    expect(xml).not.toContain(`${ORIGIN}/ko/`);
   });
 
   it("names the root in each locale", () => {
@@ -287,6 +314,35 @@ describe("getSitemapChunk", () => {
     expect(entries.length * LOCALE_COUNT).toBeGreaterThan(
       SITEMAP_URL_LIMIT - 500 * LOCALE_COUNT
     );
+    expect(chunk.ok && chunk.value.nextToken).not.toBe("");
+  });
+
+  it("counts a file's URLs by the locales the tenant offers", async () => {
+    answerPages(200);
+
+    const chunk = await getSitemapChunk(TENANT_ID, BILINGUAL_ADDRESS, "p1");
+
+    expect(chunk.ok).toBe(true);
+    const entries = chunk.ok ? chunk.value.entries : [];
+    expect(entries.length * 2).toBeLessThanOrEqual(SITEMAP_URL_LIMIT);
+    expect(entries.length * 2).toBeGreaterThan(SITEMAP_URL_LIMIT - 500 * 2);
+  });
+
+  // One URL per entry is the most entries a file holds, and the walk still has
+  // to end it on the URL limit rather than on its own page cap.
+  it("fills a file of a tenant that offers one locale without failing the walk", async () => {
+    answerPages(200);
+
+    const chunk = await getSitemapChunk(
+      TENANT_ID,
+      { defaultLocale: "en", origin: ORIGIN, supportedLocales: ["en"] },
+      "p1"
+    );
+
+    expect(chunk.ok).toBe(true);
+    const entries = chunk.ok ? chunk.value.entries : [];
+    expect(entries.length).toBeLessThanOrEqual(SITEMAP_URL_LIMIT);
+    expect(entries.length).toBeGreaterThan(SITEMAP_URL_LIMIT - 500);
     expect(chunk.ok && chunk.value.nextToken).not.toBe("");
   });
 

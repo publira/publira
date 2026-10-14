@@ -3,7 +3,7 @@
 import { bindMessages, getLocales } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   LocaleSwitcher,
@@ -42,10 +42,19 @@ vi.mock("./client-message", () => ({
   useClientMessages: () => bindMessages(sharedCatalog("en"), "en"),
 }));
 
+const { mockUseTenantSupportedLocales } = vi.hoisted(() => ({
+  mockUseTenantSupportedLocales: vi.fn(),
+}));
+
 vi.mock("./locale-context", () => ({
   useLocale: () => "en",
   useTenantDefaultLocale: () => "ja",
+  useTenantSupportedLocales: mockUseTenantSupportedLocales,
 }));
+
+beforeEach(() => {
+  mockUseTenantSupportedLocales.mockReturnValue(getLocales());
+});
 
 afterEach(cleanup);
 
@@ -94,10 +103,30 @@ describe("LocaleSwitcherLinks", () => {
       screen.getByRole("link", { name: "한국어" }).getAttribute("hreflang")
     ).toBe("ko");
   });
+
+  it("offers only the locales the tenant offers", () => {
+    mockUseTenantSupportedLocales.mockReturnValue(["ja", "en"]);
+
+    render(<LocaleSwitcherLinks />);
+
+    expect(
+      screen.getAllByRole("link").map((link) => link.getAttribute("hreflang"))
+    ).toStrictEqual(["ja", "en"]);
+  });
+
+  it("offers only the locale being read while the tenant's locales are unavailable", () => {
+    mockUseTenantSupportedLocales.mockReturnValue(null);
+
+    render(<LocaleSwitcherLinks />);
+
+    expect(
+      screen.getAllByRole("link").map((link) => link.getAttribute("hreflang"))
+    ).toStrictEqual(["en"]);
+  });
 });
 
 describe("LocaleSwitcherLinksSkeleton", () => {
-  it("stands in with one row per locale the list draws", () => {
+  it("stands in with one row per locale the list can draw", () => {
     const { container } = render(<LocaleSwitcherLinksSkeleton />);
 
     expect(

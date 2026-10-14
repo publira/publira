@@ -41,6 +41,8 @@ A new tenant starts on the platform's default time zone, which is `UTC` unless t
 
 **Languages offered** has a box for each language Publira is translated into: 日本語, English, 한국어, 简体中文, and 繁體中文. Tick the ones readers can use the site in. Switching a language off hides the page translations written in it, without deleting them, and they come back when the language is switched on again, as [Translations](./3-pages.md#translations) describes.
 
+Readers see the ticked languages alone. The site's **Language** menu lists them, and so do the sitemap and the language links search engines read. An address in a language that is switched off, from a bookmark or a search result, opens the same page in the default language instead.
+
 **Default language** is the language the site and this console start in for someone who has not chosen one. A reader or a member of staff who has already chosen a language keeps it. The default language is also:
 
 - the language of the mail the tenant sends, invitations to new staff included;

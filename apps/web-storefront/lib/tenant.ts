@@ -17,6 +17,7 @@ import { applyCacheTag, tenantSiteTag, tenantThemeTag } from "./cache-tags";
 import { getMessagesFor } from "./messages";
 import { publishedPageHrefFromSlug } from "./pages";
 import type { SignInProvider } from "./sign-in-provider";
+import { toSupportedLocales } from "./supported-locales";
 
 /** An ISO 4217 code as the API spells it. */
 const currencyPattern = /^[A-Z]{3}$/u;
@@ -184,6 +185,11 @@ export interface TenantSiteInfo {
   publicId: string;
   siteDescription?: string;
   siteTagline?: string;
+  /**
+   * UI locales the site offers its readers, in registry order and always
+   * holding {@link defaultLocale}.
+   */
+  supportedLocales: Locale[];
   /** IANA zone every tenant-facing wall clock on the public site is rendered in. */
   timeZone: string;
   /**
@@ -298,6 +304,11 @@ export const getTenantSiteInfo = async (
     }
 
     const name = trimmed(response.tenantName) ?? "";
+    // The server resolves the tenant value against the platform default
+    // before answering (`locale.Resolve`), so a code that fails to parse here
+    // is one this build does not serve. Rendering the site in some other
+    // language would hide that mismatch behind pages nobody asked for.
+    const defaultLocale = requireSupportedLocale(response.defaultLocale);
 
     return {
       acceptsPayments: response.acceptsPayments === true,
@@ -308,11 +319,7 @@ export const getTenantSiteInfo = async (
       commentMode: toTenantCommentMode(response.commentMode),
       copyrightText: trimmed(response.copyrightText),
       currency: requireCurrency(response.currency),
-      // The server resolves the tenant value against the platform default
-      // before answering (`locale.Resolve`), so a code that fails to parse here
-      // is one this build does not serve. Rendering the site in some other
-      // language would hide that mismatch behind pages nobody asked for.
-      defaultLocale: requireSupportedLocale(response.defaultLocale),
+      defaultLocale,
       domain: trimmed(response.tenantDomain) ?? "",
       googlePlayUrl: nonEmpty(response.googlePlayUrl),
       googleWebClientId: nonEmpty(response.googleSignIn?.webClientId),
@@ -328,6 +335,10 @@ export const getTenantSiteInfo = async (
       publicId,
       siteDescription: trimmed(response.siteDescription),
       siteTagline: trimmed(response.siteTagline),
+      supportedLocales: toSupportedLocales(
+        response.supportedLocales ?? [],
+        defaultLocale
+      ),
       // The server resolves the zone before answering (`tenanttz.Resolve`), so
       // the fallback only covers a response shape that predates the field.
       timeZone: nonEmpty(response.timezone) ?? DEFAULT_TIME_ZONE,
@@ -486,6 +497,43 @@ export const getTenantLinkDefaultLocale = async (
 ): Promise<Locale | null> => {
   const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.defaultLocale ?? null;
+};
+
+/**
+ * The UI locales the tenant's site offers, for server-side code that lists
+ * every language a page is served in — the alternates, the sitemap,
+ * `robots.txt`, the app-association document. It throws on an unavailable
+ * tenant read, the way {@link getTenantDefaultLocale} does, since a stand-in
+ * would list languages the tenant did not choose. The read carries
+ * `tenant:<id>:site`, which the admin API revalidates when the set is saved,
+ * alongside the default.
+ *
+ * `proxy.ts` does **not** use this, for the reason it does not use
+ * {@link getTenantDefaultLocale}: it takes the `supported_locales` that
+ * `GetTenantByDomain` returns alongside the tenant id.
+ */
+export const getTenantSupportedLocales = async (
+  tenantId: string
+): Promise<Locale[]> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  if (!tenant) {
+    throw new Error(`tenant supported locales are unavailable: ${tenantId}`);
+  }
+
+  return tenant.supportedLocales;
+};
+
+/**
+ * The UI locales the tenant's site offers, for the language switcher, or
+ * `null` while the tenant read is unavailable. Like
+ * {@link getTenantLinkDefaultLocale}, it does not throw: the switcher renders
+ * on every page under `(site)`.
+ */
+export const getTenantLinkSupportedLocales = async (
+  tenantId: string
+): Promise<Locale[] | null> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  return tenant?.supportedLocales ?? null;
 };
 
 /**

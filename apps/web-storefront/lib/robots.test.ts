@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import { getLocales } from "@publira/i18n";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -11,11 +12,13 @@ const {
   mockCacheLife,
   mockCacheTag,
   mockGetTenantPublicOrigin,
+  mockGetTenantSiteInfo,
   mockListPublishedPageSlugs,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetTenantPublicOrigin: vi.fn(),
+  mockGetTenantSiteInfo: vi.fn(),
   mockListPublishedPageSlugs: vi.fn(),
 }));
 
@@ -32,6 +35,7 @@ vi.mock("./api-client", () => ({
 
 vi.mock("./tenant", () => ({
   getTenantPublicOrigin: mockGetTenantPublicOrigin,
+  getTenantSiteInfo: mockGetTenantSiteInfo,
 }));
 
 const TENANT_ID = "019d008d-184d-7d31-a78a-89728a746e38";
@@ -40,7 +44,7 @@ const lines = (text: string): string[] => text.split("\n");
 
 describe("buildRobotsTxt", () => {
   it("opens the catalogue and names the sitemap at the tenant's origin", () => {
-    const text = buildRobotsTxt("https://shop.example.com", []);
+    const text = buildRobotsTxt("https://shop.example.com", getLocales(), []);
 
     expect(lines(text).slice(0, 3)).toStrictEqual([
       "User-agent: *",
@@ -53,7 +57,9 @@ describe("buildRobotsTxt", () => {
   });
 
   it("disallows each reader-only path bare and under a locale prefix", () => {
-    const text = lines(buildRobotsTxt("https://shop.example.com", []));
+    const text = lines(
+      buildRobotsTxt("https://shop.example.com", getLocales(), [])
+    );
 
     for (const path of ["/my", "/settings", "/login", "/verify"]) {
       expect(text).toContain(`Disallow: ${path}$`);
@@ -65,7 +71,7 @@ describe("buildRobotsTxt", () => {
 
   it("allows a published page the proxy serves in place of a reader-only path", () => {
     const text = lines(
-      buildRobotsTxt("https://shop.example.com", [
+      buildRobotsTxt("https://shop.example.com", getLocales(), [
         "/my",
         "/notifications/help",
         "/privacy",
@@ -81,8 +87,22 @@ describe("buildRobotsTxt", () => {
     expect(text).not.toContain("Allow: /privacy$");
   });
 
+  it("names only the locale prefixes the tenant offers", () => {
+    const text = lines(
+      buildRobotsTxt("https://shop.example.com", ["ja", "en"], ["/my"])
+    );
+
+    expect(text).toContain("Disallow: /ja/settings$");
+    expect(text).toContain("Disallow: /en/settings$");
+    expect(text).toContain("Allow: /en/my$");
+    expect(text.filter((line) => line.includes("/ko/"))).toStrictEqual([]);
+    expect(text.filter((line) => line.includes("/zh-"))).toStrictEqual([]);
+  });
+
   it("does not shut out a published page whose slug starts like a reader-only path", () => {
-    const text = lines(buildRobotsTxt("https://shop.example.com", []));
+    const text = lines(
+      buildRobotsTxt("https://shop.example.com", getLocales(), [])
+    );
 
     expect(text).not.toContain("Disallow: /my");
     expect(text).not.toContain("Disallow: /announcements$");
@@ -130,7 +150,9 @@ describe("getPublishedPageSlugs", () => {
 describe("respondWithRobotsTxt", () => {
   beforeEach(() => {
     mockGetTenantPublicOrigin.mockReset();
+    mockGetTenantSiteInfo.mockReset();
     mockListPublishedPageSlugs.mockReset();
+    mockGetTenantSiteInfo.mockResolvedValue({ supportedLocales: ["ja", "en"] });
     mockListPublishedPageSlugs.mockResolvedValue({ slugs: [] });
   });
 
@@ -143,9 +165,10 @@ describe("respondWithRobotsTxt", () => {
     expect(response.headers.get("Content-Type")).toBe(
       "text/plain; charset=utf-8"
     );
-    await expect(response.text()).resolves.toContain(
-      "Sitemap: https://shop.example.com/sitemap.xml"
-    );
+    const text = await response.text();
+    expect(text).toContain("Sitemap: https://shop.example.com/sitemap.xml");
+    expect(text).toContain("Disallow: /en/settings$");
+    expect(text).not.toContain("/ko/");
     expect(mockGetTenantPublicOrigin).toHaveBeenCalledWith(TENANT_ID);
   });
 
@@ -164,6 +187,7 @@ describe("respondWithRobotsTxt", () => {
   });
 
   it("answers 503 while the tenant's address is unavailable", async () => {
+    mockGetTenantSiteInfo.mockResolvedValueOnce(null);
     mockGetTenantPublicOrigin.mockResolvedValueOnce(null);
 
     const response = await respondWithRobotsTxt({ tenant_id: TENANT_ID });

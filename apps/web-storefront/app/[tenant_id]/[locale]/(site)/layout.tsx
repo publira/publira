@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { DocumentLocale } from "#components/document-locale";
 import {
   LocaleProvider,
-  TenantDefaultLocaleProvider,
+  TenantLocalesProvider,
 } from "#components/locale-provider";
 import { getLocale } from "#lib/locale";
 import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
@@ -40,9 +40,9 @@ export const generateMetadata = async (): Promise<Metadata> => {
 const SiteLayout = ({ children }: LayoutProps<"/[tenant_id]/[locale]">) => (
   <LocaleProvider>
     <DocumentLocale />
-    <TenantDefaultLocaleProvider>
+    <TenantLocalesProvider>
       <SiteChrome>{children}</SiteChrome>
-    </TenantDefaultLocaleProvider>
+    </TenantLocalesProvider>
   </LocaleProvider>
 );
 

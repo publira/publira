@@ -1,4 +1,4 @@
-import { getLocales } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 import {
@@ -14,7 +14,7 @@ import {
   GUEST_ONLY_PATHS,
   MEMBER_PATH_PREFIXES,
 } from "./reader-paths";
-import { getTenantPublicOrigin } from "./tenant";
+import { getTenantPublicOrigin, getTenantSiteInfo } from "./tenant";
 import { isTenantIdFormat } from "./tenant-id-format";
 
 const READER_ONLY_PATHS = [
@@ -23,9 +23,14 @@ const READER_ONLY_PATHS = [
   ...ACCOUNT_FLOW_PATHS,
 ];
 
-const localePrefixes = (): string[] => [
+/**
+ * The unprefixed path and a prefix per locale the tenant offers. A prefix the
+ * tenant does not offer redirects to the unprefixed path, which these rules
+ * already cover.
+ */
+const localePrefixes = (supportedLocales: readonly Locale[]): string[] => [
   "",
-  ...getLocales().map((locale) => `/${locale}`),
+  ...supportedLocales.map((locale) => `/${locale}`),
 ];
 
 /**
@@ -34,8 +39,8 @@ const localePrefixes = (): string[] => [
  * shut out a published page whose slug merely starts the same way (`/my` and
  * `/mystery`).
  */
-const readerOnlyPatterns = (): string[] =>
-  localePrefixes().flatMap((prefix) =>
+const readerOnlyPatterns = (supportedLocales: readonly Locale[]): string[] =>
+  localePrefixes(supportedLocales).flatMap((prefix) =>
     READER_ONLY_PATHS.flatMap((path) => [
       `${prefix}${path}$`,
       `${prefix}${path}/`,
@@ -49,13 +54,16 @@ const readerOnlyPatterns = (): string[] =>
  * allowed as itself and with a query: a rule as long as the disallowing one
  * wins over it, so the screens beneath the page stay out of reach.
  */
-const shadowingPagePatterns = (publishedSlugs: readonly string[]): string[] => {
+const shadowingPagePatterns = (
+  supportedLocales: readonly Locale[],
+  publishedSlugs: readonly string[]
+): string[] => {
   const shadowing = publishedSlugs.filter((slug) =>
     READER_ONLY_PATHS.some(
       (path) => slug === path || slug.startsWith(`${path}/`)
     )
   );
-  return localePrefixes().flatMap((prefix) =>
+  return localePrefixes(supportedLocales).flatMap((prefix) =>
     shadowing.flatMap((slug) => [`${prefix}${slug}$`, `${prefix}${slug}?`])
   );
 };
@@ -63,21 +71,24 @@ const shadowingPagePatterns = (publishedSlugs: readonly string[]): string[] => {
 /**
  * The tenant's `robots.txt`: the catalogue is open, the pages that belong to
  * one reader and the Route Handlers under `/api/` are not, and the sitemap is
- * named at `origin`. `publishedSlugs` are the tenant's published pages in
- * storage form (`/privacy`).
+ * named at `origin`. `supportedLocales` are the locales the tenant offers, and
+ * `publishedSlugs` its published pages in storage form (`/privacy`).
  */
 export const buildRobotsTxt = (
   origin: string,
+  supportedLocales: readonly Locale[],
   publishedSlugs: readonly string[]
 ): string =>
   [
     "User-agent: *",
     "Allow: /",
-    ...shadowingPagePatterns(publishedSlugs).map(
+    ...shadowingPagePatterns(supportedLocales, publishedSlugs).map(
       (pattern) => `Allow: ${pattern}`
     ),
     "Disallow: /api/",
-    ...readerOnlyPatterns().map((pattern) => `Disallow: ${pattern}`),
+    ...readerOnlyPatterns(supportedLocales).map(
+      (pattern) => `Disallow: ${pattern}`
+    ),
     "",
     `Sitemap: ${origin}/sitemap.xml`,
     "",
@@ -129,18 +140,22 @@ export const respondWithRobotsTxt = async (
     return new Response("Not Found", { status: 404 });
   }
 
-  const [origin, slugs] = await Promise.all([
+  const [tenant, origin, slugs] = await Promise.all([
+    getTenantSiteInfo(parsed.tenant_id),
     getTenantPublicOrigin(parsed.tenant_id),
     getPublishedPageSlugs(parsed.tenant_id),
   ]);
-  if (!(origin && slugs.ok)) {
+  if (!(tenant && origin && slugs.ok)) {
     return new Response("Service Unavailable", {
       headers: { "Cache-Control": "no-store", "Retry-After": "30" },
       status: 503,
     });
   }
 
-  return new Response(buildRobotsTxt(origin, slugs.value), {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
-  });
+  return new Response(
+    buildRobotsTxt(origin, tenant.supportedLocales, slugs.value),
+    {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    }
+  );
 };
