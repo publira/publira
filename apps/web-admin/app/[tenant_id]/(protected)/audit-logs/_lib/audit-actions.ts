@@ -58,6 +58,7 @@ export const auditActions = [
   "reader_deleted",
   "access_ticket_issued",
   "access_ticket_revoked",
+  "purchase_refunded",
   "royalty_config_updated",
   "royalty_statement_closed",
   "royalty_statement_exported",
