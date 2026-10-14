@@ -735,6 +735,10 @@ class ConnectFixtureServer {
   /// The member's name as `GetMe` reports it, which `UpdateMe` replaces.
   String memberCurrentName = memberName;
 
+  /// The image-server path of the member's icon as `GetMe` reports it, and
+  /// `null` for an account that shows none, which the API omits.
+  String? memberIconPath;
+
   /// The addresses `RequestEmailChange` has accepted a move to, in order.
   final requestedEmailChanges = <String>[];
 
@@ -1227,6 +1231,16 @@ class ConnectFixtureServer {
           // reader who has recorded no date.
           if (memberBirthDate.isNotEmpty) 'birthDate': memberBirthDate,
           'email': memberEmail,
+          if (memberIconPath case final iconPath?)
+            'iconImageVariants': [
+              {
+                'label': 'icon',
+                'url': iconPath,
+                'contentType': 'image/webp',
+                'width': 512,
+                'height': 512,
+              },
+            ],
         },
       });
       return;

@@ -5,6 +5,7 @@ import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/comments/http_comment_repository.dart';
+import 'package:publira/config.dart';
 import 'package:publira/models/episode_comment.dart';
 
 import 'support/connect_fixture_server.dart';
@@ -23,6 +24,7 @@ void main() {
       accessToken: () => accessToken,
     );
     return HttpCommentRepository(
+      config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
       client: client,
       tenants: TenantResolver(client: client, tenantHost: 'localhost'),
     );
@@ -109,6 +111,49 @@ void main() {
     expect(reader.displayName, 'Another Member');
   });
 
+  test('an author icon resolves against the image server', () async {
+    server.episodeComments = {
+      episodeId: [
+        {
+          'publicId': 'SeedCMNTAAA3',
+          'body': 'I have a face.',
+          'createdAt': '2026-09-08T10:45:00Z',
+          'authorPublicId': 'SeedMMBRCCC3',
+          'authorName': 'Sample Member',
+          'authorIconImageVariants': [
+            {
+              'label': 'icon',
+              'url': '/images/users/0190a0c0-0000-7000-8000-000000000001',
+              'contentType': 'image/webp',
+              'width': 512,
+              'height': 512,
+            },
+          ],
+        },
+        {
+          'publicId': 'SeedCMNTAAA1',
+          'body': 'The first one.',
+          'createdAt': '2026-09-08T10:30:00Z',
+          'authorPublicId': 'SeedMMBRBBB2',
+          'authorName': 'Another Member',
+        },
+      ],
+    };
+
+    final [withIcon, withoutIcon] = (await repository().listComments(
+      episodeInternalId,
+    )).comments;
+    expect(
+      withIcon.authorIconUrl,
+      Uri.parse(
+        '${server.baseUrl}/images/users/0190a0c0-0000-7000-8000-000000000001',
+      ),
+    );
+    expect(withIcon.imageRequestHeaders['x-forwarded-host'], 'localhost');
+    // protojson omits the empty list an account without an icon has.
+    expect(withoutIcon.authorIconUrl, isNull);
+  });
+
   test('the public list is asked for without the reader session', () async {
     accessToken = ConnectFixtureServer.memberAccessToken;
 
@@ -173,9 +218,9 @@ void main() {
         ],
       };
 
-      final comment = (await repository().listMyComments(
-        episodeInternalId,
-      )).single.byAuthor(id: 'SeedMMBRCCC3', name: 'Sample Member');
+      final comment = (await repository().listMyComments(episodeInternalId))
+          .single
+          .byAuthor(id: 'SeedMMBRCCC3', name: 'Sample Member', iconUrl: null);
       expect(comment.creatorName, 'Sample Author');
       expect(comment.displayName, 'Sample Author');
     },

@@ -102,6 +102,7 @@ void main() {
       ..session = fakeSession.withUser(
         userPublicId: 'OtherRDRAAA1',
         userName: 'Other Reader',
+        userIconUrl: null,
       )
       ..emailNotifications = true;
     await auth.signIn(email: 'other@example.com', password: 'password');

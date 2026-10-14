@@ -102,6 +102,102 @@ void main() {
     expect(comments.episodeIds, [fixtureInternalId(episodeId)]);
   });
 
+  /// The URL the icon circle in [tile] is drawn from, and `null` when it
+  /// draws the fallback.
+  String? iconUrlIn(WidgetTester tester, Finder tile) {
+    final avatar = tester.widget<CircleAvatar>(
+      find.descendant(of: tile, matching: find.byType(CircleAvatar)),
+    );
+    var image = avatar.foregroundImage;
+    if (image is ResizeImage) {
+      image = image.imageProvider;
+    }
+    return image is NetworkImage ? image.url : null;
+  }
+
+  testWidgets(
+    'a reader with an icon is shown with it, and one without with the fallback',
+    (tester) async {
+      comments.pages = {
+        '': EpisodeCommentPage(
+          comments: [
+            EpisodeComment(
+              id: 'comment-with-icon',
+              body: 'I have a face.',
+              createdAt: DateTime.utc(2026, 9, 8, 10, 40),
+              authorId: 'SeedMMBRCCC3',
+              authorName: 'Sample Member',
+              authorIconUrl: Uri.parse('http://127.0.0.1:8000/images/users/1'),
+            ),
+            otherReader(),
+          ],
+        ),
+      };
+      await pumpComments(tester);
+
+      final withIcon = find.byKey(
+        const ValueKey('comment-tile-comment-with-icon'),
+      );
+      final withoutIcon = find.byKey(
+        const ValueKey('comment-tile-comment-other'),
+      );
+      await pumpUntilFound(tester, withIcon);
+      expect(
+        iconUrlIn(tester, withIcon),
+        'http://127.0.0.1:8000/images/users/1',
+      );
+      expect(
+        find.descendant(
+          of: withIcon,
+          matching: find.byKey(
+            const ValueKey('comment-author-icon-comment-with-icon'),
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(iconUrlIn(tester, withoutIcon), isNull);
+      expect(
+        find.descendant(
+          of: withoutIcon,
+          matching: find.byKey(
+            const ValueKey('comment-author-icon-fallback-comment-other'),
+          ),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    "the reader's own unpublished comment carries the icon of their session",
+    (tester) async {
+      comments
+        ..mode = CommentMode.approvalRequired
+        ..own = [
+          EpisodeComment(
+            id: 'comment-pending',
+            body: 'Still waiting.',
+            createdAt: DateTime.utc(2026, 9, 8, 12),
+            awaitingApproval: true,
+          ),
+        ];
+      await pumpComments(
+        tester,
+        session: fakeSession.withUser(
+          userPublicId: fakeSession.userPublicId,
+          userName: fakeSession.userName,
+          userIconUrl: Uri.parse('http://127.0.0.1:8000/images/users/2'),
+        ),
+      );
+
+      final tile = find.byKey(const ValueKey('comment-tile-comment-pending'));
+      await pumpUntilFound(tester, tile);
+      // A published comment of theirs that staff take down arrives through
+      // this list instead, and it has to look the way it did before.
+      expect(iconUrlIn(tester, tile), 'http://127.0.0.1:8000/images/users/2');
+    },
+  );
+
   testWidgets(
     "a creator's comment is marked and shown under the credited name",
     (tester) async {

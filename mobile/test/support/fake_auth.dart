@@ -472,6 +472,7 @@ class FakeAuthRepository implements AuthRepository {
     return session.withUser(
       userPublicId: this.session.userPublicId,
       userName: this.session.userName,
+      userIconUrl: this.session.userIconUrl,
     );
   }
 
@@ -547,8 +548,13 @@ class FakeAuthRepository implements AuthRepository {
     this.session = this.session.withUser(
       userPublicId: this.session.userPublicId,
       userName: name,
+      userIconUrl: this.session.userIconUrl,
     );
-    return session.withUser(userPublicId: session.userPublicId, userName: name);
+    return session.withUser(
+      userPublicId: session.userPublicId,
+      userName: name,
+      userIconUrl: session.userIconUrl,
+    );
   }
 
   @override

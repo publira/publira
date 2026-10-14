@@ -94,6 +94,32 @@ void main() {
     expect(refreshed.userPublicId, ConnectFixtureServer.memberPublicId);
   });
 
+  test('refresh reads the icon the account shows, or none', () async {
+    const stored = AuthSession(
+      accessToken: ConnectFixtureServer.memberAccessToken,
+      userPublicId: '',
+      userName: '',
+    );
+
+    expect((await auth.refresh(stored)).userIconUrl, isNull);
+
+    server.memberIconPath =
+        '/images/users/0190a0c0-0000-7000-8000-000000000002';
+    final refreshed = await auth.refresh(stored);
+
+    expect(
+      refreshed.userIconUrl,
+      Uri.parse(
+        '${server.baseUrl}/images/users/0190a0c0-0000-7000-8000-000000000002',
+      ),
+    );
+    // The session is what a restart reads back, icon included.
+    expect(
+      AuthSession.fromJson(refreshed.toJson())?.userIconUrl,
+      refreshed.userIconUrl,
+    );
+  });
+
   const stored = AuthSession(
     accessToken: ConnectFixtureServer.memberAccessToken,
     userPublicId: ConnectFixtureServer.memberPublicId,
@@ -179,7 +205,11 @@ void main() {
 
   test('recordBirthDate writes the date beside the name it holds', () async {
     final written = await auth.recordBirthDate(
-      stored.withUser(userPublicId: stored.userPublicId, userName: 'Stale'),
+      stored.withUser(
+        userPublicId: stored.userPublicId,
+        userName: 'Stale',
+        userIconUrl: null,
+      ),
       DateTime.utc(2001, 2, 3),
     );
 

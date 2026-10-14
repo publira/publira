@@ -4,6 +4,7 @@ import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/error_details.dart';
 import 'package:publira/api/tenant_resolver.dart';
+import 'package:publira/api/user_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
@@ -23,6 +24,7 @@ class HttpAuthRepository implements AuthRepository {
   }) {
     final resolved = client ?? ConnectClient(baseUrl: config.baseUrl);
     return HttpAuthRepository._(
+      config: config,
       client: resolved,
       tenants:
           tenants ??
@@ -30,7 +32,11 @@ class HttpAuthRepository implements AuthRepository {
     );
   }
 
-  HttpAuthRepository._({required this._client, required this._tenants});
+  HttpAuthRepository._({
+    required this._config,
+    required this._client,
+    required this._tenants,
+  });
 
   static const _loginProcedure = '/publira.v1.AuthService/Login';
   static const _loginWithIdTokenProcedure =
@@ -73,6 +79,7 @@ class HttpAuthRepository implements AuthRepository {
   static const _tenantLegalPagesProcedure =
       '/publira.v1.TenantService/GetTenantLegalPages';
 
+  final AppConfig _config;
   final ConnectClient _client;
   final TenantResolver _tenants;
 
@@ -437,6 +444,7 @@ class HttpAuthRepository implements AuthRepository {
     return session.withUser(
       userPublicId: _readString(user, 'publicId'),
       userName: _readString(user, 'name'),
+      userIconUrl: userIconUrl(user['iconImageVariants'], _config),
     );
   }
 
@@ -555,6 +563,7 @@ class HttpAuthRepository implements AuthRepository {
       return session.withUser(
         userPublicId: _readString(user, 'publicId'),
         userName: _readString(user, 'name'),
+        userIconUrl: userIconUrl(user['iconImageVariants'], _config),
       );
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
@@ -838,6 +847,7 @@ class HttpAuthRepository implements AuthRepository {
       accessToken: token,
       userPublicId: _readString(user, 'publicId'),
       userName: _readString(user, 'name'),
+      userIconUrl: userIconUrl(user['iconImageVariants'], _config),
       expiresAt: DateTime.tryParse(
         _readString(accessToken, 'expiresAt'),
       )?.toUtc(),
