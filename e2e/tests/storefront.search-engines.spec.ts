@@ -133,7 +133,7 @@ test.describe("web-storefront robots.txt and sitemap on a tenant that offers two
     expect(xml).not.toContain('hreflang="ko"');
   });
 
-  test("robots.txt names the prefix of the other language it offers alone", async ({
+  test("robots.txt names the prefixes of the two languages alone", async ({
     request,
   }) => {
     const response = await request.get(
@@ -144,9 +144,10 @@ test.describe("web-storefront robots.txt and sitemap on a tenant that offers two
     const body = await response.text();
     const lines = body.split("\n");
     expect(lines).toContain("Disallow: /settings$");
+    expect(lines).toContain("Disallow: /ja/settings$");
     expect(lines).toContain("Disallow: /en/settings$");
     expect(
-      lines.filter((line) => /\/(?:ja|ko|zh-Hans|zh-Hant)\//u.test(line))
+      lines.filter((line) => /\/(?:ko|zh-Hans|zh-Hant)\//u.test(line))
     ).toStrictEqual([]);
     expect(lines).toContain(`Sitemap: ${BILINGUAL_ORIGIN}/sitemap.xml`);
   });
