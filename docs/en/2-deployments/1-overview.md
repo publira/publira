@@ -2,7 +2,7 @@
 title: Overview
 description: What a Publira install runs, and the services it depends on.
 published: 2026-10-04
-updated: 2026-10-13
+updated: 2026-10-14
 ---
 
 A Publira install is made of four long-lived processes, a handful of services they depend on, and one command-line tool you run by hand. This page describes the smallest install that serves a tenant: its public site and its console, managed from `publiractl` rather than from the Platform Console.
