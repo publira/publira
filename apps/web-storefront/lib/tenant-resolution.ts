@@ -5,8 +5,10 @@ import {
 import type { PublicApiClient } from "@publira/api-client/public/client";
 import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import { readTagRevalidatedAt } from "@publira/next-cache-handlers/tags";
 import { LRUCache } from "lru-cache";
 
+import { tenantSiteTag } from "./cache-tags";
 import { toSupportedLocales } from "./supported-locales";
 
 /**
@@ -36,6 +38,8 @@ export interface ResolvedTenant {
 export const SUSPENDED_TENANT = "suspended";
 
 interface TenantCacheValue {
+  /** When the lookup that produced `tenant` started (ms since the epoch). */
+  readAt: number;
   tenant: ResolvedTenant | null;
 }
 
@@ -58,17 +62,47 @@ const toResolvedTenant = (
   };
 };
 
+/**
+ * The tenant each set of Host candidates resolves to, held per instance for
+ * the proxy, where no `"use cache"` runs.
+ *
+ * The locales ride on the answer, so a held tenant is read again once its
+ * `tenant:<id>:site` tag — which the admin API revalidates when the languages
+ * are saved — is revalidated after the lookup started: the proxy then agrees
+ * with the switcher about which prefixes the site serves. The tag's time is
+ * read back from the shared Redis on every call; when Redis cannot be read,
+ * `ttl` bounds how stale the answer gets. An unknown host has no tag and
+ * waits out `ttl`.
+ */
 export const createTenantResolver = (
   publicApiClient: PublicApiClient,
   options?: {
     max?: number;
+    now?: () => number;
+    readRevalidatedAt?: (tag: string) => Promise<number | undefined>;
     ttl?: number;
   }
 ) => {
+  const now = options?.now ?? (() => Temporal.Now.instant().epochMilliseconds);
+  const readRevalidatedAt = options?.readRevalidatedAt ?? readTagRevalidatedAt;
   const tenantCache = new LRUCache<string, TenantCacheValue>({
     max: options?.max ?? 500,
     ttl: options?.ttl ?? 300_000,
   });
+
+  const isCurrent = async ({
+    readAt,
+    tenant,
+  }: TenantCacheValue): Promise<boolean> => {
+    if (!tenant) {
+      return true;
+    }
+    const revalidatedAt = await readRevalidatedAt(
+      tenantSiteTag(tenant.tenantId)
+    );
+    // `undefined` is a Redis that cannot be read; the entry's TTL covers it.
+    return revalidatedAt === undefined || readAt > revalidatedAt;
+  };
 
   return async function resolveTenant(
     domainCandidates: readonly string[]
@@ -79,10 +113,11 @@ export const createTenantResolver = (
 
     const cacheKey = domainCandidates.join("\0");
     const cached = tenantCache.get(cacheKey);
-    if (cached !== undefined) {
+    if (cached !== undefined && (await isCurrent(cached))) {
       return cached.tenant;
     }
 
+    const readAt = now();
     try {
       const response = await publicApiClient.domain.getTenantByDomain({
         domains: [...domainCandidates],
@@ -99,13 +134,13 @@ export const createTenantResolver = (
             tenantId
           )
         : null;
-      tenantCache.set(cacheKey, { tenant });
+      tenantCache.set(cacheKey, { readAt, tenant });
       return tenant;
     } catch (error) {
       // Only an unknown domain is cached as "no tenant"; a transient failure
       // must not pin every request on this host to 404 for the whole TTL.
       if (isMissingResourceRpcError(error)) {
-        tenantCache.set(cacheKey, { tenant: null });
+        tenantCache.set(cacheKey, { readAt, tenant: null });
         return null;
       }
       if (isTenantSuspendedRpcError(error)) {

@@ -7,6 +7,41 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createTenantResolver, SUSPENDED_TENANT } from "./tenant-resolution";
 
+vi.mock("@publira/next-cache-handlers/tags", () => ({
+  readTagRevalidatedAt: vi.fn(() => Promise.resolve(0)),
+}));
+
+const TENANT_ID = "018f0e6a-1000-7000-8000-000000000001";
+
+/**
+ * A resolver on a clock the test moves, whose tag reads answer
+ * `revalidatedAt()`; `undefined` stands for a Redis that cannot be read.
+ */
+const setupRevalidation = (revalidatedAt: () => number | undefined) => {
+  let clock = 1000;
+  const getTenantByDomain = vi.fn().mockResolvedValue({
+    defaultLocale: "ja",
+    supportedLocales: ["ja", "en", "ko"],
+    tenantId: TENANT_ID,
+  });
+  const readRevalidatedAt = vi.fn((_tag: string) =>
+    Promise.resolve(revalidatedAt())
+  );
+  const resolver = createTenantResolver(
+    { domain: { getTenantByDomain } } as never,
+    { max: 10, now: () => clock, readRevalidatedAt, ttl: 300_000 }
+  );
+  return {
+    advance: (ms: number) => {
+      clock += ms;
+    },
+    getTenantByDomain,
+    now: () => clock,
+    readRevalidatedAt,
+    resolver,
+  };
+};
+
 describe("createTenantResolver", () => {
   it("If the candidate is empty, do not call the API and return null", async () => {
     const getTenantByDomain = vi.fn();
@@ -176,5 +211,63 @@ describe("createTenantResolver", () => {
     });
 
     expect(getTenantByDomain).toHaveBeenCalledTimes(2);
+  });
+
+  it("reads a held tenant again once its site tag is revalidated", async () => {
+    let revalidatedAt: number | undefined = 0;
+    const { advance, getTenantByDomain, now, readRevalidatedAt, resolver } =
+      setupRevalidation(() => revalidatedAt);
+
+    await resolver(["shop.example.com"]);
+    advance(10);
+    // The console saved the languages: Korean is switched off.
+    revalidatedAt = now();
+    getTenantByDomain.mockResolvedValueOnce({
+      defaultLocale: "ja",
+      supportedLocales: ["ja", "en"],
+      tenantId: TENANT_ID,
+    });
+    advance(10);
+
+    await expect(resolver(["shop.example.com"])).resolves.toMatchObject({
+      supportedLocales: ["ja", "en"],
+    });
+    expect(getTenantByDomain).toHaveBeenCalledTimes(2);
+    expect(readRevalidatedAt).toHaveBeenCalledWith(`tenant:${TENANT_ID}:site`);
+  });
+
+  it("keeps a held tenant whose site tag has not moved since the lookup", async () => {
+    const { getTenantByDomain, resolver } = setupRevalidation(() => 0);
+
+    await resolver(["shop.example.com"]);
+    await resolver(["shop.example.com"]);
+
+    expect(getTenantByDomain).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a held tenant when Redis cannot be read", async () => {
+    const { getTenantByDomain, resolver } = setupRevalidation(() => {});
+
+    await resolver(["shop.example.com"]);
+    await resolver(["shop.example.com"]);
+
+    expect(getTenantByDomain).toHaveBeenCalledOnce();
+  });
+
+  it("holds an unknown host without asking about any tag", async () => {
+    const getTenantByDomain = vi
+      .fn()
+      .mockRejectedValue(new ConnectError("tenant not found", Code.NotFound));
+    const readRevalidatedAt = vi.fn(() => Promise.resolve(Number.MAX_VALUE));
+    const resolver = createTenantResolver(
+      { domain: { getTenantByDomain } } as never,
+      { max: 10, readRevalidatedAt, ttl: 10_000 }
+    );
+
+    await resolver(["unknown.example.com"]);
+    await resolver(["unknown.example.com"]);
+
+    expect(getTenantByDomain).toHaveBeenCalledOnce();
+    expect(readRevalidatedAt).not.toHaveBeenCalled();
   });
 });
