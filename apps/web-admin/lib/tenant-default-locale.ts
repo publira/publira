@@ -66,9 +66,17 @@ export const updateTenantDefaultLocale = async (
   }
 
   try {
+    // The default is saved together with the languages the site offers, and
+    // this screen chooses only the default: the save keeps the stored set and
+    // adds the new default to it. The server deduplicates and orders the set.
+    const current = await apiClient.tenantSettings.getTenantDefaultLocale(
+      { tenant: { tenantId: normalizedTenantId } },
+      withSessionHeaders(sessionId)
+    );
     const response = await apiClient.tenantSettings.updateTenantDefaultLocale(
       {
         defaultLocale: input.defaultLocale,
+        supportedLocales: [...current.supportedLocales, input.defaultLocale],
         tenant: { tenantId: normalizedTenantId },
       },
       withSessionHeaders(sessionId)

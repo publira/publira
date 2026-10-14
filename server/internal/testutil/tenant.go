@@ -11,6 +11,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/creatorroles"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -52,6 +53,36 @@ type TenantUser struct {
 // which is not subject to RLS.
 func (e *PostgresEnv) SeedTenant(t *testing.T, publicID, domain, name string) Tenant {
 	t.Helper()
+	return e.seedTenant(t, publicID, domain, name, func(ctx context.Context, tx *sql.Tx, params dbmodels.CreateTenantParams) (dbmodels.Tenant, error) {
+		// Every locale, as a tenant that predates the choice offers.
+		params.SupportedLocales = locale.Supported
+		return dbmodels.New(tx).CreateTenant(ctx, params)
+	})
+}
+
+// SeedTenantOnOlderSchema is [PostgresEnv.SeedTenant] for a test that migrated
+// back past tenants.supported_locales. The generated CreateTenant names every
+// column tenants has on the newest schema, so the row is inserted by hand with
+// the columns it has had since the initial schema instead.
+func (e *PostgresEnv) SeedTenantOnOlderSchema(t *testing.T, publicID, domain, name string) Tenant {
+	t.Helper()
+	return e.seedTenant(t, publicID, domain, name, func(ctx context.Context, tx *sql.Tx, params dbmodels.CreateTenantParams) (dbmodels.Tenant, error) {
+		tenant := dbmodels.Tenant{ID: params.ID, PublicID: params.PublicID, Domain: params.Domain, AdminDomain: params.AdminDomain, Name: params.Name}
+		err := tx.QueryRowContext(ctx, `
+			INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
+			VALUES ($1, $2, $3, $4, $5, 'active', $6, $7)
+			RETURNING timezone, default_locale
+		`, params.ID, params.PublicID, params.Domain, params.AdminDomain, params.Name, params.Timezone, params.DefaultLocale).Scan(&tenant.Timezone, &tenant.DefaultLocale)
+		return tenant, err
+	})
+}
+
+func (e *PostgresEnv) seedTenant(
+	t *testing.T,
+	publicID, domain, name string,
+	insert func(ctx context.Context, tx *sql.Tx, params dbmodels.CreateTenantParams) (dbmodels.Tenant, error),
+) Tenant {
+	t.Helper()
 	if e.DB == nil {
 		t.Fatal("postgres env db is nil; call Reset first if needed")
 	}
@@ -70,7 +101,7 @@ func (e *PostgresEnv) SeedTenant(t *testing.T, publicID, domain, name string) Te
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	tenant, err := dbmodels.New(tx).CreateTenant(ctx, dbmodels.CreateTenantParams{
+	tenant, err := insert(ctx, tx, dbmodels.CreateTenantParams{
 		ID:            uuid.Must(uuid.NewV7()),
 		PublicID:      publicID,
 		Domain:        domain,

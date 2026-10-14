@@ -36,16 +36,27 @@ message GetTenantDefaultLocaleResponse {
   // naming no supported locale fails this RPC rather than answering another
   // language.
   string default_locale = 1;
+  // UI locale codes the tenant's site offers its readers, in registry order
+  // (locales/index.json). Always holds default_locale.
+  repeated string supported_locales = 2;
 }
 
+// The default and the set it belongs to travel in one request, so the two are
+// saved together and can never disagree.
 message UpdateTenantDefaultLocaleRequest {
   publira.types.v1.TenantContext tenant = 1;
   // UI locale code (ja, en). Unknown or blank codes are rejected.
   string default_locale = 2;
+  // UI locale codes the tenant's site offers. Rejected when empty, when it
+  // names a code the registry does not know, or when it leaves out
+  // default_locale. Duplicates are dropped and the set is stored in registry
+  // order, whatever order it arrives in.
+  repeated string supported_locales = 3;
 }
 
 message UpdateTenantDefaultLocaleResponse {
   string default_locale = 1;
+  repeated string supported_locales = 2;
 }
 
 message GetTenantCommentSettingsRequest {

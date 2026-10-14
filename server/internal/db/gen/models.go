@@ -981,15 +981,16 @@ type Tag struct {
 }
 
 type Tenant struct {
-	ID            uuid.UUID      `json:"id"`
-	PublicID      string         `json:"public_id"`
-	Domain        string         `json:"domain"`
-	Name          string         `json:"name"`
-	CreatedAt     time.Time      `json:"created_at"`
-	Status        string         `json:"status"`
-	AdminDomain   sql.NullString `json:"admin_domain"`
-	Timezone      string         `json:"timezone"`
-	DefaultLocale string         `json:"default_locale"`
+	ID               uuid.UUID      `json:"id"`
+	PublicID         string         `json:"public_id"`
+	Domain           string         `json:"domain"`
+	Name             string         `json:"name"`
+	CreatedAt        time.Time      `json:"created_at"`
+	Status           string         `json:"status"`
+	AdminDomain      sql.NullString `json:"admin_domain"`
+	Timezone         string         `json:"timezone"`
+	DefaultLocale    string         `json:"default_locale"`
+	SupportedLocales []string       `json:"supported_locales"`
 }
 
 type TenantAdminInvitation struct {

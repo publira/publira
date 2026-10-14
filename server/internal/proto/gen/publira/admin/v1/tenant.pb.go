@@ -259,8 +259,11 @@ type GetTenantDefaultLocaleResponse struct {
 	// naming no supported locale fails this RPC rather than answering another
 	// language.
 	DefaultLocale string `protobuf:"bytes,1,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// UI locale codes the tenant's site offers its readers, in registry order
+	// (locales/index.json). Always holds default_locale.
+	SupportedLocales []string `protobuf:"bytes,2,rep,name=supported_locales,json=supportedLocales,proto3" json:"supported_locales,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GetTenantDefaultLocaleResponse) Reset() {
@@ -300,13 +303,27 @@ func (x *GetTenantDefaultLocaleResponse) GetDefaultLocale() string {
 	return ""
 }
 
+func (x *GetTenantDefaultLocaleResponse) GetSupportedLocales() []string {
+	if x != nil {
+		return x.SupportedLocales
+	}
+	return nil
+}
+
+// The default and the set it belongs to travel in one request, so the two are
+// saved together and can never disagree.
 type UpdateTenantDefaultLocaleRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// UI locale code (ja, en). Unknown or blank codes are rejected.
 	DefaultLocale string `protobuf:"bytes,2,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// UI locale codes the tenant's site offers. Rejected when empty, when it
+	// names a code the registry does not know, or when it leaves out
+	// default_locale. Duplicates are dropped and the set is stored in registry
+	// order, whatever order it arrives in.
+	SupportedLocales []string `protobuf:"bytes,3,rep,name=supported_locales,json=supportedLocales,proto3" json:"supported_locales,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UpdateTenantDefaultLocaleRequest) Reset() {
@@ -353,11 +370,19 @@ func (x *UpdateTenantDefaultLocaleRequest) GetDefaultLocale() string {
 	return ""
 }
 
+func (x *UpdateTenantDefaultLocaleRequest) GetSupportedLocales() []string {
+	if x != nil {
+		return x.SupportedLocales
+	}
+	return nil
+}
+
 type UpdateTenantDefaultLocaleResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	DefaultLocale string                 `protobuf:"bytes,1,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	DefaultLocale    string                 `protobuf:"bytes,1,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
+	SupportedLocales []string               `protobuf:"bytes,2,rep,name=supported_locales,json=supportedLocales,proto3" json:"supported_locales,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UpdateTenantDefaultLocaleResponse) Reset() {
@@ -395,6 +420,13 @@ func (x *UpdateTenantDefaultLocaleResponse) GetDefaultLocale() string {
 		return x.DefaultLocale
 	}
 	return ""
+}
+
+func (x *UpdateTenantDefaultLocaleResponse) GetSupportedLocales() []string {
+	if x != nil {
+		return x.SupportedLocales
+	}
+	return nil
 }
 
 type GetTenantCommentSettingsRequest struct {
@@ -3254,14 +3286,17 @@ const file_publira_admin_v1_tenant_proto_rawDesc = "" +
 	"\x1cUpdateTenantTimezoneResponse\x12\x1a\n" +
 	"\btimezone\x18\x01 \x01(\tR\btimezone\"X\n" +
 	"\x1dGetTenantDefaultLocaleRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"G\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"t\n" +
 	"\x1eGetTenantDefaultLocaleResponse\x12%\n" +
-	"\x0edefault_locale\x18\x01 \x01(\tR\rdefaultLocale\"\x82\x01\n" +
+	"\x0edefault_locale\x18\x01 \x01(\tR\rdefaultLocale\x12+\n" +
+	"\x11supported_locales\x18\x02 \x03(\tR\x10supportedLocales\"\xaf\x01\n" +
 	" UpdateTenantDefaultLocaleRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12%\n" +
-	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"J\n" +
+	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\x12+\n" +
+	"\x11supported_locales\x18\x03 \x03(\tR\x10supportedLocales\"w\n" +
 	"!UpdateTenantDefaultLocaleResponse\x12%\n" +
-	"\x0edefault_locale\x18\x01 \x01(\tR\rdefaultLocale\"Z\n" +
+	"\x0edefault_locale\x18\x01 \x01(\tR\rdefaultLocale\x12+\n" +
+	"\x11supported_locales\x18\x02 \x03(\tR\x10supportedLocales\"Z\n" +
 	"\x1fGetTenantCommentSettingsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xa1\x01\n" +
 	" GetTenantCommentSettingsResponse\x12@\n" +

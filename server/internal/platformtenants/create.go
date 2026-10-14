@@ -41,6 +41,7 @@ const (
 	FieldDomain             = "domain"
 	FieldAdminDomain        = "admin_domain"
 	FieldDefaultLocale      = "default_locale"
+	FieldSupportedLocales   = "supported_locales"
 	FieldTimezone           = "timezone"
 	FieldInitialAdminEmails = "initial_admin_emails"
 )
@@ -57,6 +58,9 @@ type CreateParams struct {
 	Domain        string
 	AdminDomain   string
 	DefaultLocale string
+	// SupportedLocales are the locales the tenant's site offers. Left empty,
+	// the tenant offers DefaultLocale alone.
+	SupportedLocales []string
 	// Timezone is the IANA time zone the tenant starts on. Left empty, it is
 	// the platform's default.
 	Timezone string
@@ -72,6 +76,7 @@ type Creation struct {
 	domain             string
 	adminDomain        sql.NullString
 	defaultLocale      string
+	supportedLocales   []string
 	timezone           string
 	initialAdminEmails []string
 }
@@ -97,6 +102,14 @@ func (p CreateParams) Validate() (Creation, error) {
 		return Creation{}, &fielderr.Invalid{Field: FieldDefaultLocale, Err: err}
 	}
 	c.defaultLocale = defaultLocale
+	c.supportedLocales = []string{defaultLocale}
+	if len(p.SupportedLocales) > 0 {
+		supportedLocales, err := locale.NormalizeSupported(defaultLocale, p.SupportedLocales)
+		if err != nil {
+			return Creation{}, &fielderr.Invalid{Field: FieldSupportedLocales, Err: err}
+		}
+		c.supportedLocales = supportedLocales
+	}
 	if strings.TrimSpace(p.Timezone) != "" {
 		timezone, err := tenanttz.Normalize(p.Timezone)
 		if err != nil {
@@ -168,13 +181,14 @@ func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 
 	tenant, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.Tenant, error) {
 		return q.CreateTenant(ctx, dbmodels.CreateTenantParams{
-			ID:            tenantID,
-			PublicID:      publicID,
-			Domain:        c.domain,
-			AdminDomain:   c.adminDomain,
-			Name:          c.name,
-			Timezone:      timezone,
-			DefaultLocale: c.defaultLocale,
+			ID:               tenantID,
+			PublicID:         publicID,
+			Domain:           c.domain,
+			AdminDomain:      c.adminDomain,
+			Name:             c.name,
+			Timezone:         timezone,
+			DefaultLocale:    c.defaultLocale,
+			SupportedLocales: c.supportedLocales,
 		})
 	})
 	if err != nil {

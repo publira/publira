@@ -314,9 +314,14 @@ type GetTenantResponse struct {
 	// price the catalog answers is an integer in its minor unit, so a price of
 	// 500 is 500 yen in JPY and 5.00 dollars in USD. Never empty: a tenant that
 	// has saved no payment settings sells in the platform's default currency.
-	Currency      string `protobuf:"bytes,23,opt,name=currency,proto3" json:"currency,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Currency string `protobuf:"bytes,23,opt,name=currency,proto3" json:"currency,omitempty"`
+	// UI locale codes the tenant's site offers its readers, in the order of the
+	// locale registry (locales/index.json). Always holds default_locale, so it is
+	// never empty; like default_locale, a stored code naming no supported locale
+	// fails this RPC rather than being left out.
+	SupportedLocales []string `protobuf:"bytes,24,rep,name=supported_locales,json=supportedLocales,proto3" json:"supported_locales,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GetTenantResponse) Reset() {
@@ -494,6 +499,13 @@ func (x *GetTenantResponse) GetCurrency() string {
 		return x.Currency
 	}
 	return ""
+}
+
+func (x *GetTenantResponse) GetSupportedLocales() []string {
+	if x != nil {
+		return x.SupportedLocales
+	}
+	return nil
 }
 
 // How a client signs a reader in with Apple. The iOS app signs in with its own
@@ -826,7 +838,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x1bGetTenantLegalPagesResponse\x12:\n" +
 	"\n" +
 	"terms_page\x18\x01 \x01(\v2\x1b.publira.v1.TenantLegalPageR\ttermsPage\x12>\n" +
-	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\xcc\b\n" +
+	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\xf9\b\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -850,7 +862,8 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x1caccepts_google_play_payments\x18\x14 \x01(\bR\x19acceptsGooglePlayPayments\x12A\n" +
 	"\rapple_sign_in\x18\x15 \x01(\v2\x1d.publira.v1.TenantAppleSignInR\vappleSignIn\x12D\n" +
 	"\x0egoogle_sign_in\x18\x16 \x01(\v2\x1e.publira.v1.TenantGoogleSignInR\fgoogleSignIn\x12\x1a\n" +
-	"\bcurrency\x18\x17 \x01(\tR\bcurrencyJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
+	"\bcurrency\x18\x17 \x01(\tR\bcurrency\x12+\n" +
+	"\x11supported_locales\x18\x18 \x03(\tR\x10supportedLocalesJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
 	"terms_pageR\fprivacy_page\"4\n" +
 	"\x11TenantAppleSignIn\x12\x1f\n" +
 	"\vservices_id\x18\x01 \x01(\tR\n" +

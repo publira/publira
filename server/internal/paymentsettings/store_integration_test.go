@@ -243,8 +243,8 @@ func TestCredentialFieldsMigrationKeepsStripeSettingsReady(t *testing.T) {
 	defer cancel()
 
 	mgr := integrationEncryptor(t)
-	ready := pg.SeedTenant(t, "PAYMIG000001", "pay-ready.example.com", "Pay Ready")
-	disabled := pg.SeedTenant(t, "PAYMIG000002", "pay-disabled.example.com", "Pay Disabled")
+	ready := pg.SeedTenantOnOlderSchema(t, "PAYMIG000001", "pay-ready.example.com", "Pay Ready")
+	disabled := pg.SeedTenantOnOlderSchema(t, "PAYMIG000002", "pay-disabled.example.com", "Pay Disabled")
 	secretEncrypted, err := mgr.EncryptString(integrationSecretKey)
 	if err != nil {
 		t.Fatalf("EncryptString: %v", err)

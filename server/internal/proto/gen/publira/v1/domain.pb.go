@@ -73,8 +73,12 @@ type GetTenantByDomainResponse struct {
 	// redirect in one round trip. Never empty: a stored code naming no supported
 	// locale fails this RPC rather than answering another language.
 	DefaultLocale string `protobuf:"bytes,2,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The UI locale codes the tenant's site offers, in registry order, so the
+	// host proxy can tell a locale prefix the tenant serves from one it does not
+	// in the same round trip. Always holds default_locale.
+	SupportedLocales []string `protobuf:"bytes,3,rep,name=supported_locales,json=supportedLocales,proto3" json:"supported_locales,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GetTenantByDomainResponse) Reset() {
@@ -121,6 +125,13 @@ func (x *GetTenantByDomainResponse) GetDefaultLocale() string {
 	return ""
 }
 
+func (x *GetTenantByDomainResponse) GetSupportedLocales() []string {
+	if x != nil {
+		return x.SupportedLocales
+	}
+	return nil
+}
+
 var File_publira_v1_domain_proto protoreflect.FileDescriptor
 
 const file_publira_v1_domain_proto_rawDesc = "" +
@@ -128,10 +139,11 @@ const file_publira_v1_domain_proto_rawDesc = "" +
 	"\x17publira/v1/domain.proto\x12\n" +
 	"publira.v1\"4\n" +
 	"\x18GetTenantByDomainRequest\x12\x18\n" +
-	"\adomains\x18\x01 \x03(\tR\adomains\"_\n" +
+	"\adomains\x18\x01 \x03(\tR\adomains\"\x8c\x01\n" +
 	"\x19GetTenantByDomainResponse\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12%\n" +
-	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale2s\n" +
+	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\x12+\n" +
+	"\x11supported_locales\x18\x03 \x03(\tR\x10supportedLocales2s\n" +
 	"\rDomainService\x12b\n" +
 	"\x11GetTenantByDomain\x12$.publira.v1.GetTenantByDomainRequest\x1a%.publira.v1.GetTenantByDomainResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 

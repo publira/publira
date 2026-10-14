@@ -1,5 +1,6 @@
 // Package locale resolves and validates the UI locale a tenant uses as its
-// default language (tenants.default_locale).
+// default language (tenants.default_locale), and the set of locales its site
+// offers (tenants.supported_locales).
 package locale
 
 import (
@@ -21,6 +22,20 @@ var ErrInvalid = errors.New("default_locale must be a supported locale")
 // There is no replacement default under any name: a path that cannot resolve a
 // locale reports the failure instead of picking a language for the reader.
 var ErrUnresolved = errors.New("stored default_locale names no supported locale")
+
+// ErrSupportedRequired, ErrInvalidSupported, and ErrDefaultNotSupported refuse
+// an incoming set of offered locales. Each belongs to a request the caller can
+// correct.
+var (
+	ErrSupportedRequired   = errors.New("supported_locales must not be empty")
+	ErrInvalidSupported    = errors.New("supported_locales must name supported locales")
+	ErrDefaultNotSupported = errors.New("supported_locales must include default_locale")
+)
+
+// ErrSupportedUnresolved is returned when a stored set of offered locales
+// names a code that is not a supported UI locale, for the reason
+// [ErrUnresolved] gives.
+var ErrSupportedUnresolved = errors.New("stored supported_locales names an unsupported locale")
 
 // Resolve returns the stored locale to render in and expose through the API.
 // Both default_locale columns are NOT NULL with a non-blank CHECK, and every
@@ -44,6 +59,58 @@ func Normalize(raw string) (string, error) {
 		return "", ErrInvalid
 	}
 	return trimmed, nil
+}
+
+// NormalizeSupported validates an incoming set of offered locales against
+// defaultLocale, a value [Normalize] already returned, and returns the set to
+// store: deduplicated and in the order of [Supported], whatever order it
+// arrived in, so every reader of the column sees the registry's order without
+// sorting it again.
+func NormalizeSupported(defaultLocale string, raw []string) ([]string, error) {
+	if len(raw) == 0 {
+		return nil, ErrSupportedRequired
+	}
+	codes := make([]string, 0, len(raw))
+	for _, code := range raw {
+		trimmed, ok := supported(code)
+		if !ok {
+			return nil, ErrInvalidSupported
+		}
+		codes = append(codes, trimmed)
+	}
+	if !slices.Contains(codes, defaultLocale) {
+		return nil, ErrDefaultNotSupported
+	}
+	return inRegistryOrder(codes), nil
+}
+
+// ResolveSupported returns a stored set of offered locales in the order of
+// [Supported]. Like [Resolve], it reports a code naming no supported locale
+// instead of leaving it out: a set quietly narrowed by a build that dropped a
+// catalog would hide the fault the same way a stand-in language would.
+func ResolveSupported(stored []string) ([]string, error) {
+	codes := make([]string, 0, len(stored))
+	for _, code := range stored {
+		trimmed, ok := supported(code)
+		if !ok {
+			return nil, ErrSupportedUnresolved
+		}
+		codes = append(codes, trimmed)
+	}
+	if len(codes) == 0 {
+		return nil, ErrSupportedUnresolved
+	}
+	return inRegistryOrder(codes), nil
+}
+
+func inRegistryOrder(codes []string) []string {
+	ordered := make([]string, 0, len(codes))
+	for _, code := range Supported {
+		if slices.Contains(codes, code) {
+			ordered = append(ordered, code)
+		}
+	}
+	return ordered
 }
 
 func supported(raw string) (string, bool) {

@@ -323,8 +323,12 @@ var oneByOneJPEG = []byte{
 	0x20, 0xff, 0xd9,
 }
 
+// testSupportedLocalesRow is a tenants.supported_locales value as the driver
+// returns it: every locale, the set a tenant that predates the choice offers.
+const testSupportedLocalesRow = "{ja,en,ko,zh-Hans,zh-Hant}"
+
 func tenantColumns() []string {
-	return []string{"id", "public_id", "domain", "name", "created_at", "status", "admin_domain", "timezone", "default_locale"}
+	return []string{"id", "public_id", "domain", "name", "created_at", "status", "admin_domain", "timezone", "default_locale", "supported_locales"}
 }
 
 func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time) {
@@ -343,7 +347,7 @@ func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, pu
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, publicID, "tenant.example", "Tenant", now, "active", nil, timezone, defaultLocale))
+			AddRow(tenantID, publicID, "tenant.example", "Tenant", now, "active", nil, timezone, defaultLocale, testSupportedLocalesRow))
 }
 
 // issueTestAdminToken creates a signed JWT for admin API tests.

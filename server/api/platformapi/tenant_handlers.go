@@ -154,6 +154,7 @@ func (s *platformServer) CreateTenant(
 		Domain:             req.Domain,
 		AdminDomain:        req.AdminDomain,
 		DefaultLocale:      req.DefaultLocale,
+		SupportedLocales:   req.SupportedLocales,
 		InitialAdminEmails: req.InitialAdminEmails,
 	}.Validate()
 	if err != nil {

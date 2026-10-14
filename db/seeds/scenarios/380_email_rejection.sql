@@ -25,7 +25,8 @@ INSERT INTO tenants (
     admin_domain,
     name,
     status,
-    default_locale
+    default_locale,
+    supported_locales
 )
 VALUES (
     '018f1060-0001-7000-8000-000000000001'::uuid,
@@ -34,7 +35,8 @@ VALUES (
     'admin.reject.localhost:' || :'tenant_port',
     'Email Rejection Tenant',
     'active',
-    'en'
+    'en',
+    ARRAY['ja', 'en', 'ko', 'zh-Hans', 'zh-Hant']
 );
 
 \set seed_tenant RjctTNNTAAA1

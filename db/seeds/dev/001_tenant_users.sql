@@ -6,7 +6,7 @@
 WITH tenant_seed AS (
     SELECT '018f0e6a-1000-7000-8000-000000000001'::uuid AS id
 )
-INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale, supported_locales)
 SELECT
     ts.id,
     'SeedTNNTAAA1',
@@ -15,7 +15,8 @@ SELECT
     'Seed Tenant',
     'active',
     'UTC',
-    'en'
+    'en',
+    ARRAY['ja', 'en', 'ko', 'zh-Hans', 'zh-Hant']
 FROM tenant_seed ts
 ON CONFLICT (public_id) DO UPDATE
 SET domain = EXCLUDED.domain,
@@ -23,7 +24,8 @@ SET domain = EXCLUDED.domain,
     name = EXCLUDED.name,
     status = EXCLUDED.status,
     timezone = EXCLUDED.timezone,
-    default_locale = EXCLUDED.default_locale;
+    default_locale = EXCLUDED.default_locale,
+    supported_locales = EXCLUDED.supported_locales;
 
 INSERT INTO tenant_config (
     tenant_id,

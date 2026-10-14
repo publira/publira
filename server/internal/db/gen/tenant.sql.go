@@ -53,25 +53,26 @@ func (q *Queries) CountSuspendedTenants(ctx context.Context) (int32, error) {
 }
 
 const CreateTenant = `-- name: CreateTenant :one
-INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
-VALUES ($1, $2, $3, $4, $5, 'active', $6, $7)
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale, supported_locales)
+VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, $8::text[])
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
 `
 
 type CreateTenantParams struct {
-	ID            uuid.UUID      `json:"id"`
-	PublicID      string         `json:"public_id"`
-	Domain        string         `json:"domain"`
-	AdminDomain   sql.NullString `json:"admin_domain"`
-	Name          string         `json:"name"`
-	Timezone      string         `json:"timezone"`
-	DefaultLocale string         `json:"default_locale"`
+	ID               uuid.UUID      `json:"id"`
+	PublicID         string         `json:"public_id"`
+	Domain           string         `json:"domain"`
+	AdminDomain      sql.NullString `json:"admin_domain"`
+	Name             string         `json:"name"`
+	Timezone         string         `json:"timezone"`
+	DefaultLocale    string         `json:"default_locale"`
+	SupportedLocales []string       `json:"supported_locales"`
 }
 
 // Tenant creation for platform administrators.
-// default_locale has no column DEFAULT, so the caller always passes it
-// explicitly. timezone is not left to its column DEFAULT either: the
-// platform default is applied explicitly.
+// default_locale and supported_locales have no column DEFAULT, so the caller
+// always passes them explicitly. timezone is not left to its column DEFAULT
+// either: the platform default is applied explicitly.
 func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, CreateTenant,
 		arg.ID,
@@ -81,6 +82,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		arg.Name,
 		arg.Timezone,
 		arg.DefaultLocale,
+		pq.Array(arg.SupportedLocales),
 	)
 	var i Tenant
 	err := row.Scan(
@@ -93,6 +95,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		&i.AdminDomain,
 		&i.Timezone,
 		&i.DefaultLocale,
+		pq.Array(&i.SupportedLocales),
 	)
 	return i, err
 }
@@ -144,7 +147,7 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfig
 }
 
 const GetAdminTenantByDomains = `-- name: GetAdminTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale
+SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t
     ON t.admin_domain = candidate.domain
@@ -171,6 +174,7 @@ func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string)
 		&i.AdminDomain,
 		&i.Timezone,
 		&i.DefaultLocale,
+		pq.Array(&i.SupportedLocales),
 	)
 	return i, err
 }
@@ -192,7 +196,7 @@ func (q *Queries) GetTenantAppPurchaseRoute(ctx context.Context, tenantID uuid.U
 }
 
 const GetTenantByDomains = `-- name: GetTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale
+SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t ON t.domain = candidate.domain
 ORDER BY candidate.ord
@@ -214,12 +218,13 @@ func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Ten
 		&i.AdminDomain,
 		&i.Timezone,
 		&i.DefaultLocale,
+		pq.Array(&i.SupportedLocales),
 	)
 	return i, err
 }
 
 const GetTenantByID = `-- name: GetTenantByID :one
-SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
 FROM tenants
 WHERE id = $1
 LIMIT 1
@@ -238,12 +243,13 @@ func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, erro
 		&i.AdminDomain,
 		&i.Timezone,
 		&i.DefaultLocale,
+		pq.Array(&i.SupportedLocales),
 	)
 	return i, err
 }
 
 const GetTenantByPublicID = `-- name: GetTenantByPublicID :one
-SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
 FROM tenants
 WHERE public_id = $1
 LIMIT 1
@@ -262,6 +268,7 @@ func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Ten
 		&i.AdminDomain,
 		&i.Timezone,
 		&i.DefaultLocale,
+		pq.Array(&i.SupportedLocales),
 	)
 	return i, err
 }
@@ -445,7 +452,7 @@ func (q *Queries) GetTenantLegalPages(ctx context.Context, arg GetTenantLegalPag
 }
 
 const ListTenantsAsc = `-- name: ListTenantsAsc :many
-SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
   AND ($2::text = '' OR status = $2::text)
@@ -499,6 +506,7 @@ func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) 
 			&i.AdminDomain,
 			&i.Timezone,
 			&i.DefaultLocale,
+			pq.Array(&i.SupportedLocales),
 		); err != nil {
 			return nil, err
 		}
@@ -514,7 +522,7 @@ func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) 
 }
 
 const ListTenantsDesc = `-- name: ListTenantsDesc :many
-SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
   AND ($2::text = '' OR status = $2::text)
@@ -572,6 +580,7 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 			&i.AdminDomain,
 			&i.Timezone,
 			&i.DefaultLocale,
+			pq.Array(&i.SupportedLocales),
 		); err != nil {
 			return nil, err
 		}
@@ -707,21 +716,28 @@ func (q *Queries) UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfig
 
 const UpdateTenantDefaultLocale = `-- name: UpdateTenantDefaultLocale :one
 UPDATE tenants
-SET default_locale = $1
-WHERE id = $2
-    AND default_locale <> $1
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
+SET default_locale = $1,
+    supported_locales = $2::text[]
+WHERE id = $3
+    AND (
+        default_locale <> $1
+        OR supported_locales <> $2::text[]
+    )
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
 `
 
 type UpdateTenantDefaultLocaleParams struct {
-	DefaultLocale string    `json:"default_locale"`
-	ID            uuid.UUID `json:"id"`
+	DefaultLocale    string    `json:"default_locale"`
+	SupportedLocales []string  `json:"supported_locales"`
+	ID               uuid.UUID `json:"id"`
 }
 
-// No row when the tenant already has that locale, for the reason
-// UpdateTenantTimezone gives.
+// The default and the set it belongs to are written in one statement, so the
+// CHECK that the set holds the default sees them together and neither can be
+// saved apart from the other. No row when the tenant already has both, for the
+// reason UpdateTenantTimezone gives.
 func (q *Queries) UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenantDefaultLocaleParams) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, UpdateTenantDefaultLocale, arg.DefaultLocale, arg.ID)
+	row := q.db.QueryRowContext(ctx, UpdateTenantDefaultLocale, arg.DefaultLocale, pq.Array(arg.SupportedLocales), arg.ID)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -733,6 +749,7 @@ func (q *Queries) UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenan
 		&i.AdminDomain,
 		&i.Timezone,
 		&i.DefaultLocale,
+		pq.Array(&i.SupportedLocales),
 	)
 	return i, err
 }
@@ -741,7 +758,7 @@ const UpdateTenantInfo = `-- name: UpdateTenantInfo :one
 UPDATE tenants
 SET name = $1, domain = $2, admin_domain = $3
 WHERE id = $4
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
 `
 
 type UpdateTenantInfoParams struct {
@@ -770,6 +787,7 @@ func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoPara
 		&i.AdminDomain,
 		&i.Timezone,
 		&i.DefaultLocale,
+		pq.Array(&i.SupportedLocales),
 	)
 	return i, err
 }
@@ -778,7 +796,7 @@ const UpdateTenantStatus = `-- name: UpdateTenantStatus :one
 UPDATE tenants
 SET status = $2
 WHERE id = $1
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
 `
 
 type UpdateTenantStatusParams struct {
@@ -800,6 +818,7 @@ func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatus
 		&i.AdminDomain,
 		&i.Timezone,
 		&i.DefaultLocale,
+		pq.Array(&i.SupportedLocales),
 	)
 	return i, err
 }
@@ -809,7 +828,7 @@ UPDATE tenants
 SET timezone = $1
 WHERE id = $2
     AND timezone <> $1
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
 `
 
 type UpdateTenantTimezoneParams struct {
@@ -833,6 +852,7 @@ func (q *Queries) UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTime
 		&i.AdminDomain,
 		&i.Timezone,
 		&i.DefaultLocale,
+		pq.Array(&i.SupportedLocales),
 	)
 	return i, err
 }

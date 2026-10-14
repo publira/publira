@@ -15,6 +15,10 @@ message GetTenantByDomainResponse {
   // redirect in one round trip. Never empty: a stored code naming no supported
   // locale fails this RPC rather than answering another language.
   string default_locale = 2;
+  // The UI locale codes the tenant's site offers, in registry order, so the
+  // host proxy can tell a locale prefix the tenant serves from one it does not
+  // in the same round trip. Always holds default_locale.
+  repeated string supported_locales = 3;
 }
 
 service DomainService {

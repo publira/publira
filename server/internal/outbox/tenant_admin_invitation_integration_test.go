@@ -250,13 +250,19 @@ func TestTenantAdminInvitationEmailCarriesTheRoleItGrants(t *testing.T) {
 }
 
 // setTenantDefaultLocale writes a value the API would refuse, which is the only
-// way a tenant row can come to name a locale no catalog covers.
+// way a tenant row can come to name a locale no catalog covers. The set the
+// site offers names it too, as the schema requires of any default.
 func setTenantDefaultLocale(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID, defaultLocale string) {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if _, err := pg.DB.ExecContext(ctx, `UPDATE tenants SET default_locale = $2 WHERE id = $1`, tenantID, defaultLocale); err != nil {
+	if _, err := pg.DB.ExecContext(ctx, `
+		UPDATE tenants
+		SET default_locale = $2::text,
+			supported_locales = CASE WHEN $2::text = ANY (supported_locales) THEN supported_locales ELSE supported_locales || $2::text END
+		WHERE id = $1
+	`, tenantID, defaultLocale); err != nil {
 		t.Fatalf("update tenants.default_locale: %v", err)
 	}
 }

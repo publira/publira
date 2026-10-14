@@ -63,6 +63,10 @@ message CreateTenantRequest {
   // never picks a language on the caller's behalf, so a blank or unsupported
   // code is rejected instead of falling back to a default.
   string default_locale = 6;
+  // UI locale codes the new tenant's site offers, under the same rules as
+  // publira.admin.v1.UpdateTenantDefaultLocaleRequest. Empty starts the tenant
+  // on default_locale alone.
+  repeated string supported_locales = 7;
   reserved 2;
 }
 

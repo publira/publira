@@ -115,7 +115,7 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 		{
 			name: "default language", action: "tenant_default_locale_updated", targetType: "tenant_default_locale",
 			save: func() error {
-				_, err := settings.UpdateTenantDefaultLocale(ctx, &publiraadminv1.UpdateTenantDefaultLocaleRequest{Tenant: tenant.tenantContext(), DefaultLocale: "ko"})
+				_, err := settings.UpdateTenantDefaultLocale(ctx, &publiraadminv1.UpdateTenantDefaultLocaleRequest{Tenant: tenant.tenantContext(), DefaultLocale: "ko", SupportedLocales: []string{"ja", "ko"}})
 				return err
 			},
 		},

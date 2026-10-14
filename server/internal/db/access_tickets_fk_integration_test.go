@@ -73,8 +73,8 @@ func mustInsertTenant(t *testing.T, ctx context.Context, db *sql.DB, publicID, d
 	defer tx.Rollback() //nolint:errcheck
 
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale)
-		VALUES ($1, $2, $3, $4, $5, 'active', 'ja')
+		INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, default_locale, supported_locales)
+		VALUES ($1, $2, $3, $4, $5, 'active', 'ja', ARRAY['ja'])
 	`, id, publicID, domain, adminDomain, name); err != nil {
 		t.Fatalf("insert tenant %s: %v", publicID, err)
 	}
