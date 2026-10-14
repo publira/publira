@@ -1,3 +1,4 @@
+import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
@@ -205,6 +206,20 @@ abstract class AuthRepository {
   ///
   /// Throws [AuthFailure].
   Future<AuthSession> updateName(AuthSession session, String name);
+
+  /// Makes [upload] the icon of the account behind [session], replacing the
+  /// one it showed, and returns the session carrying the icon the account
+  /// then shows.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.iconRefused] for an image
+  /// the API would not make an icon of.
+  Future<AuthSession> uploadIcon(AuthSession session, AccountIconUpload upload);
+
+  /// Leaves the account behind [session] with no icon and returns the session
+  /// carrying none.
+  ///
+  /// Throws [AuthFailure].
+  Future<AuthSession> removeIcon(AuthSession session);
 
   /// Replaces the password of the account behind [session] and returns the
   /// session to keep.

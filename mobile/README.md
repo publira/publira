@@ -580,6 +580,10 @@ The sign-in screen also offers a button for each provider `GetTenant` answers in
 - **Linked accounts** under the account tab lists the providers linked to the account and unlinks one; an account without a password (`ListMyIdentitiesResponse.has_password`) keeps its last one. It links each provider the device offers that the account has none of with a fresh sign-in, whatever address the provider carries (`AuthService/LinkIdentity`)
 - An account without a password confirms an email change and its deletion with a fresh sign-in to a linked provider the device offers (`provider`, `id_token`, and `nonce` on `RequestEmailChangeRequest` and `DeleteMeRequest`), and **Change password** sends it to the password reset to set a first one
 
+## Account icon
+
+The account screen shows the reader's icon and changes it: an image from the photo library ([`image_picker`](https://pub.dev/packages/image_picker)) goes to `AuthService/UploadMyIcon`, and removal sends `AuthService/DeleteMyIcon`.
+
 ## Sign-up
 
 A reader opens an account here rather than on the website. `AuthService/CreateUser` takes a name, an address, a password, an optional birth date where the tenant checks ages, and consent to the terms of service and privacy policy where the tenant names them, and answers by mailing a confirmation link. The age rule comes from `GetTenant` and the pages from `GetTenantLegalPages`, read together, and the form requires the consent before it sends anything, with each page opening on the `/page/:pageSlug` screen above it. The form reads the pages again when it sends, and asks for the consent anew when one was republished in between.
@@ -710,6 +714,7 @@ PUBLIRA_MOBILE_SCREENSHOT_READER= task mobile:screenshot -- /sign-in
 - An episode reopening on its saved page once the API is gone
 - A notification and an announcement opened by the seed member, and the read mark each sends reaching the API
 - Every page the storefront's footer lists opening from the account screen
+- An icon uploaded, replaced, and removed from the account screen
 
 `integration_test/reader_parity.json` is the public-reader parity matrix: every capability `web-storefront` serves a reader, with the app route and call that do the same, or an exception saying why the app has none. `pnpm reader-parity:check` fails when a `web-storefront` page, route handler, or public API call is not in it, and `test/reader_parity_test.dart` resolves every app route it names against the router. An entry whose record both surfaces read (`sharedRecord`) names the tests here that cover it.
 

@@ -757,6 +757,17 @@ class ConnectFixtureServer {
       ],
   };
 
+  /// The images `UploadMyIcon` has stored, in order, each as the bytes and
+  /// the content type it was sent with.
+  final iconUploads = <({List<int> bytes, String contentType})>[];
+
+  /// How many times `DeleteMyIcon` has been answered.
+  var iconRemovals = 0;
+
+  /// Whether the install has an object store, without which `UploadMyIcon`
+  /// is refused with `STORAGE_NOT_CONFIGURED`.
+  var iconStorageConfigured = true;
+
   /// The addresses `RequestEmailChange` has accepted a move to, in order.
   final requestedEmailChanges = <String>[];
 
@@ -1334,6 +1345,15 @@ class ConnectFixtureServer {
 
     if (path.endsWith('/UpdateMe')) {
       await _writeUpdateMe(request, body);
+      return;
+    }
+
+    if (path.endsWith('/UploadMyIcon') || path.endsWith('/DeleteMyIcon')) {
+      await _writeChangeMyIcon(
+        request,
+        body,
+        upload: path.endsWith('/UploadMyIcon'),
+      );
       return;
     }
 
@@ -3095,6 +3115,59 @@ class ConnectFixtureServer {
       memberBirthDate = birthDate;
     }
     memberCurrentName = name;
+    await _write(request, HttpStatus.ok, {
+      'user': {
+        'publicId': memberPublicId,
+        'name': memberCurrentName,
+        'role': 'member',
+        if (memberBirthDate.isNotEmpty) 'birthDate': memberBirthDate,
+        ..._memberIcon,
+      },
+    });
+  }
+
+  /// `UploadMyIcon` and `DeleteMyIcon` as the API answers them: an upload has
+  /// to be an `image/*` with bytes in it, and is stored under a new path each
+  /// time, since the API never stores a replaced icon over the old one.
+  Future<void> _writeChangeMyIcon(
+    HttpRequest request,
+    Map<String, Object?> body, {
+    required bool upload,
+  }) async {
+    if (!_isAuthorized(request)) {
+      await _write(request, HttpStatus.unauthorized, {
+        'code': 'unauthenticated',
+        'message': 'invalid token',
+      });
+      return;
+    }
+    if (upload) {
+      final data = body['iconData'];
+      final contentType = _trimmed(body['iconContentType']);
+      final bytes = data is String ? base64.decode(data) : const <int>[];
+      if (bytes.isEmpty || !contentType.startsWith('image/')) {
+        await _write(request, HttpStatus.badRequest, {
+          'code': 'invalid_argument',
+          'message': 'invalid icon image',
+          'details': [badRequestDetail('icon_data')],
+        });
+        return;
+      }
+      if (!iconStorageConfigured) {
+        await _write(request, HttpStatus.badRequest, {
+          'code': 'failed_precondition',
+          'message': 'storage is not configured',
+          'details': [errorInfoDetail('STORAGE_NOT_CONFIGURED')],
+        });
+        return;
+      }
+      iconUploads.add((bytes: bytes, contentType: contentType));
+      memberIconPath =
+          '/images/users/0190a0c0-0000-7000-8000-${iconUploads.length.toString().padLeft(12, '0')}';
+    } else {
+      iconRemovals++;
+      memberIconPath = null;
+    }
     await _write(request, HttpStatus.ok, {
       'user': {
         'publicId': memberPublicId,

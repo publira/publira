@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
@@ -22,10 +23,17 @@ class AuthController extends ChangeNotifier {
     required this._repository,
     required this._store,
     this._session,
+    this.imageRequestHeaders = const {},
   });
 
   final AuthRepository _repository;
   final SessionStore _store;
+
+  /// Headers a request for the signed-in reader's icon carries.
+  ///
+  /// An icon is served to every reader alike, the way a series eye-catch is,
+  /// so only the tenant travels.
+  final Map<String, String> imageRequestHeaders;
 
   AuthSession? _session;
 
@@ -342,11 +350,44 @@ class AuthController extends ChangeNotifier {
   Future<void> updateName(String name) => _replaceSession(
     (session) => _repository.updateName(session, name),
     (current, renamed) => current.withUser(
-      userPublicId: renamed.userPublicId,
+      userPublicId: current.userPublicId,
       userName: renamed.userName,
-      userIconUrl: renamed.userIconUrl,
+      userIconUrl: current.userIconUrl,
     ),
   );
+
+  /// Makes [upload] the signed-in account's icon, so every screen that draws
+  /// the reader shows the new one without another round trip.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> uploadIcon(AccountIconUpload upload) => _replaceSession(
+    (session) => _repository.uploadIcon(session, upload),
+    _withIconOf,
+  );
+
+  /// Leaves the signed-in account with no icon, so every screen that draws
+  /// the reader shows the fallback.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> removeIcon() =>
+      _replaceSession(_repository.removeIcon, _withIconOf);
+
+  /// [current] carrying the icon [changed] answers with and nothing else of
+  /// it.
+  ///
+  /// Every answer that changes the account carries all of it, so a change
+  /// takes only the field it made: a rename that lands after an icon upload
+  /// would otherwise put back the icon it was answered with, whose URL has
+  /// stopped answering, and an upload that lands after a rename the name it
+  /// was sent under.
+  AuthSession _withIconOf(AuthSession current, AuthSession changed) =>
+      current.withUser(
+        userPublicId: current.userPublicId,
+        userName: current.userName,
+        userIconUrl: changed.userIconUrl,
+      );
 
   /// Replaces the signed-in account's password and holds on to the token the
   /// API hands back, because the change ends the one this device had.

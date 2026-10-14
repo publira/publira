@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:publira/auth/account_icon.dart';
+import 'package:publira/auth/account_icon_picker.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/reader_age.dart';
@@ -61,6 +64,14 @@ class AccountScreen extends StatelessWidget {
                   key: const ValueKey('account-list'),
                   padding: padding,
                   children: [
+                    // Keyed by the reader, so a change in flight for one
+                    // account is not reported on another's screen.
+                    _IconSection(
+                      key: ValueKey(('icon', session.userPublicId)),
+                      readerId: session.userPublicId,
+                      iconUrl: session.userIconUrl,
+                    ),
+                    const Divider(height: 1),
                     ListTile(
                       key: const ValueKey('account-name'),
                       title: AutospacedText(messages.accountName),
@@ -170,6 +181,289 @@ Future<void> signOut(BuildContext context) async {
     await push.handleSignOut();
   }
   await auth.signOut();
+}
+
+/// The reader's icon, or the fallback an account without one gets, and the
+/// controls that upload, replace, and remove it.
+///
+/// Each change is saved as soon as it is made, the way the site's settings
+/// save it, and the session takes the icon the API answers with, so every
+/// screen that draws the reader shows the change.
+class _IconSection extends StatefulWidget {
+  const _IconSection({
+    super.key,
+    required this.readerId,
+    required this.iconUrl,
+  });
+
+  final String readerId;
+  final Uri? iconUrl;
+
+  @override
+  State<_IconSection> createState() => _IconSectionState();
+}
+
+enum _IconChange { upload, remove }
+
+class _IconSectionState extends State<_IconSection> {
+  static const _radius = 40.0;
+
+  _IconChange? _changing;
+  String? _failure;
+  var _started = false;
+
+  /// The recovery of a pick Android kept, which a change the reader asks for
+  /// waits out, so the image they chose before the app was ended never lands
+  /// after the one they choose now.
+  Future<void> _recovering = Future.value();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) {
+      return;
+    }
+    _started = true;
+    final picker = AccountIconPickerScope.maybeOf(context);
+    if (picker != null) {
+      _recovering = _recover(picker);
+      unawaited(_recovering);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    final theme = Theme.of(context);
+    final picker = AccountIconPickerScope.maybeOf(context);
+    final iconUrl = widget.iconUrl;
+    final failure = _failure;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+      child: Column(
+        children: [
+          Semantics(
+            image: true,
+            label: messages.accountIconAlt,
+            child: CircleAvatar(
+              key: ValueKey(
+                iconUrl == null ? 'account-icon-fallback' : 'account-icon',
+              ),
+              radius: _radius,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              // Decoded no larger than the circle, for the reason a cover is.
+              foregroundImage: iconUrl == null
+                  ? null
+                  : ResizeImage.resizeIfNeeded(
+                      (_radius * 2 * MediaQuery.devicePixelRatioOf(context))
+                          .round(),
+                      null,
+                      NetworkImage(
+                        iconUrl.toString(),
+                        headers: AuthScope.of(context).imageRequestHeaders,
+                      ),
+                    ),
+              // A URL that has stopped answering leaves the fallback showing.
+              onForegroundImageError: iconUrl == null ? null : (_, _) {},
+              child: Icon(
+                Icons.person_outline,
+                size: _radius,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          if (picker != null) ...[
+            const SizedBox(height: 16),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton(
+                  key: const ValueKey('account-icon-upload'),
+                  onPressed: _changing == null
+                      ? () => unawaited(_upload(picker))
+                      : null,
+                  child: AutospacedText(
+                    _changing == _IconChange.upload
+                        ? messages.accountIconUploading
+                        : iconUrl == null
+                        ? messages.accountIconUpload
+                        : messages.accountIconReplace,
+                  ),
+                ),
+                if (iconUrl != null)
+                  TextButton(
+                    key: const ValueKey('account-icon-remove'),
+                    onPressed: _changing == null
+                        ? () => unawaited(_remove())
+                        : null,
+                    child: AutospacedText(
+                      _changing == _IconChange.remove
+                          ? messages.accountIconRemoving
+                          : messages.accountIconRemove,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            AutospacedText(
+              messages.accountIconHelp,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          if (failure != null) ...[
+            const SizedBox(height: 8),
+            AutospacedText(
+              failure,
+              key: const ValueKey('account-icon-failure'),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _upload(AccountIconPicker picker) async {
+    final messages = AppMessages.of(context);
+    await _recovering;
+    if (!mounted || _changing != null) {
+      return;
+    }
+    // Held from the pick on, so nothing else is sent while the picker is open.
+    setState(() {
+      _changing = _IconChange.upload;
+      _failure = null;
+    });
+    final Uint8List? bytes;
+    try {
+      bytes = await picker.pick(reader: widget.readerId);
+    } on Exception {
+      if (mounted) {
+        setState(() {
+          _changing = null;
+          _failure = messages.accountIconUploadFailed;
+        });
+      }
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    if (bytes == null) {
+      setState(() => _changing = null);
+      return;
+    }
+    await _send(bytes);
+  }
+
+  /// Sends the image a pick handed over after the platform had ended the app
+  /// under the picker, which is what the reader asked for when they chose it.
+  Future<void> _recover(AccountIconPicker picker) async {
+    final Uint8List? bytes;
+    try {
+      bytes = await picker.recover(reader: widget.readerId);
+    } on Exception {
+      return;
+    }
+    if (bytes == null || !mounted || _changing != null) {
+      return;
+    }
+    setState(() => _changing = _IconChange.upload);
+    await _send(bytes);
+  }
+
+  /// Checks [bytes] against the API's limits and uploads them if they pass,
+  /// with [_changing] already set by the caller.
+  Future<void> _send(Uint8List bytes) async {
+    final messages = AppMessages.of(context);
+    final auth = AuthScope.of(context);
+    final (upload, problem) = prepareAccountIcon(bytes);
+    if (upload == null) {
+      setState(() {
+        _changing = null;
+        _failure = switch (problem) {
+          AccountIconProblem.tooLarge => messages.accountIconTooLarge,
+          AccountIconProblem.tooSmall => messages.accountIconTooSmall,
+          AccountIconProblem.unsupported ||
+          null => messages.accountIconUnsupported,
+        };
+      });
+      return;
+    }
+    await _change(
+      () => auth.uploadIcon(upload),
+      done: messages.accountIconUploaded,
+      failed: messages.accountIconUploadFailed,
+    );
+  }
+
+  Future<void> _remove() async {
+    final messages = AppMessages.of(context);
+    final auth = AuthScope.of(context);
+    await _recovering;
+    if (!mounted || _changing != null) {
+      return;
+    }
+    setState(() {
+      _changing = _IconChange.remove;
+      _failure = null;
+    });
+    await _change(
+      auth.removeIcon,
+      done: messages.accountIconRemoved,
+      failed: messages.accountIconRemoveFailed,
+    );
+  }
+
+  /// Runs [call] and says how it went: [done] in a snack bar, or why it
+  /// failed below the controls, with [failed] for anything the reader can do
+  /// nothing about but try again.
+  Future<void> _change(
+    Future<void> Function() call, {
+    required String done,
+    required String failed,
+  }) async {
+    final messages = AppMessages.of(context);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      await call();
+      messenger?.showSnackBar(SnackBar(content: AutospacedText(done)));
+      if (mounted) {
+        setState(() => _changing = null);
+      }
+    } on AuthFailure catch (failure) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _changing = null;
+        _failure = switch (failure.kind) {
+          AuthFailureKind.iconRefused => messages.accountIconRefused,
+          AuthFailureKind.storageNotConfigured =>
+            messages.accountIconStorageUnavailable,
+          AuthFailureKind.network => messages.errorsRpcUnavailable,
+          AuthFailureKind.rateLimited => messages.errorsRpcRateLimited,
+          _ => failed,
+        };
+      });
+    } on Exception {
+      // A credential store that refused the session the API answered with,
+      // which the other account settings word the same way.
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _changing = null;
+        _failure = failed;
+      });
+    }
+  }
 }
 
 /// The way to every episode the reader has bought, which the API keeps for

@@ -63,6 +63,13 @@ enum AuthFailureKind {
   /// tenant admin before it is deleted.
   lastTenantAdmin,
 
+  /// The API would not make an icon of the uploaded image.
+  iconRefused,
+
+  /// The install has no object store to keep an icon in, which the reader
+  /// can do nothing about.
+  storageNotConfigured,
+
   /// DNS, refused connection, timeout, or Connect `unavailable`.
   network,
 

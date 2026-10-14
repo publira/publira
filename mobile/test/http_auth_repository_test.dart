@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
@@ -12,6 +13,7 @@ import 'package:publira/auth/sign_up_requirements.dart';
 import 'package:publira/config.dart';
 
 import 'support/connect_fixture_server.dart';
+import 'support/icon_images.dart';
 
 void main() {
   late ConnectFixtureServer server;
@@ -732,6 +734,78 @@ void main() {
     );
   });
 
+  test(
+    'uploadIcon sends the image and takes the icon the API answers with',
+    () async {
+      final image = pngIcon();
+
+      final updated = await auth.uploadIcon(
+        stored,
+        AccountIconUpload(bytes: image, contentType: 'image/png'),
+      );
+
+      final upload = server.iconUploads.single;
+      expect(upload.bytes, image);
+      expect(upload.contentType, 'image/png');
+      expect(
+        updated.userIconUrl,
+        Uri.parse('${server.baseUrl}${server.memberIconPath}'),
+      );
+      expect(updated.userName, ConnectFixtureServer.memberName);
+      expect(updated.accessToken, stored.accessToken);
+    },
+  );
+
+  test('removeIcon leaves the session with no icon', () async {
+    server.memberIconPath =
+        '/images/users/0190a0c0-0000-7000-8000-000000000003';
+
+    final updated = await auth.removeIcon(
+      stored.withUser(
+        userPublicId: stored.userPublicId,
+        userName: stored.userName,
+        userIconUrl: Uri.parse(
+          '${server.baseUrl}/images/users/0190a0c0-0000-7000-8000-000000000003',
+        ),
+      ),
+    );
+
+    expect(server.iconRemovals, 1);
+    expect(updated.userIconUrl, isNull);
+  });
+
+  test('uploadIcon maps an image the API refuses to iconRefused', () {
+    expect(
+      () => auth.uploadIcon(
+        stored,
+        AccountIconUpload(bytes: pngIcon(), contentType: 'text/plain'),
+      ),
+      failsWith(AuthFailureKind.iconRefused),
+    );
+  });
+
+  test('uploadIcon maps an install without an object store to '
+      'storageNotConfigured', () {
+    server.iconStorageConfigured = false;
+
+    expect(
+      () => auth.uploadIcon(
+        stored,
+        AccountIconUpload(bytes: pngIcon(), contentType: 'image/png'),
+      ),
+      failsWith(AuthFailureKind.storageNotConfigured),
+    );
+  });
+
+  test('removeIcon maps a session the API refuses to sessionExpired', () {
+    server.activeAccessToken = 'another-token';
+
+    expect(
+      () => auth.removeIcon(stored),
+      failsWith(AuthFailureKind.sessionExpired),
+    );
+  });
+
   test('changePassword hands back the token that replaces this one', () async {
     final changed = await auth.changePassword(
       stored,
@@ -1006,6 +1080,7 @@ class _HoldingClient extends ConnectClient {
     Map<String, Object?> body, {
     String? tenantId,
     String? accessToken,
+    Duration? timeout,
   }) async {
     if (procedure.endsWith('/$held')) {
       await release;
@@ -1016,6 +1091,7 @@ class _HoldingClient extends ConnectClient {
         body,
         tenantId: tenantId,
         accessToken: accessToken,
+        timeout: timeout,
       );
     } finally {
       _settled.add(procedure);

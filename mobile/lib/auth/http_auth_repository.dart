@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/error_details.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/api/user_icon.dart';
+import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
@@ -57,6 +59,8 @@ class HttpAuthRepository implements AuthRepository {
       '/publira.v1.AuthService/ConfirmPasswordReset';
   static const _getMeProcedure = '/publira.v1.AuthService/GetMe';
   static const _updateMeProcedure = '/publira.v1.AuthService/UpdateMe';
+  static const _uploadMyIconProcedure = '/publira.v1.AuthService/UploadMyIcon';
+  static const _deleteMyIconProcedure = '/publira.v1.AuthService/DeleteMyIcon';
   static const _changePasswordProcedure =
       '/publira.v1.AuthService/ChangePassword';
   static const _requestEmailChangeProcedure =
@@ -566,6 +570,67 @@ class HttpAuthRepository implements AuthRepository {
         userIconUrl: userIconUrl(user['iconImageVariants'], _config),
       );
     } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
+  }
+
+  /// How long an icon upload is given, past the client's own timeout: the
+  /// request carries up to 10 MiB of image, a third more again in base64,
+  /// over whatever network the reader is on.
+  static const _uploadIconTimeout = Duration(minutes: 1);
+
+  @override
+  Future<AuthSession> uploadIcon(
+    AuthSession session,
+    AccountIconUpload upload,
+  ) => _changeIcon(session, _uploadMyIconProcedure, {
+    'iconData': base64Encode(upload.bytes),
+    'iconContentType': upload.contentType,
+  }, timeout: _uploadIconTimeout);
+
+  @override
+  Future<AuthSession> removeIcon(AuthSession session) =>
+      _changeIcon(session, _deleteMyIconProcedure, const {});
+
+  /// Sends [procedure] for the reader behind [session], both of whose answers
+  /// are the account with the icon it then shows.
+  Future<AuthSession> _changeIcon(
+    AuthSession session,
+    String procedure,
+    Map<String, Object?> fields, {
+    Duration? timeout,
+  }) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _client.unary(
+        procedure,
+        {
+          'tenant': {'tenantId': tenantId},
+          ...fields,
+        },
+        tenantId: tenantId,
+        accessToken: session.accessToken,
+        timeout: timeout,
+      );
+      final user = _expectMap(body['user'], 'user');
+      return session.withUser(
+        userPublicId: _readString(user, 'publicId'),
+        userName: _readString(user, 'name'),
+        userIconUrl: userIconUrl(user['iconImageVariants'], _config),
+      );
+    } on ConnectException catch (error) {
+      final fields = error.fieldViolations;
+      if (error.code == 'invalid_argument' &&
+          (fields.contains('icon_data') || fields.contains('icon_crop'))) {
+        throw AuthFailure(AuthFailureKind.iconRefused, message: error.message);
+      }
+      if (error.code == 'failed_precondition' &&
+          error.reasons.contains(storageNotConfiguredReason)) {
+        throw AuthFailure(
+          AuthFailureKind.storageNotConfigured,
+          message: error.message,
+        );
+      }
       throw _toAccountFailure(error);
     }
   }

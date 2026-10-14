@@ -9,6 +9,7 @@ import 'package:publira/announcements/dismissed_announcement_store.dart';
 import 'package:publira/announcements/http_announcement_repository.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/tenant_resolver.dart';
+import 'package:publira/auth/account_icon_picker.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/http_auth_repository.dart';
@@ -81,6 +82,7 @@ class PubliraApp extends StatefulWidget {
     required this.auth,
     this.legalPageAgreements,
     this.providerSignIn,
+    this.iconPicker,
     this.comments,
     this.follows,
     this.contentViews,
@@ -157,6 +159,7 @@ class PubliraApp extends StatefulWidget {
         const FileDismissedAnnouncementStore(),
     AnonymousIdStore anonymousIds = const FileAnonymousIdStore(),
     ProviderSignIn? providerSignIn,
+    AccountIconPicker? iconPicker,
   }) {
     final resolved = config ?? AppConfig.fromEnvironment();
     final library =
@@ -179,6 +182,7 @@ class PubliraApp extends StatefulWidget {
         tenants: tenants,
       ),
       store: store ?? sessionStoreFor(resolved),
+      imageRequestHeaders: resolved.publicImageRequestHeaders,
     );
     agreements = LegalPageAgreements(auth: auth);
     final purchaseStore = inAppPurchase == null
@@ -213,6 +217,7 @@ class PubliraApp extends StatefulWidget {
             googleIosClientId: resolved.googleIosClientId,
             tenantHost: resolved.tenantHost,
           ),
+      iconPicker: iconPicker ?? PluginAccountIconPicker(),
       comments: HttpCommentRepository(
         config: resolved,
         client: client,
@@ -305,6 +310,14 @@ class PubliraApp extends StatefulWidget {
   /// direct constructor, which a widget test uses to build the app with no
   /// provider sign-in, and no screen then offers one.
   final ProviderSignIn? providerSignIn;
+
+  /// Where the image a reader makes their icon comes from.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, which a widget test uses to build the app with no
+  /// picker, and the account screen then shows the icon without the controls
+  /// that change it.
+  final AccountIconPicker? iconPicker;
 
   /// The reader comments on an episode.
   ///
@@ -846,38 +859,41 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
           agreements: widget.legalPageAgreements,
           child: ProviderSignInScope(
             signIn: widget.providerSignIn,
-            child: PushScope(
-              controller: widget.push,
-              child: OfflineScope(
-                library: widget.offline,
-                downloader: widget.downloader,
-                child: CatalogScope(
-                  repository: widget.catalog,
-                  child: CommentScope(
-                    repository: widget.comments,
-                    child: FollowScope(
-                      repository: widget.follows,
-                      child: ContentViewScope(
-                        repository: widget.contentViews,
-                        child: NotificationScope(
-                          inbox: widget.notifications,
-                          child: AnnouncementScope(
-                            board: widget.announcements,
-                            child: ContactScope(
-                              repository: widget.contact,
-                              child: PageScope(
-                                repository: widget.pages,
-                                child: PurchaseScope(
-                                  repository: widget.purchases,
-                                  launcher: widget.checkoutLauncher,
-                                  storePurchaser: widget.storePurchaser,
-                                  child: WaitFreeScope(
-                                    repository: widget.waitFree,
-                                    child: AgeRatingConfirmationScope(
-                                      controller: _ageRating,
-                                      child: ScreenCaptureScope(
-                                        notices: widget.screenCaptures,
-                                        child: app,
+            child: AccountIconPickerScope(
+              picker: widget.iconPicker,
+              child: PushScope(
+                controller: widget.push,
+                child: OfflineScope(
+                  library: widget.offline,
+                  downloader: widget.downloader,
+                  child: CatalogScope(
+                    repository: widget.catalog,
+                    child: CommentScope(
+                      repository: widget.comments,
+                      child: FollowScope(
+                        repository: widget.follows,
+                        child: ContentViewScope(
+                          repository: widget.contentViews,
+                          child: NotificationScope(
+                            inbox: widget.notifications,
+                            child: AnnouncementScope(
+                              board: widget.announcements,
+                              child: ContactScope(
+                                repository: widget.contact,
+                                child: PageScope(
+                                  repository: widget.pages,
+                                  child: PurchaseScope(
+                                    repository: widget.purchases,
+                                    launcher: widget.checkoutLauncher,
+                                    storePurchaser: widget.storePurchaser,
+                                    child: WaitFreeScope(
+                                      repository: widget.waitFree,
+                                      child: AgeRatingConfirmationScope(
+                                        controller: _ageRating,
+                                        child: ScreenCaptureScope(
+                                          notices: widget.screenCaptures,
+                                          child: app,
+                                        ),
                                       ),
                                     ),
                                   ),

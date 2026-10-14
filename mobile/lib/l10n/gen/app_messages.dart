@@ -308,6 +308,86 @@ final class AppMessages {
     return _format('mobile.account.email_notifications_update_failed');
   }
 
+  /// `mobile.account.icon_alt`
+  String get accountIconAlt {
+    return _format('mobile.account.icon_alt');
+  }
+
+  /// `mobile.account.icon_help`
+  String get accountIconHelp {
+    return _format('mobile.account.icon_help');
+  }
+
+  /// `mobile.account.icon_refused`
+  String get accountIconRefused {
+    return _format('mobile.account.icon_refused');
+  }
+
+  /// `mobile.account.icon_remove`
+  String get accountIconRemove {
+    return _format('mobile.account.icon_remove');
+  }
+
+  /// `mobile.account.icon_remove_failed`
+  String get accountIconRemoveFailed {
+    return _format('mobile.account.icon_remove_failed');
+  }
+
+  /// `mobile.account.icon_removed`
+  String get accountIconRemoved {
+    return _format('mobile.account.icon_removed');
+  }
+
+  /// `mobile.account.icon_removing`
+  String get accountIconRemoving {
+    return _format('mobile.account.icon_removing');
+  }
+
+  /// `mobile.account.icon_replace`
+  String get accountIconReplace {
+    return _format('mobile.account.icon_replace');
+  }
+
+  /// `mobile.account.icon_storage_unavailable`
+  String get accountIconStorageUnavailable {
+    return _format('mobile.account.icon_storage_unavailable');
+  }
+
+  /// `mobile.account.icon_too_large`
+  String get accountIconTooLarge {
+    return _format('mobile.account.icon_too_large');
+  }
+
+  /// `mobile.account.icon_too_small`
+  String get accountIconTooSmall {
+    return _format('mobile.account.icon_too_small');
+  }
+
+  /// `mobile.account.icon_unsupported`
+  String get accountIconUnsupported {
+    return _format('mobile.account.icon_unsupported');
+  }
+
+  /// `mobile.account.icon_upload`
+  String get accountIconUpload {
+    return _format('mobile.account.icon_upload');
+  }
+
+  /// `mobile.account.icon_upload_failed`
+  String get accountIconUploadFailed {
+    return _format('mobile.account.icon_upload_failed');
+  }
+
+  /// `mobile.account.icon_uploaded`
+  String get accountIconUploaded {
+    return _format('mobile.account.icon_uploaded');
+  }
+
+  /// `mobile.account.icon_uploading`
+  String get accountIconUploading {
+    return _format('mobile.account.icon_uploading');
+  }
+
   /// `mobile.account.linked_accounts`
   String get accountLinkedAccounts {
     return _format('mobile.account.linked_accounts');
@@ -3053,6 +3133,26 @@ const _jaSources = <String, String>{
   'mobile.account.email_notifications_load_failed': 'メール通知の設定を読み込めませんでした。',
   'mobile.account.email_notifications_update_failed':
       'メール通知の設定を変更できませんでした。もう一度お試しください。',
+  'mobile.account.icon_alt': 'あなたのアイコン',
+  'mobile.account.icon_help':
+      'JPEG/PNG/WebP、10MB以下、128x128px以上の画像を選択してください。中央から正方形に切り抜かれます。',
+  'mobile.account.icon_refused':
+      'この画像はアイコンに使用できません。JPEG/PNG/WebP、10MB以下、128x128px以上の画像を選択してください。',
+  'mobile.account.icon_remove': 'アイコンを削除',
+  'mobile.account.icon_remove_failed': 'アイコンを削除できませんでした。もう一度お試しください。',
+  'mobile.account.icon_removed': 'アイコンを削除しました。',
+  'mobile.account.icon_removing': '削除中…',
+  'mobile.account.icon_replace': 'アイコンを変更',
+  'mobile.account.icon_storage_unavailable':
+      '現在このサイトではアイコンをアップロードできません。解決しない場合はサイトにお問い合わせください。',
+  'mobile.account.icon_too_large': '画像が10MBを超えています。より小さい画像を選択してください。',
+  'mobile.account.icon_too_small': '画像が128x128pxより小さいです。より大きい画像を選択してください。',
+  'mobile.account.icon_unsupported':
+      'このファイルは使用できません。JPEG/PNG/WebPの画像を選択してください。',
+  'mobile.account.icon_upload': 'アイコンをアップロード',
+  'mobile.account.icon_upload_failed': 'アイコンを更新できませんでした。もう一度お試しください。',
+  'mobile.account.icon_uploaded': 'アイコンを更新しました。',
+  'mobile.account.icon_uploading': 'アップロード中…',
   'mobile.account.linked_accounts': '連携アカウント',
   'mobile.account.name': 'お名前',
   'mobile.account.name_unset': '（未設定）',
@@ -3695,6 +3795,28 @@ const _enSources = <String, String>{
       'Could not load your email notification setting.',
   'mobile.account.email_notifications_update_failed':
       'Could not change your email notification setting. Try again.',
+  'mobile.account.icon_alt': 'Your icon',
+  'mobile.account.icon_help':
+      'Select a JPEG, PNG, or WebP image no larger than 10MB and at least 128x128px. It is cropped to a square from the center.',
+  'mobile.account.icon_refused':
+      'This image cannot be used as an icon. Select a JPEG, PNG, or WebP image no larger than 10MB and at least 128x128px.',
+  'mobile.account.icon_remove': 'Remove icon',
+  'mobile.account.icon_remove_failed': 'Could not remove your icon. Try again.',
+  'mobile.account.icon_removed': 'Your icon has been removed.',
+  'mobile.account.icon_removing': 'Removing…',
+  'mobile.account.icon_replace': 'Change icon',
+  'mobile.account.icon_storage_unavailable':
+      'Icons cannot be uploaded on this site right now. Contact the site if this continues.',
+  'mobile.account.icon_too_large':
+      'This image is larger than 10MB. Select a smaller one.',
+  'mobile.account.icon_too_small':
+      'This image is smaller than 128x128px. Select a larger one.',
+  'mobile.account.icon_unsupported':
+      'This file cannot be used. Select a JPEG, PNG, or WebP image.',
+  'mobile.account.icon_upload': 'Upload icon',
+  'mobile.account.icon_upload_failed': 'Could not update your icon. Try again.',
+  'mobile.account.icon_uploaded': 'Your icon has been updated.',
+  'mobile.account.icon_uploading': 'Uploading…',
   'mobile.account.linked_accounts': 'Linked accounts',
   'mobile.account.name': 'Name',
   'mobile.account.name_unset': 'Not set',
@@ -4428,6 +4550,26 @@ const _koSources = <String, String>{
   'mobile.account.email_notifications_load_failed': '이메일 알림 설정을 불러오지 못했습니다.',
   'mobile.account.email_notifications_update_failed':
       '이메일 알림 설정을 변경하지 못했습니다. 다시 시도해 주세요.',
+  'mobile.account.icon_alt': '내 아이콘',
+  'mobile.account.icon_help':
+      'JPEG, PNG, WebP 형식으로 10MB 이하, 128x128px 이상인 이미지를 선택해 주세요. 가운데를 기준으로 정사각형으로 잘립니다.',
+  'mobile.account.icon_refused':
+      '이 이미지는 아이콘으로 사용할 수 없습니다. JPEG, PNG, WebP 형식으로 10MB 이하, 128x128px 이상인 이미지를 선택해 주세요.',
+  'mobile.account.icon_remove': '아이콘 삭제',
+  'mobile.account.icon_remove_failed': '아이콘을 삭제하지 못했습니다. 다시 시도해 주세요.',
+  'mobile.account.icon_removed': '아이콘을 삭제했습니다.',
+  'mobile.account.icon_removing': '삭제 중…',
+  'mobile.account.icon_replace': '아이콘 변경',
+  'mobile.account.icon_storage_unavailable':
+      '지금은 이 사이트에서 아이콘을 업로드할 수 없습니다. 계속되면 사이트에 문의해 주세요.',
+  'mobile.account.icon_too_large': '이미지가 10MB를 넘습니다. 더 작은 이미지를 선택해 주세요.',
+  'mobile.account.icon_too_small': '이미지가 128x128px보다 작습니다. 더 큰 이미지를 선택해 주세요.',
+  'mobile.account.icon_unsupported':
+      '이 파일은 사용할 수 없습니다. JPEG, PNG, WebP 이미지를 선택해 주세요.',
+  'mobile.account.icon_upload': '아이콘 업로드',
+  'mobile.account.icon_upload_failed': '아이콘을 변경하지 못했습니다. 다시 시도해 주세요.',
+  'mobile.account.icon_uploaded': '아이콘을 변경했습니다.',
+  'mobile.account.icon_uploading': '업로드 중…',
   'mobile.account.linked_accounts': '연결된 계정',
   'mobile.account.name': '이름',
   'mobile.account.name_unset': '미설정',
@@ -5058,6 +5200,24 @@ const _zhHansSources = <String, String>{
   'mobile.account.email_notifications_description': '通过邮件接收订阅更新和重要公告。',
   'mobile.account.email_notifications_load_failed': '无法读取您的邮件通知设置。',
   'mobile.account.email_notifications_update_failed': '无法更改您的邮件通知设置。请重试。',
+  'mobile.account.icon_alt': '您的头像',
+  'mobile.account.icon_help':
+      '请选择不超过10MB、尺寸至少为128x128px的JPEG、PNG或WebP图片。图片将从中心裁剪为正方形。',
+  'mobile.account.icon_refused':
+      '此图片无法用作头像。请选择不超过10MB、尺寸至少为128x128px的JPEG、PNG或WebP图片。',
+  'mobile.account.icon_remove': '删除头像',
+  'mobile.account.icon_remove_failed': '无法删除您的头像。请重试。',
+  'mobile.account.icon_removed': '您的头像已删除。',
+  'mobile.account.icon_removing': '正在删除…',
+  'mobile.account.icon_replace': '更换头像',
+  'mobile.account.icon_storage_unavailable': '此网站目前无法上传头像。如果问题持续，请联系网站。',
+  'mobile.account.icon_too_large': '图片超过10MB。请选择更小的图片。',
+  'mobile.account.icon_too_small': '图片小于128x128px。请选择更大的图片。',
+  'mobile.account.icon_unsupported': '无法使用此文件。请选择JPEG、PNG或WebP图片。',
+  'mobile.account.icon_upload': '上传头像',
+  'mobile.account.icon_upload_failed': '无法更新您的头像。请重试。',
+  'mobile.account.icon_uploaded': '您的头像已更新。',
+  'mobile.account.icon_uploading': '正在上传…',
   'mobile.account.linked_accounts': '关联账户',
   'mobile.account.name': '昵称',
   'mobile.account.name_unset': '未设置',
@@ -5639,6 +5799,24 @@ const _zhHantSources = <String, String>{
   'mobile.account.email_notifications_description': '透過電子郵件接收訂閱更新與重要公告。',
   'mobile.account.email_notifications_load_failed': '無法讀取您的郵件通知設定。',
   'mobile.account.email_notifications_update_failed': '無法變更您的郵件通知設定。請重試。',
+  'mobile.account.icon_alt': '您的頭像',
+  'mobile.account.icon_help':
+      '請選擇不超過10MB、尺寸至少為128x128px的JPEG、PNG或WebP圖片。圖片將從中心裁切為正方形。',
+  'mobile.account.icon_refused':
+      '此圖片無法用作頭像。請選擇不超過10MB、尺寸至少為128x128px的JPEG、PNG或WebP圖片。',
+  'mobile.account.icon_remove': '刪除頭像',
+  'mobile.account.icon_remove_failed': '無法刪除您的頭像。請重試。',
+  'mobile.account.icon_removed': '您的頭像已刪除。',
+  'mobile.account.icon_removing': '正在刪除…',
+  'mobile.account.icon_replace': '更換頭像',
+  'mobile.account.icon_storage_unavailable': '此網站目前無法上傳頭像。如果問題持續，請聯絡網站。',
+  'mobile.account.icon_too_large': '圖片超過10MB。請選擇更小的圖片。',
+  'mobile.account.icon_too_small': '圖片小於128x128px。請選擇更大的圖片。',
+  'mobile.account.icon_unsupported': '無法使用此檔案。請選擇JPEG、PNG或WebP圖片。',
+  'mobile.account.icon_upload': '上傳頭像',
+  'mobile.account.icon_upload_failed': '無法更新您的頭像。請重試。',
+  'mobile.account.icon_uploaded': '您的頭像已更新。',
+  'mobile.account.icon_uploading': '正在上傳…',
   'mobile.account.linked_accounts': '已連結的帳戶',
   'mobile.account.name': '名稱',
   'mobile.account.name_unset': '未設定',

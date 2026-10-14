@@ -591,7 +591,11 @@
     {
       "name": "Account settings: the icon, uploaded, replaced, and removed",
       "web": { "rpcs": ["UploadMyIcon", "DeleteMyIcon"] },
-      "exception": "Not in the app yet: #2256."
+      "mobile": {
+        "routes": ["/account"],
+        "rpcs": ["UploadMyIcon", "DeleteMyIcon"]
+      },
+      "tests": ["a member uploads, replaces, and removes the icon in the app"]
     },
     {
       "name": "Confirming a new email address",

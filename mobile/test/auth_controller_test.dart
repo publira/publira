@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 
 import 'support/fake_auth.dart';
+import 'support/icon_images.dart';
 
 void main() {
   late FakeAuthRepository repository;
@@ -298,6 +300,47 @@ void main() {
     expect(controller.session?.userName, 'Renamed Reader');
     expect(store.session?.accessToken, FakeAuthRepository.changedAccessToken);
     expect(store.session?.userName, 'Renamed Reader');
+  });
+
+  test('an icon upload that lands after a rename keeps both', () async {
+    final controller = controllerFor(stored: fakeSession);
+    await controller.restore();
+    final gate = repository.iconGate = Completer<void>();
+
+    final uploading = controller.uploadIcon(
+      AccountIconUpload(bytes: pngIcon(), contentType: 'image/png'),
+    );
+    await controller.updateName('Renamed Reader');
+    gate.complete();
+    await uploading;
+
+    expect(controller.session?.userName, 'Renamed Reader');
+    expect(
+      controller.session?.userIconUrl,
+      FakeAuthRepository.uploadedIconUrl(1),
+    );
+    expect(store.session?.userName, 'Renamed Reader');
+    expect(store.session?.userIconUrl, FakeAuthRepository.uploadedIconUrl(1));
+  });
+
+  test('a rename that lands after an icon upload keeps both', () async {
+    final controller = controllerFor(stored: fakeSession);
+    await controller.restore();
+    final gate = repository.renameGate = Completer<void>();
+
+    final renaming = controller.updateName('Renamed Reader');
+    await controller.uploadIcon(
+      AccountIconUpload(bytes: pngIcon(), contentType: 'image/png'),
+    );
+    gate.complete();
+    await renaming;
+
+    expect(controller.session?.userName, 'Renamed Reader');
+    expect(
+      controller.session?.userIconUrl,
+      FakeAuthRepository.uploadedIconUrl(1),
+    );
+    expect(store.session?.userIconUrl, FakeAuthRepository.uploadedIconUrl(1));
   });
 
   test('a password change answered after a sign-out is dropped', () async {
