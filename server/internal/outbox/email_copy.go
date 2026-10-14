@@ -69,6 +69,15 @@ func (c *emailComposer) value(name string) string {
 	return value
 }
 
+// flag is the boolean the handler put under name.
+func (c *emailComposer) flag(name string) bool {
+	value, ok := c.data[name].(bool)
+	if !ok {
+		c.fail(fmt.Errorf("%s is missing or is not a bool", name))
+	}
+	return value
+}
+
 // instant is the RFC3339 value under name, written as the wall clock of the
 // display time zone.
 func (c *emailComposer) instant(name string) string {
@@ -78,6 +87,22 @@ func (c *emailComposer) instant(name string) string {
 		return ""
 	}
 	written, err := locale.FormatDateTime(at, c.locale, c.timeZone)
+	if err != nil {
+		c.fail(err)
+		return ""
+	}
+	return written
+}
+
+// price is the amount under amountName, an integer in the minor unit of the
+// currency under currencyName, written the way the locale writes that currency.
+func (c *emailComposer) price(amountName, currencyName string) string {
+	amount, ok := c.data[amountName].(int64)
+	if !ok {
+		c.fail(fmt.Errorf("%s is missing or is not an int64", amountName))
+		return ""
+	}
+	written, err := locale.FormatPrice(amount, c.value(currencyName), c.locale)
 	if err != nil {
 		c.fail(err)
 		return ""
@@ -125,6 +150,7 @@ var emailTemplates = map[string]func(*emailComposer){
 	"platform_console_operator_added":            platformConsoleOperatorAddedCopy,
 	"platform_console_operator_role_granted":     platformConsoleOperatorRoleGrantedCopy,
 	"platform_console_password_reset":            platformConsolePasswordResetCopy,
+	"purchase_receipt":                           purchaseReceiptCopy,
 	"reader_email_change_confirmation":           readerEmailChangeConfirmationCopy,
 	"reader_email_changed_notice":                readerEmailChangedNoticeCopy,
 	"reader_email_verification":                  readerEmailVerificationCopy,
@@ -134,6 +160,33 @@ var emailTemplates = map[string]func(*emailComposer){
 	"staff_contact_message_notice":               staffContactMessageNoticeCopy,
 	"staff_contact_reply":                        staffContactReplyCopy,
 	"tenant_admin_invitation":                    tenantAdminInvitationCopy,
+}
+
+// purchaseReceiptCopy words the receipt a reader is sent for a purchase. The
+// price names its currency by code as well as by symbol, because a symbol such
+// as "$" stands for more than one currency. A purchase with no reading period
+// has no line saying when it ends. A purchase paid in the provider's test mode,
+// which the documented setup asks an operator to make, says it charged nothing,
+// so its "price paid" is not read as money taken.
+func purchaseReceiptCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	libraryURL := c.value("library_url")
+	c.setSubject("email.purchase_receipt.subject", map[string]any{"tenant_name": brand})
+	c.from(brand)
+	c.line("email.purchase_receipt.heading", nil)
+	c.line("email.purchase_receipt.intro", map[string]any{"tenant_name": brand})
+	if c.flag("is_test") {
+		c.line("email.purchase_receipt.test_notice", nil)
+	}
+	c.line("email.purchase_receipt.series", map[string]any{"series_title": c.value("series_title")})
+	c.line("email.purchase_receipt.episode", map[string]any{"episode_title": c.value("episode_title")})
+	c.line("email.purchase_receipt.amount", map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})
+	c.line("email.purchase_receipt.purchased_at", map[string]any{"purchased_at": c.instant("purchased_at")})
+	if c.value("expires_at") != "" {
+		c.line("email.purchase_receipt.expires_at", map[string]any{"expires_at": c.instant("expires_at")})
+	}
+	c.linkLine("email.purchase_receipt.action", nil, libraryURL)
+	c.linkLine("email.purchase_receipt.fallback_link", nil, libraryURL)
 }
 
 // staffContactMessageNoticeCopy words the mail that tells a tenant's staff a

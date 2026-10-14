@@ -229,6 +229,34 @@ VALUES (
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
 RETURNING *;
 
+-- name: GetPurchaseReceiptForTenant :one
+-- What the receipt of one purchase says, read by the outbox worker, which
+-- connects past RLS and therefore names the tenant itself. The reader is
+-- joined within the tenant, so an account that was deleted after paying, whose
+-- purchase keeps no user, answers no address rather than no receipt.
+SELECT
+    p.id,
+    p.price_at_purchase,
+    p.currency,
+    p.purchased_at,
+    p.expires_at,
+    p.is_test,
+    e.title AS episode_title,
+    s.title AS series_title,
+    u.email AS reader_email
+FROM purchases p
+JOIN episodes e
+    ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+JOIN series s
+    ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+LEFT JOIN users u
+    ON u.tenant_id = p.tenant_id
+    AND u.id = p.user_id
+WHERE p.tenant_id = sqlc.arg('tenant_id')::uuid
+    AND p.id = sqlc.arg('id')::uuid;
+
 -- name: RecordRefundOnPurchase :one
 -- Records what the provider has refunded against one purchase, matched by the
 -- payment the refund notification names. Nothing matches when the payment

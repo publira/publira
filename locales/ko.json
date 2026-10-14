@@ -94,6 +94,20 @@
       "preview": "새 플랫폼 콘솔 비밀번호를 설정해 주세요.",
       "subject": "Publira 플랫폼 콘솔 비밀번호 재설정"
     },
+    "purchase_receipt": {
+      "action": "구매 목록 열기",
+      "amount": "구매 가격: {$amount} ({$currency})",
+      "episode": "에피소드: {$episode_title}",
+      "expires_at": "만료일: {$expires_at}",
+      "fallback_link": "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+      "heading": "구매해 주셔서 감사합니다",
+      "intro": "{$tenant_name}에서 구매하신 내역을 알려 드립니다.",
+      "preview": "{$episode_title} 구매가 완료되었습니다.",
+      "purchased_at": "구매 일시: {$purchased_at}",
+      "series": "시리즈: {$series_title}",
+      "subject": "{$tenant_name} 구매 완료",
+      "test_notice": "결제 서비스의 테스트 모드에서 진행된 구매입니다. 요금은 청구되지 않았습니다."
+    },
     "reader_email_change_confirmation": {
       "action": "이메일 주소 변경 확인하기",
       "body_current_email": "이 변경에는 현재 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요.",

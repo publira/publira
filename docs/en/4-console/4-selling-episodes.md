@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-10-11
+updated: 2026-10-14
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -173,7 +173,7 @@ A refund that arrives before the purchase it reverses is kept, and applied when 
 
 Test the whole setup with the provider's test keys before readers can pay: the webhook is the part that most often goes wrong, and only a purchase shows that it works.
 
-A purchase made in the provider's test mode opens the episode but is recorded as a test, and left out of royalty statements and the content statistics. The console cannot delete an episode, so keep the test in a series of its own, which you hide afterwards.
+A purchase made in the provider's test mode opens the episode but is recorded as a test, and left out of royalty statements and the content statistics. The reader still gets a receipt by mail, which says that the purchase was made in test mode and that no money was charged. The console cannot delete an episode, so keep the test in a series of its own, which you hide afterwards.
 
 1. Set up the provider with its **test** secret key, and register the webhook in test mode, as above. Check that **Payment settings** shows **Ready**.
 2. Create a series for the test, shown on **Web and app** or **Web only** and published now. In it, create an episode with a **Price** such as `100` and a **Reading period** such as `1`, published now, and sold on the web.

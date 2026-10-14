@@ -94,6 +94,20 @@
       "preview": "设置新的平台控制台密码。",
       "subject": "Publira平台控制台密码重设"
     },
+    "purchase_receipt": {
+      "action": "查看已购买",
+      "amount": "支付金额：{$amount}（{$currency}）",
+      "episode": "章节：{$episode_title}",
+      "expires_at": "有效期至：{$expires_at}",
+      "fallback_link": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+      "heading": "感谢您的购买",
+      "intro": "以下是您在{$tenant_name}的购买明细。",
+      "preview": "感谢您购买{$episode_title}。",
+      "purchased_at": "购买时间：{$purchased_at}",
+      "series": "系列：{$series_title}",
+      "subject": "{$tenant_name}购买成功",
+      "test_notice": "这是在支付服务测试模式下的购买，未产生任何扣款。"
+    },
     "reader_email_change_confirmation": {
       "action": "确认邮箱地址变更",
       "body_current_email": "此变更需要由当前邮箱地址确认。请打开下方按钮完成确认。",

@@ -94,6 +94,20 @@
       "preview": "Set a new Platform Console password.",
       "subject": "Publira Platform Console password reset"
     },
+    "purchase_receipt": {
+      "action": "Open your purchases",
+      "amount": "Price paid: {$amount} ({$currency})",
+      "episode": "Episode: {$episode_title}",
+      "expires_at": "Readable until: {$expires_at}",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Thank you for your purchase",
+      "intro": "Here is the receipt for your purchase on {$tenant_name}.",
+      "preview": "Thank you for buying {$episode_title}.",
+      "purchased_at": "Purchased: {$purchased_at}",
+      "series": "Series: {$series_title}",
+      "subject": "{$tenant_name} purchase receipt",
+      "test_notice": "This was a purchase in the payment provider's test mode. No money was charged."
+    },
     "reader_email_change_confirmation": {
       "action": "Confirm email address change",
       "body_current_email": "This change needs confirmation from your current address. Open the button below to confirm it.",

@@ -31,6 +31,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.EventTypeAdminEmailChangedNoticeEmail,
 		outbox.EventTypeContactMessageStaffEmail,
 		outbox.EventTypeContactMessageReplyEmail,
+		outbox.EventTypePurchaseReceipt,
 		outbox.EventTypeCommentAwaitingApprovalNotification,
 		outbox.EventTypeCommentReportedNotification,
 		outbox.EventTypeAnnouncementNotification,

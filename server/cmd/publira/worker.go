@@ -259,6 +259,7 @@ func workerConfig(
 	handlers.RegisterMessage(outbox.EventTypeAdminEmailChangedNoticeEmail, outbox.NewAdminEmailChangedNoticeEmailHandler(emailHandlers))
 	handlers.RegisterMessage(outbox.EventTypeContactMessageStaffEmail, outbox.NewContactMessageStaffEmailHandler(emailHandlers))
 	handlers.RegisterMessage(outbox.EventTypeContactMessageReplyEmail, outbox.NewContactMessageReplyEmailHandler(emailHandlers))
+	handlers.RegisterMessage(outbox.EventTypePurchaseReceipt, outbox.NewPurchaseReceiptEmailHandler(emailHandlers))
 	handlers.RegisterMessage(outbox.EventTypeCommentAwaitingApprovalNotification, outbox.NewCommentAwaitingApprovalNotificationHandler(staffHandlers))
 	handlers.RegisterMessage(outbox.EventTypeCommentReportedNotification, outbox.NewCommentReportedNotificationHandler(staffHandlers))
 	handlers.RegisterMessage(outbox.EventTypeAnnouncementNotification, outbox.NewAnnouncementNotificationHandler(announcementHandlers))
