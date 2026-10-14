@@ -631,3 +631,28 @@ func TestDBRefundPurchaseRetriesAFailedRefundUnderANewKey(t *testing.T) {
 		}
 	})
 }
+
+// A purchase staff revoked whose refund never reached Stripe, as a request
+// cut off between the two leaves it, is asked of Stripe again rather than
+// answered as refunded: the same idempotency key refunds it once.
+func TestDBRefundPurchaseFinishesARefundAnEarlierRequestLeftUnasked(t *testing.T) {
+	f := newPurchaseFixture(t)
+	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_unasked", revocationReason: purchaseRevocationStaff})
+
+	purchase, err := f.refund(purchaseID)
+	if err != nil {
+		t.Fatalf("RefundPurchase: %v", err)
+	}
+	if purchase.RevocationReason != publiraadminv1.PurchaseRevocationReason_PURCHASE_REVOCATION_REASON_STAFF {
+		t.Fatalf("purchase = %+v, want still revoked by staff", purchase)
+	}
+	if got := f.stripe.RefundedTotal(purchaseTestSecretKey, "pi_unasked"); got != 500 {
+		t.Fatalf("refunded total = %d, want 500", got)
+	}
+	if _, err := f.refund(purchaseID); err != nil {
+		t.Fatalf("RefundPurchase again: %v", err)
+	}
+	if refunds := f.stripe.Refunds(); len(refunds) != 1 {
+		t.Fatalf("refunds = %+v, want one", refunds)
+	}
+}

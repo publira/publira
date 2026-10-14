@@ -70,12 +70,17 @@ type AdminPurchaseServiceClient interface {
 	// staff as the reason; the amount refunded is recorded when the provider's
 	// notification of it arrives, and a refund the provider reports failed or
 	// canceled takes the revocation back. Asking again after that is a new
-	// attempt, which the provider is sent under a new idempotency key. A purchase already refunded in full or
-	// revoked by staff comes back as it is, without a second request to the
-	// provider, and so does one the provider reports refunded in full already,
-	// which is left for that notification to revoke. A store purchase, a purchase made without a payment, a disputed
-	// one, and one paid through a provider the tenant no longer has enabled are
-	// failed_precondition, as is a refund the provider refuses.
+	// attempt, which the provider is sent under a new idempotency key.
+	//
+	// A purchase already refunded in full comes back as it is, without a
+	// request to the provider, and so does one the provider reports refunded in
+	// full already, which is left for that notification to revoke. One staff
+	// revoked already with no refund recorded yet is asked of the provider
+	// again under the same idempotency key, which refunds nothing twice and
+	// records nothing more. A store purchase, a purchase made without a
+	// payment, a disputed one, and one paid through a provider the tenant no
+	// longer has enabled are failed_precondition, as is a refund the provider
+	// refuses.
 	//
 	// Minimum role: tenant_admin.
 	RefundPurchase(context.Context, *v1.RefundPurchaseRequest) (*v1.RefundPurchaseResponse, error)
@@ -99,12 +104,17 @@ type AdminPurchaseServiceHandler interface {
 	// staff as the reason; the amount refunded is recorded when the provider's
 	// notification of it arrives, and a refund the provider reports failed or
 	// canceled takes the revocation back. Asking again after that is a new
-	// attempt, which the provider is sent under a new idempotency key. A purchase already refunded in full or
-	// revoked by staff comes back as it is, without a second request to the
-	// provider, and so does one the provider reports refunded in full already,
-	// which is left for that notification to revoke. A store purchase, a purchase made without a payment, a disputed
-	// one, and one paid through a provider the tenant no longer has enabled are
-	// failed_precondition, as is a refund the provider refuses.
+	// attempt, which the provider is sent under a new idempotency key.
+	//
+	// A purchase already refunded in full comes back as it is, without a
+	// request to the provider, and so does one the provider reports refunded in
+	// full already, which is left for that notification to revoke. One staff
+	// revoked already with no refund recorded yet is asked of the provider
+	// again under the same idempotency key, which refunds nothing twice and
+	// records nothing more. A store purchase, a purchase made without a
+	// payment, a disputed one, and one paid through a provider the tenant no
+	// longer has enabled are failed_precondition, as is a refund the provider
+	// refuses.
 	//
 	// Minimum role: tenant_admin.
 	RefundPurchase(context.Context, *v1.RefundPurchaseRequest) (*v1.RefundPurchaseResponse, error)

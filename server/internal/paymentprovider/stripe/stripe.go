@@ -193,7 +193,11 @@ func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Crede
 	// forgotten.
 	case stripeErr.Code == stripego.ErrorCodeChargeAlreadyRefunded:
 		return false, nil
-	case stripeErr.Type == stripego.ErrorTypeInvalidRequest && stripeErr.HTTPStatusCode < http.StatusInternalServerError:
+	// A 429 is contention on the payment, such as lock_timeout, which a later
+	// attempt can get past.
+	case stripeErr.Type == stripego.ErrorTypeInvalidRequest &&
+		stripeErr.HTTPStatusCode < http.StatusInternalServerError &&
+		stripeErr.HTTPStatusCode != http.StatusTooManyRequests:
 		return false, fmt.Errorf("%w: %s", paymentprovider.ErrRefundRefused, stripeErr.Msg)
 	default:
 		return false, err
