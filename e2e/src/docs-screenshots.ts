@@ -367,6 +367,51 @@ const settledRegionOf = async (
 };
 
 /**
+ * Have the document resolve every font on the screen again, at the device
+ * scale factor the shot is taken at.
+ *
+ * On Linux, Chromium rounds a font's ascent and descent by a scale factor it
+ * keeps for the whole renderer, and every layout from a document's root sets
+ * that factor to the one of the document being laid out. The calendar icon of
+ * a date field is an SVG image, laid out as a document of its own the first
+ * time it is drawn, and that document knows nothing of the factor the shot
+ * emulates, so it sets the renderer's back to 1. A font first resolved after
+ * that and before the screen's next layout from its root is rounded for a 1x
+ * screen, and the screen keeps it for every element set in the same face,
+ * size, and weight. In the Platform Console's user list, the page description
+ * and the copy inside the filter controls then sat one CSS pixel lower than in
+ * the baseline, while the boxes around them, and the text in faces first used
+ * at another moment, stayed where they were. Which fonts a screen resolves in
+ * that window depends on when its streamed parts arrive, so the same shot
+ * matched on one run and not on the next.
+ *
+ * So the screen is laid out from its root first, which hands the renderer the
+ * emulated factor again; the icon is not laid out a second time. Changing the
+ * document's font set then makes it drop every font it has resolved and resolve
+ * them again at that factor. The face added for that names no font that exists,
+ * and is deleted before anything is drawn with it.
+ */
+const resolveFontsAtEmulatedScale = async (page: Page): Promise<void> => {
+  await page.evaluate(() => {
+    const root = document.documentElement;
+    const { paddingTop } = root.style;
+    root.style.paddingTop = "1px";
+    root.getBoundingClientRect();
+    root.style.paddingTop = paddingTop;
+    root.getBoundingClientRect();
+
+    const face = new FontFace(
+      "publira-docs-screenshot",
+      "local(publira-docs-screenshot)"
+    );
+    document.fonts.add(face);
+    root.getBoundingClientRect();
+    document.fonts.delete(face);
+    root.getBoundingClientRect();
+  });
+};
+
+/**
  * Compare one region of a screen with the image beside the documentation page
  * that shows it, or write that image under `--update-snapshots`.
  *
@@ -377,7 +422,9 @@ const settledRegionOf = async (
  * margin of the screen around it, and a region taller than the viewport is
  * taken whole. What the shot waits for is {@link waitForScreenToSettle}'s, and
  * it is taken at the project's device scale factor, so the text in it stays
- * sharp once the website scales the image to its content column.
+ * sharp once the website scales the image to its content column; the fonts
+ * are resolved at that factor again before it is taken, as
+ * {@link resolveFontsAtEmulatedScale} explains.
  *
  * The screen has to be in the locale of the tree the image goes in, so the
  * document's language is checked before the shot.
@@ -390,6 +437,8 @@ export const expectDocsScreenshot = async (
 
   await expect(page.locator("html")).toHaveAttribute("lang", shot.locale);
   await waitForScreenToSettle(page);
+  // Once the screen has settled, its date fields have drawn their icons.
+  await resolveFontsAtEmulatedScale(page);
   // From the top: the console's bar is sticky, and a full-page shot of a page
   // a test scrolled, by filling in a field down the form, draws the bar where
   // the viewport was, across the middle of the region.
