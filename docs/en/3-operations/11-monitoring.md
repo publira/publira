@@ -50,7 +50,7 @@ Point the liveness probe of every process at `/livez`, and its readiness probe a
 
 A web app's `/readyz` fails whenever the `/readyz` of `publira server` does, so one database login that stops answering makes every web app not ready together with `publira server`. That is deliberate — a web app that cannot reach a working API cannot serve a page that is not cached — but it means a load balancer that follows readiness stops sending traffic to all of them at once. Decide whether that is what you want from your load balancer before you point it at `/readyz`.
 
-Give a `/readyz` probe of `publira server` or `publira worker` a timeout longer than six seconds, so that a slow check is reported as the failure it names rather than as a probe timeout. On Kubernetes, the worker's probes look like this:
+Give a `/readyz` probe of `publira server` or `publira worker` a timeout longer than six seconds, so that a slow check is reported as the failure it names rather than as a probe timeout. On Kubernetes, the worker's probes look like this, and [Kubernetes](../2-deployments/5-kubernetes.md#4-start-the-processes) shows those of every process:
 
 ```yaml
 livenessProbe:

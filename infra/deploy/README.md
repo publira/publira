@@ -131,7 +131,7 @@ Before the first step, provision the dependency services: a PostgreSQL database 
 
 5. **Put the edge in front** of `web-storefront`, `web-admin`, and `publira server`, routing the tenant's domain and its console host and terminating TLS for both, as [Edge](../../docs/en/2-deployments/4-edge.md#what-the-edge-has-to-do) states; the sample configurations take the two names in `PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS`. The administrator signs in to the tenant console at `https://admin.<domain>`.
 
-On every later release, run `db migrate` and then `db roles` with that release's publiractl image before its processes start. [Upgrading](../../docs/en/2-deployments/5-upgrading.md) is the full procedure, with the backup before it and what to do when a migration fails.
+On every later release, run `db migrate` and then `db roles` with that release's publiractl image before its processes start. [Upgrading](../../docs/en/2-deployments/6-upgrading.md) is the full procedure, with the backup before it and what to do when a migration fails.
 
 ## Running it with Docker Compose
 
@@ -175,8 +175,8 @@ docker compose run --rm publiractl setup \
 
 The `publiractl` service carries each role's password from `.env` in `/run/secrets/`, and the RustFS secret key as `rustfs-secret-key`. `setup` asks for the rest on the terminal.
 
-On every later release, check out its tag, set `PUBLIRA_IMAGE_TAG` to its version, the tag without the `v`, then run `docker compose pull` followed by `docker compose pull publiractl`, which the first leaves out since it sits in a profile of its own, then `db migrate`, `db roles` with no flags, `docker compose up -d --remove-orphans`, which also removes the container of a service the release dropped, and `docker compose restart proxy`, which mounts the routing as single files that a checkout replaces. [Upgrading](../../docs/en/2-deployments/5-upgrading.md#on-the-docker-compose-install) is the full procedure.
+On every later release, check out its tag, set `PUBLIRA_IMAGE_TAG` to its version, the tag without the `v`, then run `docker compose pull` followed by `docker compose pull publiractl`, which the first leaves out since it sits in a profile of its own, then `db migrate`, `db roles` with no flags, `docker compose up -d --remove-orphans`, which also removes the container of a service the release dropped, and `docker compose restart proxy`, which mounts the routing as single files that a checkout replaces. [Upgrading](../../docs/en/2-deployments/6-upgrading.md#on-the-docker-compose-install) is the full procedure.
 
-The install's state is the two volumes, `postgres-data` and `rustfs-data`, and the encryption keys in `.env`; Valkey keeps nothing. [Backup and restore](../../docs/en/2-deployments/6-backup-and-restore.md#on-the-docker-compose-install) backs them up and brings them back on an empty host.
+The install's state is the two volumes, `postgres-data` and `rustfs-data`, and the encryption keys in `.env`; Valkey keeps nothing. [Backup and restore](../../docs/en/2-deployments/7-backup-and-restore.md#on-the-docker-compose-install) backs them up and brings them back on an empty host.
 
 `task deploy:check` renders the file with every profile and checks that `.env.example` lists exactly what it reads. `task deploy:smoke` takes the images `task docker:verify:full` built through the steps above, under a project name of its own, and checks that the tenant site, the tenant console, and the Platform Console answer through the edge, that `server` is the one container of the publira image and answers the readiness of both processes and drains the Outbox, that the proxy reaches `server` and the web apps and not the database or Valkey, and that image delivery resizes and converts an image through libvips.

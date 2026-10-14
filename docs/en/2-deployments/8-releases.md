@@ -25,9 +25,9 @@ A minor release may change anything an install depends on:
 - the processes and the services an install runs;
 - the search index, which then has to be rebuilt.
 
-Every such change that asks something of you is named in the **Upgrade notes** that open the release notes, and the notes say so when there is none; [Read the release notes](./5-upgrading.md#read-the-release-notes) says what to do about each. A schema change is not named there when `db migrate` and `db roles` are all it takes, since every upgrade runs them anyway.
+Every such change that asks something of you is named in the **Upgrade notes** that open the release notes, and the notes say so when there is none; [Read the release notes](./6-upgrading.md#read-the-release-notes) says what to do about each. A schema change is not named there when `db migrate` and `db roles` are all it takes, since every upgrade runs them anyway.
 
-Nothing promises yet that the processes of two releases work side by side, so upgrade to a minor release the way [Upgrading](./5-upgrading.md) describes, whatever its notes say: the migrations and the roles first, and then every process together.
+Nothing promises yet that the processes of two releases work side by side, so upgrade to a minor release the way [Upgrading](./6-upgrading.md) describes, whatever its notes say: the migrations and the roles first, and then every process together.
 
 ## Patch releases
 
@@ -40,7 +40,7 @@ A patch release carries fixes to the minor release it belongs to, and is held to
 - **No process or service** the install did not run before.
 - **No search index** to rebuild.
 
-Its Upgrade notes therefore always say there is nothing to do. Upgrade to it the way [Upgrading](./5-upgrading.md) describes all the same, from the backup to replacing every process together: the steps cost little when the schema does not change, and the backup is still the way back if a patch release ever carries a change it should not.
+Its Upgrade notes therefore always say there is nothing to do. Upgrade to it the way [Upgrading](./6-upgrading.md) describes all the same, from the backup to replacing every process together: the steps cost little when the schema does not change, and the backup is still the way back if a patch release ever carries a change it should not.
 
 ## Which releases receive fixes
 
@@ -56,4 +56,4 @@ What it does not apply is what the release notes ask of you, so read the notes o
 
 ## Next steps
 
-[Upgrading](./5-upgrading.md) takes a running install to a new release, minor or patch, and says what to do when a migration fails.
+[Upgrading](./6-upgrading.md) takes a running install to a new release, minor or patch, and says what to do when a migration fails.

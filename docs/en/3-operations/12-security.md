@@ -7,7 +7,7 @@ updated: 2026-10-13
 
 An install holds the credentials of every tenant's payment provider and mail server, the personal data of every reader, and the keys that seal them. This page is for the operator who keeps them safe: what the install relies on to keep them apart, where each secret may go, how to replace each one, and what two-step verification and the audit logs give you. Read it before you need it — each procedure below is easier to run on a quiet day than during an incident.
 
-Generating the secrets for the first time is part of [Installing](../2-deployments/2-installing.md#generate-the-secrets), and keeping them is part of [Backup and restore](../2-deployments/6-backup-and-restore.md#the-secret-encryption-keys).
+Generating the secrets for the first time is part of [Installing](../2-deployments/2-installing.md#generate-the-secrets), and keeping them is part of [Backup and restore](../2-deployments/7-backup-and-restore.md#the-secret-encryption-keys).
 
 ## What keeps data apart
 
