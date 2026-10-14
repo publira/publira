@@ -47,6 +47,11 @@ import {
   platformConsolePasswordResetPreview,
 } from "./templates/platform-console-password-reset";
 import {
+  PurchaseReceiptEmail,
+  purchaseReceiptDataSchema,
+  purchaseReceiptPreview,
+} from "./templates/purchase-receipt";
+import {
   ReaderEmailChangeConfirmationEmail,
   readerEmailChangeConfirmationDataSchema,
   readerEmailChangeConfirmationPreview,
@@ -110,6 +115,7 @@ export const TEMPLATE_IDS = [
   "platform_console_password_reset",
   "staff_contact_message_notice",
   "staff_contact_reply",
+  "purchase_receipt",
 ] as const;
 
 export type TemplateId = (typeof TEMPLATE_IDS)[number];
@@ -278,6 +284,17 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: platformConsolePasswordResetPreview,
     schema: platformConsolePasswordResetDataSchema,
+  }),
+  purchase_receipt: defineTemplate({
+    element: ({ data, locale, messages, timeZone }) =>
+      createElement(PurchaseReceiptEmail, {
+        data,
+        locale,
+        messages,
+        timeZone,
+      }),
+    preview: purchaseReceiptPreview,
+    schema: purchaseReceiptDataSchema,
   }),
   reader_email_change_confirmation: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>
