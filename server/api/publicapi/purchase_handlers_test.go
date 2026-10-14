@@ -64,7 +64,7 @@ func TestCheckoutIdempotencyKeyFollowsTheRequest(t *testing.T) {
 		SuccessURL:   "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success",
 		CancelURL:    "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=cancelled",
 	}
-	key, err := checkoutIdempotencyKey(request)
+	key, err := checkoutIdempotencyKey(request, "")
 	if err != nil {
 		t.Fatalf("checkoutIdempotencyKey: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestCheckoutIdempotencyKeyFollowsTheRequest(t *testing.T) {
 	}
 	retried := request
 	retried.IdempotencyKey = "a key from an earlier attempt"
-	if again, err := checkoutIdempotencyKey(retried); err != nil || again != key {
+	if again, err := checkoutIdempotencyKey(retried, ""); err != nil || again != key {
 		t.Fatalf("key of the same request = (%q, %v), want %q", again, err, key)
 	}
 
@@ -91,12 +91,43 @@ func TestCheckoutIdempotencyKeyFollowsTheRequest(t *testing.T) {
 	for name, change := range changes {
 		changed := request
 		change(&changed)
-		got, err := checkoutIdempotencyKey(changed)
+		got, err := checkoutIdempotencyKey(changed, "")
 		if err != nil {
 			t.Fatalf("checkoutIdempotencyKey after a change of %s: %v", name, err)
 		}
 		if got == key {
 			t.Fatalf("key after a change of %s = %q, the key of the earlier request", name, got)
+		}
+	}
+}
+
+// Once the provider reports the reader's checkout expired, the same request
+// starts a checkout of its own rather than being answered with the expired one,
+// and a repeated report of that expiry keeps the new key.
+func TestCheckoutIdempotencyKeyMovesPastAnExpiredCheckout(t *testing.T) {
+	request := paymentprovider.CheckoutRequest{
+		Purchase: paymentprovider.Purchase{
+			TenantID:  uuid.Must(uuid.NewV7()),
+			ReaderID:  uuid.Must(uuid.NewV7()),
+			EpisodeID: uuid.Must(uuid.NewV7()),
+			Price:     300,
+		},
+		EpisodeTitle: "Episode 1",
+		SuccessURL:   "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success",
+		CancelURL:    "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=cancelled",
+	}
+	keys := map[string]bool{}
+	for _, expired := range []string{"", "cs_first", "cs_second"} {
+		key, err := checkoutIdempotencyKey(request, expired)
+		if err != nil {
+			t.Fatalf("checkoutIdempotencyKey(%q): %v", expired, err)
+		}
+		if keys[key] {
+			t.Fatalf("key after the expiry of %q = %q, a key already used", expired, key)
+		}
+		keys[key] = true
+		if again, err := checkoutIdempotencyKey(request, expired); err != nil || again != key {
+			t.Fatalf("key after the same expiry of %q = (%q, %v), want %q", expired, again, err, key)
 		}
 	}
 }

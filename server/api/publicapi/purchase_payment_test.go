@@ -266,6 +266,14 @@ func expectPurchasableEpisodeTitled(mock sqlmock.Sqlmock, tenantID, episodeID uu
 			AddRow(episodeID, "EPISODE001", title, "SERIES001", int32(500), sql.NullInt32{}, purchaseAvailability))
 }
 
+// expectNoExpiredCheckout answers that the reader has let no checkout of the
+// episode expire, so the checkout is keyed by its request alone.
+func expectNoExpiredCheckout(mock sqlmock.Sqlmock, tenantID, userID, episodeID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetExpiredCheckoutID)).
+		WithArgs(tenantID, userID, episodeID).
+		WillReturnError(sql.ErrNoRows)
+}
+
 // expectNoEpisodeGrant answers that the reader holds no grant on the episode,
 // so they are not credited on it.
 func expectNoEpisodeGrant(mock sqlmock.Sqlmock, tenantID, userID, episodeID uuid.UUID) {
@@ -338,6 +346,7 @@ func TestStartEpisodeCheckoutSellsAnAppOnlyEpisodeInTheApp(t *testing.T) {
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
+	expectNoExpiredCheckout(env.mock, tenantID, userID, episodeID)
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	resp, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
@@ -399,6 +408,7 @@ func TestStartEpisodeCheckoutSellsOnTheWebOfATenantWhoseAppSellsThroughTheStore(
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
+	expectNoExpiredCheckout(env.mock, tenantID, userID, episodeID)
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	if _, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
@@ -428,6 +438,7 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
+	expectNoExpiredCheckout(env.mock, tenantID, userID, episodeID)
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	resp, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
@@ -475,6 +486,7 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
+	expectNoExpiredCheckout(env.mock, tenantID, userID, episodeID)
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	_, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
@@ -514,6 +526,7 @@ func startCheckoutOn(t *testing.T, env publicPaymentServer, encryptor *secretcry
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
+	expectNoExpiredCheckout(env.mock, tenantID, userID, episodeID)
 
 	purchases := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	resp, err := purchases.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{

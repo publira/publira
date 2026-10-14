@@ -374,6 +374,15 @@ type EpisodeSurface struct {
 	Surface   string    `json:"surface"`
 }
 
+type ExpiredCheckout struct {
+	TenantID           uuid.UUID `json:"tenant_id"`
+	UserID             uuid.UUID `json:"user_id"`
+	EpisodeID          uuid.UUID `json:"episode_id"`
+	Provider           string    `json:"provider"`
+	ProviderCheckoutID string    `json:"provider_checkout_id"`
+	ExpiredAt          time.Time `json:"expired_at"`
+}
+
 type Genre struct {
 	ID              uuid.UUID     `json:"id"`
 	TenantID        uuid.UUID     `json:"tenant_id"`
@@ -776,6 +785,8 @@ type Purchase struct {
 	IsTest             bool           `json:"is_test"`
 	Provider           sql.NullString `json:"provider"`
 	Currency           string         `json:"currency"`
+	RevokedAt          sql.NullTime   `json:"revoked_at"`
+	RevocationReason   sql.NullString `json:"revocation_reason"`
 }
 
 type RoyaltyStatement struct {
@@ -1240,6 +1251,13 @@ type TenantUserRole struct {
 	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"created_at"`
 	TenantID  uuid.UUID `json:"tenant_id"`
+}
+
+type UnappliedDispute struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	Provider          string    `json:"provider"`
+	ProviderPaymentID string    `json:"provider_payment_id"`
+	ReceivedAt        time.Time `json:"received_at"`
 }
 
 type UnappliedRefund struct {

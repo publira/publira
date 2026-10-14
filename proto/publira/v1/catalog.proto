@@ -213,7 +213,7 @@ enum EpisodeAccess {
 // client that does not read it still renders the body as entitled.
 enum EpisodeEntitlementSource {
   EPISODE_ENTITLEMENT_SOURCE_UNSPECIFIED = 0;
-  // A purchase neither refunded nor past its reading period.
+  // A purchase neither revoked nor past its reading period.
   EPISODE_ENTITLEMENT_SOURCE_PURCHASE = 1;
   // An access ticket neither revoked nor expired.
   EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET = 2;
@@ -1501,7 +1501,8 @@ message StartEpisodeCheckoutResponse {
 }
 
 // One purchase belonging to the signed-in reader. `is_active` is evaluated by
-// the API at read time: a purchase without an expiry is always active.
+// the API at read time: a purchase is active until it is revoked or its
+// expiry passes, and one without an expiry stays active until it is revoked.
 message MyPurchase {
   string id = 1;
   publira.types.v1.Episode episode = 2;

@@ -62,7 +62,7 @@ func (f royaltyTenant) sell(t *testing.T, purchasedAt time.Time) uuid.UUID {
 func (f royaltyTenant) refundInFull(t *testing.T, purchaseID uuid.UUID) {
 	t.Helper()
 	if _, err := f.pg.DB.ExecContext(context.Background(), `
-		UPDATE purchases SET refunded_amount = price_at_purchase, refunded_at = now() WHERE id = $1
+		UPDATE purchases SET refunded_amount = price_at_purchase, refunded_at = now(), revoked_at = now(), revocation_reason = 'refund' WHERE id = $1
 	`, purchaseID); err != nil {
 		t.Fatalf("refund purchase %s: %v", purchaseID, err)
 	}

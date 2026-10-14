@@ -88,7 +88,7 @@ SELECT p.id,
     p.price_at_purchase,
     p.currency,
     p.expires_at,
-    p.refunded_at,
+    p.revoked_at,
     p.purchased_at,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
@@ -105,11 +105,14 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
 -- name: RecordStoreRefundOnPurchase :one
 -- Records a store's refund on the purchase of the transaction it names. A
 -- store refunds a consumable in full, so the purchase is refunded its whole
--- price; a repeated notification or poll leaves the instant already stored.
+-- price and revoked, unless something revoked it first; a
+-- repeated notification or poll leaves the instants already stored.
 -- Nothing matches when the transaction has no purchase here yet.
 UPDATE purchases
 SET refunded_amount = price_at_purchase,
-    refunded_at = COALESCE(refunded_at, NOW())
+    refunded_at = COALESCE(refunded_at, NOW()),
+    revoked_at = COALESCE(revoked_at, NOW()),
+    revocation_reason = COALESCE(revocation_reason, 'refund')
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND store = sqlc.arg('store')::text
     AND store_transaction_id = sqlc.arg('store_transaction_id')::text
@@ -136,7 +139,9 @@ SET received_at = NOW();
 -- case. The held row is deleted by the caller in the same transaction.
 UPDATE purchases p
 SET refunded_amount = p.price_at_purchase,
-    refunded_at = COALESCE(p.refunded_at, NOW())
+    refunded_at = COALESCE(p.refunded_at, NOW()),
+    revoked_at = COALESCE(p.revoked_at, NOW()),
+    revocation_reason = COALESCE(p.revocation_reason, 'refund')
 FROM unapplied_store_refunds r
 WHERE r.tenant_id = p.tenant_id
     AND r.store = p.store

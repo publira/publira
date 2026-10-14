@@ -288,7 +288,7 @@ func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, u
 		priceAtPurchase:   row.PriceAtPurchase,
 		currency:          row.Currency,
 		expiresAt:         row.ExpiresAt,
-		refundedAt:        row.RefundedAt,
+		revokedAt:         row.RevokedAt,
 		purchasedAt:       row.PurchasedAt,
 		episodePublicID:   row.EpisodePublicID,
 		episodeTitle:      row.EpisodeTitle,

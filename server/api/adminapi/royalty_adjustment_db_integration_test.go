@@ -21,7 +21,9 @@ func (e *adminDBEnv) refundSale(t *testing.T, purchaseID uuid.UUID, refunded int
 	if _, err := e.PG.DB.ExecContext(context.Background(), `
 		UPDATE purchases
 		SET refunded_amount = $2::integer,
-			refunded_at = CASE WHEN $2::integer >= price_at_purchase THEN COALESCE(refunded_at, now()) END
+			refunded_at = CASE WHEN $2::integer >= price_at_purchase THEN COALESCE(refunded_at, now()) END,
+			revoked_at = CASE WHEN $2::integer >= price_at_purchase THEN COALESCE(revoked_at, now()) END,
+			revocation_reason = CASE WHEN $2::integer >= price_at_purchase THEN 'refund' END
 		WHERE id = $1
 	`, purchaseID, refunded); err != nil {
 		t.Fatalf("refund %d of purchase %s: %v", refunded, purchaseID, err)

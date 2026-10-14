@@ -57,6 +57,12 @@ func TestUserHasEpisodeContentAccess(t *testing.T) {
 	mustMarkPurchasesRefunded(t, ctx, db, tenantA)
 	assertContentAccess(t, ctx, q, tenantA, userA, episodeA, false)
 
+	// Disputed purchase, revoked with no refund → false
+	mustDeletePurchases(t, ctx, db, tenantA)
+	mustInsertPurchase(t, ctx, db, tenantA, userA, episodeA, nil)
+	mustMarkPurchasesDisputed(t, ctx, db, tenantA)
+	assertContentAccess(t, ctx, q, tenantA, userA, episodeA, false)
+
 	// Clear purchases; valid ticket → true
 	mustDeletePurchases(t, ctx, db, tenantA)
 	ticketID := mustInsertAccessTicketWithTimes(t, ctx, db, tenantA, "TICKETVALID1", episodeA, userA, nil, nil)
@@ -133,10 +139,24 @@ func mustMarkPurchasesRefunded(t *testing.T, ctx context.Context, db *sql.DB, te
 	if _, err := db.ExecContext(ctx, `
 		UPDATE purchases
 		SET refunded_amount = price_at_purchase,
-			refunded_at = NOW()
+			refunded_at = NOW(),
+			revoked_at = NOW(),
+			revocation_reason = 'refund'
 		WHERE tenant_id = $1
 	`, tenantID); err != nil {
 		t.Fatalf("mark purchases refunded: %v", err)
+	}
+}
+
+func mustMarkPurchasesDisputed(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.UUID) {
+	t.Helper()
+	if _, err := db.ExecContext(ctx, `
+		UPDATE purchases
+		SET revoked_at = NOW(),
+			revocation_reason = 'dispute'
+		WHERE tenant_id = $1
+	`, tenantID); err != nil {
+		t.Fatalf("mark purchases disputed: %v", err)
 	}
 }
 

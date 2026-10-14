@@ -73,7 +73,7 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 
 // A refunded purchase opens nothing, so the library must not offer it as one
 // the reader can still open.
-func TestPurchaseListReportsARefundedPurchaseAsInactive(t *testing.T) {
+func TestPurchaseListReportsARevokedPurchaseAsInactive(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	purchaseID := uuid.Must(uuid.NewV7())
@@ -111,7 +111,7 @@ func TestPurchaseListReportsARefundedPurchaseAsInactive(t *testing.T) {
 		t.Fatalf("purchase count = %d, want 1", len(response.Purchases))
 	}
 	if response.Purchases[0].IsActive {
-		t.Fatal("is_active = true for a refunded purchase, want false")
+		t.Fatal("is_active = true for a revoked purchase, want false")
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -319,7 +319,7 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 
 func purchaseRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "price_at_purchase", "currency", "expires_at", "refunded_at", "purchased_at", "episode_id", "episode_public_id", "episode_title", "episode_order_index", "series_id", "series_public_id", "series_title",
+		"id", "price_at_purchase", "currency", "expires_at", "revoked_at", "purchased_at", "episode_id", "episode_public_id", "episode_title", "episode_order_index", "series_id", "series_public_id", "series_title",
 	})
 }
 
