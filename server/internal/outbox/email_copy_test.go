@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	copyExpiresAt  = "2030-01-15T12:00:00Z"
-	copyReceivedAt = "2030-01-15T12:00:00Z"
+	copyExpiresAt   = "2030-01-15T12:00:00Z"
+	copyReceivedAt  = "2030-01-15T12:00:00Z"
+	copyPurchasedAt = "2030-01-15T12:00:00Z"
 )
 
 // emailCopyCases is one request per template the worker sends, and one more for
@@ -290,6 +291,40 @@ var emailCopyCases = []struct {
 		},
 	},
 	{
+		name:     "purchase_receipt for a purchase with a reading period",
+		subjects: map[string]string{"en": "Aoto Press purchase receipt", "ja": "Aoto Press購入完了"},
+		request: emailrenderer.Request{
+			Template: "purchase_receipt",
+			Data: map[string]any{
+				"amount":        int64(500),
+				"currency":      "JPY",
+				"episode_title": "Episode 1",
+				"expires_at":    "2030-01-17T12:00:00Z",
+				"library_url":   "https://reader.example.test/my/library",
+				"purchased_at":  copyPurchasedAt,
+				"series_title":  "The Lighthouse Keeper",
+				"tenant_name":   "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "purchase_receipt for a purchase with no reading period",
+		subjects: map[string]string{"en": "Aoto Press purchase receipt", "ja": "Aoto Press購入完了"},
+		request: emailrenderer.Request{
+			Template: "purchase_receipt",
+			Data: map[string]any{
+				"amount":        int64(499),
+				"currency":      "USD",
+				"episode_title": "Episode 1",
+				"expires_at":    "",
+				"library_url":   "https://reader.example.test/my/library",
+				"purchased_at":  copyPurchasedAt,
+				"series_title":  "The Lighthouse Keeper",
+				"tenant_name":   "Aoto Press",
+			},
+		},
+	},
+	{
 		name:     "staff_contact_reply to a titled message",
 		subjects: map[string]string{"en": "Re: Wrong date of birth", "ja": "Re: Wrong date of birth"},
 		request: emailrenderer.Request{
@@ -402,6 +437,75 @@ func TestEmailCopyQuotesTheMessageAStaffReplyAnswers(t *testing.T) {
 	}
 }
 
+// A receipt states the purchase in the tenant's language and zone: the price
+// as the locale writes the currency, with its code beside the symbol, and the
+// end of the reading period only for a purchase that has one.
+func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
+	for _, testCase := range []struct {
+		name      string
+		locale    string
+		amount    int64
+		currency  string
+		expiresAt string
+		wantText  string
+	}{
+		{
+			name:      "in English with a reading period",
+			locale:    "en",
+			amount:    500,
+			currency:  "JPY",
+			expiresAt: "2030-01-17T12:00:00Z",
+			wantText: "Aoto Press\n\nThank you for your purchase\n\n" +
+				"Here is the receipt for your purchase on Aoto Press.\n\n" +
+				"Series: The Lighthouse Keeper\n\nEpisode: Episode 1\n\n" +
+				"Price paid: ¥500 (JPY)\n\n" +
+				"Purchased: Jan 15, 2030, 9:00\u202fPM\n\n" +
+				"Readable until: Jan 17, 2030, 9:00\u202fPM\n\n" +
+				"Open your purchases https://reader.example.test/my/library\n\n" +
+				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
+				"This email was sent by Aoto Press.",
+		},
+		{
+			name:     "in Japanese with no reading period",
+			locale:   "ja",
+			amount:   499,
+			currency: "USD",
+			wantText: "Aoto Press\n\nご購入ありがとうございます\n\n" +
+				"Aoto Pressでのご購入内容をお知らせします。\n\n" +
+				"シリーズ: The Lighthouse Keeper\n\nエピソード: Episode 1\n\n" +
+				"購入価格: $4.99（USD）\n\n" +
+				"購入日時: 2030/01/15 21:00\n\n" +
+				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +
+				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
+				"このメールはAoto Pressから送信されています。",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			email, err := emailCopy(emailrenderer.Request{
+				Template: "purchase_receipt",
+				Locale:   testCase.locale,
+				Data: map[string]any{
+					"amount":        testCase.amount,
+					"currency":      testCase.currency,
+					"episode_title": "Episode 1",
+					"expires_at":    testCase.expiresAt,
+					"library_url":   "https://reader.example.test/my/library",
+					"purchased_at":  copyPurchasedAt,
+					"series_title":  "The Lighthouse Keeper",
+					"tenant_name":   "Aoto Press",
+				},
+				TimeZone: "Asia/Tokyo",
+			})
+			if err != nil {
+				t.Fatalf("emailCopy: %v", err)
+			}
+			if email.Text != testCase.wantText {
+				t.Errorf("text =\n%q\nwant\n%q", email.Text, testCase.wantText)
+			}
+		})
+	}
+}
+
 // A mail whose copy is the platform's own names the platform rather than a
 // tenant, above the card and again in the footer.
 func TestEmailCopyBrandsAPlatformMailWithThePlatform(t *testing.T) {
@@ -484,5 +588,22 @@ func TestEmailCopyRefusesAMailItCannotWord(t *testing.T) {
 		TimeZone: "UTC",
 	}); err == nil {
 		t.Error("emailCopy accepted an expiry that is not a timestamp")
+	}
+	if _, err := emailCopy(emailrenderer.Request{
+		Template: "purchase_receipt",
+		Locale:   "en",
+		Data: map[string]any{
+			"amount":        int64(500),
+			"currency":      "XYZ",
+			"episode_title": "Episode 1",
+			"expires_at":    "",
+			"library_url":   "https://reader.example.test/my/library",
+			"purchased_at":  copyPurchasedAt,
+			"series_title":  "The Lighthouse Keeper",
+			"tenant_name":   "Aoto Press",
+		},
+		TimeZone: "UTC",
+	}); err == nil {
+		t.Error("emailCopy accepted a price in a currency it cannot write")
 	}
 }

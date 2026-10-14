@@ -258,6 +258,66 @@ func (q *Queries) GetPurchasableEpisodeForTenant(ctx context.Context, arg GetPur
 	return i, err
 }
 
+const GetPurchaseReceiptForTenant = `-- name: GetPurchaseReceiptForTenant :one
+SELECT
+    p.id,
+    p.price_at_purchase,
+    p.currency,
+    p.purchased_at,
+    p.expires_at,
+    e.title AS episode_title,
+    s.title AS series_title,
+    u.email AS reader_email
+FROM purchases p
+JOIN episodes e
+    ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+JOIN series s
+    ON s.tenant_id = e.tenant_id
+    AND s.id = e.series_id
+LEFT JOIN users u
+    ON u.tenant_id = p.tenant_id
+    AND u.id = p.user_id
+WHERE p.tenant_id = $1::uuid
+    AND p.id = $2::uuid
+`
+
+type GetPurchaseReceiptForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetPurchaseReceiptForTenantRow struct {
+	ID              uuid.UUID      `json:"id"`
+	PriceAtPurchase int32          `json:"price_at_purchase"`
+	Currency        string         `json:"currency"`
+	PurchasedAt     time.Time      `json:"purchased_at"`
+	ExpiresAt       sql.NullTime   `json:"expires_at"`
+	EpisodeTitle    string         `json:"episode_title"`
+	SeriesTitle     string         `json:"series_title"`
+	ReaderEmail     sql.NullString `json:"reader_email"`
+}
+
+// What the receipt of one purchase says, read by the outbox worker, which
+// connects past RLS and therefore names the tenant itself. The reader is
+// joined within the tenant, so an account that was deleted after paying, whose
+// purchase keeps no user, answers no address rather than no receipt.
+func (q *Queries) GetPurchaseReceiptForTenant(ctx context.Context, arg GetPurchaseReceiptForTenantParams) (GetPurchaseReceiptForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetPurchaseReceiptForTenant, arg.TenantID, arg.ID)
+	var i GetPurchaseReceiptForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.PriceAtPurchase,
+		&i.Currency,
+		&i.PurchasedAt,
+		&i.ExpiresAt,
+		&i.EpisodeTitle,
+		&i.SeriesTitle,
+		&i.ReaderEmail,
+	)
+	return i, err
+}
+
 const GetTenantPaymentConfigByTenantID = `-- name: GetTenantPaymentConfigByTenantID :one
 SELECT tenant_id, provider, enabled, created_at, updated_at, credentials_encrypted, credential_hints, currency
 FROM tenant_payment_config

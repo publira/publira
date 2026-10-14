@@ -94,6 +94,19 @@
       "preview": "設定新的平台主控台密碼。",
       "subject": "Publira平台主控台密碼重設"
     },
+    "purchase_receipt": {
+      "action": "查看已購買",
+      "amount": "支付金額：{$amount}（{$currency}）",
+      "episode": "章節：{$episode_title}",
+      "expires_at": "有效期至：{$expires_at}",
+      "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+      "heading": "感謝您的購買",
+      "intro": "以下是您在{$tenant_name}的購買明細。",
+      "preview": "感謝您購買{$episode_title}。",
+      "purchased_at": "購買時間：{$purchased_at}",
+      "series": "系列：{$series_title}",
+      "subject": "{$tenant_name}購買成功"
+    },
     "reader_email_change_confirmation": {
       "action": "確認電子郵件地址變更",
       "body_current_email": "這項變更需要由目前的電子郵件地址確認。請開啟下方按鈕完成確認。",

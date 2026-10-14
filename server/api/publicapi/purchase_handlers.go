@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentsettings"
@@ -472,7 +473,7 @@ func (s *apiServer) ProcessPaymentWebhook(
 				"tenant_currency", config.Currency,
 			)
 		}
-		if err := s.createPurchase(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
+		if err := s.createPurchase(ctx, tenant.ID, provider.Declaration().ID, event); err != nil {
 			return nil, s.internalDBError(ctx, "failed to create purchase from a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 		}
 	}
@@ -559,13 +560,24 @@ func (s *apiServer) recordRefund(
 	return nil
 }
 
+// createPurchase records the purchase a completed checkout paid for, and
+// everything that follows from it, in one transaction: the refund that may
+// have overtaken it, its engagement event, and the receipt the reader is owed.
+// A delivery that fails partway therefore leaves nothing behind, and the
+// provider's retry starts again from the purchase.
 func (s *apiServer) createPurchase(
 	ctx context.Context,
-	queries Querier,
 	tenantID uuid.UUID,
 	providerID string,
 	event paymentprovider.PurchaseCompleted,
 ) error {
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return fmt.Errorf("begin purchase transaction: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	queries := dbmodels.New(tx)
+
 	purchase := event.Purchase
 	var paymentID sql.NullString
 	if event.PaymentID != "" {
@@ -573,15 +585,14 @@ func (s *apiServer) createPurchase(
 	}
 	// A reader can pay two checkouts of the same episode: one started before an
 	// editor changed its price or reading period, and one started after. Both
-	// are recorded, because each took a payment. A prior delivery of this
-	// checkout that committed the purchase but failed the projection inserts
-	// nothing here, and the provider's retry carries on to repair that event.
+	// are recorded, because each took a payment. A redelivery of a checkout
+	// already recorded inserts nothing here and queues no second receipt.
 	var expiresAt sql.NullTime
 	if hours := purchase.ReadingPeriodHours; hours > 0 {
 		now := time.Now().UTC()
 		expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
 	}
-	_, err := queries.CreatePurchaseFromProviderCheckout(ctx, dbmodels.CreatePurchaseFromProviderCheckoutParams{
+	created, err := queries.CreatePurchaseFromProviderCheckout(ctx, dbmodels.CreatePurchaseFromProviderCheckoutParams{
 		ID:                 uuid.New(),
 		TenantID:           tenantID,
 		UserID:             purchase.ReaderID,
@@ -594,8 +605,14 @@ func (s *apiServer) createPurchase(
 		IsTest:             event.Test,
 		Currency:           purchase.Currency,
 	})
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+	case err != nil:
 		return fmt.Errorf("create purchase: %w", err)
+	default:
+		if err := enqueuePurchaseReceipt(ctx, queries, tenantID, created.ID); err != nil {
+			return err
+		}
 	}
 
 	if paymentID.Valid {
@@ -610,11 +627,28 @@ func (s *apiServer) createPurchase(
 		Provider:           providerID,
 		ProviderCheckoutID: event.CheckoutID,
 	})
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("project purchase content event: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit purchase: %w", err)
+	}
+	return nil
+}
+
+// enqueuePurchaseReceipt queues the receipt of a purchase just recorded. The
+// key names the purchase, so a receipt queued once is never queued again.
+func enqueuePurchaseReceipt(ctx context.Context, queries *dbmodels.Queries, tenantID, purchaseID uuid.UUID) error {
+	payload, err := json.Marshal(outbox.PurchaseReceiptPayload{
+		TenantID:   tenantID.String(),
+		PurchaseID: purchaseID.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("marshal purchase receipt event: %w", err)
+	}
+	if err := insertPublicOutboxEvent(ctx, queries, tenantID, outbox.EventTypePurchaseReceipt, payload,
+		outbox.PurchaseReceiptIdempotencyKey(purchaseID)); err != nil {
+		return fmt.Errorf("enqueue purchase receipt: %w", err)
 	}
 	return nil
 }

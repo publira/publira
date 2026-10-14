@@ -17,6 +17,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
@@ -206,6 +207,89 @@ func TestDBProcessPaymentWebhookProjectsPurchaseEventIdempotently(t *testing.T) 
 	}
 	if eventCount != 1 {
 		t.Fatalf("projected purchase events = %d, want 1", eventCount)
+	}
+}
+
+// A provider redelivers a notification it is not sure arrived, and the reader
+// is owed one receipt for the purchase however many times that happens. The
+// receipt is queued with the purchase, so it names the row that was stored.
+func TestDBProcessPaymentWebhookQueuesOneReceiptPerPurchase(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	encryptor := newPublicTestEncryptor(t)
+	tenant := pg.SeedTenant(t, "PAYRCPT", "pay-receipt.example.com", "Pay Receipt")
+	user := pg.SeedEndUser(t, tenant.ID, "PAYRCPTUSER", "receipt@example.com", "Receipt buyer")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{Published: true})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		Price:       500,
+		Status:      testutil.EpisodeStatusPublished,
+		PublishedAt: time.Now().Add(-time.Hour),
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	store := paymentsettings.New(dbmodels.New(pg.DB), encryptor, providers.Registry(), nil, slog.Default())
+	if _, err := store.Upsert(ctx, tenant.ID, stripeSettings(testCheckoutSecretKey, testCheckoutWebhookSecret), paymentsettings.AuditMeta{}); err != nil {
+		t.Fatalf("upsert payment settings: %v", err)
+	}
+
+	db := pg.OpenPublicDB(t)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil, nil)
+	ts := httptest.NewServer(handlerFromServer(server))
+	t.Cleanup(ts.Close)
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+
+	payload, signature := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "checkout.session.completed", map[string]any{
+		"id":             "cs_purchase_receipt",
+		"object":         "checkout.session",
+		"amount_total":   500,
+		"currency":       "jpy",
+		"payment_status": "paid",
+		"payment_intent": "pi_purchase_receipt",
+		"metadata": map[string]string{
+			stripe.MetadataTenantID:  tenant.ID.String(),
+			stripe.MetadataUserID:    user.ID.String(),
+			stripe.MetadataEpisodeID: episode.ID.String(),
+			stripe.MetadataPrice:     "500",
+		},
+	})
+	for attempt := range 3 {
+		if _, err := client.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(tenant.ID.String(), payload, signature)); err != nil {
+			t.Fatalf("delivery %d of ProcessPaymentWebhook: %v", attempt+1, err)
+		}
+	}
+
+	var purchaseID uuid.UUID
+	if err := pg.DB.QueryRowContext(ctx, `SELECT id FROM purchases WHERE tenant_id = $1`, tenant.ID).Scan(&purchaseID); err != nil {
+		t.Fatalf("read purchase: %v", err)
+	}
+	rows, err := pg.DB.QueryContext(ctx, `
+		SELECT tenant_id, payload->>'tenant_id', payload->>'purchase_id', idempotency_key
+		FROM outbox_events
+		WHERE event_type = $1
+	`, outbox.EventTypePurchaseReceipt)
+	if err != nil {
+		t.Fatalf("read receipt events: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	var receipts []string
+	for rows.Next() {
+		var (
+			eventTenant                         uuid.NullUUID
+			payloadTenant, payloadPurchase, key string
+		)
+		if err := rows.Scan(&eventTenant, &payloadTenant, &payloadPurchase, &key); err != nil {
+			t.Fatalf("scan receipt event: %v", err)
+		}
+		receipts = append(receipts, fmt.Sprintf("%s:%s:%s:%s", eventTenant.UUID, payloadTenant, payloadPurchase, key))
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read receipt events: %v", err)
+	}
+	want := []string{fmt.Sprintf("%s:%s:%s:%s", tenant.ID, tenant.ID, purchaseID, outbox.PurchaseReceiptIdempotencyKey(purchaseID))}
+	if !slices.Equal(receipts, want) {
+		t.Fatalf("receipt events (tenant:payload tenant:purchase:key) = %v, want %v", receipts, want)
 	}
 }
 

@@ -718,6 +718,11 @@ type Querier interface {
 	// configured, so the key is never offered before a push could be signed.
 	GetPublishedWebPushPublicKey(ctx context.Context) (string, error)
 	GetPurchasableEpisodeForTenant(ctx context.Context, arg GetPurchasableEpisodeForTenantParams) (GetPurchasableEpisodeForTenantRow, error)
+	// What the receipt of one purchase says, read by the outbox worker, which
+	// connects past RLS and therefore names the tenant itself. The reader is
+	// joined within the tenant, so an account that was deleted after paying, whose
+	// purchase keeps no user, answers no address rather than no receipt.
+	GetPurchaseReceiptForTenant(ctx context.Context, arg GetPurchaseReceiptForTenantParams) (GetPurchaseReceiptForTenantRow, error)
 	// Whether the reader has agreed to each page the tenant names as its terms of
 	// service and its privacy policy, as far as reader_has_agreed_to_page asks. A
 	// role with no page, or whose page is not published, is agreed to: there is

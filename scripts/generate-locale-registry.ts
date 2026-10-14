@@ -17,6 +17,7 @@ import {
   leavesSpacingToRenderer,
 } from "./cjk-latin-spacing.ts";
 import { renderDartMessages } from "./dart-messages.ts";
+import { renderGoCurrencyFormats } from "./go-currency.ts";
 import { renderGoDateTimeFormats } from "./go-datetime.ts";
 import { renderGoLocales, renderGoMessages } from "./go-messages.ts";
 
@@ -279,6 +280,7 @@ const files = new Map([
     renderGoMessages(locales, catalogs),
   ],
   ["server/internal/locale/gen/datetime.go", renderGoDateTimeFormats(locales)],
+  ["server/internal/locale/gen/currency.go", renderGoCurrencyFormats(locales)],
   [
     "mobile/lib/l10n/gen/app_messages.dart",
     renderDartMessages(locales, catalogs),
