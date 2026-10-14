@@ -169,27 +169,31 @@ func purchaseMetadata(purchase paymentprovider.Purchase) map[string]string {
 
 // Refund refunds the payment intent, leaving the amount out so that Stripe
 // refunds whatever of it is left.
-func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Credentials, req paymentprovider.RefundRequest) error {
+func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Credentials, req paymentprovider.RefundRequest) (bool, error) {
 	client, err := p.client(credentials)
 	if err != nil {
-		return err
+		return false, err
 	}
 	params := &stripego.RefundCreateParams{PaymentIntent: stripego.String(req.PaymentID)}
 	params.SetIdempotencyKey(req.IdempotencyKey)
 	_, err = client.V1Refunds.Create(ctx, params)
+	if err == nil {
+		return true, nil
+	}
 	var stripeErr *stripego.Error
 	if !errors.As(err, &stripeErr) {
-		return err
+		return false, err
 	}
 	switch {
-	// Stripe keeps an idempotency key for a day, so a repeat after that is a
-	// new request, refused because the earlier one went through.
+	// The payment was refunded in full before: in the dashboard, or by a
+	// request whose idempotency key Stripe, which keeps one for a day, has
+	// forgotten.
 	case stripeErr.Code == stripego.ErrorCodeChargeAlreadyRefunded:
-		return nil
+		return false, nil
 	case stripeErr.Type == stripego.ErrorTypeInvalidRequest && stripeErr.HTTPStatusCode < http.StatusInternalServerError:
-		return fmt.Errorf("%w: %s", paymentprovider.ErrRefundRefused, stripeErr.Msg)
+		return false, fmt.Errorf("%w: %s", paymentprovider.ErrRefundRefused, stripeErr.Msg)
 	default:
-		return err
+		return false, err
 	}
 }
 

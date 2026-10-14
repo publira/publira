@@ -331,28 +331,28 @@ func (p *Provider) refundedTotal(ctx context.Context, credentials paymentprovide
 // Refund refunds what the payment flow has received and not yet refunded.
 // PAY.JP refunds the whole amount received when none is named, which a flow
 // refunded in part already would refuse, so the remainder is named instead.
-func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Credentials, req paymentprovider.RefundRequest) error {
+func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Credentials, req paymentprovider.RefundRequest) (bool, error) {
 	client, err := p.client(credentials)
 	if err != nil {
-		return err
+		return false, err
 	}
 	res, err := payjpv2.Extract(client.GetPaymentFlowWithResponse(ctx, req.PaymentID))
 	if err != nil {
-		return refundError("payment flow", err)
+		return false, refundError("payment flow", err)
 	}
 	if res.Result == nil {
-		return errors.New("payjp returned no payment flow")
+		return false, errors.New("payjp returned no payment flow")
 	}
 	if res.Result.AmountReceived == nil {
-		return fmt.Errorf("%w: the payment flow has received nothing", paymentprovider.ErrRefundRefused)
+		return false, fmt.Errorf("%w: the payment flow has received nothing", paymentprovider.ErrRefundRefused)
 	}
 	refunded, err := p.refundedTotal(ctx, credentials, req.PaymentID)
 	if err != nil {
-		return refundError("payment flow refunds", err)
+		return false, refundError("payment flow refunds", err)
 	}
 	remaining := *res.Result.AmountReceived - int(refunded)
 	if remaining <= 0 {
-		return nil
+		return false, nil
 	}
 	// The remainder is part of the key: a retry that finds the same remainder
 	// is the same request, and one that finds a refund made in between asks
@@ -360,9 +360,9 @@ func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Crede
 	idempotencyKey := req.IdempotencyKey + ":" + strconv.Itoa(remaining)
 	body := payjpv2.PaymentRefundCreateRequest{PaymentFlowId: req.PaymentID, Amount: &remaining}
 	if _, err := payjpv2.Extract(client.CreatePaymentRefundWithResponse(ctx, body, payjpv2.WithIdempotencyKey(idempotencyKey))); err != nil {
-		return refundError("payment refund", err)
+		return false, refundError("payment refund", err)
 	}
-	return nil
+	return true, nil
 }
 
 // refundError reads an answer the API gives for a request it will not carry

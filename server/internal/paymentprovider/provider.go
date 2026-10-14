@@ -227,10 +227,13 @@ type Provider interface {
 	// and [ErrMalformedNotification] for one that verifies but cannot be read.
 	ParseNotification(ctx context.Context, payload []byte, headers http.Header, credentials Credentials) (Event, error)
 	// Refund returns to the reader whatever of a payment has not been refunded
-	// yet. A payment already refunded in full is no error, so a request made
-	// again after one that went through succeeds without refunding anything.
-	// It answers [ErrRefundRefused] for a refund the provider will not make.
-	// What it refunded reaches the purchase flow as the provider's [Refunded]
-	// notification, as a refund made in the provider's own dashboard does.
-	Refund(ctx context.Context, credentials Credentials, req RefundRequest) error
+	// yet, and reports whether it refunded anything. A payment already
+	// refunded in full, in the provider's dashboard or by an earlier request,
+	// is false and no error, so a request made again succeeds without
+	// refunding anything; one the provider answers from its idempotency key
+	// reports the refund that key made. It answers [ErrRefundRefused] for a
+	// refund the provider will not make. What it refunded reaches the
+	// purchase flow as the provider's [Refunded] notification, as a refund
+	// made in the provider's own dashboard does.
+	Refund(ctx context.Context, credentials Credentials, req RefundRequest) (bool, error)
 }

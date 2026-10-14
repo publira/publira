@@ -70,7 +70,8 @@ type AdminPurchaseServiceClient interface {
 	// staff as the reason; the amount refunded is recorded when the provider's
 	// notification of it arrives. A purchase already refunded in full or
 	// revoked by staff comes back as it is, without a second request to the
-	// provider. A store purchase, a purchase made without a payment, a disputed
+	// provider, and so does one the provider reports refunded in full already,
+	// which is left for that notification to revoke. A store purchase, a purchase made without a payment, a disputed
 	// one, and one paid through a provider the tenant no longer has enabled are
 	// failed_precondition, as is a refund the provider refuses.
 	//
@@ -96,7 +97,8 @@ type AdminPurchaseServiceHandler interface {
 	// staff as the reason; the amount refunded is recorded when the provider's
 	// notification of it arrives. A purchase already refunded in full or
 	// revoked by staff comes back as it is, without a second request to the
-	// provider. A store purchase, a purchase made without a payment, a disputed
+	// provider, and so does one the provider reports refunded in full already,
+	// which is left for that notification to revoke. A store purchase, a purchase made without a payment, a disputed
 	// one, and one paid through a provider the tenant no longer has enabled are
 	// failed_precondition, as is a refund the provider refuses.
 	//

@@ -376,6 +376,29 @@ func TestDBRefundPurchaseLeavesAFullRefundAsItIs(t *testing.T) {
 	}
 }
 
+// A payment refunded in full in Stripe's dashboard, whose notification has not
+// arrived yet, is no refund staff made: the purchase is left open for that
+// notification, with no staff revocation and no audit entry.
+func TestDBRefundPurchaseLeavesADashboardRefundToItsNotification(t *testing.T) {
+	f := newPurchaseFixture(t)
+	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_dashboard"})
+	f.stripe.SetRefunded(purchaseTestSecretKey, "pi_dashboard", 500)
+
+	purchase, err := f.refund(purchaseID)
+	if err != nil {
+		t.Fatalf("RefundPurchase: %v", err)
+	}
+	if purchase.RevokedAt != "" || purchase.RevocationReason != publiraadminv1.PurchaseRevocationReason_PURCHASE_REVOCATION_REASON_UNSPECIFIED {
+		t.Fatalf("purchase = %+v, want it left open for the notification", purchase)
+	}
+	if refunds := f.stripe.Refunds(); len(refunds) != 0 {
+		t.Fatalf("refunds = %+v, want none", refunds)
+	}
+	if got := f.refundAudits(t, purchaseID); got != 0 {
+		t.Fatalf("audit entries = %d, want none", got)
+	}
+}
+
 func TestDBRefundPurchaseRefusesWhatItCannotRefund(t *testing.T) {
 	f := newPurchaseFixture(t)
 	purchasedAt := time.Now().Add(-time.Hour)

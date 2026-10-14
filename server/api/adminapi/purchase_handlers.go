@@ -410,10 +410,11 @@ func (s *adminServer) RefundPurchase(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "the purchase was paid through a payment provider this server does not register")
 	}
 
-	if err := provider.Refund(ctx, credentials, paymentprovider.RefundRequest{
+	refunded, err := provider.Refund(ctx, credentials, paymentprovider.RefundRequest{
 		PaymentID:      row.ProviderPaymentID.String,
 		IdempotencyKey: purchaseRefundIdempotencyKey(row.ID),
-	}); err != nil {
+	})
+	if err != nil {
 		if errors.Is(err, paymentprovider.ErrRefundRefused) {
 			s.logger.WarnContext(ctx, "the payment provider refused a refund",
 				"tenant_id", tenant.ID,
@@ -430,6 +431,18 @@ func (s *adminServer) RefundPurchase(
 			"error", err,
 		)
 		return nil, connect.NewError(connect.CodeUnavailable, "the payment provider did not complete the refund").WithCause(err)
+	}
+
+	// The payment was refunded in full before staff asked, in the provider's
+	// dashboard, and the notification of it has yet to arrive. Staff refunded
+	// nothing, so the purchase is left for that notification to revoke.
+	if !refunded {
+		s.logger.InfoContext(ctx, "the payment provider reports a purchase refunded in full already",
+			"tenant_id", tenant.ID,
+			"purchase_id", row.ID,
+			"provider", row.Provider.String,
+		)
+		return &publiraadminv1.RefundPurchaseResponse{Purchase: mapPurchase(row, payments)}, nil
 	}
 
 	// The money is on its way back, so the purchase stops opening the episode
@@ -457,11 +470,11 @@ func (s *adminServer) RefundPurchase(
 		return nil, s.internalDBError(ctx, "failed to revoke a refunded purchase", err, "tenant_id", tenant.ID.String(), "purchase_id", row.ID.String())
 	}
 
-	refunded, err := s.loadPurchase(ctx, tenant.ID, row.ID)
+	revoked, err := s.loadPurchase(ctx, tenant.ID, row.ID)
 	if err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.RefundPurchaseResponse{
-		Purchase: mapPurchase(refunded, payments),
+		Purchase: mapPurchase(revoked, payments),
 	}, nil
 }

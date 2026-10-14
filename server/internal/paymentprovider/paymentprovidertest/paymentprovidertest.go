@@ -186,16 +186,28 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		paid := checkout
 		paid.PaymentID = "payment_refund_" + strings.ToLower(currency)
 		fixture.CheckoutCompleted(t, credentials, paid)
-		// The second key stands for a repeat made after the provider has
-		// forgotten the first.
 		key := "refund_contract_" + strings.ToLower(currency)
-		for _, key := range []string{key, key, key + "_later"} {
-			if err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key}); err != nil {
+		refund := func(key string) bool {
+			t.Helper()
+			refunded, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key})
+			if err != nil {
 				t.Fatalf("Refund with key %q: %v", key, err)
 			}
 			if got, want := fixture.RefundedTotal(t, credentials, paid.PaymentID), int64(paid.Purchase.Price); got != want {
 				t.Fatalf("refunded total after the key %q = %d, want %d", key, got, want)
 			}
+			return refunded
+		}
+		if !refund(key) {
+			t.Fatal("the first refund reports refunding nothing")
+		}
+		// A provider may answer a repeated key with the refund it made, so
+		// the repeat says nothing about what was refunded.
+		refund(key)
+		// Another key stands for a repeat made after the provider has
+		// forgotten the first, as one for a refund made in its dashboard.
+		if refund(key + "_later") {
+			t.Fatal("a refund of a payment refunded in full reports refunding something")
 		}
 	})
 
@@ -204,8 +216,12 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		paid.PaymentID = "payment_refund_rest_" + strings.ToLower(currency)
 		fixture.CheckoutCompleted(t, credentials, paid)
 		fixture.Refunded(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 200})
-		if err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_rest_" + strings.ToLower(currency)}); err != nil {
+		refunded, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_rest_" + strings.ToLower(currency)})
+		if err != nil {
 			t.Fatalf("Refund: %v", err)
+		}
+		if !refunded {
+			t.Fatal("the refund of the rest reports refunding nothing")
 		}
 		if got, want := fixture.RefundedTotal(t, credentials, paid.PaymentID), int64(paid.Purchase.Price); got != want {
 			t.Fatalf("refunded total = %d, want %d", got, want)
@@ -216,7 +232,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		paid := checkout
 		paid.PaymentID = "payment_refund_other_" + strings.ToLower(currency)
 		fixture.CheckoutCompleted(t, fixture.OtherCredentials(), paid)
-		err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_other_" + strings.ToLower(currency)})
+		_, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_other_" + strings.ToLower(currency)})
 		if !errors.Is(err, paymentprovider.ErrRefundRefused) {
 			t.Fatalf("Refund error = %v, want ErrRefundRefused", err)
 		}
