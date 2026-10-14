@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { applyScenarioSql } from "../src/db";
 import {
   expectDocumentLocale,
+  openStorefrontLocaleMenu,
   redirectStatus,
   switchStorefrontLocale,
 } from "../src/locale";
@@ -13,6 +14,7 @@ import {
 import {
   storefrontPath,
   localeStorefrontPath,
+  WEB_STOREFRONT_BILINGUAL_BASE_URL,
   WEB_STOREFRONT_JAPANESE_DEFAULT_BASE_URL,
 } from "../src/urls";
 
@@ -22,6 +24,10 @@ const CARRIED_QUERY = "?ref=locale-e2e";
 /** Same site, on the Host that resolves to the Japanese-default tenant. */
 const japaneseDefaultUrl = (pathname: string): string =>
   `${WEB_STOREFRONT_JAPANESE_DEFAULT_BASE_URL}${pathname}`;
+
+/** Same site, on the Host of the tenant that offers Japanese and English alone. */
+const bilingualUrl = (pathname: string): string =>
+  `${WEB_STOREFRONT_BILINGUAL_BASE_URL}${pathname}`;
 
 /**
  * The public site puts the locale in the URL: the tenant's own default is
@@ -349,5 +355,71 @@ test.describe("web-storefront locale on a tenant whose default is Japanese", () 
       page.getByRole("heading", { level: 2, name: "新着エピソード" })
     ).toBeVisible();
     await expectDocumentLocale(page, "日本語");
+  });
+});
+
+/**
+ * A tenant that offers Japanese and English alone. The prefix rules above hold
+ * for the languages it offers; a prefix it does not offer is a language it
+ * switched off, and lands on the same page in its default rather than on a
+ * 404, so a bookmark from before the switch still opens.
+ */
+test.describe("web-storefront locale on a tenant that offers two languages", () => {
+  test.beforeAll(() => {
+    applyScenarioSql(LOCALE_SWITCHING_SCENARIO);
+  });
+
+  test("a language the tenant does not offer redirects to the unprefixed URL", async ({
+    page,
+  }) => {
+    const response = await page.goto(
+      bilingualUrl(localeStorefrontPath("ko", `/series${CARRIED_QUERY}`))
+    );
+
+    expect(await redirectStatus(response)).toBe(307);
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname === storefrontPath("/series") &&
+        url.search === CARRIED_QUERY
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "日本語");
+  });
+
+  test("a language the tenant offers keeps its prefix", async ({ page }) => {
+    const response = await page.goto(
+      bilingualUrl(localeStorefrontPath("en", "/series"))
+    );
+
+    expect(response?.status(), await page.content()).toBe(200);
+    expect(await redirectStatus(response)).toBeUndefined();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Series" })
+    ).toBeVisible();
+    await expectDocumentLocale(page, "English");
+  });
+
+  test("the header switcher lists only the languages the tenant offers", async ({
+    page,
+  }) => {
+    await page.goto(bilingualUrl(storefrontPath("/series")));
+    await expect(
+      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+    ).toBeVisible();
+
+    const english = await openStorefrontLocaleMenu(page, "日本語", "English");
+    const menu = page.getByRole("dialog", { name: "表示言語" });
+
+    await expect(menu.getByRole("link")).toHaveText(["日本語", "English"]);
+
+    await english.click();
+    await expect(page).toHaveURL(
+      (url) => url.pathname === localeStorefrontPath("en", "/series")
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Series" })
+    ).toBeVisible();
   });
 });

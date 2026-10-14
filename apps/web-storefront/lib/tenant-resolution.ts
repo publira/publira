@@ -7,17 +7,21 @@ import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { LRUCache } from "lru-cache";
 
+import { toSupportedLocales } from "./supported-locales";
+
 /**
  * What the Host resolves to.
  *
- * `defaultLocale` rides along because `GetTenantByDomain` returns it: the
- * proxy has to answer a URL with no locale prefix with a redirect, and the
- * language that redirect picks is the tenant's setting, not a constant of this
- * app. Carrying it here keeps that to the one round trip the domain lookup
- * already makes.
+ * `defaultLocale` and `supportedLocales` ride along because
+ * `GetTenantByDomain` returns them: the proxy decides which locale a URL is
+ * served in, and which prefixes it serves at all, from the tenant's settings
+ * rather than from constants of this app. Carrying them here keeps that to the
+ * one round trip the domain lookup already makes.
  */
 export interface ResolvedTenant {
   defaultLocale: Locale;
+  /** In registry order, and always holding `defaultLocale`. */
+  supportedLocales: readonly Locale[];
   tenantId: string;
 }
 
@@ -37,6 +41,7 @@ interface TenantCacheValue {
 
 const toResolvedTenant = (
   defaultLocale: string,
+  supportedLocales: readonly string[],
   tenantId: string
 ): ResolvedTenant => {
   const locale = parseLocale(defaultLocale);
@@ -46,7 +51,11 @@ const toResolvedTenant = (
     );
   }
 
-  return { defaultLocale: locale, tenantId };
+  return {
+    defaultLocale: locale,
+    supportedLocales: toSupportedLocales(supportedLocales, locale),
+    tenantId,
+  };
 };
 
 export const createTenantResolver = (
@@ -84,7 +93,11 @@ export const createTenantResolver = (
       // build does not serve. The proxy redirects a locale-less URL to this
       // code, and there is no second choice worth sending a reader to.
       const tenant = tenantId
-        ? toResolvedTenant(response.defaultLocale, tenantId)
+        ? toResolvedTenant(
+            response.defaultLocale,
+            response.supportedLocales ?? [],
+            tenantId
+          )
         : null;
       tenantCache.set(cacheKey, { tenant });
       return tenant;

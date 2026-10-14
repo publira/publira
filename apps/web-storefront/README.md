@@ -12,14 +12,15 @@ The default port is `3000`.
 
 ### URLs and locales
 
-A public URL carries no locale prefix in the tenant's default locale (`/series/SR01`) and a `/{locale}/...` prefix in any other locale (`/en/series/SR01`). `proxy.ts` resolves the tenant from the Host and rewrites the request onto the `app/[tenant_id]/[locale]/...` route tree; `proxy.test.ts` is the specification of what it rewrites, redirects, and refuses.
+A public URL carries no locale prefix in the tenant's default locale (`/series/SR01`) and a `/{locale}/...` prefix in any other locale the tenant offers (`/en/series/SR01`). A prefix naming a locale the tenant does not offer redirects to the unprefixed URL. `proxy.ts` resolves the tenant from the Host and rewrites the request onto the `app/[tenant_id]/[locale]/...` route tree; `proxy.test.ts` is the specification of what it rewrites, redirects, and refuses.
 
 | Where the locale is read | How |
 | --- | --- |
 | Server Component | `getLocale()` in `lib/locale.ts` |
-| Client Component | `useLocale()` in `components/locale-context.tsx`, with the tenant's stored default beside it as `useTenantDefaultLocale()` |
+| Client Component | `useLocale()` in `components/locale-context.tsx`, with the tenant's stored default beside it as `useTenantDefaultLocale()` and the locales it offers as `useTenantSupportedLocales()` |
 | Server Action | An argument bound by the Server Component, or the `<LocaleField />` hidden field in `components/locale-field.tsx` |
 | Server-side, the tenant's stored default | `getTenantDefaultLocale()` in `lib/tenant.ts` |
+| Server-side, the locales the tenant offers | `getTenantSupportedLocales()` in `lib/tenant.ts` |
 | The document element (`<html lang>`) | `PATH_LOCALE_LANG_SCRIPT` from `@publira/i18n` on a document load, then `<DocumentLocale>` in `components/document-locale.tsx` across client-side navigations |
 
 The tenant id travels the same way: `getTenantId()` in `lib/tenant-id.ts`, `useTenantId()` in `lib/use-tenant-id.ts`, and `<TenantIdField />` in `components/tenant-id-field.tsx`.
@@ -88,7 +89,7 @@ The documents that let the tenant's Android and iOS apps open its links, built i
 
 ### `/robots.txt`, `/sitemap.xml`, and `/sitemap/{n}.xml`
 
-The documents a crawler reads. `robots.txt` (`lib/robots.ts`) opens the catalogue, disallows `/api/` and the reader-only paths in `lib/reader-paths.ts`, and names the sitemap. A published page that takes a reader-only path's place is allowed again. The sitemap (`lib/sitemap.ts`) lists every page `ListSitemapEntries` returns once in each locale, each `<url>` naming every locale as an alternate. It is one file while it fits the protocol's 50,000 URLs and 50 MB, and a `sitemapindex` of `/sitemap/{n}.xml` files once it does not. An unavailable API answers 503.
+The documents a crawler reads. `robots.txt` (`lib/robots.ts`) opens the catalogue, disallows `/api/` and the reader-only paths in `lib/reader-paths.ts`, and names the sitemap. A published page that takes a reader-only path's place is allowed again. The sitemap (`lib/sitemap.ts`) lists every page `ListSitemapEntries` returns once in each locale the tenant offers, each `<url>` naming every such locale as an alternate. It is one file while it fits the protocol's 50,000 URLs and 50 MB, and a `sitemapindex` of `/sitemap/{n}.xml` files once it does not. An unavailable API answers 503.
 
 ### Image delivery (`next/image`)
 

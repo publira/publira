@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getTenantDefaultLocale = vi.fn();
 const getTenantPublicOrigin = vi.fn();
+const getTenantSupportedLocales = vi.fn();
 
 vi.mock("./tenant", () => ({
   getTenantDefaultLocale,
   getTenantPublicOrigin,
+  getTenantSupportedLocales,
 }));
 
 const {
@@ -19,6 +21,7 @@ const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 beforeEach(() => {
   getTenantDefaultLocale.mockResolvedValue("ja");
+  getTenantSupportedLocales.mockResolvedValue(["ja", "en", "ko"]);
   getTenantPublicOrigin.mockResolvedValue("https://example.test");
 });
 
@@ -71,6 +74,22 @@ describe("tenantLocaleAlternates", () => {
 
     expect(alternates?.canonical).toBe("/ja/ranking");
     expect(alternates?.languages["x-default"]).toBe("/ranking");
+  });
+
+  it("names only the locales the tenant offers", async () => {
+    getTenantSupportedLocales.mockResolvedValue(["ja", "en"]);
+
+    const alternates = await tenantLocaleAlternates(
+      TENANT_ID,
+      "en",
+      "/ranking"
+    );
+
+    expect(alternates?.languages).toEqual({
+      en: "/en/ranking",
+      ja: "/ranking",
+      "x-default": "/ranking",
+    });
   });
 
   it("limits a tenant page to the locales it publishes", async () => {

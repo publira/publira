@@ -1,3 +1,4 @@
+import { getLocales } from "@publira/i18n";
 import { encryptSessionPayload } from "@publira/web-session";
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import type { NextRequest } from "next/server";
@@ -86,6 +87,7 @@ describe("web-storefront proxy session handling", () => {
     vi.clearAllMocks();
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "ja",
+      supportedLocales: getLocales(),
       tenantId: TENANT_ID,
     });
   });
@@ -201,6 +203,7 @@ describe("web-storefront proxy locale routing", () => {
     vi.clearAllMocks();
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "ja",
+      supportedLocales: getLocales(),
       tenantId: TENANT_ID,
     });
   });
@@ -245,6 +248,7 @@ describe("web-storefront proxy locale routing", () => {
   it("For tenants whose default locale is en, rewrite URLs without locale as en.", async () => {
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",
+      supportedLocales: getLocales(),
       tenantId: TENANT_ID,
     });
     const { proxy } = await import("./proxy");
@@ -260,6 +264,7 @@ describe("web-storefront proxy locale routing", () => {
   it("Rewrite the top as en even if the default locale is en.", async () => {
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",
+      supportedLocales: getLocales(),
       tenantId: TENANT_ID,
     });
     const { proxy } = await import("./proxy");
@@ -287,6 +292,7 @@ describe("web-storefront proxy locale routing", () => {
   it("Send /en to the regular URL even if the default locale is en for tenants", async () => {
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",
+      supportedLocales: getLocales(),
       tenantId: TENANT_ID,
     });
     const { proxy } = await import("./proxy");
@@ -305,6 +311,7 @@ describe("web-storefront proxy locale routing", () => {
   it("Even if the default locale is en, /ja URLs are delivered as is.", async () => {
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",
+      supportedLocales: getLocales(),
       tenantId: TENANT_ID,
     });
     const { proxy } = await import("./proxy");
@@ -314,6 +321,48 @@ describe("web-storefront proxy locale routing", () => {
     expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("x-middleware-rewrite")).toContain(
       `/${TENANT_ID}/ja/series`
+    );
+  });
+
+  // A language the tenant switched off still has bookmarks and search results
+  // pointing at it, so its prefix lands on the same page in the default rather
+  // than on a 404.
+  it("Send a locale the tenant does not offer to the regular URL with the path and query preserved", async () => {
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "ja",
+      supportedLocales: ["ja", "en"],
+      tenantId: TENANT_ID,
+    });
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/ko/series/SR01?source=bookmark")
+    );
+
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.pathname).toBe("/series/SR01");
+    expect(location.search).toBe("?source=bookmark");
+    expect(resolvedLocaleCookie(response)).toContain(
+      `${RESOLVED_LOCALE_COOKIE}=ja`
+    );
+  });
+
+  it("Serve a locale the tenant offers under its prefix", async () => {
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "ja",
+      supportedLocales: ["ja", "en"],
+      tenantId: TENANT_ID,
+    });
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/en/series/SR01")
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/en/series/SR01`
     );
   });
 
@@ -470,6 +519,7 @@ describe("web-storefront proxy retired paths", () => {
     vi.clearAllMocks();
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "ja",
+      supportedLocales: getLocales(),
       tenantId: TENANT_ID,
     });
   });
@@ -543,6 +593,7 @@ describe("web-storefront proxy published pages", () => {
     vi.clearAllMocks();
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "ja",
+      supportedLocales: getLocales(),
       tenantId: TENANT_ID,
     });
   });
@@ -643,6 +694,7 @@ describe("web-storefront proxy resolved locale cookie", () => {
     vi.clearAllMocks();
     mockResolveTenant.mockResolvedValue({
       defaultLocale: "en",
+      supportedLocales: getLocales(),
       tenantId: TENANT_ID,
     });
   });

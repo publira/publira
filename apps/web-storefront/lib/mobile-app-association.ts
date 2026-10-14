@@ -1,5 +1,5 @@
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
-import { getLocales } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 import {
@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantMobileAppAssociationTag } from "./cache-tags";
+import { getTenantSiteInfo } from "./tenant";
 import { isTenantIdFormat } from "./tenant-id-format";
 
 export interface AndroidAppAssociation {
@@ -100,21 +101,25 @@ const APP_LINK_PATHS = [
 ] as const;
 
 /**
- * Every claimed path, bare and under each locale prefix, since the tenant's
- * default locale is the unprefixed one and any locale can be that default.
+ * Every claimed path, bare and under the prefix of each locale the tenant
+ * offers. The tenant's default is the unprefixed one, and a prefix the tenant
+ * does not offer redirects to the unprefixed path, which is claimed already.
  */
-const appLinkComponents = () =>
-  ["", ...getLocales().map((locale) => `/${locale}`)].flatMap((prefix) =>
+const appLinkComponents = (supportedLocales: readonly Locale[]) =>
+  ["", ...supportedLocales.map((locale) => `/${locale}`)].flatMap((prefix) =>
     APP_LINK_PATHS.map((path) => ({ "/": `${prefix}${path}` }))
   );
 
 /** The apple-app-site-association document that lets the app open Universal Links. */
-export const toAppleAppSiteAssociation = (ios: IosAppAssociation) => ({
+export const toAppleAppSiteAssociation = (
+  ios: IosAppAssociation,
+  supportedLocales: readonly Locale[]
+) => ({
   applinks: {
     details: [
       {
         appIDs: [`${ios.teamId}.${ios.bundleIdentifier}`],
-        components: appLinkComponents(),
+        components: appLinkComponents(supportedLocales),
       },
     ],
   },
@@ -134,29 +139,36 @@ const associationRouteParamsSchema = z.object({
 
 /**
  * Answer an association document for the tenant `proxy.ts` rewrote the
- * request onto. `toDocument` returns `undefined` where the tenant has no app on
- * the platform, which is a 404 rather than a document naming some other app.
- * An API that could not be asked is a 503, so a verifier retries instead of
- * recording that the site claims no app.
+ * request onto. `toDocument` is handed the locales the tenant offers beside its
+ * apps, and returns `undefined` where the tenant has no app on the platform,
+ * which is a 404 rather than a document naming some other app. An API that
+ * could not be asked is a 503, so a verifier retries instead of recording that
+ * the site claims no app.
  */
 export const respondWithMobileAppAssociation = async (
   params: unknown,
-  toDocument: (association: TenantMobileAppAssociation) => unknown
+  toDocument: (
+    association: TenantMobileAppAssociation,
+    supportedLocales: readonly Locale[]
+  ) => unknown
 ): Promise<Response> => {
   const parsed = parseRouteParams(associationRouteParamsSchema, params);
   if (!parsed) {
     return new Response("Not Found", { status: 404 });
   }
 
-  const association = await getTenantMobileAppAssociation(parsed.tenant_id);
-  if (!association.ok) {
+  const [association, tenant] = await Promise.all([
+    getTenantMobileAppAssociation(parsed.tenant_id),
+    getTenantSiteInfo(parsed.tenant_id),
+  ]);
+  if (!(association.ok && tenant)) {
     return new Response("Service Unavailable", {
       headers: { "Cache-Control": "no-store", "Retry-After": "30" },
       status: 503,
     });
   }
 
-  const document = toDocument(association.value);
+  const document = toDocument(association.value, tenant.supportedLocales);
   if (document === undefined) {
     return new Response("Not Found", {
       headers: { "Cache-Control": CACHE_CONTROL },

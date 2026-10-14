@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAssociation } = vi.hoisted(() => ({
+const { mockGetAssociation, mockGetTenantSiteInfo } = vi.hoisted(() => ({
   mockGetAssociation: vi.fn(),
+  mockGetTenantSiteInfo: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ cacheLife: vi.fn(), cacheTag: vi.fn() }));
@@ -11,6 +12,10 @@ vi.mock("#lib/api-client", () => ({
   apiClient: {
     tenant: { getTenantMobileAppAssociation: mockGetAssociation },
   },
+}));
+
+vi.mock("#lib/tenant", () => ({
+  getTenantSiteInfo: mockGetTenantSiteInfo,
 }));
 
 const { GET } = await import("./route");
@@ -28,6 +33,10 @@ const get = (tenantId: string) =>
 
 describe("GET /.well-known/apple-app-site-association", () => {
   beforeEach(() => {
+    mockGetTenantSiteInfo.mockReset();
+    mockGetTenantSiteInfo.mockResolvedValue({
+      supportedLocales: ["ja", "en"],
+    });
     mockGetAssociation.mockReset();
     mockGetAssociation.mockImplementation(
       ({ tenant }: { tenant: { tenantId: string } }) =>
@@ -64,6 +73,21 @@ describe("GET /.well-known/apple-app-site-association", () => {
     expect(document.applinks.details[0].components).toContainEqual({
       "/": "/series/*",
     });
+    expect(document.applinks.details[0].components).toContainEqual({
+      "/": "/en/series/*",
+    });
+    expect(document.applinks.details[0].components).not.toContainEqual({
+      "/": "/ko/series/*",
+    });
+  });
+
+  it("answers 503 while the tenant's languages cannot be read", async () => {
+    mockGetTenantSiteInfo.mockResolvedValueOnce(null);
+
+    const response = await get(TENANT_A);
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Retry-After")).toBe("30");
   });
 
   it("answers 404 for a tenant with no iOS app, whatever another tenant has", async () => {

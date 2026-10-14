@@ -2,7 +2,6 @@ import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { CursorWalkStop } from "@publira/api-client/pagination";
 import { SitemapEntryKind } from "@publira/api-client/public/catalog";
 import type { SitemapEntry } from "@publira/api-client/public/catalog";
-import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
@@ -33,10 +32,15 @@ export interface SitemapEntryItem {
   lastModifiedAt?: string;
 }
 
-/** Where the tenant publishes, which every URL of its sitemap is written at. */
+/**
+ * Where the tenant publishes, which every URL of its sitemap is written at, and
+ * the locales it publishes each page in.
+ */
 export interface SitemapAddress {
   defaultLocale: Locale;
   origin: string;
+  /** In registry order, and always holding `defaultLocale`. */
+  supportedLocales: readonly Locale[];
 }
 
 /**
@@ -138,13 +142,18 @@ const absoluteUrl = (origin: string, href: string): string =>
 
 /**
  * One `<url>` for each locale the site serves `entry` in, each naming every
- * locale's URL and `x-default` as its alternates, itself included.
+ * such locale's URL and `x-default` as its alternates, itself included.
  */
 const renderEntryUrls = (
-  { defaultLocale, origin }: SitemapAddress,
+  { defaultLocale, origin, supportedLocales }: SitemapAddress,
   { href, lastModifiedAt }: SitemapEntryItem
 ): string => {
-  const { languages } = localeAlternates(defaultLocale, defaultLocale, href);
+  const { languages } = localeAlternates(
+    defaultLocale,
+    defaultLocale,
+    supportedLocales,
+    href
+  );
   const links = Object.entries(languages)
     .map(
       ([hreflang, path]) =>
@@ -154,7 +163,7 @@ const renderEntryUrls = (
   const lastmod = lastModifiedAt
     ? `<lastmod>${escapeXml(lastModifiedAt)}</lastmod>`
     : "";
-  return getLocales()
+  return supportedLocales
     .map(
       (locale) =>
         `<url><loc>${absoluteUrl(origin, withLocalePrefix(locale, defaultLocale, href))}</loc>${links}${lastmod}</url>`
@@ -216,7 +225,7 @@ export const getSitemapChunk = async (
   applyCacheTag(tenantCreatorsTag(normalizedTenantId));
   applyCacheTag(tenantPagesTag(normalizedTenantId));
 
-  const urlsPerEntry = getLocales().length;
+  const urlsPerEntry = address.supportedLocales.length;
   const pageUrls = SITEMAP_PAGE_SIZE * urlsPerEntry;
   const pageBytes =
     SITEMAP_PAGE_SIZE * utf8Bytes(renderEntryUrls(address, LONGEST_ENTRY));
@@ -365,7 +374,11 @@ const tenantAddress = async (
     getTenantPublicOrigin(tenantId),
   ]);
   return tenant && origin
-    ? { defaultLocale: tenant.defaultLocale, origin }
+    ? {
+        defaultLocale: tenant.defaultLocale,
+        origin,
+        supportedLocales: tenant.supportedLocales,
+      }
     : null;
 };
 

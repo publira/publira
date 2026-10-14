@@ -1,10 +1,14 @@
 import type { ReactNode } from "react";
 
-import { getLocale, tenantDefaultLocale } from "#lib/locale";
+import {
+  getLocale,
+  tenantDefaultLocale,
+  tenantSupportedLocales,
+} from "#lib/locale";
 
 import {
   LocaleContextProvider,
-  TenantDefaultLocaleContextProvider,
+  TenantLocalesContextProvider,
 } from "./locale-context";
 
 /** Hands the request's locale to `useLocale()` without awaiting it. */
@@ -13,15 +17,19 @@ export const LocaleProvider = ({ children }: { children: ReactNode }) => (
 );
 
 /**
- * Hands the tenant's stored default to `useTenantDefaultLocale()` without
- * awaiting it, since one static shell is shared by every tenant.
+ * Hands the tenant's stored default to `useTenantDefaultLocale()`, and the
+ * locales it offers to `useTenantSupportedLocales()`, without awaiting either,
+ * since one static shell is shared by every tenant.
  */
-export const TenantDefaultLocaleProvider = ({
+export const TenantLocalesProvider = ({
   children,
 }: {
   children: ReactNode;
 }) => (
-  <TenantDefaultLocaleContextProvider defaultLocale={tenantDefaultLocale()}>
+  <TenantLocalesContextProvider
+    defaultLocale={tenantDefaultLocale()}
+    supportedLocales={tenantSupportedLocales()}
+  >
     {children}
-  </TenantDefaultLocaleContextProvider>
+  </TenantLocalesContextProvider>
 );

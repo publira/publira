@@ -22,6 +22,7 @@ describe("createTenantResolver", () => {
   it("Retrieve tenant default locale from same response", async () => {
     const getTenantByDomain = vi.fn().mockResolvedValue({
       defaultLocale: "en",
+      supportedLocales: ["en"],
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
     });
     const resolver = createTenantResolver(
@@ -31,8 +32,41 @@ describe("createTenantResolver", () => {
 
     await expect(resolver(["en.example.com"])).resolves.toEqual({
       defaultLocale: "en",
+      supportedLocales: ["en"],
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
     });
+  });
+
+  it("carries the locales the tenant offers in registry order, its default among them", async () => {
+    const getTenantByDomain = vi.fn().mockResolvedValue({
+      defaultLocale: "ko",
+      supportedLocales: ["en", "ja"],
+      tenantId: "018f0e6a-1000-7000-8000-000000000001",
+    });
+    const resolver = createTenantResolver(
+      { domain: { getTenantByDomain } } as never,
+      { max: 10, ttl: 10_000 }
+    );
+
+    await expect(resolver(["ko.example.com"])).resolves.toMatchObject({
+      supportedLocales: ["ja", "en", "ko"],
+    });
+  });
+
+  it("refuses an offered locale this build serves no catalog for", async () => {
+    const getTenantByDomain = vi.fn().mockResolvedValue({
+      defaultLocale: "en",
+      supportedLocales: ["en", "fr"],
+      tenantId: "018f0e6a-1000-7000-8000-000000000001",
+    });
+    const resolver = createTenantResolver(
+      { domain: { getTenantByDomain } } as never,
+      { max: 10, ttl: 10_000 }
+    );
+
+    await expect(resolver(["fr.example.com"])).rejects.toThrow(
+      "tenant supported locale is not supported: fr"
+    );
   });
 
   it("refuses a locale this build serves no catalog for", async () => {
@@ -62,10 +96,12 @@ describe("createTenantResolver", () => {
 
     await expect(resolver(["a.example.com", "example.com"])).resolves.toEqual({
       defaultLocale: "ja",
+      supportedLocales: ["ja"],
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
     });
     await expect(resolver(["a.example.com", "example.com"])).resolves.toEqual({
       defaultLocale: "ja",
+      supportedLocales: ["ja"],
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
     });
 
@@ -135,6 +171,7 @@ describe("createTenantResolver", () => {
     );
     await expect(resolver(["paused.example.com"])).resolves.toEqual({
       defaultLocale: "en",
+      supportedLocales: ["en"],
       tenantId: "tenant-1",
     });
 

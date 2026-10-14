@@ -165,6 +165,21 @@ const resolveTenant = async (
   return tenant;
 };
 
+/**
+ * Whether the URL names a locale prefix the unprefixed URL stands for. Only a
+ * locale the tenant offers other than its default keeps its prefix: one naming
+ * the default is redundant, and one naming a locale the tenant does not offer
+ * lands on the default as well, so an old bookmark or a search result in a
+ * language switched off still opens the page.
+ */
+const isDroppedPrefix = (
+  locale: Locale | null,
+  tenant: ResolvedTenant
+): boolean =>
+  locale !== null &&
+  (locale === tenant.defaultLocale ||
+    !tenant.supportedLocales.includes(locale));
+
 const rewriteTo = (request: NextRequest, pathname: string): NextResponse => {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
@@ -226,9 +241,9 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     return withResolvedLocale(movedResponse);
   }
 
-  // A prefix is only canonical for a locale other than this tenant's default.
-  // Preserve the path and query while removing a redundant default prefix.
-  if (requestedLocale === tenant.defaultLocale) {
+  // Preserve the path and query while dropping a prefix the unprefixed URL
+  // stands for.
+  if (isDroppedPrefix(requestedLocale, tenant)) {
     return withResolvedLocale(redirectToPathname(request, publicPath));
   }
 

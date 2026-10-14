@@ -4,7 +4,10 @@ import { notFound } from "next/navigation";
 import { locale as rootLocale } from "next/root-params";
 
 import { withLocalePrefix } from "./locale-path";
-import { getTenantLinkDefaultLocale } from "./tenant";
+import {
+  getTenantLinkDefaultLocale,
+  getTenantLinkSupportedLocales,
+} from "./tenant";
 import { getTenantId } from "./tenant-id";
 
 export {
@@ -49,6 +52,14 @@ export const getLocale = async (): Promise<Locale> => {
  */
 export const tenantDefaultLocale = async (): Promise<Locale | null> =>
   getTenantLinkDefaultLocale(await getTenantId());
+
+/**
+ * The locales the tenant's site offers for this request, as a read rather than
+ * its result, the way {@link tenantDefaultLocale} is. `null` while the tenant
+ * read is unavailable (`getTenantLinkSupportedLocales`).
+ */
+export const tenantSupportedLocales = async (): Promise<Locale[] | null> =>
+  getTenantLinkSupportedLocales(await getTenantId());
 
 /**
  * An app-internal path under the current locale, normalized for the tenant's

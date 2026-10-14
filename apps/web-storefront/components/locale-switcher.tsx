@@ -1,6 +1,7 @@
 "use client";
 
 import { getLocaleLabel, getLocales } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { LanguageIcon } from "@publira/icons/language-icon";
 import { SiteLayoutMobileNavigationLink } from "@publira/layouts";
 import {
@@ -16,7 +17,11 @@ import { usePathname } from "next/navigation";
 import { toBarePathname, withLocalePrefix } from "#lib/locale-path";
 
 import { useClientMessages } from "./client-message";
-import { useLocale, useTenantDefaultLocale } from "./locale-context";
+import {
+  useLocale,
+  useTenantDefaultLocale,
+  useTenantSupportedLocales,
+} from "./locale-context";
 
 /**
  * Header control that swaps the locale segment and keeps the rest of the path.
@@ -36,10 +41,11 @@ import { useLocale, useTenantDefaultLocale } from "./locale-context";
  * {@link LocaleSwitcherSkeleton}: the control streams in and the rest of the
  * shell stays static.
  *
- * The language names come from `getLocaleLabel`, the same registry the cookie
- * consoles read. They are autonyms — a language is offered in its own language
- * — so they are identical in both directions and belong to the registry rather
- * than to a per-locale catalog.
+ * It lists the locales the tenant offers, the ones `proxy.ts` serves under a
+ * prefix. The language names come from `getLocaleLabel`, the same registry the
+ * cookie consoles read. They are autonyms — a language is offered in its own
+ * language — so they are identical in both directions and belong to the
+ * registry rather than to a per-locale catalog.
  */
 /** Same footprint as the rendered control, so the header does not shift. */
 export const LocaleSwitcherSkeleton = () => (
@@ -49,9 +55,18 @@ export const LocaleSwitcherSkeleton = () => (
   />
 );
 
+/**
+ * The locales the switcher lists. While the tenant read is unavailable it is
+ * the one being read: `proxy.ts` served it, so the tenant offers it, and no
+ * other locale is known to be one the tenant has not switched off.
+ */
+const useSwitchableLocales = (currentLocale: Locale): readonly Locale[] =>
+  useTenantSupportedLocales() ?? [currentLocale];
+
 export const LocaleSwitcher = () => {
   const currentLocale = useLocale();
   const defaultLocale = useTenantDefaultLocale();
+  const locales = useSwitchableLocales(currentLocale);
   const t = useClientMessages();
   const pathname = usePathname();
   const barePathname = toBarePathname(pathname);
@@ -71,7 +86,7 @@ export const LocaleSwitcher = () => {
           {label}
         </PopoverTitle>
         <div className="grid gap-0.5">
-          {getLocales().map((locale) => {
+          {locales.map((locale) => {
             const current = locale === currentLocale;
 
             return (
@@ -98,10 +113,10 @@ export const LocaleSwitcher = () => {
 };
 
 /**
- * Same footprint as the rendered list, so the panel does not shift as the copy
- * arrives. One row per registry entry, counted from the same `getLocales()`
- * the list itself maps, so a locale added to the registry cannot leave the two
- * disagreeing.
+ * Stands in for the rendered list while the copy arrives. The shell is shared
+ * by every tenant, so it cannot know how many locales a tenant offers; it draws
+ * one row per registry entry, the most the list can draw, so a locale added to
+ * the registry cannot leave the panel too short for it.
  */
 export const LocaleSwitcherLinksSkeleton = () => (
   <div aria-hidden="true" className="grid gap-1">
@@ -123,10 +138,11 @@ export const LocaleSwitcherLinksSkeleton = () => (
 export const LocaleSwitcherLinks = () => {
   const currentLocale = useLocale();
   const defaultLocale = useTenantDefaultLocale();
+  const locales = useSwitchableLocales(currentLocale);
   const pathname = usePathname();
   const barePathname = toBarePathname(pathname);
 
-  return getLocales().map((locale) => (
+  return locales.map((locale) => (
     <SiteLayoutMobileNavigationLink
       current={locale === currentLocale}
       href={withLocalePrefix(locale, defaultLocale, barePathname)}

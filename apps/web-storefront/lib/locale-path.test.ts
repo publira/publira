@@ -1,3 +1,4 @@
+import { getLocales } from "@publira/i18n";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -10,6 +11,7 @@ import {
 } from "./locale-path";
 
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const ALL_LOCALES = getLocales();
 
 describe("splitLocalePathname", () => {
   it("Detach the first locale", () => {
@@ -66,7 +68,7 @@ describe("withLocalePrefix", () => {
 
 describe("localeAlternates", () => {
   it("names the default locale canonical at its unprefixed path", () => {
-    expect(localeAlternates("ja", "ja", "/series/SR01")).toEqual({
+    expect(localeAlternates("ja", "ja", ALL_LOCALES, "/series/SR01")).toEqual({
       canonical: "/series/SR01",
       languages: {
         en: "/en/series/SR01",
@@ -80,14 +82,19 @@ describe("localeAlternates", () => {
   });
 
   it("names a non-default locale canonical at its own prefixed path", () => {
-    const alternates = localeAlternates("en", "ja", "/series/SR01");
+    const alternates = localeAlternates(
+      "en",
+      "ja",
+      ALL_LOCALES,
+      "/series/SR01"
+    );
 
     expect(alternates.canonical).toBe("/en/series/SR01");
     expect(alternates.languages["x-default"]).toBe("/series/SR01");
   });
 
   it("follows the tenant's default rather than a fixed one", () => {
-    expect(localeAlternates("ja", "en", "/")).toEqual({
+    expect(localeAlternates("ja", "en", ALL_LOCALES, "/")).toEqual({
       canonical: "/ja",
       languages: {
         en: "/",
@@ -99,12 +106,29 @@ describe("localeAlternates", () => {
       },
     });
   });
+
+  it("names only the locales the tenant offers", () => {
+    expect(localeAlternates("en", "ja", ["ja", "en"], "/series/SR01")).toEqual({
+      canonical: "/en/series/SR01",
+      languages: {
+        en: "/en/series/SR01",
+        ja: "/series/SR01",
+        "x-default": "/series/SR01",
+      },
+    });
+  });
 });
 
 describe("publishedLocaleAlternates", () => {
   it("lists only the published locales and keeps the default as x-default", () => {
     expect(
-      publishedLocaleAlternates("ja", "/privacy", ["en", "ja"], "en")
+      publishedLocaleAlternates(
+        "ja",
+        ALL_LOCALES,
+        "/privacy",
+        ["en", "ja"],
+        "en"
+      )
     ).toEqual({
       canonical: "/en/privacy",
       languages: {
@@ -116,7 +140,9 @@ describe("publishedLocaleAlternates", () => {
   });
 
   it("points canonical and x-default at the served language when the default is unpublished", () => {
-    expect(publishedLocaleAlternates("ja", "/privacy", ["en"], "en")).toEqual({
+    expect(
+      publishedLocaleAlternates("ja", ALL_LOCALES, "/privacy", ["en"], "en")
+    ).toEqual({
       canonical: "/en/privacy",
       languages: {
         en: "/en/privacy",
@@ -126,11 +152,32 @@ describe("publishedLocaleAlternates", () => {
   });
 
   it("includes the served locale when the alternate list omitted it", () => {
-    expect(publishedLocaleAlternates("en", "/terms", [], "ja")).toEqual({
+    expect(
+      publishedLocaleAlternates("en", ALL_LOCALES, "/terms", [], "ja")
+    ).toEqual({
       canonical: "/ja/terms",
       languages: {
         ja: "/ja/terms",
         "x-default": "/ja/terms",
+      },
+    });
+  });
+
+  it("leaves out a translation in a locale the tenant does not offer", () => {
+    expect(
+      publishedLocaleAlternates(
+        "ja",
+        ["ja", "en"],
+        "/privacy",
+        ["en", "ja", "ko"],
+        "ja"
+      )
+    ).toEqual({
+      canonical: "/privacy",
+      languages: {
+        en: "/en/privacy",
+        ja: "/privacy",
+        "x-default": "/privacy",
       },
     });
   });

@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { DocumentLocale } from "#components/document-locale";
 import {
   LocaleProvider,
-  TenantDefaultLocaleProvider,
+  TenantLocalesProvider,
 } from "#components/locale-provider";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -66,9 +66,9 @@ export const metadata: Metadata = {
 const AuthLayout = ({ children }: LayoutProps<"/[tenant_id]/[locale]">) => (
   <LocaleProvider>
     <DocumentLocale />
-    <TenantDefaultLocaleProvider>
+    <TenantLocalesProvider>
       <AuthShell>{children}</AuthShell>
-    </TenantDefaultLocaleProvider>
+    </TenantLocalesProvider>
   </LocaleProvider>
 );
 

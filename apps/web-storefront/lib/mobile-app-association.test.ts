@@ -1,5 +1,4 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { getLocales } from "@publira/i18n";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -23,6 +22,10 @@ vi.mock("./api-client", () => ({
   apiClient: {
     tenant: { getTenantMobileAppAssociation: mockGetAssociation },
   },
+}));
+
+vi.mock("./tenant", () => ({
+  getTenantSiteInfo: vi.fn(),
 }));
 
 const FINGERPRINT_A = Array.from({ length: 32 }, () => "AB").join(":");
@@ -114,10 +117,13 @@ describe("toAssetLinks", () => {
 });
 
 describe("toAppleAppSiteAssociation", () => {
-  const document = toAppleAppSiteAssociation({
-    bundleIdentifier: "com.example.reader",
-    teamId: "ABCDE12345",
-  });
+  const document = toAppleAppSiteAssociation(
+    {
+      bundleIdentifier: "com.example.reader",
+      teamId: "ABCDE12345",
+    },
+    ["ja", "en"]
+  );
   const [detail] = document.applinks.details;
   const paths = detail?.components.map((component) => component["/"]);
 
@@ -126,7 +132,7 @@ describe("toAppleAppSiteAssociation", () => {
     expect(detail?.appIDs).toStrictEqual(["ABCDE12345.com.example.reader"]);
   });
 
-  it("claims the paths the app opens, bare and under every locale prefix", () => {
+  it("claims the paths the app opens, bare and under each offered locale's prefix", () => {
     const claimed = [
       "/series/*",
       "/checkout/return",
@@ -137,11 +143,11 @@ describe("toAppleAppSiteAssociation", () => {
       "/announcements",
     ];
     expect(paths).toStrictEqual(
-      ["", ...getLocales().map((locale) => `/${locale}`)].flatMap((prefix) =>
+      ["", "/ja", "/en"].flatMap((prefix) =>
         claimed.map((path) => `${prefix}${path}`)
       )
     );
     expect(paths).toContain("/en/checkout/return");
-    expect(paths).toContain("/zh-Hant/series/*");
+    expect(paths).not.toContain("/ko/series/*");
   });
 });
