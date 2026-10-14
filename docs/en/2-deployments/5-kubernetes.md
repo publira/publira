@@ -2,6 +2,7 @@
 title: Kubernetes
 description: Run an install on a Kubernetes cluster, from its Secrets and Deployments and a Gateway or an Ingress in front of them to the first sign-in to the tenant console.
 published: 2026-10-13
+updated: 2026-10-14
 ---
 
 This page takes an install from an empty namespace on a Kubernetes cluster to the first sign-in to the tenant console. It runs the same steps as [Installing](./2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](./4-edge.md#what-the-edge-has-to-do) requires. This page covers what is particular to a cluster: which resources each part becomes, and how each requirement of those two pages is met with them.
@@ -33,7 +34,7 @@ You need:
 
 - **A cluster** whose nodes are `linux/amd64` or `linux/arm64`, the two platforms the images are published for, and `kubectl` signed in to it. In the `publira` namespace, the steps create, change, and delete Secrets, Deployments, Services, Jobs, and Pods, read Pod logs, attach to a Pod, and manage the edge's resources: a Gateway and HTTPRoutes, or Ingresses and a Traefik Middleware. Creating the namespace and the `ClusterIssuer`, which belongs to no namespace, and installing cert-manager and the edge's controller, take a cluster administrator. The built-in `admin` role, bound in the namespace, covers the rest except the custom resources: one of those is covered only when its install adds it to that role, which Envoy Gateway's does not for Gateways and HTTPRoutes.
 - **A Gateway API implementation or an Ingress controller** to be the edge, and **cert-manager** to issue the certificates, as [Put the edge in front](#6-put-the-edge-in-front) describes. The edge's Service has to be reachable from the internet, usually as a Service of type `LoadBalancer`.
-- **The services the install depends on**, provisioned as [Provision the services](./2-installing.md#provision-the-services) lists, whether they are managed services outside the cluster or run in it: a PostgreSQL database with a superuser login, a Valkey instance, an empty bucket and a credential for it, and an SMTP server. Every Pod of the install has to reach them.
+- **The services the install depends on**, provisioned as [Provision the services](./2-installing.md#provision-the-services) lists, whether they are managed services outside the cluster or run in it: a PostgreSQL database with an administrative login that owns it and may create roles, a Valkey instance, an empty bucket and a credential for it, and an SMTP server. Every Pod of the install has to reach them.
 - **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the address of the edge's Service once it has one.
 
 Every command below runs in the `publira` namespace:
@@ -99,7 +100,7 @@ kubectl create secret generic web-admin \
   --from-literal=PUBLIRA_WEB_SERVICE_TOKEN="$WEB_SERVICE_TOKEN"
 
 kubectl create secret generic publiractl \
-  --from-literal=PUBLIRA_DB_URL="postgres://postgres:<superuser password>@$DB"
+  --from-literal=PUBLIRA_DB_URL="postgres://postgres:<administrative login password>@$DB"
 
 kubectl create secret generic publira-db-roles \
   --from-literal=public="$PUBLIC_DB_PASSWORD" \
@@ -116,14 +117,14 @@ kubectl create secret generic publira-db-roles \
 | `publira-server` | `publira-server`, and `publiractl setup` | As environment variables. `setup` takes `PUBLIRA_PLATFORM_DB_URL` from it alone, with a `secretKeyRef` |
 | `publira-worker` | `publira-worker` | As environment variables |
 | `web-storefront`, `web-admin` | The web app of the same name | As environment variables |
-| `publiractl` | The `db` Jobs | As environment variables. It holds `PUBLIRA_DB_URL`, the superuser connection, alone: the `db` commands are the only ones that read it, so no other `publiractl` command, and nothing kept running, is given it |
+| `publiractl` | The `db` Jobs | As environment variables. It holds `PUBLIRA_DB_URL`, the connection of the [administrative login](./2-installing.md#provision-the-services), alone: the `db` commands are the only ones that read it, so no other `publiractl` command, and nothing kept running, is given it |
 | `publira-db-roles` | The `db roles` Job | As files, one per role, which `db roles` reads with its `--<role>-password-file` flags |
 
 The Secrets in the cluster are not a backup. Keep the encryption keys in your own secret store as well: lose them and every credential the install stored has to be entered again, as [Generate the secrets](./2-installing.md#generate-the-secrets) says. If you keep the secrets in a store the cluster syncs from, such as with an operator that writes Secrets from it, have it write the same Secrets with the same keys.
 
 ## 2. Apply the migrations
 
-`db migrate` runs as a Job from the `publiractl` image of the release, on the superuser connection:
+`db migrate` runs as a Job from the `publiractl` image of the release, on the administrative login's connection:
 
 ```yaml
 apiVersion: batch/v1
@@ -391,7 +392,7 @@ kubectl rollout status deployment/publira-server deployment/publira-worker deplo
 
 ## 5. Set the install up
 
-`publiractl setup` runs once, either attached to a terminal, where it asks for every value, or as a Job with every value given as a flag. Both connect as `publira_platform`, with the `PUBLIRA_PLATFORM_DB_URL` of the `publira-server` Secret, and seal what they save with the encryption keys, so both read the `publira-encryption` Secret the processes read. Neither is given the `publiractl` Secret: `setup` never connects as the superuser.
+`publiractl setup` runs once, either attached to a terminal, where it asks for every value, or as a Job with every value given as a flag. Both connect as `publira_platform`, with the `PUBLIRA_PLATFORM_DB_URL` of the `publira-server` Secret, and seal what they save with the encryption keys, so both read the `publira-encryption` Secret the processes read. Neither is given the `publiractl` Secret: `setup` never connects as the administrative login.
 
 Either way, what it prints goes to the container's log, which your cluster's log collection may keep, so give the administrator a password rather than having one generated: a generated password is printed in the summary. A password typed at the prompt is not echoed, and one given as a file is not printed.
 

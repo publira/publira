@@ -121,8 +121,8 @@ func TestPurgerRunRejectsTenantScopedRole(t *testing.T) {
 	pg.SeedTenant(t, "CMTPURGERLS1", "rls-comment-purge.example.com", "RLS Comment Purge")
 
 	_, err := NewPurger(pg.OpenAdminDB(t)).Run(context.Background(), PurgeOptions{Now: time.Now().UTC()})
-	if err == nil || !strings.Contains(err.Error(), "BYPASSRLS") {
-		t.Fatalf("Run error = %v, want BYPASSRLS requirement", err)
+	if err == nil || !strings.Contains(err.Error(), "reaches every tenant") {
+		t.Fatalf("Run error = %v, want the every-tenant requirement", err)
 	}
 }
 

@@ -1,6 +1,7 @@
 // Package dbroles creates the PostgreSQL login roles every Publira process
 // connects as, grants them what db/seeds/baseline grants, and sets their
-// passwords, for publiractl and for the integration tests.
+// passwords, for publiractl and for the integration tests. It also tells the
+// jobs that span every tenant whether their connection reaches every tenant.
 package dbroles
 
 import (
@@ -33,6 +34,13 @@ var LoginRoles = []string{
 	"publira_ticker",
 	"publira_content_stats",
 }
+
+// RLSBypassRole is the role whose members reach every tenant's rows. It is a
+// membership rather than the BYPASSRLS attribute, which only a role holding it
+// may give and a managed PostgreSQL's administrative login does not hold:
+// db/seeds/baseline puts a policy naming it on every table under row-level
+// security, and makes the login roles that work across tenants its members.
+const RLSBypassRole = "publira_rls_bypass"
 
 // PasswordRequiredError is a login role that does not exist yet and was given
 // no password, which would leave it created without one.
@@ -106,10 +114,33 @@ func Missing(ctx context.Context, db *sql.DB) ([]string, error) {
 	return missing, nil
 }
 
+// RequireEveryTenant refuses a connection whose role row-level security
+// confines to one tenant. A job that spans every tenant would run under such a
+// role all the same and silently do the part of its work one tenant's rows
+// hold, so it checks first; task names the job in the error. A superuser, a
+// role with BYPASSRLS, and a member of [RLSBypassRole] pass.
+func RequireEveryTenant(ctx context.Context, db *sql.DB, task string) error {
+	var reaches bool
+	err := db.QueryRowContext(ctx, `
+		SELECT r.rolsuper OR r.rolbypassrls OR coalesce(pg_has_role(r.oid, b.oid, 'USAGE'), false)
+		FROM pg_roles r
+		LEFT JOIN pg_roles b ON b.rolname = $1
+		WHERE r.rolname = current_user
+	`, RLSBypassRole).Scan(&reaches)
+	if err != nil {
+		return fmt.Errorf("check database role: %w", err)
+	}
+	if !reaches {
+		return fmt.Errorf("%s requires a database role that reaches every tenant, such as a member of %s", task, RLSBypassRole)
+	}
+	return nil
+}
+
 // Apply runs every file [Files] finds in dir, then sets the passwords given,
-// keyed by role, in one transaction on a superuser connection. A role that
-// exists keeps its password unless one is given for it, and a role that does
-// not needs one, so nothing is created without a password.
+// keyed by role, in one transaction on the connection that owns the schema,
+// which needs CREATEROLE and no superuser. A role that exists keeps its
+// password unless one is given for it, and a role that does not needs one, so
+// nothing is created without a password.
 func Apply(ctx context.Context, db *sql.DB, dir string, passwords map[string]string) (Result, error) {
 	for role, password := range passwords {
 		if !slices.Contains(LoginRoles, role) {

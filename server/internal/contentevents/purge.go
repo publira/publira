@@ -25,6 +25,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/retention"
 )
 
@@ -33,9 +34,10 @@ import (
 // how much WAL it writes against how many round trips a full purge costs.
 const DefaultChunkSize = 10000
 
-// Purger deletes content_events rows that fell out of their tenant's
-// retention period. Its database connection must use a role with BYPASSRLS
-// (or be a superuser), because one run spans every tenant.
+// Purger deletes content_events rows that fell out of their tenant's retention
+// period. Its database connection must use a role that reaches every tenant,
+// because one run spans every tenant: [dbroles.RequireEveryTenant] refuses any
+// other.
 type Purger struct {
 	db *sql.DB
 }
@@ -93,7 +95,7 @@ func (p *Purger) Run(ctx context.Context, opts Options) (Result, error) {
 	if chunkSize <= 0 {
 		chunkSize = DefaultChunkSize
 	}
-	if err := p.requireBypassRLS(ctx); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, p.db, "content events purge"); err != nil {
 		return Result{}, err
 	}
 
@@ -184,22 +186,6 @@ func (p *Purger) listTenantIDs(ctx context.Context) ([]uuid.UUID, error) {
 		tenantIDs = append(tenantIDs, id)
 	}
 	return tenantIDs, rows.Err()
-}
-
-func (p *Purger) requireBypassRLS(ctx context.Context) error {
-	var bypasses bool
-	err := p.db.QueryRowContext(ctx, `
-		SELECT rolsuper OR rolbypassrls
-		FROM pg_roles
-		WHERE rolname = current_user
-	`).Scan(&bypasses)
-	if err != nil {
-		return fmt.Errorf("check database role: %w", err)
-	}
-	if !bypasses {
-		return errors.New("content events purge requires a database role with BYPASSRLS")
-	}
-	return nil
 }
 
 func (p *Purger) countExpired(ctx context.Context, tenantID uuid.UUID, cutoff time.Time) (int64, error) {

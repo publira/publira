@@ -73,9 +73,9 @@ const defaultPlatformDBURL = "postgres://publira_platform:platformpass@db:5432/p
 
 // platformDBURL is the connection every settings and provisioning command
 // opens: they write the platform_* tables and the tenant rows, which is what
-// publira_platform and its BYPASSRLS exist for. Unlike the job group's chains
-// it never ends at PUBLIRA_DB_URL, so a forgotten variable fails to
-// authenticate instead of writing as the superuser.
+// publira_platform and its reach across every tenant exist for. Unlike the job
+// group's chains it never ends at PUBLIRA_DB_URL, so a forgotten variable fails
+// to authenticate instead of writing as the database's owner.
 func platformDBURL() string {
 	return resolveDBURL(defaultPlatformDBURL, "PUBLIRA_PLATFORM_DB_URL")
 }

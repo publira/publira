@@ -171,7 +171,7 @@ func TestProjectorRejectsTenantScopedRole(t *testing.T) {
 	pg.SeedTenant(t, "PROJRLS00001", "rls-project.example.com", "RLS Project")
 
 	_, err := NewProjector(pg.OpenAdminDB(t)).Run(context.Background(), ProjectionOptions{})
-	if err == nil || !strings.Contains(err.Error(), "BYPASSRLS") {
-		t.Fatalf("Run error = %v, want BYPASSRLS requirement", err)
+	if err == nil || !strings.Contains(err.Error(), "reaches every tenant") {
+		t.Fatalf("Run error = %v, want the every-tenant requirement", err)
 	}
 }

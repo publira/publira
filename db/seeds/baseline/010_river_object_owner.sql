@@ -5,7 +5,7 @@
 -- river_job and the rest, and this file finds nothing to do.
 --
 -- A database whose River schema was created by another role — every stack that
--- ran the worker on the superuser connection before it had a role of its own —
+-- ran the worker on the schema owner's connection before it had a role of its own —
 -- keeps that owner, because connecting as a different role does not move
 -- ownership. Such a stack drains normally and passes rivermigrate, which issues
 -- no DDL while no version is pending, and then fails on the first River release
@@ -13,8 +13,10 @@
 -- non-owner is `must be owner of table river_job`, which is a crash loop at
 -- startup rather than a degraded worker.
 --
--- Run as a superuser, like the rest of this directory. Object ownership is
--- environment responsibility, which is why this is a seed and not a migration.
+-- Run on the connection that owns the schema, like the rest of this directory,
+-- which 000_rls_bypass_role.sql lets SET ROLE to publira_outbox when it is not
+-- a superuser. Object ownership is environment responsibility, which is why
+-- this is a seed and not a migration.
 DO $$
 DECLARE
     -- Every object River's own migrations create, through river v0.47.0.
@@ -115,12 +117,12 @@ $$;
 
 -- River's tables and sequences are the worker's alone. A database the worker
 -- has never started on has none of them yet when this directory runs, and the
--- worker then creates them as publira_outbox, which the superuser's default
--- privileges do not reach. Every later run — each upgrade, and the one after a
--- restore — finds them in place, though, and 000_rls_bypass_role.sql's
--- `GRANT ... ON ALL TABLES` and `ON ALL SEQUENCES` hand them to every app role
--- along with the rest of the schema: the storefront and both consoles could
--- then enqueue, rewrite, or delete the worker's jobs for every tenant.
+-- worker then creates them as publira_outbox. Every later run — each upgrade,
+-- and the one after a restore — finds them in place, though, and
+-- 000_rls_bypass_role.sql's `GRANT ... ON ALL TABLES` and `ON ALL SEQUENCES`
+-- hand them to every app role along with the rest of the schema: the
+-- storefront and both consoles could then enqueue, rewrite, or delete the
+-- worker's jobs for every tenant.
 --
 -- So the grants are taken back from whatever publira_outbox owns. Ownership,
 -- not the lists above, is the test: after the transfer it covers every object

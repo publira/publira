@@ -4,92 +4,146 @@
 -- here may use a psql meta-command. Roles are created without a password: `publiractl db roles` sets
 -- them, and dev/000_role_passwords.sql sets the development ones.
 
--- Every DO block below states the whole attribute set on both branches. ALTER ROLE
--- changes only the attributes it names, so an ELSE branch listing just LOGIN and
--- BYPASSRLS would let a pre-existing role keep SUPERUSER, CREATEDB, CREATEROLE, or
--- REPLICATION.
+-- Nothing here needs a superuser: the connection has to own the database and
+-- the schema and have CREATEROLE, which is what a managed PostgreSQL such as
+-- Cloud SQL gives its customer. No role here carries BYPASSRLS, which only a
+-- role holding it may give: the roles that work across tenants are members of
+-- publira_rls_bypass, and this file puts a policy letting that role's members
+-- through on every table under row-level security.
 
--- Non-login bypass role for explicit grants in production environments.
-DO $$
+-- publira_ensure_role leaves a role with exactly the attributes given and the
+-- rest denied. ALTER ROLE changes only the attributes it names, so a role that
+-- already exists is compared attribute by attribute: one that kept SUPERUSER,
+-- CREATEDB, CREATEROLE, REPLICATION, or BYPASSRLS from an earlier definition
+-- loses it. Only the attributes that differ are named, because PostgreSQL
+-- refuses NOSUPERUSER, NOREPLICATION, and NOBYPASSRLS from a role that lacks
+-- the attribute itself, even when nothing would change.
+CREATE FUNCTION pg_temp.publira_ensure_role(role_name name, can_login boolean)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    existing pg_roles;
+    changes text[] := ARRAY[]::text[];
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_rls_bypass') THEN
-        CREATE ROLE publira_rls_bypass NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
-    ELSE
-        ALTER ROLE publira_rls_bypass NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
+    SELECT * INTO existing FROM pg_roles WHERE rolname = role_name;
+    IF NOT FOUND THEN
+        EXECUTE format(
+            'CREATE ROLE %I %s NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS INHERIT',
+            role_name,
+            CASE WHEN can_login THEN 'LOGIN' ELSE 'NOLOGIN' END
+        );
+        RETURN;
+    END IF;
+    IF existing.rolcanlogin <> can_login THEN
+        changes := changes || CASE WHEN can_login THEN 'LOGIN' ELSE 'NOLOGIN' END;
+    END IF;
+    IF existing.rolsuper THEN
+        changes := changes || 'NOSUPERUSER'::text;
+    END IF;
+    IF existing.rolcreatedb THEN
+        changes := changes || 'NOCREATEDB'::text;
+    END IF;
+    IF existing.rolcreaterole THEN
+        changes := changes || 'NOCREATEROLE'::text;
+    END IF;
+    IF existing.rolreplication THEN
+        changes := changes || 'NOREPLICATION'::text;
+    END IF;
+    IF existing.rolbypassrls THEN
+        changes := changes || 'NOBYPASSRLS'::text;
+    END IF;
+    IF NOT existing.rolinherit THEN
+        changes := changes || 'INHERIT'::text;
+    END IF;
+    IF cardinality(changes) > 0 THEN
+        EXECUTE format('ALTER ROLE %I %s', role_name, array_to_string(changes, ' '));
     END IF;
 END
 $$;
 
--- Platform API user: BYPASSRLS to query across all tenants.
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_platform') THEN
-        CREATE ROLE publira_platform LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
-    ELSE
-        ALTER ROLE publira_platform LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
-    END IF;
+    -- The roles that work across tenants are its members. It cannot log in,
+    -- and the policies further down name it rather than each member, so a
+    -- role is given or denied every tenant's rows by its membership alone.
+    PERFORM pg_temp.publira_ensure_role('publira_rls_bypass', false);
+
+    -- Platform API user: works across tenants.
+    PERFORM pg_temp.publira_ensure_role('publira_platform', true);
+
+    -- Maintenance jobs (the worker's and publiractl's): a separate login that
+    -- works across tenants, so they cannot accidentally run through a
+    -- tenant-scoped API role.
+    PERFORM pg_temp.publira_ensure_role('publira_content_stats', true);
+
+    -- Outbox worker: a login that claims pending outbox rows across every
+    -- tenant. It is separate from publira_content_stats because the worker
+    -- also owns River's schema, which the daily batches must not be able to
+    -- alter.
+    PERFORM pg_temp.publira_ensure_role('publira_outbox', true);
+
+    -- Ticker jobs: the login for the three jobs that act the moment a stored
+    -- instant passes — publishing due episodes, applying free window
+    -- boundaries, and rolling each tenant's calendar day. Each one spans every
+    -- tenant, and none of them creates anything: the grants below name the
+    -- tables they read and write rather than handing over the schema the way
+    -- the blanket grants do.
+    PERFORM pg_temp.publira_ensure_role('publira_ticker', true);
+
+    -- Admin API user: subject to RLS (tenant-scoped).
+    PERFORM pg_temp.publira_ensure_role('publira_admin', true);
+
+    -- Public API user: subject to RLS (tenant-scoped).
+    PERFORM pg_temp.publira_ensure_role('publira_public', true);
 END
 $$;
 
--- Maintenance jobs (the worker's and publiractl's): a separate BYPASSRLS login so
--- they cannot accidentally run through a tenant-scoped API role.
+DROP FUNCTION pg_temp.publira_ensure_role(name, boolean);
+
+-- Membership is what reaches every tenant, so the two tenant-scoped roles are
+-- taken out of publira_rls_bypass if anything ever put them in. The four that
+-- work across tenants are made members that inherit it: a policy applies to
+-- the roles whose privileges include its role's, which a membership without
+-- INHERIT is not. A GRANT that leaves INHERIT out takes it from the member's
+-- own attribute, so it is named.
 DO $$
+DECLARE
+    role_name name;
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_content_stats') THEN
-        CREATE ROLE publira_content_stats LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
-    ELSE
-        ALTER ROLE publira_content_stats LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
-    END IF;
+    FOREACH role_name IN ARRAY ARRAY['publira_platform', 'publira_content_stats', 'publira_outbox', 'publira_ticker'] LOOP
+        IF NOT pg_has_role(role_name, 'publira_rls_bypass', 'USAGE') THEN
+            EXECUTE format('GRANT publira_rls_bypass TO %I WITH INHERIT TRUE', role_name);
+        END IF;
+    END LOOP;
+    FOREACH role_name IN ARRAY ARRAY['publira_admin', 'publira_public'] LOOP
+        IF pg_has_role(role_name, 'publira_rls_bypass', 'MEMBER') THEN
+            EXECUTE format('REVOKE publira_rls_bypass FROM %I', role_name);
+        END IF;
+        -- REVOKE takes back only this login's own grant, so one another role
+        -- granted, or a membership through a role in between, would survive it
+        -- with no more than a warning.
+        IF pg_has_role(role_name, 'publira_rls_bypass', 'MEMBER') THEN
+            RAISE EXCEPTION '% is still a member of publira_rls_bypass', role_name
+                USING HINT = 'Revoke the membership another role granted, or the role it goes through, by hand.';
+        END IF;
+    END LOOP;
 END
 $$;
 
--- Outbox worker: a BYPASSRLS login that claims pending outbox rows across
--- every tenant. It is separate from publira_content_stats because the worker
--- also owns River's schema, which the daily batches must not be able to alter.
+-- publira_outbox owns River's tables once the worker has started, and the
+-- blanket grants below and 010_river_object_owner.sql both act on them: the
+-- grants as their owner, the transfer by handing them to it. A superuser may
+-- do both outright. Any other connection needs the privileges of
+-- publira_outbox for the first and the right to SET ROLE to it for the second,
+-- and a membership gives it both when it names both: a login created NOINHERIT
+-- would otherwise get one it cannot act as the owner through. The role that created publira_outbox may
+-- grant that, and nothing else changes for it: it already owns everything
+-- else in the schema.
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_outbox') THEN
-        CREATE ROLE publira_outbox LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
-    ELSE
-        ALTER ROLE publira_outbox LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
-    END IF;
-END
-$$;
-
--- Ticker jobs: a BYPASSRLS login for the three jobs that act the moment a
--- stored instant passes — publishing due episodes, applying free window
--- boundaries, and rolling each tenant's calendar day. Each one spans every
--- tenant, so it has to bypass RLS, and none of them creates anything: the
--- grants below name the tables they read and write rather than handing over
--- the schema the way the blanket grants do.
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_ticker') THEN
-        CREATE ROLE publira_ticker LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
-    ELSE
-        ALTER ROLE publira_ticker LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
-    END IF;
-END
-$$;
-
--- Admin API user: subject to RLS (tenant-scoped).
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_admin') THEN
-        CREATE ROLE publira_admin LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
-    ELSE
-        ALTER ROLE publira_admin LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
-    END IF;
-END
-$$;
-
--- Public API user: subject to RLS (tenant-scoped).
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'publira_public') THEN
-        CREATE ROLE publira_public LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
-    ELSE
-        ALTER ROLE publira_public LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+    IF NOT pg_has_role('publira_outbox', 'USAGE') THEN
+        EXECUTE format('GRANT publira_outbox TO %I WITH INHERIT TRUE, SET TRUE', current_user);
     END IF;
 END
 $$;
@@ -108,15 +162,29 @@ GRANT USAGE ON SCHEMA public TO publira_platform, publira_content_stats, publira
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
 
--- Ensure tables/sequences created by subsequent migrations automatically inherit app grants.
+-- A table a later migration creates reaches no app role until this directory
+-- runs again, which every upgrade does right after `db migrate`, and the grants
+-- above and the corrections below then reach it together. Earlier releases
+-- handed it to every role on creation, through default privileges and an event
+-- trigger, so both are taken away here.
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLES FROM publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-GRANT USAGE, SELECT ON SEQUENCES TO publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
+REVOKE USAGE, SELECT ON SEQUENCES FROM publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_event_trigger WHERE evtname = 'publira_take_back_default_grants') THEN
+        DROP EVENT TRIGGER publira_take_back_default_grants;
+    END IF;
+    IF to_regprocedure('public.publira_take_back_default_grants_on_create()') IS NOT NULL THEN
+        DROP FUNCTION public.publira_take_back_default_grants_on_create();
+    END IF;
+END
+$$;
 
 -- The grants above hand every table to every app role, and two families of
 -- table have to give them back. publira_take_back_default_grants decides both
--- for one relation, so the seed and the event trigger below apply one rule.
+-- for one relation.
 --
 -- The derived tables are read by the API roles but never written by them, or a
 -- storefront connection could set the numbers its own tenant's readers see:
@@ -127,7 +195,7 @@ GRANT USAGE, SELECT ON SEQUENCES TO publira_platform, publira_content_stats, pub
 -- publira_content_stats, which keeps its grant.
 --
 -- The platform console's tables carry no policy, and correctly so: the console
--- spans tenants, publira_platform holds BYPASSRLS, and a tenant isolation
+-- spans tenants, publira_platform reaches every tenant, and a tenant isolation
 -- policy would have nothing to isolate on. The blanket grants are therefore the
 -- only thing standing in front of the operators' password hashes and the
 -- platform SMTP credentials, so the tenant-scoped and worker roles give the
@@ -179,44 +247,55 @@ BEGIN
 END
 $$;
 
--- A migration applied after this seed creates its tables under the ALTER
--- DEFAULT PRIVILEGES above, so the rule is applied again as each relation is
--- created rather than only when the seed last ran. It fires on River's DDL at
--- worker startup as well, where it finds nothing to revoke; an error here would
--- abort that DDL, which is why the function only ever revokes.
-CREATE OR REPLACE FUNCTION public.publira_take_back_default_grants_on_create()
-RETURNS event_trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = pg_catalog
-AS $$
+-- publira_rls_bypass's members reach every tenant's rows through a policy of
+-- that name on every table under row-level security. Permissive policies are
+-- combined with OR, so for those members a table's tenant isolation policy
+-- becomes `... OR true`, which the planner folds away; a role outside it is
+-- not one the policy applies to, so its own queries are planned as before.
+-- The grants still decide what each member may do to a table: this policy only
+-- decides which rows, as BYPASSRLS would.
+--
+-- Like the grants, this reaches a table a later migration creates when this
+-- directory runs again. Until then, the members see none of its rows. A policy
+-- of that name that says anything else, such as one widened to PUBLIC, is
+-- replaced; one that already says this is left alone, since replacing it would
+-- lock the table against the processes serving from it.
+--
+-- It runs before the grants that name a table, which are the statements that
+-- fail on a database a rollback took behind them.
+DO $$
 DECLARE
-    created oid;
+    relation regclass;
 BEGIN
-    FOR created IN
-        SELECT objid
-        FROM pg_event_trigger_ddl_commands()
-        WHERE classid = 'pg_class'::regclass
-            AND object_type IN ('table', 'view', 'materialized view', 'foreign table')
+    FOR relation IN
+        SELECT c.oid
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+            AND c.relkind IN ('r', 'p')
+            AND c.relrowsecurity
+            AND NOT EXISTS (
+                SELECT 1
+                FROM pg_policy p
+                WHERE p.polrelid = c.oid
+                    AND p.polname = 'publira_rls_bypass'
+                    AND p.polpermissive
+                    AND p.polcmd = '*'
+                    AND p.polroles = ARRAY['publira_rls_bypass'::regrole::oid]
+                    AND pg_get_expr(p.polqual, p.polrelid) = 'true'
+                    AND pg_get_expr(p.polwithcheck, p.polrelid) = 'true'
+            )
     LOOP
-        PERFORM public.publira_take_back_default_grants(created);
+        IF EXISTS (SELECT 1 FROM pg_policy WHERE polrelid = relation AND polname = 'publira_rls_bypass') THEN
+            EXECUTE format('DROP POLICY publira_rls_bypass ON %s', relation);
+        END IF;
+        EXECUTE format(
+            'CREATE POLICY publira_rls_bypass ON %s AS PERMISSIVE FOR ALL TO publira_rls_bypass USING (true) WITH CHECK (true)',
+            relation
+        );
     END LOOP;
 END
 $$;
-REVOKE ALL ON FUNCTION public.publira_take_back_default_grants_on_create() FROM PUBLIC;
-
-DROP EVENT TRIGGER IF EXISTS publira_take_back_default_grants;
-CREATE EVENT TRIGGER publira_take_back_default_grants
-ON ddl_command_end
-WHEN TAG IN (
-    'CREATE TABLE',
-    'CREATE TABLE AS',
-    'SELECT INTO',
-    'CREATE VIEW',
-    'CREATE MATERIALIZED VIEW',
-    'CREATE FOREIGN TABLE'
-)
-EXECUTE FUNCTION public.publira_take_back_default_grants_on_create();
 
 -- The storefront and the tenant console charge their rate limits, and decide
 -- whether a tenant admin owes a second factor, from the platform policy. It
@@ -347,8 +426,8 @@ GRANT INSERT, DELETE ON platform_user_password_reset_tokens TO publira_outbox;
 GRANT CREATE ON SCHEMA public TO publira_outbox;
 
 -- publira_ticker is deliberately absent from every grant above. The blanket
--- ALL TABLES grants and the ALTER DEFAULT PRIVILEGES that follows them hand a
--- role whatever the schema holds now and whatever a later migration adds, and
+-- ALL TABLES grants hand a role whatever the schema holds each time this
+-- directory runs, which after an upgrade includes what a migration added, and
 -- the ticker jobs read and write a known, small set of tables. So they are
 -- named one by one here: a table added to the schema reaches this role only
 -- when someone puts it in this list, and a job that starts reading a table it
@@ -386,7 +465,7 @@ TO publira_ticker;
 GRANT UPDATE ON episode_listings, episode_free_windows TO publira_ticker;
 -- The pinned flag is the one column expire-pinned-announcements writes, and an
 -- announcement carries the tenant's own words, so the grant names the column
--- rather than the table. This role bypasses RLS, so a table-wide UPDATE here
+-- rather than the table. This role reaches every tenant, so a table-wide UPDATE here
 -- would let a ticker job rewrite any announcement of any tenant.
 GRANT UPDATE (pinned) ON announcements TO publira_ticker;
 -- The same holds for a series: apply-series-publications records the drop it

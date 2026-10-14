@@ -118,7 +118,7 @@ The worker's metrics follow the outbox, through which every mail, push notificat
 | `publira.outbox.events.resumed` | Entries put back to continue later after sending part of their work, such as a push notification to many readers | — |
 | `publira.outbox.handler.duration` | How long one attempt took, in seconds | A rise: the SMTP server, `email-renderer`, or a web app is slowing down |
 
-The counters say what the worker did, not what is still waiting. A worker that has stopped sending reports nothing at all, and its `/readyz` does not notice either: it checks the database logins, not whether entries are moving. To see what is waiting, count the entries that are due and unsent, and the ones picked up and never finished, with `psql`, connected as the database's superuser:
+The counters say what the worker did, not what is still waiting. A worker that has stopped sending reports nothing at all, and its `/readyz` does not notice either: it checks the database logins, not whether entries are moving. To see what is waiting, count the entries that are due and unsent, and the ones picked up and never finished, with `psql`, connected as the database's [administrative login](../2-deployments/2-installing.md#provision-the-services):
 
 ```sql
 SELECT status, count(*), min(updated_at)

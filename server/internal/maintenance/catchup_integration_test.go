@@ -283,8 +283,9 @@ func utcDate(at time.Time) time.Time { return civilDate(at.UTC()) }
 
 func discardLogger() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
-// Row-level security would hide every progress row from a role without
-// BYPASSRLS, and a pass that saw none would succeed having rebuilt nothing.
+// Row-level security would hide every progress row from a role that does not
+// reach every tenant, and a pass that saw none would succeed having rebuilt
+// nothing.
 func TestCatchUpRefusesARoleUnderRowLevelSecurity(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

@@ -39,8 +39,8 @@ const (
 	platformDBUser     = "publira_platform"
 	platformDBPassword = "platformpass"
 
-	// The admin API role is deliberately not BYPASSRLS: every statement it runs
-	// is filtered by the tenant isolation policies.
+	// The admin API role deliberately does not reach every tenant: every
+	// statement it runs is filtered by the tenant isolation policies.
 	adminDBUser     = "publira_admin"
 	adminDBPassword = "adminpass"
 
@@ -83,7 +83,8 @@ type PostgresEnv struct {
 	AdminURL string
 	// Application (public API) DSN using publira_public, which is subject to RLS.
 	PublicURL string
-	// Ticker job DSN using publira_ticker, the BYPASSRLS login with per-table grants.
+	// Ticker job DSN using publira_ticker, the login that reaches every tenant
+	// through per-table grants.
 	TickerURL string
 	// Outbox worker DSN using publira_outbox.
 	OutboxURL string
@@ -343,7 +344,8 @@ func (e *PostgresEnv) CreateEmptyDatabase(t *testing.T) string {
 	return u.String()
 }
 
-// OpenPlatformDB opens a connection as publira_platform (BYPASSRLS app user).
+// OpenPlatformDB opens a connection as publira_platform, which reaches every
+// tenant.
 // The connection is closed via t.Cleanup.
 func (e *PostgresEnv) OpenPlatformDB(t *testing.T) *sql.DB {
 	t.Helper()
@@ -368,17 +370,18 @@ func (e *PostgresEnv) OpenPublicDB(t *testing.T) *sql.DB {
 	return e.openAppDB(t, e.PublicURL, publicDBUser)
 }
 
-// OpenTickerDB opens a connection as publira_ticker, the BYPASSRLS login the
-// three ticker jobs run as. Unlike the other app roles it holds no blanket
-// table grant, so a job reading a table the seed never named fails here rather
-// than in production. The connection is closed via t.Cleanup.
+// OpenTickerDB opens a connection as publira_ticker, the login the three
+// ticker jobs run as, which reaches every tenant. Unlike the other app roles it
+// holds no blanket table grant, so a job reading a table the seed never named
+// fails here rather than in production. The connection is closed via
+// t.Cleanup.
 func (e *PostgresEnv) OpenTickerDB(t *testing.T) *sql.DB {
 	t.Helper()
 	return e.openAppDB(t, e.TickerURL, tickerDBUser)
 }
 
 // OpenOutboxDB opens a connection as publira_outbox, the login the outbox
-// worker runs as. It bypasses RLS and owns River's schema, and the platform
+// worker runs as. It reaches every tenant and owns River's schema, and the platform
 // console's tables reach it only through the grants the seed names. The
 // connection is closed via t.Cleanup.
 func (e *PostgresEnv) OpenOutboxDB(t *testing.T) *sql.DB {
@@ -544,6 +547,8 @@ func (e *PostgresEnv) MigrateUp(t *testing.T) {
 // extra, a set of migration files keyed by file name, the way a deployment
 // applies a migration that arrived after the seed ran. The schema then records a
 // version db/migrations does not have, so call [PostgresEnv.Reset] afterwards.
+// What the migrations create reaches no app role until [PostgresEnv.ApplyRoles]
+// runs, as on an upgrade until db roles runs.
 func (e *PostgresEnv) MigrateUpWith(t *testing.T, extra map[string]string) {
 	t.Helper()
 
@@ -575,6 +580,20 @@ func (e *PostgresEnv) MigrateUpWith(t *testing.T, extra map[string]string) {
 
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		t.Fatalf("migrate up: %v", err)
+	}
+}
+
+// ApplyRoles applies db/seeds/baseline again, the way publiractl db roles does
+// on every upgrade right after the migrations, leaving every password as it
+// is.
+func (e *PostgresEnv) ApplyRoles(t *testing.T) {
+	t.Helper()
+	dir, err := dbroles.RepoDir()
+	if err != nil {
+		t.Fatalf("apply roles: %v", err)
+	}
+	if _, err := dbroles.Apply(t.Context(), e.DB, dir, nil); err != nil {
+		t.Fatalf("apply roles: %v", err)
 	}
 }
 

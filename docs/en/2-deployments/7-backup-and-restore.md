@@ -64,7 +64,7 @@ pg_dump --format=custom --file=publira.dump --dbname="$PUBLIRA_DB_URL"
 docker run --rm -e PUBLIRA_DB_URL publira/publiractl:<tag> db version
 ```
 
-`PUBLIRA_DB_URL` is the superuser connection, and `pg_dump` has to be the major version of your PostgreSQL server or newer. It reads every table in one snapshot, so the backup is consistent while the processes keep serving, and holds what was committed when it started.
+`PUBLIRA_DB_URL` is the connection of the [administrative login](./2-installing.md#provision-the-services), and `pg_dump` has to be the major version of your PostgreSQL server or newer. It reads every table in one snapshot, so the backup is consistent while the processes keep serving, and holds what was committed when it started.
 
 `db version` prints the schema version of the database, which is the release the backup restores onto. Keep its output, and the release's tag, with the backup.
 
@@ -95,12 +95,13 @@ Provision the services as [Installing](./2-installing.md#provision-the-services)
 ### 1. Restore the database
 
 ```bash
-pg_restore --no-owner --no-acl --single-transaction --dbname="$PUBLIRA_DB_URL" publira.dump
+pg_restore --list publira.dump | grep -v ' POLICY public [^ ]* publira_rls_bypass ' > publira.list
+pg_restore --no-owner --no-acl --single-transaction --use-list=publira.list --dbname="$PUBLIRA_DB_URL" publira.dump
 ```
 
 `--single-transaction` restores everything or nothing. A restore that stops halfway leaves the database empty rather than missing the tables that came after the failure, which matters once the worker starts: it deletes from the bucket every object no row names.
 
-`--no-owner` and `--no-acl` leave out the grants to the six roles, and the ownership of the job queue's tables by `publira_outbox`. Roles belong to the PostgreSQL server rather than to the database, so a new server does not have them yet, and every statement that names one would fail. Without them, every object is the superuser's, and the next step puts the grants back.
+`--no-owner` and `--no-acl` leave out the grants to the six roles, and the ownership of the job queue's tables by `publira_outbox`, and the list leaves out the policies named `publira_rls_bypass`, which let the roles that work across tenants read every tenant's rows. Roles belong to the PostgreSQL server rather than to the database, so a new server does not have them yet, and every statement that names one would fail. Without them, every object is the administrative login's, and the next step puts the grants and the policies back.
 
 ### 2. Create the roles
 
@@ -212,7 +213,10 @@ On a host with the checkout at the release of the backup, put `.env` back beside
 
 ```bash
 docker compose up -d --wait postgres
-docker compose exec -T postgres pg_restore -U postgres -d publira --no-owner --no-acl --single-transaction < publira.dump
+docker compose exec -T postgres sh -c 'cat > /tmp/publira.dump' < publira.dump
+docker compose exec -T postgres sh -c "pg_restore --list /tmp/publira.dump | grep -v ' POLICY public [^ ]* publira_rls_bypass ' > /tmp/publira.list"
+docker compose exec -T postgres pg_restore -U postgres -d publira --no-owner --no-acl --single-transaction --use-list=/tmp/publira.list /tmp/publira.dump
+docker compose exec -T postgres rm /tmp/publira.dump /tmp/publira.list
 docker compose run --rm publiractl db roles \
   --public-password-file /run/secrets/public-db-password \
   --admin-password-file /run/secrets/admin-db-password \
@@ -224,7 +228,7 @@ docker compose run --rm --no-deps -T --entrypoint tar rustfs -xzf - -C /data < p
 docker compose up -d
 ```
 
-PostgreSQL creates the `publira` database empty on its first start, and the restore fills it. The archive goes into the RustFS volume before RustFS first starts, with the bucket and every object in it. Valkey keeps nothing, so it starts empty.
+PostgreSQL creates the `publira` database empty on its first start, and the restore fills it. The archive is copied into the container so that `pg_restore` can leave out the `publira_rls_bypass` policies, as in [Restore the database](#1-restore-the-database), and `db roles` puts them back. The archive goes into the RustFS volume before RustFS first starts, with the bucket and every object in it. Valkey keeps nothing, so it starts empty.
 
 The commands expect a host where the install's two volumes do not exist yet. To restore over an install that is still on the host, remove it and its volumes first, with `docker compose down -v`. That deletes every row and every image it holds, so run it only with the backup at hand.
 

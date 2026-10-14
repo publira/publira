@@ -104,7 +104,7 @@ task db:setup
 
 `db:setup` runs the following in order.
 
-1. Apply migrations (`db/migrations/`)
+1. Apply migrations (`db/migrations/`), then `db/seeds/prod.sql`, the roles and grants that reach the tables they create
 2. Apply the development seed (`db/seeds/dev.sql`: the roles and object ownership of `prod.sql`, plus the sample data under `db/seeds/dev/`)
 
 ### Responsibilities of migrations and seeds

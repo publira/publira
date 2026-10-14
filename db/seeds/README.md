@@ -83,19 +83,23 @@ The edge routes only the hosts it is given, so a seeded tenant's two hosts are l
 
 | Name | Type | Purpose |
 | --- | --- | --- |
-| `publira_rls_bypass` | NOLOGIN, BYPASSRLS | Named privilege used to grant a dedicated role in production |
-| `publira_platform` | LOGIN, BYPASSRLS | Login user for the platform API; bypasses RLS to access every tenant |
-| `publira_content_stats` | LOGIN, BYPASSRLS | Login user for the daily stats batches; bypasses RLS to aggregate across every tenant |
-| `publira_outbox` | LOGIN, BYPASSRLS | Login user for the worker's Outbox drain; bypasses RLS to claim pending rows across every tenant, and owns River's schema |
-| `publira_ticker` | LOGIN, BYPASSRLS | Login user for the three ticker batches; bypasses RLS to publish, apply free windows, and roll days across every tenant |
+| `publira_rls_bypass` | NOLOGIN | The role whose members reach every tenant's rows |
+| `publira_platform` | LOGIN, member of `publira_rls_bypass` | Login user for the platform API; reaches every tenant |
+| `publira_content_stats` | LOGIN, member of `publira_rls_bypass` | Login user for the daily stats batches; aggregates across every tenant |
+| `publira_outbox` | LOGIN, member of `publira_rls_bypass` | Login user for the worker's Outbox drain; claims pending rows across every tenant, and owns River's schema |
+| `publira_ticker` | LOGIN, member of `publira_rls_bypass` | Login user for the three ticker batches; publishes, applies free windows, and rolls days across every tenant |
 | `publira_admin` | LOGIN | Login user for the admin API; RLS enabled (tenant-scoped) |
 | `publira_public` | LOGIN | Login user for the public API; RLS enabled (tenant-scoped) |
 
+None of them is a superuser or carries `BYPASSRLS`, and nothing in `baseline/` needs a superuser to apply: the connection has to own the database and the schema and have `CREATEROLE`, which is what a managed PostgreSQL such as Cloud SQL gives its customer. Every table under row-level security gets a `publira_rls_bypass` policy, `FOR ALL TO publira_rls_bypass USING (true) WITH CHECK (true)`, which lets the four members through the tenant isolation policies the way `BYPASSRLS` would.
+
 `publira_outbox` is the only one of them with `CREATE` on the `public` schema: the worker applies River's own schema (`river_job` and the rest) with `rivermigrate` at startup.
 
-`publira_ticker` is the only one of them without the blanket table grants the others share. Its jobs touch a known set of catalog, follow, and recipient tables, so the seed names those tables one by one and leaves the role out of the `ALTER DEFAULT PRIVILEGES` that hands every future table to the rest.
+`publira_ticker` is the only one of them without the blanket table grants the others share. Its jobs touch a known set of catalog, follow, and recipient tables, so the seed names those tables one by one.
 
-The same file takes the blanket grants back from two families of table — every `platform_*` relation, from the tenant-scoped and worker roles, and the writes on `episode_rating_counts` and `series_rating_counts`, from `publira_admin` and `publira_public` — and creates the `publira_take_back_default_grants` event trigger, which applies the same rule to each relation a later migration creates. A database that receives migrations after the seed ran therefore needs no second seed run to keep them.
+The same file takes the blanket grants back from two families of table — every `platform_*` relation, from the tenant-scoped and worker roles, and the writes on `episode_rating_counts` and `series_rating_counts`, from `publira_admin` and `publira_public`.
+
+A table a migration creates reaches no app role, and its rows no member of `publira_rls_bypass`, until `baseline/` runs again and the grants, their corrections, and the policy reach it together. `publiractl db roles` runs right after `publiractl db migrate` on every upgrade, and `task db:migrate` and `task db:rollback` apply `prod.sql` after the migrations for the same reason.
 
 `baseline/010_river_object_owner.sql` follows it and hands any existing `river_*` table, sequence, enum, or function to `publira_outbox`. On a database the worker has always connected to as that role there is nothing to move; on one whose River schema another role created, the transfer is what keeps `rivermigrate` able to alter those objects on the next River release. It then revokes every other login role's privileges on the tables and sequences `publira_outbox` owns, so River's job queue stays the worker's alone however many times `baseline/` runs.
 

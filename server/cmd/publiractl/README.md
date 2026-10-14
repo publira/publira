@@ -26,7 +26,7 @@ Applies `db/migrations/` to a database, creates the PostgreSQL login roles every
 | Command | What it does |
 | --- | --- |
 | `db migrate` | Applies every pending migration and exits zero, also when there is nothing to apply. The structured log records the version it started from and the version it ended at. A dirty database is refused before anything runs |
-| `db roles` | Applies `db/seeds/baseline/` — the same files `task db:seed ENV=prod` applies with `psql` — in one transaction: the six login roles and `publira_rls_bypass`, their grants, the default privileges, the `publira_take_back_default_grants` event trigger, and the transfer of River's objects to `publira_outbox`. Then it sets the passwords it is given, and prints what it did to each login role |
+| `db roles` | Applies `db/seeds/baseline/` — the same files `task db:seed ENV=prod` applies with `psql` — in one transaction: the six login roles and `publira_rls_bypass`, their grants, the `publira_rls_bypass` policy on every table under row-level security, which lets the roles that work across tenants read every tenant's rows, and the transfer of River's objects to `publira_outbox`. Then it sets the passwords it is given, and prints what it did to each login role |
 | `db version` | Prints the version `schema_migrations` records (`0` for a database no migration has touched) and whether it is dirty |
 | `db reseal` | Opens every sealed value the database holds with the configured encryption keys, seals each one a key other than the primary sealed again with the primary key, and prints, per key ID a value names, how many it sealed again, how many the primary key sealed already, and how many no configured key opens. `--dry-run` opens and counts the same values and writes nothing |
 
@@ -47,8 +47,8 @@ publiractl db reseal
 
 An install goes from an empty database to serving in this order, every step from the publiractl image:
 
-1. `db migrate` on the superuser connection creates the schema.
-2. `db roles` on the same connection creates the roles with their passwords. It grants on the tables the migrations created, so it runs after them — also on every release, next to `db migrate`, since a release can change the grants.
+1. `db migrate` on the connection that owns the database creates the schema.
+2. `db roles` on the same connection creates the roles with their passwords. It grants on the tables the migrations created, so it runs after them — also on every release, right after `db migrate`, since a table a migration creates reaches no role until `db roles` runs again.
 3. Every process starts with its `PUBLIRA_*_DB_URL` set to its role and the password given above: the Database users table in [`server/README.md`](../../README.md#database-users) names which.
 4. [`setup`](#setup) saves what the install needs to serve its first tenant, on the `publira_platform` connection.
 
@@ -59,7 +59,7 @@ go -C server run ./cmd/publiractl db version
 
 Environment variables:
 
-- `PUBLIRA_DB_URL`: the connection that owns the schema, which for `db roles` and `db reseal` has to be a superuser: the first creates roles and an event trigger, and the second writes tables no login role reaches all of. Required: unlike the `job` group, the `db` group connects with no other variable and never falls back to the development URL, so an unset variable fails before connecting.
+- `PUBLIRA_DB_URL`: the connection that owns the database and the schema, and may create roles. A superuser does, and so does a role with `CREATEROLE` that owns the database, which is what a managed PostgreSQL such as Cloud SQL gives its customer in place of a superuser: no `db` command needs `SUPERUSER` or `BYPASSRLS`. `db reseal` writes tables no login role reaches all of, which their owner does. Required: unlike the `job` group, the `db` group connects with no other variable and never falls back to the development URL, so an unset variable fails before connecting.
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` and `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: the keys `db reseal` opens values with and the one it seals them with, the same ones `publira server` and `publira worker` run with. Required by `db reseal` alone.
 - `PUBLIRA_DB_MIGRATIONS_DIR`: the directory the migrations are read from. Defaults to `migrations` beside the binary, which is `/app/migrations` in the image, and when that does not exist, to the `db/migrations` of the checkout the command runs in, which is what `go run` uses.
 
@@ -464,7 +464,7 @@ go -C server run ./cmd/publiractl job project-episode-reads
 
 Environment variables:
 
-- `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_EVENTS_DB_URL`, then `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_EPISODE_READ_PROJECTION_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_CONTENT_EVENTS_DB_URL`, then `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_EPISODE_READ_PROJECTION_BATCH_SIZE`: rows per statement. Defaults to `1000`; anything that is not a positive 32-bit integer is rejected, because the value becomes a PostgreSQL `LIMIT`.
 
 Run it before `aggregate-content-stats` for the same day. A late projection still files the event on the day the member finished, but only a rebuild of that day picks it up.
@@ -488,7 +488,7 @@ PUBLIRA_CONTENT_STATS_DATE=2026-08-28 go -C server run ./cmd/publiractl job aggr
 
 Environment variables:
 
-- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
 - `PUBLIRA_CONTENT_STATS_DATE`: the calendar date to rebuild as `YYYY-MM-DD`, read as each tenant's own local date. Unset rebuilds every tenant's own yesterday, which is not the same day for all of them.
 
 The structured log records the target date, how many tenants the run finished, how many it skipped, the rows created, and the elapsed time — on failure too, since each tenant commits on its own — and a warning naming each skipped tenant.
@@ -506,7 +506,7 @@ PUBLIRA_CONTENT_RANKING_DATE=2026-08-28 go -C server run ./cmd/publiractl job ag
 
 Environment variables:
 
-- `PUBLIRA_CONTENT_RANKING_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_RANKING_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_CONTENT_RANKING_DATE`: last day of every window, as `YYYY-MM-DD`, read as each tenant's own local date. Unset ends every tenant's windows on its own yesterday.
 - `PUBLIRA_CONTENT_RANKING_ITEM_LIMIT`: how many entities one snapshot carries. Defaults to 50, and must be at least 1.
 
@@ -577,7 +577,7 @@ PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN=true go -C server run ./cmd/publiractl job 
 
 Environment variables:
 
-- `PUBLIRA_CONTENT_EVENTS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`. The two jobs that touch `content_events` run as the same `publira_content_stats` role.
+- `PUBLIRA_CONTENT_EVENTS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`. The two jobs that touch `content_events` run as the same `publira_content_stats` role.
 - `PUBLIRA_CONTENT_EVENTS_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `10000`.
 - `PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
 
@@ -607,7 +607,7 @@ PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN=true go -C server run ./cmd/publiractl job
 
 Environment variables:
 
-- `PUBLIRA_CONTENT_RANKING_DB_URL`: dedicated BYPASSRLS connection URL, shared with `aggregate-rankings`. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_RANKING_DB_URL`: dedicated connection URL, of a role that reaches every tenant, shared with `aggregate-rankings`. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_CONTENT_RANKING_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `1000`, an order of magnitude below the `content_events` chunk because a snapshot row carries a whole leaderboard.
 - `PUBLIRA_CONTENT_RANKING_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
 
@@ -630,7 +630,7 @@ PUBLIRA_MFA_CHALLENGE_PURGE_DRY_RUN=true go -C server run ./cmd/publiractl job p
 
 Environment variables:
 
-- `PUBLIRA_MFA_CHALLENGE_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_MFA_CHALLENGE_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_MFA_CHALLENGE_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `10000`.
 - `PUBLIRA_MFA_CHALLENGE_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
 
@@ -657,7 +657,7 @@ PUBLIRA_COMMENT_PURGE_DRY_RUN=true go -C server run ./cmd/publiractl job purge-w
 
 Environment variables:
 
-- `PUBLIRA_COMMENT_PURGE_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_COMMENT_PURGE_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_COMMENT_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `1000`, below the `content_events` chunk because deleting a comment cascades into the reports filed on it.
 - `PUBLIRA_COMMENT_PURGE_DRY_RUN`: `true` counts the comments that would be deleted, logs the total, and exits without deleting anything.
 
@@ -678,7 +678,7 @@ PUBLIRA_ORPHAN_IMAGES_PURGE_DRY_RUN=true go -C server run ./cmd/publiractl job p
 
 Environment variables:
 
-- `PUBLIRA_ORPHAN_IMAGES_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_ORPHAN_IMAGES_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt the access key of an object store saved with one.
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`: the ambient credential for an object store saved without an access key.
 - `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS`: how old an object or image row must be to become a candidate. Defaults to `24`. Anything below `1` fails at startup, because the cutoff would land at or after now and put every upload in flight in range; so does an age beyond `2562047`, which wraps negative into that same cutoff.
@@ -702,7 +702,7 @@ PUBLIRA_RECOMMEND_FEATURES_DATE=2026-08-28 go -C server run ./cmd/publiractl job
 
 Environment variables:
 
-- `PUBLIRA_RECOMMEND_FEATURES_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_RECOMMEND_FEATURES_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
 - `PUBLIRA_RECOMMEND_FEATURES_DATE`: last day of the window, as `YYYY-MM-DD`, read as each tenant's own local date. Unset ends every tenant's window on its own yesterday.
 - `PUBLIRA_RECOMMEND_FEATURES_WINDOW_DAYS`: window length in days, ending on that date and including it. Defaults to 28, and must be at least 1.
 
@@ -767,7 +767,7 @@ go -C server run ./cmd/publiractl job close-royalty-statements
 
 Environment variables:
 
-- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
 
 The structured log records, per tenant, each month closed with its totals, a month already closed, the previous month when its close day has not come (`due_on`), and a tenant skipped because the previous month ended before automatic closing began; then how many tenants the run went through, how many months it closed, and the elapsed time. One tenant's failure does not stop the others: the run finishes the remaining tenants and then exits non-zero.
 
@@ -782,7 +782,7 @@ go -C server run ./cmd/publiractl job sync-google-play-voided-purchases
 
 Environment variables:
 
-- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt the service account key each tenant saved.
 
 The structured log records each tenant that failed, then how many tenants the run went through, how many voided purchases it read, how many of them had no purchase yet, and the elapsed time. One tenant's failure does not stop the others: the run finishes the remaining tenants and then exits non-zero.
@@ -798,5 +798,5 @@ go -C server run ./cmd/publiractl job build-search-index
 
 Environment variables:
 
-- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated BYPASSRLS connection URL. Falls back to `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: decrypt the search engine's password, when one is saved.

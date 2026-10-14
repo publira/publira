@@ -111,8 +111,8 @@ type API struct {
 }
 
 // New builds the platform console API over db, which must be the pool
-// connected as publira_platform, whose BYPASSRLS attribute lets it read past
-// row-level security.
+// connected as publira_platform, whose membership in publira_rls_bypass lets it
+// read past row-level security.
 func New(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) *API {
 	api := newAPI(db, queries, logger, encryptor, tester, tokens, nil, nil, nil)
 	api.server.shareLoginGuard()

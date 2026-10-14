@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/retention"
 )
 
@@ -37,8 +38,8 @@ type purgeQuerier interface {
 // A comment staff removed is not its business: 'hidden' is the record of a
 // moderation decision, and it is kept whatever its age.
 //
-// Its database connection must use a role with BYPASSRLS (or be a superuser),
-// because one run spans every tenant.
+// Its database connection must use a role that reaches every tenant, because
+// one run spans every tenant: [dbroles.RequireEveryTenant] refuses any other.
 type Purger struct {
 	db      *sql.DB
 	queries purgeQuerier
@@ -106,7 +107,7 @@ func (p *Purger) Run(ctx context.Context, opts PurgeOptions) (PurgeResult, error
 	if chunkSize <= 0 {
 		chunkSize = DefaultPurgeChunkSize
 	}
-	if err := p.requireBypassRLS(ctx); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, p.db, "withdrawn comment purge"); err != nil {
 		return PurgeResult{}, err
 	}
 
@@ -195,20 +196,4 @@ func (p *Purger) listTenantIDs(ctx context.Context) ([]uuid.UUID, error) {
 		tenantIDs = append(tenantIDs, id)
 	}
 	return tenantIDs, rows.Err()
-}
-
-func (p *Purger) requireBypassRLS(ctx context.Context) error {
-	var bypasses bool
-	err := p.db.QueryRowContext(ctx, `
-		SELECT rolsuper OR rolbypassrls
-		FROM pg_roles
-		WHERE rolname = current_user
-	`).Scan(&bypasses)
-	if err != nil {
-		return fmt.Errorf("check database role: %w", err)
-	}
-	if !bypasses {
-		return errors.New("withdrawn comment purge requires a database role with BYPASSRLS")
-	}
-	return nil
 }

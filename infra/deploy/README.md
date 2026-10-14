@@ -84,7 +84,7 @@ The secret encryption keys seal the SMTP password, the object store's access key
 | `publira server` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL` | The `publira_public` and `publira_admin` connections. A process given `--role` reads only the connection of each role it serves, as the `publira_platform` one is read only with `platform` |
 | `publira server`, `publira worker` | `PUBLIRA_WEB_STOREFRONT_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL` | The private network URLs of `web-storefront` and `web-admin`, such as `http://web-storefront:3000`, where the cache revalidation is sent |
 | `publira worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The `publira_outbox`, `publira_ticker`, and `publira_content_stats` connections |
-| `publiractl` | `PUBLIRA_DB_URL` | The superuser connection, read by the `db` commands alone |
+| `publiractl` | `PUBLIRA_DB_URL` | The connection of the login that owns the database and may create roles, read by the `db` commands alone. It need not be a superuser |
 
 `publira server --with-worker` reads every row naming `publira server` or `publira worker`, here and under [Shared values](#shared-values).
 
@@ -96,7 +96,7 @@ Each of those connections is a pool of at most `PUBLIRA_DB_MAX_OPEN_CONNS` conne
 
 ## Bringing an install into service
 
-Before the first step, provision the dependency services: a PostgreSQL database with a superuser login, which the first two steps connect as through `PUBLIRA_DB_URL`, a Valkey instance, an empty bucket, and an SMTP account. Point the tenant's domain and `admin.<domain>` at the edge.
+Before the first step, provision the dependency services: a PostgreSQL database with a login that owns it and has `CREATEROLE` — its superuser, or a managed PostgreSQL's administrative login such as Cloud SQL's `postgres` user — which the first two steps connect as through `PUBLIRA_DB_URL`, a Valkey instance, an empty bucket, and an SMTP account. Point the tenant's domain and `admin.<domain>` at the edge.
 
 1. **Apply the migrations** with the publiractl image of the release being installed:
 

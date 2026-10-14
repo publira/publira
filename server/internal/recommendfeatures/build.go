@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/tenantday"
 	"github.com/publira/publira/server/internal/tenantlock"
 )
@@ -36,9 +37,9 @@ const (
 	FeatureVersion = 2
 )
 
-// Builder rebuilds user_recommend_features and item_recommend_features.
-// Its database connection must use a role with BYPASSRLS (or be a superuser),
-// because one run spans every tenant.
+// Builder rebuilds user_recommend_features and item_recommend_features. Its
+// database connection must use a role that reaches every tenant, because one
+// run spans every tenant: [dbroles.RequireEveryTenant] refuses any other.
 type Builder struct {
 	db *sql.DB
 }
@@ -94,7 +95,7 @@ func (b *Builder) Run(ctx context.Context, opts Options) (Result, error) {
 	if topSeriesLimit <= 0 {
 		topSeriesLimit = DefaultTopSeriesLimit
 	}
-	if err := b.requireBypassRLS(ctx); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, b.db, "recommend feature build"); err != nil {
 		return Result{}, err
 	}
 
@@ -141,26 +142,10 @@ func (b *Builder) RunTenant(ctx context.Context, tenant tenantday.Tenant, refere
 	if windowDays <= 0 {
 		windowDays = DefaultWindowDays
 	}
-	if err := b.requireBypassRLS(ctx); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, b.db, "recommend feature build"); err != nil {
 		return 0, 0, err
 	}
 	return b.buildTenant(ctx, tenant, referenceDate.Format(time.DateOnly), windowDays, DefaultTopSeriesLimit)
-}
-
-func (b *Builder) requireBypassRLS(ctx context.Context) error {
-	var bypasses bool
-	err := b.db.QueryRowContext(ctx, `
-		SELECT rolsuper OR rolbypassrls
-		FROM pg_roles
-		WHERE rolname = current_user
-	`).Scan(&bypasses)
-	if err != nil {
-		return fmt.Errorf("check database role: %w", err)
-	}
-	if !bypasses {
-		return errors.New("recommend feature build requires a database role with BYPASSRLS")
-	}
-	return nil
 }
 
 func (b *Builder) buildTenant(

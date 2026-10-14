@@ -14,6 +14,7 @@ import (
 	"time"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/storage"
 )
 
@@ -44,8 +45,9 @@ type Querier interface {
 }
 
 // Reclaimer deletes the image rows nothing points at and then the storage
-// objects nothing names. Its database connection must use a role with
-// BYPASSRLS (or be a superuser), because one run spans every tenant.
+// objects nothing names. Its database connection must use a role that reaches
+// every tenant, because one run spans every tenant:
+// [dbroles.RequireEveryTenant] refuses any other.
 type Reclaimer struct {
 	db      *sql.DB
 	queries Querier
@@ -129,7 +131,7 @@ func (r *Reclaimer) Run(ctx context.Context, opts Options) (Result, error) {
 	if pageSize <= 0 {
 		pageSize = DefaultPageSize
 	}
-	if err := r.requireBypassRLS(ctx); err != nil {
+	if err := dbroles.RequireEveryTenant(ctx, r.db, "orphan image reclamation"); err != nil {
 		return Result{}, err
 	}
 
@@ -237,20 +239,4 @@ func (r *Reclaimer) reclaimPage(ctx context.Context, objects []storage.Object, o
 		return 0, fmt.Errorf("delete orphan objects: %w", err)
 	}
 	return int64(len(orphans)), nil
-}
-
-func (r *Reclaimer) requireBypassRLS(ctx context.Context) error {
-	var bypasses bool
-	err := r.db.QueryRowContext(ctx, `
-		SELECT rolsuper OR rolbypassrls
-		FROM pg_roles
-		WHERE rolname = current_user
-	`).Scan(&bypasses)
-	if err != nil {
-		return fmt.Errorf("check database role: %w", err)
-	}
-	if !bypasses {
-		return errors.New("orphan image reclamation requires a database role with BYPASSRLS")
-	}
-	return nil
 }

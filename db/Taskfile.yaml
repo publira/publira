@@ -29,9 +29,12 @@ tasks:
       - psql {{.DB_URL | q}} -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
   migrate:
-    desc: Apply all pending database migrations
+    desc: Apply all pending database migrations, then the role grants that reach what they created
     cmds:
       - migrate -path ./migrations -database {{.DB_URL | q}} up
+      # A table a migration creates reaches no app role until the baseline
+      # seed runs again, as publiractl db roles does after db migrate.
+      - psql {{.DB_URL | q}} -q -v ON_ERROR_STOP=1 -f seeds/prod.sql
 
   reset:
     desc: Rebuild the database from scratch
@@ -40,9 +43,16 @@ tasks:
       - task: setup
 
   rollback:
-    desc: Roll back the latest database migration
+    desc: Roll back the latest database migration, then the role grants that reach what it recreated
     cmds:
       - migrate -path ./migrations -database {{.DB_URL | q}} down 1
+      # A down migration may recreate a table or a view, which reaches no app
+      # role until the baseline seed runs again. The seed also grants on tables
+      # by name, and fails on one the rollback dropped. The blanket grants,
+      # their corrections, and the policies come before those, so they still
+      # stand, and the next db:migrate applies the seed in full.
+      - cmd: psql {{.DB_URL | q}} -q -v ON_ERROR_STOP=1 -f seeds/prod.sql
+        ignore_error: true
 
   seed:
     desc: "Seed the database. ENV=prod for production seed, default: dev"
