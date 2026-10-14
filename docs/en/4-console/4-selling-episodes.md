@@ -71,11 +71,12 @@ Do the setup below with the provider's test keys first, as [Testing before going
 In the Stripe Dashboard:
 
 1. Copy the **secret key** from the API keys page. A test key starts with `sk_test_`, a live key with `sk_live_`.
-2. Add a webhook endpoint. Its URL is the **Webhook URL** the console shows under **Payment settings** once Stripe is chosen, `https://<tenant-domain>/api/v1/webhook/payment/stripe` on the tenant's own site domain. Select these five events:
+2. Add a webhook endpoint. Its URL is the **Webhook URL** the console shows under **Payment settings** once Stripe is chosen, `https://<tenant-domain>/api/v1/webhook/payment/stripe` on the tenant's own site domain. Select these six events:
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.expired`
    - `charge.refunded`
+   - `refund.failed`
    - `charge.dispute.created`
 3. Open the endpoint and copy its **signing secret**, which starts with `whsec_`.
 
@@ -165,7 +166,7 @@ A refund is made where the reader paid: in the Stripe or PAY.JP dashboard for a 
 
 Each refund reaches the install the way its purchase did:
 
-- **Stripe and PAY.JP** report it through the webhook above, which is why Stripe's endpoint needs `charge.refunded`.
+- **Stripe and PAY.JP** report it through the webhook above, which is why Stripe's endpoint needs `charge.refunded`. A refund the provider accepted can still fail later, for example when the reader's card has been closed; the provider reports that too, through `refund.failed` on Stripe, and the episode opens to the reader again unless what stays refunded still adds up to its price.
 - **The App Store** reports it to the **App Store Server Notifications URL** the console shows in the **App Store** section, which is registered in App Store Connect as both the Production and the Sandbox Server URL.
 - **Google Play** does not send refunds. The install reads Google Play's voided purchases once an hour, for the last 30 days, so a refunded purchase can keep its episode open for up to an hour. This runs in `publira worker`, which the operator keeps running, as [Overview](../2-deployments/1-overview.md) describes; without it, Google Play refunds are not applied.
 

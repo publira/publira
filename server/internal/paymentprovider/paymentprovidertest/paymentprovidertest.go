@@ -59,6 +59,13 @@ type Fixture interface {
 	// RefundedTotal answers the total the provider's API reports refunded on
 	// the payment, in the minor unit of its currency.
 	RefundedTotal(t testing.TB, credentials paymentprovider.Credentials, paymentID string) int64
+	// FailNextRefund makes the next refund the provider's API creates on the
+	// payment one it answers as failed.
+	FailNextRefund(t testing.TB, credentials paymentprovider.Credentials, paymentID string)
+	// RefundFailed answers the notification that a refund on the payment
+	// failed after it was accepted, and makes the provider's API report
+	// refund.AmountRefunded as what stays refunded on it.
+	RefundFailed(t testing.TB, credentials paymentprovider.Credentials, refund Refund) ([]byte, http.Header)
 	// Unrelated answers a notification the purchase flow has no use for.
 	Unrelated(t testing.TB, credentials paymentprovider.Credentials) ([]byte, http.Header)
 }
@@ -228,6 +235,40 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
+	t.Run("a refund the provider answers as failed is refused", func(t *testing.T) {
+		paid := checkout
+		paid.PaymentID = "payment_refund_failed_" + strings.ToLower(currency)
+		fixture.CheckoutCompleted(t, credentials, paid)
+		fixture.FailNextRefund(t, credentials, paid.PaymentID)
+		_, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: "refund_contract_failed_" + strings.ToLower(currency)})
+		if !errors.Is(err, paymentprovider.ErrRefundRefused) {
+			t.Fatalf("Refund error = %v, want ErrRefundRefused", err)
+		}
+		if got := fixture.RefundedTotal(t, credentials, paid.PaymentID); got != 0 {
+			t.Fatalf("refunded total = %d, want 0", got)
+		}
+	})
+
+	t.Run("a refund that fails later names its payment and what stays refunded", func(t *testing.T) {
+		paid := checkout
+		paid.PaymentID = "payment_refund_failed_later_" + strings.ToLower(currency)
+		fixture.CheckoutCompleted(t, credentials, paid)
+		fixture.Refunded(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 200})
+		fixture.Refunded(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 500})
+		payload, headers := fixture.RefundFailed(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 200})
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		failed, ok := event.(paymentprovider.RefundFailed)
+		if !ok {
+			t.Fatalf("event = %T, want RefundFailed", event)
+		}
+		if failed.PaymentID != paid.PaymentID || failed.AmountRefunded != 200 || failed.Currency != currency {
+			t.Fatalf("failed refund = %+v, want 200 %s staying refunded on %q", failed, currency, paid.PaymentID)
+		}
+	})
+
 	t.Run("a refund of a payment the account does not hold is refused", func(t *testing.T) {
 		paid := checkout
 		paid.PaymentID = "payment_refund_other_" + strings.ToLower(currency)
@@ -285,6 +326,9 @@ type Tenant interface {
 	RefundedAmount(t *testing.T) int32
 	// HeldRefunds counts the refunds still waiting for their purchase.
 	HeldRefunds(t *testing.T) int
+	// RevokeAsStaff revokes the tenant's only purchase as staff do when they
+	// refund it, before the provider has reported the refund.
+	RevokeAsStaff(t *testing.T)
 }
 
 // Run checks the purchase flow against the fixture's notifications, for a
@@ -412,6 +456,61 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 			if got := tenant.RefundedAmount(t); int64(got) != total {
 				t.Fatalf("refunded amount = %d, want %d", got, total)
 			}
+		}
+	})
+
+	t.Run("a full refund that fails reopens the purchase", func(t *testing.T) {
+		tenant := newTenant(t, credentials)
+		paymentID := id("payment_refund_reopened")
+		checkout, checkoutHeaders := fixture.CheckoutCompleted(t, credentials, Checkout{
+			CheckoutID: id("checkout_refund_reopened"),
+			PaymentID:  paymentID,
+			Purchase:   tenant.Purchase(),
+		})
+		if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
+			t.Fatalf("checkout: %v", err)
+		}
+		refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 500})
+		if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
+			t.Fatalf("refund: %v", err)
+		}
+		if tenant.OpensEpisode(t) {
+			t.Fatal("a refunded purchase still opens the episode")
+		}
+		failed, failedHeaders := fixture.RefundFailed(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 0})
+		if err := tenant.Deliver(t, failed, failedHeaders); err != nil {
+			t.Fatalf("failed refund: %v", err)
+		}
+		if !tenant.OpensEpisode(t) {
+			t.Fatal("a purchase whose refund failed does not open the episode")
+		}
+		if got := tenant.RefundedAmount(t); got != 0 {
+			t.Fatalf("refunded amount = %d, want 0", got)
+		}
+		if got, want := tenant.SalesGross(t), int64(tenant.Purchase().Price); got != want {
+			t.Fatalf("sales gross = %d, want %d once the refund failed", got, want)
+		}
+	})
+
+	t.Run("a staff refund that fails reopens the purchase", func(t *testing.T) {
+		tenant := newTenant(t, credentials)
+		paymentID := id("payment_staff_refund_failed")
+		checkout, checkoutHeaders := fixture.CheckoutCompleted(t, credentials, Checkout{
+			CheckoutID: id("checkout_staff_refund_failed"),
+			PaymentID:  paymentID,
+			Purchase:   tenant.Purchase(),
+		})
+		if err := tenant.Deliver(t, checkout, checkoutHeaders); err != nil {
+			t.Fatalf("checkout: %v", err)
+		}
+		fixture.Refunded(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 500})
+		tenant.RevokeAsStaff(t)
+		failed, failedHeaders := fixture.RefundFailed(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: 0})
+		if err := tenant.Deliver(t, failed, failedHeaders); err != nil {
+			t.Fatalf("failed refund: %v", err)
+		}
+		if !tenant.OpensEpisode(t) {
+			t.Fatal("a purchase whose staff refund failed does not open the episode")
 		}
 	})
 

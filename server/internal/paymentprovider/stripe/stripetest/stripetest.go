@@ -82,6 +82,8 @@ type paymentIntent struct {
 	amount   int64
 	currency string
 	refunded int64
+	// failNext makes the next refund created on the intent a failed one.
+	failNext bool
 }
 
 // Refund is one refund the fake made.
@@ -91,6 +93,8 @@ type Refund struct {
 	PaymentIntentID string
 	Amount          int64
 	IdempotencyKey  string
+	// Status is succeeded, or failed for a refund the fake was told to fail.
+	Status string
 }
 
 // NewAPI answers a fake that serves until t ends.
@@ -99,6 +103,7 @@ func NewAPI(t testing.TB) *API {
 	api := &API{intents: map[string]map[string]*paymentIntent{}, idempotent: map[string]map[string]Refund{}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/refunds", api.createRefund)
+	mux.HandleFunc("GET /v1/payment_intents/{id}", api.getPaymentIntent)
 	api.server = httptest.NewServer(mux)
 	t.Cleanup(api.server.Close)
 	return api
@@ -126,6 +131,14 @@ func (a *API) SetRefunded(secretKey, id string, amount int64) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.intent(secretKey, id).refunded = amount
+}
+
+// FailNextRefund makes the next refund created on the payment intent id under
+// secretKey one Stripe answers as failed, which refunds nothing.
+func (a *API) FailNextRefund(secretKey, id string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.intent(secretKey, id).failNext = true
 }
 
 // RefundedTotal answers the total refunded so far on the payment intent id
@@ -203,13 +216,20 @@ func (a *API) createRefund(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "amount_too_large", "Refund amount is greater than unrefunded amount on charge.")
 			return
 		}
-		intent.refunded += amount
+		status := "succeeded"
+		if intent.failNext {
+			intent.failNext = false
+			status = "failed"
+		} else {
+			intent.refunded += amount
+		}
 		refund = Refund{
 			ID:              fmt.Sprintf("re_fake%04d", len(a.refunds)+1),
 			SecretKey:       secretKey,
 			PaymentIntentID: intentID,
 			Amount:          amount,
 			IdempotencyKey:  idempotencyKey,
+			Status:          status,
 		}
 		a.refunds = append(a.refunds, refund)
 		if idempotencyKey != "" {
@@ -229,7 +249,43 @@ func (a *API) createRefund(w http.ResponseWriter, r *http.Request) {
 		"amount":         refund.Amount,
 		"currency":       currency,
 		"payment_intent": refund.PaymentIntentID,
-		"status":         "succeeded",
+		"status":         refund.Status,
+	})
+}
+
+// getPaymentIntent answers a payment intent with its charge expanded, which
+// carries what has been refunded on it.
+func (a *API) getPaymentIntent(w http.ResponseWriter, r *http.Request) {
+	secretKey := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	id := r.PathValue("id")
+	a.mu.Lock()
+	intent, ok := a.intents[secretKey][id]
+	var amount, refunded int64
+	var currency string
+	if ok {
+		amount, refunded, currency = intent.amount, intent.refunded, intent.currency
+	}
+	a.mu.Unlock()
+	if !ok {
+		writeError(w, http.StatusNotFound, "resource_missing", "No such payment_intent: '"+id+"'")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"id":       id,
+		"object":   "payment_intent",
+		"amount":   amount,
+		"currency": currency,
+		"status":   "succeeded",
+		"latest_charge": map[string]any{
+			"id":              "ch_" + id,
+			"object":          "charge",
+			"amount":          amount,
+			"amount_refunded": refunded,
+			"currency":        currency,
+			"payment_intent":  id,
+			"refunded":        refunded >= amount,
+		},
 	})
 }
 
@@ -310,6 +366,19 @@ func (f *Fixture) Refunded(t testing.TB, credentials paymentprovider.Credentials
 // reports a dispute through yet.
 func (f *Fixture) RefundedTotal(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) int64 {
 	return f.API.RefundedTotal(credentials[stripe.FieldSecretKey], paymentID)
+}
+
+func (f *Fixture) FailNextRefund(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) {
+	f.API.FailNextRefund(credentials[stripe.FieldSecretKey], paymentID)
+}
+
+func (f *Fixture) RefundFailed(t testing.TB, credentials paymentprovider.Credentials, refund paymentprovidertest.Refund) ([]byte, http.Header) {
+	t.Helper()
+	f.API.SetRefunded(credentials[stripe.FieldSecretKey], refund.PaymentID, refund.AmountRefunded)
+	return recorded(t, credentials, "refund.failed.json", map[string]any{
+		"currency":       strings.ToLower(refund.Currency),
+		"payment_intent": refund.PaymentID,
+	})
 }
 
 func (*Fixture) Disputed(t testing.TB, credentials paymentprovider.Credentials, paymentID string) ([]byte, http.Header) {

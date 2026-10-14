@@ -2642,6 +2642,19 @@ type Querier interface {
 	// nothing the idempotency key reads. A reader or an episode deleted since the
 	// checkout started records nothing, since there is no next checkout to key.
 	RecordExpiredCheckout(ctx context.Context, arg RecordExpiredCheckoutParams) error
+	// Records that a refund of the purchase's payment failed after the provider
+	// accepted it, taking the total that stays refunded from the provider as it
+	// now stands, which is the one place a recorded amount goes down. Once that
+	// total falls short of the price, the purchase is no longer refunded in full,
+	// and a revocation that came from a refund, the provider's or the one staff
+	// asked for, is lifted with it, so the reader keeps what they still pay for.
+	// A total of nothing is still recorded as an amount rather than as no refund:
+	// royalty_uncarried_refunds reads a purchase with an amount, which is how a
+	// refund a closed statement already carried is carried back. A dispute keeps
+	// its revocation. Nothing matches a payment of another tenant,
+	// another provider, no purchase here, or a total in a currency other than the
+	// purchase's, which says nothing comparable to its price.
+	RecordFailedRefundOnPurchase(ctx context.Context, arg RecordFailedRefundOnPurchaseParams) (Purchase, error)
 	// A paged handler records how far it has got after each page, so a run
 	// that ends before the event is finished leaves the next one a place to
 	// resume from. Only the run that holds the claim may move it.

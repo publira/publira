@@ -147,8 +147,8 @@ type RefundRequest struct {
 }
 
 // Event is what a notification means to the purchase flow: one of
-// [PurchaseCompleted], [Refunded], [Disputed], [CheckoutExpired], or
-// [Ignored].
+// [PurchaseCompleted], [Refunded], [RefundFailed], [Disputed],
+// [CheckoutExpired], or [Ignored].
 type Event interface {
 	// NotificationID is the provider's id of the notification, for logs.
 	NotificationID() string
@@ -182,6 +182,20 @@ type Refunded struct {
 	Currency string
 }
 
+// RefundFailed reports a refund of one payment that failed or was canceled
+// after the provider had accepted it, so the money it promised never went back
+// to the reader.
+type RefundFailed struct {
+	ID        string
+	PaymentID string
+	// AmountRefunded is the total that stays refunded on the payment once the
+	// failed refund no longer counts, in the minor unit of Currency, as the
+	// provider's API reports it.
+	AmountRefunded int64
+	// Currency is the ISO 4217 code of AmountRefunded, in capitals.
+	Currency string
+}
+
 // Disputed reports that the reader has disputed one payment with their bank.
 type Disputed struct {
 	ID        string
@@ -205,12 +219,14 @@ type Ignored struct {
 
 func (e PurchaseCompleted) NotificationID() string { return e.ID }
 func (e Refunded) NotificationID() string          { return e.ID }
+func (e RefundFailed) NotificationID() string      { return e.ID }
 func (e Disputed) NotificationID() string          { return e.ID }
 func (e CheckoutExpired) NotificationID() string   { return e.ID }
 func (e Ignored) NotificationID() string           { return e.ID }
 
 func (PurchaseCompleted) isEvent() {}
 func (Refunded) isEvent()          {}
+func (RefundFailed) isEvent()      {}
 func (Disputed) isEvent()          {}
 func (CheckoutExpired) isEvent()   {}
 func (Ignored) isEvent()           {}
@@ -232,8 +248,9 @@ type Provider interface {
 	// is false and no error, so a request made again succeeds without
 	// refunding anything; one the provider answers from its idempotency key
 	// reports the refund that key made. It answers [ErrRefundRefused] for a
-	// refund the provider will not make. What it refunded reaches the
-	// purchase flow as the provider's [Refunded] notification, as a refund
-	// made in the provider's own dashboard does.
+	// refund the provider will not make, and for one it answers as failed or
+	// canceled at once. What it refunded reaches the purchase flow as the
+	// provider's [Refunded] notification, as a refund made in the provider's
+	// own dashboard does, and a refund that fails later as [RefundFailed].
 	Refund(ctx context.Context, credentials Credentials, req RefundRequest) (bool, error)
 }

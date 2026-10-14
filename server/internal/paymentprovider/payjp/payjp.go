@@ -271,7 +271,9 @@ func (p *Provider) purchaseCompletedEvent(ctx context.Context, credentials payme
 
 func (p *Provider) refundedEvent(ctx context.Context, credentials paymentprovider.Credentials, event notification) (paymentprovider.Event, error) {
 	var refund struct {
+		ID            string `json:"id"`
 		PaymentFlowID string `json:"payment_flow_id"`
+		Status        string `json:"status"`
 	}
 	if err := json.Unmarshal(event.Data, &refund); err != nil {
 		return nil, fmt.Errorf("%w: refund: %v", paymentprovider.ErrMalformedNotification, err)
@@ -279,12 +281,37 @@ func (p *Provider) refundedEvent(ctx context.Context, credentials paymentprovide
 	if strings.TrimSpace(refund.PaymentFlowID) == "" {
 		return nil, fmt.Errorf("%w: the refund names no payment flow", paymentprovider.ErrMalformedNotification)
 	}
+	// A refund the notification says failed is confirmed with the API, as
+	// everything else the notification says is, before it reopens anything.
+	failed := false
+	if refundFailed(payjpv2.PaymentRefundStatus(refund.Status)) {
+		client, err := p.client(credentials)
+		if err != nil {
+			return nil, err
+		}
+		res, err := payjpv2.Extract(client.GetPaymentRefundWithResponse(ctx, refund.ID))
+		if err != nil {
+			return nil, apiError("refund", err)
+		}
+		if res.Result == nil {
+			return nil, errors.New("payjp returned no refund")
+		}
+		failed = res.Result.PaymentFlowId == refund.PaymentFlowID && refundFailed(res.Result.Status)
+	}
 
 	// A refund notification carries that refund's amount alone, and the
 	// purchase flow records the total refunded on the payment.
 	total, err := p.refundedTotal(ctx, credentials, refund.PaymentFlowID)
 	if err != nil {
 		return nil, apiError("payment flow refunds", err)
+	}
+	if failed {
+		return paymentprovider.RefundFailed{
+			ID:             event.ID,
+			PaymentID:      refund.PaymentFlowID,
+			AmountRefunded: total,
+			Currency:       currency,
+		}, nil
 	}
 	if total == 0 {
 		return paymentprovider.Ignored{ID: event.ID, Type: event.Type}, nil
@@ -359,10 +386,19 @@ func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Crede
 	// for less, which PAY.JP would refuse under a key it has seen.
 	idempotencyKey := req.IdempotencyKey + ":" + strconv.Itoa(remaining)
 	body := payjpv2.PaymentRefundCreateRequest{PaymentFlowId: req.PaymentID, Amount: &remaining}
-	if _, err := payjpv2.Extract(client.CreatePaymentRefundWithResponse(ctx, body, payjpv2.WithIdempotencyKey(idempotencyKey))); err != nil {
+	created, err := payjpv2.Extract(client.CreatePaymentRefundWithResponse(ctx, body, payjpv2.WithIdempotencyKey(idempotencyKey)))
+	if err != nil {
 		return false, refundError("payment refund", err)
 	}
+	if created.Result != nil && refundFailed(created.Result.Status) {
+		return false, fmt.Errorf("%w: the refund is %s", paymentprovider.ErrRefundRefused, created.Result.Status)
+	}
 	return true, nil
+}
+
+// refundFailed reports a refund status that returns nothing to the reader.
+func refundFailed(status payjpv2.PaymentRefundStatus) bool {
+	return status == payjpv2.PaymentRefundStatusFailed || status == payjpv2.PaymentRefundStatusCanceled
 }
 
 // refundError reads an answer the API gives for a request it will not carry

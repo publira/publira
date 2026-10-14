@@ -443,6 +443,23 @@ func TestDBRefundPurchaseRefusesWhatItCannotRefund(t *testing.T) {
 		}
 	})
 
+	t.Run("a refund Stripe answers as failed leaves the purchase open", func(t *testing.T) {
+		purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.bob, episode: f.episodeB, purchasedAt: purchasedAt, paymentID: "pi_failed"})
+		f.stripe.FailNextRefund(purchaseTestSecretKey, "pi_failed")
+		_, err := f.refund(purchaseID)
+		assertConnectCode(t, "RefundPurchase", err, connect.CodeFailedPrecondition)
+		res, err := f.client().GetPurchase(f.ctx(), &publiraadminv1.GetPurchaseRequest{Tenant: f.admin.tenantContext(), PurchaseId: purchaseID.String()})
+		if err != nil {
+			t.Fatalf("GetPurchase: %v", err)
+		}
+		if res.Purchase.RevokedAt != "" || !res.Purchase.Refundable {
+			t.Fatalf("purchase after a failed refund = %+v, want still open and refundable", res.Purchase)
+		}
+		if got := f.refundAudits(t, purchaseID); got != 0 {
+			t.Fatalf("audit entries = %d, want none", got)
+		}
+	})
+
 	t.Run("a tenant whose payments are off", func(t *testing.T) {
 		purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.bob, episode: f.episodeC, purchasedAt: purchasedAt, paymentID: "pi_disabled"})
 		if _, err := f.env.paymentClient().UpdateTenantPaymentSettings(f.ctx(), &publiraadminv1.UpdateTenantPaymentSettingsRequest{
@@ -461,8 +478,10 @@ func TestDBRefundPurchaseRefusesWhatItCannotRefund(t *testing.T) {
 		if res.Purchase.Refundable {
 			t.Fatal("a purchase is refundable while the tenant's payments are off")
 		}
-		if refunds := f.stripe.Refunds(); len(refunds) != 0 {
-			t.Fatalf("refunds = %+v, want none", refunds)
+		for _, refund := range f.stripe.Refunds() {
+			if refund.PaymentIntentID == "pi_disabled" {
+				t.Fatalf("refund = %+v, want none while payments are off", refund)
+			}
 		}
 	})
 }

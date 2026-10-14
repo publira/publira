@@ -306,6 +306,40 @@ FROM refund
 WHERE p.id = refund.id
 RETURNING p.*;
 
+-- name: RecordFailedRefundOnPurchase :one
+-- Records that a refund of the purchase's payment failed after the provider
+-- accepted it, taking the total that stays refunded from the provider as it
+-- now stands, which is the one place a recorded amount goes down. Once that
+-- total falls short of the price, the purchase is no longer refunded in full,
+-- and a revocation that came from a refund, the provider's or the one staff
+-- asked for, is lifted with it, so the reader keeps what they still pay for.
+-- A total of nothing is still recorded as an amount rather than as no refund:
+-- royalty_uncarried_refunds reads a purchase with an amount, which is how a
+-- refund a closed statement already carried is carried back. A dispute keeps
+-- its revocation. Nothing matches a payment of another tenant,
+-- another provider, no purchase here, or a total in a currency other than the
+-- purchase's, which says nothing comparable to its price.
+UPDATE purchases p
+SET refunded_amount = sqlc.arg('refunded_amount')::integer,
+    refunded_at = CASE
+        WHEN sqlc.arg('refunded_amount')::integer >= p.price_at_purchase THEN p.refunded_at
+    END,
+    revoked_at = CASE
+        WHEN sqlc.arg('refunded_amount')::integer < p.price_at_purchase
+            AND p.revocation_reason IN ('refund', 'staff') THEN NULL
+        ELSE p.revoked_at
+    END,
+    revocation_reason = CASE
+        WHEN sqlc.arg('refunded_amount')::integer < p.price_at_purchase
+            AND p.revocation_reason IN ('refund', 'staff') THEN NULL
+        ELSE p.revocation_reason
+    END
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND p.provider = sqlc.arg('provider')::text
+    AND p.provider_payment_id = sqlc.arg('provider_payment_id')::text
+    AND p.currency = sqlc.arg('currency')::text
+RETURNING p.*;
+
 -- name: HoldUnappliedRefund :exec
 -- Keeps a refund whose purchase is not here yet, so the notification that
 -- creates the purchase can still apply it. The provider's payment is the

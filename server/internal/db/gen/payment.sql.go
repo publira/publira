@@ -1214,6 +1214,81 @@ func (q *Queries) RecordExpiredCheckout(ctx context.Context, arg RecordExpiredCh
 	return err
 }
 
+const RecordFailedRefundOnPurchase = `-- name: RecordFailedRefundOnPurchase :one
+UPDATE purchases p
+SET refunded_amount = $1::integer,
+    refunded_at = CASE
+        WHEN $1::integer >= p.price_at_purchase THEN p.refunded_at
+    END,
+    revoked_at = CASE
+        WHEN $1::integer < p.price_at_purchase
+            AND p.revocation_reason IN ('refund', 'staff') THEN NULL
+        ELSE p.revoked_at
+    END,
+    revocation_reason = CASE
+        WHEN $1::integer < p.price_at_purchase
+            AND p.revocation_reason IN ('refund', 'staff') THEN NULL
+        ELSE p.revocation_reason
+    END
+WHERE p.tenant_id = $2
+    AND p.provider = $3::text
+    AND p.provider_payment_id = $4::text
+    AND p.currency = $5::text
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason
+`
+
+type RecordFailedRefundOnPurchaseParams struct {
+	RefundedAmount    int32     `json:"refunded_amount"`
+	TenantID          uuid.UUID `json:"tenant_id"`
+	Provider          string    `json:"provider"`
+	ProviderPaymentID string    `json:"provider_payment_id"`
+	Currency          string    `json:"currency"`
+}
+
+// Records that a refund of the purchase's payment failed after the provider
+// accepted it, taking the total that stays refunded from the provider as it
+// now stands, which is the one place a recorded amount goes down. Once that
+// total falls short of the price, the purchase is no longer refunded in full,
+// and a revocation that came from a refund, the provider's or the one staff
+// asked for, is lifted with it, so the reader keeps what they still pay for.
+// A total of nothing is still recorded as an amount rather than as no refund:
+// royalty_uncarried_refunds reads a purchase with an amount, which is how a
+// refund a closed statement already carried is carried back. A dispute keeps
+// its revocation. Nothing matches a payment of another tenant,
+// another provider, no purchase here, or a total in a currency other than the
+// purchase's, which says nothing comparable to its price.
+func (q *Queries) RecordFailedRefundOnPurchase(ctx context.Context, arg RecordFailedRefundOnPurchaseParams) (Purchase, error) {
+	row := q.db.QueryRowContext(ctx, RecordFailedRefundOnPurchase,
+		arg.RefundedAmount,
+		arg.TenantID,
+		arg.Provider,
+		arg.ProviderPaymentID,
+		arg.Currency,
+	)
+	var i Purchase
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EpisodeID,
+		&i.PriceAtPurchase,
+		&i.ExpiresAt,
+		&i.PurchasedAt,
+		&i.TenantID,
+		&i.ProviderCheckoutID,
+		&i.ProviderPaymentID,
+		&i.RefundedAmount,
+		&i.RefundedAt,
+		&i.Store,
+		&i.StoreTransactionID,
+		&i.IsTest,
+		&i.Provider,
+		&i.Currency,
+		&i.RevokedAt,
+		&i.RevocationReason,
+	)
+	return i, err
+}
+
 const RecordRefundOnPurchase = `-- name: RecordRefundOnPurchase :one
 WITH refund AS (
     SELECT p.id,

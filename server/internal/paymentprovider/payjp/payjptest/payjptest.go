@@ -45,6 +45,8 @@ type paymentFlow struct {
 	amountReceived int
 	livemode       bool
 	refunds        []refund
+	// failNext makes the next refund created on the flow a failed one.
+	failNext bool
 }
 
 type refund struct {
@@ -70,6 +72,7 @@ func NewAPI(t testing.TB) *API {
 	mux.HandleFunc("GET /v2/payment_flows/{id}", api.getPaymentFlow)
 	mux.HandleFunc("GET /v2/payment_flows/{id}/refunds", api.listRefunds)
 	mux.HandleFunc("POST /v2/payment_refunds", api.createRefund)
+	mux.HandleFunc("GET /v2/payment_refunds/{id}", api.getRefund)
 	api.server = httptest.NewServer(mux)
 	t.Cleanup(api.server.Close)
 	return api
@@ -108,6 +111,30 @@ func (a *API) AddRefund(secretKey, id string, amount int, status string) string 
 	flow := a.flow(secretKey, id)
 	flow.refunds = append(flow.refunds, refund{id: refundID, amount: amount, status: status})
 	return refundID
+}
+
+// FailNextRefund makes the next refund created on the payment flow id under
+// secretKey one PAY.JP answers as failed, which refunds nothing.
+func (a *API) FailNextRefund(secretKey, id string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.flow(secretKey, id).failNext = true
+}
+
+// FailRefund makes the latest refund of the payment flow id under secretKey
+// that went through a failed one, as a refund PAY.JP could not complete
+// becomes, and answers its id.
+func (a *API) FailRefund(secretKey, id string) (string, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	refunds := a.flow(secretKey, id).refunds
+	for i := len(refunds) - 1; i >= 0; i-- {
+		if refunds[i].status == "succeeded" {
+			refunds[i].status = "failed"
+			return refunds[i].id, true
+		}
+	}
+	return "", false
 }
 
 // RefundedTotal answers the yen refunded so far on the payment flow id under
@@ -300,7 +327,12 @@ func (a *API) createRefund(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.refunds++
-		created = refund{id: fmt.Sprintf("re_fake%04d", a.refunds), amount: amount, status: "succeeded"}
+		status := "succeeded"
+		if flow.failNext {
+			flow.failNext = false
+			status = "failed"
+		}
+		created = refund{id: fmt.Sprintf("re_fake%04d", a.refunds), amount: amount, status: status}
 		flow.refunds = append(flow.refunds, created)
 		if idempotencyKey != "" {
 			if a.idempotent[key] == nil {
@@ -321,6 +353,38 @@ func (a *API) createRefund(w http.ResponseWriter, r *http.Request) {
 		"payment_flow_id": body.PaymentFlowID,
 		"reason":          "requested_by_customer",
 		"status":          created.status,
+		"livemode":        false,
+		"metadata":        map[string]any{},
+		"created_at":      timestamp,
+		"updated_at":      timestamp,
+	})
+}
+
+// getRefund answers one refund made under the request's secret key.
+func (a *API) getRefund(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	a.mu.Lock()
+	var found refund
+	var flowID string
+	for fid, flow := range a.flows[secretKey(r)] {
+		for _, refund := range flow.refunds {
+			if refund.id == id {
+				found, flowID = refund, fid
+			}
+		}
+	}
+	a.mu.Unlock()
+	if flowID == "" {
+		writeError(w, http.StatusNotFound, "No such refund: "+id)
+		return
+	}
+	writeJSON(w, map[string]any{
+		"object":          "refund",
+		"id":              found.id,
+		"amount":          found.amount,
+		"payment_flow_id": flowID,
+		"reason":          "requested_by_customer",
+		"status":          found.status,
 		"livemode":        false,
 		"metadata":        map[string]any{},
 		"created_at":      timestamp,
@@ -448,6 +512,27 @@ func (f *Fixture) Refunded(t testing.TB, credentials paymentprovider.Credentials
 
 func (f *Fixture) RefundedTotal(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) int64 {
 	return int64(f.API.RefundedTotal(credentials[payjp.FieldSecretKey], paymentID))
+}
+
+func (f *Fixture) FailNextRefund(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) {
+	f.API.FailNextRefund(credentials[payjp.FieldSecretKey], paymentID)
+}
+
+func (f *Fixture) RefundFailed(t testing.TB, credentials paymentprovider.Credentials, refund paymentprovidertest.Refund) ([]byte, http.Header) {
+	t.Helper()
+	secretKey := credentials[payjp.FieldSecretKey]
+	refundID, ok := f.API.FailRefund(secretKey, refund.PaymentID)
+	if !ok {
+		t.Fatalf("no refund on %s went through to fail", refund.PaymentID)
+	}
+	if got := int64(f.API.RefundedTotal(secretKey, refund.PaymentID)); got != refund.AmountRefunded {
+		t.Fatalf("failing the latest refund on %s leaves %d refunded, want %d", refund.PaymentID, got, refund.AmountRefunded)
+	}
+	return Event(t, credentials[payjp.FieldWebhookToken], "refund.updated.json", map[string]any{
+		"id":              refundID,
+		"payment_flow_id": refund.PaymentID,
+		"status":          "failed",
+	})
 }
 
 func (*Fixture) Unrelated(t testing.TB, credentials paymentprovider.Credentials) ([]byte, http.Header) {

@@ -176,8 +176,11 @@ func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Crede
 	}
 	params := &stripego.RefundCreateParams{PaymentIntent: stripego.String(req.PaymentID)}
 	params.SetIdempotencyKey(req.IdempotencyKey)
-	_, err = client.V1Refunds.Create(ctx, params)
+	refund, err := client.V1Refunds.Create(ctx, params)
 	if err == nil {
+		if refund.Status == stripego.RefundStatusFailed || refund.Status == stripego.RefundStatusCanceled {
+			return false, fmt.Errorf("%w: the refund is %s", paymentprovider.ErrRefundRefused, refund.Status)
+		}
 		return true, nil
 	}
 	var stripeErr *stripego.Error
@@ -197,7 +200,7 @@ func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Crede
 	}
 }
 
-func (*Provider) ParseNotification(_ context.Context, payload []byte, headers http.Header, credentials paymentprovider.Credentials) (paymentprovider.Event, error) {
+func (p *Provider) ParseNotification(ctx context.Context, payload []byte, headers http.Header, credentials paymentprovider.Credentials) (paymentprovider.Event, error) {
 	event, err := webhook.ConstructEvent(payload, headers.Get(SignatureHeader), credentials[FieldWebhookSecret])
 	if err != nil {
 		return nil, paymentprovider.ErrInvalidSignature
@@ -205,6 +208,8 @@ func (*Provider) ParseNotification(_ context.Context, payload []byte, headers ht
 	switch event.Type {
 	case stripego.EventTypeChargeRefunded:
 		return refundedEvent(&event)
+	case stripego.EventTypeRefundFailed:
+		return p.refundFailedEvent(ctx, credentials, &event)
 	case stripego.EventTypeChargeDisputeCreated:
 		return disputedEvent(&event)
 	case stripego.EventTypeCheckoutSessionCompleted, stripego.EventTypeCheckoutSessionAsyncPaymentSucceeded:
@@ -233,6 +238,46 @@ func refundedEvent(event *stripego.Event) (paymentprovider.Event, error) {
 		PaymentID:      paymentIntentID,
 		AmountRefunded: charge.AmountRefunded,
 		Currency:       strings.ToUpper(string(charge.Currency)),
+	}, nil
+}
+
+// refundFailedEvent reads the payment of a refund that failed, and the total
+// that stays refunded on it from the payment's charge: the event is about the
+// refund alone.
+func (p *Provider) refundFailedEvent(ctx context.Context, credentials paymentprovider.Credentials, event *stripego.Event) (paymentprovider.Event, error) {
+	var refund stripego.Refund
+	if err := json.Unmarshal(event.Data.Raw, &refund); err != nil {
+		return nil, fmt.Errorf("%w: refund: %v", paymentprovider.ErrMalformedNotification, err)
+	}
+	paymentIntentID := ""
+	if refund.PaymentIntent != nil {
+		paymentIntentID = strings.TrimSpace(refund.PaymentIntent.ID)
+	}
+	if paymentIntentID == "" {
+		return nil, fmt.Errorf("%w: the refund names no payment intent", paymentprovider.ErrMalformedNotification)
+	}
+	client, err := p.client(credentials)
+	if err != nil {
+		return nil, err
+	}
+	params := &stripego.PaymentIntentRetrieveParams{}
+	params.AddExpand("latest_charge")
+	intent, err := client.V1PaymentIntents.Retrieve(ctx, paymentIntentID, params)
+	if err != nil {
+		var stripeErr *stripego.Error
+		if errors.As(err, &stripeErr) && stripeErr.Code == stripego.ErrorCodeResourceMissing {
+			return nil, fmt.Errorf("%w: the payment intent is not found", paymentprovider.ErrMalformedNotification)
+		}
+		return nil, fmt.Errorf("read payment intent: %w", err)
+	}
+	if intent.LatestCharge == nil {
+		return nil, fmt.Errorf("%w: the payment intent has no charge", paymentprovider.ErrMalformedNotification)
+	}
+	return paymentprovider.RefundFailed{
+		ID:             event.ID,
+		PaymentID:      paymentIntentID,
+		AmountRefunded: intent.LatestCharge.AmountRefunded,
+		Currency:       strings.ToUpper(string(intent.LatestCharge.Currency)),
 	}, nil
 }
 
