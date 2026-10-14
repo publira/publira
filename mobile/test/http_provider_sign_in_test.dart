@@ -170,6 +170,22 @@ void main() {
     expect(sent.containsKey('redirectUri'), isFalse);
   });
 
+  test('signInWithProvider holds the icon the account shows', () async {
+    server.memberIconPath =
+        '/images/users/0190a0c0-0000-7000-8000-000000000004';
+
+    final session = await auth.signInWithProvider(
+      issueGoogleToken(email: ConnectFixtureServer.memberEmail),
+    );
+
+    expect(
+      session.userIconUrl,
+      Uri.parse(
+        '${server.baseUrl}/images/users/0190a0c0-0000-7000-8000-000000000004',
+      ),
+    );
+  });
+
   test('an Apple account the site linked signs in to the same account from '
       'the Android app, with the redirect its code is exchanged at', () async {
     // The site linked the member's Apple account through the Services ID, and

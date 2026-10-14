@@ -711,6 +711,20 @@ void main() {
     expect(request.body.containsKey('birthDate'), isFalse);
   });
 
+  test('updateName keeps the icon the account shows', () async {
+    server.memberIconPath =
+        '/images/users/0190a0c0-0000-7000-8000-000000000003';
+
+    final updated = await auth.updateName(stored, 'Renamed Reader');
+
+    expect(
+      updated.userIconUrl,
+      Uri.parse(
+        '${server.baseUrl}/images/users/0190a0c0-0000-7000-8000-000000000003',
+      ),
+    );
+  });
+
   test('updateName maps a name the API refuses to invalidInput', () {
     expect(
       () => auth.updateName(stored, '   '),
