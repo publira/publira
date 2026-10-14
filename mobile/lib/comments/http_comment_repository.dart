@@ -2,14 +2,20 @@ import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/tenant_resolver.dart';
+import 'package:publira/api/user_icon.dart';
 import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/comments/comment_repository.dart';
+import 'package:publira/config.dart';
 import 'package:publira/models/episode_comment.dart';
 
 /// [CommentRepository] backed by `publira.v1.CommentService` and the tenant
 /// setting `publira.v1.TenantService` answers with.
 class HttpCommentRepository implements CommentRepository {
-  const HttpCommentRepository({required this._client, required this._tenants});
+  const HttpCommentRepository({
+    required this._config,
+    required this._client,
+    required this._tenants,
+  });
 
   static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
   static const _listProcedure =
@@ -33,6 +39,7 @@ class HttpCommentRepository implements CommentRepository {
   /// instead of being paged on their own.
   static const _ownPageSize = 100;
 
+  final AppConfig _config;
   final ConnectClient _client;
   final TenantResolver _tenants;
 
@@ -209,17 +216,20 @@ class HttpCommentRepository implements CommentRepository {
       createdAt: _readInstant(json, 'createdAt'),
       authorId: _readString(json, 'authorPublicId'),
       authorName: _readString(json, 'authorName'),
+      authorIconUrl: userIconUrl(json['authorIconImageVariants'], _config),
+      imageRequestHeaders: _config.publicImageRequestHeaders,
       creatorName: _creatorName(json),
     );
   }
 
   /// One of the caller's own comments, which names no author: it is the
-  /// caller, and the API does not repeat their name back to them.
+  /// caller, and the API does not repeat their name or icon back to them.
   EpisodeComment _ownComment(Map<String, Object?> json) {
     return EpisodeComment(
       id: _readString(json, 'id'),
       body: _readString(json, 'body'),
       createdAt: _readInstant(json, 'createdAt'),
+      imageRequestHeaders: _config.publicImageRequestHeaders,
       creatorName: _creatorName(json),
       awaitingApproval: _readBool(json, 'awaitingApproval'),
     );

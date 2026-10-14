@@ -213,7 +213,11 @@ class PubliraApp extends StatefulWidget {
             googleIosClientId: resolved.googleIosClientId,
             tenantHost: resolved.tenantHost,
           ),
-      comments: HttpCommentRepository(client: client, tenants: tenants),
+      comments: HttpCommentRepository(
+        config: resolved,
+        client: client,
+        tenants: tenants,
+      ),
       follows: HttpFollowRepository(client: client, tenants: tenants),
       contentViews: HttpContentViewRepository(
         client: client,

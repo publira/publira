@@ -344,6 +344,7 @@ class AuthController extends ChangeNotifier {
     (current, renamed) => current.withUser(
       userPublicId: renamed.userPublicId,
       userName: renamed.userName,
+      userIconUrl: renamed.userIconUrl,
     ),
   );
 

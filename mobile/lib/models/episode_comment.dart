@@ -59,6 +59,8 @@ class EpisodeComment {
     required this.createdAt,
     this.authorId = '',
     this.authorName = '',
+    this.authorIconUrl,
+    this.imageRequestHeaders = const {},
     this.creatorName = '',
     this.awaitingApproval = false,
   });
@@ -75,6 +77,16 @@ class EpisodeComment {
   /// leaves out the author the caller already is. [byAuthor] fills it in.
   final String authorId;
   final String authorName;
+
+  /// Absolute image-server URL of the icon the author's account shows now,
+  /// and `null` for an account that shows none.
+  ///
+  /// An icon is stored as a single rendition, so the first variant the API
+  /// lists is the icon, and image-server scales it to the size it is drawn at.
+  final Uri? authorIconUrl;
+
+  /// Headers [authorIconUrl] must be fetched with.
+  final Map<String, String> imageRequestHeaders;
 
   /// The name this episode credits the author as, and empty on every comment
   /// whose author it does not credit.
@@ -94,16 +106,25 @@ class EpisodeComment {
 
   /// The same comment credited to the reader who wrote it.
   ///
-  /// `ListMyEpisodeComments` does not repeat the caller's own name back to
-  /// them, so the app names them from the session it holds and the row then
-  /// renders among the public ones without a case of its own.
-  EpisodeComment byAuthor({required String id, required String name}) {
+  /// `ListMyEpisodeComments` does not repeat the caller's own name or icon
+  /// back to them, so the app names them from the session it holds and the
+  /// row then renders among the public ones without a case of its own. The
+  /// icon matters as much as the name: a published comment staff take down
+  /// moves from the public list to this one, and it has to look the same
+  /// after the move as before it.
+  EpisodeComment byAuthor({
+    required String id,
+    required String name,
+    required Uri? iconUrl,
+  }) {
     return EpisodeComment(
       id: this.id,
       body: body,
       createdAt: createdAt,
       authorId: id,
       authorName: name,
+      authorIconUrl: iconUrl,
+      imageRequestHeaders: imageRequestHeaders,
       creatorName: creatorName,
       awaitingApproval: awaitingApproval,
     );

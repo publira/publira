@@ -24,12 +24,13 @@ const _maxBodyRunes = 1000;
 const _maxNoteRunes = 1000;
 
 /// The reader a comment is rendered for: whether a row is theirs to delete,
-/// and the name their own rows carry.
+/// and the name and icon their own rows carry.
 class _Viewer {
-  const _Viewer({required this.id, required this.name});
+  const _Viewer({required this.id, required this.name, this.iconUrl});
 
   final String id;
   final String name;
+  final Uri? iconUrl;
 }
 
 /// One load of the comment section: the tenant's policy, the public page, and
@@ -39,6 +40,7 @@ class _Section {
     required this.mode,
     required this.page,
     required this.comments,
+    this.ownIds = const {},
     this.episodeInternalId = '',
     this.ownFailure,
   });
@@ -51,6 +53,15 @@ class _Section {
 
   /// The public page with the reader's own comments placed among it by date.
   final List<EpisodeComment> comments;
+
+  /// Which of [comments] came from the reader's own list, which names no
+  /// author.
+  ///
+  /// They are named when the section is built rather than when it is loaded,
+  /// from the session as it stands then: the launch reads the account again
+  /// under the same token, and what that read brings — the icon above all —
+  /// has to reach rows that were loaded before it answered.
+  final Set<String> ownIds;
 
   /// Why the reader's own comments could not be read, `null` when they were.
   /// The public list still renders: dropping those rows silently would take
@@ -105,7 +116,11 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
     if (session == null) {
       return null;
     }
-    return _Viewer(id: session.userPublicId, name: session.userName);
+    return _Viewer(
+      id: session.userPublicId,
+      name: session.userName,
+      iconUrl: session.userIconUrl,
+    );
   }
 
   /// Runs [read] and hands back its value or the failure it ended with.
@@ -175,15 +190,17 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
       throw ownFailure!;
     }
 
+    final unpublished = [if (own != null && viewer != null) ...own];
+    final published = {for (final comment in page.comments) comment.id};
     return _Section(
       mode: mode,
       page: page,
       episodeInternalId: episodeInternalId,
-      comments: mergeOwnComments(page, [
-        if (own != null && viewer != null)
-          for (final comment in own)
-            comment.byAuthor(id: viewer.id, name: viewer.name),
-      ]),
+      comments: mergeOwnComments(page, unpublished),
+      ownIds: {
+        for (final comment in unpublished)
+          if (!published.contains(comment.id)) comment.id,
+      },
       ownFailure: ownFailure?.kind,
     );
   }
@@ -318,7 +335,13 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
             for (final comment in section.comments)
               _CommentTile(
                 key: ValueKey('comment-tile-${comment.id}'),
-                comment: comment,
+                comment: viewer != null && section.ownIds.contains(comment.id)
+                    ? comment.byAuthor(
+                        id: viewer.id,
+                        name: viewer.name,
+                        iconUrl: viewer.iconUrl,
+                      )
+                    : comment,
                 comments: comments,
                 viewer: viewer,
                 onWithdrawn: _reload,
@@ -641,6 +664,8 @@ class _CommentTileState extends State<_CommentTile> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _AuthorIcon(comment: comment),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -939,6 +964,45 @@ class _ErrorText extends StatelessWidget {
 
 /// The whole screen saying one thing, with the way out of it where there is
 /// one.
+/// The icon a comment's author shows, in a circle beside their name, and an
+/// icon in its place for an author who shows none or whose icon cannot be
+/// fetched.
+class _AuthorIcon extends StatelessWidget {
+  const _AuthorIcon({required this.comment});
+
+  final EpisodeComment comment;
+
+  static const _radius = 20.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconUrl = comment.authorIconUrl;
+    final colors = Theme.of(context).colorScheme;
+    return CircleAvatar(
+      key: ValueKey(
+        iconUrl == null
+            ? 'comment-author-icon-fallback-${comment.id}'
+            : 'comment-author-icon-${comment.id}',
+      ),
+      radius: _radius,
+      backgroundColor: colors.surfaceContainerHighest,
+      // Decoded no larger than the circle, for the reason a cover is.
+      foregroundImage: iconUrl == null
+          ? null
+          : ResizeImage.resizeIfNeeded(
+              (_radius * 2 * MediaQuery.devicePixelRatioOf(context)).round(),
+              null,
+              NetworkImage(
+                iconUrl.toString(),
+                headers: comment.imageRequestHeaders,
+              ),
+            ),
+      onForegroundImageError: iconUrl == null ? null : (_, _) {},
+      child: Icon(Icons.person_outline, color: colors.onSurfaceVariant),
+    );
+  }
+}
+
 class _CommentsMessage extends StatelessWidget {
   const _CommentsMessage({
     super.key,

@@ -735,6 +735,28 @@ class ConnectFixtureServer {
   /// The member's name as `GetMe` reports it, which `UpdateMe` replaces.
   String memberCurrentName = memberName;
 
+  /// The image-server path of the member's icon, and `null` for an account
+  /// that shows none, which the API omits.
+  ///
+  /// `GetMe`, `UpdateMe`, and `LoginWithIdToken` report it. A password `Login`
+  /// does not, the way the API answers it.
+  String? memberIconPath;
+
+  /// The icon fields of the member's own account, spread into every response
+  /// that reports [memberIconPath].
+  Map<String, Object?> get _memberIcon => {
+    if (memberIconPath case final iconPath?)
+      'iconImageVariants': [
+        {
+          'label': 'icon',
+          'url': iconPath,
+          'contentType': 'image/webp',
+          'width': 512,
+          'height': 512,
+        },
+      ],
+  };
+
   /// The addresses `RequestEmailChange` has accepted a move to, in order.
   final requestedEmailChanges = <String>[];
 
@@ -1227,6 +1249,7 @@ class ConnectFixtureServer {
           // reader who has recorded no date.
           if (memberBirthDate.isNotEmpty) 'birthDate': memberBirthDate,
           'email': memberEmail,
+          ..._memberIcon,
         },
       });
       return;
@@ -2770,6 +2793,7 @@ class ConnectFixtureServer {
           'publicId': memberPublicId,
           'name': memberCurrentName,
           'role': 'member',
+          ..._memberIcon,
         },
         'accessToken': _accessToken(memberAccessToken),
       });
@@ -3077,6 +3101,7 @@ class ConnectFixtureServer {
         'name': memberCurrentName,
         'role': 'member',
         if (memberBirthDate.isNotEmpty) 'birthDate': memberBirthDate,
+        ..._memberIcon,
       },
     });
   }
