@@ -577,9 +577,13 @@ func (x *GetPurchaseResponse) GetPurchase() *AdminPurchase {
 }
 
 type RefundPurchaseRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PurchaseId    string                 `protobuf:"bytes,2,opt,name=purchase_id,json=purchaseId,proto3" json:"purchase_id,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Tenant     *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PurchaseId string                 `protobuf:"bytes,2,opt,name=purchase_id,json=purchaseId,proto3" json:"purchase_id,omitempty"`
+	// Required. Why staff are giving the reader their money back, recorded on
+	// the audit log entry of the refund, which is the only record of who
+	// decided it and why.
+	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -624,6 +628,13 @@ func (x *RefundPurchaseRequest) GetTenant() *v1.TenantContext {
 func (x *RefundPurchaseRequest) GetPurchaseId() string {
 	if x != nil {
 		return x.PurchaseId
+	}
+	return ""
+}
+
+func (x *RefundPurchaseRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
 	}
 	return ""
 }
@@ -726,11 +737,12 @@ const file_publira_admin_v1_purchase_proto_rawDesc = "" +
 	"\vpurchase_id\x18\x02 \x01(\tR\n" +
 	"purchaseId\"R\n" +
 	"\x13GetPurchaseResponse\x12;\n" +
-	"\bpurchase\x18\x01 \x01(\v2\x1f.publira.admin.v1.AdminPurchaseR\bpurchase\"q\n" +
+	"\bpurchase\x18\x01 \x01(\v2\x1f.publira.admin.v1.AdminPurchaseR\bpurchase\"\x89\x01\n" +
 	"\x15RefundPurchaseRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1f\n" +
 	"\vpurchase_id\x18\x02 \x01(\tR\n" +
-	"purchaseId\"U\n" +
+	"purchaseId\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"U\n" +
 	"\x16RefundPurchaseResponse\x12;\n" +
 	"\bpurchase\x18\x01 \x01(\v2\x1f.publira.admin.v1.AdminPurchaseR\bpurchase*\xbb\x01\n" +
 	"\x18PurchaseRevocationReason\x12*\n" +

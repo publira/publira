@@ -140,10 +140,14 @@ func (f *purchaseFixture) list(t *testing.T, req *publiraadminv1.ListPurchasesRe
 	return res
 }
 
+// purchaseTestRefundReason is the reason every refund in these tests gives.
+const purchaseTestRefundReason = "The reader bought the episode twice."
+
 func (f *purchaseFixture) refund(purchaseID uuid.UUID) (*publiraadminv1.AdminPurchase, error) {
 	res, err := f.client().RefundPurchase(f.ctx(), &publiraadminv1.RefundPurchaseRequest{
 		Tenant:     f.admin.tenantContext(),
 		PurchaseId: purchaseID.String(),
+		Reason:     purchaseTestRefundReason,
 	})
 	if err != nil {
 		return nil, err
@@ -292,7 +296,7 @@ func TestDBGetPurchaseAnswersOnlyTheTenantsOwn(t *testing.T) {
 	other := f.env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBADMIN01", "admin@tenant-b.example.com")
 	_, err = f.client().GetPurchase(testutil.WithBearer(context.Background(), other.token()), &publiraadminv1.GetPurchaseRequest{Tenant: other.tenantContext(), PurchaseId: purchaseID.String()})
 	assertConnectCode(t, "GetPurchase from another tenant", err, connect.CodeNotFound)
-	_, err = f.client().RefundPurchase(testutil.WithBearer(context.Background(), other.token()), &publiraadminv1.RefundPurchaseRequest{Tenant: other.tenantContext(), PurchaseId: purchaseID.String()})
+	_, err = f.client().RefundPurchase(testutil.WithBearer(context.Background(), other.token()), &publiraadminv1.RefundPurchaseRequest{Tenant: other.tenantContext(), PurchaseId: purchaseID.String(), Reason: purchaseTestRefundReason})
 	assertConnectCode(t, "RefundPurchase from another tenant", err, connect.CodeNotFound)
 	if refunds := f.stripe.Refunds(); len(refunds) != 0 {
 		t.Fatalf("refunds = %+v, want none for another tenant's request", refunds)
@@ -322,6 +326,12 @@ func TestDBRefundPurchaseRefundsThroughTheProviderOnce(t *testing.T) {
 	}
 	if got := f.refundAudits(t, purchaseID); got != 1 {
 		t.Fatalf("audit entries = %d, want 1", got)
+	}
+	if got := f.env.countRows(t,
+		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND action = 'purchase_refunded' AND target_id = $2 AND reason = $3",
+		f.admin.Tenant.ID, purchaseID.String(), purchaseTestRefundReason,
+	); got != 1 {
+		t.Fatalf("audit entries carrying the reason = %d, want 1", got)
 	}
 
 	again, err := f.refund(purchaseID)
@@ -654,5 +664,34 @@ func TestDBRefundPurchaseFinishesARefundAnEarlierRequestLeftUnasked(t *testing.T
 	}
 	if refunds := f.stripe.Refunds(); len(refunds) != 1 {
 		t.Fatalf("refunds = %+v, want one", refunds)
+	}
+}
+
+// A refund with no reason is refused before anything is revoked or asked of
+// the provider, since its audit entry would not say why the money went back.
+func TestDBRefundPurchaseRequiresAReason(t *testing.T) {
+	f := newPurchaseFixture(t)
+	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_no_reason"})
+
+	for _, reason := range []string{"", "  \n"} {
+		_, err := f.client().RefundPurchase(f.ctx(), &publiraadminv1.RefundPurchaseRequest{
+			Tenant:     f.admin.tenantContext(),
+			PurchaseId: purchaseID.String(),
+			Reason:     reason,
+		})
+		assertConnectCode(t, "RefundPurchase without a reason", err, connect.CodeInvalidArgument)
+	}
+	res, err := f.client().GetPurchase(f.ctx(), &publiraadminv1.GetPurchaseRequest{Tenant: f.admin.tenantContext(), PurchaseId: purchaseID.String()})
+	if err != nil {
+		t.Fatalf("GetPurchase: %v", err)
+	}
+	if res.Purchase.RevokedAt != "" || !res.Purchase.Refundable {
+		t.Fatalf("purchase = %+v, want still open and refundable", res.Purchase)
+	}
+	if refunds := f.stripe.Refunds(); len(refunds) != 0 {
+		t.Fatalf("refunds = %+v, want none", refunds)
+	}
+	if got := f.refundAudits(t, purchaseID); got != 0 {
+		t.Fatalf("audit entries = %d, want none", got)
 	}
 }

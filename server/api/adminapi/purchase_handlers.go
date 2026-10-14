@@ -375,6 +375,12 @@ func (s *adminServer) RefundPurchase(
 	if err != nil {
 		return nil, err
 	}
+	// The audit entry is the only record of who gave the reader their money
+	// back, and one with no reason leaves the tenant unable to say why.
+	reason := strings.TrimSpace(req.Reason)
+	if reason == "" {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("reason is required"), "reason")
+	}
 
 	row, err := s.loadPurchase(ctx, tenant.ID, purchaseID)
 	if err != nil {
@@ -511,6 +517,7 @@ func (s *adminServer) RefundPurchase(
 			TargetType:  "purchase",
 			TargetID:    row.ID.String(),
 			Outcome:     auditlog.OutcomeSuccess,
+			Reason:      reason,
 			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
