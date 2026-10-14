@@ -31,7 +31,7 @@ Run `publira server` and `publira worker` as the two Deployments above rather th
 
 You need:
 
-- **A cluster** whose nodes are `linux/amd64` or `linux/arm64`, the two platforms the images are published for, and `kubectl` signed in to it with the right to create Namespaces, Secrets, Deployments, Services, and Jobs.
+- **A cluster** whose nodes are `linux/amd64` or `linux/arm64`, the two platforms the images are published for, and `kubectl` signed in to it. In the `publira` namespace, the steps create, change, and delete Secrets, Deployments, Services, Jobs, and Pods, read Pod logs, attach to a Pod, and manage the edge's resources: a Gateway and HTTPRoutes, or Ingresses and a Traefik Middleware. Creating the namespace and the `ClusterIssuer`, which belongs to no namespace, and installing cert-manager and the edge's controller, take a cluster administrator. The built-in `admin` role, bound in the namespace, covers the rest except the custom resources: one of those is covered only when its install adds it to that role, which Envoy Gateway's does not for Gateways and HTTPRoutes.
 - **A Gateway API implementation or an Ingress controller** to be the edge, and **cert-manager** to issue the certificates, as [Put the edge in front](#6-put-the-edge-in-front) describes. The edge's Service has to be reachable from the internet, usually as a Service of type `LoadBalancer`.
 - **The services the install depends on**, provisioned as [Provision the services](./2-installing.md#provision-the-services) lists, whether they are managed services outside the cluster or run in it: a PostgreSQL database with a superuser login, a Valkey instance, an empty bucket and a credential for it, and an SMTP server. Every Pod of the install has to reach them.
 - **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the address of the edge's Service once it has one.
@@ -534,7 +534,7 @@ For an Ingress, the solver is `http01: {ingress: {ingressClassName: <your class>
 
 ### With a Gateway
 
-The routes use two features the Gateway API marks Extended, which an implementation can conform to the API without supporting: `HTTPRouteSchemeRedirect`, for the redirect to HTTPS, and `HTTPRouteRequestTimeout`, for the time an upload is given. The Gateway API's [Implementations](https://gateway-api.sigs.k8s.io/docs/implementations/) page compares the features each implementation supports and links its conformance report. Envoy Gateway supports both. On an implementation that lacks one, do that part with what it offers in its own resources, or use [an Ingress](#with-an-ingress) instead.
+The routes use two features the Gateway API marks Extended, which an implementation can conform to the API without supporting: `HTTPRouteSchemeRedirect`, for the redirect to HTTPS, and `HTTPRouteRequestTimeout`, for lifting the implementation's limit on how long a request to a web app may take. The Gateway API's [Implementations](https://gateway-api.sigs.k8s.io/docs/implementations/) page compares the features each implementation supports and links its conformance report. Envoy Gateway supports both. On an implementation that lacks one, do that part with what it offers in its own resources, or use [an Ingress](#with-an-ingress) instead.
 
 The Gateway has one HTTPS listener per host name, each with the Secret its certificate goes in, and one plain HTTP listener, which redirects to HTTPS and answers the ACME challenge. The `cert-manager.io/cluster-issuer` annotation has cert-manager issue a certificate for every HTTPS listener into the Secret the listener names:
 
@@ -595,7 +595,7 @@ spec:
         - path: { type: PathPrefix, value: / }
       filters: *strip-request-headers
       timeouts:
-        request: 300s
+        request: 0s
       backendRefs:
         - name: web-storefront
           port: 3000
@@ -625,7 +625,7 @@ spec:
         - path: { type: PathPrefix, value: / }
       filters: *strip-request-headers
       timeouts:
-        request: 300s
+        request: 0s
       backendRefs:
         - name: web-admin
           port: 4000
@@ -647,7 +647,7 @@ spec:
 ```
 
 - **The removed headers.** `traceparent`, `tracestate`, and `baggage` are removed as [Trace context](./4-edge.md#trace-context) requires. A Gateway passes on a `Forwarded` and an `X-Forwarded-Host` the caller sent unless told otherwise, and Publira would read both, as [The client address](./4-edge.md#the-client-address) and [The host the request was sent to](./4-edge.md#the-host-the-request-was-sent-to) describe; removing them here leaves `PUBLIRA_FORWARDED_HEADER_ENABLED` at its default on every process.
-- **The upload timeout.** `timeouts.request` gives a request to a web app 300 seconds, which the episode upload in the tenant console needs, as [Uploads in the tenant console](./4-edge.md#uploads-in-the-tenant-console) describes. Without it a rule gets the implementation's default, which can be far shorter: Envoy Gateway's is 15 seconds for the answer once the request has arrived. The Gateway API has no field for the size of a body, and Envoy Gateway sets no limit on it unless a policy of its own adds one; if your implementation does limit it, allow 256 MiB on a console host's `/api/v1/episode-pages` and 33 MiB under a tenant's domain's `/api/v1/webhook/email/`.
+- **The upload timeout.** `timeouts.request: 0s` turns off the limit on how long a request to a web app may take, as the Gateway API defines the zero duration. Without it a rule gets the implementation's default, which can be far shorter: Envoy Gateway's is 15 seconds for the answer once the request has arrived. The episode upload in the tenant console takes up to 300 seconds to arrive, as [Uploads in the tenant console](./4-edge.md#uploads-in-the-tenant-console) describes, and the Gateway API lets an implementation count that time too, before `web-admin` has stored the pages and answered. The web apps give a request 300 seconds to arrive themselves, so the edge needs no limit of its own. The Gateway API has no field for the size of a body, and Envoy Gateway sets no limit on it unless a policy of its own adds one; if your implementation does limit it, allow 256 MiB on a console host's `/api/v1/episode-pages` and 33 MiB under a tenant's domain's `/api/v1/webhook/email/`.
 - **The redirect.** `https-redirect` attaches to the `http` listener alone and sends every request there to HTTPS. While a certificate is being issued, cert-manager adds a route of its own for the challenge to the same listener. It names the host the certificate is for, so it takes that host's plain HTTP requests from the redirect, which answers them again once the certificate is issued and the route removed.
 
 The YAML anchor, `&strip-request-headers`, repeats the same filter on every rule of a route; `kubectl apply` expands it.
