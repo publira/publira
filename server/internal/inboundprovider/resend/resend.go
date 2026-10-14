@@ -39,8 +39,8 @@ const (
 
 	// signatureTolerance is how far a request's timestamp may be from now,
 	// Svix's own default. It bounds how long a captured request could be
-	// replayed; a replay inside it stores nothing twice, because the mail's
-	// Message-ID is already stored.
+	// replayed; a replay inside it stores nothing twice, because the email id
+	// it names is already stored as the mail's delivery key.
 	signatureTolerance = 5 * time.Minute
 
 	// maxResponseBytes bounds the received email read from the API. The HTML
@@ -148,10 +148,13 @@ func (p *Provider) ParseWebhook(ctx context.Context, payload []byte, headers htt
 	if err != nil {
 		return nil, err
 	}
+	// Resend names each mail it receives by its email id, and posts the same
+	// id again whenever it delivers the event again.
 	msg := inboundprovider.Message{
-		ID:        received.Data.EmailID,
-		Subject:   strings.TrimSpace(email.Subject),
-		MessageID: inboundprovider.ParseMessageID(email.MessageID),
+		ID:          received.Data.EmailID,
+		Subject:     strings.TrimSpace(email.Subject),
+		MessageID:   inboundprovider.ParseMessageID(email.MessageID),
+		DeliveryKey: received.Data.EmailID,
 	}
 	if address, ok := inboundprovider.ParseAddress(email.From); ok {
 		msg.From = address

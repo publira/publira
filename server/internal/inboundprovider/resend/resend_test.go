@@ -52,8 +52,8 @@ func TestParseWebhookReadsTheRecordedEmail(t *testing.T) {
 	if !ok {
 		t.Fatalf("result = %T, want Message", result)
 	}
-	if msg.ID != recordedEmailID {
-		t.Errorf("ID = %q", msg.ID)
+	if msg.ID != recordedEmailID || msg.DeliveryKey != recordedEmailID {
+		t.Errorf("ID = %q, DeliveryKey = %q", msg.ID, msg.DeliveryKey)
 	}
 	if msg.From != "alex.reader@example.net" {
 		t.Errorf("From = %q", msg.From)

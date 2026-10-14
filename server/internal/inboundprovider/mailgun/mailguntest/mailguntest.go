@@ -5,6 +5,7 @@ package mailguntest
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -47,10 +48,11 @@ func (Fixture) Unrelated(testing.TB, inboundprovider.Credentials) ([]byte, http.
 }
 
 // Document answers the JSON document a Route posts for mail: Mailgun's own
-// fields, and each header of the mail at the top level beside them.
+// fields, and each header of the mail at the top level beside them. Each call
+// is another receipt of mail, with a Received line of its own.
 func Document(mail inboundprovidertest.Mail) map[string]any {
 	headers := [][]string{
-		{"Received", "from mail.example.net by mxa.mailgun.org"},
+		{"Received", "from mail.example.net by mxa.mailgun.org with ESMTP id " + rand.Text()},
 		{"From", "Reader <" + mail.From + ">"},
 		{"To", mail.To},
 		{"Subject", mail.Subject},

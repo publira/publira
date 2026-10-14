@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -129,13 +130,14 @@ type storedReaderEntry struct {
 	contactMessageID uuid.UUID
 	body             string
 	messageID        sql.NullString
+	deliveryKey      sql.NullString
 	fromEmail        string
 }
 
 func (h *inboundHarness) readerEntries(t *testing.T, tenantID uuid.UUID) []storedReaderEntry {
 	t.Helper()
 	rows, err := h.pg.DB.QueryContext(context.Background(), `
-		SELECT contact_message_id, body, message_id, from_email
+		SELECT contact_message_id, body, message_id, delivery_key, from_email
 		FROM contact_message_entries
 		WHERE tenant_id = $1 AND direction = 'reader'
 		ORDER BY created_at
@@ -147,7 +149,7 @@ func (h *inboundHarness) readerEntries(t *testing.T, tenantID uuid.UUID) []store
 	var entries []storedReaderEntry
 	for rows.Next() {
 		var entry storedReaderEntry
-		if err := rows.Scan(&entry.contactMessageID, &entry.body, &entry.messageID, &entry.fromEmail); err != nil {
+		if err := rows.Scan(&entry.contactMessageID, &entry.body, &entry.messageID, &entry.deliveryKey, &entry.fromEmail); err != nil {
 			t.Fatalf("scan reader entry: %v", err)
 		}
 		entries = append(entries, entry)
@@ -280,6 +282,53 @@ func runInboundScenarios(t *testing.T, h *inboundHarness, fixture inboundprovide
 		}
 		if notices := h.staffNotices(t, seeded.tenant.ID); len(notices) != 1 {
 			t.Fatalf("queued %d staff mails after a redelivery, want 1", len(notices))
+		}
+	})
+
+	t.Run("a mail without a Message-ID is stored once however often it is delivered", func(t *testing.T) {
+		seeded := h.newTenant(t, fixture, true)
+		mail := reply(seeded)
+		mail.MessageID = ""
+		mail.InReplyTo = ""
+		payload, headers := fixture.Received(t, credentials, mail)
+		if err := h.deliver(t, seeded.tenant, providerID, payload, headers); err != nil {
+			t.Fatalf("ProcessInboundEmailWebhook: %v", err)
+		}
+		entries := h.readerEntries(t, seeded.tenant.ID)
+		if len(entries) != 1 {
+			t.Fatalf("stored %d reader entries, want 1", len(entries))
+		}
+		if entries[0].messageID.Valid {
+			t.Fatalf("message_id = %q, want none", entries[0].messageID.String)
+		}
+		if !entries[0].deliveryKey.Valid {
+			t.Skip("the provider names no delivery")
+		}
+		if !strings.HasPrefix(entries[0].deliveryKey.String, providerID+":") {
+			t.Errorf("delivery_key = %q, want it prefixed with the provider", entries[0].deliveryKey.String)
+		}
+
+		// The same request again is the provider redelivering it, or a replay.
+		if err := h.deliver(t, seeded.tenant, providerID, payload, headers); err != nil {
+			t.Fatalf("ProcessInboundEmailWebhook (again): %v", err)
+		}
+		if entries := h.readerEntries(t, seeded.tenant.ID); len(entries) != 1 {
+			t.Fatalf("stored %d reader entries after a redelivery, want 1", len(entries))
+		}
+		if notices := h.staffNotices(t, seeded.tenant.ID); len(notices) != 1 {
+			t.Fatalf("queued %d staff mails after a redelivery, want 1", len(notices))
+		}
+
+		// The reader sending the same text again is another mail.
+		payload, headers = fixture.Received(t, credentials, mail)
+		if err := h.deliver(t, seeded.tenant, providerID, payload, headers); err != nil {
+			t.Fatalf("ProcessInboundEmailWebhook (another mail): %v", err)
+		}
+		if entries := h.readerEntries(t, seeded.tenant.ID); len(entries) != 2 {
+			t.Fatalf("stored %d reader entries after another mail, want 2", len(entries))
+		}
+		if notices := h.staffNotices(t, seeded.tenant.ID); len(notices) != 2 {
+			t.Fatalf("queued %d staff mails after another mail, want 2", len(notices))
 		}
 	})
 

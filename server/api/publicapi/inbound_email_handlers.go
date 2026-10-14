@@ -29,6 +29,10 @@ const (
 	// maxInboundEmailMessageIDLength is the longest Message-ID an entry
 	// keeps, the length contact_message_entries_message_id_check allows.
 	maxInboundEmailMessageIDLength = 998
+	// maxInboundEmailDeliveryKeyLength is the longest delivery key an entry
+	// keeps, provider prefix included, the length
+	// contact_message_entries_delivery_key_check allows.
+	maxInboundEmailDeliveryKeyLength = 255
 	// maxInboundEmailThreadIDs bounds how many ids of a mail's In-Reply-To and
 	// References are looked up. A long thread names every mail before it, and
 	// the most recent ones are the ones that can name an entry.
@@ -170,12 +174,19 @@ func (s *apiServer) storeInboundReply(
 	if id := msg.MessageID; id != "" && len(id) <= maxInboundEmailMessageIDLength && inboundprovider.ValidText(id) {
 		mailID = sql.NullString{String: id, Valid: true}
 	}
+	// A provider's key is unique only among that provider's deliveries, and a
+	// tenant may have moved from one provider to another.
+	var deliveryKey sql.NullString
+	if key := providerID + ":" + msg.DeliveryKey; msg.DeliveryKey != "" && len(key) <= maxInboundEmailDeliveryKeyLength && inboundprovider.ValidText(key) {
+		deliveryKey = sql.NullString{String: key, Valid: true}
+	}
 
 	stored, err := s.storeReaderEntry(ctx, dbmodels.CreateReaderContactMessageEntryParams{
 		TenantID:         tenantID,
 		ContactMessageID: messageID,
 		Body:             body,
 		MessageID:        mailID,
+		DeliveryKey:      deliveryKey,
 		FromEmail:        sql.NullString{String: from, Valid: true},
 	})
 	if err != nil {
@@ -266,7 +277,7 @@ func inboundReplyBody(text string) (string, bool) {
 // ones, and queues the mail that tells staff, in one transaction, so a reply
 // staff are not told about cannot be stored and a message cannot reopen for a
 // reply that was not. It reports false, having written nothing, for a mail
-// whose Message-ID is already stored.
+// whose Message-ID or delivery key is already stored.
 func (s *apiServer) storeReaderEntry(ctx context.Context, params dbmodels.CreateReaderContactMessageEntryParams) (bool, error) {
 	id, err := uuid.NewV7()
 	if err != nil {

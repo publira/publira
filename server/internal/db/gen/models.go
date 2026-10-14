@@ -87,6 +87,7 @@ type ContactMessageEntry struct {
 	MessageID        sql.NullString `json:"message_id"`
 	CreatedAt        time.Time      `json:"created_at"`
 	FromEmail        sql.NullString `json:"from_email"`
+	DeliveryKey      sql.NullString `json:"delivery_key"`
 }
 
 type ContentDailyStat struct {

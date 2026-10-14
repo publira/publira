@@ -106,6 +106,7 @@ func (*Provider) ParseWebhook(_ context.Context, payload []byte, headers http.He
 			return nil, fmt.Errorf("%w: read raw mail: %w", inboundprovider.ErrMalformedRequest, err)
 		}
 		msg.Text = text
+		msg.DeliveryKey = inboundprovider.HeaderDeliveryKey(rawHeader(raw))
 		readEnvelope(&msg, form["envelope"])
 		inboundprovider.ApplyHeader(&msg, header)
 	} else {
@@ -117,6 +118,7 @@ func (*Provider) ParseWebhook(_ context.Context, payload []byte, headers http.He
 		if err != nil {
 			return nil, fmt.Errorf("%w: read header block: %w", inboundprovider.ErrMalformedRequest, err)
 		}
+		msg.DeliveryKey = inboundprovider.HeaderDeliveryKey(form["headers"])
 		if msg.Text, err = value("text"); err != nil {
 			return nil, err
 		}
@@ -156,7 +158,22 @@ func (*Provider) ParseWebhook(_ context.Context, payload []byte, headers http.He
 		return nil, fmt.Errorf("%w: the mail names no sender", inboundprovider.ErrMalformedRequest)
 	}
 	msg.ID = msg.MessageID
+	if msg.ID == "" {
+		msg.ID = msg.DeliveryKey
+	}
 	return msg, nil
+}
+
+// rawHeader answers the header of a raw mail: everything before the blank
+// line that ends it, or the whole mail when it has no body.
+func rawHeader(raw []byte) []byte {
+	end := len(raw)
+	for _, separator := range []string{"\r\n\r\n", "\n\n"} {
+		if i := bytes.Index(raw, []byte(separator)); i >= 0 && i < end {
+			end = i
+		}
+	}
+	return raw[:end]
 }
 
 // authorized reports whether an Authorization header carries token as the
