@@ -6,6 +6,7 @@ const {
   mockCreatePageTranslation,
   mockCreatePageVersion,
   mockDeletePageTranslation,
+  mockFindTenantLocales,
   mockPublishPageVersion,
   mockRedirect,
   mockUpdatePage,
@@ -16,6 +17,7 @@ const {
   mockCreatePageTranslation: vi.fn(),
   mockCreatePageVersion: vi.fn(),
   mockDeletePageTranslation: vi.fn(),
+  mockFindTenantLocales: vi.fn(),
   mockPublishPageVersion: vi.fn(),
   mockRedirect: vi.fn(),
   mockUpdatePage: vi.fn(),
@@ -48,6 +50,10 @@ vi.mock("#lib/page", () => ({
   rollbackPageVersion: vi.fn(),
   unpublishPage: vi.fn(),
   updatePage: mockUpdatePage,
+}));
+
+vi.mock("#lib/tenant-locales", () => ({
+  findTenantLocales: mockFindTenantLocales,
 }));
 
 const TENANT_ID = "TENANT001";
@@ -340,6 +346,25 @@ describe("createPageAction", () => {
     });
     expect(mockRedirect).not.toHaveBeenCalled();
   });
+
+  it("refuses a language the site does not offer", async () => {
+    mockFindTenantLocales.mockResolvedValueOnce({
+      defaultLocale: "ja",
+      supportedLocales: ["ja", "en"],
+    });
+    const data = createForm();
+    data.set("translation_locale", "ko");
+
+    const { createPageAction } = await import("./actions");
+    const state = await createPageAction(null, data);
+
+    expect(state).toEqual({
+      message:
+        "This site does not offer that language. Switch it on under Settings first.",
+      ok: false,
+    });
+    expect(mockCreatePage).not.toHaveBeenCalled();
+  });
 });
 
 describe("createPageAction's first version", () => {
@@ -466,6 +491,10 @@ describe("addPageTranslationAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    mockFindTenantLocales.mockResolvedValue({
+      defaultLocale: "ja",
+      supportedLocales: ["ja", "en"],
+    });
     mockCreatePageTranslation.mockResolvedValue({
       ok: true,
       translation: { id: "TRANSLATION002", locale: "en" },
@@ -504,6 +533,38 @@ describe("addPageTranslationAction", () => {
 
     expect(mockCreatePageTranslation).not.toHaveBeenCalled();
     expect(state).toEqual({ message: "Title is required.", ok: false });
+  });
+
+  it("refuses a language the site does not offer", async () => {
+    const { addPageTranslationAction } = await import("./actions");
+    const state = await addPageTranslationAction(
+      null,
+      translationForm({ title: "Privacy policy", translation_locale: "ko" })
+    );
+
+    expect(mockCreatePageTranslation).not.toHaveBeenCalled();
+    expect(state).toEqual({
+      message:
+        "This site does not offer that language. Switch it on under Settings first.",
+      ok: false,
+    });
+  });
+
+  it("refuses when the languages the site offers cannot be read", async () => {
+    mockFindTenantLocales.mockResolvedValueOnce(null);
+
+    const { addPageTranslationAction } = await import("./actions");
+    const state = await addPageTranslationAction(
+      null,
+      translationForm({ title: "Privacy policy", translation_locale: "en" })
+    );
+
+    expect(mockCreatePageTranslation).not.toHaveBeenCalled();
+    expect(state).toEqual({
+      message:
+        "Could not check the languages this site offers. Please try again later.",
+      ok: false,
+    });
   });
 
   it("reports what the server refused", async () => {

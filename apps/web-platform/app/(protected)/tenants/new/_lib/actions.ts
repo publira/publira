@@ -24,22 +24,34 @@ import { createPlatformTenant, platformTenantsCacheTag } from "#lib/tenants";
 import { platformEndUsersCacheTag } from "#lib/users";
 
 /**
- * The new tenant's locale is checked against the supported list here as well as
- * on the server: `Accept-Language` only seeded the selector, and a hand-built
- * request can name any code at all.
+ * The new tenant's locales are checked against the supported list here as well
+ * as on the server: `Accept-Language` only seeded the selector, and a
+ * hand-built request can name any code at all. The form keeps the default's
+ * box ticked and sends it as an entry of its own, so a set that leaves it out
+ * was not sent by the form.
  */
 const createTenantFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
-  return z.object({
-    adminDomain: optionalTrimmedString(),
-    defaultLocale: z.enum(getLocales(), {
-      error: t("platform.tenants.locale_required"),
-    }),
-    domain: requiredTrimmedString(t("platform.tenants.domain_required")),
-    initialAdminEmails: commaOrNewlineStringListFormSchema,
-    name: requiredTrimmedString(t("platform.tenants.name_required")),
-  });
+  return z
+    .object({
+      adminDomain: optionalTrimmedString(),
+      defaultLocale: z.enum(getLocales(), {
+        error: t("platform.tenants.locale_required"),
+      }),
+      domain: requiredTrimmedString(t("platform.tenants.domain_required")),
+      initialAdminEmails: commaOrNewlineStringListFormSchema,
+      name: requiredTrimmedString(t("platform.tenants.name_required")),
+      supportedLocales: z.array(
+        z.enum(getLocales(), {
+          error: t("platform.tenants.supported_locales_invalid"),
+        })
+      ),
+    })
+    .refine((value) => value.supportedLocales.includes(value.defaultLocale), {
+      error: t("platform.tenants.default_locale_not_offered"),
+      path: ["supportedLocales"],
+    });
 };
 
 export const createTenantAction = async (
@@ -56,6 +68,7 @@ export const createTenantAction = async (
       domain: { kind: "value", name: "tenant_domain" },
       initialAdminEmails: { kind: "value", name: "initial_admin_emails" },
       name: { kind: "value", name: "tenant_name" },
+      supportedLocales: { kind: "values", name: "tenant_supported_locales" },
     })
   );
   if (!parsed.success) {

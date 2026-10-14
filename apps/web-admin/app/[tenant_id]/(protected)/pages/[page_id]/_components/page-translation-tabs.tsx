@@ -1,4 +1,4 @@
-import { getLocaleLabel, getLocales } from "@publira/i18n";
+import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { PlusIcon } from "@publira/icons";
 import Link from "next/link";
@@ -13,19 +13,23 @@ import { pageEditPath } from "../../page-types";
 interface PageTranslationTabsProps {
   /** Shown at the end of the row, for the control that acts on the selected translation. */
   children?: ReactNode;
+  /** The languages the tenant's site offers, in the registry's order. */
+  locales: readonly Locale[];
   pageId: string;
   selectedLocale: Locale;
   translatedLocales: readonly Locale[];
 }
 
 /**
- * One link per supported locale. Each translation has its own title, history,
- * and published version, so a locale is a screen of its own rather than a panel
- * of this one; a locale the page has no translation in opens the form that adds
- * it.
+ * One link per language the site offers. Each translation has its own title,
+ * history, and published version, so a locale is a screen of its own rather
+ * than a panel of this one; a locale the page has no translation in opens the
+ * form that adds it. A translation in a language the site no longer offers has
+ * no link, and has one again once the language is switched back on.
  */
 export const PageTranslationTabs = async ({
   children,
+  locales,
   pageId,
   selectedLocale,
   translatedLocales,
@@ -39,7 +43,7 @@ export const PageTranslationTabs = async ({
         aria-label={t("admin.pages.translations.tabs_label")}
         className="flex flex-wrap items-center gap-1"
       >
-        {getLocales().map((code) => {
+        {locales.map((code) => {
           const hasTranslation = translated.has(code);
 
           return (

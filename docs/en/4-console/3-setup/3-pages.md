@@ -2,7 +2,7 @@
 title: Pages
 description: Write the site's own pages in Markdown, publish and roll back their versions, translate them, and make two of them the terms of service and privacy policy readers agree to.
 published: 2026-10-07
-updated: 2026-10-12
+updated: 2026-10-14
 ---
 
 **Pages**, under **Site**, holds the pages the publisher writes for the site: the terms of service, the privacy policy, a page about the publisher, submission guidelines, and anything else that is not a series. A page is written in Markdown, kept in versions, and can be translated into each of the site's languages.
@@ -52,7 +52,7 @@ The site shows a change moments after it is published.
 
 ## Translations
 
-The edit screen has a tab for each of the site's languages under **Languages**. A language without its own translation is marked **(not added)**, and readers browsing the site in that language see the page in another language, with a note saying so. To add one, open its tab, enter a title, and choose **Add translation**. Then write and publish its body as above.
+The edit screen has a tab under **Languages** for each language the site offers, which a Tenant admin chooses under [**Settings**](./1-settings.md#languages). A translation in a language the site no longer offers has no tab, and is kept: its tab comes back, with the translation as it was, when the language is offered again. A language without its own translation is marked **(not added)**, and readers browsing the site in that language see the page in another language, with a note saying so. To add one, open its tab, enter a title, and choose **Add translation**. Then write and publish its body as above.
 
 Each translation has its own title, versions, and published version, so a correction to one does not reach the others until it is made there too. **Delete this translation** removes one, but not the last.
 

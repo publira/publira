@@ -1,8 +1,8 @@
 ---
 title: Settings
-description: Set the site's copy, time zone, language, reader comments, age verification, legal pages, and refused email addresses, and tighten the platform's limits for the tenant.
+description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, and refused email addresses, and tighten the platform's limits for the tenant.
 published: 2026-10-07
-updated: 2026-10-12
+updated: 2026-10-14
 ---
 
 **Settings**, under **Administration**, has two tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds.
@@ -35,18 +35,20 @@ Set it before the first sales: changing it later moves where the open month is c
 
 A new tenant starts on the platform's default time zone, which is `UTC` unless the operator chose another.
 
-### Default language
+### Languages
 
-**Default language** is the language the site and this console start in for someone who has not chosen one. It is offered in 日本語, English, 한국어, 简体中文, and 繁體中文. A reader or a member of staff who has already chosen a language keeps it.
+**Languages** decides which languages the site offers its readers, and which of them it starts in.
 
-The default language is also:
+**Languages offered** has a box for each language Publira is translated into: 日本語, English, 한국어, 简体中文, and 繁體中文. Tick the ones readers can use the site in. Switching a language off hides the page translations written in it, without deleting them, and they come back when the language is switched on again, as [Translations](./3-pages.md#translations) describes.
+
+**Default language** is the language the site and this console start in for someone who has not chosen one. A reader or a member of staff who has already chosen a language keeps it. The default language is also:
 
 - the language of the mail the tenant sends, invitations to new staff included;
 - the language a new page is first written in.
 
-The operator chose it when creating the tenant. **Save the default language** changes it.
+The default language is always offered: its box stays ticked and cannot be cleared, and choosing a language that is not ticked as the default ticks it. The operator chose the default when creating the tenant, and a new tenant offers that language alone unless the operator chose more. **Save the languages** saves both.
 
-![The Default language card: the Default language field and Save the default language.](./settings-default-language.png)
+![The Languages card: the Default language field, a box for each language under Languages offered with the default's ticked and turned off, and Save the languages.](./settings-languages.png)
 
 ### Reader comments
 

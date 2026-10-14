@@ -38,7 +38,7 @@ The locale is never in the URL. It lives in the `publira_locale` cookie, and res
 
 An operator switches locale from the Display language switcher in the console header (`components/locale-switcher.tsx`), through the `setPlatformLocaleAction` Server Action in `lib/locale-action.ts`.
 
-A new tenant's default language is not taken from the platform default: `/tenants/new` carries its own selector (`_components/tenant-default-locale-select.tsx`), and `/setup` saves the platform's first one from the selector on that screen.
+A new tenant's default language is not taken from the platform default: `/tenants/new` carries its own selector, beside the languages the new tenant's site offers (`_components/tenant-locales-fields.tsx`), and `/setup` saves the platform's first one from the selector on that screen.
 
 ## Development
 

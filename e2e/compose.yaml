@@ -186,6 +186,7 @@ services:
         comment.localhost
         consent.localhost
         desk.localhost
+        langs.localhost
         locale.localhost
         mobile-push.localhost
         moderate.localhost
@@ -213,6 +214,7 @@ services:
         admin.comment.localhost
         admin.consent.localhost
         admin.desk.localhost
+        admin.langs.localhost
         admin.locale.localhost
         admin.mobile-push.localhost
         admin.moderate.localhost

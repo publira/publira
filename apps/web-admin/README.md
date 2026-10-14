@@ -22,7 +22,7 @@ The locale is never in the URL. It lives in the `publira_locale` cookie, and res
 | --- | --- |
 | The resolved locale | `getLocale(tenantId)` in `lib/locale.ts`, and the cookie options the switcher writes with |
 | The tenant's stored default, without a session | `getTenantDisplayLocale()` in `lib/public-api.ts`, over the public `GetTenant` |
-| The tenant's stored default, as a setting to read and save | `lib/tenant-default-locale.ts`, behind the Default language card on `/settings` |
+| The tenant's stored default and the languages its site offers, as a setting to read and save | `lib/tenant-locales.ts`, behind the Languages card on `/settings`; the page editor's language tabs read the same set |
 | The catalog | `loadAdminMessages(locale)` in `lib/messages.ts`, over the repo-root [`locales/*.json`](../../locales/README.md) |
 | One string, where a node cannot go | `getMessages()` in `lib/get-messages.ts` for the request's locale, `getMessagesFor(locale)` in `lib/messages.ts` where the caller holds one, `getActionMessages(formData)` in `lib/action-messages.ts` inside a Server Action |
 | One string on the server | `<Message>` in `components/message.tsx` |

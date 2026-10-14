@@ -288,6 +288,7 @@ describe("createPlatformTenant", () => {
         initialAdminEmails: ["owner@example.com", ""],
         locale: "en",
         name: "New Publishing",
+        supportedLocales: ["ja", "en"],
       })
     ).resolves.toEqual({ ok: true, publicId: "TENANT000001" });
 
@@ -298,6 +299,7 @@ describe("createPlatformTenant", () => {
         domain: "example.com",
         initialAdminEmails: ["owner@example.com"],
         name: "New Publishing",
+        supportedLocales: ["ja", "en"],
       },
       {
         headers: {
@@ -316,6 +318,7 @@ describe("createPlatformTenant", () => {
         domain: "example.com",
         locale: "en",
         name: "n",
+        supportedLocales: ["ja", "en"],
       })
     ).resolves.toEqual({
       message: "Your session is no longer valid. Please sign in again.",
@@ -349,6 +352,7 @@ describe("createPlatformTenant", () => {
         domain: "example.com",
         locale: "en",
         name: "n",
+        supportedLocales: ["ja", "en"],
       })
     ).resolves.toEqual({
       message: "Cannot create because this data already exists.",
@@ -372,6 +376,7 @@ describe("createPlatformTenant", () => {
         domain: "example.com",
         locale: "en",
         name: "n",
+        supportedLocales: ["ja", "en"],
       })
     ).resolves.toEqual({
       message: "This domain is already in use.",
@@ -395,6 +400,7 @@ describe("createPlatformTenant", () => {
         domain: "example.com",
         locale: "ja",
         name: "n",
+        supportedLocales: ["ja", "en"],
       })
     ).resolves.toEqual({
       message: "ドメインが既に使用されています。",
@@ -418,6 +424,7 @@ describe("createPlatformTenant", () => {
         domain: "example.com",
         locale: "en",
         name: "n",
+        supportedLocales: ["ja", "en"],
       })
     ).resolves.toEqual({
       message: "This admin domain is already in use.",
@@ -436,6 +443,7 @@ describe("createPlatformTenant", () => {
         domain: "example.com",
         locale: "en",
         name: "n",
+        supportedLocales: ["ja", "en"],
       })
     ).resolves.toEqual({
       message: "The submitted values are invalid. Check them and try again.",

@@ -165,7 +165,7 @@ for (const locale of DOCS_LOCALES) {
 
       for (const [subject, title] of [
         ["time-zone", "admin.settings.timezone.title"],
-        ["default-language", "admin.settings.default_locale.title"],
+        ["languages", "admin.settings.locales.title"],
         ["reader-comments", "admin.settings.comments.title"],
         ["age-verification", "admin.settings.age_verification.title"],
         ["terms-and-privacy-policy", "admin.settings.legal_pages.title"],

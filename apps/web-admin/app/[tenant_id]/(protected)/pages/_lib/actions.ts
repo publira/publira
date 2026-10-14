@@ -16,6 +16,7 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import type { AdminMessageAccessor } from "#lib/messages";
 import {
   createPage,
   createPageTranslation,
@@ -28,6 +29,7 @@ import {
   unpublishPage,
   updatePage,
 } from "#lib/page";
+import { findTenantLocales } from "#lib/tenant-locales";
 
 import { normalizePageSlugInput, pageEditPath } from "../page-types";
 import type { PageFormState } from "../page-types";
@@ -101,6 +103,27 @@ const toFailure = (message: string): NonNullable<PageFormState> => ({
   ok: false,
 });
 
+/**
+ * Why a translation in `translationLocale` cannot be started, or `undefined`
+ * when the site offers that language. The API stores a translation in any
+ * language this build serves, so the console is what keeps a page from
+ * gaining one in a language its readers are never shown. A set that cannot be
+ * read refuses rather than guessing.
+ */
+const unofferedLocaleMessage = async (
+  tenantId: string,
+  translationLocale: Locale,
+  t: AdminMessageAccessor
+): Promise<string | undefined> => {
+  const locales = await findTenantLocales(tenantId);
+  if (!locales) {
+    return t("admin.pages.validation.locales_unavailable");
+  }
+  return locales.supportedLocales.includes(translationLocale)
+    ? undefined
+    : t("admin.pages.validation.locale_not_offered");
+};
+
 const parsePageForm = async (formData: FormData, locale: Locale) => {
   const schema = await pageCommonSchema(locale);
 
@@ -122,6 +145,18 @@ export const createPageAction = async (
   }
   if (!parsed.data.title) {
     return toFailure(t("admin.pages.validation.title_required"));
+  }
+  // The page starts in the default language, which the site always offers;
+  // a form that names another one was not sent by the create screen.
+  if (parsed.data.translationLocale) {
+    const unoffered = await unofferedLocaleMessage(
+      parsed.data.tenantId,
+      parsed.data.translationLocale,
+      t
+    );
+    if (unoffered) {
+      return toFailure(unoffered);
+    }
   }
 
   const result = await withAdminSessionReauth(() =>
@@ -404,6 +439,14 @@ export const addPageTranslationAction = async (
   }
   if (!title) {
     return toFailure(t("admin.pages.validation.title_required"));
+  }
+  const unoffered = await unofferedLocaleMessage(
+    tenantId,
+    translationLocale,
+    t
+  );
+  if (unoffered) {
+    return toFailure(unoffered);
   }
 
   const result = await withAdminSessionReauth(() =>

@@ -274,7 +274,7 @@
         "tenant_branding": "Branding",
         "tenant_comment_settings": "Reader comments",
         "tenant_community_limits": "Community limits",
-        "tenant_default_locale": "Default language",
+        "tenant_default_locale": "Languages",
         "tenant_email_rejection_settings": "Refused email addresses",
         "tenant_legal_pages": "Terms and privacy policy",
         "tenant_mobile_app_association": "App links",
@@ -377,7 +377,7 @@
         "tenant_admin_invite_accepted": "Invitation accepted",
         "tenant_site_copy_updated": "Public site display updated",
         "tenant_timezone_updated": "Time zone updated",
-        "tenant_default_locale_updated": "Default language updated",
+        "tenant_default_locale_updated": "Languages updated",
         "tenant_comment_settings_updated": "Reader comment settings updated",
         "tenant_age_verification_updated": "Age verification updated",
         "tenant_legal_pages_updated": "Terms and privacy policy updated",
@@ -1326,6 +1326,8 @@
         "title_required": "Title is required.",
         "title_too_long": "Title must be 255 characters or fewer.",
         "locale_invalid": "Choose a supported language.",
+        "locale_not_offered": "This site does not offer that language. Switch it on under Settings first.",
+        "locales_unavailable": "Could not check the languages this site offers. Please try again later.",
         "slug_too_long": "Slug must be 255 characters or fewer.",
         "tenant_missing": "Tenant ID is missing.",
         "update_id_missing": "The page ID to update is missing."
@@ -2274,19 +2276,23 @@
           "invalid": "Select a valid time zone."
         }
       },
-      "default_locale": {
-        "title": "Default language",
-        "description": "The language this console and the public site start in for an administrator or a reader who has not chosen one. It does not change a language already chosen.",
-        "label": "Default language",
+      "locales": {
+        "title": "Languages",
+        "description": "The languages readers can use on the public site, and the one this console and the site start in for an administrator or a reader who has not chosen one. A language already chosen does not change.",
+        "default_label": "Default language",
         "placeholder": "Select a language",
-        "field_description": "The starting point for anyone who has not chosen a language; it does not change one already stored in the cookie.",
+        "default_description": "The starting point for anyone who has not chosen a language; it does not change one already stored in the cookie. The site always offers it.",
+        "supported_label": "Languages offered",
+        "supported_description": "The languages readers can switch the site to. A page translation in a language switched off is hidden, not deleted, and returns when the language is switched on again.",
         "load_error_hint": "Saving now would overwrite the stored setting, so reload the page before changing it.",
-        "submit": "Save the default language",
-        "saved": "The default language was saved.",
-        "load_failed": "Could not load the default language. Please try again later.",
-        "save_failed": "Could not save the default language. Please try again later.",
+        "submit": "Save the languages",
+        "saved": "The languages were saved.",
+        "load_failed": "Could not load the languages. Please try again later.",
+        "save_failed": "Could not save the languages. Please try again later.",
         "validation": {
-          "required": "Select a language."
+          "required": "Select a language.",
+          "supported_invalid": "Choose the languages offered from the list.",
+          "default_not_offered": "The default language must be one of the languages offered."
         }
       },
       "comments": {
@@ -5425,6 +5431,10 @@
       "default_locale": "Default language",
       "default_locale_help": "The language this tenant's consoles and site start in. Its administrators can change it later in the tenant admin console.",
       "default_locale_placeholder": "Select a language",
+      "default_locale_not_offered": "The default language must be one of the languages offered.",
+      "supported_locales": "Languages offered",
+      "supported_locales_help": "The languages the tenant's site offers its readers, the default language among them. Its administrators can change them later in the tenant admin console.",
+      "supported_locales_invalid": "Choose the languages offered from the list.",
       "delete_member": "Remove",
       "delete_member_action": "Remove",
       "delete_member_description": "Removed members lose access to this tenant. You can add them again later.",

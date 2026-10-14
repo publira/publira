@@ -1,6 +1,6 @@
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
 import { createPublicApiClient } from "@publira/api-client/public/client";
-import { parseLocale } from "@publira/i18n";
+import { getLocales, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
@@ -35,6 +35,12 @@ interface TenantPublicInfo {
    */
   defaultLocale: Locale | null;
   name: string | null;
+  /**
+   * The locales the tenant's site offers, in the registry's order, its default
+   * among them. `null` when the response names none this build serves a
+   * catalog for, as {@link defaultLocale} is.
+   */
+  supportedLocales: readonly Locale[] | null;
   theme: TenantTheme;
   /**
    * The IANA zone the tenant's wall clock is in, already resolved against the
@@ -59,6 +65,18 @@ const applyTenantSiteCacheTag = (tenantId: string) => {
   } catch {
     // Some unit tests run without Next cacheComponents runtime support.
   }
+};
+
+/**
+ * A set of offered locales as the API answers it, kept to the codes this build
+ * serves and put in the registry's order, which the API already answers it in.
+ */
+export const readSupportedLocales = (
+  codes: readonly string[] | undefined
+): readonly Locale[] | null => {
+  const offered = new Set(codes?.map((code) => parseLocale(code.trim())));
+  const locales = getLocales().filter((code) => offered.has(code));
+  return locales.length > 0 ? locales : null;
 };
 
 /**
@@ -89,6 +107,7 @@ export const getTenantPublicInfo = async (
       currency: readCurrency(response.currency),
       defaultLocale: parseLocale(response.defaultLocale.trim()) ?? null,
       name: response.tenantName?.trim() || null,
+      supportedLocales: readSupportedLocales(response.supportedLocales),
       theme: resolveTenantThemeColors(response.theme),
       timezone: response.timezone?.trim() || null,
     };

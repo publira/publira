@@ -1,5 +1,3 @@
-import { getLocaleLabel, getLocales } from "@publira/i18n";
-import type { Locale } from "@publira/i18n";
 import {
   ActionForm,
   ActionFormFieldset,
@@ -7,14 +5,7 @@ import {
   ActionFormPending,
   ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -26,24 +17,26 @@ import {
   AdminSectionTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import type { TenantLocales } from "#lib/tenant-locales";
 
-import { updateTenantDefaultLocaleAction } from "../_lib/actions";
+import { updateTenantLocalesAction } from "../_lib/actions";
+import { TenantLocalesFields } from "./tenant-locales-fields";
 
-interface TenantDefaultLocaleFormProps {
+interface TenantLocalesFormProps {
   canEdit: boolean;
-  /** The saved value, absent when the settings read failed. */
-  initialDefaultLocale?: Locale;
+  /** The saved values, absent when the settings read failed. */
+  initialLocales?: TenantLocales;
   loadErrorMessage?: string;
   tenantId: string;
 }
 
-export const TenantDefaultLocaleForm = ({
+export const TenantLocalesForm = ({
   canEdit,
-  initialDefaultLocale,
+  initialLocales,
   loadErrorMessage,
   tenantId,
-}: TenantDefaultLocaleFormProps) => {
-  // A failed read would save a stand-in over the real default, so editing
+}: TenantLocalesFormProps) => {
+  // A failed read would save a stand-in over the real languages, so editing
   // stays closed until the read succeeds.
   const fieldsDisabled = !canEdit || Boolean(loadErrorMessage);
 
@@ -53,51 +46,27 @@ export const TenantDefaultLocaleForm = ({
         <AdminSectionHeading>
           <AdminSectionTitle>
             <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
-              <Message message="admin.settings.default_locale.title" />
+              <Message message="admin.settings.locales.title" />
             </Suspense>
           </AdminSectionTitle>
           <AdminSectionDescription>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-              <Message message="admin.settings.default_locale.description" />
+              <Message message="admin.settings.locales.description" />
             </Suspense>
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
       <ActionForm
-        action={updateTenantDefaultLocaleAction}
+        action={updateTenantLocalesAction}
         className="grid gap-4 sm:max-w-lg"
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <ActionFormFieldset disabled={fieldsDisabled}>
-          <Field>
-            <FieldLabel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.settings.default_locale.label" />
-              </Suspense>
-            </FieldLabel>
-            <FieldContent>
-              {/* Autonyms read the same in every console language. */}
-              <Select
-                defaultValue={initialDefaultLocale}
-                items={getLocales().map((locale) => ({
-                  label: getLocaleLabel(locale),
-                  value: locale,
-                }))}
-                name="default_locale"
-                placeholder={
-                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <Message message="admin.settings.default_locale.placeholder" />
-                  </Suspense>
-                }
-              />
-              <FieldDescription>
-                <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                  <Message message="admin.settings.default_locale.field_description" />
-                </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+        <ActionFormFieldset className="grid gap-4" disabled={fieldsDisabled}>
+          <TenantLocalesFields
+            initialDefaultLocale={initialLocales?.defaultLocale}
+            initialSupportedLocales={initialLocales?.supportedLocales}
+          />
         </ActionFormFieldset>
 
         {canEdit ? null : (
@@ -113,7 +82,7 @@ export const TenantDefaultLocaleForm = ({
             <span className="block">{loadErrorMessage}</span>
             <span className="block">
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-                <Message message="admin.settings.default_locale.load_error_hint" />
+                <Message message="admin.settings.locales.load_error_hint" />
               </Suspense>
             </span>
           </FormMessage>
@@ -123,7 +92,7 @@ export const TenantDefaultLocaleForm = ({
           <ActionFormSubmit disabled={fieldsDisabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <ActionFormIdle>
-                <Message message="admin.settings.default_locale.submit" />
+                <Message message="admin.settings.locales.submit" />
               </ActionFormIdle>
               <ActionFormPending>
                 <Message message="admin.settings.saving" />

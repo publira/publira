@@ -34,20 +34,20 @@ import { listPublishedPages } from "#lib/page";
 import { getTenantSiteSettings } from "#lib/site-settings";
 import { getTenantAgeVerification } from "#lib/tenant-age-verification";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
-import { getTenantDefaultLocale } from "#lib/tenant-default-locale";
 import { getTenantEmailRejectionSettings } from "#lib/tenant-email-rejection-settings";
 import type { TenantEmailRejectionSettingsResult } from "#lib/tenant-email-rejection-settings";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantLegalPages } from "#lib/tenant-legal-pages";
+import { getTenantLocales } from "#lib/tenant-locales";
 import { getTenantTimezone } from "#lib/tenant-timezone";
 
 import { SettingsTabNav } from "./_components/settings-tab-nav";
 import { SiteSettingsForm } from "./_components/site-settings-form";
 import { TenantAgeVerificationForm } from "./_components/tenant-age-verification-form";
 import { TenantCommentSettingsForm } from "./_components/tenant-comment-settings-form";
-import { TenantDefaultLocaleForm } from "./_components/tenant-default-locale-form";
 import { TenantEmailRejectionForm } from "./_components/tenant-email-rejection-form";
 import { TenantLegalPagesForm } from "./_components/tenant-legal-pages-form";
+import { TenantLocalesForm } from "./_components/tenant-locales-form";
 import { TenantTimezoneForm } from "./_components/tenant-timezone-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -136,7 +136,7 @@ const SettingsForms = async () => {
   const [
     settingsResult,
     timezoneResult,
-    defaultLocaleResult,
+    localesResult,
     commentSettingsResult,
     ageVerificationResult,
     legalPagesResult,
@@ -146,7 +146,7 @@ const SettingsForms = async () => {
   ] = await Promise.all([
     getTenantSiteSettings(tenantId, locale),
     getTenantTimezone(tenantId, locale),
-    getTenantDefaultLocale(tenantId, locale),
+    getTenantLocales(tenantId, locale),
     getTenantCommentSettings(tenantId, locale),
     getTenantAgeVerification(tenantId, locale),
     getTenantLegalPages(tenantId, locale),
@@ -198,14 +198,10 @@ const SettingsForms = async () => {
         tenantId={tenantId}
       />
 
-      <TenantDefaultLocaleForm
+      <TenantLocalesForm
         canEdit={canEdit}
-        initialDefaultLocale={
-          defaultLocaleResult.ok ? defaultLocaleResult.defaultLocale : undefined
-        }
-        loadErrorMessage={
-          defaultLocaleResult.ok ? undefined : defaultLocaleResult.message
-        }
+        initialLocales={localesResult.ok ? localesResult : undefined}
+        loadErrorMessage={localesResult.ok ? undefined : localesResult.message}
         tenantId={tenantId}
       />
 

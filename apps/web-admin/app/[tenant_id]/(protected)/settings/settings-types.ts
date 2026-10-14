@@ -22,7 +22,7 @@ export type TenantTimezoneActionState =
     }
   | null;
 
-export type TenantDefaultLocaleActionState =
+export type TenantLocalesActionState =
   | {
       ok: true;
       message: string;

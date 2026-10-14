@@ -2,12 +2,7 @@ import {
   ActionForm,
   ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -17,7 +12,7 @@ import { Message } from "#components/message";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
 
 import { createTenantAction } from "../_lib/actions";
-import { TenantDefaultLocaleSelect } from "./tenant-default-locale-select";
+import { TenantLocalesFields } from "./tenant-locales-fields";
 
 export const CreateTenantForm = () => (
   <ActionForm action={createTenantAction} className="grid gap-4 sm:max-w-2xl">
@@ -71,23 +66,9 @@ export const CreateTenantForm = () => (
       </Suspense>
     </Field>
 
-    <Field>
-      <FieldLabel required>
-        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <Message message="platform.tenants.default_locale" />
-        </Suspense>
-      </FieldLabel>
-      <FieldContent>
-        <Suspense fallback={<Skeleton className="h-10 w-full" />}>
-          <TenantDefaultLocaleSelect />
-        </Suspense>
-        <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-            <Message message="platform.tenants.default_locale_help" />
-          </Suspense>
-        </FieldDescription>
-      </FieldContent>
-    </Field>
+    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+      <TenantLocalesFields />
+    </Suspense>
 
     <Field>
       <FieldLabel>
