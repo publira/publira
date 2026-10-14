@@ -274,7 +274,7 @@
         "tenant_branding": "品牌",
         "tenant_comment_settings": "讀者留言",
         "tenant_community_limits": "社群限制",
-        "tenant_default_locale": "預設語言",
+        "tenant_default_locale": "語言",
         "tenant_email_rejection_settings": "不接受的電子郵件地址",
         "tenant_legal_pages": "服務條款與隱私權政策",
         "tenant_mobile_app_association": "應用程式連結",
@@ -377,7 +377,7 @@
         "tenant_admin_invite_accepted": "接受了邀請",
         "tenant_site_copy_updated": "更新了公開網站呈現",
         "tenant_timezone_updated": "更新了時區",
-        "tenant_default_locale_updated": "更新了預設語言",
+        "tenant_default_locale_updated": "更新了語言",
         "tenant_comment_settings_updated": "更新了讀者留言設定",
         "tenant_age_verification_updated": "更新了年齡驗證設定",
         "tenant_legal_pages_updated": "更新了服務條款與隱私權政策",
@@ -1326,6 +1326,8 @@
         "title_required": "標題為必填。",
         "title_too_long": "標題請控制在255個字元以內。",
         "locale_invalid": "請選擇支援的語言。",
+        "locale_not_offered": "此網站未提供該語言。請先在設定中將其加入提供的語言。",
+        "locales_unavailable": "無法確認此網站提供的語言。請稍後再試。",
         "slug_too_long": "slug請控制在255個字元以內。",
         "tenant_missing": "缺少租戶ID。",
         "update_id_missing": "缺少要更新的頁面ID。"
@@ -2274,19 +2276,23 @@
           "invalid": "請選擇有效的時區。"
         }
       },
-      "default_locale": {
-        "title": "預設語言",
-        "description": "尚未選擇顯示語言的管理員和讀者在此主控台與公開網站看到的語言。它不會改變已經選定的語言。",
-        "label": "預設語言",
+      "locales": {
+        "title": "語言",
+        "description": "讀者可在公開網站使用的語言，以及尚未選擇顯示語言的管理員和讀者在此主控台與公開網站看到的語言。它不會改變已經選定的語言。",
+        "default_label": "預設語言",
         "placeholder": "請選擇語言",
-        "field_description": "尚未選擇語言的使用者的起始語言；它不會改變Cookie中已儲存的語言。",
+        "default_description": "尚未選擇語言的使用者的起始語言；它不會改變Cookie中已儲存的語言。預設語言一律提供。",
+        "supported_label": "提供的語言",
+        "supported_description": "讀者可將網站切換到的語言。停止提供的語言中的頁面翻譯不會被刪除，而是隱藏，重新提供該語言時會恢復。",
         "load_error_hint": "此時儲存會覆蓋已儲存的設定，請先重新載入頁面，再進行修改。",
-        "submit": "儲存預設語言",
-        "saved": "預設語言已儲存。",
-        "load_failed": "無法載入預設語言。請稍後再試。",
-        "save_failed": "無法儲存預設語言。請稍後再試。",
+        "submit": "儲存語言",
+        "saved": "語言已儲存。",
+        "load_failed": "無法載入語言。請稍後再試。",
+        "save_failed": "無法儲存語言。請稍後再試。",
         "validation": {
-          "required": "請選擇語言。"
+          "required": "請選擇語言。",
+          "supported_invalid": "請從清單中選擇提供的語言。",
+          "default_not_offered": "預設語言必須是提供的語言之一。"
         }
       },
       "comments": {
@@ -5425,6 +5431,10 @@
       "default_locale": "預設語言",
       "default_locale_help": "該租戶的主控台與網站啟動時使用的語言。其管理員之後可以在租戶的管理主控台中變更。",
       "default_locale_placeholder": "請選擇語言",
+      "default_locale_not_offered": "預設語言必須是提供的語言之一。",
+      "supported_locales": "提供的語言",
+      "supported_locales_help": "租戶網站向讀者提供的語言，預設語言是其中之一。其管理員之後可以在租戶管理主控台中變更。",
+      "supported_locales_invalid": "請從清單中選擇提供的語言。",
       "delete_member": "移除",
       "delete_member_action": "移除",
       "delete_member_description": "被移除的成員將失去該租戶的存取權限。之後可以重新新增。",

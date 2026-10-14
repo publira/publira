@@ -22,8 +22,8 @@ import {
 import { isSignedInTenantEditor } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { getTenantDefaultLocale } from "#lib/tenant-default-locale";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantLocales } from "#lib/tenant-locales";
 
 import { PageForm } from "../_components/page-form";
 import { createPageAction } from "../_lib/actions";
@@ -55,14 +55,12 @@ const PageFormSkeleton = () => (
 const NewPageFormData = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const defaultLocaleResult = await getTenantDefaultLocale(tenantId, locale);
+  const localesResult = await getTenantLocales(tenantId, locale);
 
   return (
     <PageForm
       action={createPageAction}
-      defaultLocale={
-        defaultLocaleResult.ok ? defaultLocaleResult.defaultLocale : undefined
-      }
+      defaultLocale={localesResult.ok ? localesResult.defaultLocale : undefined}
       tenantId={tenantId}
     />
   );

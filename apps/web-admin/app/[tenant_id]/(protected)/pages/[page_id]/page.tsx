@@ -44,6 +44,8 @@ import { getMessagesFor } from "#lib/messages";
 import { getPage, listPageTranslations, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantLegalPages } from "#lib/tenant-legal-pages";
+import { findTenantLocales } from "#lib/tenant-locales";
+import type { TenantLocales } from "#lib/tenant-locales";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { PageWorkspace } from "../_components/page-workspace";
@@ -73,7 +75,8 @@ const editPageParamsSchema = z.object({
 
 /**
  * The translation to show. Absent, or naming a locale this build does not
- * serve, it is the one the tenant's default locale resolves to.
+ * serve or the site does not offer, it is the one {@link translationToShow}
+ * picks.
  */
 const editPageSearchParamsSchema = z.object({
   locale: searchParamEnum(getLocales(), { fallback: "" }),
@@ -137,6 +140,33 @@ const canAskReadersToAgree = async (
   );
 };
 
+/**
+ * The languages that have a tab: the ones the site offers, or every one this
+ * build serves when they cannot be read, since a tab too many is a smaller
+ * fault than a translation nobody can reach.
+ */
+const tabLocales = (locales: TenantLocales | null): readonly Locale[] =>
+  locales?.supportedLocales ?? getLocales();
+
+/**
+ * The translation the screen opens on when the URL names none it can show: the
+ * default language's, else the first offered language the page has one in,
+ * else the form that adds the default one. The API's own choice falls back to
+ * any translation, a hidden one included, so it is left to make only when the
+ * tenant's languages cannot be read.
+ */
+const translationToShow = (
+  locales: TenantLocales | null,
+  visibleLocales: readonly Locale[]
+): Locale | undefined => {
+  if (!locales) {
+    return undefined;
+  }
+  return visibleLocales.includes(locales.defaultLocale)
+    ? locales.defaultLocale
+    : (visibleLocales[0] ?? locales.defaultLocale);
+};
+
 const PageWorkspaceData = async ({
   params,
   searchParams,
@@ -151,10 +181,10 @@ const PageWorkspaceData = async ({
 
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const translationsResult = await listPageTranslations(
-    { pageId, tenantId },
-    locale
-  );
+  const [translationsResult, tenantLocales] = await Promise.all([
+    listPageTranslations({ pageId, tenantId }, locale),
+    findTenantLocales(tenantId),
+  ]);
 
   if (!translationsResult.ok) {
     if (translationsResult.notFound) {
@@ -172,20 +202,28 @@ const PageWorkspaceData = async ({
   const translatedLocales = translationsResult.translations.map(
     (translation) => translation.locale
   );
+  const locales = tabLocales(tenantLocales);
+  const offered = new Set(locales);
+  const visibleLocales = translatedLocales.filter((code) => offered.has(code));
+  const shownLocale =
+    requestedLocale && offered.has(requestedLocale)
+      ? requestedLocale
+      : translationToShow(tenantLocales, visibleLocales);
 
-  if (requestedLocale && !translatedLocales.includes(requestedLocale)) {
+  if (shownLocale && !visibleLocales.includes(shownLocale)) {
     return (
       <AdminSections>
         <PageTranslationTabs
+          locales={locales}
           pageId={pageId}
-          selectedLocale={requestedLocale}
-          translatedLocales={translatedLocales}
+          selectedLocale={shownLocale}
+          translatedLocales={visibleLocales}
         />
         <PageTranslationAddForm
           action={addPageTranslationAction}
           pageId={pageId}
           tenantId={tenantId}
-          translationLocale={requestedLocale}
+          translationLocale={shownLocale}
         />
       </AdminSections>
     );
@@ -193,9 +231,9 @@ const PageWorkspaceData = async ({
 
   const [pageResult, versionsResult, timeZone, asksReadersToAgree] =
     await Promise.all([
-      getPage({ pageId, tenantId, translationLocale: requestedLocale }, locale),
+      getPage({ pageId, tenantId, translationLocale: shownLocale }, locale),
       listPageVersions(
-        { pageId, tenantId, translationLocale: requestedLocale },
+        { pageId, tenantId, translationLocale: shownLocale },
         locale
       ),
       getTenantDisplayTimeZone(tenantId),
@@ -224,9 +262,10 @@ const PageWorkspaceData = async ({
     <AdminSections>
       {selectedLocale ? (
         <PageTranslationTabs
+          locales={locales}
           pageId={pageId}
           selectedLocale={selectedLocale}
-          translatedLocales={translatedLocales}
+          translatedLocales={visibleLocales}
         >
           {translatedLocales.length > 1 ? (
             <PageTranslationDeleteButton

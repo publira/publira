@@ -16,6 +16,7 @@ Decide these first, since the tenant is served on its host names from the moment
 - **Its domain**, the host its public site is served on, such as `comics.example.com`.
 - **Its console host**, the host its staff sign in on. Unless you give it one of its own, it is `admin.` followed by the domain, such as `admin.comics.example.com`.
 - **Its default language**, which its site and console start in. Nothing picks one for it. Its administrators can change it later from the tenant console.
+- **The languages its site offers** readers, the default language among them. Left as it is, the site offers its default language alone. Its administrators can change these later too.
 - **Its first administrator**, and how they get access: an invitation mailed to them, or an account you create with a password. [A tenant's staff](./3-tenant-staff.md) compares the two.
 
 Write each host name alone and in lowercase: no `https://`, no path, and no trailing `/`. Each host name belongs to one tenant, as its domain or as its console host, never both: the proxy sends a host name to one app, so a name used twice would leave one of the two unreachable. Publira refuses a domain or console host that another tenant already uses as either, the `admin.<domain>` a console is given by default included, and a console host equal to the tenant's own domain. When the `admin.<domain>` a tenant would be given is already taken, give it an admin domain of its own.
@@ -32,9 +33,10 @@ Choose **Create tenant** under **Tenants** in the sidebar, and fill in:
 - **Domain**: the domain you chose.
 - **Admin domain**: the console host, only when it is not `admin.<domain>`. Left empty, the console is served on `admin.<domain>`, as the line under the field shows.
 - **Default language**.
+- **Languages offered**: a box for each language, ticked for each one the tenant's site offers. The default language's box is always ticked and cannot be cleared, and the rest start cleared.
 - **Initial admin emails (optional, multiple allowed)**: the addresses to invite as the tenant's administrators, separated by commas or line breaks. Each one is mailed an invitation as soon as the tenant is created.
 
-![The Create tenant form: Tenant name, Domain with the notes on domain settings, Admin domain with the line under it, Default language, Initial admin emails, and Create.](./tenants-create-tenant.png)
+![The Create tenant form: Tenant name, Domain with the notes on domain settings, Admin domain with the line under it, Default language, Languages offered with the default's box ticked, Initial admin emails, and Create.](./tenants-create-tenant.png)
 
 **Create** creates the tenant and opens its page. Its time zone is the platform's default, which its administrators can change from the tenant console.
 
@@ -60,7 +62,7 @@ Once an administrator has signed in, the rest of the tenant's setup — its site
 
 ## Changing a tenant
 
-A tenant's name, domain, and console host can be changed after it is created. Its language and time zone belong to its administrators, who change them from the tenant console. A tenant cannot be deleted.
+A tenant's name, domain, and console host can be changed after it is created. Its languages and time zone belong to its administrators, who change them from the tenant console. A tenant cannot be deleted.
 
 ### From the Platform Console
 

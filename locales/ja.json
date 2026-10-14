@@ -274,7 +274,7 @@
         "tenant_branding": "ブランディング",
         "tenant_comment_settings": "読者のコメント",
         "tenant_community_limits": "コミュニティの上限",
-        "tenant_default_locale": "既定言語",
+        "tenant_default_locale": "言語",
         "tenant_email_rejection_settings": "受け付けないメールアドレス",
         "tenant_legal_pages": "利用規約とプライバシーポリシー",
         "tenant_mobile_app_association": "アプリリンク",
@@ -377,7 +377,7 @@
         "tenant_admin_invite_accepted": "招待の承諾",
         "tenant_site_copy_updated": "公開サイト表示設定更新",
         "tenant_timezone_updated": "タイムゾーン更新",
-        "tenant_default_locale_updated": "既定言語更新",
+        "tenant_default_locale_updated": "言語更新",
         "tenant_comment_settings_updated": "読者のコメントの設定更新",
         "tenant_age_verification_updated": "年齢確認の設定更新",
         "tenant_legal_pages_updated": "利用規約とプライバシーポリシー更新",
@@ -1326,6 +1326,8 @@
         "title_required": "タイトルは必須です。",
         "title_too_long": "タイトルは255文字以内で入力してください。",
         "locale_invalid": "対応している言語を選んでください。",
+        "locale_not_offered": "このサイトはその言語を提供していません。先に設定で提供する言語に加えてください。",
+        "locales_unavailable": "このサイトが提供する言語を確認できませんでした。時間をおいて再試行してください。",
         "slug_too_long": "slugは255文字以内で入力してください。",
         "tenant_missing": "テナントIDが見つかりません。",
         "update_id_missing": "更新対象のページIDが見つかりません。"
@@ -2274,19 +2276,23 @@
           "invalid": "有効なタイムゾーンを選択してください。"
         }
       },
-      "default_locale": {
-        "title": "既定言語",
-        "description": "管理者や読者が表示言語を選んでいないときに、この管理画面と公開サイトで使う言語です。すでに選んだ表示言語は変わりません。",
-        "label": "既定言語",
+      "locales": {
+        "title": "言語",
+        "description": "読者が公開サイトで使える言語と、管理者や読者が表示言語を選んでいないときにこの管理画面と公開サイトで使う言語です。すでに選んだ表示言語は変わりません。",
+        "default_label": "既定言語",
         "placeholder": "言語を選択してください",
-        "field_description": "表示言語をまだ選んでいない人に適用される初期値であり、すでにCookieで選んでいる表示言語は変わりません。",
+        "default_description": "表示言語をまだ選んでいない人に適用される初期値であり、すでにCookieで選んでいる表示言語は変わりません。既定言語は常に提供されます。",
+        "supported_label": "提供する言語",
+        "supported_description": "読者がサイトを切り替えられる言語です。提供をやめた言語のページの翻訳は削除されずに非表示になり、その言語をふたたび提供すると戻ります。",
         "load_error_hint": "保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。",
-        "submit": "既定言語を保存",
-        "saved": "既定言語を保存しました。",
-        "load_failed": "既定言語の取得に失敗しました。時間をおいて再試行してください。",
-        "save_failed": "既定言語の保存に失敗しました。時間をおいて再試行してください。",
+        "submit": "言語を保存",
+        "saved": "言語を保存しました。",
+        "load_failed": "言語の取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "言語の保存に失敗しました。時間をおいて再試行してください。",
         "validation": {
-          "required": "言語を選択してください。"
+          "required": "言語を選択してください。",
+          "supported_invalid": "提供する言語は一覧から選んでください。",
+          "default_not_offered": "既定言語は提供する言語に含めてください。"
         }
       },
       "comments": {
@@ -5425,6 +5431,10 @@
       "default_locale": "既定言語",
       "default_locale_help": "このテナントの管理画面とサイトを表示する言語です。テナントの管理者があとからテナント管理画面で変更できます。",
       "default_locale_placeholder": "言語を選択してください",
+      "default_locale_not_offered": "既定言語は提供する言語に含めてください。",
+      "supported_locales": "提供する言語",
+      "supported_locales_help": "テナントのサイトが読者に提供する言語で、既定言語はそのひとつです。テナント管理画面から管理者があとで変更できます。",
+      "supported_locales_invalid": "提供する言語は一覧から選んでください。",
       "delete_member": "削除",
       "delete_member_action": "削除する",
       "delete_member_description": "削除したメンバーはこのテナントへのアクセス権を失います。必要に応じて再追加できます。",

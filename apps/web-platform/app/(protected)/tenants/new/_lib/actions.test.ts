@@ -48,8 +48,14 @@ vi.mock("#lib/locale", async (importOriginal) => {
   return { ...actual, getPlatformLocale: mockGetPlatformLocale };
 });
 
-const tenantFormData = (overrides: Record<string, string> = {}): FormData => {
-  const fields = {
+/**
+ * A form as the create screen submits it, offering the default language alone
+ * unless `tenant_supported_locales` names the set.
+ */
+const tenantFormData = (
+  overrides: Record<string, string | readonly string[]> = {}
+): FormData => {
+  const fields: Record<string, string | readonly string[]> = {
     initial_admin_emails: "",
     tenant_admin_domain: "",
     tenant_default_locale: "en",
@@ -57,10 +63,18 @@ const tenantFormData = (overrides: Record<string, string> = {}): FormData => {
     tenant_name: "Example Tenant",
     ...overrides,
   };
+  const supportedLocales = fields.tenant_supported_locales ?? [
+    String(fields.tenant_default_locale),
+  ];
 
   const formData = new FormData();
   for (const [key, value] of Object.entries(fields)) {
-    formData.set(key, value);
+    if (typeof value === "string") {
+      formData.set(key, value);
+    }
+  }
+  for (const code of supportedLocales) {
+    formData.append("tenant_supported_locales", code);
   }
   return formData;
 };
@@ -96,6 +110,51 @@ describe("createTenantAction", () => {
         name: "Example Tenant",
       })
     );
+  });
+
+  it("sends the languages chosen on the form as the ones the site offers", async () => {
+    mockCreatePlatformTenant.mockResolvedValueOnce({
+      ok: true,
+      publicId: "TENANT00001",
+    });
+
+    const { createTenantAction } = await import("./actions");
+
+    await expect(
+      createTenantAction(
+        null,
+        tenantFormData({
+          tenant_default_locale: "en",
+          tenant_supported_locales: ["ja", "en"],
+        })
+      )
+    ).rejects.toThrow("NEXT_REDIRECT:/tenants/TENANT00001");
+    expect(mockCreatePlatformTenant).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaultLocale: "en",
+        supportedLocales: ["ja", "en"],
+      })
+    );
+  });
+
+  // The form always sends the default among the languages offered, so a set
+  // without it is a tampered request, refused before it reaches the API.
+  it("refuses a set of languages that leaves the default out", async () => {
+    const { createTenantAction } = await import("./actions");
+
+    const result = await createTenantAction(
+      null,
+      tenantFormData({
+        tenant_default_locale: "en",
+        tenant_supported_locales: ["ja"],
+      })
+    );
+
+    expect(result).toEqual({
+      message: "The default language must be one of the languages offered.",
+      ok: false,
+    });
+    expect(mockCreatePlatformTenant).not.toHaveBeenCalled();
   });
 
   it("rejects a locale outside the supported list without calling the API", async () => {

@@ -135,6 +135,8 @@ export interface CreatePlatformTenantInput {
   initialAdminEmails?: string[];
   locale: Locale;
   name: string;
+  /** The languages the new tenant's site offers, `defaultLocale` among them. */
+  supportedLocales: readonly Locale[];
 }
 
 export type CreatePlatformTenantResult =
@@ -510,6 +512,7 @@ export const createPlatformTenant = async (
         domain,
         initialAdminEmails,
         name,
+        supportedLocales: [...input.supportedLocales],
       },
       buildSessionHeaders(sid)
     );

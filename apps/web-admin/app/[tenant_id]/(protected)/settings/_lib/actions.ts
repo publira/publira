@@ -32,7 +32,6 @@ import {
   MAX_TENANT_COMMENT_AUTO_HIDE_REPORT_THRESHOLD,
   TENANT_COMMENT_MODES,
 } from "#lib/tenant-comment-settings-shared";
-import { updateTenantDefaultLocale } from "#lib/tenant-default-locale";
 import {
   tenantEmailRejectionSettingsCacheTag,
   updateTenantEmailRejectionSettings,
@@ -45,6 +44,7 @@ import {
   tenantLegalPagesCacheTag,
   updateTenantLegalPages,
 } from "#lib/tenant-legal-pages";
+import { updateTenantLocales } from "#lib/tenant-locales";
 import { updateTenantTimezone } from "#lib/tenant-timezone";
 
 import type {
@@ -52,9 +52,9 @@ import type {
   SiteSettingsActionState,
   TenantAgeVerificationActionState,
   TenantCommentSettingsActionState,
-  TenantDefaultLocaleActionState,
   TenantEmailRejectionActionState,
   TenantLegalPagesActionState,
+  TenantLocalesActionState,
   TenantTimezoneActionState,
 } from "../settings-types";
 
@@ -80,17 +80,29 @@ const tenantTimezoneSchema = async (locale: Locale) => {
 };
 /**
  * The Go server validates against the supported locale list
- * (`server/internal/locale`) and stays the authority; this only gives the
- * operator immediate feedback instead of a round trip.
+ * (`server/internal/locale`) and refuses a set without the default, and stays
+ * the authority; this only gives the operator immediate feedback instead of a
+ * round trip. The form keeps the default's box ticked and sends it as an entry
+ * of its own, so a set that leaves it out was not sent by the form.
  */
-const tenantDefaultLocaleSchema = async (locale: Locale) => {
+const tenantLocalesSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
-  return z.object({
-    defaultLocale: z.enum(getLocales(), {
-      error: t("admin.settings.default_locale.validation.required"),
-    }),
-  });
+  return z
+    .object({
+      defaultLocale: z.enum(getLocales(), {
+        error: t("admin.settings.locales.validation.required"),
+      }),
+      supportedLocales: z.array(
+        z.enum(getLocales(), {
+          error: t("admin.settings.locales.validation.supported_invalid"),
+        })
+      ),
+    })
+    .refine((value) => value.supportedLocales.includes(value.defaultLocale), {
+      error: t("admin.settings.locales.validation.default_not_offered"),
+      path: ["supportedLocales"],
+    });
 };
 /**
  * The Go server validates what it is sent and stays the authority; this only
@@ -291,10 +303,10 @@ export const updateTenantTimezoneAction = async (
   };
 };
 
-export const updateTenantDefaultLocaleAction = async (
-  _prevState: TenantDefaultLocaleActionState,
+export const updateTenantLocalesAction = async (
+  _prevState: TenantLocalesActionState,
   formData: FormData
-): Promise<TenantDefaultLocaleActionState> => {
+): Promise<TenantLocalesActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
@@ -306,14 +318,15 @@ export const updateTenantDefaultLocaleAction = async (
     };
   }
 
-  const schema = await tenantDefaultLocaleSchema(locale);
+  const schema = await tenantLocalesSchema(locale);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       defaultLocale: { kind: "value", name: "default_locale" },
+      supportedLocales: { kind: "values", name: "supported_locales" },
     })
   );
   if (!parsed.success) {
-    // One control, so the field message is the form message.
+    // The two controls answer for one setting, so the message is the form's.
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
@@ -321,9 +334,10 @@ export const updateTenantDefaultLocaleAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantDefaultLocale(
+    updateTenantLocales(
       {
         defaultLocale: parsed.data.defaultLocale,
+        supportedLocales: parsed.data.supportedLocales,
         tenantId,
       },
       locale
@@ -337,13 +351,13 @@ export const updateTenantDefaultLocaleAction = async (
     };
   }
 
-  // The settings screen and cookie-less `getLocale()` read the default
-  // through a private cache, so without this the operator would keep seeing
-  // the previous value in the same session.
+  // The settings screen, the page editor's language tabs, and cookie-less
+  // `getLocale()` read the languages through a private cache, so without this
+  // the operator would keep seeing the previous values in the same session.
   updateTag(tenantSiteCacheTag(tenantId));
 
   return {
-    message: t("admin.settings.default_locale.saved"),
+    message: t("admin.settings.locales.saved"),
     ok: true,
   };
 };

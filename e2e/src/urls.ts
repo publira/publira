@@ -215,6 +215,18 @@ export const WEB_ADMIN_LEGAL_PAGE_AGREEMENT_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the languages tenant from the scenario seed
+ * `db/seeds/scenarios/510_tenant_languages.sql`.
+ *
+ * Switching a language off changes every page of the tenant, so it is
+ * switched in a tenant no other spec signs in to.
+ */
+export const WEB_ADMIN_TENANT_LANGUAGES_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_TENANT_LANGUAGES_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.langs.localhost")
+);
+
+/**
  * Public site of the banner tenant from the scenario seed
  * `db/seeds/scenarios/200_announcement_banner.sql`.
  *

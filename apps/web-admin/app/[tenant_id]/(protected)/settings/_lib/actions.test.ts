@@ -4,18 +4,18 @@ const {
   mockAssertSameOrigin,
   mockGetAccessToken,
   mockUpdateTag,
-  mockUpdateTenantDefaultLocale,
   mockUpdateTenantEmailRejectionSettings,
   mockUpdateTenantLegalPages,
+  mockUpdateTenantLocales,
   mockUpdateTenantSiteSettings,
   mockUpdateTenantTimezone,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
-  mockUpdateTenantDefaultLocale: vi.fn(),
   mockUpdateTenantEmailRejectionSettings: vi.fn(),
   mockUpdateTenantLegalPages: vi.fn(),
+  mockUpdateTenantLocales: vi.fn(),
   mockUpdateTenantSiteSettings: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
 }));
@@ -54,8 +54,8 @@ vi.mock("#lib/site-settings", () => ({
   updateTenantSiteSettings: mockUpdateTenantSiteSettings,
 }));
 
-vi.mock("#lib/tenant-default-locale", () => ({
-  updateTenantDefaultLocale: mockUpdateTenantDefaultLocale,
+vi.mock("#lib/tenant-locales", () => ({
+  updateTenantLocales: mockUpdateTenantLocales,
 }));
 
 vi.mock("#lib/tenant-email-rejection-settings", () => ({
@@ -224,36 +224,58 @@ describe("updateTenantTimezoneAction", () => {
   });
 });
 
-describe("updateTenantDefaultLocaleAction", () => {
+/** A form as the languages card submits it: one entry per offered language. */
+const localesFormData = (values: {
+  defaultLocale?: string;
+  supportedLocales: readonly string[];
+  tenantId?: string;
+}): FormData => {
+  const formData = new FormData();
+  if (values.tenantId !== undefined) {
+    formData.set("tenant_id", values.tenantId);
+  }
+  if (values.defaultLocale !== undefined) {
+    formData.set("default_locale", values.defaultLocale);
+  }
+  for (const code of values.supportedLocales) {
+    formData.append("supported_locales", code);
+  }
+  return formData;
+};
+
+describe("updateTenantLocalesAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("saves the supported locale and revalidates the cache tag", async () => {
-    mockUpdateTenantDefaultLocale.mockResolvedValueOnce({
+  it("saves the default with the languages offered and revalidates the cache tag", async () => {
+    mockUpdateTenantLocales.mockResolvedValueOnce({
       defaultLocale: "en",
       ok: true,
+      supportedLocales: ["ja", "en"],
     });
 
-    const { updateTenantDefaultLocaleAction } = await import("./actions");
+    const { updateTenantLocalesAction } = await import("./actions");
 
-    const result = await updateTenantDefaultLocaleAction(
+    const result = await updateTenantLocalesAction(
       null,
-      textFormData({
-        default_locale: "en",
-        tenant_id: "TENANT001",
+      localesFormData({
+        defaultLocale: "en",
+        supportedLocales: ["ja", "en"],
+        tenantId: "TENANT001",
       })
     );
 
     expect(result).toEqual({
-      message: "The default language was saved.",
+      message: "The languages were saved.",
       ok: true,
     });
-    expect(mockUpdateTenantDefaultLocale).toHaveBeenCalledWith(
+    expect(mockUpdateTenantLocales).toHaveBeenCalledWith(
       {
         defaultLocale: "en",
+        supportedLocales: ["ja", "en"],
         tenantId: "TENANT001",
       },
       "en"
@@ -266,48 +288,103 @@ describe("updateTenantDefaultLocaleAction", () => {
     { label: "an uppercase code", locale: "EN" },
     { label: "a BCP 47 tag", locale: "ja-JP" },
     { label: "an empty string", locale: "  " },
-  ])("rejects $label without calling the API", async ({ locale }) => {
-    const { updateTenantDefaultLocaleAction } = await import("./actions");
+  ])(
+    "rejects $label as the default without calling the API",
+    async ({ locale }) => {
+      const { updateTenantLocalesAction } = await import("./actions");
 
-    const result = await updateTenantDefaultLocaleAction(
+      const result = await updateTenantLocalesAction(
+        null,
+        localesFormData({
+          defaultLocale: locale,
+          supportedLocales: [locale],
+          tenantId: "TENANT001",
+        })
+      );
+
+      expect(result).toEqual({
+        message: "Select a language.",
+        ok: false,
+      });
+      expect(mockUpdateTenantLocales).not.toHaveBeenCalled();
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+    }
+  );
+
+  it("rejects an offered language this build does not serve", async () => {
+    const { updateTenantLocalesAction } = await import("./actions");
+
+    const result = await updateTenantLocalesAction(
       null,
-      textFormData({ default_locale: locale, tenant_id: "TENANT001" })
+      localesFormData({
+        defaultLocale: "en",
+        supportedLocales: ["en", "fr"],
+        tenantId: "TENANT001",
+      })
     );
 
     expect(result).toEqual({
-      message: "Select a language.",
+      message: "Choose the languages offered from the list.",
       ok: false,
     });
-    expect(mockUpdateTenantDefaultLocale).not.toHaveBeenCalled();
+    expect(mockUpdateTenantLocales).not.toHaveBeenCalled();
+  });
+
+  // The form always sends the default among the languages offered, so a set
+  // without it is a tampered request, refused before it reaches the API.
+  it.each([
+    { label: "a set that leaves the default out", supportedLocales: ["ja"] },
+    { label: "an empty set", supportedLocales: [] },
+  ])("refuses $label", async ({ supportedLocales }) => {
+    const { updateTenantLocalesAction } = await import("./actions");
+
+    const result = await updateTenantLocalesAction(
+      null,
+      localesFormData({
+        defaultLocale: "en",
+        supportedLocales,
+        tenantId: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      message: "The default language must be one of the languages offered.",
+      ok: false,
+    });
+    expect(mockUpdateTenantLocales).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
   it("does not save when the tenant id is missing", async () => {
-    const { updateTenantDefaultLocaleAction } = await import("./actions");
+    const { updateTenantLocalesAction } = await import("./actions");
 
-    const result = await updateTenantDefaultLocaleAction(
+    const result = await updateTenantLocalesAction(
       null,
-      textFormData({ default_locale: "en" })
+      localesFormData({ defaultLocale: "en", supportedLocales: ["en"] })
     );
 
     expect(result).toEqual({
       message: "The tenant ID is missing.",
       ok: false,
     });
-    expect(mockUpdateTenantDefaultLocale).not.toHaveBeenCalled();
+    expect(mockUpdateTenantLocales).not.toHaveBeenCalled();
   });
 
   it("returns the message and leaves the cache tag alone when the save fails", async () => {
-    mockUpdateTenantDefaultLocale.mockResolvedValueOnce({
+    mockUpdateTenantLocales.mockResolvedValueOnce({
       message: "You do not have permission.",
       ok: false,
     });
 
-    const { updateTenantDefaultLocaleAction } = await import("./actions");
+    const { updateTenantLocalesAction } = await import("./actions");
 
-    const result = await updateTenantDefaultLocaleAction(
+    const result = await updateTenantLocalesAction(
       null,
-      textFormData({ default_locale: "en", tenant_id: "TENANT001" })
+      localesFormData({
+        defaultLocale: "en",
+        supportedLocales: ["en"],
+        tenantId: "TENANT001",
+      })
     );
 
     expect(result).toEqual({

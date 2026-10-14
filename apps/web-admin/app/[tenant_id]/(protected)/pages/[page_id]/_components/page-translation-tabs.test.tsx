@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { bindMessages } from "@publira/i18n";
-import type { MessageKey, MessageValues } from "@publira/i18n";
+import { bindMessages, getLocaleLabel } from "@publira/i18n";
+import type { Locale, MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
@@ -27,10 +27,13 @@ afterEach(() => {
   cleanup();
 });
 
-const renderTabs = async () =>
+const renderTabs = async (
+  locales: readonly Locale[] = ["ja", "en", "ko", "zh-Hans", "zh-Hant"]
+) =>
   render(
     await PageTranslationTabs({
       children: <button type="button">Delete this translation</button>,
+      locales,
       pageId: "PAGE001",
       selectedLocale: "en",
       translatedLocales: ["ja", "en"],
@@ -38,7 +41,7 @@ const renderTabs = async () =>
   );
 
 describe("PageTranslationTabs", () => {
-  it("links every supported locale to that translation of the page", async () => {
+  it("links every language the site offers to that translation of the page", async () => {
     await renderTabs();
 
     const languages = screen.getByRole("navigation", { name: "Languages" });
@@ -55,6 +58,20 @@ describe("PageTranslationTabs", () => {
     ]);
   });
 
+  it("leaves out a language the site does not offer, translated or not", async () => {
+    await renderTabs(["en", "ko"]);
+
+    const languages = screen.getByRole("navigation", { name: "Languages" });
+    const links = [...languages.querySelectorAll("a")].map((link) =>
+      link.getAttribute("href")
+    );
+
+    expect(links).toEqual([
+      "/pages/PAGE001?locale=en",
+      "/pages/PAGE001?locale=ko",
+    ]);
+  });
+
   it("marks the translation on screen as the current one", async () => {
     await renderTabs();
 
@@ -68,7 +85,9 @@ describe("PageTranslationTabs", () => {
 
     expect(screen.getByRole("link", { name: "English" })).toBeDefined();
     expect(
-      screen.getByRole("link", { name: /^한국어\s?\(not added\)$/u })
+      screen.getByRole("link", {
+        name: new RegExp(`^${getLocaleLabel("ko")}\\s?\\(not added\\)$`, "u"),
+      })
     ).toBeDefined();
   });
 

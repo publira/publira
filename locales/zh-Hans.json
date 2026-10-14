@@ -274,7 +274,7 @@
         "tenant_branding": "品牌",
         "tenant_comment_settings": "读者评论",
         "tenant_community_limits": "社区限制",
-        "tenant_default_locale": "默认语言",
+        "tenant_default_locale": "语言",
         "tenant_email_rejection_settings": "不接受的电子邮件地址",
         "tenant_legal_pages": "服务条款与隐私政策",
         "tenant_mobile_app_association": "应用链接",
@@ -377,7 +377,7 @@
         "tenant_admin_invite_accepted": "接受了邀请",
         "tenant_site_copy_updated": "更新了公开站点展示",
         "tenant_timezone_updated": "更新了时区",
-        "tenant_default_locale_updated": "更新了默认语言",
+        "tenant_default_locale_updated": "更新了语言",
         "tenant_comment_settings_updated": "更新了读者评论设置",
         "tenant_age_verification_updated": "更新了年龄验证设置",
         "tenant_legal_pages_updated": "更新了服务条款与隐私政策",
@@ -1326,6 +1326,8 @@
         "title_required": "标题为必填项。",
         "title_too_long": "标题请控制在255个字符以内。",
         "locale_invalid": "请选择支持的语言。",
+        "locale_not_offered": "此站点未提供该语言。请先在设置中将其加入提供的语言。",
+        "locales_unavailable": "无法确认此站点提供的语言。请稍后再试。",
         "slug_too_long": "slug请控制在255个字符以内。",
         "tenant_missing": "缺少租户ID。",
         "update_id_missing": "缺少要更新的页面ID。"
@@ -2274,19 +2276,23 @@
           "invalid": "请选择有效的时区。"
         }
       },
-      "default_locale": {
-        "title": "默认语言",
-        "description": "尚未选择显示语言的管理员和读者在此控制台与公开站点看到的语言。它不会改变已经选定的语言。",
-        "label": "默认语言",
+      "locales": {
+        "title": "语言",
+        "description": "读者可在公开站点使用的语言，以及尚未选择显示语言的管理员和读者在此控制台与公开站点看到的语言。它不会改变已经选定的语言。",
+        "default_label": "默认语言",
         "placeholder": "请选择语言",
-        "field_description": "尚未选择语言的用户的起始语言；它不会改变Cookie中已保存的语言。",
+        "default_description": "尚未选择语言的用户的起始语言；它不会改变Cookie中已保存的语言。默认语言始终提供。",
+        "supported_label": "提供的语言",
+        "supported_description": "读者可将站点切换到的语言。停止提供的语言中的页面翻译不会被删除，而是隐藏，重新提供该语言时会恢复。",
         "load_error_hint": "此时保存会覆盖已保存的设置，请先重新加载页面，然后再修改。",
-        "submit": "保存默认语言",
-        "saved": "默认语言已保存。",
-        "load_failed": "无法加载默认语言。请稍后再试。",
-        "save_failed": "无法保存默认语言。请稍后再试。",
+        "submit": "保存语言",
+        "saved": "语言已保存。",
+        "load_failed": "无法加载语言。请稍后再试。",
+        "save_failed": "无法保存语言。请稍后再试。",
         "validation": {
-          "required": "请选择语言。"
+          "required": "请选择语言。",
+          "supported_invalid": "请从列表中选择提供的语言。",
+          "default_not_offered": "默认语言必须是提供的语言之一。"
         }
       },
       "comments": {
@@ -5425,6 +5431,10 @@
       "default_locale": "默认语言",
       "default_locale_help": "该租户的控制台和站点启动时使用的语言。其管理员之后可以在租户管理控制台中变更。",
       "default_locale_placeholder": "请选择语言",
+      "default_locale_not_offered": "默认语言必须是提供的语言之一。",
+      "supported_locales": "提供的语言",
+      "supported_locales_help": "租户站点向读者提供的语言，默认语言是其中之一。其管理员之后可以在租户管理控制台中更改。",
+      "supported_locales_invalid": "请从列表中选择提供的语言。",
       "delete_member": "移除",
       "delete_member_action": "移除",
       "delete_member_description": "被移除的成员将失去该租户的访问权限。之后可以重新添加。",
