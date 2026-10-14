@@ -355,7 +355,7 @@ spec:
                 name: web-storefront
           env:
             - name: PUBLIRA_GRPC_URL
-              value: http://publira-server:8000/api
+              value: http://publira-server:8000/rpc
           livenessProbe:
             httpGet:
               path: /livez

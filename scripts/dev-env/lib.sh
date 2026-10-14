@@ -345,12 +345,12 @@ dev_env_write_profile() {
     printf 'PUBLIRA_PUBLIC_API_PORT=%s\n' "$((port_base + 10))"
     printf 'PUBLIRA_EMAIL_RENDERER_PORT=%s\n' "$((port_base + 30))"
     printf 'PUBLIRA_WORKER_PORT=%s\n' "$((port_base + 40))"
-    # The profile's front door: a browser asks for `/images…` and `/api…` on
+    # The profile's front door: a browser asks for `/images…` and `/rpc…` on
     # the origin the page it is reading came from, and only the edge knows
     # both paths are the server's. The platform console URL below is therefore
     # the edge's.
     printf 'PUBLIRA_EDGE_PORT=%s\n' "$((port_base + 50))"
-    printf 'PUBLIRA_GRPC_URL=http://127.0.0.1:%s/api\n' "$((port_base + 10))"
+    printf 'PUBLIRA_GRPC_URL=http://127.0.0.1:%s/rpc\n' "$((port_base + 10))"
     printf 'PUBLIRA_WEB_STOREFRONT_INTERNAL_URL=http://127.0.0.1:%s\n' "${port_base}"
     printf 'PUBLIRA_WEB_ADMIN_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 1))"
     printf 'PUBLIRA_WEB_PLATFORM_INTERNAL_URL=http://127.0.0.1:%s\n' "$((port_base + 2))"

@@ -15,7 +15,7 @@ const readForwardedHeaders = async () => {
 
 // gRPC transport is used for internal Next.js -> Go API communication.
 export const apiClient = createAdminApiClient({
-  baseUrl: process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8000/api",
+  baseUrl: process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8000/rpc",
   interceptors: [createForwardedInterceptor(readForwardedHeaders)],
   transport: "grpc",
 });

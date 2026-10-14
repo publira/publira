@@ -103,7 +103,7 @@ describe("checkUpstreamReadyz", () => {
         .mockResolvedValue(new Response('{"status":"ok"}', { status: 200 }))
     );
     await expect(
-      checkUpstreamReadyz("http://api.example:8000/api")
+      checkUpstreamReadyz("http://api.example:8000/rpc")
     ).resolves.toBeUndefined();
     expect(fetch).toHaveBeenCalledWith(
       new URL("http://api.example:8000/readyz"),
@@ -117,7 +117,7 @@ describe("checkUpstreamReadyz", () => {
       vi.fn().mockResolvedValue(new Response("no", { status: 503 }))
     );
     await expect(
-      checkUpstreamReadyz("http://api.example:8000/api")
+      checkUpstreamReadyz("http://api.example:8000/rpc")
     ).rejects.toThrow(/HTTP 503/u);
   });
 

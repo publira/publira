@@ -19,7 +19,7 @@ import {
   PUBLIC_SESSION_COOKIE_NAME,
 } from "./auth-shared";
 
-const DEFAULT_GRPC_URL = "http://localhost:8000/api";
+const DEFAULT_GRPC_URL = "http://localhost:8000/rpc";
 
 const readForwardedHeaders = async () => {
   const requestHeaders = await headers();
