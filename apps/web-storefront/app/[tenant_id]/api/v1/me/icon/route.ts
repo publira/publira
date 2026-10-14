@@ -37,6 +37,7 @@ const REFUSAL_STATUS: Partial<
   "rate-limited": 429,
   "storage-not-configured": 503,
   unauthenticated: 401,
+  unavailable: 503,
 };
 
 const respond = (message: string, status = 200) =>

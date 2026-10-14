@@ -165,6 +165,11 @@ describe("POST /api/v1/me/icon", () => {
       "Your session is no longer valid. Please sign in again.",
     ],
     [
+      "unavailable",
+      503,
+      "Could not connect to the server. Please try again later.",
+    ],
+    [
       "precondition",
       400,
       "Could not update your icon. Please try again later.",

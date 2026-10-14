@@ -802,11 +802,16 @@ const isStaleSessionReadError = (error: unknown): boolean =>
  */
 const GET_ME_RETRY_MIN_TIMEOUT_MS = 100;
 
+type RawMe = Pick<
+  User,
+  "birthDate" | "email" | "iconImageVariants" | "name" | "publicId" | "role"
+>;
+
 /**
  * The account as the profile screens read it. An icon is stored as a single
  * rendition, so the first variant is the icon.
  */
-const toMeInfo = (user: User): MeInfo => {
+const toMeInfo = (user: RawMe): MeInfo => {
   const [variant] = user.iconImageVariants;
 
   return {
