@@ -14,11 +14,11 @@
 # PUBLIRA_EDGE_PLATFORM_HOSTS, each a list of host names separated by spaces.
 # A Host matcher names one host, so each list is split below and joined back
 # into one rule per app. An empty list leaves its router out, since Traefik
-# refuses an empty rule; with every list empty, so are /api and /images.
+# refuses an empty rule; with every list empty, so are /rpc, /api, and /images.
 #
 # A host in no list matches no router, so Traefik answers it with its own 404
-# and no backend sees the request. /api and /images are routed on the listed
-# hosts alone for the same reason.
+# and no backend sees the request. /rpc, /api, and /images are routed on the
+# listed hosts alone for the same reason.
 {{- define "hosts" -}}
   {{- range $i, $host := . }}{{ if $i }} || {{ end }}Host(`{{ $host }}`){{ end -}}
 {{- end -}}
@@ -75,9 +75,18 @@ http:
 {{- end }}
 
     # The public API, on every listed host, so priority 105 puts it above the
-    # host routers. `/api/v1` is excluded: that space belongs to the Next.js
-    # Route Handlers of whichever app the host routers picked. No prefix
-    # removal, because the server's own routes carry /api.
+    # host routers. No prefix removal, because the server's own routes carry
+    # /rpc.
+    rpc:
+      rule: '({{ template "hosts" $listed }}) && PathRegexp(`^/rpc(/.*)?$`)'
+      priority: 105
+      entryPoints: [web]
+      service: api
+
+    # The public API under the prefix it had before /rpc, kept for the clients
+    # not yet on /rpc and removed in 0.2.0. `/api/v1` is excluded: that space
+    # belongs to the Next.js Route Handlers of whichever app the host routers
+    # picked.
     api:
       rule: '({{ template "hosts" $listed }}) && PathRegexp(`^/api(/.*)?$`) && !PathRegexp(`^/api/v1(/.*)?$`)'
       priority: 105

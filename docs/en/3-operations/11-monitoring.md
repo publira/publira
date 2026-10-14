@@ -64,7 +64,7 @@ readinessProbe:
   timeoutSeconds: 8
 ```
 
-The images carry no shell and declare no Docker `HEALTHCHECK`, so the [Docker Compose](../2-deployments/3-docker-compose.md) install has no probes of its own: Compose restarts a process that exits, not one that hangs. Probe it from outside instead, from a monitor that can reach the containers' network. The tenant site's `/livez` and `/readyz` are also reachable through the reverse proxy on every tenant's domain, such as `https://comics.example.com/readyz`, which an uptime monitor on the internet can use; the API's and the worker's are not, since the proxy forwards only `/api` and `/images` to `publira server`.
+The images carry no shell and declare no Docker `HEALTHCHECK`, so the [Docker Compose](../2-deployments/3-docker-compose.md) install has no probes of its own: Compose restarts a process that exits, not one that hangs. Probe it from outside instead, from a monitor that can reach the containers' network. The tenant site's `/livez` and `/readyz` are also reachable through the reverse proxy on every tenant's domain, such as `https://comics.example.com/readyz`, which an uptime monitor on the internet can use; the API's and the worker's are not, since the proxy forwards only `/rpc`, `/api`, and `/images` to `publira server`.
 
 ## Logs
 

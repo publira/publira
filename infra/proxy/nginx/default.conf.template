@@ -19,7 +19,7 @@
 # nginx has no equivalent of Traefik's numeric router priorities. The same
 # precedence comes from the server block a host selects and, inside it, from
 # nginx's own location ordering; snippets/app-routes.conf carries the paths that
-# resolve identically on every listed host, /images and /api among them.
+# resolve identically on every listed host, /images, /rpc, and /api among them.
 #
 # server_name matching ignores the port the Host header carries, so
 # admin.localhost:3080 selects the block that lists admin.localhost.
@@ -67,7 +67,7 @@ map $remote_addr $publira_forwarded {
 }
 
 # A host in no list: the edge answers it itself, and no backend sees the
-# request, /api and /images included.
+# request, /rpc, /api, and /images included.
 server {
     listen 80 default_server;
     # TLS terminates here in a deployment:

@@ -499,12 +499,12 @@ The edge routes each host and path to the right Service, terminates TLS, and rem
 
 | Host | Path | Service |
 | --- | --- | --- |
-| The tenant's domain | `/images`, `/api` | `publira-server`, port `8000` |
+| The tenant's domain | `/images`, `/rpc`, `/api` | `publira-server`, port `8000` |
 | The tenant's domain | `/api/v1`, and everything else | `web-storefront`, port `3000` |
-| The tenant's console host | `/images`, `/api` | `publira-server`, port `8000` |
+| The tenant's console host | `/images`, `/rpc`, `/api` | `publira-server`, port `8000` |
 | The tenant's console host | `/api/v1`, and everything else | `web-admin`, port `4000` |
 
-`/api/v1` is longer than `/api`, so it wins on a path both match. A Gateway's `PathPrefix` matches whole path segments, so `/api/v10` stays with `publira-server`; [With an Ingress](#with-an-ingress) says how to get the same from a controller that does not. The path and the `Host` header reach the Service as the browser sent them; add no rewrite of either.
+`/rpc` is the API's prefix, and `/api` the one it had before, which `publira server` answers until 0.2.0 for the clients not yet on `/rpc`; route both until then. `/api/v1` is longer than `/api`, so it wins on a path both match. A Gateway's `PathPrefix` matches whole path segments, so `/api/v10` stays with `publira-server`; [With an Ingress](#with-an-ingress) says how to get the same from a controller that does not. The path and the `Host` header reach the Service as the browser sent them; add no rewrite of either.
 
 ### Certificates
 
@@ -582,6 +582,7 @@ spec:
   rules:
     - matches:
         - path: { type: PathPrefix, value: /images }
+        - path: { type: PathPrefix, value: /rpc }
         - path: { type: PathPrefix, value: /api }
       filters: &strip-request-headers
         - type: RequestHeaderModifier
@@ -612,6 +613,7 @@ spec:
   rules:
     - matches:
         - path: { type: PathPrefix, value: /images }
+        - path: { type: PathPrefix, value: /rpc }
         - path: { type: PathPrefix, value: /api }
       filters: &strip-request-headers
         - type: RequestHeaderModifier
@@ -718,6 +720,10 @@ spec:
             pathType: Prefix
             backend:
               { service: { name: publira-server, port: { number: 8000 } } }
+          - path: /rpc
+            pathType: Prefix
+            backend:
+              { service: { name: publira-server, port: { number: 8000 } } }
           - path: /api/v1/
             pathType: Prefix
             backend:
@@ -747,6 +753,10 @@ spec:
       http:
         paths: &admin-paths
           - path: /images
+            pathType: Prefix
+            backend:
+              { service: { name: publira-server, port: { number: 8000 } } }
+          - path: /rpc
             pathType: Prefix
             backend:
               { service: { name: publira-server, port: { number: 8000 } } }
@@ -787,7 +797,7 @@ Once the edge's Service has an address, point the DNS records at it, and wait fo
 curl -sI https://comics.example.com/ | head -1
 curl -s https://comics.example.com/readyz
 curl -s -X POST -H 'Content-Type: application/json' -d '{}' \
-  https://comics.example.com/api/publira.v1.TenantService/GetTenant
+  https://comics.example.com/rpc/publira.v1.TenantService/GetTenant
 curl -sI http://comics.example.com/ | grep -i '^location'
 ```
 
@@ -808,7 +818,7 @@ Point both names at the edge's address before you apply the change, so cert-mana
 
 ## Keeping the console APIs off the tenants' domains
 
-`publira server` serves the consoles' APIs beside the public API, on every host the edge forwards `/api` on, and their own authentication is what keeps them from an outsider, as [The console APIs](../3-operations/12-security.md#the-console-apis) describes. To take them, their database logins, and the web service token out of the process the tenants' domains reach, run a second Deployment with `--role storefront`, and route the tenants' domains to it:
+`publira server` serves the consoles' APIs beside the public API, on every host the edge forwards `/rpc` and `/api` on, and their own authentication is what keeps them from an outsider, as [The console APIs](../3-operations/12-security.md#the-console-apis) describes. To take them, their database logins, and the web service token out of the process the tenants' domains reach, run a second Deployment with `--role storefront`, and route the tenants' domains to it:
 
 ```yaml
 apiVersion: apps/v1
@@ -877,15 +887,15 @@ kubectl create secret generic publira-storefront \
   --from-literal=PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:$PUBLIC_DB_PASSWORD@$DB"
 ```
 
-Then change the backend of `/images` and `/api` on the tenants' domains alone, in the `web-storefront` HTTPRoute or Ingress, from `publira-server` to `publira-storefront`. The console hosts' routes and the web apps keep calling `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`.
+Then change the backend of `/images`, `/rpc`, and `/api` on the tenants' domains alone, in the `web-storefront` HTTPRoute or Ingress, from `publira-server` to `publira-storefront`. The console hosts' routes and the web apps keep calling `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`.
 
 To check it, call a console API on the tenant's domain and on its console host:
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{}' \
-  https://comics.example.com/api/publira.admin.v1.AdminAuditLogService/ListAuditLogs
+  https://comics.example.com/rpc/publira.admin.v1.AdminAuditLogService/ListAuditLogs
 curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{}' \
-  https://admin.comics.example.com/api/publira.admin.v1.AdminAuditLogService/ListAuditLogs
+  https://admin.comics.example.com/rpc/publira.admin.v1.AdminAuditLogService/ListAuditLogs
 ```
 
 The tenant's domain answers `404`, since the process behind it does not serve that API. The console host answers `400`: the API is served there, and refuses the empty request.

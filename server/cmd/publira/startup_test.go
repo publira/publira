@@ -51,11 +51,12 @@ func TestServerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 	assertReadyChecks(t, base+"/readyz", "db.public", "db.admin", "db.platform")
 }
 
-// Every namespace is answered under /api on the one listener, the console ones
-// to whoever reaches it: an anonymous caller is refused by the procedure's own
-// authentication with a Connect error, not by a missing route. The same
-// procedures at the root are not a second path to them.
-func TestServerAnswersEveryNamespaceUnderAPIAlone(t *testing.T) {
+// Every namespace is answered under /rpc on the one listener, and under /api
+// alike for the clients not yet on /rpc, the console ones to whoever reaches
+// it: an anonymous caller is refused by the procedure's own authentication
+// with a Connect error, not by a missing route. The same procedures at the
+// root are not a further path to them.
+func TestServerAnswersEveryNamespaceUnderItsPrefixesAlone(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -76,15 +77,17 @@ func TestServerAnswersEveryNamespaceUnderAPIAlone(t *testing.T) {
 		// token, which the Platform Console's setup screen sends.
 		{"/publira.platform.v1.PlatformSetupService/CreateInitialUser", `{}`, "unauthenticated"},
 	} {
-		if got := connectErrorCode(t, base+"/api"+tc.procedure, tc.body); got != tc.want {
-			t.Fatalf("POST /api%s code = %q, want %q", tc.procedure, got, tc.want)
+		for _, prefix := range []string{"/rpc", "/api"} {
+			if got := connectErrorCode(t, base+prefix+tc.procedure, tc.body); got != tc.want {
+				t.Fatalf("POST %s%s code = %q, want %q", prefix, tc.procedure, got, tc.want)
+			}
 		}
 		assertRouteRegistered(t, base, tc.procedure, false)
 	}
 	assertRouteRegistered(t, base, "/images/creators/media", true)
 }
 
-// A server given some roles serves those alone: their namespaces under /api,
+// A server given some roles serves those alone: their namespaces under /rpc,
 // the images of their sites, and readiness for their pools. The URLs of the
 // logins it is not given name a port nothing listens on, so a process that
 // opened one anyway would refuse to start, and the web service token and a
@@ -105,11 +108,11 @@ func TestServerServesTheStorefrontRoleAlone(t *testing.T) {
 	p.WaitReady(t, base+"/readyz")
 	assertReadyChecks(t, base+"/readyz", "db.public")
 
-	assertRouteRegistered(t, base, "/api/publira.v1.CatalogService/ListPublishedSeries", true)
-	assertRouteRegistered(t, base, "/api/publira.admin.v1.AdminSeriesService/ListSeries", false)
-	assertRouteRegistered(t, base, "/api/publira.platform.v1.PlatformTenantService/ListTenants", false)
+	assertRouteRegistered(t, base, "/rpc/publira.v1.CatalogService/ListPublishedSeries", true)
+	assertRouteRegistered(t, base, "/rpc/publira.admin.v1.AdminSeriesService/ListSeries", false)
+	assertRouteRegistered(t, base, "/rpc/publira.platform.v1.PlatformTenantService/ListTenants", false)
 
-	catalog := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, base+"/api")))
+	catalog := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, base+"/rpc")))
 	if _, err := catalog.SearchPublishedSeries(t.Context(), &publirav1.SearchPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 		Query:  "Harbor",
@@ -147,9 +150,9 @@ func TestServerServesTheConsoleRoles(t *testing.T) {
 	p.WaitReady(t, base+"/readyz")
 	assertReadyChecks(t, base+"/readyz", "db.admin", "db.platform")
 
-	assertRouteRegistered(t, base, "/api/publira.v1.CatalogService/ListPublishedSeries", false)
-	assertRouteRegistered(t, base, "/api/publira.admin.v1.AdminSeriesService/ListSeries", true)
-	assertRouteRegistered(t, base, "/api/publira.platform.v1.PlatformTenantService/ListTenants", true)
+	assertRouteRegistered(t, base, "/rpc/publira.v1.CatalogService/ListPublishedSeries", false)
+	assertRouteRegistered(t, base, "/rpc/publira.admin.v1.AdminSeriesService/ListSeries", true)
+	assertRouteRegistered(t, base, "/rpc/publira.platform.v1.PlatformTenantService/ListTenants", true)
 
 	assertImageStatus(t, base+preview, "admin-"+tenant.Domain, http.StatusServiceUnavailable)
 	assertImageStatus(t, base+preview, tenant.Domain, http.StatusNotFound)
@@ -176,9 +179,9 @@ func TestServerServesThePlatformRoleAlone(t *testing.T) {
 	p.WaitReady(t, base+"/readyz")
 	assertReadyChecks(t, base+"/readyz", "db.platform")
 
-	assertRouteRegistered(t, base, "/api/publira.v1.CatalogService/ListPublishedSeries", false)
-	assertRouteRegistered(t, base, "/api/publira.admin.v1.AdminSeriesService/ListSeries", false)
-	assertRouteRegistered(t, base, "/api/publira.platform.v1.PlatformTenantService/ListTenants", true)
+	assertRouteRegistered(t, base, "/rpc/publira.v1.CatalogService/ListPublishedSeries", false)
+	assertRouteRegistered(t, base, "/rpc/publira.admin.v1.AdminSeriesService/ListSeries", false)
+	assertRouteRegistered(t, base, "/rpc/publira.platform.v1.PlatformTenantService/ListTenants", true)
 	// Neither site is the platform role's, so image delivery, and with it
 	// PUBLIRA_IMAGE_CACHE_TTL, is not there at all.
 	assertRouteRegistered(t, base, "/images/creators/media", false)
@@ -232,7 +235,7 @@ func TestServerAdmitsTheWebServiceTokenOnlyWhenItIsSet(t *testing.T) {
 	tenantCtx := &publirattypesv1.TenantContext{TenantId: tenant.ID.String()}
 
 	t.Run("set", func(t *testing.T) {
-		url := startServer(t, pg, nil) + "/api"
+		url := startServer(t, pg, nil) + "/rpc"
 		genres := publiraadminv1connect.NewAdminGenreServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, url)))
 		settings := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, url)))
 
@@ -272,7 +275,7 @@ func TestServerAdmitsTheWebServiceTokenOnlyWhenItIsSet(t *testing.T) {
 		}
 	})
 	t.Run("unset", func(t *testing.T) {
-		url := startServer(t, pg, map[string]string{"PUBLIRA_WEB_SERVICE_TOKEN": ""}) + "/api"
+		url := startServer(t, pg, map[string]string{"PUBLIRA_WEB_SERVICE_TOKEN": ""}) + "/rpc"
 		genres := publiraadminv1connect.NewAdminGenreServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, url)))
 
 		_, err := genres.ListGenres(testutil.WithBearer(t.Context(), token), &publiraadminv1.ListGenresRequest{Tenant: tenantCtx})

@@ -15,10 +15,12 @@ routing_log "=== route probes with no platform hosts ==="
 
 assert_route "web-storefront listed host" GET localhost / web-storefront /
 assert_route "web-admin listed host" GET admin.localhost / web-admin /
+assert_route "rpc on a listed host" GET localhost /rpc/foo api /rpc/foo
 assert_route "api on a listed host" GET localhost /api/foo api /api/foo
 assert_route "images on a listed host" GET admin.localhost /images/cover api /images/cover
 
 assert_unrouted "platform host once no list names it" GET platform.localhost /
+assert_unrouted "platform host on /rpc once no list names it" GET operators.example.net /rpc/foo
 assert_unrouted "platform host on /api once no list names it" GET operators.example.net /api/foo
 
 routing_log "=== route probes with no platform hosts passed ==="

@@ -32,21 +32,22 @@ On every one of those hosts, the path then decides whether the web app answers o
 | Path                                   | Process                     |
 | -------------------------------------- | --------------------------- |
 | Starting with `/images`                | `publira server`            |
+| `/rpc`, or starting with `/rpc/`       | `publira server`            |
 | `/api/v1`, or starting with `/api/v1/` | The web app the host picked |
 | `/api`, or starting with `/api/`       | `publira server`            |
 | Anything else                          | The web app the host picked |
 
-`/images` is every image a page shows, and `/api` the public API the browser and the mobile app call. `/api/v1` is the exception: it belongs to the web apps, which answer their own endpoints there, the payment and inbound email webhooks among them. The exception ends at a `/`, so a path such as `/api/v10` or `/api/v1beta` is not part of it and goes to `publira server` with the rest of `/api`. An edge that matches the longest prefix first gets the order right without being told it.
+`/images` is every image a page shows, and `/rpc` the public API the browser and the mobile app call. `/api` is the prefix the API had before `/rpc`, and `publira server` still answers on it so that a client not yet on `/rpc`, an installed build of the mobile app among them, keeps working; 0.2.0 stops serving it, and the two `/api` rows go then. Until that release, route both. `/api/v1` is the exception: it belongs to the web apps, which answer their own endpoints there, the payment and inbound email webhooks among them. The exception ends at a `/`, so a path such as `/api/v10` or `/api/v1beta` is not part of it and goes to `publira server` with the rest of `/api`. An edge that matches the longest prefix first gets the order right without being told it.
 
 `publira server` is on port `8000`, unless `PUBLIRA_PUBLIC_API_ADDR` gives it another address, as the [`publira server` reference](https://github.com/publira/publira/blob/main/server/cmd/publira/README.md) lists. The web apps listen on port `3000` (`web-storefront`), `4000` (`web-admin`), and `4100` (`web-platform`) in the images as the repository builds them, unless you set their `PORT`.
 
-The edge forwards the path as it arrived, and the `Host` header as the browser sent it. Publira's routes carry the `/api` and `/images` prefixes, and Publira finds the tenant from the host name, so an edge that strips a prefix or rewrites `Host` reaches no tenant at all.
+The edge forwards the path as it arrived, and the `Host` header as the browser sent it. Publira's routes carry the `/rpc`, `/api`, and `/images` prefixes, and Publira finds the tenant from the host name, so an edge that strips a prefix or rewrites `Host` reaches no tenant at all.
 
 An edge that checks the health of what it forwards to, as a load balancer does, can probe `GET /readyz` on each process. [Health checks](../3-operations/11-monitoring.md#health-checks) says what each one checks, and what pointing a load balancer at it means when the database stops answering.
 
-### The console APIs are under `/api` too
+### The console APIs are under `/rpc` too
 
-`publira server` serves the tenant console's and the Platform Console's APIs under `/api` beside the public API, on the port the web apps call, so the edge reaches them on every host it forwards `/api` on. What keeps them from an outsider is their own authentication, as [The console APIs](../3-operations/12-security.md#the-console-apis) describes, not the routing: route `/api` as the table above says, and never to a web app. To keep them off the process the tenants' domains reach as well, run that process with `publira server --role storefront`, and keep sending the console hosts' `/api` and `/images` to the `publira server` the web apps call, which serves every role.
+`publira server` serves the tenant console's and the Platform Console's APIs under `/rpc` beside the public API, and under `/api` until 0.2.0, on the port the web apps call, so the edge reaches them on every host it forwards `/rpc` and `/api` on. What keeps them from an outsider is their own authentication, as [The console APIs](../3-operations/12-security.md#the-console-apis) describes, not the routing: route `/rpc` and `/api` as the table above says, and never to a web app. To keep them off the process the tenants' domains reach as well, run that process with `publira server --role storefront`, and keep sending the console hosts' `/rpc`, `/api`, and `/images` to the `publira server` the web apps call, which serves every role.
 
 ### TLS
 

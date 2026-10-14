@@ -45,7 +45,7 @@ func TestEachSurfaceReadsItsSettingsOnItsOwnPool(t *testing.T) {
 			admin:    silentPool(t, "publira_admin"),
 			platform: silentPool(t, "publira_platform"),
 		})
-		catalog := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, base+"/api")))
+		catalog := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, base+"/rpc")))
 		if _, err := catalog.SearchPublishedSeries(t.Context(), &publirav1.SearchPublishedSeriesRequest{
 			Tenant: &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 			Query:  "Harbor",
@@ -98,7 +98,7 @@ func TestEachSurfaceReadsItsSettingsOnItsOwnPool(t *testing.T) {
 			admin:    pg.OpenAdminDB(t),
 			platform: silentPool(t, "publira_platform"),
 		})
-		themes := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, base+"/api")))
+		themes := publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(http.DefaultClient, base+"/rpc")))
 		_, err = themes.UploadTenantIcon(testutil.WithBearer(t.Context(), token), &publiraadminv1.UploadTenantIconRequest{
 			Tenant:          &publirattypesv1.TenantContext{TenantId: tenant.ID.String()},
 			IconData:        squarePNG(t),

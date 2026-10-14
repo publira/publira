@@ -11,14 +11,14 @@ The binary behind both of a deployment's long-lived Go processes. The first argu
 
 ## publira server
 
-One process serves all three Connect namespaces — `publira.v1`, `publira.admin.v1`, and `publira.platform.v1` — under `/api`, and image delivery under `/images`, on one listener, `PUBLIRA_PUBLIC_API_ADDR` (`:8000` when unset). It also answers `/livez` and `/readyz`, and registers nothing else at the root.
+One process serves all three Connect namespaces — `publira.v1`, `publira.admin.v1`, and `publira.platform.v1` — under `/rpc`, and image delivery under `/images`, on one listener, `PUBLIRA_PUBLIC_API_ADDR` (`:8000` when unset). It also answers `/livez` and `/readyz`, and registers nothing else at the root. The same namespaces are answered under `/api`, the prefix they had before `/rpc`, for the clients not yet on `/rpc`; 0.2.0 removes it.
 
 | Reached by | Through |
 | --- | --- |
-| The browser and the mobile app | The reverse proxy, which forwards `/api` and `/images` with their prefixes kept, on every host |
+| The browser and the mobile app | The reverse proxy, which forwards `/rpc`, `/api`, and `/images` with their prefixes kept, on every host |
 | web-storefront, web-admin, and web-platform | The private network, each through its own `PUBLIRA_GRPC_URL`, which names `/api` on this listener |
 
-The edge forwards `/api` host-agnostically and a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on one route, so both consoles' namespaces are reachable at `/api/publira.admin.v1.…` and `/api/publira.platform.v1.…` on every tenant site. What keeps an outsider out of them is their own authentication: every console RPC refuses a caller without an operator session or the [web service credential](../../README.md#web-service-credential) before any handler runs, the ones that run before a session exists — signing in, password reset, and email verification — are rate-limited or guarded in the handler itself, and creating the Platform Console's first operator is refused without the web service credential, which only the Platform Console's server sends.
+The edge forwards `/rpc` host-agnostically and a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on one route, so both consoles' namespaces are reachable at `/rpc/publira.admin.v1.…` and `/rpc/publira.platform.v1.…` on every tenant site, and under `/api` alike. What keeps an outsider out of them is their own authentication: every console RPC refuses a caller without an operator session or the [web service credential](../../README.md#web-service-credential) before any handler runs, the ones that run before a session exists — signing in, password reset, and email verification — are rate-limited or guarded in the handler itself, and creating the Platform Console's first operator is refused without the web service credential, which only the Platform Console's server sends.
 
 The process holds one pool per PostgreSQL login — `publira_public` and `publira_admin` under row-level security, `publira_platform` across every tenant — and picks the pool by the namespace a procedure path names. An image is answered on the pool of the login the host name selects: a `domain` match is the storefront, answered as `publira_public`, and an `admin_domain` match is the console, answered as `publira_admin`. The host also decides whether an `admin-media` token is evaluated as a staff preview and whether an episode body leaves encrypted. Each namespace reports its spans under its own `service.name`, and the image routes under `publira-image-server`, so the four stay apart in a trace UI.
 
@@ -117,7 +117,7 @@ publira server --role admin,platform
 
 serves the named API surfaces alone. A role is named the way the web app that consumes it is, and a process serves exactly the namespaces, the image delivery, and the database login of the roles it was given; without the flag it serves all three. The flag decides what a process serves and nothing about ports or networks: every process listens on `PUBLIRA_PUBLIC_API_ADDR` alone.
 
-| `--role` | Registers under `/api` | Image delivery on `/images` | Opens | Reads |
+| `--role` | Registers under `/rpc` and `/api` | Image delivery on `/images` | Opens | Reads |
 | --- | --- | --- | --- | --- |
 | `storefront` | `publira.v1` | Storefront hosts, as `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `PUBLIRA_IMAGE_CACHE_TTL` |
 | `admin` | `publira.admin.v1` | Console hosts, as `publira_admin`, staff preview included | `PUBLIRA_ADMIN_DB_URL` | `PUBLIRA_WEB_SERVICE_TOKEN`, `PUBLIRA_IMAGE_CACHE_TTL` |
@@ -125,7 +125,7 @@ serves the named API surfaces alone. A role is named the way the web app that co
 
 Roles combine with a comma, or with the flag given again. A role opens its own pool and no other, and a variable only one role reads is not read without that role; the sign-in providers' key URLs, which the public API alone verifies ID tokens with, are read only with `storefront`. `/images` is registered when `storefront` or `admin` is served, and a host of a site whose role the process does not serve is answered `404` rather than as the other site's login, so a `storefront` process never honours a staff preview. `/readyz` names one check per pool the process holds, and the spans report under the names of the namespaces it serves. An unknown role, an empty one, or a role named twice prints the usage and exits with status 2, and `--with-worker` combines with any set of roles.
 
-The process the reverse proxy forwards internet traffic to can therefore run `--role storefront`: it holds `publira_public` alone, serves neither console's API, and takes no web service token. Another process without the flag keeps serving the web apps, which reach every surface they use through one `PUBLIRA_GRPC_URL` — `web-admin` calls `publira.v1` for the tenant's theme and catalog as well as `publira.admin.v1` — and the edge forwards a console host's `/api` and `/images` to it: the images a console page shows are the `admin` role's, and a `storefront` process answers them `404`.
+The process the reverse proxy forwards internet traffic to can therefore run `--role storefront`: it holds `publira_public` alone, serves neither console's API, and takes no web service token. Another process without the flag keeps serving the web apps, which reach every surface they use through one `PUBLIRA_GRPC_URL` — `web-admin` calls `publira.v1` for the tenant's theme and catalog as well as `publira.admin.v1` — and the edge forwards a console host's `/rpc`, `/api`, and `/images` to it: the images a console page shows are the `admin` role's, and a `storefront` process answers them `404`.
 
 ### Hosting the worker (`--with-worker`)
 

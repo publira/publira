@@ -144,16 +144,16 @@ func TestServerServiceNamesFollowTheRoles(t *testing.T) {
 }
 
 // One listener serves the namespaces of the roles a process was given under
-// /api, and the images when a role with a site is among them. The edge
-// forwards /api and /images to it host-agnostically, so a console procedure a
+// /rpc and /api alike, and the images when a role with a site is among them.
+// The edge forwards /rpc, /api, and /images to it host-agnostically, so a console procedure a
 // process serves is reachable on every tenant site and is kept from an
 // outsider by its own authentication, while one it does not serve is not
 // there at all. Readiness names the pools the roles hold, and no other.
 func TestServerHandlerServesWhatItsRolesServe(t *testing.T) {
 	const (
-		public   = "/api/publira.v1.CatalogService/ListPublishedSeries"
-		admin    = "/api/publira.admin.v1.AdminSeriesService/ListSeries"
-		platform = "/api/publira.platform.v1.PlatformTenantService/ListTenants"
+		public   = "/publira.v1.CatalogService/ListPublishedSeries"
+		admin    = "/publira.admin.v1.AdminSeriesService/ListSeries"
+		platform = "/publira.platform.v1.PlatformTenantService/ListTenants"
 		images   = "/images/creators/media"
 	)
 	for _, tc := range []struct {
@@ -196,12 +196,17 @@ func TestServerHandlerServesWhatItsRolesServe(t *testing.T) {
 			})
 
 			for _, route := range []string{public, admin, platform, images} {
-				assertRouteRegistered(t, ts.URL, route, slices.Contains(tc.routes, route))
-				// The /api prefix is the one path of a procedure, so the same
-				// procedure at the root is not a second way in.
-				if strings.HasPrefix(route, "/api/") {
-					assertRouteRegistered(t, ts.URL, strings.TrimPrefix(route, "/api"), false)
+				served := slices.Contains(tc.routes, route)
+				if route == images {
+					assertRouteRegistered(t, ts.URL, route, served)
+					continue
 				}
+				for _, prefix := range []string{"/rpc", "/api"} {
+					assertRouteRegistered(t, ts.URL, prefix+route, served)
+				}
+				// A procedure is reached through a prefix alone, so the same
+				// procedure at the root is not a further way in.
+				assertRouteRegistered(t, ts.URL, route, false)
 			}
 			assertReadyChecks(t, ts.URL+"/readyz", tc.checks...)
 		})
