@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:publira/auth/account_icon_picker.dart';
@@ -19,6 +20,9 @@ class FakeAccountIconPicker implements AccountIconPicker {
   /// after ending the app under the picker.
   Uint8List? lost;
 
+  /// Held open by a test that needs to act while [recover] is in flight.
+  Completer<void>? recoverGate;
+
   @override
   Future<Uint8List?> pick() async {
     final failure = this.failure;
@@ -30,6 +34,7 @@ class FakeAccountIconPicker implements AccountIconPicker {
 
   @override
   Future<Uint8List?> recover() async {
+    await recoverGate?.future;
     final lost = this.lost;
     this.lost = null;
     return lost;

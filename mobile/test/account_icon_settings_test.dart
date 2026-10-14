@@ -253,6 +253,51 @@ void main() {
     expect(picker.picked, 0);
   });
 
+  testWidgets('a pick made while a kept one is recovered is sent after it', (
+    tester,
+  ) async {
+    final kept = pngIcon();
+    final chosen = jpegIcon();
+    final gate = Completer<void>();
+    final picker = FakeAccountIconPicker([chosen])
+      ..lost = kept
+      ..recoverGate = gate;
+    await pumpAccount(tester, picker: picker);
+
+    await tester.tap(upload);
+    await tester.pump();
+    expect(picker.picked, 0);
+
+    gate.complete();
+    await pumpUntilTrue(
+      tester,
+      () => repository.iconUploads.length == 2,
+      description: 'both uploads',
+    );
+    await tester.pump();
+
+    expect(repository.iconUploads.map((upload) => upload.bytes), [
+      same(kept),
+      same(chosen),
+    ]);
+    expect(auth.session?.userIconUrl, FakeAuthRepository.uploadedIconUrl(2));
+  });
+
+  testWidgets('a credential store that refuses the change frees the controls', (
+    tester,
+  ) async {
+    await pumpAccount(tester, picker: FakeAccountIconPicker([pngIcon()]));
+    store.writeError = Exception('keystore refused');
+
+    await tester.tap(upload);
+    await pumpUntilFound(
+      tester,
+      find.text('Could not update your icon. Try again.'),
+    );
+
+    expect(tester.widget<OutlinedButton>(upload).onPressed, isNotNull);
+  });
+
   testWidgets('without a picker the icon is shown with no controls', (
     tester,
   ) async {

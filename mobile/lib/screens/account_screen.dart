@@ -206,6 +206,11 @@ class _IconSectionState extends State<_IconSection> {
   String? _failure;
   var _started = false;
 
+  /// The recovery of a pick Android kept, which a change the reader asks for
+  /// waits out, so the image they chose before the app was ended never lands
+  /// after the one they choose now.
+  Future<void> _recovering = Future.value();
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -215,7 +220,8 @@ class _IconSectionState extends State<_IconSection> {
     _started = true;
     final picker = AccountIconPickerScope.maybeOf(context);
     if (picker != null) {
-      unawaited(_recover(picker));
+      _recovering = _recover(picker);
+      unawaited(_recovering);
     }
   }
 
@@ -319,17 +325,32 @@ class _IconSectionState extends State<_IconSection> {
 
   Future<void> _upload(AccountIconPicker picker) async {
     final messages = AppMessages.of(context);
-    setState(() => _failure = null);
+    await _recovering;
+    if (!mounted || _changing != null) {
+      return;
+    }
+    // Held from the pick on, so nothing else is sent while the picker is open.
+    setState(() {
+      _changing = _IconChange.upload;
+      _failure = null;
+    });
     final Uint8List? bytes;
     try {
       bytes = await picker.pick();
     } on Exception {
       if (mounted) {
-        setState(() => _failure = messages.accountIconUploadFailed);
+        setState(() {
+          _changing = null;
+          _failure = messages.accountIconUploadFailed;
+        });
       }
       return;
     }
-    if (bytes == null || !mounted) {
+    if (!mounted) {
+      return;
+    }
+    if (bytes == null) {
+      setState(() => _changing = null);
       return;
     }
     await _send(bytes);
@@ -347,16 +368,19 @@ class _IconSectionState extends State<_IconSection> {
     if (bytes == null || !mounted || _changing != null) {
       return;
     }
+    setState(() => _changing = _IconChange.upload);
     await _send(bytes);
   }
 
-  /// Checks [bytes] against the API's limits and uploads them if they pass.
+  /// Checks [bytes] against the API's limits and uploads them if they pass,
+  /// with [_changing] already set by the caller.
   Future<void> _send(Uint8List bytes) async {
     final messages = AppMessages.of(context);
     final auth = AuthScope.of(context);
     final (upload, problem) = prepareAccountIcon(bytes);
     if (upload == null) {
       setState(() {
+        _changing = null;
         _failure = switch (problem) {
           AccountIconProblem.tooLarge => messages.accountIconTooLarge,
           AccountIconProblem.tooSmall => messages.accountIconTooSmall,
@@ -366,7 +390,6 @@ class _IconSectionState extends State<_IconSection> {
       });
       return;
     }
-    setState(() => _changing = _IconChange.upload);
     await _change(
       () => auth.uploadIcon(upload),
       done: messages.accountIconUploaded,
@@ -377,6 +400,10 @@ class _IconSectionState extends State<_IconSection> {
   Future<void> _remove() async {
     final messages = AppMessages.of(context);
     final auth = AuthScope.of(context);
+    await _recovering;
+    if (!mounted || _changing != null) {
+      return;
+    }
     setState(() {
       _changing = _IconChange.remove;
       _failure = null;
@@ -418,6 +445,16 @@ class _IconSectionState extends State<_IconSection> {
           AuthFailureKind.rateLimited => messages.errorsRpcRateLimited,
           _ => failed,
         };
+      });
+    } on Exception {
+      // A credential store that refused the session the API answered with,
+      // which the other account settings word the same way.
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _changing = null;
+        _failure = failed;
       });
     }
   }
