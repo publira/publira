@@ -50,11 +50,21 @@ const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const episodeId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const episodePublicId = "SeedEPSDAAA1";
 const commentId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
-const author = { name: "Sample Member", publicId: "SeedMMBRAAA1" };
+const authorIcon = {
+  height: 512,
+  url: "/images/users/SeedMMBRAAA1/icon-1.png",
+  width: 512,
+};
+const author = {
+  icon: authorIcon,
+  name: "Sample Member",
+  publicId: "SeedMMBRAAA1",
+};
 
 const comment = (
   overrides: Partial<EpisodeCommentItem> & { createdAt: string }
 ): EpisodeCommentItem => ({
+  authorIcon: null,
   authorName: "Sample Member",
   authorPublicId: "SeedMMBRAAA1",
   awaitingApproval: false,
@@ -109,6 +119,7 @@ describe("listEpisodeComments", () => {
       value: {
         comments: [
           {
+            authorIcon: null,
             authorName: "Sample Member",
             authorPublicId: "SeedMMBRAAA1",
             awaitingApproval: false,
@@ -175,6 +186,51 @@ describe("listEpisodeComments", () => {
     });
   });
 
+  it("carries the icon each author's account shows, and none for one that shows none", async () => {
+    mockListEpisodeComments.mockResolvedValueOnce({
+      comments: [
+        {
+          authorIconImageVariants: [
+            {
+              contentType: "image/png",
+              fileSizeBytes: 2048n,
+              height: 512,
+              label: "original",
+              url: authorIcon.url,
+              width: 512,
+            },
+          ],
+          authorName: "Sample Member",
+          authorPublicId: "SeedMMBRAAA1",
+          body: "Loved this episode",
+          createdAt: "2026-09-02T10:00:00Z",
+          id: "CmntAAAAAAA2",
+        },
+        {
+          authorIconImageVariants: [],
+          authorName: "Another Reader",
+          authorPublicId: "OthrMMBRAAA1",
+          body: "Me too",
+          createdAt: "2026-09-01T10:00:00Z",
+          id: "CmntAAAAAAA1",
+        },
+      ],
+    });
+
+    const result = await listEpisodeComments(tenantId, {
+      episodeId,
+      episodePublicId,
+      locale: "en",
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        comments: [{ authorIcon }, { authorIcon: null }],
+      },
+    });
+  });
+
   it("reads a missing episode as an empty page, not as a failure", async () => {
     mockListEpisodeComments.mockRejectedValueOnce(
       new ConnectError("gone", Code.NotFound)
@@ -213,7 +269,7 @@ describe("listMyEpisodeComments", () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
   });
 
-  it("gives the caller's own rows the author name the message leaves out", async () => {
+  it("gives the caller's own rows the author name and icon the message leaves out", async () => {
     mockListMyEpisodeComments.mockResolvedValueOnce({
       comments: [
         {
@@ -240,6 +296,7 @@ describe("listMyEpisodeComments", () => {
       ok: true,
       value: [
         {
+          authorIcon,
           authorName: "Sample Member",
           authorPublicId: "SeedMMBRAAA1",
           awaitingApproval: true,

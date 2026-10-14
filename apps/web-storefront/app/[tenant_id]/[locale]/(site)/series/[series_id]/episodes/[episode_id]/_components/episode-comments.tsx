@@ -1,3 +1,4 @@
+import { UserIcon } from "@publira/icons";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -14,6 +15,7 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
+import { AccountIcon } from "#components/account-icon";
 import {
   ListPagination,
   ListPaginationStep,
@@ -66,6 +68,10 @@ export interface EpisodeCommentsProps {
  * the whole of the mark, so a reader who cannot tell its colour apart still
  * reads it. That name links to the creator's page, since it is the one name in
  * the list a reader may want to follow; a reader's name stays plain text.
+ *
+ * Every author is drawn with the icon their account shows now, and with a
+ * person glyph when it shows none, so a list with and without icons keeps one
+ * column of faces beside the names.
  *
  * Nothing here marks a comment as removed. A comment staff took down keeps
  * rendering to its author exactly as it did before — same place in the list,
@@ -247,42 +253,60 @@ export const EpisodeComments = async ({
           {comments.map((comment) => (
             <li className="py-4 first:pt-0" key={comment.id}>
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
-                    {comment.creatorPublicId ? (
-                      <LocaleLink
-                        className="text-primary underline underline-offset-4"
-                        href={`/creators/${comment.creatorPublicId}`}
-                      >
-                        {episodeCommentDisplayName(comment)}
-                      </LocaleLink>
-                    ) : (
-                      episodeCommentDisplayName(comment)
-                    )}
-                    {comment.creatorName ? (
-                      <Badge tone="info">
-                        <Suspense
-                          fallback={<SkeletonLine className="h-3 w-12" />}
-                        >
-                          <Message message="storefront.episode.comments.creator_badge" />
-                        </Suspense>
-                      </Badge>
-                    ) : null}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    <time dateTime={comment.createdAt}>
-                      {commentedAt(comment)}
-                    </time>
-                    {comment.awaitingApproval ? (
-                      <span className="ml-3 text-warning">
-                        <Suspense
-                          fallback={<SkeletonLine className="h-3 w-28" />}
-                        >
-                          <Message message="storefront.episode.comments.awaiting_approval" />
-                        </Suspense>
+                <div className="flex min-w-0 items-start gap-3">
+                  {/* The name beside it says whose icon it is, so the image
+                      itself says nothing. */}
+                  <AccountIcon
+                    alt=""
+                    className="size-10 shrink-0 rounded-full border border-border object-cover"
+                    fallback={
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
+                        <UserIcon
+                          aria-hidden="true"
+                          className="size-5 text-muted-foreground"
+                        />
                       </span>
-                    ) : null}
-                  </p>
+                    }
+                    icon={comment.authorIcon}
+                    size={40}
+                  />
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
+                      {comment.creatorPublicId ? (
+                        <LocaleLink
+                          className="text-primary underline underline-offset-4"
+                          href={`/creators/${comment.creatorPublicId}`}
+                        >
+                          {episodeCommentDisplayName(comment)}
+                        </LocaleLink>
+                      ) : (
+                        episodeCommentDisplayName(comment)
+                      )}
+                      {comment.creatorName ? (
+                        <Badge tone="info">
+                          <Suspense
+                            fallback={<SkeletonLine className="h-3 w-12" />}
+                          >
+                            <Message message="storefront.episode.comments.creator_badge" />
+                          </Suspense>
+                        </Badge>
+                      ) : null}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <time dateTime={comment.createdAt}>
+                        {commentedAt(comment)}
+                      </time>
+                      {comment.awaitingApproval ? (
+                        <span className="ml-3 text-warning">
+                          <Suspense
+                            fallback={<SkeletonLine className="h-3 w-28" />}
+                          >
+                            <Message message="storefront.episode.comments.awaiting_approval" />
+                          </Suspense>
+                        </span>
+                      ) : null}
+                    </p>
+                  </div>
                 </div>
                 {viewer && comment.authorPublicId === viewer.publicId ? (
                   <CommentDeleteButton

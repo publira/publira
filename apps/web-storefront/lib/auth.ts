@@ -17,6 +17,7 @@ import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheLife } from "next/cache";
 import pRetry, { AbortError } from "p-retry";
 
+import { toAccountIcon } from "./account-icon";
 import {
   apiClient,
   buildClientAddressHeaders,
@@ -808,24 +809,15 @@ type RawMe = Pick<
   "birthDate" | "email" | "iconImageVariants" | "name" | "publicId" | "role"
 >;
 
-/**
- * The account as the profile screens read it. An icon is stored as a single
- * rendition, so the first variant is the icon.
- */
-const toMeInfo = (user: RawMe): MeInfo => {
-  const [variant] = user.iconImageVariants;
-
-  return {
-    birthDate: user.birthDate,
-    email: user.email,
-    icon: variant
-      ? { height: variant.height, url: variant.url, width: variant.width }
-      : null,
-    name: user.name,
-    publicId: user.publicId,
-    role: user.role,
-  };
-};
+/** The account as the profile screens read it. */
+const toMeInfo = (user: RawMe): MeInfo => ({
+  birthDate: user.birthDate,
+  email: user.email,
+  icon: toAccountIcon(user.iconImageVariants),
+  name: user.name,
+  publicId: user.publicId,
+  role: user.role,
+});
 
 export const getMe = async (
   tenantId: string,

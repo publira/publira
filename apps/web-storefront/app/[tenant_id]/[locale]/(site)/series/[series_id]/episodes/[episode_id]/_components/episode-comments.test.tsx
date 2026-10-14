@@ -137,13 +137,25 @@ vi.mock("./comment-report-button", () => ({
 }));
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-const viewer = { name: "Sample Member", publicId: "SeedMMBRAAA1", role: "" };
+const viewer = {
+  icon: null,
+  name: "Sample Member",
+  publicId: "SeedMMBRAAA1",
+  role: "",
+};
+
+const readerIcon = {
+  height: 512,
+  url: "/images/users/OthrMMBRAAA1/icon-1.png",
+  width: 512,
+};
 
 const publicComment = (
   id: string,
   createdAt: string,
   overrides: Partial<EpisodeCommentItem> = {}
 ): EpisodeCommentItem => ({
+  authorIcon: null,
   authorName: "Another Reader",
   authorPublicId: "OthrMMBRAAA1",
   awaitingApproval: false,
@@ -269,6 +281,42 @@ describe("EpisodeComments", () => {
     await renderSection();
 
     expect(screen.getByText("Awaiting approval")).toBeDefined();
+  });
+
+  it("draws each author's icon, and a glyph for an author who shows none", async () => {
+    mockListEpisodeComments.mockResolvedValueOnce(
+      listPage([
+        publicComment("CmntAAAAAAA2", "2026-09-02T00:00:00Z", {
+          authorIcon: readerIcon,
+        }),
+        publicComment("CmntAAAAAAA1", "2026-09-01T00:00:00Z", {
+          authorName: "Third Reader",
+          authorPublicId: "ThrdMMBRAAA1",
+        }),
+      ])
+    );
+
+    await renderSection();
+
+    const [withIcon, withoutIcon] = screen.getAllByRole("listitem");
+    if (!(withIcon && withoutIcon)) {
+      throw new Error("expected two comments");
+    }
+    expect(
+      within(withIcon).getByRole<HTMLImageElement>("presentation").src
+    ).toContain("icon-1.png");
+    expect(within(withoutIcon).queryByRole("presentation")).toBeNull();
+    expect(withoutIcon.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+  });
+
+  it("hands the reader's own icon to the read of their unpublished comments", async () => {
+    mockGetMe.mockResolvedValueOnce({ ...viewer, icon: readerIcon });
+
+    await renderSection();
+
+    expect(mockListMyEpisodeComments.mock.calls[0]?.[1]).toMatchObject({
+      author: { icon: readerIcon, publicId: viewer.publicId },
+    });
   });
 
   it("marks a creator's comment and shows it under the credited name", async () => {

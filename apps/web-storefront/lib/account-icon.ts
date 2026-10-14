@@ -1,3 +1,7 @@
+import type { UserIconVariant } from "@publira/api-client/public/types";
+
+import type { AccountIcon } from "./auth";
+
 /**
  * The limits `AuthService.UploadMyIcon` holds an upload to, checked before the
  * upload is sent so a file the API would refuse is not carried across the
@@ -69,4 +73,18 @@ export const checkAccountIconImage = async (
   bitmap.close();
 
   return shorterSide < ACCOUNT_ICON_MIN_DIMENSION ? "too-small" : null;
+};
+
+/**
+ * The icon an account's variants describe, or `null` for one that shows none.
+ * An icon is stored as a single rendition, so the first variant is the icon;
+ * image-server scales it to whatever size a page draws it at.
+ */
+export const toAccountIcon = (
+  variants: readonly Pick<UserIconVariant, "height" | "url" | "width">[]
+): AccountIcon | null => {
+  const [variant] = variants;
+  return variant
+    ? { height: variant.height, url: variant.url, width: variant.width }
+    : null;
 };
