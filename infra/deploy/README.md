@@ -12,7 +12,7 @@ Every release publishes its images as `ghcr.io/publira/<name>:<version>`, built 
 | --- | --- | --- | --- |
 | `web-storefront` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-storefront` | The public tenant site | The edge, on each tenant's domain |
 | `web-admin` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-admin` | The tenant console | The edge, on each tenant's console host: the one it was given with `--admin-domain`, or `admin.<domain>` without one |
-| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | Every Connect namespace under `/rpc`, and under `/api` until 0.2.0, and image delivery under `/images`, on `:8000` | The edge, on `/rpc`, `/api`, and `/images`; `web-storefront` and `web-admin`, on `/api` |
+| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | Every Connect namespace under `/rpc`, and under `/api` until 0.2.0, and image delivery under `/images`, on `:8000` | The edge, on `/rpc`, `/api`, and `/images`; `web-storefront` and `web-admin`, on `/rpc` |
 | `publira worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker` as the container argument | The Outbox drain — mail, push, cache revalidation — and every scheduled job | Nothing; it serves `/livez` and `/readyz` on `:8003` |
 
 Every one of them serves `GET /livez` and `GET /readyz` for the orchestrator's probes.
@@ -30,7 +30,7 @@ An install that keeps the consoles' APIs and logins out of the process the tenan
 | Process | Image | Serves | Reached by |
 | --- | --- | --- | --- |
 | `publira server --role storefront` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --role storefront` as the container argument | `publira.v1` under `/rpc` and `/api`, and the images of every tenant's site, as `publira_public` alone | The edge, on `/rpc`, `/api`, and `/images` of each tenant's domain |
-| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | Everything the one `publira server` above serves | `web-storefront`, `web-admin`, and `web-platform`, on `/api`; the edge, on `/rpc`, `/api`, and `/images` of each console host |
+| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | Everything the one `publira server` above serves | `web-storefront`, `web-admin`, and `web-platform`, on `/rpc`; the edge, on `/rpc`, `/api`, and `/images` of each console host |
 
 Together they replace the one `publira server` above, and each reads the `publira server` rows below except where a row says otherwise. The storefront process holds neither console's login nor the web service credential. The web apps keep calling a process that serves every role, because `web-admin` calls `publira.v1` for the tenant's theme and catalog as well as `publira.admin.v1`, on the one `PUBLIRA_GRPC_URL` it has. Both listen on `:8000` alone, so either can run on a platform that exposes one port per service. [`--role`](../../server/cmd/publira/README.md#serving-some-roles---role) has the details.
 
