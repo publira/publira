@@ -644,12 +644,17 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.id = ANY(sqlc.arg('ids')::uuid[]);
 
 -- name: RevokePurchaseForStaff :one
--- Revokes a purchase staff have refunded, before the provider's notification
--- of the refund arrives. A purchase something revoked first keeps the instant
--- and the reason it was given, as it does when a dispute or a refund follows.
+-- Revokes a purchase staff have refunded, and answers no row when there is
+-- nothing for this call to change: staff revoked it already, which a second
+-- request racing the first finds once that one commits, or the reader's
+-- dispute revoked it first, which the dispute keeps. A refund recorded in
+-- between is the provider's notification of the refund staff asked for, so
+-- its reason gives way to staff while the instant stays.
 UPDATE purchases
 SET revoked_at = COALESCE(revoked_at, NOW()),
-    revocation_reason = COALESCE(revocation_reason, 'staff')
+    revocation_reason = 'staff'
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id')
+    AND revocation_reason IS DISTINCT FROM 'staff'
+    AND revocation_reason IS DISTINCT FROM 'dispute'
 RETURNING id;

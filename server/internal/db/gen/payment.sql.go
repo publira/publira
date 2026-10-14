@@ -1343,9 +1343,11 @@ func (q *Queries) ReleaseUnappliedRefund(ctx context.Context, arg ReleaseUnappli
 const RevokePurchaseForStaff = `-- name: RevokePurchaseForStaff :one
 UPDATE purchases
 SET revoked_at = COALESCE(revoked_at, NOW()),
-    revocation_reason = COALESCE(revocation_reason, 'staff')
+    revocation_reason = 'staff'
 WHERE tenant_id = $1
     AND id = $2
+    AND revocation_reason IS DISTINCT FROM 'staff'
+    AND revocation_reason IS DISTINCT FROM 'dispute'
 RETURNING id
 `
 
@@ -1354,9 +1356,12 @@ type RevokePurchaseForStaffParams struct {
 	ID       uuid.UUID `json:"id"`
 }
 
-// Revokes a purchase staff have refunded, before the provider's notification
-// of the refund arrives. A purchase something revoked first keeps the instant
-// and the reason it was given, as it does when a dispute or a refund follows.
+// Revokes a purchase staff have refunded, and answers no row when there is
+// nothing for this call to change: staff revoked it already, which a second
+// request racing the first finds once that one commits, or the reader's
+// dispute revoked it first, which the dispute keeps. A refund recorded in
+// between is the provider's notification of the refund staff asked for, so
+// its reason gives way to staff while the instant stays.
 func (q *Queries) RevokePurchaseForStaff(ctx context.Context, arg RevokePurchaseForStaffParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, RevokePurchaseForStaff, arg.TenantID, arg.ID)
 	var id uuid.UUID

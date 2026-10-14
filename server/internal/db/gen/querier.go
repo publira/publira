@@ -2746,9 +2746,12 @@ type Querier interface {
 	// Staff tickets only, as GetAccessTicketForTenant: revoking a wait-for-free
 	// ticket would take away a read the reader was entitled to.
 	RevokeAccessTicketForTenant(ctx context.Context, arg RevokeAccessTicketForTenantParams) (AccessTicket, error)
-	// Revokes a purchase staff have refunded, before the provider's notification
-	// of the refund arrives. A purchase something revoked first keeps the instant
-	// and the reason it was given, as it does when a dispute or a refund follows.
+	// Revokes a purchase staff have refunded, and answers no row when there is
+	// nothing for this call to change: staff revoked it already, which a second
+	// request racing the first finds once that one commits, or the reader's
+	// dispute revoked it first, which the dispute keeps. A refund recorded in
+	// between is the provider's notification of the refund staff asked for, so
+	// its reason gives way to staff while the instant stays.
 	RevokePurchaseForStaff(ctx context.Context, arg RevokePurchaseForStaffParams) (uuid.UUID, error)
 	// Stores where the reader stopped, after checking publication and body access
 	// in the same statement, so a viewer that saves on its way out cannot write a

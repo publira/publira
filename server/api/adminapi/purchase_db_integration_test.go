@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -441,4 +442,70 @@ func TestDBRefundPurchaseRefusesWhatItCannotRefund(t *testing.T) {
 			t.Fatalf("refunds = %+v, want none", refunds)
 		}
 	})
+}
+
+// Two requests that refund the same purchase at once ask Stripe for one
+// refund between them, and leave one audit entry.
+func TestDBRefundPurchaseRecordsOneRefundForConcurrentRequests(t *testing.T) {
+	f := newPurchaseFixture(t)
+	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_concurrent"})
+
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i := range errs {
+		wg.Go(func() {
+			_, errs[i] = f.refund(purchaseID)
+		})
+	}
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("RefundPurchase %d: %v", i+1, err)
+		}
+	}
+	if refunds := f.stripe.Refunds(); len(refunds) != 1 {
+		t.Fatalf("refunds = %+v, want one", refunds)
+	}
+	if got := f.refundAudits(t, purchaseID); got != 1 {
+		t.Fatalf("audit entries = %d, want 1", got)
+	}
+}
+
+// The provider's notification of a refund staff asked for can be recorded
+// before the purchase is revoked, and then gives way to staff. A dispute that
+// came first stays, and a purchase staff revoked already is not revoked again.
+func TestDBRevokePurchaseForStaffTakesOverOnlyTheRefundsOwnNotification(t *testing.T) {
+	f := newPurchaseFixture(t)
+	purchasedAt := time.Now().Add(-time.Hour)
+	queries := dbmodels.New(f.env.PG.DB)
+	revoke := func(purchaseID uuid.UUID) error {
+		_, err := queries.RevokePurchaseForStaff(context.Background(), dbmodels.RevokePurchaseForStaffParams{TenantID: f.admin.Tenant.ID, ID: purchaseID})
+		return err
+	}
+	reason := func(purchaseID uuid.UUID) string {
+		var reason sql.NullString
+		if err := f.env.PG.DB.QueryRowContext(context.Background(), "SELECT revocation_reason FROM purchases WHERE id = $1", purchaseID).Scan(&reason); err != nil {
+			t.Fatalf("read the revocation reason: %v", err)
+		}
+		return reason.String
+	}
+
+	refunded := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: purchasedAt, paymentID: "pi_notified_first", revocationReason: purchaseRevocationRefund})
+	if err := revoke(refunded); err != nil {
+		t.Fatalf("revoke a purchase whose refund was recorded first: %v", err)
+	}
+	if got := reason(refunded); got != purchaseRevocationStaff {
+		t.Fatalf("reason after the revocation = %q, want staff", got)
+	}
+	if err := revoke(refunded); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("revoke a purchase staff revoked already: %v, want no row", err)
+	}
+
+	disputed := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: purchasedAt, paymentID: "pi_disputed_first", revocationReason: purchaseRevocationDispute})
+	if err := revoke(disputed); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("revoke a disputed purchase: %v, want no row", err)
+	}
+	if got := reason(disputed); got != purchaseRevocationDispute {
+		t.Fatalf("reason of a disputed purchase = %q, want dispute", got)
+	}
 }

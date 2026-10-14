@@ -434,23 +434,28 @@ func (s *adminServer) RefundPurchase(
 
 	// The money is on its way back, so the purchase stops opening the episode
 	// now rather than when the provider's notification of the refund arrives.
-	if _, err := s.queriesFor(ctx).RevokePurchaseForStaff(ctx, dbmodels.RevokePurchaseForStaffParams{
+	// No row is a purchase something revoked in the meantime: another request
+	// that refunded it and recorded the refund already, or the reader's
+	// dispute. Either way this request records nothing.
+	_, err = s.queriesFor(ctx).RevokePurchaseForStaff(ctx, dbmodels.RevokePurchaseForStaffParams{
 		TenantID: tenant.ID,
 		ID:       row.ID,
-	}); err != nil {
+	})
+	switch {
+	case err == nil:
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "purchase_refunded",
+			TargetType:  "purchase",
+			TargetID:    row.ID.String(),
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    clientip.FromContext(ctx),
+		})
+	case !errors.Is(err, sql.ErrNoRows):
 		return nil, s.internalDBError(ctx, "failed to revoke a refunded purchase", err, "tenant_id", tenant.ID.String(), "purchase_id", row.ID.String())
 	}
-
-	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
-		TenantID:    tenant.ID,
-		ActorUserID: sessionCtx.User.ID,
-		ActorRole:   sessionCtx.Role,
-		Action:      "purchase_refunded",
-		TargetType:  "purchase",
-		TargetID:    row.ID.String(),
-		Outcome:     auditlog.OutcomeSuccess,
-		ClientIP:    clientip.FromContext(ctx),
-	})
 
 	refunded, err := s.loadPurchase(ctx, tenant.ID, row.ID)
 	if err != nil {
