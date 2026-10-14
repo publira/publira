@@ -33,6 +33,7 @@ A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole li
 | `platform_console_password_reset` | platform console password reset | `reset_url`, `expires_at` |
 | `staff_contact_message_notice` | to the tenant's staff, when a reader sends a message through the contact form | `tenant_name`, `sender_name`, `reply_to_email`, `subject`, `body`, `received_at` |
 | `staff_contact_reply` | to a reader, with the answer a member of staff wrote in the console | `tenant_name`, `body`, `original_subject`, `original_body`, `original_received_at` |
+| `purchase_receipt` | to a reader, for an episode they bought on the site | `tenant_name`, `series_title`, `episode_title`, `amount`, `currency`, `purchased_at`, `expires_at`, `library_url` |
 
 Template IDs and variable names are snake_case. The copy lives under `email.*` in the repo-root `locales/*.json`, and rendering takes the catalog, the locale, and the time zone as arguments — the package embeds no copy of its own and reads no environment. `timeZone` is an IANA name, and every `expires_at` (RFC3339) is displayed in that zone.
 
@@ -41,6 +42,8 @@ Template IDs and variable names are snake_case. The copy lives under `email.*` i
 `role` is the console role the invitation grants — `tenant_admin`, `tenant_editor`, or `tenant_auditor` — and the copy names it.
 
 `recipient_kind` is `current_email` or `new_email` — both sides of an address change confirm, and the sender says which side it is addressing.
+
+`amount` is the price paid, an integer in the minor unit of `currency` (an ISO 4217 code), and is written with `formatPrice` from `@publira/utils`. `expires_at` is the empty string for a purchase with no reading period, and the line naming it is then left out.
 
 `account_state` is `confirmed` or `unconfirmed`, and it picks both the copy and what `action_url` is expected to point at: the reset form for an account that can be signed into, the resend form for one whose address is still waiting to be confirmed.
 
