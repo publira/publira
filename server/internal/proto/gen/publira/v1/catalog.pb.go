@@ -163,7 +163,7 @@ type EpisodeEntitlementSource int32
 
 const (
 	EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_UNSPECIFIED EpisodeEntitlementSource = 0
-	// A purchase neither refunded nor past its reading period.
+	// A purchase neither revoked nor past its reading period.
 	EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_PURCHASE EpisodeEntitlementSource = 1
 	// An access ticket neither revoked nor expired.
 	EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET EpisodeEntitlementSource = 2
@@ -6777,7 +6777,8 @@ func (x *StartEpisodeCheckoutResponse) GetCheckoutUrl() string {
 }
 
 // One purchase belonging to the signed-in reader. `is_active` is evaluated by
-// the API at read time: a purchase without an expiry is always active.
+// the API at read time: a purchase is active until it is revoked or its
+// expiry passes, and one without an expiry stays active until it is revoked.
 type MyPurchase struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`

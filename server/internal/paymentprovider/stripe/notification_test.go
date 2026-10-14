@@ -2,12 +2,14 @@ package stripe_test
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"testing"
 
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
 )
@@ -96,6 +98,76 @@ func TestParseNotification(t *testing.T) {
 	t.Run("a session whose amount disagrees with its price fails", func(t *testing.T) {
 		if _, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{"amount_total": 400})); err == nil {
 			t.Fatal("ParseNotification error = nil, want an error")
+		}
+	})
+}
+
+func TestParseNotificationReadsDisputesAndExpiredCheckouts(t *testing.T) {
+	fixture := stripetest.Fixture{}
+	credentials := fixture.Credentials()
+	checkout := paymentprovidertest.Checkout{
+		CheckoutID: "cs_expired",
+		Purchase: paymentprovider.Purchase{
+			TenantID:           uuid.New(),
+			ReaderID:           uuid.New(),
+			EpisodeID:          uuid.New(),
+			Price:              500,
+			Currency:           "JPY",
+			ReadingPeriodHours: 72,
+		},
+	}
+
+	t.Run("a dispute names the payment it disputes", func(t *testing.T) {
+		payload, headers := fixture.Disputed(t, credentials, "pi_disputed")
+		event, err := fixture.Provider().ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		disputed, ok := event.(paymentprovider.Disputed)
+		if !ok {
+			t.Fatalf("event = %T, want Disputed", event)
+		}
+		if disputed.PaymentID != "pi_disputed" {
+			t.Fatalf("payment id = %q, want pi_disputed", disputed.PaymentID)
+		}
+	})
+
+	t.Run("a dispute naming no payment intent is malformed", func(t *testing.T) {
+		payload, headers := fixture.Disputed(t, credentials, "")
+		_, err := fixture.Provider().ParseNotification(t.Context(), payload, headers, credentials)
+		if !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+
+	t.Run("an expired session names the purchase it would have been", func(t *testing.T) {
+		payload, headers := fixture.CheckoutExpired(t, credentials, checkout)
+		event, err := fixture.Provider().ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		expired, ok := event.(paymentprovider.CheckoutExpired)
+		if !ok {
+			t.Fatalf("event = %T, want CheckoutExpired", event)
+		}
+		if expired.CheckoutID != checkout.CheckoutID || expired.Purchase != checkout.Purchase {
+			t.Fatalf("event = %+v, want checkout %q of %+v", expired, checkout.CheckoutID, checkout.Purchase)
+		}
+	})
+
+	t.Run("an expired session this integration did not start is ignored", func(t *testing.T) {
+		payload, headers := stripetest.SignedEvent(t, credentials[stripe.FieldWebhookSecret], "checkout.session.expired", map[string]any{
+			"id":       "cs_someone_else",
+			"object":   "checkout.session",
+			"currency": "jpy",
+			"metadata": map[string]string{},
+		})
+		event, err := fixture.Provider().ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		if _, ok := event.(paymentprovider.Ignored); !ok {
+			t.Fatalf("event = %T, want Ignored", event)
 		}
 	})
 }

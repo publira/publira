@@ -14,6 +14,56 @@ import (
 	"github.com/google/uuid"
 )
 
+const ApplyUnappliedDisputeToPurchase = `-- name: ApplyUnappliedDisputeToPurchase :one
+UPDATE purchases p
+SET revoked_at = COALESCE(p.revoked_at, NOW()),
+    revocation_reason = COALESCE(p.revocation_reason, 'dispute')
+FROM unapplied_disputes d
+WHERE d.tenant_id = p.tenant_id
+    AND d.provider = p.provider
+    AND d.provider_payment_id = p.provider_payment_id
+    AND p.tenant_id = $1
+    AND p.provider = $2::text
+    AND p.provider_payment_id = $3::text
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason
+`
+
+type ApplyUnappliedDisputeToPurchaseParams struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	Provider          string    `json:"provider"`
+	ProviderPaymentID string    `json:"provider_payment_id"`
+}
+
+// Revokes the purchase that has since been created for a held dispute, by the
+// same rules RecordDisputeOnPurchase uses. Nothing matches when no dispute is
+// held for the payment, which is the ordinary case. The held row is deleted by
+// the caller in the same transaction.
+func (q *Queries) ApplyUnappliedDisputeToPurchase(ctx context.Context, arg ApplyUnappliedDisputeToPurchaseParams) (Purchase, error) {
+	row := q.db.QueryRowContext(ctx, ApplyUnappliedDisputeToPurchase, arg.TenantID, arg.Provider, arg.ProviderPaymentID)
+	var i Purchase
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EpisodeID,
+		&i.PriceAtPurchase,
+		&i.ExpiresAt,
+		&i.PurchasedAt,
+		&i.TenantID,
+		&i.ProviderCheckoutID,
+		&i.ProviderPaymentID,
+		&i.RefundedAmount,
+		&i.RefundedAt,
+		&i.Store,
+		&i.StoreTransactionID,
+		&i.IsTest,
+		&i.Provider,
+		&i.Currency,
+		&i.RevokedAt,
+		&i.RevocationReason,
+	)
+	return i, err
+}
+
 const ApplyUnappliedRefundToPurchase = `-- name: ApplyUnappliedRefundToPurchase :one
 WITH held AS (
     SELECT r.tenant_id,
@@ -47,10 +97,18 @@ SET refunded_amount = refund.amount,
     refunded_at = CASE
         WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.refunded_at, NOW())
         ELSE p.refunded_at
+    END,
+    revoked_at = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.revoked_at, NOW())
+        ELSE p.revoked_at
+    END,
+    revocation_reason = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.revocation_reason, 'refund')
+        ELSE p.revocation_reason
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason
 `
 
 type ApplyUnappliedRefundToPurchaseParams struct {
@@ -86,6 +144,8 @@ func (q *Queries) ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyU
 		&i.IsTest,
 		&i.Provider,
 		&i.Currency,
+		&i.RevokedAt,
+		&i.RevocationReason,
 	)
 	return i, err
 }
@@ -118,7 +178,7 @@ VALUES (
     $11::text
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason
 `
 
 type CreatePurchaseFromProviderCheckoutParams struct {
@@ -171,6 +231,8 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 		&i.IsTest,
 		&i.Provider,
 		&i.Currency,
+		&i.RevokedAt,
+		&i.RevocationReason,
 	)
 	return i, err
 }
@@ -197,6 +259,29 @@ func (q *Queries) GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, t
 		&i.Currency,
 	)
 	return i, err
+}
+
+const GetExpiredCheckoutID = `-- name: GetExpiredCheckoutID :one
+SELECT provider_checkout_id
+FROM expired_checkouts
+WHERE tenant_id = $1
+    AND user_id = $2
+    AND episode_id = $3
+`
+
+type GetExpiredCheckoutIDParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// The checkout the reader last let expire on the episode, which the next
+// checkout's idempotency key names. No row is a reader who has let none expire.
+func (q *Queries) GetExpiredCheckoutID(ctx context.Context, arg GetExpiredCheckoutIDParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, GetExpiredCheckoutID, arg.TenantID, arg.UserID, arg.EpisodeID)
+	var provider_checkout_id string
+	err := row.Scan(&provider_checkout_id)
+	return provider_checkout_id, err
 }
 
 const GetPurchasableEpisodeForTenant = `-- name: GetPurchasableEpisodeForTenant :one
@@ -344,6 +429,35 @@ func (q *Queries) GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID
 	return i, err
 }
 
+const HoldUnappliedDispute = `-- name: HoldUnappliedDispute :exec
+INSERT INTO unapplied_disputes (
+    tenant_id,
+    provider,
+    provider_payment_id
+)
+VALUES (
+    $1,
+    $2::text,
+    $3::text
+)
+ON CONFLICT (tenant_id, provider, provider_payment_id) DO
+UPDATE
+SET received_at = NOW()
+`
+
+type HoldUnappliedDisputeParams struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	Provider          string    `json:"provider"`
+	ProviderPaymentID string    `json:"provider_payment_id"`
+}
+
+// Keeps a dispute whose purchase is not here yet, so the notification that
+// creates the purchase can still revoke it.
+func (q *Queries) HoldUnappliedDispute(ctx context.Context, arg HoldUnappliedDisputeParams) error {
+	_, err := q.db.ExecContext(ctx, HoldUnappliedDispute, arg.TenantID, arg.Provider, arg.ProviderPaymentID)
+	return err
+}
+
 const HoldUnappliedRefund = `-- name: HoldUnappliedRefund :exec
 INSERT INTO unapplied_refunds (
     tenant_id,
@@ -409,7 +523,7 @@ SELECT p.id,
     p.price_at_purchase,
     p.currency,
     p.expires_at,
-    p.refunded_at,
+    p.revoked_at,
     p.purchased_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
@@ -469,7 +583,7 @@ type ListMyPurchasesAscRow struct {
 	PriceAtPurchase   int32        `json:"price_at_purchase"`
 	Currency          string       `json:"currency"`
 	ExpiresAt         sql.NullTime `json:"expires_at"`
-	RefundedAt        sql.NullTime `json:"refunded_at"`
+	RevokedAt         sql.NullTime `json:"revoked_at"`
 	PurchasedAt       time.Time    `json:"purchased_at"`
 	EpisodeID         uuid.UUID    `json:"episode_id"`
 	EpisodePublicID   string       `json:"episode_public_id"`
@@ -502,7 +616,7 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 			&i.PriceAtPurchase,
 			&i.Currency,
 			&i.ExpiresAt,
-			&i.RefundedAt,
+			&i.RevokedAt,
 			&i.PurchasedAt,
 			&i.EpisodeID,
 			&i.EpisodePublicID,
@@ -530,7 +644,7 @@ SELECT p.id,
     p.price_at_purchase,
     p.currency,
     p.expires_at,
-    p.refunded_at,
+    p.revoked_at,
     p.purchased_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
@@ -590,7 +704,7 @@ type ListMyPurchasesDescRow struct {
 	PriceAtPurchase   int32        `json:"price_at_purchase"`
 	Currency          string       `json:"currency"`
 	ExpiresAt         sql.NullTime `json:"expires_at"`
-	RefundedAt        sql.NullTime `json:"refunded_at"`
+	RevokedAt         sql.NullTime `json:"revoked_at"`
 	PurchasedAt       time.Time    `json:"purchased_at"`
 	EpisodeID         uuid.UUID    `json:"episode_id"`
 	EpisodePublicID   string       `json:"episode_public_id"`
@@ -627,7 +741,7 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 			&i.PriceAtPurchase,
 			&i.Currency,
 			&i.ExpiresAt,
-			&i.RefundedAt,
+			&i.RevokedAt,
 			&i.PurchasedAt,
 			&i.EpisodeID,
 			&i.EpisodePublicID,
@@ -676,6 +790,101 @@ func (q *Queries) LockTenantCurrencyShared(ctx context.Context, tenantID uuid.UU
 	return err
 }
 
+const RecordDisputeOnPurchase = `-- name: RecordDisputeOnPurchase :one
+UPDATE purchases
+SET revoked_at = COALESCE(revoked_at, NOW()),
+    revocation_reason = COALESCE(revocation_reason, 'dispute')
+WHERE tenant_id = $1
+    AND provider = $2::text
+    AND provider_payment_id = $3::text
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason
+`
+
+type RecordDisputeOnPurchaseParams struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	Provider          string    `json:"provider"`
+	ProviderPaymentID string    `json:"provider_payment_id"`
+}
+
+// Revokes the purchase of the payment a dispute names. A disputed charge opens
+// nothing while the reader's bank holds the money, whatever the dispute later
+// decides, and a repeated delivery leaves the instant and the reason already
+// stored. Nothing matches when the payment belongs to another tenant, another
+// provider, or no purchase here.
+func (q *Queries) RecordDisputeOnPurchase(ctx context.Context, arg RecordDisputeOnPurchaseParams) (Purchase, error) {
+	row := q.db.QueryRowContext(ctx, RecordDisputeOnPurchase, arg.TenantID, arg.Provider, arg.ProviderPaymentID)
+	var i Purchase
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EpisodeID,
+		&i.PriceAtPurchase,
+		&i.ExpiresAt,
+		&i.PurchasedAt,
+		&i.TenantID,
+		&i.ProviderCheckoutID,
+		&i.ProviderPaymentID,
+		&i.RefundedAmount,
+		&i.RefundedAt,
+		&i.Store,
+		&i.StoreTransactionID,
+		&i.IsTest,
+		&i.Provider,
+		&i.Currency,
+		&i.RevokedAt,
+		&i.RevocationReason,
+	)
+	return i, err
+}
+
+const RecordExpiredCheckout = `-- name: RecordExpiredCheckout :exec
+INSERT INTO expired_checkouts (
+    tenant_id,
+    user_id,
+    episode_id,
+    provider,
+    provider_checkout_id
+)
+SELECT u.tenant_id,
+    u.id,
+    e.id,
+    $1::text,
+    $2::text
+FROM users u
+    JOIN episodes e ON e.tenant_id = u.tenant_id
+WHERE u.tenant_id = $3::uuid
+    AND u.id = $4
+    AND e.id = $5
+ON CONFLICT (tenant_id, user_id, episode_id) DO
+UPDATE
+SET provider = EXCLUDED.provider,
+    provider_checkout_id = EXCLUDED.provider_checkout_id,
+    expired_at = NOW()
+`
+
+type RecordExpiredCheckoutParams struct {
+	Provider           string    `json:"provider"`
+	ProviderCheckoutID string    `json:"provider_checkout_id"`
+	TenantID           uuid.UUID `json:"tenant_id"`
+	UserID             uuid.UUID `json:"user_id"`
+	EpisodeID          uuid.UUID `json:"episode_id"`
+}
+
+// Records the checkout the provider reports expired as the reader's latest on
+// the episode. A repeated delivery names the same checkout and changes
+// nothing the idempotency key reads. A reader or an episode deleted since the
+// checkout started records nothing, since there is no next checkout to key.
+func (q *Queries) RecordExpiredCheckout(ctx context.Context, arg RecordExpiredCheckoutParams) error {
+	_, err := q.db.ExecContext(ctx, RecordExpiredCheckout,
+		arg.Provider,
+		arg.ProviderCheckoutID,
+		arg.TenantID,
+		arg.UserID,
+		arg.EpisodeID,
+	)
+	return err
+}
+
 const RecordRefundOnPurchase = `-- name: RecordRefundOnPurchase :one
 WITH refund AS (
     SELECT p.id,
@@ -698,10 +907,18 @@ SET refunded_amount = refund.amount,
     refunded_at = CASE
         WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.refunded_at, NOW())
         ELSE p.refunded_at
+    END,
+    revoked_at = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.revoked_at, NOW())
+        ELSE p.revoked_at
+    END,
+    revocation_reason = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.revocation_reason, 'refund')
+        ELSE p.revocation_reason
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason
 `
 
 type RecordRefundOnPurchaseParams struct {
@@ -723,7 +940,9 @@ type RecordRefundOnPurchaseParams struct {
 // purchase's, which says nothing comparable to its price, is recorded as a
 // refund of the whole price. refunded_at follows from the amount rather than from the event:
 // it is set once the refunded total reaches what was paid, and a repeated
-// delivery of the same refund leaves the instant already stored.
+// delivery of the same refund leaves the instant already stored. The same
+// moment revokes the purchase, unless something revoked it first, whose reason
+// it keeps.
 func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOnPurchaseParams) (Purchase, error) {
 	row := q.db.QueryRowContext(ctx, RecordRefundOnPurchase,
 		arg.Currency,
@@ -750,8 +969,28 @@ func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOn
 		&i.IsTest,
 		&i.Provider,
 		&i.Currency,
+		&i.RevokedAt,
+		&i.RevocationReason,
 	)
 	return i, err
+}
+
+const ReleaseUnappliedDispute = `-- name: ReleaseUnappliedDispute :exec
+DELETE FROM unapplied_disputes
+WHERE tenant_id = $1
+    AND provider = $2::text
+    AND provider_payment_id = $3::text
+`
+
+type ReleaseUnappliedDisputeParams struct {
+	TenantID          uuid.UUID `json:"tenant_id"`
+	Provider          string    `json:"provider"`
+	ProviderPaymentID string    `json:"provider_payment_id"`
+}
+
+func (q *Queries) ReleaseUnappliedDispute(ctx context.Context, arg ReleaseUnappliedDisputeParams) error {
+	_, err := q.db.ExecContext(ctx, ReleaseUnappliedDispute, arg.TenantID, arg.Provider, arg.ProviderPaymentID)
+	return err
 }
 
 const ReleaseUnappliedRefund = `-- name: ReleaseUnappliedRefund :exec

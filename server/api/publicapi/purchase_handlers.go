@@ -143,7 +143,15 @@ func (s *apiServer) StartEpisodeCheckout(
 		SuccessURL:   successURL,
 		CancelURL:    cancelURL,
 	}
-	checkout.IdempotencyKey, err = checkoutIdempotencyKey(checkout)
+	expiredCheckoutID, err := s.queriesFor(ctx).GetExpiredCheckoutID(ctx, dbmodels.GetExpiredCheckoutIDParams{
+		TenantID:  tenant.ID,
+		UserID:    user.ID,
+		EpisodeID: episode.ID,
+	})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, s.internalDBError(ctx, "failed to read the reader's expired checkout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	checkout.IdempotencyKey, err = checkoutIdempotencyKey(checkout, expiredCheckoutID)
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the checkout idempotency key", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
@@ -164,9 +172,19 @@ func (s *apiServer) StartEpisodeCheckout(
 // between the storefront and the app. The key therefore covers the whole
 // request rather than a list of its fields, which a field added later would
 // not be on.
-func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest) (string, error) {
+//
+// A provider also keeps answering a key with its checkout after that checkout
+// has expired, for as long as it remembers the key, which would send a reader
+// who comes back later to a checkout they can no longer pay. The key therefore
+// names expiredCheckoutID too, the reader's last checkout of the episode the
+// provider reported expired, so each expiry moves the next attempt onto a new
+// checkout. Empty is a reader who has let none expire.
+func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest, expiredCheckoutID string) (string, error) {
 	req.IdempotencyKey = ""
-	encoded, err := json.Marshal(req)
+	encoded, err := json.Marshal(struct {
+		Request           paymentprovider.CheckoutRequest
+		ExpiredCheckoutID string
+	}{req, expiredCheckoutID})
 	if err != nil {
 		return "", fmt.Errorf("encode checkout request: %w", err)
 	}
@@ -211,7 +229,7 @@ type purchasePageRow struct {
 	priceAtPurchase   int32
 	currency          string
 	expiresAt         sql.NullTime
-	refundedAt        sql.NullTime
+	revokedAt         sql.NullTime
 	purchasedAt       time.Time
 	episodeID         uuid.UUID
 	episodePublicID   string
@@ -230,7 +248,7 @@ func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageR
 			priceAtPurchase:   row.PriceAtPurchase,
 			currency:          row.Currency,
 			expiresAt:         row.ExpiresAt,
-			refundedAt:        row.RefundedAt,
+			revokedAt:         row.RevokedAt,
 			purchasedAt:       row.PurchasedAt,
 			episodeID:         row.EpisodeID,
 			episodePublicID:   row.EpisodePublicID,
@@ -252,7 +270,7 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 			priceAtPurchase:   row.PriceAtPurchase,
 			currency:          row.Currency,
 			expiresAt:         row.ExpiresAt,
-			refundedAt:        row.RefundedAt,
+			revokedAt:         row.RevokedAt,
 			purchasedAt:       row.PurchasedAt,
 			episodeID:         row.EpisodeID,
 			episodePublicID:   row.EpisodePublicID,
@@ -301,9 +319,9 @@ func (s *apiServer) purchasePage(
 
 func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurchase {
 	expiresAt := ""
-	// A refunded purchase opens nothing, so the library must not offer it as
+	// A revoked purchase opens nothing, so the library must not offer it as
 	// one the reader can still open.
-	isActive := !row.refundedAt.Valid
+	isActive := !row.revokedAt.Valid
 	if row.expiresAt.Valid {
 		expiresAt = row.expiresAt.Time.UTC().Format(time.RFC3339)
 		isActive = isActive && row.expiresAt.Time.After(now)
@@ -456,6 +474,23 @@ func (s *apiServer) ProcessPaymentWebhook(
 		if err := s.recordRefund(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
 			return nil, err
 		}
+	case paymentprovider.Disputed:
+		if err := s.recordDispute(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
+			return nil, err
+		}
+	case paymentprovider.CheckoutExpired:
+		if event.Purchase.TenantID != tenant.ID {
+			return nil, connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
+		}
+		if err := s.queriesFor(ctx).RecordExpiredCheckout(ctx, dbmodels.RecordExpiredCheckoutParams{
+			TenantID:           tenant.ID,
+			UserID:             event.Purchase.ReaderID,
+			EpisodeID:          event.Purchase.EpisodeID,
+			Provider:           provider.Declaration().ID,
+			ProviderCheckoutID: event.CheckoutID,
+		}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to record an expired checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
+		}
 	case paymentprovider.PurchaseCompleted:
 		if event.Purchase.TenantID != tenant.ID {
 			return nil, connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
@@ -560,9 +595,50 @@ func (s *apiServer) recordRefund(
 	return nil
 }
 
+func (s *apiServer) recordDispute(
+	ctx context.Context,
+	queries Querier,
+	tenantID uuid.UUID,
+	providerID string,
+	event paymentprovider.Disputed,
+) error {
+	purchase, err := queries.RecordDisputeOnPurchase(ctx, dbmodels.RecordDisputeOnPurchaseParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: event.PaymentID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		// Held for the same reason a refund is: the notification that creates
+		// the purchase may still be on its way.
+		if err := queries.HoldUnappliedDispute(ctx, dbmodels.HoldUnappliedDisputeParams{
+			TenantID:          tenantID,
+			Provider:          providerID,
+			ProviderPaymentID: event.PaymentID,
+		}); err != nil {
+			return s.internalDBError(ctx, "failed to hold an unmatched dispute", err, "event_id", event.ID, "payment_id", event.PaymentID)
+		}
+		s.logger.WarnContext(ctx, "dispute matches no purchase yet and is held",
+			"tenant_id", tenantID,
+			"event_id", event.ID,
+			"payment_id", event.PaymentID,
+		)
+		return nil
+	}
+	if err != nil {
+		return s.internalDBError(ctx, "failed to record dispute", err, "event_id", event.ID, "payment_id", event.PaymentID)
+	}
+	s.logger.InfoContext(ctx, "revoked a disputed purchase",
+		"tenant_id", tenantID,
+		"event_id", event.ID,
+		"purchase_id", purchase.ID,
+		"revocation_reason", purchase.RevocationReason.String,
+	)
+	return nil
+}
+
 // createPurchase records the purchase a completed checkout paid for, and
-// everything that follows from it, in one transaction: the refund that may
-// have overtaken it, its engagement event, and the receipt the reader is owed.
+// everything that follows from it, in one transaction: the refund or the
+// dispute that may have overtaken it, its engagement event, and the receipt the reader is owed.
 // A delivery that fails partway therefore leaves nothing behind, and the
 // provider's retry starts again from the purchase.
 func (s *apiServer) createPurchase(
@@ -617,6 +693,9 @@ func (s *apiServer) createPurchase(
 
 	if paymentID.Valid {
 		if err := s.applyHeldRefund(ctx, queries, tenantID, providerID, paymentID.String); err != nil {
+			return err
+		}
+		if err := s.applyHeldDispute(ctx, queries, tenantID, providerID, paymentID.String); err != nil {
 			return err
 		}
 	}
@@ -686,6 +765,42 @@ func (s *apiServer) applyHeldRefund(
 		"payment_id", paymentID,
 		"refunded_amount", purchase.RefundedAmount.Int32,
 		"fully_refunded", purchase.RefundedAt.Valid,
+	)
+	return nil
+}
+
+// applyHeldDispute revokes the purchase for any dispute that reached us before
+// it existed. Ordinarily nothing is held and this costs one lookup.
+func (s *apiServer) applyHeldDispute(
+	ctx context.Context,
+	queries Querier,
+	tenantID uuid.UUID,
+	providerID string,
+	paymentID string,
+) error {
+	purchase, err := queries.ApplyUnappliedDisputeToPurchase(ctx, dbmodels.ApplyUnappliedDisputeToPurchaseParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: paymentID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("apply held dispute: %w", err)
+	}
+	if err := queries.ReleaseUnappliedDispute(ctx, dbmodels.ReleaseUnappliedDisputeParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: paymentID,
+	}); err != nil {
+		return fmt.Errorf("release held dispute: %w", err)
+	}
+	s.logger.InfoContext(ctx, "revoked a purchase for a dispute that arrived before it",
+		"tenant_id", tenantID,
+		"purchase_id", purchase.ID,
+		"payment_id", paymentID,
+		"revocation_reason", purchase.RevocationReason.String,
 	)
 	return nil
 }

@@ -3396,7 +3396,8 @@ export const StartEpisodeCheckoutResponseSchema: GenMessage<StartEpisodeCheckout
 
 /**
  * One purchase belonging to the signed-in reader. `is_active` is evaluated by
- * the API at read time: a purchase without an expiry is always active.
+ * the API at read time: a purchase is active until it is revoked or its
+ * expiry passes, and one without an expiry stays active until it is revoked.
  *
  * @generated from message publira.v1.MyPurchase
  */
@@ -4026,7 +4027,7 @@ export enum EpisodeEntitlementSource {
   UNSPECIFIED = 0,
 
   /**
-   * A purchase neither refunded nor past its reading period.
+   * A purchase neither revoked nor past its reading period.
    *
    * @generated from enum value: EPISODE_ENTITLEMENT_SOURCE_PURCHASE = 1;
    */

@@ -108,6 +108,30 @@ func (Fixture) Refunded(t testing.TB, credentials paymentprovider.Credentials, r
 	})
 }
 
+// Disputed answers Stripe's notification that the charge of paymentID is
+// disputed. It is not part of the contract, which no provider but Stripe
+// reports a dispute through yet.
+func (Fixture) Disputed(t testing.TB, credentials paymentprovider.Credentials, paymentID string) ([]byte, http.Header) {
+	t.Helper()
+	return recorded(t, credentials, "charge.dispute.created.json", map[string]any{
+		"payment_intent": paymentID,
+	})
+}
+
+// CheckoutExpired answers Stripe's notification that the Checkout Session of
+// checkout expired unpaid. It is not part of the contract either.
+func (Fixture) CheckoutExpired(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout) ([]byte, http.Header) {
+	t.Helper()
+	return recorded(t, credentials, "checkout.session.expired.json", map[string]any{
+		"id":              checkout.CheckoutID,
+		"amount_subtotal": checkout.Purchase.Price,
+		"amount_total":    checkout.Purchase.Price,
+		"currency":        strings.ToLower(checkout.Purchase.Currency),
+		"livemode":        !checkout.Test,
+		"metadata":        PurchaseMetadata(checkout.Purchase),
+	})
+}
+
 func (Fixture) Unrelated(t testing.TB, credentials paymentprovider.Credentials) ([]byte, http.Header) {
 	t.Helper()
 	return recorded(t, credentials, "payment_intent.created.json", nil)

@@ -16,14 +16,16 @@ import (
 const ApplyUnappliedStoreRefundToPurchase = `-- name: ApplyUnappliedStoreRefundToPurchase :one
 UPDATE purchases p
 SET refunded_amount = p.price_at_purchase,
-    refunded_at = COALESCE(p.refunded_at, NOW())
+    refunded_at = COALESCE(p.refunded_at, NOW()),
+    revoked_at = COALESCE(p.revoked_at, NOW()),
+    revocation_reason = COALESCE(p.revocation_reason, 'refund')
 FROM unapplied_store_refunds r
 WHERE r.tenant_id = p.tenant_id
     AND r.store = p.store
     AND r.store_transaction_id = p.store_transaction_id
     AND p.tenant_id = $1
     AND p.id = $2
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason
 `
 
 type ApplyUnappliedStoreRefundToPurchaseParams struct {
@@ -54,6 +56,8 @@ func (q *Queries) ApplyUnappliedStoreRefundToPurchase(ctx context.Context, arg A
 		&i.IsTest,
 		&i.Provider,
 		&i.Currency,
+		&i.RevokedAt,
+		&i.RevocationReason,
 	)
 	return i, err
 }
@@ -102,7 +106,7 @@ VALUES (
     $10
 )
 ON CONFLICT (tenant_id, store, store_transaction_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason
 `
 
 type CreateStorePurchaseParams struct {
@@ -151,6 +155,8 @@ func (q *Queries) CreateStorePurchase(ctx context.Context, arg CreateStorePurcha
 		&i.IsTest,
 		&i.Provider,
 		&i.Currency,
+		&i.RevokedAt,
+		&i.RevocationReason,
 	)
 	return i, err
 }
@@ -160,7 +166,7 @@ SELECT p.id,
     p.price_at_purchase,
     p.currency,
     p.expires_at,
-    p.refunded_at,
+    p.revoked_at,
     p.purchased_at,
     e.public_id AS episode_public_id,
     e.title AS episode_title,
@@ -186,7 +192,7 @@ type GetMyPurchaseRow struct {
 	PriceAtPurchase   int32        `json:"price_at_purchase"`
 	Currency          string       `json:"currency"`
 	ExpiresAt         sql.NullTime `json:"expires_at"`
-	RefundedAt        sql.NullTime `json:"refunded_at"`
+	RevokedAt         sql.NullTime `json:"revoked_at"`
 	PurchasedAt       time.Time    `json:"purchased_at"`
 	EpisodePublicID   string       `json:"episode_public_id"`
 	EpisodeTitle      string       `json:"episode_title"`
@@ -204,7 +210,7 @@ func (q *Queries) GetMyPurchase(ctx context.Context, arg GetMyPurchaseParams) (G
 		&i.PriceAtPurchase,
 		&i.Currency,
 		&i.ExpiresAt,
-		&i.RefundedAt,
+		&i.RevokedAt,
 		&i.PurchasedAt,
 		&i.EpisodePublicID,
 		&i.EpisodeTitle,
@@ -216,7 +222,7 @@ func (q *Queries) GetMyPurchase(ctx context.Context, arg GetMyPurchaseParams) (G
 }
 
 const GetStorePurchaseByTransaction = `-- name: GetStorePurchaseByTransaction :one
-SELECT id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency
+SELECT id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason
 FROM purchases
 WHERE tenant_id = $1
     AND store = $2::text
@@ -249,6 +255,8 @@ func (q *Queries) GetStorePurchaseByTransaction(ctx context.Context, arg GetStor
 		&i.IsTest,
 		&i.Provider,
 		&i.Currency,
+		&i.RevokedAt,
+		&i.RevocationReason,
 	)
 	return i, err
 }
@@ -412,11 +420,13 @@ func (q *Queries) OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurc
 const RecordStoreRefundOnPurchase = `-- name: RecordStoreRefundOnPurchase :one
 UPDATE purchases
 SET refunded_amount = price_at_purchase,
-    refunded_at = COALESCE(refunded_at, NOW())
+    refunded_at = COALESCE(refunded_at, NOW()),
+    revoked_at = COALESCE(revoked_at, NOW()),
+    revocation_reason = COALESCE(revocation_reason, 'refund')
 WHERE tenant_id = $1
     AND store = $2::text
     AND store_transaction_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason
 `
 
 type RecordStoreRefundOnPurchaseParams struct {
@@ -427,7 +437,8 @@ type RecordStoreRefundOnPurchaseParams struct {
 
 // Records a store's refund on the purchase of the transaction it names. A
 // store refunds a consumable in full, so the purchase is refunded its whole
-// price; a repeated notification or poll leaves the instant already stored.
+// price and revoked, unless something revoked it first; a
+// repeated notification or poll leaves the instants already stored.
 // Nothing matches when the transaction has no purchase here yet.
 func (q *Queries) RecordStoreRefundOnPurchase(ctx context.Context, arg RecordStoreRefundOnPurchaseParams) (Purchase, error) {
 	row := q.db.QueryRowContext(ctx, RecordStoreRefundOnPurchase, arg.TenantID, arg.Store, arg.StoreTransactionID)
@@ -449,6 +460,8 @@ func (q *Queries) RecordStoreRefundOnPurchase(ctx context.Context, arg RecordSto
 		&i.IsTest,
 		&i.Provider,
 		&i.Currency,
+		&i.RevokedAt,
+		&i.RevocationReason,
 	)
 	return i, err
 }

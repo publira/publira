@@ -132,7 +132,8 @@ type CheckoutRequest struct {
 }
 
 // Event is what a notification means to the purchase flow: one of
-// [PurchaseCompleted], [Refunded], or [Ignored].
+// [PurchaseCompleted], [Refunded], [Disputed], [CheckoutExpired], or
+// [Ignored].
 type Event interface {
 	// NotificationID is the provider's id of the notification, for logs.
 	NotificationID() string
@@ -166,6 +167,21 @@ type Refunded struct {
 	Currency string
 }
 
+// Disputed reports that the reader has disputed one payment with their bank.
+type Disputed struct {
+	ID        string
+	PaymentID string
+}
+
+// CheckoutExpired reports a checkout that closed without being paid. It
+// revokes nothing, since nothing was bought, but the reader's next checkout of
+// the same episode has to be a new one.
+type CheckoutExpired struct {
+	ID         string
+	CheckoutID string
+	Purchase   Purchase
+}
+
 // Ignored is a notification the purchase flow has no use for.
 type Ignored struct {
 	ID   string
@@ -174,10 +190,14 @@ type Ignored struct {
 
 func (e PurchaseCompleted) NotificationID() string { return e.ID }
 func (e Refunded) NotificationID() string          { return e.ID }
+func (e Disputed) NotificationID() string          { return e.ID }
+func (e CheckoutExpired) NotificationID() string   { return e.ID }
 func (e Ignored) NotificationID() string           { return e.ID }
 
 func (PurchaseCompleted) isEvent() {}
 func (Refunded) isEvent()          {}
+func (Disputed) isEvent()          {}
+func (CheckoutExpired) isEvent()   {}
 func (Ignored) isEvent()           {}
 
 // Provider is one web payment provider.

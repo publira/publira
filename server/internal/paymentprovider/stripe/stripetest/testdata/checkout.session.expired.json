@@ -1,0 +1,36 @@
+{
+  "id": "evt_1QfJq3Lk4f8bA7xYe5XpIrD2",
+  "object": "event",
+  "api_version": "",
+  "created": 1767312000,
+  "data": {
+    "object": {
+      "id": "cs_test_b2C3d4E5f6G7h8I9j0K1",
+      "object": "checkout.session",
+      "amount_subtotal": 500,
+      "amount_total": 500,
+      "cancel_url": "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=cancelled",
+      "created": 1767225540,
+      "currency": "jpy",
+      "customer": null,
+      "customer_details": null,
+      "expires_at": 1767311940,
+      "livemode": false,
+      "metadata": {},
+      "mode": "payment",
+      "payment_intent": null,
+      "payment_method_types": ["card"],
+      "payment_status": "unpaid",
+      "status": "expired",
+      "success_url": "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success&session_id=%7BCHECKOUT_SESSION_ID%7D",
+      "url": null
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "checkout.session.expired"
+}

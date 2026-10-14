@@ -20,6 +20,11 @@ type Querier interface {
 	AdvanceContentStatsThrough(ctx context.Context, arg AdvanceContentStatsThroughParams) error
 	AdvanceRankingsThrough(ctx context.Context, arg AdvanceRankingsThroughParams) error
 	AdvanceRecommendFeaturesThrough(ctx context.Context, arg AdvanceRecommendFeaturesThroughParams) error
+	// Revokes the purchase that has since been created for a held dispute, by the
+	// same rules RecordDisputeOnPurchase uses. Nothing matches when no dispute is
+	// held for the payment, which is the ordinary case. The held row is deleted by
+	// the caller in the same transaction.
+	ApplyUnappliedDisputeToPurchase(ctx context.Context, arg ApplyUnappliedDisputeToPurchaseParams) (Purchase, error)
 	// Writes a held refund onto the purchase that has since been created, by the
 	// same rules RecordRefundOnPurchase uses. Nothing matches when no refund is
 	// held for the payment, which is the ordinary case.
@@ -565,6 +570,9 @@ type Querier interface {
 	// The episode an image upload names and the series it belongs to, so an
 	// upload that also names a series is refused for an episode of another one.
 	GetEpisodeSeriesByIDForTenant(ctx context.Context, arg GetEpisodeSeriesByIDForTenantParams) (GetEpisodeSeriesByIDForTenantRow, error)
+	// The checkout the reader last let expire on the episode, which the next
+	// checkout's idempotency key names. No row is a reader who has let none expire.
+	GetExpiredCheckoutID(ctx context.Context, arg GetExpiredCheckoutIDParams) (string, error)
 	GetGenreByIDForTenant(ctx context.Context, arg GetGenreByIDForTenantParams) (GetGenreByIDForTenantRow, error)
 	// Whether a public ID the series list was filtered by names a genre of this
 	// tenant. A filter naming nothing is refused rather than answered with an
@@ -962,6 +970,9 @@ type Querier interface {
 	// hidden_by is NULL when hidden_reason is 'auto_reports': the report threshold
 	// has no staff actor to name.
 	HideEpisodeCommentByIDForTenant(ctx context.Context, arg HideEpisodeCommentByIDForTenantParams) (EpisodeComment, error)
+	// Keeps a dispute whose purchase is not here yet, so the notification that
+	// creates the purchase can still revoke it.
+	HoldUnappliedDispute(ctx context.Context, arg HoldUnappliedDisputeParams) error
 	// Keeps a refund whose purchase is not here yet, so the notification that
 	// creates the purchase can still apply it. The provider's payment is the
 	// identity, so a repeated delivery updates the row rather than adding one.
@@ -2602,10 +2613,21 @@ type Querier interface {
 	// events before purged_before. It never moves the mark back, so a run under a
 	// period that was lengthened since cannot hide what an earlier run deleted.
 	RecordContentEventPurge(ctx context.Context, arg RecordContentEventPurgeParams) error
+	// Revokes the purchase of the payment a dispute names. A disputed charge opens
+	// nothing while the reader's bank holds the money, whatever the dispute later
+	// decides, and a repeated delivery leaves the instant and the reason already
+	// stored. Nothing matches when the payment belongs to another tenant, another
+	// provider, or no purchase here.
+	RecordDisputeOnPurchase(ctx context.Context, arg RecordDisputeOnPurchaseParams) (Purchase, error)
 	// RecordEpisodeReadProjection moves a tenant's projection instant forward, and
 	// starts the chain for a tenant it has not seen yet: every link is placed on
 	// start_through, so the first day each one rebuilds is the day after it.
 	RecordEpisodeReadProjection(ctx context.Context, arg RecordEpisodeReadProjectionParams) error
+	// Records the checkout the provider reports expired as the reader's latest on
+	// the episode. A repeated delivery names the same checkout and changes
+	// nothing the idempotency key reads. A reader or an episode deleted since the
+	// checkout started records nothing, since there is no next checkout to key.
+	RecordExpiredCheckout(ctx context.Context, arg RecordExpiredCheckoutParams) error
 	// A paged handler records how far it has got after each page, so a run
 	// that ends before the event is finished leaves the next one a place to
 	// resume from. Only the run that holds the claim may move it.
@@ -2627,11 +2649,14 @@ type Querier interface {
 	// purchase's, which says nothing comparable to its price, is recorded as a
 	// refund of the whole price. refunded_at follows from the amount rather than from the event:
 	// it is set once the refunded total reaches what was paid, and a repeated
-	// delivery of the same refund leaves the instant already stored.
+	// delivery of the same refund leaves the instant already stored. The same
+	// moment revokes the purchase, unless something revoked it first, whose reason
+	// it keeps.
 	RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOnPurchaseParams) (Purchase, error)
 	// Records a store's refund on the purchase of the transaction it names. A
 	// store refunds a consumable in full, so the purchase is refunded its whole
-	// price; a repeated notification or poll leaves the instant already stored.
+	// price and revoked, unless something revoked it first; a
+	// repeated notification or poll leaves the instants already stored.
 	// Nothing matches when the transaction has no purchase here yet.
 	RecordStoreRefundOnPurchase(ctx context.Context, arg RecordStoreRefundOnPurchaseParams) (Purchase, error)
 	// Reaching the threshold starts the lock and puts the counter back to zero,
@@ -2682,6 +2707,7 @@ type Querier interface {
 	// reports against it do not; leaving them open would let the same reports carry
 	// the comment past the removal threshold again the moment it came back.
 	RejectOpenEpisodeCommentReportsForComment(ctx context.Context, arg RejectOpenEpisodeCommentReportsForCommentParams) (int64, error)
+	ReleaseUnappliedDispute(ctx context.Context, arg ReleaseUnappliedDisputeParams) error
 	ReleaseUnappliedRefund(ctx context.Context, arg ReleaseUnappliedRefundParams) error
 	ReleaseUnappliedStoreRefund(ctx context.Context, arg ReleaseUnappliedStoreRefundParams) error
 	ResetPlatformUserMfaTotpFailures(ctx context.Context, platformUserID uuid.UUID) error

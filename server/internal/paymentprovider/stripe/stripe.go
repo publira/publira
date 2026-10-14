@@ -141,8 +141,12 @@ func (*Provider) ParseNotification(_ context.Context, payload []byte, headers ht
 	switch event.Type {
 	case stripego.EventTypeChargeRefunded:
 		return refundedEvent(&event)
+	case stripego.EventTypeChargeDisputeCreated:
+		return disputedEvent(&event)
 	case stripego.EventTypeCheckoutSessionCompleted, stripego.EventTypeCheckoutSessionAsyncPaymentSucceeded:
 		return purchaseCompletedEvent(&event)
+	case stripego.EventTypeCheckoutSessionExpired:
+		return checkoutExpiredEvent(&event)
 	default:
 		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
 	}
@@ -165,6 +169,47 @@ func refundedEvent(event *stripego.Event) (paymentprovider.Event, error) {
 		PaymentID:      paymentIntentID,
 		AmountRefunded: charge.AmountRefunded,
 		Currency:       strings.ToUpper(string(charge.Currency)),
+	}, nil
+}
+
+func disputedEvent(event *stripego.Event) (paymentprovider.Event, error) {
+	var dispute stripego.Dispute
+	if err := json.Unmarshal(event.Data.Raw, &dispute); err != nil {
+		return nil, fmt.Errorf("%w: dispute: %v", paymentprovider.ErrMalformedNotification, err)
+	}
+	paymentIntentID := ""
+	if dispute.PaymentIntent != nil {
+		paymentIntentID = strings.TrimSpace(dispute.PaymentIntent.ID)
+	}
+	if paymentIntentID == "" {
+		return nil, fmt.Errorf("%w: the dispute names no payment intent", paymentprovider.ErrMalformedNotification)
+	}
+	return paymentprovider.Disputed{
+		ID:        event.ID,
+		PaymentID: paymentIntentID,
+	}, nil
+}
+
+func checkoutExpiredEvent(event *stripego.Event) (paymentprovider.Event, error) {
+	var session stripego.CheckoutSession
+	if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
+		return nil, fmt.Errorf("%w: checkout session: %v", paymentprovider.ErrMalformedNotification, err)
+	}
+	if strings.TrimSpace(session.ID) == "" {
+		return nil, fmt.Errorf("%w: the checkout session has no id", paymentprovider.ErrMalformedNotification)
+	}
+	// A session this integration did not start names no purchase. Its expiry
+	// changes nothing here, so it is acknowledged rather than refused into
+	// days of retries.
+	purchase, err := parsePurchaseMetadata(session.Metadata)
+	if err != nil {
+		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
+	}
+	purchase.Currency = strings.ToUpper(string(session.Currency))
+	return paymentprovider.CheckoutExpired{
+		ID:         event.ID,
+		CheckoutID: session.ID,
+		Purchase:   purchase,
 	}, nil
 }
 

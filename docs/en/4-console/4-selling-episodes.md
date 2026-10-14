@@ -71,10 +71,12 @@ Do the setup below with the provider's test keys first, as [Testing before going
 In the Stripe Dashboard:
 
 1. Copy the **secret key** from the API keys page. A test key starts with `sk_test_`, a live key with `sk_live_`.
-2. Add a webhook endpoint. Its URL is the **Webhook URL** the console shows under **Payment settings** once Stripe is chosen, `https://<tenant-domain>/api/v1/webhook/payment/stripe` on the tenant's own site domain. Select these three events:
+2. Add a webhook endpoint. Its URL is the **Webhook URL** the console shows under **Payment settings** once Stripe is chosen, `https://<tenant-domain>/api/v1/webhook/payment/stripe` on the tenant's own site domain. Select these five events:
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
+   - `checkout.session.expired`
    - `charge.refunded`
+   - `charge.dispute.created`
 3. Open the endpoint and copy its **signing secret**, which starts with `whsec_`.
 
 Then in the console, under **Payment settings**:
@@ -168,6 +170,14 @@ Each refund reaches the install the way its purchase did:
 - **Google Play** does not send refunds. The install reads Google Play's voided purchases once an hour, for the last 30 days, so a refunded purchase can keep its episode open for up to an hour. This runs in `publira worker`, which the operator keeps running, as [Overview](../2-deployments/1-overview.md) describes; without it, Google Play refunds are not applied.
 
 A refund that arrives before the purchase it reverses is kept, and applied when the purchase is recorded.
+
+## Disputes
+
+When a reader disputes a Stripe payment with their bank, Stripe reports it through the same webhook, which is why its endpoint needs `charge.dispute.created`. The episode closes to the reader as soon as the dispute is opened, whichever way the bank later decides it, and the purchase stays in their history. Respond to the dispute in the Stripe Dashboard; nothing is done in the console. The sale stays on the royalty statement whichever way the bank decides, since only a refund takes a sale off it.
+
+## Abandoned checkouts
+
+A reader who leaves the payment page without paying can start the purchase again at any time. Once Stripe reports the abandoned checkout expired, which is why its endpoint needs `checkout.session.expired`, the reader's next attempt opens a new payment page instead of the expired one.
 
 ## Testing before going live
 

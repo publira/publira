@@ -102,7 +102,7 @@ SELECT p.id,
     p.price_at_purchase,
     p.currency,
     p.expires_at,
-    p.refunded_at,
+    p.revoked_at,
     p.purchased_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
@@ -151,7 +151,7 @@ SELECT p.id,
     p.price_at_purchase,
     p.currency,
     p.expires_at,
-    p.refunded_at,
+    p.revoked_at,
     p.purchased_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
@@ -269,7 +269,9 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')::uuid
 -- purchase's, which says nothing comparable to its price, is recorded as a
 -- refund of the whole price. refunded_at follows from the amount rather than from the event:
 -- it is set once the refunded total reaches what was paid, and a repeated
--- delivery of the same refund leaves the instant already stored.
+-- delivery of the same refund leaves the instant already stored. The same
+-- moment revokes the purchase, unless something revoked it first, whose reason
+-- it keeps.
 WITH refund AS (
     SELECT p.id,
         GREATEST(
@@ -291,6 +293,14 @@ SET refunded_amount = refund.amount,
     refunded_at = CASE
         WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.refunded_at, NOW())
         ELSE p.refunded_at
+    END,
+    revoked_at = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.revoked_at, NOW())
+        ELSE p.revoked_at
+    END,
+    revocation_reason = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.revocation_reason, 'refund')
+        ELSE p.revocation_reason
     END
 FROM refund
 WHERE p.id = refund.id
@@ -376,6 +386,14 @@ SET refunded_amount = refund.amount,
     refunded_at = CASE
         WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.refunded_at, NOW())
         ELSE p.refunded_at
+    END,
+    revoked_at = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.revoked_at, NOW())
+        ELSE p.revoked_at
+    END,
+    revocation_reason = CASE
+        WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.revocation_reason, 'refund')
+        ELSE p.revocation_reason
     END
 FROM refund
 WHERE p.id = refund.id
@@ -386,3 +404,94 @@ DELETE FROM unapplied_refunds
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND provider = sqlc.arg('provider')::text
     AND provider_payment_id = sqlc.arg('provider_payment_id')::text;
+
+-- name: RecordDisputeOnPurchase :one
+-- Revokes the purchase of the payment a dispute names. A disputed charge opens
+-- nothing while the reader's bank holds the money, whatever the dispute later
+-- decides, and a repeated delivery leaves the instant and the reason already
+-- stored. Nothing matches when the payment belongs to another tenant, another
+-- provider, or no purchase here.
+UPDATE purchases
+SET revoked_at = COALESCE(revoked_at, NOW()),
+    revocation_reason = COALESCE(revocation_reason, 'dispute')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND provider = sqlc.arg('provider')::text
+    AND provider_payment_id = sqlc.arg('provider_payment_id')::text
+RETURNING *;
+
+-- name: HoldUnappliedDispute :exec
+-- Keeps a dispute whose purchase is not here yet, so the notification that
+-- creates the purchase can still revoke it.
+INSERT INTO unapplied_disputes (
+    tenant_id,
+    provider,
+    provider_payment_id
+)
+VALUES (
+    sqlc.arg('tenant_id'),
+    sqlc.arg('provider')::text,
+    sqlc.arg('provider_payment_id')::text
+)
+ON CONFLICT (tenant_id, provider, provider_payment_id) DO
+UPDATE
+SET received_at = NOW();
+
+-- name: ApplyUnappliedDisputeToPurchase :one
+-- Revokes the purchase that has since been created for a held dispute, by the
+-- same rules RecordDisputeOnPurchase uses. Nothing matches when no dispute is
+-- held for the payment, which is the ordinary case. The held row is deleted by
+-- the caller in the same transaction.
+UPDATE purchases p
+SET revoked_at = COALESCE(p.revoked_at, NOW()),
+    revocation_reason = COALESCE(p.revocation_reason, 'dispute')
+FROM unapplied_disputes d
+WHERE d.tenant_id = p.tenant_id
+    AND d.provider = p.provider
+    AND d.provider_payment_id = p.provider_payment_id
+    AND p.tenant_id = sqlc.arg('tenant_id')
+    AND p.provider = sqlc.arg('provider')::text
+    AND p.provider_payment_id = sqlc.arg('provider_payment_id')::text
+RETURNING p.*;
+
+-- name: ReleaseUnappliedDispute :exec
+DELETE FROM unapplied_disputes
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND provider = sqlc.arg('provider')::text
+    AND provider_payment_id = sqlc.arg('provider_payment_id')::text;
+
+-- name: RecordExpiredCheckout :exec
+-- Records the checkout the provider reports expired as the reader's latest on
+-- the episode. A repeated delivery names the same checkout and changes
+-- nothing the idempotency key reads. A reader or an episode deleted since the
+-- checkout started records nothing, since there is no next checkout to key.
+INSERT INTO expired_checkouts (
+    tenant_id,
+    user_id,
+    episode_id,
+    provider,
+    provider_checkout_id
+)
+SELECT u.tenant_id,
+    u.id,
+    e.id,
+    sqlc.arg('provider')::text,
+    sqlc.arg('provider_checkout_id')::text
+FROM users u
+    JOIN episodes e ON e.tenant_id = u.tenant_id
+WHERE u.tenant_id = sqlc.arg('tenant_id')::uuid
+    AND u.id = sqlc.arg('user_id')
+    AND e.id = sqlc.arg('episode_id')
+ON CONFLICT (tenant_id, user_id, episode_id) DO
+UPDATE
+SET provider = EXCLUDED.provider,
+    provider_checkout_id = EXCLUDED.provider_checkout_id,
+    expired_at = NOW();
+
+-- name: GetExpiredCheckoutID :one
+-- The checkout the reader last let expire on the episode, which the next
+-- checkout's idempotency key names. No row is a reader who has let none expire.
+SELECT provider_checkout_id
+FROM expired_checkouts
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND user_id = sqlc.arg('user_id')
+    AND episode_id = sqlc.arg('episode_id');

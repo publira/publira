@@ -229,9 +229,10 @@ SET display_order = EXCLUDED.display_order,
     share_bps = EXCLUDED.share_bps;
 
 -- January 2026 in the tenant's zone (UTC): ten sales of the 500-yen episode,
--- and an eleventh refunded in full, which is not a sale. The buyer is left
--- unset the way a deleted reader leaves it; a statement never names one.
-INSERT INTO purchases (id, user_id, episode_id, price_at_purchase, currency, purchased_at, tenant_id, refunded_at, refunded_amount)
+-- and an eleventh refunded in full, which is not a sale and, as every full
+-- refund does, revokes the purchase. The buyer is left unset the way a deleted
+-- reader leaves it; a statement never names one.
+INSERT INTO purchases (id, user_id, episode_id, price_at_purchase, currency, purchased_at, tenant_id, refunded_at, refunded_amount, revoked_at, revocation_reason)
 SELECT
     ('018f0f80-0008-7000-8000-' || lpad(n::text, 12, '0'))::uuid,
     NULL,
@@ -241,7 +242,9 @@ SELECT
     '2026-01-10T12:00:00Z'::timestamptz + n * INTERVAL '1 hour',
     e.tenant_id,
     CASE WHEN n = 11 THEN '2026-01-20T00:00:00Z'::timestamptz END,
-    CASE WHEN n = 11 THEN 500 END
+    CASE WHEN n = 11 THEN 500 END,
+    CASE WHEN n = 11 THEN '2026-01-20T00:00:00Z'::timestamptz END,
+    CASE WHEN n = 11 THEN 'refund' END
 FROM episodes e
 CROSS JOIN generate_series(1, 11) AS n
 WHERE e.public_id = 'RoyaEPSDAAA1';

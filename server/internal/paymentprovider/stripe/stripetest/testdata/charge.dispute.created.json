@@ -1,0 +1,35 @@
+{
+  "id": "evt_1QfJq4Lk4f8bA7xYd1SpUtE3",
+  "object": "event",
+  "api_version": "",
+  "created": 1767830400,
+  "data": {
+    "object": {
+      "id": "dp_1QfJq4Lk4f8bA7xY2mNoPqRs",
+      "object": "dispute",
+      "amount": 500,
+      "charge": "ch_3QfJq1Lk4f8bA7xY0hIjKlMn",
+      "created": 1767830390,
+      "currency": "jpy",
+      "evidence_details": {
+        "due_by": 1768521599,
+        "has_evidence": false,
+        "past_due": false,
+        "submission_count": 0
+      },
+      "is_charge_refundable": false,
+      "livemode": false,
+      "metadata": {},
+      "payment_intent": "pi_3QfJq1Lk4f8bA7xY0aBcDeFg",
+      "reason": "fraudulent",
+      "status": "needs_response"
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "charge.dispute.created"
+}

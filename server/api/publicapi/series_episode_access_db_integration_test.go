@@ -73,7 +73,7 @@ func TestDBGetSeriesEpisodeAccessAgreesWithGetEpisodeDetail(t *testing.T) {
 	execSQL(t, env, `UPDATE purchases SET expires_at = $1 WHERE episode_id = $2`, past, expiredPurchase.ID)
 	refunded := seed("EPREFUND0001", 5, 500)
 	env.PG.SeedPurchase(t, tenant.ID, reader.ID, refunded.ID, 500)
-	execSQL(t, env, `UPDATE purchases SET refunded_amount = price_at_purchase, refunded_at = NOW() WHERE episode_id = $1`, refunded.ID)
+	execSQL(t, env, `UPDATE purchases SET refunded_amount = price_at_purchase, refunded_at = NOW(), revoked_at = NOW(), revocation_reason = 'refund' WHERE episode_id = $1`, refunded.ID)
 	ticketed := seed("EPTICKET0001", 6, 500)
 	seedAccessTicket(t, env, tenant.ID, "TICKETLIVE01", ticketed.ID, reader.ID, &future, nil)
 	expiredTicket := seed("EPTICKEXP001", 7, 500)
