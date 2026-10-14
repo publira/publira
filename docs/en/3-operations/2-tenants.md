@@ -2,7 +2,7 @@
 title: Tenants
 description: Create a tenant, choose its domain and console host, change them later, and suspend a tenant.
 published: 2026-10-06
-updated: 2026-10-09
+updated: 2026-10-14
 ---
 
 Each publisher an install serves is a tenant, with a public site on its own domain and a console on a second host name. `publiractl setup` created the first one. This page adds the next, and covers what can be changed about a tenant afterwards.
@@ -45,10 +45,12 @@ publiractl tenant create \
   --name "Example Comics" \
   --domain comics.example.com \
   --default-locale en \
+  --supported-locale en \
+  --supported-locale ja \
   --initial-admin-email owner@comics.example.com
 ```
 
-`--admin-domain` gives the console a host of its own, and `--timezone` an IANA time zone other than the platform's default. `--initial-admin-email` can be repeated, and each address is invited as it would be from the Platform Console.
+`--supported-locale` names a language the tenant's site offers, and can be repeated; the default language has to be one of them. Left out, the site offers its default language alone. `--admin-domain` gives the console a host of its own, and `--timezone` an IANA time zone other than the platform's default. `--initial-admin-email` can be repeated, and each address is invited as it would be from the Platform Console.
 
 ### After creating it
 

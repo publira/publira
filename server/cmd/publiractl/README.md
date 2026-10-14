@@ -369,7 +369,7 @@ go -C server run ./cmd/publiractl tenant admin create \
 
 | Command | RPC | What it does |
 | --- | --- | --- |
-| `tenant create` | `CreateTenant` | Creates a tenant on `--timezone`, or on the platform's default time zone without it, with the default creator roles, and invites every `--initial-admin-email` |
+| `tenant create` | `CreateTenant` | Creates a tenant on `--timezone`, or on the platform's default time zone without it, offering every `--supported-locale`, or its default language alone without one, with the default creator roles, and invites every `--initial-admin-email` |
 | `tenant show` | `GetTenant` | Prints the tenant |
 | `tenant update` | `UpdateTenant` | Replaces the `--name`, `--domain`, or `--admin-domain` it is given and keeps the rest; `--admin-domain ""` goes back to the default console host |
 | `tenant suspend`, `tenant resume` | `SuspendTenant`, `ResumeTenant` | Stops serving the tenant, and serves it again |
@@ -391,6 +391,7 @@ go -C server run ./cmd/publiractl tenant admin create \
 | `--domain` | The host the tenant's site is served on. Required, and no other tenant may hold it |
 | `--admin-domain` | The host the tenant's console is served on, when it is not the default one. No other tenant may hold it |
 | `--default-locale` | The tenant's language, one of the supported locale codes. Required: nothing picks one for it |
+| `--supported-locale` | A language the tenant's site offers, one of the supported locale codes. Repeat it for several, `--default-locale` among them. Left out, the site offers `--default-locale` alone; the tenant's administrators can change the set from the console afterwards |
 | `--timezone` | The IANA time zone the tenant starts on. Left out, the platform's default time zone; the tenant's administrators can change it from the console afterwards |
 | `--initial-admin-email` | An address to invite as the tenant's administrator. Repeat it for several; a repeated address is invited once |
 

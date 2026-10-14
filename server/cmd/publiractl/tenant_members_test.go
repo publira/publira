@@ -51,7 +51,7 @@ func TestTenantShowUpdateSuspendAndResume(t *testing.T) {
 	tenant := pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
 
 	shown := tenantCommand(t, "", "show", "--tenant", "tenant-a.example.com")
-	for _, want := range []string{"Public ID:       TENANTAAAAAA\n", "Name:            Tenant A\n", "Status:          active\n", "Admin domain:    " + tenant.AdminDomain + "\n"} {
+	for _, want := range []string{"Public ID:          TENANTAAAAAA\n", "Name:               Tenant A\n", "Status:             active\n", "Admin domain:       " + tenant.AdminDomain + "\n"} {
 		if !strings.Contains(shown, want) {
 			t.Fatalf("show = %q, want %q", shown, want)
 		}
@@ -60,7 +60,7 @@ func TestTenantShowUpdateSuspendAndResume(t *testing.T) {
 	if got := tenantCommand(t, "", "update", "--tenant", "TENANTAAAAAA", "--name", "Renamed", "--admin-domain", ""); got != "Updated tenant TENANTAAAAAA for tenant-a.example.com\n" {
 		t.Fatalf("update = %q", got)
 	}
-	if shown := tenantCommand(t, "", "show", "--tenant", "TENANTAAAAAA"); !strings.Contains(shown, "Name:            Renamed\n") || !strings.Contains(shown, "Admin domain:    admin.tenant-a.example.com (default)\n") {
+	if shown := tenantCommand(t, "", "show", "--tenant", "TENANTAAAAAA"); !strings.Contains(shown, "Name:               Renamed\n") || !strings.Contains(shown, "Admin domain:       admin.tenant-a.example.com (default)\n") {
 		t.Fatalf("show after update = %q, want the new name and the default admin domain", shown)
 	}
 	tenantCommand(t, "", "update", "--tenant", "TENANTAAAAAA", "--admin-domain", "console.tenant-a.example.com")

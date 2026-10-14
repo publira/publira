@@ -98,6 +98,8 @@ func TestTenantCreateNamesTheRefusedFlag(t *testing.T) {
 		{name: "missing name", args: []string{"--domain", "other.example.com", "--default-locale", "en"}, want: "publiractl: --name: name is required\n"},
 		{name: "missing domain", args: []string{"--name", "Other", "--default-locale", "en"}, want: "publiractl: --domain: domain is required\n"},
 		{name: "unsupported locale", args: []string{"--name", "Other", "--domain", "other.example.com", "--default-locale", "fr"}, want: "publiractl: --default-locale: default_locale must be a supported locale\n"},
+		{name: "default not offered", args: []string{"--name", "Other", "--domain", "other.example.com", "--default-locale", "en", "--supported-locale", "ja"}, want: "publiractl: --supported-locale: supported_locales must include default_locale\n"},
+		{name: "unsupported offered locale", args: []string{"--name", "Other", "--domain", "other.example.com", "--default-locale", "en", "--supported-locale", "en", "--supported-locale", "fr"}, want: "publiractl: --supported-locale: supported_locales must name supported locales\n"},
 		{name: "unknown time zone", args: []string{"--name", "Other", "--domain", "other.example.com", "--default-locale", "en", "--timezone", "Mars/Olympus_Mons"}, want: "publiractl: --timezone: timezone must be a valid IANA time zone name\n"},
 		{name: "malformed admin email", args: append([]string{"--initial-admin-email", "nobody"}, valid...), want: "publiractl: --initial-admin-email: invalid initial_admin_emails\n"},
 		{name: "taken domain", args: valid, want: "publiractl: --domain: domain already exists\n"},
@@ -128,7 +130,7 @@ func TestTenantCreateHelpListsItsFlags(t *testing.T) {
 	if code := run([]string{"tenant", "create", "-h"}, &stderr); code != 0 {
 		t.Fatalf("exit code = %d, want 0\n%s", code, stderr.String())
 	}
-	for _, want := range []string{"Usage: publiractl tenant create [flags]", "--domain", "--admin-domain", "--default-locale", "--timezone", "--initial-admin-email"} {
+	for _, want := range []string{"Usage: publiractl tenant create [flags]", "--domain", "--admin-domain", "--default-locale", "--supported-locale", "--timezone", "--initial-admin-email"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("usage = %q, want %q", stderr.String(), want)
 		}
@@ -165,6 +167,41 @@ func TestTenantCreateStartsOnTheTimeZoneGiven(t *testing.T) {
 		}
 		if timezone != tc.want {
 			t.Fatalf("%s starts on %q, want %q", tc.domain, timezone, tc.want)
+		}
+	}
+}
+
+// A tenant offers the languages --supported-locale names, stored and printed
+// in the registry's order whatever order they were given in, and its default
+// alone without the flag.
+func TestTenantCreateOffersTheLanguagesGiven(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	ctx := context.Background()
+
+	for _, tc := range []struct {
+		domain string
+		extra  []string
+		want   string
+	}{
+		{domain: "bilingual.example.com", extra: []string{"--supported-locale", "en", "--supported-locale", "ja"}, want: "ja, en"},
+		{domain: "english.example.com", want: "en"},
+	} {
+		var stdout, stderr bytes.Buffer
+		args := append([]string{"create", "--name", "Example", "--domain", tc.domain, "--default-locale", "en"}, tc.extra...)
+		if code := runGroup(&tenantGroup, args, pipedConsole("", &stderr), &stdout); code != 0 {
+			t.Fatalf("create %s: exit code = %d\n%s", tc.domain, code, stderr.String())
+		}
+		var stored string
+		if err := pg.DB.QueryRowContext(ctx, `SELECT array_to_string(supported_locales, ', ') FROM tenants WHERE domain = $1`, tc.domain).Scan(&stored); err != nil {
+			t.Fatalf("read %s: %v", tc.domain, err)
+		}
+		if stored != tc.want {
+			t.Fatalf("%s offers %q, want %q", tc.domain, stored, tc.want)
+		}
+		if shown := tenantCommand(t, "", "show", "--tenant", tc.domain); !strings.Contains(shown, "Supported locales:  "+tc.want+"\n") {
+			t.Fatalf("show %s = %q, want the languages it offers", tc.domain, shown)
 		}
 	}
 }
