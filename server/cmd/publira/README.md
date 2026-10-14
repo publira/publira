@@ -16,7 +16,7 @@ One process serves all three Connect namespaces — `publira.v1`, `publira.admin
 | Reached by | Through |
 | --- | --- |
 | The browser and the mobile app | The reverse proxy, which forwards `/rpc`, `/api`, and `/images` with their prefixes kept, on every host |
-| web-storefront, web-admin, and web-platform | The private network, each through its own `PUBLIRA_GRPC_URL`, which names `/api` on this listener |
+| web-storefront, web-admin, and web-platform | The private network, each through its own `PUBLIRA_GRPC_URL`, which names `/rpc` on this listener |
 
 The edge forwards `/rpc` host-agnostically and a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on one route, so both consoles' namespaces are reachable at `/rpc/publira.admin.v1.…` and `/rpc/publira.platform.v1.…` on every tenant site, and under `/api` alike. What keeps an outsider out of them is their own authentication: every console RPC refuses a caller without an operator session or the [web service credential](../../README.md#web-service-credential) before any handler runs, the ones that run before a session exists — signing in, password reset, and email verification — are rate-limited or guarded in the handler itself, and creating the Platform Console's first operator is refused without the web service credential, which only the Platform Console's server sends.
 

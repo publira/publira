@@ -48,7 +48,7 @@ pnpm dev --filter @publira/web-platform
 
 ### API connection
 
-- `PUBLIRA_GRPC_URL` — the `/api` base URL on `publira server`, which every server-side RPC is made on (`http://localhost:8000/api` when unset)
+- `PUBLIRA_GRPC_URL` — the `/rpc` base URL on `publira server`, which every server-side RPC is made on (`http://localhost:8000/rpc` when unset)
 - `PUBLIRA_WEB_SERVICE_TOKEN` (required) — the server's `PUBLIRA_WEB_SERVICE_TOKEN`, which the console reads platform-level data with as itself rather than as an operator: the tenants and their members and invitations, the platform settings and policies, the email and storage settings, the dashboard, the operators, and the end users, each cached once for every operator. The app refuses to start without it. See [Web service credential](../../server/README.md#web-service-credential)
 
 ### Request host

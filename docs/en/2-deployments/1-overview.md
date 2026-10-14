@@ -13,7 +13,7 @@ A Publira install is made of four long-lived processes, a handful of services th
 | --- | --- | --- |
 | `web-storefront` | The public site of every tenant | The edge, on each tenant's domain |
 | `web-admin` | The tenant console | The edge, on each tenant's console host, `admin.<domain>` unless the tenant was given another |
-| `publira server` | The API, under `/rpc` (and under `/api` until 0.2.0), and image delivery, on one port | The edge, on `/rpc`, `/api`, and `/images`; `web-storefront` and `web-admin`, on `/api` |
+| `publira server` | The API, under `/rpc` (and under `/api` until 0.2.0), and image delivery, on one port | The edge, on `/rpc`, `/api`, and `/images`; `web-storefront` and `web-admin`, on `/rpc` |
 | `publira worker` | Outgoing mail and push notifications, cache revalidation, and every scheduled job | Nothing; it only answers health checks |
 
 Every process answers `GET /livez` and `GET /readyz`, so an orchestrator can probe it. The web apps are built from one image and `publira server` and `publira worker` from another; the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) list them.

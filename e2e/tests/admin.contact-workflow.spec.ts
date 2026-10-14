@@ -22,7 +22,7 @@ import {
 type Staff = typeof CONTACT_WORKFLOW_ADMIN | typeof CONTACT_WORKFLOW_COLLEAGUE;
 
 const SUBMIT_CONTACT_MESSAGE_PROCEDURE =
-  "/api/publira.v1.ContactService/SubmitContactMessage";
+  "/rpc/publira.v1.ContactService/SubmitContactMessage";
 
 const SEEDED_SUBJECTS = [
   CONTACT_WORKFLOW_UNHANDLED.subject,

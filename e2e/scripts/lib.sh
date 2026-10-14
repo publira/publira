@@ -69,16 +69,16 @@ unset PUBLIRA_TRACING_ENABLED
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-publira}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
-# `/api` on publira server, which every app dials: one process carries all
+# `/rpc` on publira server, which every app dials: one process carries all
 # three Connect namespaces there, on the port the edge forwards to as well.
-export PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_PORT}/api}"
+export PUBLIRA_GRPC_URL="${PUBLIRA_GRPC_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_PORT}/rpc}"
 # Every app is opened through the edge, like a deployment serves them: the
 # images they render are `/images` on their own origin, and every tenant host is
 # stored with this port.
 export PUBLIRA_E2E_WEB_STOREFRONT_BASE_URL="${PUBLIRA_E2E_WEB_STOREFRONT_BASE_URL:-http://localhost:${PUBLIRA_E2E_EDGE_PORT}}"
 export PUBLIRA_E2E_WEB_ADMIN_BASE_URL="${PUBLIRA_E2E_WEB_ADMIN_BASE_URL:-http://admin.localhost:${PUBLIRA_E2E_EDGE_PORT}}"
 export PUBLIRA_E2E_WEB_PLATFORM_BASE_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL:-http://platform.localhost:${PUBLIRA_E2E_EDGE_PORT}}"
-export PUBLIRA_E2E_PUBLIC_API_BASE_URL="${PUBLIRA_E2E_PUBLIC_API_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_PORT}/api}"
+export PUBLIRA_E2E_PUBLIC_API_BASE_URL="${PUBLIRA_E2E_PUBLIC_API_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_PUBLIC_API_PORT}/rpc}"
 # Mailpit's HTTP API. A spec reads the confirmation link out of the message a
 # flow mailed, because the database keeps only the token's hash.
 export PUBLIRA_E2E_MAILPIT_BASE_URL="${PUBLIRA_E2E_MAILPIT_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_MAILPIT_HTTP_PORT}}"
