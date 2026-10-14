@@ -13,6 +13,19 @@ ALTER TABLE tenants
 ALTER TABLE tenants
     ALTER COLUMN supported_locales DROP DEFAULT;
 
+-- A default saved before this migration only had to be non-blank. One padded
+-- with whitespace is read as its trimmed code, so it is stored as that code
+-- from now on and meets its own in the set. One naming a code the registry
+-- does not know joins the set as it is: every read of that tenant already
+-- fails on it, and the upgrade must not fail with it.
+UPDATE tenants
+SET default_locale = btrim(default_locale)
+WHERE default_locale <> btrim(default_locale);
+
+UPDATE tenants
+SET supported_locales = supported_locales || default_locale
+WHERE NOT (default_locale = ANY (supported_locales));
+
 -- CONSTRAINT: tenants tenants_supported_locales_check
 -- Joining on a space and matching non-space runs rejects an empty set, a NULL
 -- or blank element, and an element padded with whitespace, which a CHECK could

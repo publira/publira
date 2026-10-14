@@ -25,18 +25,38 @@ func TestSupportedLocalesMigrationKeepsEveryLocaleForExistingTenants(t *testing.
 	pg.MigrateTo(t, beforeSupportedLocalesVersion)
 	t.Cleanup(func() { pg.MigrateUp(t) })
 
-	tenant := pg.SeedTenantOnOlderSchema(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	pg.MigrateUp(t)
-
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	var got []string
-	if err := pg.DB.QueryRowContext(ctx, "SELECT supported_locales FROM tenants WHERE id = $1", tenant.ID).Scan(pq.Array(&got)); err != nil {
-		t.Fatalf("read supported_locales: %v", err)
-	}
-	if want := []string{"ja", "en", "ko", "zh-Hans", "zh-Hant"}; !slices.Equal(got, want) {
-		t.Fatalf("supported_locales = %q, want %q", got, want)
+	// The schema before this one asked only for a non-blank default, so a
+	// padded code and one the registry does not know could both be stored by
+	// a write around the API. Neither may stop the upgrade.
+	tenant := pg.SeedTenantOnOlderSchema(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	padded := pg.SeedTenantOnOlderSchema(t, "TENANTB", "tenant-b.example.com", "Tenant B")
+	unknown := pg.SeedTenantOnOlderSchema(t, "TENANTC", "tenant-c.example.com", "Tenant C")
+	mustExec(t, ctx, pg.DB, `UPDATE tenants SET default_locale = ' en ' WHERE id = $1`, padded.ID)
+	mustExec(t, ctx, pg.DB, `UPDATE tenants SET default_locale = 'fr' WHERE id = $1`, unknown.ID)
+	pg.MigrateUp(t)
+
+	every := []string{"ja", "en", "ko", "zh-Hans", "zh-Hant"}
+	for _, tt := range []struct {
+		name          string
+		id            uuid.UUID
+		wantDefault   string
+		wantSupported []string
+	}{
+		{name: "a supported default", id: tenant.ID, wantDefault: "ja", wantSupported: every},
+		{name: "a padded default", id: padded.ID, wantDefault: "en", wantSupported: every},
+		{name: "an unknown default", id: unknown.ID, wantDefault: "fr", wantSupported: append(slices.Clone(every), "fr")},
+	} {
+		var gotDefault string
+		var gotSupported []string
+		if err := pg.DB.QueryRowContext(ctx, "SELECT default_locale, supported_locales FROM tenants WHERE id = $1", tt.id).Scan(&gotDefault, pq.Array(&gotSupported)); err != nil {
+			t.Fatalf("%s: read the locales: %v", tt.name, err)
+		}
+		if gotDefault != tt.wantDefault || !slices.Equal(gotSupported, tt.wantSupported) {
+			t.Fatalf("%s: locales = %q %q, want %q %q", tt.name, gotDefault, gotSupported, tt.wantDefault, tt.wantSupported)
+		}
 	}
 
 	// The default the migration filled the rows with is gone again, so tenant
