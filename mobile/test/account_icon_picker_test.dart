@@ -13,6 +13,10 @@ import 'support/icon_images.dart';
 class _FakeImagePickerPlatform extends ImagePickerPlatform {
   Uint8List? picked;
   Completer<void>? pickGate;
+
+  /// Completed once the picker is open, which is after the plugin-backed
+  /// picker has written down who opened it.
+  final pickOpened = Completer<void>();
   LostDataResponse lost = LostDataResponse.empty();
   var lostReads = 0;
 
@@ -21,6 +25,7 @@ class _FakeImagePickerPlatform extends ImagePickerPlatform {
     required ImageSource source,
     ImagePickerOptions options = const ImagePickerOptions(),
   }) async {
+    pickOpened.complete();
     await pickGate?.future;
     final bytes = picked;
     return bytes == null ? null : XFile.fromData(bytes);
@@ -74,7 +79,7 @@ void main() {
     final image = pngIcon();
     platform.pickGate = Completer<void>();
     unawaited(launch().pick(reader: 'ReaderAAAAA1'));
-    await pumpEventQueue();
+    await platform.pickOpened.future;
     expect(ownerFile().readAsStringSync(), 'ReaderAAAAA1');
 
     // The app is ended with the picker still open, and launched again.
