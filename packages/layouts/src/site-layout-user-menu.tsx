@@ -11,17 +11,23 @@ export const SiteLayoutUserMenu = ({ children }: { children: ReactNode }) => (
   <Menu.Root>{children}</Menu.Root>
 );
 
+/**
+ * The account menu's button. `children` is what it shows — the account's own
+ * icon, for one — and a generic person glyph stands in when there is none.
+ */
 export const SiteLayoutUserMenuTrigger = ({
   "aria-label": ariaLabel,
+  children,
 }: {
   /** Names the account menu trigger, which shows only an icon. */
   "aria-label": string;
+  children?: ReactNode;
 }) => (
   <Menu.Trigger
     aria-label={ariaLabel}
-    className="inline-flex size-9 items-center justify-center rounded-control border border-input text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted pointer-coarse:size-11"
+    className="inline-flex size-9 items-center justify-center overflow-hidden rounded-control border border-input text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted pointer-coarse:size-11"
   >
-    <UserIcon aria-hidden="true" className="size-4" />
+    {children ?? <UserIcon aria-hidden="true" className="size-4" />}
   </Menu.Trigger>
 );
 

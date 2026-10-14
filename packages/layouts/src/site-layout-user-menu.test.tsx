@@ -89,4 +89,25 @@ describe("SiteLayoutUserMenu slots", () => {
     }
     expect(logoutAction).toHaveBeenCalledOnce();
   });
+
+  it("the trigger shows a person glyph until it is given what to show", () => {
+    renderMenu();
+
+    const trigger = screen.getByRole("button", { name: "Account menu" });
+    expect(trigger.querySelector("svg")).toBeTruthy();
+  });
+
+  it("the trigger shows the account's own icon in place of the glyph", () => {
+    render(
+      <SiteLayoutUserMenu>
+        <SiteLayoutUserMenuTrigger aria-label="Account menu">
+          <span data-account-icon="reader-one" />
+        </SiteLayoutUserMenuTrigger>
+      </SiteLayoutUserMenu>
+    );
+
+    const trigger = screen.getByRole("button", { name: "Account menu" });
+    expect(trigger.querySelector("[data-account-icon]")).toBeTruthy();
+    expect(trigger.querySelector("svg")).toBeNull();
+  });
 });
