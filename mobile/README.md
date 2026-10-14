@@ -584,9 +584,6 @@ The sign-in screen also offers a button for each provider `GetTenant` answers in
 
 The top of the account screen shows the reader's icon, or a person glyph for an account with none and for an icon whose URL has stopped answering. **Upload icon** (**Change icon** once there is one) picks an image from the photo library with [`image_picker`](https://pub.dev/packages/image_picker) and sends it to `AuthService/UploadMyIcon`; **Remove icon** sends `DeleteMyIcon`. Each change is saved as it is made, and the session takes the account the API answers with, so every screen that draws the reader shows the change.
 
-- The app takes a JPEG, PNG, or WebP of at most 10 MiB whose shorter side is at least 128 px, the limits `UploadMyIcon` applies, and says which one an image breaks before sending it. The API still decides, and a refusal it answers with is shown as it comes back
-- The picker never asks for the photo library permission, because `requestFullMetadata` is off and the system picker hands over only the image chosen. `NSPhotoLibraryUsageDescription` is in `Info.plist` because the App Store requires it of an app that links the picker
-
 ## Sign-up
 
 A reader opens an account here rather than on the website. `AuthService/CreateUser` takes a name, an address, a password, an optional birth date where the tenant checks ages, and consent to the terms of service and privacy policy where the tenant names them, and answers by mailing a confirmation link. The age rule comes from `GetTenant` and the pages from `GetTenantLegalPages`, read together, and the form requires the consent before it sends anything, with each page opening on the `/page/:pageSlug` screen above it. The form reads the pages again when it sends, and asks for the consent anew when one was republished in between.

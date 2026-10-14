@@ -204,6 +204,20 @@ class _IconSectionState extends State<_IconSection> {
 
   _IconChange? _changing;
   String? _failure;
+  var _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) {
+      return;
+    }
+    _started = true;
+    final picker = AccountIconPickerScope.maybeOf(context);
+    if (picker != null) {
+      unawaited(_recover(picker));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -305,7 +319,6 @@ class _IconSectionState extends State<_IconSection> {
 
   Future<void> _upload(AccountIconPicker picker) async {
     final messages = AppMessages.of(context);
-    final auth = AuthScope.of(context);
     setState(() => _failure = null);
     final Uint8List? bytes;
     try {
@@ -319,6 +332,28 @@ class _IconSectionState extends State<_IconSection> {
     if (bytes == null || !mounted) {
       return;
     }
+    await _send(bytes);
+  }
+
+  /// Sends the image a pick handed over after the platform had ended the app
+  /// under the picker, which is what the reader asked for when they chose it.
+  Future<void> _recover(AccountIconPicker picker) async {
+    final Uint8List? bytes;
+    try {
+      bytes = await picker.recover();
+    } on Exception {
+      return;
+    }
+    if (bytes == null || !mounted || _changing != null) {
+      return;
+    }
+    await _send(bytes);
+  }
+
+  /// Checks [bytes] against the API's limits and uploads them if they pass.
+  Future<void> _send(Uint8List bytes) async {
+    final messages = AppMessages.of(context);
+    final auth = AuthScope.of(context);
     final (upload, problem) = prepareAccountIcon(bytes);
     if (upload == null) {
       setState(() {

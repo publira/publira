@@ -204,6 +204,9 @@ class FakeAuthRepository implements AuthRepository {
   /// The names [updateName] has been asked for, in order.
   final renames = <String>[];
 
+  /// Held open by a test that needs to act while [updateName] is in flight.
+  Completer<void>? renameGate;
+
   /// The images [uploadIcon] has been sent, in order.
   final iconUploads = <AccountIconUpload>[];
 
@@ -560,6 +563,7 @@ class FakeAuthRepository implements AuthRepository {
   @override
   Future<AuthSession> updateName(AuthSession session, String name) async {
     renames.add(name);
+    await renameGate?.future;
     final failure = accountFailure;
     if (failure != null) {
       throw failure;

@@ -349,7 +349,11 @@ class AuthController extends ChangeNotifier {
   /// is signed in.
   Future<void> updateName(String name) => _replaceSession(
     (session) => _repository.updateName(session, name),
-    _withUserOf,
+    (current, renamed) => current.withUser(
+      userPublicId: current.userPublicId,
+      userName: renamed.userName,
+      userIconUrl: current.userIconUrl,
+    ),
   );
 
   /// Makes [upload] the signed-in account's icon, so every screen that draws
@@ -359,7 +363,7 @@ class AuthController extends ChangeNotifier {
   /// is signed in.
   Future<void> uploadIcon(AccountIconUpload upload) => _replaceSession(
     (session) => _repository.uploadIcon(session, upload),
-    _withUserOf,
+    _withIconOf,
   );
 
   /// Leaves the signed-in account with no icon, so every screen that draws
@@ -368,13 +372,20 @@ class AuthController extends ChangeNotifier {
   /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
   /// is signed in.
   Future<void> removeIcon() =>
-      _replaceSession(_repository.removeIcon, _withUserOf);
+      _replaceSession(_repository.removeIcon, _withIconOf);
 
-  /// [current] carrying the account [changed] says it now is.
-  AuthSession _withUserOf(AuthSession current, AuthSession changed) =>
+  /// [current] carrying the icon [changed] answers with and nothing else of
+  /// it.
+  ///
+  /// Every answer that changes the account carries all of it, so a change
+  /// takes only the field it made: a rename that lands after an icon upload
+  /// would otherwise put back the icon it was answered with, whose URL has
+  /// stopped answering, and an upload that lands after a rename the name it
+  /// was sent under.
+  AuthSession _withIconOf(AuthSession current, AuthSession changed) =>
       current.withUser(
-        userPublicId: changed.userPublicId,
-        userName: changed.userName,
+        userPublicId: current.userPublicId,
+        userName: current.userName,
         userIconUrl: changed.userIconUrl,
       );
 

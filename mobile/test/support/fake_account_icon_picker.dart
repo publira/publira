@@ -15,6 +15,10 @@ class FakeAccountIconPicker implements AccountIconPicker {
 
   var picked = 0;
 
+  /// What [recover] hands over once, standing in for a pick Android kept
+  /// after ending the app under the picker.
+  Uint8List? lost;
+
   @override
   Future<Uint8List?> pick() async {
     final failure = this.failure;
@@ -22,5 +26,12 @@ class FakeAccountIconPicker implements AccountIconPicker {
       throw failure;
     }
     return picks[picked++];
+  }
+
+  @override
+  Future<Uint8List?> recover() async {
+    final lost = this.lost;
+    this.lost = null;
+    return lost;
   }
 }

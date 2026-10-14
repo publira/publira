@@ -240,6 +240,19 @@ void main() {
     expect(tester.widget<OutlinedButton>(upload).onPressed, isNotNull);
   });
 
+  testWidgets('an image Android kept after ending the app under the picker is '
+      'uploaded once the account screen opens', (tester) async {
+    final kept = pngIcon();
+    final picker = FakeAccountIconPicker([])..lost = kept;
+    await pumpAccount(tester, picker: picker);
+    await pumpUntilFound(tester, shown);
+
+    expect(repository.iconUploads.single.bytes, same(kept));
+    expect(auth.session?.userIconUrl, FakeAuthRepository.uploadedIconUrl(1));
+    expect(find.text('Your icon has been updated.'), findsOneWidget);
+    expect(picker.picked, 0);
+  });
+
   testWidgets('without a picker the icon is shown with no controls', (
     tester,
   ) async {
