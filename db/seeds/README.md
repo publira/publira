@@ -99,7 +99,7 @@ None of them is a superuser or carries `BYPASSRLS`, and nothing in `baseline/` n
 
 The same file takes the blanket grants back from two families of table — every `platform_*` relation, from the tenant-scoped and worker roles, and the writes on `episode_rating_counts` and `series_rating_counts`, from `publira_admin` and `publira_public`.
 
-A table a migration creates reaches no app role, and its rows no member of `publira_rls_bypass`, until `baseline/` runs again and the grants, their corrections, and the policy reach it together. `publiractl db roles` runs right after `publiractl db migrate` on every upgrade, and `task db:migrate` applies `prod.sql` after the migrations for the same reason.
+A table a migration creates reaches no app role, and its rows no member of `publira_rls_bypass`, until `baseline/` runs again and the grants, their corrections, and the policy reach it together. `publiractl db roles` runs right after `publiractl db migrate` on every upgrade, and `task db:migrate` and `task db:rollback` apply `prod.sql` after the migrations for the same reason.
 
 `baseline/010_river_object_owner.sql` follows it and hands any existing `river_*` table, sequence, enum, or function to `publira_outbox`. On a database the worker has always connected to as that role there is nothing to move; on one whose River schema another role created, the transfer is what keeps `rivermigrate` able to alter those objects on the next River release. It then revokes every other login role's privileges on the tables and sequences `publira_outbox` owns, so River's job queue stays the worker's alone however many times `baseline/` runs.
 
