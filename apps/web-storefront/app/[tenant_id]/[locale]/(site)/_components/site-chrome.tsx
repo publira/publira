@@ -1,3 +1,4 @@
+import { UserIcon } from "@publira/icons";
 import {
   SiteLayout,
   SiteLayoutActions,
@@ -48,6 +49,7 @@ import { cookies } from "next/headers";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
+import { AccountIcon } from "#components/account-icon";
 import {
   CatalogSearchForm,
   CatalogSearchFormSkeleton,
@@ -79,7 +81,7 @@ import {
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
 import { SignOutForm } from "#components/sign-out-form";
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
-import { getMe } from "#lib/auth";
+import { getMyAccount } from "#lib/auth";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { getMessages } from "#lib/get-messages";
 import { getLocale, tenantDefaultLocale } from "#lib/locale";
@@ -212,8 +214,7 @@ const StorefrontNotificationBell = async ({
  * when they ask for help.
  */
 const AccountMenuName = async () => {
-  const tenantId = await getTenantId();
-  const me = await getMe(tenantId);
+  const me = await getMyAccount(await getTenantId());
 
   if (!me) {
     return null;
@@ -229,12 +230,25 @@ const AccountMenuName = async () => {
   );
 };
 
-/** The account menu's trigger, which shows an icon and carries its name as an attribute. */
+/**
+ * The account menu's trigger, which shows the account's icon — a person glyph
+ * for one that has none — and carries its name as an attribute.
+ */
 const AccountMenuTrigger = async () => {
-  const t = await getMessages();
+  const tenantId = await getTenantId();
+  const [t, me] = await Promise.all([getMessages(), getMyAccount(tenantId)]);
 
   return (
-    <SiteLayoutUserMenuTrigger aria-label={t("storefront.nav.account_menu")} />
+    <SiteLayoutUserMenuTrigger aria-label={t("storefront.nav.account_menu")}>
+      {/* The trigger's label names it, so the image itself says nothing. */}
+      <AccountIcon
+        alt=""
+        className="size-full object-cover"
+        fallback={<UserIcon aria-hidden="true" className="size-4" />}
+        icon={me?.icon ?? null}
+        size={44}
+      />
+    </SiteLayoutUserMenuTrigger>
   );
 };
 

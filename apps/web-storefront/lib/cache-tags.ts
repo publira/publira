@@ -78,6 +78,13 @@ export const tenantFollowsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:follows`;
 
 /**
+ * The private read of the signed-in reader's own account that the site header
+ * names and draws the icon of. A profile or icon change refreshes it.
+ */
+export const tenantAccountTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:account`;
+
+/**
  * The private read of this member's own episode reactions. A press refreshes
  * only this island — not the public episode catalog, which is tagged on the
  * series and dropped separately so other readers see the new headcount.
