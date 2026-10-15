@@ -83,10 +83,12 @@ The release commit sets `version` in every tracked `package.json` to the bare nu
 git switch -c release/vX.Y.Z origin/main
 node scripts/release-version.ts set X.Y.Z
 node scripts/release-version.ts check X.Y.Z
-git commit --allow-empty -am "chore(release): vX.Y.Z" --trailer "Assisted-by: <AGENT_NAME>:<MODEL_VERSION>"
+git add -- package.json '*/package.json'
+git diff --staged
+git commit --allow-empty -m "chore(release): vX.Y.Z" --trailer "Assisted-by: <AGENT_NAME>:<MODEL_VERSION>"
 ```
 
-`--allow-empty` is there for a release whose files already carry the number: it still gets its commit and its pull request, so the tag always goes on the commit that merges a release pull request. `-a` is safe here only because the branch was just created from `origin/main` and `set` touched nothing but the manifests; confirm with `git show --stat` that the commit holds `package.json` files and nothing else.
+Stage the manifests by path and never commit with `-a`: `git switch` carries any tracked edit already in the checkout onto the new branch, and `-a` would put it into the tagged release. Read `git diff --staged` before committing; it holds nothing but the `version` line of each `package.json`. If it holds anything else, the checkout had edits of its own, so stop and cut the release from a clean worktree instead (`git worktree add -b release/vX.Y.Z <path> origin/main`). `--allow-empty` is there for a release whose files already carry the number: it still gets its commit and its pull request, so the tag always goes on the commit that merges a release pull request.
 
 Open the pull request with the `create-pr` skill, titled `chore(release): vX.Y.Z`. In its Summary, say why the release is a minor or a patch release, naming what decided it, so the reviewer can check the choice before the tag exists. Its own Upgrade notes are `None.`, since the release's notes are collected from the pull requests it carries, and its How to Test is `node scripts/release-version.ts check X.Y.Z`. Use `Fixes #N` when an Issue asked for this release.
 
