@@ -23,6 +23,14 @@ Write each host name alone and in lowercase: no `https://`, no path, and no trai
 
 Then make both host names reach the install, in the order [Adding a tenant](../2-deployments/4-edge.md#adding-a-tenant) gives: DNS, certificates, and the edge's routing. You can do this before or after creating the tenant, but its staff cannot open the console until it is done.
 
+### A console host on a domain of its own
+
+The console host does not have to be under the tenant's domain: a site on `example.com` can have its console on `admin.example.net`, given with **Admin domain** or `--admin-domain` below. When you can register a second domain for it, that is the safer choice. Every certificate a public certificate authority issues is published in the Certificate Transparency logs, which services such as crt.sh let anyone search by domain, so a console host under the site's domain is listed beside the site from the moment its certificate is issued, whatever it is named. A wildcard certificate keeps the name out of the logs, but `admin.<domain>` is the first name anyone tries. A console host on another registrable domain, with a certificate that names none of the site's hosts, is not linked to the site that way. The console still asks its staff to sign in, so what this keeps out of sight is its sign-in page. `admin.<domain>` stays the default, and works as it is.
+
+Choose it before staff register passkeys: once the console host is outside the tenant's domain, a passkey is bound to that host, so moving the console there later leaves the passkeys already registered unusable, as [Two-step verification](./12-security.md#tenant-staff) describes.
+
+The edge can go further and accept the console host only from your staff's IP addresses; the [sample configurations](../2-deployments/4-edge.md#the-sample-configurations) do not do this for you. That covers the console's pages but not its APIs, which `publira server` answers on the site's host too unless it runs with `--role storefront`, as [The console APIs are under `/rpc` too](../2-deployments/4-edge.md#the-console-apis-are-under-rpc-too) describes.
+
 ## Creating a tenant
 
 ### From the Platform Console
