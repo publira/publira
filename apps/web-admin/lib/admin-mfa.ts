@@ -10,6 +10,7 @@
  */
 
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import type { RpcErrorMessageOverrides } from "@publira/api-client/error-messages";
 import {
   isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
@@ -33,8 +34,23 @@ export interface AdminMfaSession {
   expiresAt: Temporal.Instant;
 }
 
+/** A passkey the signed-in account registered for the console. */
+export interface AdminPasskey {
+  id: string;
+  /** Empty until its owner names it. */
+  name: string;
+  /** RFC 3339, as the API answered it. */
+  createdAt: string;
+  /** RFC 3339, or empty until it first answers a sign-in. */
+  lastUsedAt: string;
+}
+
 export interface AdminMfaStatus {
+  /** The TOTP authenticator is confirmed. A passkey does not set it. */
   enabled: boolean;
+  /** Oldest first. */
+  passkeys: AdminPasskey[];
+  /** Shared by the authenticator and every passkey. */
   remainingRecoveryCodes: number;
   required: boolean;
 }
@@ -83,6 +99,8 @@ export type AdminPasskeyVerifyResult =
 export type AdminPasskeyRegistrationResult =
   | {
       ok: true;
+      /** The stored passkey, for naming it once the ceremony is over. */
+      passkeyId: string;
       /** Empty when the account already held unused recovery codes. */
       recoveryCodes: string[];
       /** Set only when a challenge finished the login rather than a session. */
@@ -91,6 +109,10 @@ export type AdminPasskeyRegistrationResult =
   | { ok: false; message: string; challengeExpired: boolean };
 
 export type AdminMfaDisableResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+export type AdminPasskeyChangeResult =
   | { ok: true }
   | { ok: false; message: string };
 
@@ -279,6 +301,31 @@ const challengePasskeyFailure = async (
 };
 
 /**
+ * Wording for a failure on a passkey RPC the *session* authorized.
+ *
+ * The one refusal with a reason of its own is a registration the API could
+ * not verify. Anything that says the session is unusable is rethrown for
+ * `withAdminSessionReauth()`, as it is for a code, and every other category
+ * takes the operation's own wording from `overrides` or `fallback`.
+ */
+const sessionPasskeyFailureMessage = async (
+  error: unknown,
+  locale: Locale,
+  fallback: string,
+  overrides: RpcErrorMessageOverrides
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaPasskeyRefused)) {
+    return t("admin.auth.mfa.errors.passkey_registration_refused");
+  }
+
+  rethrowUnauthenticatedRpcError(error);
+  rethrowUnclassifiedRpcError(error);
+
+  return rpcErrorMessage(error, fallback, { locale, overrides });
+};
+
+/**
  * Tag the account screen's cached status read carries, so `updateTag` in a
  * Server Action shows the factor being turned on or off in the same session
  * instead of leaving the previous state in the private cache.
@@ -300,15 +347,27 @@ const getAdminMfaStatusForSession = async (
   }
 
   try {
-    const response = await apiClient.auth.getMfaStatus(
-      { tenant: { tenantId } },
-      withSessionHeaders(token)
-    );
+    const [response, { passkeys }] = await Promise.all([
+      apiClient.auth.getMfaStatus(
+        { tenant: { tenantId } },
+        withSessionHeaders(token)
+      ),
+      apiClient.auth.listPasskeys(
+        { tenant: { tenantId } },
+        withSessionHeaders(token)
+      ),
+    ]);
 
     return {
       ok: true,
       status: {
         enabled: response.enabled,
+        passkeys: passkeys.map((passkey) => ({
+          createdAt: passkey.createdAt,
+          id: passkey.id,
+          lastUsedAt: passkey.lastUsedAt,
+          name: passkey.name,
+        })),
         remainingRecoveryCodes: response.remainingRecoveryCodes,
         required: response.required,
       },
@@ -328,9 +387,10 @@ const getAdminMfaStatusForSession = async (
 };
 
 /**
- * The signed-in operator's second factor, or a rejected session. Any other
- * failure reaches the error boundary: the account screen has no copy for a
- * status it could not read.
+ * The signed-in operator's second factors — the authenticator app's status
+ * and the passkeys, read together because one card shows both — or a
+ * rejected session. Any other failure reaches the error boundary: the account
+ * screen has no copy for a status it could not read.
  */
 export const getAdminMfaStatus = async (
   tenantId: string
@@ -580,31 +640,65 @@ export const finishAdminPasskeyVerification = async (
 };
 
 /**
- * Start registering a passkey for an account the tenant is holding at the
- * login screen until it enrolls a second factor.
+ * Wording for a refused registration the session authorized: the account
+ * already holding the credential is the one refusal with copy of its own.
+ */
+const sessionPasskeyRegistrationFailure = async (
+  error: unknown,
+  locale: Locale
+): Promise<{ message: string; challengeExpired: boolean }> => {
+  const t = await getMessagesFor(locale);
+
+  return {
+    challengeExpired: false,
+    message: await sessionPasskeyFailureMessage(
+      error,
+      locale,
+      t("admin.settings.mfa.passkey_add_failed"),
+      { conflict: t("admin.auth.mfa.errors.passkey_already_registered") }
+    ),
+  };
+};
+
+/**
+ * Start registering a passkey, for an account the tenant is holding at the
+ * login screen until it enrolls a second factor and for a signed-in one
+ * adding a passkey from its account settings.
+ *
+ * `challengeToken` is what separates the two, as it is for
+ * {@link startAdminMfaEnrollment}: empty means the signed-in account.
  */
 export const beginAdminPasskeyRegistration = async (
   tenantId: string,
   challengeToken: string,
   locale: Locale
 ): Promise<AdminPasskeyCeremonyStartResult> => {
+  const sessionToken = challengeToken ? "" : await getAccessToken();
+
   try {
-    const response = await apiClient.auth.beginPasskeyRegistration(
-      { challengeToken, tenant: { tenantId } },
-      await withClientAddressHeaders()
-    );
+    const response = challengeToken
+      ? await apiClient.auth.beginPasskeyRegistration(
+          { challengeToken, tenant: { tenantId } },
+          await withClientAddressHeaders()
+        )
+      : await apiClient.auth.beginPasskeyRegistration(
+          { challengeToken: "", tenant: { tenantId } },
+          withSessionHeaders(sessionToken)
+        );
     return { ok: true, optionsJson: response.creationOptionsJson };
   } catch (error) {
     return {
-      ...(await challengePasskeyFailure(error, locale, "registration")),
+      ...(challengeToken
+        ? await challengePasskeyFailure(error, locale, "registration")
+        : await sessionPasskeyRegistrationFailure(error, locale)),
       ok: false,
     };
   }
 };
 
 /**
- * Store the passkey the browser created, which finishes the login the enroll
- * challenge was holding, as confirming an authenticator does.
+ * Store the passkey the browser created. Under an enroll challenge it finishes
+ * the login the challenge was holding, as confirming an authenticator does.
  */
 export const finishAdminPasskeyRegistration = async (
   tenantId: string,
@@ -612,14 +706,27 @@ export const finishAdminPasskeyRegistration = async (
   credentialJson: string,
   locale: Locale
 ): Promise<AdminPasskeyRegistrationResult> => {
+  const sessionToken = challengeToken ? "" : await getAccessToken();
+
   try {
-    const response = await apiClient.auth.finishPasskeyRegistration(
-      { challengeToken, credentialJson, name: "", tenant: { tenantId } },
-      await withClientAddressHeaders()
-    );
+    const response = challengeToken
+      ? await apiClient.auth.finishPasskeyRegistration(
+          { challengeToken, credentialJson, name: "", tenant: { tenantId } },
+          await withClientAddressHeaders()
+        )
+      : await apiClient.auth.finishPasskeyRegistration(
+          {
+            challengeToken: "",
+            credentialJson,
+            name: "",
+            tenant: { tenantId },
+          },
+          withSessionHeaders(sessionToken)
+        );
 
     return {
       ok: true,
+      passkeyId: response.passkey?.id ?? "",
       recoveryCodes: response.recoveryCodes,
       session: toMfaSession(
         response.accessToken?.token,
@@ -628,7 +735,80 @@ export const finishAdminPasskeyRegistration = async (
     };
   } catch (error) {
     return {
-      ...(await challengePasskeyFailure(error, locale, "registration")),
+      ...(challengeToken
+        ? await challengePasskeyFailure(error, locale, "registration")
+        : await sessionPasskeyRegistrationFailure(error, locale)),
+      ok: false,
+    };
+  }
+};
+
+/** Name one of the signed-in account's passkeys; an empty name clears it. */
+export const renameAdminPasskey = async (
+  tenantId: string,
+  id: string,
+  name: string,
+  locale: Locale
+): Promise<AdminPasskeyChangeResult> => {
+  const [t, sessionToken] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+
+  try {
+    await apiClient.auth.renamePasskey(
+      { id, name, tenant: { tenantId } },
+      withSessionHeaders(sessionToken)
+    );
+    return { ok: true };
+  } catch (error) {
+    return {
+      message: await sessionPasskeyFailureMessage(
+        error,
+        locale,
+        t("admin.settings.mfa.passkey_rename_failed"),
+        {
+          "invalid-argument": t("admin.settings.mfa.passkey_name_too_long"),
+          "not-found": t("admin.settings.mfa.passkey_not_found"),
+        }
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Remove one of the signed-in account's passkeys. The API refuses the last
+ * second factor of an account the tenant requires one of, which is the
+ * failed precondition worded here.
+ */
+export const deleteAdminPasskey = async (
+  tenantId: string,
+  id: string,
+  locale: Locale
+): Promise<AdminPasskeyChangeResult> => {
+  const [t, sessionToken] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+
+  try {
+    await apiClient.auth.deletePasskey(
+      { id, tenant: { tenantId } },
+      withSessionHeaders(sessionToken)
+    );
+    return { ok: true };
+  } catch (error) {
+    return {
+      message: await sessionPasskeyFailureMessage(
+        error,
+        locale,
+        t("admin.settings.mfa.passkey_remove_failed"),
+        {
+          "not-found": t("admin.settings.mfa.passkey_not_found"),
+          precondition: t("admin.settings.mfa.passkey_last_factor"),
+        }
+      ),
       ok: false,
     };
   }

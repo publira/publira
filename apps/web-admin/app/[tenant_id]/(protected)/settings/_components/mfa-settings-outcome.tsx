@@ -10,7 +10,10 @@ import { IssuedMfaRecoveryCodes } from "#components/mfa-recovery-code-list";
 
 interface MfaSettingsChange {
   message: string;
-  /** The batch the change issued, for an enrollment or a regeneration. */
+  /**
+   * The batch the change issued: an enrollment's, a regeneration's, or the
+   * one a first passkey brings.
+   */
   recoveryCodes: string[] | null;
 }
 
@@ -70,7 +73,11 @@ export const ReportMfaSettingsChange = () => {
       if (state?.ok) {
         report?.({
           message: state.message,
-          recoveryCodes: state.recoveryCodes ?? null,
+          // A passkey added to an account that already held codes issues
+          // none, which is no batch to show.
+          recoveryCodes: state.recoveryCodes?.length
+            ? state.recoveryCodes
+            : null,
         });
       }
     }
