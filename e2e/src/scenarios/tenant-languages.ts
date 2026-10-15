@@ -6,6 +6,14 @@
 
 export const TENANT_LANGUAGES_SCENARIO = "510_tenant_languages";
 
+/** Tenant whose languages the suite switches. No other suite signs in to it. */
+export const TENANT_LANGUAGES_TENANT = {
+  adminDomain: "admin.langs.localhost",
+  domain: "langs.localhost",
+  name: "Languages Tenant",
+  publicId: "LngsTNNTAAA1",
+} as const;
+
 /** The tenant admin that switches the languages. Password hash is `adminpass`. */
 export const TENANT_LANGUAGES_ADMIN = {
   email: "langs-admin@example.com",
