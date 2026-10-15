@@ -142,19 +142,21 @@ export const passkeyCredentialFormSchema = z
   .max(64 * 1024);
 
 /**
- * What a member of staff calls one of their passkeys. Empty leaves it
- * unnamed. The API bounds it in characters rather than UTF-16 units, so the
- * length is counted the same way here.
+ * What a member of staff calls one of their passkeys. An empty field leaves
+ * it unnamed, but a missing field or a file is refused rather than read as
+ * empty: renaming with an empty name clears the one the passkey has. The API
+ * bounds it in characters rather than UTF-16 units, so the length is counted
+ * the same way here.
  */
 export const passkeyNameFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
-  return z.preprocess(
-    (value) => (typeof value === "string" ? value.trim() : ""),
-    z.string().refine((value) => [...value].length <= PASSKEY_NAME_MAX_LENGTH, {
+  return z
+    .string({ error: t("admin.settings.mfa.passkey_rename_failed") })
+    .trim()
+    .refine((value) => [...value].length <= PASSKEY_NAME_MAX_LENGTH, {
       error: t("admin.settings.mfa.passkey_name_too_long"),
-    })
-  );
+    });
 };
 
 export const passwordFormSchema = async (locale: Locale) => {

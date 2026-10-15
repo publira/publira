@@ -11,7 +11,6 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
   within,
 } from "@testing-library/react";
 import { Activity } from "react";
@@ -391,12 +390,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     expect(screen.getByRole("button", { name: "Set up" })).toBeDefined();
   });
 
-  it("says so when both factors are on, and turning off keeps the passkeys", async () => {
-    disable.mockResolvedValue({
-      message: "The authenticator app has been removed.",
-      ok: true,
-    });
-
+  it("says so when both factors are on, and that turning off leaves the passkeys", async () => {
     renderCard(both);
 
     expect(
@@ -406,12 +400,11 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
         onScreen
       )
     ).toBeDefined();
-
-    await submitCode("Turn off", "654321");
-    await waitFor(() => {
-      expect(disable).toHaveBeenCalledTimes(1);
-    });
-    expect(disable.mock.calls[0]?.[1].get("keeps_passkeys")).toBe("1");
+    expect(
+      screen.getByText(
+        "Removes the authenticator app; your passkeys keep two-step verification on. Enter the current code from your authenticator app, or one of your recovery codes."
+      )
+    ).toBeDefined();
   });
 
   // The first passkey of an account with no factor brings the recovery codes,

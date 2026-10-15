@@ -146,9 +146,6 @@ const MfaDisableForm = ({
     showSuccess={false}
   >
     <input name="tenant_id" type="hidden" value={tenantId} />
-    {keepsPasskeys ? (
-      <input name="keeps_passkeys" type="hidden" value="1" />
-    ) : null}
     <ReportMfaSettingsChange />
     <div className="grid gap-1">
       <p className="text-sm font-medium text-foreground">

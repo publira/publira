@@ -25,7 +25,7 @@ import {
 } from "#lib/auth-input";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { flagOneFormSchema, requiredTrimmedString } from "#lib/form-schemas";
+import { requiredTrimmedString } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import type {
   MfaEnrollmentConfirmState,
@@ -223,13 +223,11 @@ export const disableAccountMfaAction = async (
 
   updateTag(adminMfaStatusCacheTag(input.tenantId));
 
-  // Only the wording depends on the passkeys the card listed: the API removed
-  // the authenticator either way, and the card's status line, read again
-  // after `updateTag`, says what is left.
+  // The answer names what was removed and nothing about what is left: the
+  // card's status line, read again after `updateTag`, is what says whether a
+  // passkey keeps two-step verification on.
   return {
-    message: flagOneFormSchema.parse(formData.get("keeps_passkeys"))
-      ? t("admin.settings.mfa.disable_done_with_passkeys")
-      : t("admin.settings.mfa.disable_done"),
+    message: t("admin.settings.mfa.disable_done"),
     ok: true,
   };
 };
