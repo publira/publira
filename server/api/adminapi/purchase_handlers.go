@@ -431,7 +431,7 @@ func (s *adminServer) RefundPurchase(
 	// refund failed, lands on a purchase already revoked. No row is a purchase
 	// something revoked in the meantime: an earlier or a concurrent request for
 	// the same refund, or the reader's dispute. Only the request that revoked
-	// it takes the revocation back.
+	// it records staff's decision and takes the revocation back.
 	//
 	// From here on the work runs on a context the request's end does not
 	// cancel, so a caller that hangs up or times out cannot leave a revocation
@@ -439,13 +439,27 @@ func (s *adminServer) RefundPurchase(
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), purchaseRefundTimeout)
 	defer cancel()
 	queries := s.queriesFor(ctx)
-	_, err = queries.RevokePurchaseForStaff(ctx, dbmodels.RevokePurchaseForStaffParams{
-		TenantID: tenant.ID,
-		ID:       row.ID,
-	})
-	revokedHere := err == nil
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, s.internalDBError(ctx, "failed to revoke a purchase staff are refunding", err, "tenant_id", tenant.ID.String(), "purchase_id", row.ID.String())
+	revokedHere, err := s.revokePurchaseForStaffRefund(ctx, sessionCtx, tenant.ID, row.ID, reason)
+	if err != nil {
+		return nil, err
+	}
+	// recordRefundNotMade follows this request's audit entry with one saying
+	// the provider made no refund for it.
+	recordRefundNotMade := func(why string) {
+		if !revokedHere {
+			return
+		}
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "purchase_refunded",
+			TargetType:  "purchase",
+			TargetID:    row.ID.String(),
+			Outcome:     auditlog.OutcomeFailure,
+			Reason:      why,
+			ClientIP:    clientip.FromContext(ctx),
+		})
 	}
 	// liftRevocation takes this request's revocation back for a refund that
 	// did not happen, moving the purchase on to its next attempt when the
@@ -479,6 +493,7 @@ func (s *adminServer) RefundPurchase(
 			return nil, liftErr
 		}
 		if refused {
+			recordRefundNotMade("the payment provider refused the refund")
 			s.logger.WarnContext(ctx, "the payment provider refused a refund",
 				"tenant_id", tenant.ID,
 				"purchase_id", row.ID,
@@ -496,23 +511,19 @@ func (s *adminServer) RefundPurchase(
 		return nil, connect.NewError(connect.CodeUnavailable, "the payment provider did not complete the refund").WithCause(err)
 	}
 
-	switch {
 	// The payment was refunded in full before staff asked, in the provider's
 	// dashboard, and the notification of it has yet to arrive. Staff refunded
 	// nothing, so the purchase is left for that notification to revoke.
-	case !refunded:
+	if !refunded {
 		if err := liftRevocation(false); err != nil {
 			return nil, err
 		}
+		recordRefundNotMade("the payment provider reports the payment refunded in full already")
 		s.logger.InfoContext(ctx, "the payment provider reports a purchase refunded in full already",
 			"tenant_id", tenant.ID,
 			"purchase_id", row.ID,
 			"provider", row.Provider.String,
 		)
-	default:
-		if err := s.recordStaffRefund(ctx, sessionCtx, tenant.ID, row.ID, row.StaffRefundAttempt, reason); err != nil {
-			return nil, err
-		}
 	}
 
 	revoked, err := s.loadPurchase(ctx, tenant.ID, row.ID)
@@ -524,40 +535,39 @@ func (s *adminServer) RefundPurchase(
 	}, nil
 }
 
-// recordStaffRefund writes the audit entry of a refund the provider carried
-// out under a staff attempt, once for the attempt. The entry is recorded by
-// whichever request claims the attempt, not by the one that revoked the
-// purchase: a request finishing what an interrupted one left unasked revoked
-// nothing, and its staff and reason are the only ones the refund has.
+// revokePurchaseForStaffRefund revokes a purchase staff are about to refund
+// and records their decision, reason included, in the same transaction, and
+// reports whether this request made the revocation. No row is a purchase
+// something revoked in the meantime, whose entry, if staff's, was written
+// with that revocation.
 //
 // The entry is the only record of who gave the reader their money back and
-// why, so it is written in the claim's transaction rather than queued: a claim
-// that committed without its entry would leave every later request for the
-// attempt nothing to record. When the write fails the claim goes with it, and
-// asking for the refund again records it.
-func (s *adminServer) recordStaffRefund(
+// why, so it is written before the provider is asked rather than after: a
+// request cut off after the provider refunded, or one the provider then
+// answers with nothing left to refund, would otherwise leave a refund no
+// entry names. A refund the provider then does not make is followed by an
+// entry saying so.
+func (s *adminServer) revokePurchaseForStaffRefund(
 	ctx context.Context,
 	sessionCtx rpcmiddleware.SessionContext,
 	tenantID, purchaseID uuid.UUID,
-	attempt int32,
 	reason string,
-) error {
+) (bool, error) {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		return s.internalDBError(ctx, "failed to begin the audit of a staff refund", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
+		return false, s.internalDBError(ctx, "failed to begin the revocation of a purchase staff are refunding", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
 	queries := dbmodels.New(tx)
-	_, err = queries.ClaimStaffRefundRecord(ctx, dbmodels.ClaimStaffRefundRecordParams{
+	_, err = queries.RevokePurchaseForStaff(ctx, dbmodels.RevokePurchaseForStaffParams{
 		TenantID: tenantID,
 		ID:       purchaseID,
-		Attempt:  attempt,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil
+		return false, nil
 	}
 	if err != nil {
-		return s.internalDBError(ctx, "failed to claim the audit entry of a staff refund", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
+		return false, s.internalDBError(ctx, "failed to revoke a purchase staff are refunding", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
 	}
 	if err := auditlog.WriteTenant(ctx, queries, s.logger, auditlog.TenantEntry{
 		TenantID:    tenantID,
@@ -570,10 +580,10 @@ func (s *adminServer) recordStaffRefund(
 		Reason:      reason,
 		ClientIP:    clientip.FromContext(ctx),
 	}); err != nil {
-		return s.internalDBError(ctx, "failed to record a staff refund", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
+		return false, s.internalDBError(ctx, "failed to record a staff refund", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
 	}
 	if err := tx.Commit(); err != nil {
-		return s.internalDBError(ctx, "failed to commit the audit of a staff refund", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
+		return false, s.internalDBError(ctx, "failed to commit the revocation of a purchase staff are refunding", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
 	}
-	return nil
+	return true, nil
 }

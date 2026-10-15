@@ -155,10 +155,22 @@ func (f *purchaseFixture) refund(purchaseID uuid.UUID) (*publiraadminv1.AdminPur
 	return res.Purchase, nil
 }
 
+// refundAudits counts the audit entries of staff deciding to refund the
+// purchase, which are written with the purchase's revocation.
 func (f *purchaseFixture) refundAudits(t *testing.T, purchaseID uuid.UUID) int {
 	t.Helper()
 	return f.env.countRows(t,
-		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND action = 'purchase_refunded' AND target_type = 'purchase' AND target_id = $2",
+		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND action = 'purchase_refunded' AND target_type = 'purchase' AND target_id = $2 AND outcome = 'success'",
+		f.admin.Tenant.ID, purchaseID.String(),
+	)
+}
+
+// refundsNotMade counts the audit entries saying the provider made no refund
+// for a decision staff recorded.
+func (f *purchaseFixture) refundsNotMade(t *testing.T, purchaseID uuid.UUID) int {
+	t.Helper()
+	return f.env.countRows(t,
+		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND action = 'purchase_refunded' AND target_type = 'purchase' AND target_id = $2 AND outcome = 'failure'",
 		f.admin.Tenant.ID, purchaseID.String(),
 	)
 }
@@ -388,7 +400,8 @@ func TestDBRefundPurchaseLeavesAFullRefundAsItIs(t *testing.T) {
 
 // A payment refunded in full in Stripe's dashboard, whose notification has not
 // arrived yet, is no refund staff made: the purchase is left open for that
-// notification, with no staff revocation and no audit entry.
+// notification, with no staff revocation, and staff's decision is followed by
+// an audit entry saying no refund was made.
 func TestDBRefundPurchaseLeavesADashboardRefundToItsNotification(t *testing.T) {
 	f := newPurchaseFixture(t)
 	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_dashboard"})
@@ -404,8 +417,8 @@ func TestDBRefundPurchaseLeavesADashboardRefundToItsNotification(t *testing.T) {
 	if refunds := f.stripe.Refunds(); len(refunds) != 0 {
 		t.Fatalf("refunds = %+v, want none", refunds)
 	}
-	if got := f.refundAudits(t, purchaseID); got != 0 {
-		t.Fatalf("audit entries = %d, want none", got)
+	if got, notMade := f.refundAudits(t, purchaseID), f.refundsNotMade(t, purchaseID); got != 1 || notMade != 1 {
+		t.Fatalf("audit entries = %d decided and %d not made, want 1 and 1", got, notMade)
 	}
 }
 
@@ -448,8 +461,8 @@ func TestDBRefundPurchaseRefusesWhatItCannotRefund(t *testing.T) {
 		if res.Purchase.RevokedAt != "" || !res.Purchase.Refundable {
 			t.Fatalf("purchase after a refused refund = %+v, want still open and refundable", res.Purchase)
 		}
-		if got := f.refundAudits(t, purchaseID); got != 0 {
-			t.Fatalf("audit entries = %d, want none", got)
+		if got, notMade := f.refundAudits(t, purchaseID), f.refundsNotMade(t, purchaseID); got != 1 || notMade != 1 {
+			t.Fatalf("audit entries = %d decided and %d not made, want 1 and 1", got, notMade)
 		}
 	})
 
@@ -465,8 +478,8 @@ func TestDBRefundPurchaseRefusesWhatItCannotRefund(t *testing.T) {
 		if res.Purchase.RevokedAt != "" || !res.Purchase.Refundable {
 			t.Fatalf("purchase after a failed refund = %+v, want still open and refundable", res.Purchase)
 		}
-		if got := f.refundAudits(t, purchaseID); got != 0 {
-			t.Fatalf("audit entries = %d, want none", got)
+		if got, notMade := f.refundAudits(t, purchaseID), f.refundsNotMade(t, purchaseID); got != 1 || notMade != 1 {
+			t.Fatalf("audit entries = %d decided and %d not made, want 1 and 1", got, notMade)
 		}
 	})
 
@@ -562,35 +575,6 @@ func TestDBRevokePurchaseForStaffTakesOverOnlyTheRefundsOwnNotification(t *testi
 	}
 }
 
-// The refund each attempt made is claimed for the audit log once, whatever
-// the order: a notification that the refund failed can move the purchase on,
-// and the next attempt be claimed, before the request that made the earlier
-// refund gets to the claim.
-func TestDBClaimStaffRefundRecordClaimsEachAttemptOnce(t *testing.T) {
-	f := newPurchaseFixture(t)
-	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_claimed"})
-	queries := dbmodels.New(f.env.PG.DB)
-	claim := func(attempt int32) error {
-		_, err := queries.ClaimStaffRefundRecord(context.Background(), dbmodels.ClaimStaffRefundRecordParams{TenantID: f.admin.Tenant.ID, ID: purchaseID, Attempt: attempt})
-		return err
-	}
-	if _, err := f.env.PG.DB.ExecContext(context.Background(), "UPDATE purchases SET staff_refund_attempt = 1 WHERE id = $1", purchaseID); err != nil {
-		t.Fatalf("move the purchase on to its next attempt: %v", err)
-	}
-
-	if err := claim(1); err != nil {
-		t.Fatalf("claim the next attempt: %v", err)
-	}
-	if err := claim(0); err != nil {
-		t.Fatalf("claim the attempt the purchase has moved on from, after the next one: %v", err)
-	}
-	for _, attempt := range []int32{0, 1} {
-		if err := claim(attempt); !errors.Is(err, sql.ErrNoRows) {
-			t.Fatalf("claim attempt %d again: %v, want no row", attempt, err)
-		}
-	}
-}
-
 // Once Stripe has refused or failed a staff refund, asking again is a new
 // attempt under a new idempotency key: under the old one Stripe would only
 // answer the failure again.
@@ -626,8 +610,8 @@ func TestDBRefundPurchaseRetriesAFailedRefundUnderANewKey(t *testing.T) {
 		if got := f.stripe.RefundedTotal(purchaseTestSecretKey, "pi_failed_at_once"); got != 500 {
 			t.Fatalf("refunded total = %d, want 500", got)
 		}
-		if got := f.refundAudits(t, purchaseID); got != 1 {
-			t.Fatalf("audit entries = %d, want 1", got)
+		if got, notMade := f.refundAudits(t, purchaseID), f.refundsNotMade(t, purchaseID); got != 2 || notMade != 1 {
+			t.Fatalf("audit entries = %d decided and %d not made, want one per request and the failed one", got, notMade)
 		}
 	})
 
@@ -694,10 +678,10 @@ func TestDBRefundPurchaseFinishesARefundAnEarlierRequestLeftUnasked(t *testing.T
 	if refunds := f.stripe.Refunds(); len(refunds) != 1 {
 		t.Fatalf("refunds = %+v, want one", refunds)
 	}
-	// The interrupted request recorded nothing, so the one that finished the
-	// refund records it, once.
-	if got := f.refundAudits(t, purchaseID); got != 1 {
-		t.Fatalf("audit entries = %d, want 1", got)
+	// Staff's decision was recorded with the revocation, by the request that
+	// made it, so finishing the refund records nothing more.
+	if got, notMade := f.refundAudits(t, purchaseID), f.refundsNotMade(t, purchaseID); got != 0 || notMade != 0 {
+		t.Fatalf("audit entries = %d decided and %d not made, want none", got, notMade)
 	}
 }
 

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 )
 
 const ApplyUnappliedStoreRefundToPurchase = `-- name: ApplyUnappliedStoreRefundToPurchase :one
@@ -26,7 +25,7 @@ WHERE r.tenant_id = p.tenant_id
     AND r.store_transaction_id = p.store_transaction_id
     AND p.tenant_id = $1
     AND p.id = $2
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.staff_refund_recorded_attempts
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt
 `
 
 type ApplyUnappliedStoreRefundToPurchaseParams struct {
@@ -60,7 +59,6 @@ func (q *Queries) ApplyUnappliedStoreRefundToPurchase(ctx context.Context, arg A
 		&i.RevokedAt,
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
-		pq.Array(&i.StaffRefundRecordedAttempts),
 	)
 	return i, err
 }
@@ -109,7 +107,7 @@ VALUES (
     $10
 )
 ON CONFLICT (tenant_id, store, store_transaction_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, staff_refund_recorded_attempts
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt
 `
 
 type CreateStorePurchaseParams struct {
@@ -161,7 +159,6 @@ func (q *Queries) CreateStorePurchase(ctx context.Context, arg CreateStorePurcha
 		&i.RevokedAt,
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
-		pq.Array(&i.StaffRefundRecordedAttempts),
 	)
 	return i, err
 }
@@ -227,7 +224,7 @@ func (q *Queries) GetMyPurchase(ctx context.Context, arg GetMyPurchaseParams) (G
 }
 
 const GetStorePurchaseByTransaction = `-- name: GetStorePurchaseByTransaction :one
-SELECT id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, staff_refund_recorded_attempts
+SELECT id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt
 FROM purchases
 WHERE tenant_id = $1
     AND store = $2::text
@@ -263,7 +260,6 @@ func (q *Queries) GetStorePurchaseByTransaction(ctx context.Context, arg GetStor
 		&i.RevokedAt,
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
-		pq.Array(&i.StaffRefundRecordedAttempts),
 	)
 	return i, err
 }
@@ -433,7 +429,7 @@ SET refunded_amount = price_at_purchase,
 WHERE tenant_id = $1
     AND store = $2::text
     AND store_transaction_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, staff_refund_recorded_attempts
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt
 `
 
 type RecordStoreRefundOnPurchaseParams struct {
@@ -470,7 +466,6 @@ func (q *Queries) RecordStoreRefundOnPurchase(ctx context.Context, arg RecordSto
 		&i.RevokedAt,
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
-		pq.Array(&i.StaffRefundRecordedAttempts),
 	)
 	return i, err
 }
