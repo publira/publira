@@ -23,6 +23,7 @@ import {
   AdminSectionTitle,
 } from "#components/admin-page";
 import { Message } from "#components/message";
+import { ReaderIcon } from "#components/reader-icon";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantRoleLabel } from "#lib/role-labels";
 
@@ -33,6 +34,7 @@ import {
 import type { ReaderDetail } from "../../reader-types";
 import { ChangeBirthDateButton } from "./change-birth-date-button";
 import { DeleteReaderButton } from "./delete-reader-button";
+import { RemoveReaderIconButton } from "./remove-reader-icon-button";
 import { SuspendReaderButton } from "./suspend-reader-button";
 import { UnsuspendReaderButton } from "./unsuspend-reader-button";
 
@@ -104,6 +106,35 @@ export const ReaderAccount = async ({
         </AdminSectionActions>
       </AdminSectionHeader>
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-[12rem_minmax(0,1fr)]">
+        <dt className={labelClassName}>
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="admin.readers.icon" />
+          </Suspense>
+        </dt>
+        <dd className={cn(valueClassName, "flex flex-wrap items-center gap-3")}>
+          <ReaderIcon
+            alt={t("admin.readers.icon_alt", {
+              name: reader.name || reader.email,
+            })}
+            icon={reader.icon}
+            size={64}
+          />
+          {reader.icon ? (
+            <RemoveReaderIconButton
+              name={reader.name || reader.email}
+              publicId={reader.publicId}
+              readerId={reader.id}
+              tenantId={tenantId}
+            />
+          ) : (
+            <span className="text-muted-foreground">
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.readers.icon_unset" />
+              </Suspense>
+            </span>
+          )}
+        </dd>
+
         <dt className={labelClassName}>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
             <Message message="admin.readers.columns.name" />

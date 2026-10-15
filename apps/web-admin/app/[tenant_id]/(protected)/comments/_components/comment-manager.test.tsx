@@ -70,6 +70,7 @@ const comment = (
   status: CommentStatus,
   overrides: Partial<CommentItem> = {}
 ): CommentItem => ({
+  authorIcon: null,
   authorIsStaff: false,
   authorName: "Reader",
   authorPublicId: "USER001",
@@ -317,6 +318,43 @@ describe("CommentManager", () => {
     expect(
       screen.getByRole("link", { name: "Reader" }).getAttribute("href")
     ).toBe("/readers/USER001");
+  });
+
+  it("draws the commenter's icon beside their name, and the outline for one without", async () => {
+    render(
+      await CommentManager({
+        canModerate: true,
+        canViewReaders: true,
+        comments: [
+          comment("published", {
+            authorIcon: {
+              height: 512,
+              url: "/images/users/USER001/icon.png",
+              width: 512,
+            },
+          }),
+          comment("published", {
+            authorName: "Reader Two",
+            authorPublicId: "USER002",
+            id: "COMMENT002",
+          }),
+        ],
+        locale: "en",
+        pageSize: 20,
+        tenantId: "TENANT001",
+        timeZone: "UTC",
+      })
+    );
+
+    const withIcon = screen.getByRole("link", { name: "Reader" }).closest("td");
+    const withoutIcon = screen
+      .getByRole("link", { name: "Reader Two" })
+      .closest("td");
+    expect(withIcon?.querySelector("img")?.getAttribute("src")).toContain(
+      "icon.png"
+    );
+    expect(withoutIcon?.querySelector("img")).toBeNull();
+    expect(withoutIcon?.querySelector("[aria-hidden='true'] svg")).toBeTruthy();
   });
 
   it("shows a staff commenter without a link, since staff have no reader page", async () => {

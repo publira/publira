@@ -35,6 +35,7 @@ vi.mock("next/link", () => ({
 const reader = (overrides: Partial<ReaderItem> = {}): ReaderItem => ({
   createdAt: "2026-06-01T20:00:00Z",
   email: "reader@example.com",
+  icon: null,
   id: "01920000-0000-7000-8000-000000000001",
   name: "Reader One",
   publicId: "READER00001",
@@ -87,6 +88,34 @@ describe("ReaderManager", () => {
     expect(readerRow?.textContent).not.toMatch(
       /Tenant admin|Editor|Auditor|No role/u
     );
+  });
+
+  it("draws each reader's icon beside their name, and the outline for one without", async () => {
+    render(
+      await ReaderManager({
+        filtered: false,
+        locale: "en",
+        pageSize: 20,
+        readers: [
+          reader({
+            icon: {
+              height: 512,
+              url: "/images/users/READER00001/icon.png",
+              width: 512,
+            },
+          }),
+          reader({ name: "Reader Two", publicId: "READER00002" }),
+        ],
+        timeZone: "Asia/Seoul",
+      })
+    );
+
+    const [, withIcon, withoutIcon] = screen.getAllByRole("row");
+    expect(withIcon?.querySelector("img")?.getAttribute("src")).toContain(
+      "icon.png"
+    );
+    expect(withoutIcon?.querySelector("img")).toBeNull();
+    expect(withoutIcon?.querySelector("[aria-hidden='true'] svg")).toBeTruthy();
   });
 
   it("links a reader without a name by their public_id", async () => {

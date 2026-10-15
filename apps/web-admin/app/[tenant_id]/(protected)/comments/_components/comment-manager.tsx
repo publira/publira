@@ -39,6 +39,7 @@ import {
   PaginationFooter,
   PaginationFooterDescription,
 } from "#components/pagination-controls";
+import { ReaderIcon } from "#components/reader-icon";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -363,23 +364,27 @@ const CommentListBody = ({
               <p className="text-sm whitespace-pre-wrap">{comment.body}</p>
             </TableCell>
             <TableCell>
-              <div className="grid gap-0.5">
-                {comment.authorIsStaff || !canViewReaders ? (
-                  <span className="font-medium">
-                    {comment.authorName || comment.authorPublicId}
+              <div className="flex min-w-0 items-start gap-2">
+                {/* The name beside it says whose icon it is. */}
+                <ReaderIcon alt="" icon={comment.authorIcon} size={32} />
+                <div className="grid min-w-0 gap-0.5">
+                  {comment.authorIsStaff || !canViewReaders ? (
+                    <span className="font-medium">
+                      {comment.authorName || comment.authorPublicId}
+                    </span>
+                  ) : (
+                    <Link
+                      className="font-medium underline-offset-4 hover:underline"
+                      href={`/readers/${comment.authorPublicId}`}
+                    >
+                      {comment.authorName || comment.authorPublicId}
+                    </Link>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {comment.authorPublicId}
                   </span>
-                ) : (
-                  <Link
-                    className="font-medium underline-offset-4 hover:underline"
-                    href={`/readers/${comment.authorPublicId}`}
-                  >
-                    {comment.authorName || comment.authorPublicId}
-                  </Link>
-                )}
-                <span className="text-xs text-muted-foreground">
-                  {comment.authorPublicId}
-                </span>
-                <CommentCreatorMark creator={comment.creator} />
+                  <CommentCreatorMark creator={comment.creator} />
+                </div>
               </div>
             </TableCell>
             <TableCell>

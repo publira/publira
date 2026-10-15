@@ -46,6 +46,14 @@ vi.mock("./api", () => ({
 }));
 
 const adminComment = {
+  authorIconImageVariants: [
+    {
+      height: 512,
+      label: "original",
+      url: "/images/users/USER001/icon.png",
+      width: 512,
+    },
+  ],
   authorIsStaff: false,
   authorName: "Reader",
   authorPublicId: "USER001",
@@ -79,6 +87,11 @@ const commentReport = {
 };
 
 const mappedComment = {
+  authorIcon: {
+    height: 512,
+    url: "/images/users/USER001/icon.png",
+    width: 512,
+  },
   authorIsStaff: false,
   authorName: "Reader",
   authorPublicId: "USER001",

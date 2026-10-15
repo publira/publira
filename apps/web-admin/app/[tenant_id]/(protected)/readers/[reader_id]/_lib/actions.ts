@@ -17,7 +17,11 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
-import { moderateReader, setReaderBirthDate } from "#lib/reader";
+import {
+  moderateReader,
+  removeReaderIcon,
+  setReaderBirthDate,
+} from "#lib/reader";
 import type { ReaderModerationAction } from "#lib/reader";
 import { tenantMembersCacheTag } from "#lib/tenant-members";
 
@@ -146,6 +150,38 @@ export const setReaderBirthDateAction = async (
   }
 
   redirect(readerPage(publicId, "birth_date_updated"));
+};
+
+/**
+ * Takes down the reader's icon. Every console screen reads the account afresh,
+ * so the redirect is all it takes for each of them to draw the stand-in.
+ */
+export const removeReaderIconAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await readerActionSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, readerActionFormFields)
+  );
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const { publicId, readerId, tenantId } = parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    removeReaderIcon({ readerId, tenantId }, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  redirect(readerPage(publicId, "icon_removed"));
 };
 
 export const deleteReaderAction = async (

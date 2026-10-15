@@ -10,6 +10,7 @@ const {
   mockGetAccessToken,
   mockGetReader,
   mockListReaders,
+  mockRemoveReaderIcon,
   mockSetReaderBirthDate,
   mockSuspendReader,
   mockUnsuspendReader,
@@ -18,6 +19,7 @@ const {
   mockGetAccessToken: vi.fn(),
   mockGetReader: vi.fn(),
   mockListReaders: vi.fn(),
+  mockRemoveReaderIcon: vi.fn(),
   mockSetReaderBirthDate: vi.fn(),
   mockSuspendReader: vi.fn(),
   mockUnsuspendReader: vi.fn(),
@@ -33,6 +35,7 @@ vi.mock("./api", () => ({
       deleteReader: mockDeleteReader,
       getReader: mockGetReader,
       listReaders: mockListReaders,
+      removeReaderIcon: mockRemoveReaderIcon,
       setReaderBirthDate: mockSetReaderBirthDate,
       suspendReader: mockSuspendReader,
       unsuspendReader: mockUnsuspendReader,
@@ -102,6 +105,7 @@ describe("reader lib", () => {
         {
           createdAt: "2026-06-01T00:00:00Z",
           email: "reader@example.com",
+          icon: null,
           id: READER_ID,
           name: "Reader One",
           publicId: "READER00001",
@@ -109,6 +113,33 @@ describe("reader lib", () => {
           status: "suspended",
         },
       ],
+    });
+  });
+
+  it("carries the icon an account shows, the first of its variants", async () => {
+    mockListReaders.mockResolvedValue({
+      readers: [
+        {
+          ...adminReader,
+          iconImageVariants: [
+            {
+              height: 512,
+              label: "original",
+              url: "/images/users/READER00001/icon.png",
+              width: 512,
+            },
+          ],
+        },
+      ],
+    });
+
+    const { listReaders } = await import("./reader");
+    const result = await listReaders("TENANT001", "en");
+
+    expect(result.readers[0]?.icon).toEqual({
+      height: 512,
+      url: "/images/users/READER00001/icon.png",
+      width: 512,
     });
   });
 
@@ -200,6 +231,7 @@ describe("reader lib", () => {
         createdAt: "2026-06-01T00:00:00Z",
         email: "reader@example.com",
         emailVerifiedAt: "2026-06-01T00:05:00Z",
+        icon: null,
         id: READER_ID,
         name: "Reader One",
         publicId: "READER00001",
@@ -414,5 +446,60 @@ describe("reader lib", () => {
         "en"
       )
     ).rejects.toThrow();
+  });
+
+  it("removes a reader's icon", async () => {
+    mockRemoveReaderIcon.mockResolvedValue({});
+
+    const { removeReaderIcon } = await import("./reader");
+    const result = await removeReaderIcon(
+      { readerId: READER_ID, tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockRemoveReaderIcon).toHaveBeenCalledWith(
+      { readerId: READER_ID, tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("reports a refused icon removal as a message", async () => {
+    mockRemoveReaderIcon.mockRejectedValue(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+
+    const { removeReaderIcon } = await import("./reader");
+    const result = await removeReaderIcon(
+      { readerId: READER_ID, tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("rethrows a rejected session when removing an icon", async () => {
+    mockRemoveReaderIcon.mockRejectedValue(
+      new ConnectError("no session", Code.Unauthenticated)
+    );
+
+    const { removeReaderIcon } = await import("./reader");
+
+    await expect(
+      removeReaderIcon({ readerId: READER_ID, tenantId: "TENANT001" }, "en")
+    ).rejects.toThrow();
+  });
+
+  it("does not remove an icon without a session", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { removeReaderIcon } = await import("./reader");
+    const result = await removeReaderIcon(
+      { readerId: READER_ID, tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result.ok).toBe(false);
+    expect(mockRemoveReaderIcon).not.toHaveBeenCalled();
   });
 });

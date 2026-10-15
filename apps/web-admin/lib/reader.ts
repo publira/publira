@@ -28,6 +28,7 @@ import {
   emptyCursorPageTokens,
 } from "./cursor-page";
 import { getMessagesFor } from "./messages";
+import { toReaderIconImage } from "./reader-icon";
 import { getAccessToken } from "./session";
 
 /*
@@ -48,12 +49,20 @@ const toReaderStatus = (raw: string): ReaderStatus =>
 /** The generated `AdminReader` fields {@link mapReader} reads (see `series.ts`). */
 type RawReader = Pick<
   AdminReader,
-  "createdAt" | "email" | "id" | "name" | "publicId" | "role" | "status"
+  | "createdAt"
+  | "email"
+  | "iconImageVariants"
+  | "id"
+  | "name"
+  | "publicId"
+  | "role"
+  | "status"
 >;
 
 export const mapReader = (item: RawReader): ReaderItem => ({
   createdAt: item.createdAt ?? "",
   email: item.email ?? "",
+  icon: toReaderIconImage(item.iconImageVariants ?? []),
   id: item.id ?? "",
   name: item.name ?? "",
   publicId: item.publicId ?? "",
@@ -295,6 +304,47 @@ export const setReaderBirthDate = async (
         overrides: {
           "invalid-argument": t("admin.readers.birth_date_invalid"),
         },
+      }),
+      ok: false,
+    };
+  }
+};
+
+export interface RemoveReaderIconInput {
+  readerId: string;
+  tenantId: string;
+}
+
+/**
+ * Leaves one reader's account with no icon. An account that already shows
+ * none succeeds the same way, so a removal another member of the staff made
+ * first is not reported as a failure. A rejected session leaves as a throw so
+ * the Action can send the staff member to sign in again.
+ */
+export const removeReaderIcon = async (
+  input: RemoveReaderIconInput,
+  locale: Locale
+): Promise<ModerateReaderResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.users.removeReaderIcon(
+      { readerId: input.readerId, tenant: { tenantId: input.tenantId } },
+      withSessionHeaders(sessionId)
+    );
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(error, t("admin.readers.icon_remove_failed"), {
+        locale,
       }),
       ok: false,
     };
