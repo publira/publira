@@ -396,15 +396,21 @@ describe("web-storefront proxy locale routing", () => {
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
   });
 
-  it("Answer 404 when the host resolves to no tenant", async () => {
-    mockResolveTenant.mockResolvedValue(null);
-    const { proxy } = await import("./proxy");
+  it.each(["/series", "/.well-known/change-password"])(
+    "Answer 404 on %s when the host resolves to no tenant",
+    async (pathname) => {
+      mockResolveTenant.mockResolvedValue(null);
+      const { proxy } = await import("./proxy");
 
-    const response = await proxy(request("https://unknown.example.com/series"));
+      const response = await proxy(
+        request(`https://unknown.example.com${pathname}`)
+      );
 
-    expect(response.status).toBe(404);
-    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
-  });
+      expect(response.status).toBe(404);
+      expect(response.headers.get("location")).toBeNull();
+      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    }
+  );
 
   it("Answer every page of a suspended tenant with a 503 saying the site is unavailable", async () => {
     mockResolveTenant.mockResolvedValue("suspended");
@@ -495,10 +501,14 @@ describe("web-storefront proxy locale routing", () => {
     }
   );
 
-  it("serves the association documents on the tenant without a locale or a redirect", async () => {
+  it("serves every /.well-known path on the tenant without a locale or a redirect", async () => {
     const { proxy } = await import("./proxy");
 
-    const documents = ["assetlinks.json", "apple-app-site-association"];
+    const documents = [
+      "assetlinks.json",
+      "apple-app-site-association",
+      "change-password",
+    ];
     const responses = await Promise.all(
       documents.map((document) =>
         proxy(request(`https://shop.example.com/.well-known/${document}`))
