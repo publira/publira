@@ -82,6 +82,8 @@ Nothing else is a sale. Access tickets, **Free if you wait**, free reading perio
 
 A purchase that is refunded in full drops out of the month it was bought in. A partial refund leaves the sale in, and its amount is taken off under **Refunded**. Either way, while the month of the purchase is open, the refund counts against that month, not the month of the refund.
 
+A Stripe payment whose [dispute](./4-selling-episodes.md#disputes) the reader's bank decides against you counts as refunded in full from the moment Stripe reports the decision, here and after the close alike. A dispute that is still open, or that is decided for you, leaves the sale in.
+
 ### A refund after the close
 
 A refund recorded after the month of the purchase was closed cannot change that statement. It is taken off the next statement closed after it instead, as an adjustment line: a line under the same Author, series, episode, and role as the closed line that counted the sale, naming the closed month it adjusts. An adjustment comes after the month's own lines, and its figures are changes, so they are negative where a line of sales has them positive:

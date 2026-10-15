@@ -499,6 +499,10 @@ func (s *apiServer) ProcessPaymentWebhook(
 		if err := s.recordDispute(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
 			return nil, err
 		}
+	case paymentprovider.DisputeLost:
+		if err := s.recordLostDispute(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
+			return nil, err
+		}
 	case paymentprovider.CheckoutExpired:
 		if event.Purchase.TenantID != tenant.ID {
 			return nil, connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
@@ -726,6 +730,49 @@ func (s *apiServer) recordDispute(
 	return nil
 }
 
+// recordLostDispute writes down that the reader's bank returned the money of a
+// disputed payment to them, which takes the purchase off royalty statements.
+func (s *apiServer) recordLostDispute(
+	ctx context.Context,
+	queries Querier,
+	tenantID uuid.UUID,
+	providerID string,
+	event paymentprovider.DisputeLost,
+) error {
+	purchase, err := queries.RecordLostDisputeOnPurchase(ctx, dbmodels.RecordLostDisputeOnPurchaseParams{
+		TenantID:          tenantID,
+		Provider:          providerID,
+		ProviderPaymentID: event.PaymentID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		// Held as an open dispute is, and for the same reason.
+		if err := queries.HoldUnappliedDispute(ctx, dbmodels.HoldUnappliedDisputeParams{
+			TenantID:          tenantID,
+			Provider:          providerID,
+			ProviderPaymentID: event.PaymentID,
+			Lost:              true,
+		}); err != nil {
+			return s.internalDBError(ctx, "failed to hold an unmatched lost dispute", err, "event_id", event.ID, "payment_id", event.PaymentID)
+		}
+		s.logger.WarnContext(ctx, "lost dispute matches no purchase yet and is held",
+			"tenant_id", tenantID,
+			"event_id", event.ID,
+			"payment_id", event.PaymentID,
+		)
+		return nil
+	}
+	if err != nil {
+		return s.internalDBError(ctx, "failed to record a lost dispute", err, "event_id", event.ID, "payment_id", event.PaymentID)
+	}
+	s.logger.InfoContext(ctx, "recorded a lost dispute on a purchase",
+		"tenant_id", tenantID,
+		"event_id", event.ID,
+		"purchase_id", purchase.ID,
+		"revocation_reason", purchase.RevocationReason.String,
+	)
+	return nil
+}
+
 // createPurchase records the purchase a completed checkout paid for, and
 // everything that follows from it, in one transaction: the refund or the
 // dispute that may have overtaken it, its engagement event, and the receipt the reader is owed.
@@ -860,7 +907,7 @@ func (s *apiServer) applyHeldRefund(
 }
 
 // applyHeldDispute revokes the purchase for any dispute that reached us before
-// it existed. Ordinarily nothing is held and this costs one lookup.
+// it existed, and records it lost if it was reported lost by then. Ordinarily nothing is held and this costs one lookup.
 func (s *apiServer) applyHeldDispute(
 	ctx context.Context,
 	queries Querier,

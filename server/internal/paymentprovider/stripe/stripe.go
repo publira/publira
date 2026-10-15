@@ -216,6 +216,8 @@ func (p *Provider) ParseNotification(ctx context.Context, payload []byte, header
 		return p.refundFailedEvent(ctx, credentials, &event)
 	case stripego.EventTypeChargeDisputeCreated:
 		return disputedEvent(&event)
+	case stripego.EventTypeChargeDisputeClosed:
+		return disputeClosedEvent(&event)
 	case stripego.EventTypeCheckoutSessionCompleted, stripego.EventTypeCheckoutSessionAsyncPaymentSucceeded:
 		return purchaseCompletedEvent(&event)
 	case stripego.EventTypeCheckoutSessionExpired:
@@ -290,21 +292,48 @@ func (p *Provider) refundFailedEvent(ctx context.Context, credentials paymentpro
 }
 
 func disputedEvent(event *stripego.Event) (paymentprovider.Event, error) {
+	_, paymentIntentID, err := readDispute(event)
+	if err != nil {
+		return nil, err
+	}
+	return paymentprovider.Disputed{
+		ID:        event.ID,
+		PaymentID: paymentIntentID,
+	}, nil
+}
+
+// disputeClosedEvent reads a dispute Stripe has closed. Only a lost one
+// returns the money to the reader; a won one leaves the payment with the
+// tenant, and an inquiry closed without becoming a chargeback never took it.
+func disputeClosedEvent(event *stripego.Event) (paymentprovider.Event, error) {
+	dispute, paymentIntentID, err := readDispute(event)
+	if err != nil {
+		return nil, err
+	}
+	if dispute.Status != stripego.DisputeStatusLost {
+		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
+	}
+	return paymentprovider.DisputeLost{
+		ID:        event.ID,
+		PaymentID: paymentIntentID,
+	}, nil
+}
+
+// readDispute reads the dispute an event is about and the payment intent it
+// disputes, which the purchase names as its payment.
+func readDispute(event *stripego.Event) (stripego.Dispute, string, error) {
 	var dispute stripego.Dispute
 	if err := json.Unmarshal(event.Data.Raw, &dispute); err != nil {
-		return nil, fmt.Errorf("%w: dispute: %v", paymentprovider.ErrMalformedNotification, err)
+		return dispute, "", fmt.Errorf("%w: dispute: %v", paymentprovider.ErrMalformedNotification, err)
 	}
 	paymentIntentID := ""
 	if dispute.PaymentIntent != nil {
 		paymentIntentID = strings.TrimSpace(dispute.PaymentIntent.ID)
 	}
 	if paymentIntentID == "" {
-		return nil, fmt.Errorf("%w: the dispute names no payment intent", paymentprovider.ErrMalformedNotification)
+		return dispute, "", fmt.Errorf("%w: the dispute names no payment intent", paymentprovider.ErrMalformedNotification)
 	}
-	return paymentprovider.Disputed{
-		ID:        event.ID,
-		PaymentID: paymentIntentID,
-	}, nil
+	return dispute, paymentIntentID, nil
 }
 
 func checkoutExpiredEvent(event *stripego.Event) (paymentprovider.Event, error) {

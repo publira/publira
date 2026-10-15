@@ -30,6 +30,22 @@ func (e *adminDBEnv) refundSale(t *testing.T, purchaseID uuid.UUID, refunded int
 	}
 }
 
+// loseDispute stands in for the notification that a dispute of the purchase
+// was lost, which revokes it as a dispute unless something revoked it first.
+func (e *adminDBEnv) loseDispute(t *testing.T, purchaseID uuid.UUID) {
+	t.Helper()
+
+	if _, err := e.PG.DB.ExecContext(context.Background(), `
+		UPDATE purchases
+		SET dispute_lost_at = now(),
+			revoked_at = COALESCE(revoked_at, now()),
+			revocation_reason = COALESCE(revocation_reason, 'dispute')
+		WHERE id = $1
+	`, purchaseID); err != nil {
+		t.Fatalf("lose the dispute of purchase %s: %v", purchaseID, err)
+	}
+}
+
 // adjustedLineFigures is what a line says about money and the closed month it
 // adjusts, which is empty for a line of the month's own sales.
 type adjustedLineFigures struct {
@@ -262,4 +278,47 @@ func containsRow(csv, prefix, suffix string) bool {
 		}
 	}
 	return false
+}
+
+// A sale whose dispute is lost before its month is closed is no sale of that
+// month, and one lost after the close is taken back from the next statement
+// as a full refund would be, net of the part already refunded.
+func TestDBAdminLostDisputeIsNoSale(t *testing.T) {
+	env := newAdminDBEnv(t)
+	f := env.seedRoyaltyFixture(t, "RYD")
+	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYDCREATOR01", Name: "Creator"})
+	env.creditEpisode(t, f.admin.Tenant.ID, f.episode.ID, creator.ID, "Artist", "series", 5000)
+	credit := [3]string{"Creator", "Artist", "Episode 1"}
+
+	lostAfterClose := env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inRoyaltyZone(2026, time.January, 10, 12, 0, 0)})
+	lostBeforeClose := env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: inRoyaltyZone(2026, time.January, 11, 12, 0, 0)})
+	refundedThenLost := env.seedSale(t, f, f.episode.ID, royaltySale{
+		price:          500,
+		purchasedAt:    inRoyaltyZone(2026, time.January, 12, 12, 0, 0),
+		refundedAmount: sql.NullInt32{Int32: 200, Valid: true},
+	})
+	env.loseDispute(t, lostBeforeClose)
+
+	january := env.closeRoyalties(t, f.admin, "2026-01")
+	assertRoyaltyTotals(t, "January", january.Totals, 1000, 200, 0, 400)
+	assertRoyaltyLines(t, "January", env.getRoyalties(t, f.admin, &publiraadminv1.GetRoyaltyStatementRequest{Period: "2026-01"}).Lines, []expectedRoyaltyLine{
+		{credit, adjustedLineFigures{"", royaltyLineFigures{saleCount: 2, gross: 1000, refunded: 200, shareBps: 5000, payout: 400}}},
+	})
+
+	env.loseDispute(t, lostAfterClose)
+	env.loseDispute(t, refundedThenLost)
+
+	want := []expectedRoyaltyLine{
+		{credit, adjustedLineFigures{"2026-01", royaltyLineFigures{saleCount: -2, gross: -1000, refunded: -200, shareBps: 5000, payout: -400}}},
+	}
+	preview := env.previewRoyalties(t, f.admin, "2026-02")
+	assertRoyaltyLines(t, "February's preview", preview.Lines, want)
+	assertRoyaltyTotals(t, "February's preview", preview.Totals, 0, 0, -800, -400)
+
+	february := env.closeRoyalties(t, f.admin, "2026-02")
+	assertRoyaltyTotals(t, "February", february.Totals, 0, 0, -800, -400)
+	assertRoyaltyLines(t, "February", env.getRoyalties(t, f.admin, &publiraadminv1.GetRoyaltyStatementRequest{Period: "2026-02"}).Lines, want)
+
+	march := env.closeRoyalties(t, f.admin, "2026-03")
+	assertRoyaltyTotals(t, "March", march.Totals, 0, 0, 0, 0)
 }

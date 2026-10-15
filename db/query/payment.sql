@@ -315,8 +315,8 @@ RETURNING p.*;
 -- made for did not happen, and moves the purchase on to staff's next attempt
 -- when next_attempt is set: the provider refused or failed the refund, and
 -- under the same idempotency key would only answer that again. A purchase a
--- refund has covered in full since, or that something else revoked, is left
--- alone.
+-- refund has covered in full since, one whose dispute has been lost since, or
+-- one that something else revoked, is left alone.
 UPDATE purchases
 SET revoked_at = NULL,
     revocation_reason = NULL,
@@ -325,6 +325,7 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id')
     AND revocation_reason = 'staff'
     AND refunded_at IS NULL
+    AND dispute_lost_at IS NULL
 RETURNING id;
 
 -- name: RecordFailedRefundOnPurchase :one
@@ -339,7 +340,8 @@ RETURNING id;
 -- A total of nothing is still recorded as an amount rather than as no refund:
 -- royalty_uncarried_refunds reads a purchase with an amount, which is how a
 -- refund a closed statement already carried is carried back. A dispute keeps
--- its revocation. Nothing matches a payment of another tenant,
+-- its revocation, and so does a purchase whose dispute was lost, whatever
+-- revoked it. Nothing matches a payment of another tenant,
 -- another provider, no purchase here, or a total in a currency other than the
 -- purchase's, which says nothing comparable to its price.
 UPDATE purchases p
@@ -349,17 +351,20 @@ SET refunded_amount = sqlc.arg('refunded_amount')::integer,
     END,
     revoked_at = CASE
         WHEN sqlc.arg('refunded_amount')::integer < p.price_at_purchase
-            AND p.revocation_reason IN ('refund', 'staff') THEN NULL
+            AND p.revocation_reason IN ('refund', 'staff')
+            AND p.dispute_lost_at IS NULL THEN NULL
         ELSE p.revoked_at
     END,
     revocation_reason = CASE
         WHEN sqlc.arg('refunded_amount')::integer < p.price_at_purchase
-            AND p.revocation_reason IN ('refund', 'staff') THEN NULL
+            AND p.revocation_reason IN ('refund', 'staff')
+            AND p.dispute_lost_at IS NULL THEN NULL
         ELSE p.revocation_reason
     END,
     staff_refund_attempt = p.staff_refund_attempt + CASE
         WHEN sqlc.arg('refunded_amount')::integer < p.price_at_purchase
-            AND p.revocation_reason = 'staff' THEN 1
+            AND p.revocation_reason = 'staff'
+            AND p.dispute_lost_at IS NULL THEN 1
         ELSE 0
     END
 WHERE p.tenant_id = sqlc.arg('tenant_id')
@@ -493,31 +498,55 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND provider_payment_id = sqlc.arg('provider_payment_id')::text
 RETURNING *;
 
+-- name: RecordLostDisputeOnPurchase :one
+-- Records that the dispute of the payment was lost: the reader's bank has
+-- returned the money to them for good, so royalty statements no longer count
+-- the purchase as a sale. The purchase is revoked as a dispute too, unless
+-- something revoked it first, since the notification that opened the dispute
+-- need not have arrived. A repeated delivery leaves the instants and the
+-- reason already stored. Nothing matches when the payment belongs to another
+-- tenant, another provider, or no purchase here.
+UPDATE purchases
+SET dispute_lost_at = COALESCE(dispute_lost_at, NOW()),
+    revoked_at = COALESCE(revoked_at, NOW()),
+    revocation_reason = COALESCE(revocation_reason, 'dispute')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND provider = sqlc.arg('provider')::text
+    AND provider_payment_id = sqlc.arg('provider_payment_id')::text
+RETURNING *;
+
 -- name: HoldUnappliedDispute :exec
 -- Keeps a dispute whose purchase is not here yet, so the notification that
--- creates the purchase can still revoke it.
+-- creates the purchase can still revoke it, and record it lost when lost is
+-- set. A dispute held as lost stays lost through a later delivery of the one
+-- that opened it.
 INSERT INTO unapplied_disputes (
     tenant_id,
     provider,
-    provider_payment_id
+    provider_payment_id,
+    lost_at
 )
 VALUES (
     sqlc.arg('tenant_id'),
     sqlc.arg('provider')::text,
-    sqlc.arg('provider_payment_id')::text
+    sqlc.arg('provider_payment_id')::text,
+    CASE WHEN sqlc.arg('lost')::boolean THEN NOW() END
 )
 ON CONFLICT (tenant_id, provider, provider_payment_id) DO
 UPDATE
-SET received_at = NOW();
+SET lost_at = COALESCE(unapplied_disputes.lost_at, EXCLUDED.lost_at),
+    received_at = NOW();
 
 -- name: ApplyUnappliedDisputeToPurchase :one
--- Revokes the purchase that has since been created for a held dispute, by the
--- same rules RecordDisputeOnPurchase uses. Nothing matches when no dispute is
--- held for the payment, which is the ordinary case. The held row is deleted by
--- the caller in the same transaction.
+-- Revokes the purchase that has since been created for a held dispute, and
+-- records the dispute lost if it was held as lost, by the same rules
+-- RecordDisputeOnPurchase and RecordLostDisputeOnPurchase use. Nothing matches
+-- when no dispute is held for the payment, which is the ordinary case. The
+-- held row is deleted by the caller in the same transaction.
 UPDATE purchases p
 SET revoked_at = COALESCE(p.revoked_at, NOW()),
-    revocation_reason = COALESCE(p.revocation_reason, 'dispute')
+    revocation_reason = COALESCE(p.revocation_reason, 'dispute'),
+    dispute_lost_at = COALESCE(p.dispute_lost_at, d.lost_at)
 FROM unapplied_disputes d
 WHERE d.tenant_id = p.tenant_id
     AND d.provider = p.provider
