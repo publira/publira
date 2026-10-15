@@ -31,6 +31,7 @@ import {
   MfaEnrollmentConfirmed,
   MfaEnrollSteps,
 } from "./mfa-enroll-steps";
+import { PasskeyEnrollForm } from "./passkey-forms";
 
 interface MfaEnrollFlowProps {
   /** Whether the challenge has already been spent. */
@@ -43,6 +44,10 @@ interface MfaEnrollFlowProps {
 /**
  * Starting is a submission rather than something the page does while it
  * renders, because it mints and stores a secret.
+ *
+ * A passkey is offered beside it. It needs no second step of its own: the
+ * browser's prompt is the whole of it, and its answer is the one confirming
+ * an authenticator gives, so it goes straight on to the recovery codes.
  */
 const MfaEnrollStart = ({ tenantId }: { tenantId: string }) => (
   <>
@@ -77,6 +82,22 @@ const MfaEnrollStart = ({ tenantId }: { tenantId: string }) => (
           </Suspense>
         </ActionFormSubmit>
       </ActionForm>
+
+      <PasskeyEnrollForm>
+        <input name="tenant_id" type="hidden" value={tenantId} />
+        <MfaEnrollmentConfirmed />
+
+        <ActionFormSubmit className="justify-self-start" variant="outline">
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <ActionFormIdle>
+              <Message message="admin.auth.mfa.passkey_enroll_submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <Message message="admin.auth.mfa.passkey_waiting" />
+            </ActionFormPending>
+          </Suspense>
+        </ActionFormSubmit>
+      </PasskeyEnrollForm>
     </AuthScreenBody>
 
     <AuthScreenFooter>
@@ -106,7 +127,7 @@ const MfaEnrollConfirm = ({ tenantId }: { tenantId: string }) => (
       <input name="tenant_id" type="hidden" value={tenantId} />
       <MfaEnrollmentConfirmed />
 
-      <MfaCodeField allowRecoveryCode={false} />
+      <MfaCodeField accepts="authenticator" />
 
       <ActionFormSubmit className="justify-self-start">
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>

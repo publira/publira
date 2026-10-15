@@ -16,24 +16,132 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { MfaCodeField } from "#components/mfa-code-field";
+import type { MfaMethodName } from "#lib/mfa-challenge";
 
 import { verifyMfaAction } from "../_lib/actions";
 import {
   MfaRecoveryCodeSpent,
   MfaRemainingRecoveryCodes,
+  MfaVerifyMethods,
+  MfaVerifyMethodSwitch,
   MfaVerifySteps,
 } from "./mfa-verify-steps";
+import { PasskeyVerifyForm } from "./passkey-forms";
 
 interface MfaVerifyFormProps {
   /** Whether the challenge has already been spent. */
   finished: boolean;
+  /** The factors the account holds, as the challenge reported them. */
+  methods: readonly MfaMethodName[];
   /** Where the login was heading before the second factor interrupted it. */
   nextPath: string;
   tenantId: string;
 }
 
+const MfaPasskeyVerify = ({
+  passkeyOnly,
+  tenantId,
+}: {
+  passkeyOnly: boolean;
+  tenantId: string;
+}) => (
+  <>
+    <AuthScreenNote>
+      <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+        <Message message="admin.auth.mfa.passkey_verify_description" />
+      </Suspense>
+    </AuthScreenNote>
+
+    <PasskeyVerifyForm>
+      <input name="tenant_id" type="hidden" value={tenantId} />
+
+      <ActionFormSubmit className="justify-self-start">
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <ActionFormIdle>
+            <Message message="admin.auth.mfa.passkey_verify_submit" />
+          </ActionFormIdle>
+          <ActionFormPending>
+            <Message message="admin.auth.mfa.passkey_waiting" />
+          </ActionFormPending>
+        </Suspense>
+      </ActionFormSubmit>
+    </PasskeyVerifyForm>
+
+    <MfaVerifyMethodSwitch to="code">
+      <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+        {passkeyOnly ? (
+          <Message message="admin.auth.mfa.use_recovery_code_instead" />
+        ) : (
+          <Message message="admin.auth.mfa.use_code_instead" />
+        )}
+      </Suspense>
+    </MfaVerifyMethodSwitch>
+  </>
+);
+
+const MfaCodeVerify = ({
+  methods,
+  tenantId,
+}: {
+  methods: readonly MfaMethodName[];
+  tenantId: string;
+}) => {
+  const passkey = methods.includes("passkey");
+  // An account whose only factor is a passkey has no authenticator to read a
+  // code from, so the form asks for a recovery code by name. A challenge that
+  // names no method at all predates them and keeps the form it always had.
+  const recoveryOnly = passkey && !methods.includes("totp");
+
+  return (
+    <>
+      <AuthScreenNote>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          {recoveryOnly ? (
+            <Message message="admin.auth.mfa.verify_recovery_description" />
+          ) : (
+            <Message message="admin.auth.mfa.verify_description" />
+          )}
+        </Suspense>
+      </AuthScreenNote>
+
+      <ActionForm
+        action={verifyMfaAction}
+        className="grid gap-4"
+        showSuccess={false}
+      >
+        <input name="tenant_id" type="hidden" value={tenantId} />
+        <MfaRecoveryCodeSpent />
+
+        <MfaCodeField
+          accepts={recoveryOnly ? "recovery" : "authenticator_or_recovery"}
+        />
+
+        <ActionFormSubmit className="justify-self-start">
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <ActionFormIdle>
+              <Message message="admin.auth.mfa.verify_submit" />
+            </ActionFormIdle>
+            <ActionFormPending>
+              <Message message="admin.auth.mfa.verify_submitting" />
+            </ActionFormPending>
+          </Suspense>
+        </ActionFormSubmit>
+      </ActionForm>
+
+      {passkey ? (
+        <MfaVerifyMethodSwitch to="passkey">
+          <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+            <Message message="admin.auth.mfa.use_passkey_instead" />
+          </Suspense>
+        </MfaVerifyMethodSwitch>
+      ) : null}
+    </>
+  );
+};
+
 export const MfaVerifyForm = ({
   finished,
+  methods,
   nextPath,
   tenantId,
 }: MfaVerifyFormProps) => (
@@ -63,33 +171,17 @@ export const MfaVerifyForm = ({
     verify={
       <>
         <AuthScreenBody>
-          <AuthScreenNote>
-            <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
-              <Message message="admin.auth.mfa.verify_description" />
-            </Suspense>
-          </AuthScreenNote>
-
-          <ActionForm
-            action={verifyMfaAction}
-            className="grid gap-4"
-            showSuccess={false}
-          >
-            <input name="tenant_id" type="hidden" value={tenantId} />
-            <MfaRecoveryCodeSpent />
-
-            <MfaCodeField allowRecoveryCode />
-
-            <ActionFormSubmit className="justify-self-start">
-              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                <ActionFormIdle>
-                  <Message message="admin.auth.mfa.verify_submit" />
-                </ActionFormIdle>
-                <ActionFormPending>
-                  <Message message="admin.auth.mfa.verify_submitting" />
-                </ActionFormPending>
-              </Suspense>
-            </ActionFormSubmit>
-          </ActionForm>
+          <MfaVerifyMethods
+            code={<MfaCodeVerify methods={methods} tenantId={tenantId} />}
+            passkey={
+              methods.includes("passkey") ? (
+                <MfaPasskeyVerify
+                  passkeyOnly={!methods.includes("totp")}
+                  tenantId={tenantId}
+                />
+              ) : null
+            }
+          />
         </AuthScreenBody>
 
         <AuthScreenFooter>

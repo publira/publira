@@ -125,6 +125,19 @@ export const emailFormSchema = async (locale: Locale) => {
  */
 export const mfaCodeFormSchema = z.string().trim().min(1).max(64);
 
+/**
+ * The `PublicKeyCredential` a passkey ceremony produced, as its `toJSON()`
+ * serialized it. Only its presence and size are checked here: the API parses
+ * and verifies it against the ceremony it began. An attestation with a
+ * certificate chain runs to a few kilobytes, so the bound only stops a body
+ * no authenticator writes.
+ */
+export const passkeyCredentialFormSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64 * 1024);
+
 export const passwordFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
   const required = t("admin.auth.fields.password_required");

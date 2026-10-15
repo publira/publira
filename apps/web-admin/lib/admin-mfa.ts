@@ -1,11 +1,12 @@
 /**
  * The console's side of the administrator second factor.
  *
- * Every call here presents a code, and the API answers a refused code with
- * `unauthenticated` — the same code a rejected session gets. The two are told
- * apart by the `MFA_INVALID_CODE` / `MFA_LOCKED` reason the server attaches:
- * without it a mistyped digit would sign the operator out, which is exactly
- * what the re-authentication flow exists to avoid.
+ * Every call here presents a code or a passkey, and the API answers a refused
+ * one with `unauthenticated` — the same code a rejected session gets. The two
+ * are told apart by the `MFA_INVALID_CODE` / `MFA_PASSKEY_REFUSED` /
+ * `MFA_LOCKED` reason the server attaches: without it a mistyped digit would
+ * sign the operator out, which is exactly what the re-authentication flow
+ * exists to avoid.
  */
 
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
@@ -58,6 +59,31 @@ export type AdminMfaEnrollmentStartResult =
 export type AdminMfaEnrollmentConfirmResult =
   | {
       ok: true;
+      recoveryCodes: string[];
+      /** Set only when a challenge finished the login rather than a session. */
+      session: AdminMfaSession | null;
+    }
+  | { ok: false; message: string; challengeExpired: boolean };
+
+export type AdminPasskeyCeremonyStartResult =
+  | {
+      ok: true;
+      /**
+       * The options the browser's ceremony takes, as the API serialized them
+       * for `PublicKeyCredential.parse*OptionsFromJSON`.
+       */
+      optionsJson: string;
+    }
+  | { ok: false; message: string; challengeExpired: boolean };
+
+export type AdminPasskeyVerifyResult =
+  | { ok: true; session: AdminMfaSession }
+  | { ok: false; message: string; challengeExpired: boolean };
+
+export type AdminPasskeyRegistrationResult =
+  | {
+      ok: true;
+      /** Empty when the account already held unused recovery codes. */
       recoveryCodes: string[];
       /** Set only when a challenge finished the login rather than a session. */
       session: AdminMfaSession | null;
@@ -194,6 +220,61 @@ const challengeMfaFailure = async (
       locale,
       overrides: { precondition: copy.precondition },
     }),
+  };
+};
+
+/**
+ * Wording for a failure on a passkey RPC a *challenge token* authorized.
+ *
+ * A refused assertion counts toward the same lock a wrong code does, so the
+ * lock is read first. Each ceremony has refusals of its own: answering with a
+ * passkey the account no longer holds, and registering one it already does.
+ * An `unauthenticated` with no reason is the challenge running out, as it is
+ * for a code.
+ */
+const challengePasskeyFailure = async (
+  error: unknown,
+  locale: Locale,
+  ceremony: "registration" | "verification"
+): Promise<{ message: string; challengeExpired: boolean }> => {
+  const t = await getMessagesFor(locale);
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
+    return {
+      challengeExpired: false,
+      message: t("admin.auth.mfa.errors.locked"),
+    };
+  }
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaPasskeyRefused)) {
+    return {
+      challengeExpired: false,
+      message:
+        ceremony === "verification"
+          ? t("admin.auth.mfa.errors.passkey_refused")
+          : t("admin.auth.mfa.errors.passkey_registration_refused"),
+    };
+  }
+  if (isUnauthenticatedRpcError(error)) {
+    return { challengeExpired: true, message: t("admin.auth.mfa.expired") };
+  }
+
+  rethrowUnclassifiedRpcError(error);
+
+  return {
+    challengeExpired: false,
+    message:
+      ceremony === "verification"
+        ? rpcErrorMessage(error, t("admin.auth.mfa.errors.passkey_failed"), {
+            locale,
+            overrides: {
+              precondition: t("admin.auth.mfa.errors.passkey_not_registered"),
+            },
+          })
+        : rpcErrorMessage(error, t("admin.auth.mfa.errors.enroll_failed"), {
+            locale,
+            overrides: {
+              conflict: t("admin.auth.mfa.errors.passkey_already_registered"),
+            },
+          }),
   };
 };
 
@@ -437,6 +518,117 @@ export const regenerateAdminMfaRecoveryCodes = async (
   } catch (error) {
     return {
       message: await sessionMfaFailureMessage(error, locale, "enabled"),
+      ok: false,
+    };
+  }
+};
+
+/** Start answering a verify challenge with one of the account's passkeys. */
+export const beginAdminPasskeyVerification = async (
+  tenantId: string,
+  challengeToken: string,
+  locale: Locale
+): Promise<AdminPasskeyCeremonyStartResult> => {
+  try {
+    const response = await apiClient.auth.beginPasskeyVerification(
+      { challengeToken, tenant: { tenantId } },
+      await withClientAddressHeaders()
+    );
+    return { ok: true, optionsJson: response.requestOptionsJson };
+  } catch (error) {
+    return {
+      ...(await challengePasskeyFailure(error, locale, "verification")),
+      ok: false,
+    };
+  }
+};
+
+/** Exchange a verify challenge and the assertion the browser made for a session. */
+export const finishAdminPasskeyVerification = async (
+  tenantId: string,
+  challengeToken: string,
+  credentialJson: string,
+  locale: Locale
+): Promise<AdminPasskeyVerifyResult> => {
+  const t = await getMessagesFor(locale);
+
+  try {
+    const response = await apiClient.auth.finishPasskeyVerification(
+      { challengeToken, credentialJson, tenant: { tenantId } },
+      await withClientAddressHeaders()
+    );
+
+    const session = toMfaSession(
+      response.accessToken?.token,
+      response.accessToken?.expiresAt
+    );
+    if (!session) {
+      return {
+        challengeExpired: false,
+        message: t("admin.auth.mfa.errors.passkey_failed"),
+        ok: false,
+      };
+    }
+
+    return { ok: true, session };
+  } catch (error) {
+    return {
+      ...(await challengePasskeyFailure(error, locale, "verification")),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Start registering a passkey for an account the tenant is holding at the
+ * login screen until it enrolls a second factor.
+ */
+export const beginAdminPasskeyRegistration = async (
+  tenantId: string,
+  challengeToken: string,
+  locale: Locale
+): Promise<AdminPasskeyCeremonyStartResult> => {
+  try {
+    const response = await apiClient.auth.beginPasskeyRegistration(
+      { challengeToken, tenant: { tenantId } },
+      await withClientAddressHeaders()
+    );
+    return { ok: true, optionsJson: response.creationOptionsJson };
+  } catch (error) {
+    return {
+      ...(await challengePasskeyFailure(error, locale, "registration")),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Store the passkey the browser created, which finishes the login the enroll
+ * challenge was holding, as confirming an authenticator does.
+ */
+export const finishAdminPasskeyRegistration = async (
+  tenantId: string,
+  challengeToken: string,
+  credentialJson: string,
+  locale: Locale
+): Promise<AdminPasskeyRegistrationResult> => {
+  try {
+    const response = await apiClient.auth.finishPasskeyRegistration(
+      { challengeToken, credentialJson, name: "", tenant: { tenantId } },
+      await withClientAddressHeaders()
+    );
+
+    return {
+      ok: true,
+      recoveryCodes: response.recoveryCodes,
+      session: toMfaSession(
+        response.accessToken?.token,
+        response.accessToken?.expiresAt
+      ),
+    };
+  } catch (error) {
+    return {
+      ...(await challengePasskeyFailure(error, locale, "registration")),
       ok: false,
     };
   }

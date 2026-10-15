@@ -42,6 +42,15 @@ export const MFA_CHALLENGE_KINDS = ["verify", "enroll"] as const;
 
 export type MfaChallengeKindName = (typeof MFA_CHALLENGE_KINDS)[number];
 
+/**
+ * The second factors a verify challenge can be answered with, which decide
+ * what `/mfa` offers first. A recovery code answers the challenge whichever
+ * of them the account holds.
+ */
+export const MFA_METHODS = ["totp", "passkey"] as const;
+
+export type MfaMethodName = (typeof MFA_METHODS)[number];
+
 const mfaChallengeSchema = z.object({
   challengeToken: z.string().trim().min(1),
   // An expiry that is not an instant is no expiry: a stored challenge whose
@@ -51,6 +60,9 @@ const mfaChallengeSchema = z.object({
     .trim()
     .refine((value) => parseInstant(value) !== null),
   kind: z.enum(MFA_CHALLENGE_KINDS),
+  // A cookie sealed before the console read the methods carries none, which
+  // `/mfa` answers with the code form it always offered.
+  methods: z.array(z.enum(MFA_METHODS)).default([]),
   nextPath: z.string().transform(sanitizeRedirectPath),
   tenantId: z.string().trim().refine(isTenantIdFormat),
 });

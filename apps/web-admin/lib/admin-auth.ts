@@ -1,4 +1,4 @@
-import { MfaChallengeKind } from "@publira/api-client/admin/auth";
+import { MfaChallengeKind, MfaMethod } from "@publira/api-client/admin/auth";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isExpectedNullableRpcError,
@@ -23,7 +23,7 @@ import {
 import { apiClient, withClientAddressHeaders, withSessionHeaders } from "./api";
 import type { CachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
-import type { MfaChallengeKindName } from "./mfa-challenge";
+import type { MfaChallengeKindName, MfaMethodName } from "./mfa-challenge";
 import { getAccessToken } from "./session";
 
 export {
@@ -51,6 +51,7 @@ export type AdminLoginResult =
       challengeKind: MfaChallengeKindName;
       challengeToken: string;
       expiresAt: Temporal.Instant;
+      methods: MfaMethodName[];
     }
   | {
       ok: false;
@@ -216,6 +217,22 @@ const toChallengeKindName = (
   return null;
 };
 
+/**
+ * The factors a challenge can be answered with, as the console names them. A
+ * method this build has no screen for is left out rather than refused: the
+ * recovery codes still answer the challenge on the code form.
+ */
+const toMethodNames = (methods: readonly MfaMethod[]): MfaMethodName[] =>
+  methods.flatMap((method): MfaMethodName[] => {
+    if (method === MfaMethod.TOTP) {
+      return ["totp"];
+    }
+    if (method === MfaMethod.PASSKEY) {
+      return ["passkey"];
+    }
+    return [];
+  });
+
 export const loginAdmin = async (
   email: string,
   password: string,
@@ -252,6 +269,7 @@ export const loginAdmin = async (
         challengeToken,
         expiresAt: challengeExpiresAt,
         kind: "challenge",
+        methods: toMethodNames(challenge.methods),
         ok: true,
       };
     }

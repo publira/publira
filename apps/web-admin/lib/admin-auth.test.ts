@@ -1,4 +1,4 @@
-import { MfaChallengeKind } from "@publira/api-client/admin/auth";
+import { MfaChallengeKind, MfaMethod } from "@publira/api-client/admin/auth";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -100,6 +100,7 @@ describe("loginAdmin", () => {
       mfaChallenge: {
         expiresAt: "2026-09-03T00:05:00Z",
         kind: MfaChallengeKind.VERIFY,
+        methods: [MfaMethod.TOTP],
         token: "challenge",
       },
     });
@@ -111,7 +112,26 @@ describe("loginAdmin", () => {
       challengeToken: "challenge",
       expiresAt: Temporal.Instant.from("2026-09-03T00:05:00Z"),
       kind: "challenge",
+      methods: ["totp"],
       ok: true,
+    });
+  });
+
+  it("names the factors a challenge can be answered with, leaving out one this console has no screen for", async () => {
+    mockLogin.mockResolvedValueOnce({
+      mfaChallenge: {
+        expiresAt: "2026-09-03T00:05:00Z",
+        kind: MfaChallengeKind.VERIFY,
+        methods: [MfaMethod.PASSKEY, MfaMethod.UNSPECIFIED, MfaMethod.TOTP],
+        token: "challenge",
+      },
+    });
+
+    const result = await loginAdmin(...credentials, "en");
+
+    expect(result).toMatchObject({
+      kind: "challenge",
+      methods: ["passkey", "totp"],
     });
   });
 
@@ -120,6 +140,7 @@ describe("loginAdmin", () => {
       mfaChallenge: {
         expiresAt: "2026-09-03T00:05:00Z",
         kind: MfaChallengeKind.ENROLL,
+        methods: [],
         token: "challenge",
       },
     });
@@ -137,6 +158,7 @@ describe("loginAdmin", () => {
       mfaChallenge: {
         expiresAt: "2026-09-03T00:05:00Z",
         kind: MfaChallengeKind.VERIFY,
+        methods: [MfaMethod.TOTP],
         token: "   ",
       },
     });
@@ -151,6 +173,7 @@ describe("loginAdmin", () => {
       mfaChallenge: {
         expiresAt: "not-a-date",
         kind: MfaChallengeKind.VERIFY,
+        methods: [MfaMethod.TOTP],
         token: "challenge",
       },
     });
@@ -175,6 +198,7 @@ describe("loginAdmin", () => {
       mfaChallenge: {
         expiresAt: "2026-09-03T00:05:00Z",
         kind: MfaChallengeKind.UNSPECIFIED,
+        methods: [],
         token: "challenge",
       },
     });

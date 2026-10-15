@@ -12,18 +12,28 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 
+/**
+ * Which codes the field takes.
+ *
+ * - `authenticator`: only one from the authenticator app, where the point is
+ *   proving the authenticator — confirming an enrollment, or minting a new
+ *   batch of codes. The API refuses a recovery code there.
+ * - `authenticator_or_recovery`: either, where the point is proving the
+ *   account.
+ * - `recovery`: a recovery code alone, for an account whose only other
+ *   factor is a passkey.
+ */
+export type MfaCodeFieldAccepts =
+  | "authenticator"
+  | "authenticator_or_recovery"
+  | "recovery";
+
 interface MfaCodeFieldProps {
-  /**
-   * Whether one of the account's recovery codes is accepted here too. The API
-   * takes one where the point is proving the account, and refuses one where
-   * the point is proving the authenticator — confirming an enrollment, or
-   * minting a new batch of codes.
-   */
-  allowRecoveryCode: boolean;
+  accepts: MfaCodeFieldAccepts;
 }
 
 /** `placeholder` is an attribute rather than a node, so the input waits for the catalog alone. */
-const MfaCodeInput = async ({ allowRecoveryCode }: MfaCodeFieldProps) => {
+const MfaCodeInput = async ({ accepts }: MfaCodeFieldProps) => {
   const t = await getMessages();
 
   return (
@@ -31,13 +41,36 @@ const MfaCodeInput = async ({ allowRecoveryCode }: MfaCodeFieldProps) => {
       autoComplete="one-time-code"
       // A recovery code carries letters and a separator, so the numeric
       // keypad is only right where the authenticator is the only source.
-      inputMode={allowRecoveryCode ? "text" : "numeric"}
+      inputMode={accepts === "authenticator" ? "numeric" : "text"}
       name="code"
-      placeholder={t("admin.auth.mfa.code_placeholder")}
+      // The six digits stand for an authenticator code, which a recovery code
+      // does not look like.
+      placeholder={
+        accepts === "recovery"
+          ? undefined
+          : t("admin.auth.mfa.code_placeholder")
+      }
       required
       type="text"
     />
   );
+};
+
+const MfaCodeHelp = ({ accepts }: MfaCodeFieldProps) => {
+  switch (accepts) {
+    case "authenticator": {
+      return <Message message="admin.auth.mfa.code_help_totp_only" />;
+    }
+    case "authenticator_or_recovery": {
+      return <Message message="admin.auth.mfa.code_help" />;
+    }
+    case "recovery": {
+      return <Message message="admin.auth.mfa.code_help_recovery_only" />;
+    }
+    default: {
+      return accepts satisfies never;
+    }
+  }
 };
 
 /**
@@ -47,25 +80,25 @@ const MfaCodeInput = async ({ allowRecoveryCode }: MfaCodeFieldProps) => {
  * It reads the same on all of them, so it resolves its own copy rather than
  * making four call sites pass the same label and hint.
  */
-export const MfaCodeField = ({ allowRecoveryCode }: MfaCodeFieldProps) => (
+export const MfaCodeField = ({ accepts }: MfaCodeFieldProps) => (
   <ActionFormFieldset>
     <Field>
       <FieldLabel required>
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <Message message="admin.auth.mfa.code_label" />
+          {accepts === "recovery" ? (
+            <Message message="admin.auth.mfa.recovery_code_label" />
+          ) : (
+            <Message message="admin.auth.mfa.code_label" />
+          )}
         </Suspense>
       </FieldLabel>
       <FieldContent>
         <Suspense fallback={<Skeleton className="h-9 w-full" />}>
-          <MfaCodeInput allowRecoveryCode={allowRecoveryCode} />
+          <MfaCodeInput accepts={accepts} />
         </Suspense>
         <FieldDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-            {allowRecoveryCode ? (
-              <Message message="admin.auth.mfa.code_help" />
-            ) : (
-              <Message message="admin.auth.mfa.code_help_totp_only" />
-            )}
+            <MfaCodeHelp accepts={accepts} />
           </Suspense>
         </FieldDescription>
       </FieldContent>
