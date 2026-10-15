@@ -89,7 +89,7 @@ The documents that let the tenant's Android and iOS apps open its links, built i
 
 ### `/.well-known/change-password`
 
-The [change-password URL](https://w3c.github.io/webappsec-change-password-url/) a password manager opens for the site, served by `app/[tenant_id]/.well-known/change-password/route.ts` as a `302` to `/settings/security` on the same host.
+The [change-password URL](https://www.w3.org/TR/change-password-url/) a password manager opens for the site, served by `app/[tenant_id]/.well-known/change-password/route.ts` as a `302` to `/settings/security` on the same host.
 
 ### `/robots.txt`, `/sitemap.xml`, and `/sitemap/{n}.xml`
 
