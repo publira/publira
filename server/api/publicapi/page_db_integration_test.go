@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect/v2"
+	"github.com/lib/pq"
 
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -358,5 +359,150 @@ func TestDBPageWithOnlyANonDefaultTranslationPublishedIsServed(t *testing.T) {
 	}
 	if got := strings.Join(served.PublishedLocales, ","); got != "en" {
 		t.Fatalf("published_locales = %q, want en alone", got)
+	}
+}
+
+// A translation in a language the tenant does not offer is never served, nor
+// named among the page's alternates. A page published only in such languages
+// is off the site, and comes back as it was once one of them is offered again.
+func TestDBPublishedPagesAreServedOnlyInOfferedLocales(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+
+	notice := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{
+		Slug:            "notice",
+		Title:           "Notice (ja draft)",
+		DisplayInFooter: true,
+	})
+	env.PG.SeedPageTranslation(t, tenant.ID, notice.ID, testutil.PageTranslationSeed{
+		Locale:          "ko",
+		Title:           "Notice (ko)",
+		ContentMarkdown: "# Notice (ko)",
+		Published:       true,
+	})
+	privacy := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{
+		Slug:            "privacy",
+		Title:           "Privacy Policy (ja)",
+		ContentMarkdown: "# Privacy (ja)",
+		Published:       true,
+		DisplayInFooter: true,
+	})
+	env.PG.SeedPageTranslation(t, tenant.ID, privacy.ID, testutil.PageTranslationSeed{
+		Locale:          "ko",
+		Title:           "Privacy Policy (ko)",
+		ContentMarkdown: "# Privacy (ko)",
+		Published:       true,
+	})
+
+	offer := func(locales ...string) {
+		t.Helper()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if _, err := env.PG.DB.ExecContext(ctx,
+			`UPDATE tenants SET supported_locales = $2 WHERE id = $1`, tenant.ID, pq.Array(locales),
+		); err != nil {
+			t.Fatalf("offer %v: %v", locales, err)
+		}
+	}
+	client := env.pagesClient()
+	slugs := func() string {
+		t.Helper()
+		resp, err := client.ListPublishedPageSlugs(context.Background(), &publirav1.ListPublishedPageSlugsRequest{
+			Tenant: tenantContext(tenant),
+		})
+		if err != nil {
+			t.Fatalf("ListPublishedPageSlugs: %v", err)
+		}
+		return strings.Join(resp.Slugs, ",")
+	}
+	footer := func(locale string) string {
+		t.Helper()
+		resp, err := client.ListPublishedPages(context.Background(), &publirav1.ListPublishedPagesRequest{
+			Tenant: tenantContext(tenant),
+			Locale: locale,
+		})
+		if err != nil {
+			t.Fatalf("ListPublishedPages %q: %v", locale, err)
+		}
+		got := make([]string, 0, len(resp.Pages))
+		for _, page := range resp.Pages {
+			got = append(got, page.Locale+":"+page.Title)
+		}
+		return strings.Join(got, ",")
+	}
+	sitemapPages := func() string {
+		t.Helper()
+		resp := listSitemapEntries(t, env, &publirav1.ListSitemapEntriesRequest{Tenant: tenantContext(tenant)})
+		got := make([]string, 0, len(resp.Entries))
+		for _, entry := range resp.Entries {
+			if entry.Kind == publirav1.SitemapEntryKind_SITEMAP_ENTRY_KIND_PAGE {
+				got = append(got, entry.Slug)
+			}
+		}
+		return strings.Join(got, ",")
+	}
+	served := func(slug, locale string) (*publirav1.GetPublishedPageResponse, error) {
+		t.Helper()
+		return client.GetPublishedPage(context.Background(), &publirav1.GetPublishedPageRequest{
+			Tenant: tenantContext(tenant),
+			Slug:   slug,
+			Locale: locale,
+		})
+	}
+
+	offer("ja", "en")
+	if got := slugs(); got != "/privacy" {
+		t.Fatalf("slugs offering ja and en = %q, want /privacy alone", got)
+	}
+	if got := footer("en"); got != "ja:Privacy Policy (ja)" {
+		t.Fatalf("footer for en offering ja and en = %q, want the ja privacy policy alone", got)
+	}
+	if got := sitemapPages(); got != "/privacy" {
+		t.Fatalf("sitemap pages offering ja and en = %q, want /privacy alone", got)
+	}
+	for _, locale := range []string{"", "ja", "en", "ko"} {
+		if _, err := served("notice", locale); connect.CodeOf(err) != connect.CodeNotFound {
+			t.Fatalf("GetPublishedPage notice %q offering ja and en code = %v, want not_found (err=%v)", locale, connect.CodeOf(err), err)
+		}
+	}
+	for _, locale := range []string{"en", "ko"} {
+		page, err := served("privacy", locale)
+		if err != nil {
+			t.Fatalf("GetPublishedPage privacy %q offering ja and en: %v", locale, err)
+		}
+		if page.Page.Locale != "ja" || page.Version.ContentMarkdown != "# Privacy (ja)" {
+			t.Fatalf("GetPublishedPage privacy %q offering ja and en = %s %q, want the ja one",
+				locale, page.Page.Locale, page.Version.ContentMarkdown)
+		}
+		if got := strings.Join(page.PublishedLocales, ","); got != "ja" {
+			t.Fatalf("GetPublishedPage privacy %q offering ja and en published_locales = %q, want ja alone", locale, got)
+		}
+	}
+
+	offer("ja", "en", "ko")
+	if got := slugs(); got != "/notice,/privacy" {
+		t.Fatalf("slugs with ko offered again = %q, want /notice,/privacy", got)
+	}
+	if got := footer("ko"); got != "ko:Notice (ko),ko:Privacy Policy (ko)" {
+		t.Fatalf("footer for ko with ko offered again = %q, want both pages in ko", got)
+	}
+	if got := sitemapPages(); got != "/notice,/privacy" {
+		t.Fatalf("sitemap pages with ko offered again = %q, want /notice,/privacy", got)
+	}
+	notices, err := served("notice", "en")
+	if err != nil {
+		t.Fatalf("GetPublishedPage notice en with ko offered again: %v", err)
+	}
+	if notices.Page.Locale != "ko" || notices.Version.ContentMarkdown != "# Notice (ko)" {
+		t.Fatalf("GetPublishedPage notice en with ko offered again = %s %q, want the ko one unchanged",
+			notices.Page.Locale, notices.Version.ContentMarkdown)
+	}
+	privacies, err := served("privacy", "ko")
+	if err != nil {
+		t.Fatalf("GetPublishedPage privacy ko with ko offered again: %v", err)
+	}
+	if privacies.Page.Locale != "ko" || strings.Join(privacies.PublishedLocales, ",") != "ja,ko" {
+		t.Fatalf("GetPublishedPage privacy ko with ko offered again = %s %v, want ko among ja,ko",
+			privacies.Page.Locale, privacies.PublishedLocales)
 	}
 }

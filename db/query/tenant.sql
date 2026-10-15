@@ -278,10 +278,11 @@ RETURNING *;
 
 -- name: GetTenantLegalPages :one
 -- The pages a tenant names as its terms of service and its privacy policy. A
--- page is published when any translation of it is, as the storefront serves it
--- then, and is read in the translation published_page_translation_for picks for
--- the locale; an unpublished page is read in the one page_translation_for
--- picks. No row where the tenant has no config.
+-- page is published when any translation of it in a locale the tenant offers
+-- is, as the storefront serves it then, and is read in the translation
+-- published_page_translation_for picks for the locale; an unpublished page is
+-- read in the one page_translation_for picks. No row where the tenant has no
+-- config.
 SELECT tc.terms_page_id,
     terms.slug AS terms_slug,
     terms_translation.locale AS terms_locale,
