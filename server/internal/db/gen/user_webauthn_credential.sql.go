@@ -12,6 +12,22 @@ import (
 	"github.com/lib/pq"
 )
 
+const CountUserWebauthnCredentials = `-- name: CountUserWebauthnCredentials :one
+SELECT count(*)
+FROM user_webauthn_credentials
+WHERE user_id = $1
+`
+
+// Every RP ID. A credential registered for an RP ID the console no longer
+// derives is no factor now, but it becomes one again if the console moves
+// back, and the recovery codes have to still be there when it does.
+func (q *Queries) CountUserWebauthnCredentials(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, CountUserWebauthnCredentials, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const CountUserWebauthnCredentialsForRPID = `-- name: CountUserWebauthnCredentialsForRPID :one
 SELECT count(*)
 FROM user_webauthn_credentials

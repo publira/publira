@@ -636,7 +636,7 @@ Taking the authenticator off needs the authenticator or a recovery code. Removin
 | Counter | An assertion whose counter does not move past the stored one is refused, unless both are zero, which is what an authenticator that keeps no counter reports |
 | Errors | A refused assertion is `unauthenticated` with the reason `MFA_PASSKEY_REFUSED`; a refused registration is `invalid_argument` with the same reason |
 
-A passkey registered for an RP ID the console no longer derives — after the tenant's domain changes, or its console host moves into or out of that domain — is not counted as a factor and is not listed.
+A passkey registered for an RP ID the console no longer derives — after the tenant's domain changes, or its console host moves into or out of that domain — is not counted as a factor and is not listed, and the account's recovery codes stay while one is stored, since moving the console back makes it a factor again.
 
 ## Platform operator MFA (TOTP)
 

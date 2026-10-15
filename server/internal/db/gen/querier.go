@@ -157,6 +157,10 @@ type Querier interface {
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
 	CountUnusedPlatformUserMfaRecoveryCodes(ctx context.Context, platformUserID uuid.UUID) (int64, error)
 	CountUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) (int64, error)
+	// Every RP ID. A credential registered for an RP ID the console no longer
+	// derives is no factor now, but it becomes one again if the console moves
+	// back, and the recovery codes have to still be there when it does.
+	CountUserWebauthnCredentials(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountUserWebauthnCredentialsForRPID(ctx context.Context, arg CountUserWebauthnCredentialsForRPIDParams) (int64, error)
 	// How much of one tenant's backlog the retention purge is about to take. It
 	// answers that batch's dry run, which reports the total and deletes nothing.

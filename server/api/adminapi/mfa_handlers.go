@@ -877,23 +877,13 @@ func (s *adminServer) DisableMfa(
 	if err := s.lockMfaFactors(ctx, q, user.ID); err != nil {
 		return nil, err
 	}
-	rpID, err := s.adminRPID(ctx, tenant)
-	if err != nil {
-		return nil, err
-	}
-	passkeys, err := q.CountUserWebauthnCredentialsForRPID(ctx, dbmodels.CountUserWebauthnCredentialsForRPIDParams{UserID: user.ID, RpID: rpID})
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to count passkeys", err, "user_id", user.ID.String())
+	if err := q.DeleteUserMfaTotpByUserID(ctx, user.ID); err != nil {
+		return nil, s.internalDBError(ctx, "failed to delete mfa totp", err, "user_id", user.ID.String())
 	}
 	// The recovery codes stand in for every factor the account holds, so they
 	// go only with the last of them.
-	if passkeys == 0 {
-		if err := q.DeleteUserMfaRecoveryCodesByUserID(ctx, user.ID); err != nil {
-			return nil, s.internalDBError(ctx, "failed to delete mfa recovery codes", err, "user_id", user.ID.String())
-		}
-	}
-	if err := q.DeleteUserMfaTotpByUserID(ctx, user.ID); err != nil {
-		return nil, s.internalDBError(ctx, "failed to delete mfa totp", err, "user_id", user.ID.String())
+	if err := s.deleteRecoveryCodesWithTheLastFactor(ctx, q, user.ID); err != nil {
+		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit mfa disable", err, "user_id", user.ID.String())

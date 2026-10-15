@@ -617,7 +617,9 @@ func (s *adminServer) DeletePasskey(
 
 // deletePasskey removes one passkey, and with the account's last second
 // factor the recovery codes that stood in for it, unless required keeps the
-// account from going without one. The account's factors are locked first, so
+// account from going without one. The codes stay while the account still
+// holds a passkey of another RP ID, which a later move of the console would
+// make a factor again. The account's factors are locked first, so
 // two removals racing over its last two cannot both find the other still
 // there, and a factor added meanwhile is seen before the codes go.
 func (s *adminServer) deletePasskey(ctx context.Context, userID uuid.UUID, rpID string, id uuid.UUID, required bool) error {
@@ -651,13 +653,31 @@ func (s *adminServer) deletePasskey(ctx context.Context, userID uuid.UUID, rpID 
 			if required {
 				return errLastRequiredFactor
 			}
-			if err := q.DeleteUserMfaRecoveryCodesByUserID(ctx, userID); err != nil {
-				return s.internalDBError(ctx, "failed to delete mfa recovery codes", err, "user_id", userID.String())
+			if err := s.deleteRecoveryCodesWithTheLastFactor(ctx, q, userID); err != nil {
+				return err
 			}
 		}
 	}
 	if err := tx.Commit(); err != nil {
 		return s.internalDBError(ctx, "failed to commit passkey removal", err, "user_id", userID.String())
+	}
+	return nil
+}
+
+// deleteRecoveryCodesWithTheLastFactor deletes the account's recovery codes
+// once nothing they could stand in for is left, counting a passkey of any RP
+// ID. The caller holds lockMfaFactors and has already removed what it is
+// removing.
+func (s *adminServer) deleteRecoveryCodesWithTheLastFactor(ctx context.Context, q Querier, userID uuid.UUID) error {
+	passkeys, err := q.CountUserWebauthnCredentials(ctx, userID)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to count passkeys", err, "user_id", userID.String())
+	}
+	if passkeys > 0 {
+		return nil
+	}
+	if err := q.DeleteUserMfaRecoveryCodesByUserID(ctx, userID); err != nil {
+		return s.internalDBError(ctx, "failed to delete mfa recovery codes", err, "user_id", userID.String())
 	}
 	return nil
 }

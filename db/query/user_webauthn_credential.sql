@@ -50,6 +50,14 @@ FROM user_webauthn_credentials
 WHERE user_id = sqlc.arg('user_id')
     AND rp_id = sqlc.arg('rp_id');
 
+-- name: CountUserWebauthnCredentials :one
+-- Every RP ID. A credential registered for an RP ID the console no longer
+-- derives is no factor now, but it becomes one again if the console moves
+-- back, and the recovery codes have to still be there when it does.
+SELECT count(*)
+FROM user_webauthn_credentials
+WHERE user_id = sqlc.arg('user_id');
+
 -- name: GetUserWebauthnCredentialByPublicID :one
 SELECT *
 FROM user_webauthn_credentials

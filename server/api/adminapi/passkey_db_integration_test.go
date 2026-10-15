@@ -632,3 +632,45 @@ func TestAdminPasskeyRegistrationWaitsForARemovalOfTheLastFactor(t *testing.T) {
 		t.Fatalf("stored recovery codes = %d, want %d", n, mfa.RecoveryCodeCount)
 	}
 }
+
+// A passkey of an RP ID the console no longer derives is no factor now, but it
+// becomes one again if the console moves back, so the recovery codes stay
+// while one is stored: removing the last current passkey, or turning the
+// authenticator off, leaves them in place.
+func TestAdminPasskeyKeepsTheRecoveryCodesOfADormantPasskey(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	_, registered := registerPasskey(t, env, tenant, "")
+	secret, _ := enrollMfa(t, env, tenant)
+	if _, err := env.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO user_webauthn_credentials (
+			id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, aaguid, backup_eligible, backed_up
+		) VALUES (gen_random_uuid(), 'DORMANT00001', $1, $2, 'console.elsewhere.example', '\x01', '\x00', '00000000-0000-0000-0000-000000000000', false, false)
+	`, tenant.Tenant.ID, tenant.User.ID); err != nil {
+		t.Fatalf("insert dormant passkey: %v", err)
+	}
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+
+	if _, err := env.authClient().DeletePasskey(ctx, &publiraadminv1.AdminAuthServiceDeletePasskeyRequest{
+		Tenant: tenant.tenantContext(),
+		Id:     registered.Passkey.Id,
+	}); err != nil {
+		t.Fatalf("DeletePasskey: %v", err)
+	}
+	if _, err := env.authClient().DisableMfa(ctx, &publiraadminv1.AdminAuthServiceDisableMfaRequest{
+		Tenant: tenant.tenantContext(),
+		Code:   mfaNextCode(t, secret),
+	}); err != nil {
+		t.Fatalf("DisableMfa: %v", err)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_recovery_codes WHERE user_id = $1", tenant.User.ID); got != mfa.RecoveryCodeCount {
+		t.Fatalf("recovery codes = %d, want %d kept for the dormant passkey", got, mfa.RecoveryCodeCount)
+	}
+	listed, err := env.authClient().ListPasskeys(ctx, &publiraadminv1.AdminAuthServiceListPasskeysRequest{Tenant: tenant.tenantContext()})
+	if err != nil {
+		t.Fatalf("ListPasskeys: %v", err)
+	}
+	if len(listed.Passkeys) != 0 {
+		t.Fatalf("passkeys = %+v, want the dormant one left out", listed.Passkeys)
+	}
+}
