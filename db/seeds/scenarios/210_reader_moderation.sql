@@ -1,12 +1,13 @@
--- Scenario: readers the admin console's moderation E2E may suspend and delete
+-- Scenario: readers the admin console's moderation E2E may suspend, delete,
+-- or take an icon from
 --
 -- `admin.readers.spec.ts` suspends one reader, lifts the suspension, deletes
--- another, and removes a third one's icon from the reader detail page. The dev seed member cannot
--- absorb either: other suites sign in with its address, and a deleted account
--- is gone for every suite that runs after.
+-- another, and removes a third one's icon from the reader detail page. The dev
+-- seed member cannot absorb any of that: other suites sign in with its
+-- address, and a deleted account is gone for every suite that runs after.
 --
--- Applying this file is also how the suite puts both readers back, so each
--- statement writes the starting value, including re-creating the deleted
+-- Applying this file is also how the suite puts all three readers back, so
+-- each statement writes the starting value, including re-creating the deleted
 -- account and electing the icon again. Password hash matches the dev seed
 -- (`memberpass`).
 -- public_id values are hard-coded in e2e/src/scenarios/reader-moderation.ts.
