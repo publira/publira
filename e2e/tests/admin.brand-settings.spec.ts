@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
@@ -35,6 +37,51 @@ const SEED_TENANT_NAME = "Seed Tenant";
 const SEED_TENANT_LOGO_ALT = `${SEED_TENANT_NAME} logo`;
 
 const BRANDING_FIXTURE = EYE_CATCH_ASPECT_FIXTURES.square;
+
+/** `BRANDING_IMAGE_MAX_BYTES` in `branding/_lib/actions.ts`. */
+const BRANDING_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+/** A JPEG comment segment's marker, and the most bytes one segment can span. */
+const JPEG_COMMENT_MARKER = 0xff_fe;
+const JPEG_SEGMENT_MAX_BYTES = 2 + 0xff_ff;
+const JPEG_SEGMENT_MIN_BYTES = 4;
+
+/**
+ * {@link BRANDING_FIXTURE} grown to exactly {@link BRANDING_IMAGE_MAX_BYTES}
+ * with comment segments after its start-of-image marker. A decoder skips a
+ * comment, so the picture stays the fixture's own and only the upload grows,
+ * to the size the console's request body limits have to leave room for.
+ */
+const largestBrandingImage = async (): Promise<{
+  buffer: Buffer;
+  mimeType: string;
+  name: string;
+}> => {
+  const fixture = await readFile(BRANDING_FIXTURE);
+  const segments: Buffer[] = [];
+  let remaining = BRANDING_IMAGE_MAX_BYTES - fixture.length;
+  while (remaining > 0) {
+    // A segment's length counts itself and nothing before it, so a segment is
+    // never shorter than its marker and length; the last one is kept at least
+    // that long by taking the shortfall from the one before.
+    let size = Math.min(remaining, JPEG_SEGMENT_MAX_BYTES);
+    if (remaining - size > 0 && remaining - size < JPEG_SEGMENT_MIN_BYTES) {
+      size -= JPEG_SEGMENT_MIN_BYTES;
+    }
+    const segment = Buffer.alloc(size);
+    segment.writeUInt16BE(JPEG_COMMENT_MARKER, 0);
+    segment.writeUInt16BE(size - 2, 2);
+    segments.push(segment);
+    remaining -= size;
+  }
+  const buffer = Buffer.concat([
+    fixture.subarray(0, 2),
+    ...segments,
+    fixture.subarray(2),
+  ]);
+  expect(buffer).toHaveLength(BRANDING_IMAGE_MAX_BYTES);
+  return { buffer, mimeType: "image/jpeg", name: "largest-branding-image.jpg" };
+};
 
 const THEME_CSS_PATH = "/theme.css";
 
@@ -228,12 +275,11 @@ const uploadBranding = async (
   page: Page,
   fileInputName: string,
   submitName: string,
-  confirmation: string
+  confirmation: string,
+  file: Parameters<Locator["setInputFiles"]>[0] = BRANDING_FIXTURE
 ): Promise<void> => {
   const form = brandingForm(page, fileInputName);
-  await form
-    .locator(`input[name="${fileInputName}"]`)
-    .setInputFiles(BRANDING_FIXTURE);
+  await form.locator(`input[name="${fileInputName}"]`).setInputFiles(file);
   await form.getByRole("button", { name: submitName }).click();
   await expectStatus(form, confirmation, 60_000);
 };
@@ -517,5 +563,29 @@ test.describe("admin brand settings", () => {
       declaredIconHref(page)
     ).toBe("");
     await expect(appleTouchIconLink(page)).toHaveCount(0);
+  });
+
+  test("a logo and an icon of the 10 MiB the console accepts are saved", async ({
+    page,
+  }) => {
+    const image = await largestBrandingImage();
+
+    restoreLogo = true;
+    await uploadBranding(
+      page,
+      "logo",
+      "Save the logo",
+      "The logo was saved.",
+      image
+    );
+
+    restoreIcon = true;
+    await uploadBranding(
+      page,
+      "icon",
+      "Save the icon",
+      "The icon was saved.",
+      image
+    );
   });
 });
