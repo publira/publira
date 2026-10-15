@@ -4051,12 +4051,34 @@ class RecordedRequest {
     } on InvalidProtocolBufferException catch (error) {
       throw FormatException(error.message);
     }
+    _rejectUnknownFields(message);
+    return message;
+  }
+
+  /// Throws a [FormatException] when [message], or any message nested in it,
+  /// holds a field its type does not define, which the decoder keeps in the
+  /// [GeneratedMessage.unknownFields] of the message it was found in.
+  static void _rejectUnknownFields(GeneratedMessage message) {
     if (message.unknownFields.isNotEmpty) {
       throw FormatException(
         '${message.info_.qualifiedMessageName} has no field '
         '${message.unknownFields.asMap().keys.join(', ')}',
       );
     }
-    return message;
+    for (final field in message.info_.fieldInfo.values) {
+      if (!message.hasField(field.tagNumber)) {
+        continue;
+      }
+      switch (message.getField(field.tagNumber)) {
+        case final GeneratedMessage child:
+          _rejectUnknownFields(child);
+        case final List<Object?> children:
+          children.whereType<GeneratedMessage>().forEach(_rejectUnknownFields);
+        case final Map<Object?, Object?> children:
+          children.values.whereType<GeneratedMessage>().forEach(
+            _rejectUnknownFields,
+          );
+      }
+    }
   }
 }
