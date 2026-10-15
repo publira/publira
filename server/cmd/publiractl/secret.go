@@ -40,17 +40,22 @@ type secret struct {
 	fromStdin bool
 	// file is the path --<name>-file named, "" when it was not given.
 	file string
+	// env is the variable --<name>-env named, "" when it was not given.
+	env string
 	// keepable is a secret a command already has a saved value for, which
 	// reads as "" when none is given.
 	keepable bool
 }
 
-var errNoSecretFile = errors.New("names no file")
+var (
+	errNoSecretFile     = errors.New("names no file")
+	errNoSecretVariable = errors.New("names no variable")
+)
 
-// Secret declares --<name>-stdin and --<name>-file, the only flags through
-// which the secret can be given; without either the secret is asked for at a
-// masked prompt. No flag named after the secret itself exists, so
-// --<name>=value is a usage error.
+// Secret declares --<name>-stdin, --<name>-file, and --<name>-env, the only
+// flags through which the secret can be given; without any of them the secret
+// is asked for at a masked prompt. No flag named after the secret itself
+// exists, so --<name>=value is a usage error.
 func (f *commandFlags) Secret(name, label string) *secret {
 	s := &secret{name: name, label: label}
 	f.BoolVar(&s.fromStdin, name+"-stdin", false, "read the "+label+" from the whole of stdin")
@@ -61,6 +66,15 @@ func (f *commandFlags) Secret(name, label string) *secret {
 			return errNoSecretFile
 		}
 		s.file = path
+		return nil
+	})
+	// Only the variable's name is on the command line, so ps shows the name
+	// and the value stays in the environment of the process.
+	f.Func(name+"-env", "read the "+label+" from the environment `variable` of that name", func(variable string) error {
+		if variable == "" {
+			return errNoSecretVariable
+		}
+		s.env = variable
 		return nil
 	})
 	f.secrets = append(f.secrets, s)
@@ -79,14 +93,35 @@ func (f *commandFlags) KeepableSecret(name, label string) *secret {
 // given reports whether the secret was given through one of its flags rather
 // than left to the prompt.
 func (s *secret) given() bool {
-	return s.fromStdin || s.file != ""
+	return len(s.sources()) > 0
+}
+
+// sources are the flags the secret was given through.
+func (s *secret) sources() []string {
+	var flags []string
+	if s.fromStdin {
+		flags = append(flags, "--"+s.name+"-stdin")
+	}
+	if s.file != "" {
+		flags = append(flags, "--"+s.name+"-file")
+	}
+	if s.env != "" {
+		flags = append(flags, "--"+s.name+"-env")
+	}
+	return flags
+}
+
+// flags names every flag the secret can be given through, for a message that
+// asks for one of them.
+func (s *secret) flags() string {
+	return "--" + s.name + "-file, --" + s.name + "-env, or --" + s.name + "-stdin"
 }
 
 // source is the flag the secret was given through, and the stdin one when it
 // was typed at the prompt, which has no flag of its own.
 func (s *secret) source() string {
-	if s.file != "" {
-		return "--" + s.name + "-file"
+	if flags := s.sources(); len(flags) > 0 {
+		return flags[0]
 	}
 	return "--" + s.name + "-stdin"
 }
@@ -100,14 +135,26 @@ func (s *secret) refusal(err error, field string, named func(error) error) error
 	return named(err)
 }
 
-// checkSecretSources refuses a secret given through both of its flags, and
-// more than one secret on stdin, which a single stream cannot tell apart. Any
-// number of secrets can each come from a file.
+// checkSecretSources refuses a secret given through more than one of its
+// flags, more than one secret on stdin, which a single stream cannot tell
+// apart, and a variable that holds no secret. Any number of secrets can each
+// come from a file or a variable.
 func (f *commandFlags) checkSecretSources() error {
 	var fromStdin []string
 	for _, s := range f.secrets {
-		if s.fromStdin && s.file != "" {
-			return fmt.Errorf("--%[1]s-stdin and --%[1]s-file cannot both be given", s.name)
+		if flags := s.sources(); len(flags) > 1 {
+			return fmt.Errorf("%s cannot be given together", strings.Join(flags, " and "))
+		}
+		// The variable is checked here rather than when the secret is read, so
+		// a command refuses it before it has written anything. Only its name
+		// is reported, never what it holds.
+		if s.env != "" {
+			switch value, ok := os.LookupEnv(s.env); {
+			case !ok:
+				return fmt.Errorf("--%s-env names %s, which is not set", s.name, s.env)
+			case dropLineBreak([]byte(value)) == "":
+				return fmt.Errorf("--%s-env names %s, which is empty", s.name, s.env)
+			}
 		}
 		if s.fromStdin {
 			fromStdin = append(fromStdin, "--"+s.name+"-stdin")
@@ -119,9 +166,10 @@ func (f *commandFlags) checkSecretSources() error {
 	return nil
 }
 
-// read takes the secret from the file or stdin its flag named, else from a
-// masked prompt on the terminal. One line break ending the file or stdin is
-// dropped, so `echo "$PASSWORD" | publiractl …` stores the password alone.
+// read takes the secret from the file, variable, or stdin its flag named, else
+// from a masked prompt on the terminal. One line break ending the file, the
+// variable, or stdin is dropped, so `echo "$PASSWORD" | publiractl …` stores
+// the password alone.
 func (s *secret) read(con console) (string, error) {
 	var value string
 	switch {
@@ -131,6 +179,8 @@ func (s *secret) read(con console) (string, error) {
 			return "", fmt.Errorf("read the %s from --%s-file: %w", s.label, s.name, err)
 		}
 		value = dropLineBreak(raw)
+	case s.env != "":
+		value = dropLineBreak([]byte(os.Getenv(s.env)))
 	case s.fromStdin:
 		raw, err := io.ReadAll(con.stdin)
 		if err != nil {
@@ -155,7 +205,7 @@ func (s *secret) read(con console) (string, error) {
 	case s.keepable:
 		return "", nil
 	default:
-		return "", fmt.Errorf("stdin is not a terminal to prompt for the %[1]s on; pipe it in with --%[2]s-stdin or name a file with --%[2]s-file", s.label, s.name)
+		return "", fmt.Errorf("stdin is not a terminal to prompt for the %[1]s on; pipe it in with --%[2]s-stdin, name a file with --%[2]s-file, or name an environment variable with --%[2]s-env", s.label, s.name)
 	}
 	if value == "" {
 		return "", errors.New("the " + s.label + " is empty")

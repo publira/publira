@@ -216,7 +216,7 @@ func TestSecretSourcesAllowSeveralFilesButNotBothFlagsOfOneSecret(t *testing.T) 
 		t.Fatalf("Parse: %v", err)
 	}
 	err := f.checkSecretSources()
-	if err == nil || err.Error() != "--smtp-password-stdin and --smtp-password-file cannot both be given" {
+	if err == nil || err.Error() != "--smtp-password-stdin and --smtp-password-file cannot be given together" {
 		t.Fatalf("error = %v, want both flags of one secret refused", err)
 	}
 }
@@ -230,6 +230,76 @@ func TestSecretFileFlagRefusesAnEmptyPath(t *testing.T) {
 	code := runGroup(tg.group(), []string{"save", "--host", "example.com", "--password-file="}, pipedConsole("", &stderr), &stdout)
 	if code != 2 || !strings.HasPrefix(stderr.String(), `publiractl: invalid value "" for flag --password-file: names no file`) {
 		t.Fatalf("exit code = %d, stderr = %q; want a usage error naming --password-file", code, stderr.String())
+	}
+	if tg.wrote {
+		t.Fatal("the command ran")
+	}
+}
+
+// A variable is read as a file is, so a value set with the line break it was
+// stored with stores the secret alone.
+func TestSecretFromAVariableDropsOneTrailingLineBreak(t *testing.T) {
+	t.Setenv("PUBLIRA_TEST_SECRET", testSecretValue+"\n")
+	s := &secret{name: "password", label: "password", env: "PUBLIRA_TEST_SECRET"}
+	got, err := s.read(pipedConsole("from stdin", &bytes.Buffer{}))
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if got != testSecretValue {
+		t.Fatalf("read = %q, want %q", got, testSecretValue)
+	}
+}
+
+// Any number of secrets can each come from a variable, which is how a
+// platform that sets secrets only in the environment hands over several.
+func TestSecretSourcesAllowSeveralVariables(t *testing.T) {
+	t.Setenv("ACCESS_KEY", "a")
+	t.Setenv("SMTP_PASSWORD", "b")
+	f := &commandFlags{FlagSet: flag.NewFlagSet("setup", flag.ContinueOnError)}
+	f.Secret("secret-access-key", "secret access key")
+	f.Secret("smtp-password", "SMTP password")
+
+	if err := f.Parse([]string{"--secret-access-key-env", "ACCESS_KEY", "--smtp-password-env", "SMTP_PASSWORD"}); err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if err := f.checkSecretSources(); err != nil {
+		t.Fatalf("two secrets from variables: %v", err)
+	}
+}
+
+// A variable that holds nothing is refused before the command runs, as an
+// empty file is when it is read, and a keepable secret does not read it as
+// "keep the saved one".
+func TestSecretVariableRefusesAnUnsetOrEmptyOne(t *testing.T) {
+	t.Setenv("EMPTY_SECRET", "\n")
+	for _, tc := range []struct {
+		variable string
+		want     string
+	}{
+		{variable: "UNSET_SECRET", want: "--password-env names UNSET_SECRET, which is not set"},
+		{variable: "EMPTY_SECRET", want: "--password-env names EMPTY_SECRET, which is empty"},
+	} {
+		t.Run(tc.variable, func(t *testing.T) {
+			f := &commandFlags{FlagSet: flag.NewFlagSet("smtp set", flag.ContinueOnError)}
+			f.KeepableSecret("password", "SMTP password")
+			if err := f.Parse([]string{"--password-env", tc.variable}); err != nil {
+				t.Fatalf("Parse: %v", err)
+			}
+			if err := f.checkSecretSources(); err == nil || err.Error() != tc.want {
+				t.Fatalf("error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// An empty name is not the flag left out, for the same reason an empty path
+// is not.
+func TestSecretEnvFlagRefusesAnEmptyName(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	tg := &testGroup{}
+	code := runGroup(tg.group(), []string{"save", "--host", "example.com", "--password-env="}, pipedConsole("", &stderr), &stdout)
+	if code != 2 || !strings.HasPrefix(stderr.String(), `publiractl: invalid value "" for flag --password-env: names no variable`) {
+		t.Fatalf("exit code = %d, stderr = %q; want a usage error naming --password-env", code, stderr.String())
 	}
 	if tg.wrote {
 		t.Fatal("the command ran")

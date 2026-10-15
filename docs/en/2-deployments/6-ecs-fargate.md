@@ -2,6 +2,7 @@
 title: Amazon ECS on Fargate
 description: Run an install as Amazon ECS services on AWS Fargate behind CloudFront and an Application Load Balancer, from its parameters and task definitions to the first sign-in to the tenant console.
 published: 2026-10-15
+updated: 2026-10-15
 ---
 
 This page takes an install from a VPC with the managed services provisioned to the first sign-in to the tenant console, with every process an Amazon ECS service on AWS Fargate and CloudFront in front of an Application Load Balancer as the edge. It runs the same steps as [Installing](./2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](./4-edge.md#what-the-edge-has-to-do) requires. This page covers what is particular to ECS and Fargate: which resources each part becomes, and how each requirement of those two pages is met with them.
@@ -279,9 +280,7 @@ A task started with `run-task` runs once, and ECS does not start it again when i
 
 ### Create the database roles
 
-`db roles` reads each role's password from a file, from stdin, or from a prompt, and a Fargate task offers it neither a stdin nor a terminal. Nor does ECS write a secret to a file: it sets it as an environment variable. So the task runs a container before `publiractl` that writes each password ECS gave it into a file on a volume the two share, and `publiractl` reads the files with its `--<role>-password-file` flags. Reading a secret straight from an environment variable is tracked in [#4374](https://github.com/publira/publira/issues/4374), which would make this one container.
-
-That first container runs the `publira` image of the same release, which carries `bash`; the `publiractl` image carries no shell. It runs as root, since a volume ECS creates belongs to root, and hands each file to the user `publiractl` runs as, `65532`, readable by that user alone. The volume is the task's own storage, and is gone when the task stops.
+A Fargate task offers `db roles` neither a stdin nor a terminal to read a password from, and ECS hands a container its secrets as environment variables rather than as files. So the task's `secrets` set one variable per role password, and `db roles` reads each with its `--<role>-password-env` flag. Only the variables' names are in the command, so no password appears in the task definition or in the process list.
 
 `publiractl-db-roles.json`:
 
@@ -293,88 +292,51 @@ That first container runs the `publira` image of the same release, which carries
   "cpu": "256",
   "memory": "512",
   "executionRoleArn": "arn:aws:iam::<account>:role/publira-task-execution",
-  "volumes": [{ "name": "secret-files" }],
   "containerDefinitions": [
-    {
-      "name": "secret-files",
-      "image": "ghcr.io/publira/publira:<tag>",
-      "essential": false,
-      "user": "root",
-      "entryPoint": ["/usr/bin/bash", "-c"],
-      "command": [
-        "umask 077 && for var in ${!SECRET_FILE_@}; do printf %s \"${!var}\" > \"/run/secrets/publira/${var#SECRET_FILE_}\"; done && chown 65532:65532 /run/secrets/publira/*"
-      ],
-      "secrets": [
-        {
-          "name": "SECRET_FILE_public",
-          "valueFrom": "/publira/db-password/public"
-        },
-        {
-          "name": "SECRET_FILE_admin",
-          "valueFrom": "/publira/db-password/admin"
-        },
-        {
-          "name": "SECRET_FILE_platform",
-          "valueFrom": "/publira/db-password/platform"
-        },
-        {
-          "name": "SECRET_FILE_outbox",
-          "valueFrom": "/publira/db-password/outbox"
-        },
-        {
-          "name": "SECRET_FILE_ticker",
-          "valueFrom": "/publira/db-password/ticker"
-        },
-        {
-          "name": "SECRET_FILE_content_stats",
-          "valueFrom": "/publira/db-password/content-stats"
-        }
-      ],
-      "mountPoints": [
-        {
-          "sourceVolume": "secret-files",
-          "containerPath": "/run/secrets/publira"
-        }
-      ],
-      "logConfiguration": {
-        "logDriver": "awslogs",
-        "options": {
-          "awslogs-group": "/publira",
-          "awslogs-region": "<region>",
-          "awslogs-stream-prefix": "publiractl-db-roles"
-        }
-      }
-    },
     {
       "name": "publiractl",
       "image": "ghcr.io/publira/publiractl:<tag>",
-      "dependsOn": [
-        { "containerName": "secret-files", "condition": "SUCCESS" }
-      ],
       "command": [
         "db",
         "roles",
-        "--public-password-file",
-        "/run/secrets/publira/public",
-        "--admin-password-file",
-        "/run/secrets/publira/admin",
-        "--platform-password-file",
-        "/run/secrets/publira/platform",
-        "--outbox-password-file",
-        "/run/secrets/publira/outbox",
-        "--ticker-password-file",
-        "/run/secrets/publira/ticker",
-        "--content-stats-password-file",
-        "/run/secrets/publira/content_stats"
+        "--public-password-env",
+        "PUBLIRA_PUBLIC_DB_PASSWORD",
+        "--admin-password-env",
+        "PUBLIRA_ADMIN_DB_PASSWORD",
+        "--platform-password-env",
+        "PUBLIRA_PLATFORM_DB_PASSWORD",
+        "--outbox-password-env",
+        "PUBLIRA_OUTBOX_DB_PASSWORD",
+        "--ticker-password-env",
+        "PUBLIRA_TICKER_DB_PASSWORD",
+        "--content-stats-password-env",
+        "PUBLIRA_CONTENT_STATS_DB_PASSWORD"
       ],
       "secrets": [
-        { "name": "PUBLIRA_DB_URL", "valueFrom": "/publira/db-url/master" }
-      ],
-      "mountPoints": [
+        { "name": "PUBLIRA_DB_URL", "valueFrom": "/publira/db-url/master" },
         {
-          "sourceVolume": "secret-files",
-          "containerPath": "/run/secrets/publira",
-          "readOnly": true
+          "name": "PUBLIRA_PUBLIC_DB_PASSWORD",
+          "valueFrom": "/publira/db-password/public"
+        },
+        {
+          "name": "PUBLIRA_ADMIN_DB_PASSWORD",
+          "valueFrom": "/publira/db-password/admin"
+        },
+        {
+          "name": "PUBLIRA_PLATFORM_DB_PASSWORD",
+          "valueFrom": "/publira/db-password/platform"
+        },
+        {
+          "name": "PUBLIRA_OUTBOX_DB_PASSWORD",
+          "valueFrom": "/publira/db-password/outbox"
+        },
+        {
+          "name": "PUBLIRA_TICKER_DB_PASSWORD",
+          "valueFrom": "/publira/db-password/ticker"
+        },
+        {
+          "name": "PUBLIRA_CONTENT_STATS_DB_PASSWORD",
+          "valueFrom": "/publira/db-password/content-stats"
         }
       ],
       "logConfiguration": {
@@ -394,8 +356,6 @@ That first container runs the `publira` image of the same release, which carries
 aws ecs register-task-definition --cli-input-json file://publiractl-db-roles.json
 run_publiractl publiractl-db-roles
 ```
-
-Every variable whose name starts with `SECRET_FILE_` becomes a file named after the rest of its name, so the files follow the `secrets` list and the command never changes. `publiractl` starts only once that container has exited with `0`.
 
 The log has one line per role. The same task is how a role's password is rotated later: put the new password in its `db-password/` parameter and in the `db-url/` parameter that carries it, with `aws ssm put-parameter --overwrite`, which `put` above leaves out so that it never replaces a value by accident, run the task again, and deploy the service that connects as that role again, so its tasks start with the new URL. For `publira_admin`, whose URL `publira-server` carries:
 
@@ -747,14 +707,14 @@ Readiness is still worth looking at, from outside the services rather than as a 
 
 `publiractl setup` runs once, as a task with every value given as a flag: a task started with `run-task` has no terminal to ask on. It connects as `publira_platform` and seals what it saves with the encryption keys, so it reads the same parameters the server does for both, and it takes the `publira-storage` task role for the connection test of the bucket. It is not given `db-url/master`: `setup` never connects as the administrative login.
 
-What it prints goes to CloudWatch Logs, so give the administrator a password rather than having one generated: a generated password is printed in the summary, and a password given as a file is not. Store it, and the SMTP password, as parameters of their own:
+What it prints goes to CloudWatch Logs, so give the administrator a password rather than having one generated: a generated password is printed in the summary, and a password given through a variable is not. Store it, and the SMTP password, as parameters of their own:
 
 ```bash
 put setup/smtp-password '<the SMTP password>'
 put setup/admin-password "$(openssl rand -base64 18)"
 ```
 
-The files reach `publiractl` the way the role passwords do. `publiractl-setup.json`:
+They reach `publiractl` the way the role passwords do, as variables its `--smtp-password-env` and `--admin-password-env` flags name. `publiractl-setup.json`:
 
 ```json
 {
@@ -765,48 +725,10 @@ The files reach `publiractl` the way the role passwords do. `publiractl-setup.js
   "memory": "512",
   "executionRoleArn": "arn:aws:iam::<account>:role/publira-task-execution",
   "taskRoleArn": "arn:aws:iam::<account>:role/publira-storage",
-  "volumes": [{ "name": "secret-files" }],
   "containerDefinitions": [
-    {
-      "name": "secret-files",
-      "image": "ghcr.io/publira/publira:<tag>",
-      "essential": false,
-      "user": "root",
-      "entryPoint": ["/usr/bin/bash", "-c"],
-      "command": [
-        "umask 077 && for var in ${!SECRET_FILE_@}; do printf %s \"${!var}\" > \"/run/secrets/publira/${var#SECRET_FILE_}\"; done && chown 65532:65532 /run/secrets/publira/*"
-      ],
-      "secrets": [
-        {
-          "name": "SECRET_FILE_smtp_password",
-          "valueFrom": "/publira/setup/smtp-password"
-        },
-        {
-          "name": "SECRET_FILE_admin_password",
-          "valueFrom": "/publira/setup/admin-password"
-        }
-      ],
-      "mountPoints": [
-        {
-          "sourceVolume": "secret-files",
-          "containerPath": "/run/secrets/publira"
-        }
-      ],
-      "logConfiguration": {
-        "logDriver": "awslogs",
-        "options": {
-          "awslogs-group": "/publira",
-          "awslogs-region": "<region>",
-          "awslogs-stream-prefix": "publiractl-setup"
-        }
-      }
-    },
     {
       "name": "publiractl",
       "image": "ghcr.io/publira/publiractl:<tag>",
-      "dependsOn": [
-        { "containerName": "secret-files", "condition": "SUCCESS" }
-      ],
       "command": [
         "setup",
         "--non-interactive",
@@ -824,8 +746,8 @@ The files reach `publiractl` the way the role passwords do. `publiractl-setup.js
         "starttls",
         "--username",
         "<the SMTP user name>",
-        "--smtp-password-file",
-        "/run/secrets/publira/smtp_password",
+        "--smtp-password-env",
+        "PUBLIRA_SETUP_SMTP_PASSWORD",
         "--from-address",
         "no-reply@example.com",
         "--tenant-name",
@@ -836,8 +758,8 @@ The files reach `publiractl` the way the role passwords do. `publiractl-setup.js
         "owner@comics.example.com",
         "--admin-name",
         "Owner",
-        "--admin-password-file",
-        "/run/secrets/publira/admin_password"
+        "--admin-password-env",
+        "PUBLIRA_SETUP_ADMIN_PASSWORD"
       ],
       "environment": [
         { "name": "PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID", "value": "k1" }
@@ -850,13 +772,14 @@ The files reach `publiractl` the way the role passwords do. `publiractl-setup.js
         {
           "name": "PUBLIRA_PLATFORM_DB_URL",
           "valueFrom": "/publira/db-url/platform"
-        }
-      ],
-      "mountPoints": [
+        },
         {
-          "sourceVolume": "secret-files",
-          "containerPath": "/run/secrets/publira",
-          "readOnly": true
+          "name": "PUBLIRA_SETUP_SMTP_PASSWORD",
+          "valueFrom": "/publira/setup/smtp-password"
+        },
+        {
+          "name": "PUBLIRA_SETUP_ADMIN_PASSWORD",
+          "valueFrom": "/publira/setup/admin-password"
         }
       ],
       "logConfiguration": {
@@ -1162,7 +1085,7 @@ SERVICES="publira-server publira-worker web-storefront web-admin"
    ```
 
 2. **Back up the database** with a snapshot of the RDS instance or the Aurora cluster, or with `pg_dump` from a host that reaches it, as [Back up the database](./7-upgrading.md#1-back-up-the-database) describes.
-3. **Apply the migrations and the roles**: change `<tag>` in `publiractl-db-migrate.json` and `publiractl-db-roles.json` to the new release, register both, and run them in that order with `run_publiractl`, going on only when each succeeds. The roles task gives each role the password its parameter holds, which is the one it already has, so it runs unchanged. A release that adds a role needs a parameter for that role's password, its `SECRET_FILE_` entry, and its flag.
+3. **Apply the migrations and the roles**: change `<tag>` in `publiractl-db-migrate.json` and `publiractl-db-roles.json` to the new release, register both, and run them in that order with `run_publiractl`, going on only when each succeeds. The roles task gives each role the password its parameter holds, which is the one it already has, so it runs unchanged. A release that adds a role needs a parameter for that role's password, a `secrets` entry setting it as a variable, and the flag that names the variable.
 4. **Start the new release**: change `<tag>` in every service's task definition, add the variables the release notes name, register them, and update each service to its new revision, and, if you stopped it in step 1, to the number of tasks it ran before, which that step noted in `COUNT`:
 
    ```bash
