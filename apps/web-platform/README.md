@@ -6,7 +6,8 @@ The cross-tenant operations console for platform operators. Its responsibilities
 
 ### Authentication and authorization
 
-- `proxy.ts` protects every path that is not in `PUBLIC_PATHS` (`/login`, `/mfa`, `/livez`, `/readyz`, `/confirm-email`, `/confirm-password`, `/reset-password`, `/reset-password/requested`, `/setup`)
+- `proxy.ts` protects every path that is not in `PUBLIC_PATHS` (`/.well-known/change-password`, `/login`, `/mfa`, `/livez`, `/readyz`, `/confirm-email`, `/confirm-password`, `/reset-password`, `/reset-password/requested`, `/setup`)
+- `/.well-known/change-password` is the [change-password URL](https://www.w3.org/TR/change-password-url/) a password manager opens, served by `app/.well-known/change-password/route.ts` as a `302` to `/reset-password`, whether the operator is signed in or not. Before setup is completed it sends the visitor to `/setup` instead
 - There is no `/logout` route. Signing out goes through the header's Server Action only
 - Session cookie: `publira_web_platform_auth`
 - Roles: `platform_super_admin`, `platform_operator`, `platform_auditor` (`server/internal/auth/roles.go`; their permissions are in `server/cmd/publira/README.md`)

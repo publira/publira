@@ -13,7 +13,15 @@ import {
 } from "./lib/auth-shared";
 import { resolveSetupState } from "./lib/setup";
 
+/**
+ * The change-password URL a password manager opens. It only redirects to
+ * `/reset-password`, so it is public too, but only once there is an account to
+ * reset.
+ */
+const CHANGE_PASSWORD_PATH = "/.well-known/change-password";
+
 const PUBLIC_PATHS = new Set([
+  CHANGE_PASSWORD_PATH,
   "/confirm-email",
   "/confirm-password",
   "/livez",
@@ -52,7 +60,10 @@ export const proxy = async (request: NextRequest) => {
   const withLocale = (response: NextResponse) =>
     applyResolvedLocaleCookie(request, response, defaultLocale);
 
-  if (!setupCompleted && pathname === "/login") {
+  if (
+    !setupCompleted &&
+    (pathname === "/login" || pathname === CHANGE_PASSWORD_PATH)
+  ) {
     return withLocale(NextResponse.redirect(new URL("/setup", request.url)));
   }
 
