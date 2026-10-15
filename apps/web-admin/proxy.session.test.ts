@@ -109,6 +109,21 @@ describe("web-admin proxy session handling", () => {
     ).toBe("/series?token=abc");
   });
 
+  it("rewrites /.well-known/change-password onto the tenant for a valid cookie, as it does without one", async () => {
+    const cookie = await activeCookie();
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://admin.example.com/.well-known/change-password", cookie)
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      `https://admin.example.com/${TENANT_ID}/.well-known/change-password`
+    );
+    expect(deletedCookieNames(response)).not.toContain(COOKIE_NAME);
+  });
+
   it("keeps a signed-in session through a suspension, answering the page that says the console is unavailable", async () => {
     mockResolveTenantRouting.mockResolvedValueOnce("suspended");
     const cookie = await activeCookie();

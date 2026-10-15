@@ -28,21 +28,26 @@ const resolvedLocaleCookie = (response: {
     .find((value) => value.startsWith(`${RESOLVED_LOCALE_COOKIE}=`));
 
 describe("web-admin proxy", () => {
-  it("returns 404 for an unregistered domain", async () => {
-    const { NextRequest } = await import("next/server");
-    const { proxy } = await import("./proxy");
+  it.each(["/series", "/.well-known/change-password"])(
+    "returns 404 for %s on an unregistered domain",
+    async (path) => {
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("./proxy");
 
-    mockResolveTenantRouting.mockResolvedValueOnce({
-      defaultLocale: null,
-      tenantId: null,
-    });
+      mockResolveTenantRouting.mockResolvedValueOnce({
+        defaultLocale: null,
+        tenantId: null,
+      });
 
-    const response = await proxy(
-      new NextRequest("https://admin.unknown.example/series")
-    );
+      const response = await proxy(
+        new NextRequest(`https://admin.unknown.example${path}`)
+      );
 
-    expect(response.status).toBe(404);
-  });
+      expect(response.status).toBe(404);
+      expect(response.headers.get("location")).toBeNull();
+      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    }
+  );
 
   it.each(["/", "/login", "/series?draft=1"])(
     "answers %s with a 503 saying a suspended tenant's console is unavailable",
@@ -84,6 +89,7 @@ describe("web-admin proxy", () => {
   });
 
   it.each([
+    "/.well-known/change-password",
     "/forgot-password",
     "/confirm-password?token=test-token",
     "/confirm-email?token=test-token",
@@ -103,6 +109,20 @@ describe("web-admin proxy", () => {
       );
     }
   );
+
+  it("keeps every other /.well-known path behind sign-in", async () => {
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest("https://admin.example.com/.well-known/security.txt")
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://admin.example.com/login?next=%2F.well-known%2Fsecurity.txt"
+    );
+  });
 
   it("treats /notifications as a protected route instead of redirecting it to the announcements", async () => {
     const { NextRequest } = await import("next/server");
