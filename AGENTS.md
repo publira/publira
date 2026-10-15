@@ -122,6 +122,7 @@ Skills owned by this repository live under `skills/*`; `.agents/skills/*` and `.
 | `skills/create-pr` | Open a pull request following this repository's branch, staging, verification, and template rules |
 | `skills/dev-env-profile` | Prepare or verify the isolated local development profile before worktree development |
 | `skills/organize-github-issues` | Create and normalize GitHub Issues with consistent types, fields, labels, and hierarchy |
+| `skills/release` | Cut a release: choose the version, make the release commit, tag it, and check what the `Release notes` workflow published |
 
 `CLAUDE.md` imports this file with `@AGENTS.md`, so every line here is loaded in every session. A coding standard therefore keeps only its norm and its enforcement here; its decision flow, tables, and NG/OK examples belong to the `coding-standards` skill. Do not link to a skill's files from here — a skill reaches the agent through its own `name` and `description`, and a path in this file only makes the same content get read twice.
 
