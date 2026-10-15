@@ -312,6 +312,9 @@ type Querier interface {
 	// unique index can be the one that recognises it. A mail that came in with
 	// neither cannot be told from a new one and is stored each time.
 	CreateReaderContactMessageEntry(ctx context.Context, arg CreateReaderContactMessageEntryParams) (ContactMessageEntry, error)
+	// created_at is the moment of the insert rather than the transaction's start,
+	// which is what now() would give: the uploads of one tenant wait on each other
+	// for the tenant's lock, and the one that waited began first.
 	CreateReaderIconPreset(ctx context.Context, arg CreateReaderIconPresetParams) (ReaderIconPreset, error)
 	CreateReaderIconPresetVariant(ctx context.Context, arg CreateReaderIconPresetVariantParams) (ReaderIconPresetVariant, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
@@ -2018,8 +2021,10 @@ type Querier interface {
 	// ListRankedSeriesIDs walked the other way, to build a previous page. The
 	// order it describes is the same one.
 	ListRankedSeriesIDsReversed(ctx context.Context, arg ListRankedSeriesIDsReversedParams) ([]ListRankedSeriesIDsReversedRow, error)
-	// Every preset of the tenant with its stored variants, oldest preset first:
-	// the id is a UUIDv7, so it orders the presets the way they were added.
+	// Every preset of the tenant with its stored variants, oldest preset first.
+	// created_at leads rather than the id: a UUIDv7 rises monotonically only
+	// within the process that made it, and uploads reach several, while
+	// created_at is read off the database's one clock.
 	ListReaderIconPresetVariants(ctx context.Context, tenantID uuid.UUID) ([]ListReaderIconPresetVariantsRow, error)
 	// The most recent draft and scheduled episodes, for the publish queue on the
 	// dashboard.

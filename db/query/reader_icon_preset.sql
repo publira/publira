@@ -1,6 +1,9 @@
 -- name: CreateReaderIconPreset :one
-INSERT INTO reader_icon_presets (id, tenant_id)
-VALUES ($1, $2)
+-- created_at is the moment of the insert rather than the transaction's start,
+-- which is what now() would give: the uploads of one tenant wait on each other
+-- for the tenant's lock, and the one that waited began first.
+INSERT INTO reader_icon_presets (id, tenant_id, created_at)
+VALUES ($1, $2, clock_timestamp())
 RETURNING *;
 
 -- name: CreateReaderIconPresetVariant :one
@@ -25,8 +28,10 @@ FROM reader_icon_presets
 WHERE tenant_id = $1;
 
 -- name: ListReaderIconPresetVariants :many
--- Every preset of the tenant with its stored variants, oldest preset first:
--- the id is a UUIDv7, so it orders the presets the way they were added.
+-- Every preset of the tenant with its stored variants, oldest preset first.
+-- created_at leads rather than the id: a UUIDv7 rises monotonically only
+-- within the process that made it, and uploads reach several, while
+-- created_at is read off the database's one clock.
 SELECT p.id AS reader_icon_preset_id,
     p.created_at,
     v.label,
@@ -38,7 +43,8 @@ FROM reader_icon_presets p
     JOIN reader_icon_preset_variants v ON v.tenant_id = p.tenant_id
         AND v.reader_icon_preset_id = p.id
 WHERE p.tenant_id = $1
-ORDER BY p.id,
+ORDER BY p.created_at,
+    p.id,
     v.width DESC,
     v.label;
 
