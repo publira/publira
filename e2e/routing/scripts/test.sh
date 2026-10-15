@@ -102,6 +102,13 @@ assert_webhook_delivered "SendGrid post of 32 MiB reaches web-storefront whole" 
 assert_upload_delivered "icon upload of 15029592 bytes reaches api whole" localhost /rpc/publira.v1.AuthService/UploadMyIcon api 15029592 0
 assert_upload_delivered "icon upload of 15029592 bytes under /api reaches api whole" localhost /api/publira.v1.AuthService/UploadMyIcon api 15029592 0
 
+# A Server Action posts to the path of its page. A reader's icon reaches
+# web-storefront's as an image of up to 10 MiB, which it reads up to 11 MiB of
+# with the multipart framing, and web-admin reads up to 10 MiB of an image
+# uploaded from the tenant console. Each has to reach its app whole.
+assert_upload_delivered "icon Server Action of 11 MiB on a page path reaches web-storefront whole" localhost /en/settings web-storefront 11534336 0
+assert_upload_delivered "image Server Action of 10 MiB on a page path reaches web-admin whole" admin.localhost /branding web-admin 10485760 0
+
 # The episode edit screen posts a whole episode's pages in one upload, which
 # web-admin reads up to 256 MiB of, and the edge gives it 300 seconds to
 # arrive. Spread over 75 seconds, it outlasts the 60 seconds Traefik gives a

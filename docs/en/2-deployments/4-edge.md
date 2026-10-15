@@ -112,6 +112,10 @@ An edge that passes a caller's `X-Forwarded-Host` on lets the caller have anothe
 
 The edge removes `traceparent`, `tracestate`, and `baggage` from every request from outside. Publira's processes continue the trace an incoming `traceparent` names, so a caller who could set it would choose the trace and whether the request is sampled: attaching spans to someone else's trace, or exporting traces past the sampling ratio you set. Without the headers, each request starts a trace of its own. Calls between Publira's own processes do not pass through the edge, so they keep theirs.
 
+### Image uploads from a page
+
+A reader's icon on the tenant's site, and the images uploaded in the tenant console — an author's icon, an eye-catch, and the branding logo and browser icon — are posted to the path of the page they are chosen on, with a body of up to 11 MiB. Every hop on the way has to admit a body that size on the paths of the site's and the console's pages. A smaller limit refuses the upload before it reaches Publira.
+
 ### Uploads in the tenant console
 
 The episode edit screen in the tenant console adds an episode's pages in one upload of up to 256 MiB, posted to `/api/v1/episode-pages` on the console host. Every hop on the way has to admit a body that size there, a load balancer, a CDN, a web application firewall, and a proxy alike. A smaller limit makes a ZIP of a whole episode fail with a message telling the staff member to split it.
@@ -149,7 +153,7 @@ Take the files of the one you run from the release you install. The [routing con
 - **The client address.** Traefik sets `X-Forwarded-For` and removes `Forwarded` with the `strip-forwarded` middleware. nginx and Caddy set `Forwarded` to the client address alone and remove `X-Forwarded-For`. Leave `PUBLIRA_FORWARDED_HEADER_ENABLED` enabled behind any of them.
 - **The host.** Every sample passes `Host` on unchanged, and sets `X-Forwarded-Host` and `X-Forwarded-Proto` itself rather than passing on the caller's, except where it trusts a [hop in front of it](#a-hop-in-front-of-the-proxy).
 - **Trace context.** Every sample removes the three headers. Traefik does it with the `strip-trace-context` middleware, which every entry point needs beside `strip-forwarded`.
-- **Uploads and webhooks.** Traefik and Caddy set no limit on a body unless you add one. nginx refuses anything over 1 MB by default, and its sample raises that to `256m` on `/api/v1/episode-pages` on a console host and to `33m` under the rest of `/api/v1/`. Traefik cuts off any request that has not arrived whole within 60 seconds unless told otherwise, and sets that per entry point rather than per path, so the sample gives every request on its `web` entry point 300 seconds with `transport.respondingTimeouts.readTimeout`. nginx waits up to 60 seconds between two reads of a body rather than for the whole of it, and Caddy does not limit the time at all, so neither sample changes it.
+- **Uploads and webhooks.** Traefik and Caddy set no limit on a body unless you add one. nginx refuses anything over 1 MB by default, and its sample raises that to `256m` on `/api/v1/episode-pages` on a console host, to `33m` under the rest of `/api/v1/`, and to `11m` on the paths of the pages. Traefik cuts off any request that has not arrived whole within 60 seconds unless told otherwise, and sets that per entry point rather than per path, so the sample gives every request on its `web` entry point 300 seconds with `transport.respondingTimeouts.readTimeout`. nginx waits up to 60 seconds between two reads of a body rather than for the whole of it, and Caddy does not limit the time at all, so neither sample changes it.
 - **TLS.** Every sample listens on plain HTTP until you give it a TLS listener, as [Terminate TLS in a sample](#terminate-tls-in-a-sample) describes.
 
 When you adapt one, keep each of these, and give an entry point or a `server` block you add the same headers, limits, and timeouts.
