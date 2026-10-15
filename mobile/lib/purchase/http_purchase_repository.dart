@@ -91,8 +91,8 @@ class HttpPurchaseRepository implements PurchaseRepository {
       );
       return Map.unmodifiable({
         for (final item in body.episodes)
-          // protojson omits an empty string, so a row that names no episode
-          // is one without the key.
+          // The wire format omits an empty string, so a row that names no
+          // episode is one without the key.
           if (item.episodePublicId.isNotEmpty)
             item.episodePublicId: EpisodeAccess.fromWire(item.access),
       });

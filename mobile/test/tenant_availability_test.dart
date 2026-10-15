@@ -18,6 +18,7 @@ import 'support/connect_fixture_server.dart';
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_offline_library.dart';
+import 'support/proto_response.dart';
 
 const _tenantId = '018f0e6a-1000-7000-8000-000000000001';
 
@@ -41,13 +42,8 @@ void main() {
         httpClient: MockClient((_) async {
           return suspended
               ? _suspendedResponse()
-              : http.Response(
-                  jsonEncode(
-                    pb.GetTenantByDomainResponse(
-                      tenantId: _tenantId,
-                    ).toProto3Json(),
-                  ),
-                  200,
+              : protoResponse(
+                  pb.GetTenantByDomainResponse(tenantId: _tenantId),
                 );
         }),
       );

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:fixnum/fixnum.dart';
 import 'package:protobuf/protobuf.dart';
@@ -17,15 +18,17 @@ import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/image_cipher.dart';
 import 'package:publira/auth/reader_age.dart';
 
-/// In-process Connect JSON server that speaks the public catalog/domain RPCs.
+/// In-process Connect server that speaks the public catalog/domain RPCs in
+/// the binary protobuf codec, as the app does.
 ///
 /// Used by widget-adjacent HTTP tests and by `integration_test` so both
 /// exercise the same client against a repeatable fixture.
 ///
 /// What it stores and answers are the messages `buf generate` writes from
 /// `proto/`, so a fixture that no longer matches the API fails to compile.
-/// Every request is decoded strictly into its generated message: a field the
-/// proto does not define is answered `invalid_argument` and fails the test.
+/// Every request is decoded strictly into its generated message: a body in
+/// another codec, or a field the proto does not define, is answered
+/// `invalid_argument` and fails the test.
 class ConnectFixtureServer {
   ConnectFixtureServer({
     this.tenantId = defaultTenantId,
@@ -105,6 +108,10 @@ class ConnectFixtureServer {
   }) : publishedPages = publishedPages ?? {};
 
   static const defaultTenantId = '018f0e6a-1000-7000-8000-000000000001';
+
+  /// The content type of the binary protobuf codec, which every request
+  /// names and every success answers with.
+  static const protoContentType = 'application/proto';
 
   /// What the development seed (`db/seeds/dev/001_tenant_users.sql`) stores
   /// as the tenant's default locale.
@@ -621,7 +628,7 @@ class ConnectFixtureServer {
 
   /// What `GetMySeriesRating` answers a signed-in member with, keyed by
   /// series public id. A series missing here is one they have reacted to
-  /// nothing of, which protojson answers with an empty body.
+  /// nothing of, which the wire format answers with an empty body.
   Map<String, pb.GetMySeriesRatingResponse> seriesRatings;
 
   /// What `ListMyEpisodeReads` answers a signed-in member with, in the order
@@ -929,22 +936,22 @@ class ConnectFixtureServer {
   /// answering with, so a test can send a shape the client is not expecting or
   /// an error code other than the default `unavailable`.
   ///
-  /// These hooks hold raw JSON (a decoded `Map`, `List`, or scalar) because a
-  /// body of the wrong shape, such as a string where a list belongs, is what
-  /// they are for, and no generated message can hold one. Every record in it
+  /// A hook holds a generated message, sent in the binary codec, for a body
+  /// that only replaces the stored one; raw bytes, sent as a binary body, for
+  /// one that does not decode; or a `Map`, sent as a Connect error envelope
+  /// in JSON, for a refusal worded by the test. Every record in a message
   /// that names a `publicId` is still answered with the internal `id` beside
-  /// it. A generated message is accepted as well and sent as its protojson,
-  /// for a well-formed body that only replaces the stored one.
+  /// it.
   Object? listResponse;
   Object? detailResponse;
   Object? episodeResponse;
 
   /// Replaces the whole `GetTenantByDomain` body, so a test can answer with a
-  /// shape the client is not expecting. Raw JSON, as [listResponse] is.
+  /// shape the client is not expecting. Raw, as [listResponse] is.
   Object? tenantResponse;
 
-  /// Replaces the whole `GetMyEpisodeRating` body. Raw JSON, as
-  /// [listResponse] is.
+  /// Replaces the whole `GetMyEpisodeRating` body. Raw, as [listResponse]
+  /// is.
   Object? episodeRatingResponse;
 
   /// The error `RateEpisode` answers with in place of a score, as the status
@@ -1035,10 +1042,16 @@ class ConnectFixtureServer {
     final recorded = RecordedRequest(
       path: path,
       headers: _snapshotHeaders(request.headers),
-      json: await _readBody(request),
+      body: await _readBody(request),
     );
     requests.add(recorded);
     try {
+      // connect-go picks the codec from the content type, and refuses one it
+      // has no codec for before any handler runs.
+      final contentType = recorded.headers['content-type'] ?? '';
+      if (contentType != protoContentType) {
+        throw FormatException('request sent as "$contentType"');
+      }
       await _answer(request, recorded);
     } on FormatException catch (error, stackTrace) {
       // A request the generated message cannot hold is a client that no
@@ -1212,8 +1225,8 @@ class ConnectFixtureServer {
         await _writeUnavailable(request, rankedStatus);
         return;
       }
-      // protojson omits an empty repeated field, which is how a tenant the
-      // ranking batch has not run for is answered.
+      // The wire format omits an empty repeated field, which is how a tenant
+      // the ranking batch has not run for is answered.
       await _writeMessage(
         request,
         pb.ListRankedSeriesResponse(
@@ -1389,7 +1402,7 @@ class ConnectFixtureServer {
             publicId: memberPublicId,
             name: memberCurrentName,
             role: 'member',
-            // protojson omits an empty string, the way the API does for a
+            // The wire format omits an empty string, the way the API does for a
             // reader who has recorded no date.
             birthDate: memberBirthDate.isNotEmpty ? memberBirthDate : null,
             email: memberEmail,
@@ -1432,7 +1445,7 @@ class ConnectFixtureServer {
           request,
           pb.GetPublishedPageResponse(
             page: pb.Page(slug: slug, title: page.title, locale: page.locale),
-            // protojson omits an empty body.
+            // The wire format omits an empty body.
             version: pb.PageVersion(
               contentMarkdown: page.contentMarkdown.isNotEmpty
                   ? page.contentMarkdown
@@ -1529,7 +1542,7 @@ class ConnectFixtureServer {
         return;
       }
       if (update != null) {
-        // protojson omits a false, so an absent field turns the mail off.
+        // The wire format omits a false, so an absent field turns the mail off.
         final enabled = update.emailNotificationsEnabled;
         if (isSignedUp) {
           _signedUpEmailNotifications = enabled;
@@ -1729,7 +1742,7 @@ class ConnectFixtureServer {
           commentMode: commentMode,
           ageVerification: ageVerification,
           timezone: tenantTimeZone,
-          // protojson omits a false.
+          // The wire format omits a false.
           acceptsPayments: acceptsPayments ? true : null,
           currency: currency,
           appPurchaseRoute: appPurchaseRoute,
@@ -2471,7 +2484,8 @@ class ConnectFixtureServer {
   /// rows long, or every row from there for a [size] of zero, with the token
   /// of the page under it when there is one.
   ///
-  /// protojson omits an empty string, so the last page carries no `nextToken`.
+  /// The wire format omits an empty string, so the last page carries no
+  /// `nextToken`.
   static ({List<T> items, String? nextToken}) _paged<T>(
     List<T> items,
     String token,
@@ -2530,7 +2544,7 @@ class ConnectFixtureServer {
       return;
     }
     if (list != null) {
-      // protojson omits an empty repeated field, which is what an episode
+      // The wire format omits an empty repeated field, which is what an episode
       // nobody has commented on is answered with.
       await _writeMessage(
         request,
@@ -2629,7 +2643,7 @@ class ConnectFixtureServer {
     }
     if (updates != null) {
       final page = _paged(followUpdates, updates.token, updates.limit);
-      // protojson omits an empty repeated field.
+      // The wire format omits an empty repeated field.
       await _writeMessage(
         request,
         pb.ListMyFollowUpdatesResponse(
@@ -2640,8 +2654,8 @@ class ConnectFixtureServer {
       return;
     }
     if (follows != null) {
-      // protojson omits an empty repeated field, which is how a reader who
-      // follows nothing is answered.
+      // The wire format omits an empty repeated field, which is how a reader
+      // who follows nothing is answered.
       final page = _paged(
         myFollows,
         followsPageSize > 0 ? follows.token : '',
@@ -2683,7 +2697,8 @@ class ConnectFixtureServer {
     }
     if (path.endsWith('/Unfollow')) {
       myFollows = myFollows.where((follow) => !isTarget(follow)).toList();
-      // protojson omits a false, which is what every Unfollow answers with.
+      // The wire format omits a false, which is what every Unfollow answers
+      // with.
       await _writeMessage(request, pb.UnfollowResponse());
       return;
     }
@@ -2738,7 +2753,7 @@ class ConnectFixtureServer {
     }
     final unread = notifications.where((item) => !item.isRead);
     if (path.endsWith('/CountUnreadNotifications')) {
-      // protojson omits a zero.
+      // The wire format omits a zero.
       await _writeMessage(
         request,
         pb.CountUnreadNotificationsResponse(
@@ -2946,7 +2961,7 @@ class ConnectFixtureServer {
               episodeReads.containsKey(episode.publicId))
             episode.publicId,
       ];
-      // protojson omits an unset message and an empty repeated field.
+      // The wire format omits an unset message and an empty repeated field.
       await _writeMessage(
         request,
         pb.GetMySeriesProgressResponse(
@@ -2958,7 +2973,7 @@ class ConnectFixtureServer {
     }
     if (reads != null) {
       final page = _paged(episodeReadHistory, reads.token, reads.limit);
-      // protojson omits an empty repeated field.
+      // The wire format omits an empty repeated field.
       await _writeMessage(
         request,
         pb.ListMyEpisodeReadsResponse(
@@ -2997,7 +3012,7 @@ class ConnectFixtureServer {
     }
     final episodeId = publicIdOf(position?.episodeId);
     final pageIndex = readingPositions[episodeId];
-    // protojson omits an unset message, which is what a member who never
+    // The wire format omits an unset message, which is what a member who never
     // opened the episode is answered with.
     await _writeMessage(
       request,
@@ -3026,15 +3041,10 @@ class ConnectFixtureServer {
     return snapshot;
   }
 
-  Future<Map<String, Object?>> _readBody(HttpRequest request) async {
-    final raw = await utf8.decoder.bind(request).join();
-    if (raw.trim().isEmpty) {
-      return const {};
-    }
-    final decoded = jsonDecode(raw);
-    return decoded is Map
-        ? decoded.map((key, value) => MapEntry(key.toString(), value))
-        : const {};
+  Future<Uint8List> _readBody(HttpRequest request) async {
+    final builder = BytesBuilder(copy: false);
+    await request.forEach(builder.add);
+    return builder.takeBytes();
   }
 
   /// `Login` for the seed member and for an account a test signed up here.
@@ -3606,7 +3616,7 @@ class ConnectFixtureServer {
           pb.ConfirmEmailChangeResponse(confirmed: true, changed: true),
         );
       case pendingEmailChangeToken:
-        // protojson omits `changed` while it is false.
+        // The wire format omits `changed` while it is false.
         await _writeMessage(
           request,
           pb.ConfirmEmailChangeResponse(
@@ -3865,10 +3875,10 @@ class ConnectFixtureServer {
   /// Answers [message] with 200, every record in it carrying the internal id
   /// derived from its public id.
   Future<void> _writeMessage(HttpRequest request, GeneratedMessage message) =>
-      _writeJson(
+      _writeProto(
         request,
         HttpStatus.ok,
-        _withInternalIds(message.deepCopy()).toProto3Json(),
+        _withInternalIds(message.deepCopy()).writeToBuffer(),
       );
 
   /// Answers [status] with a Connect error body. The envelope is the Connect
@@ -3886,15 +3896,18 @@ class ConnectFixtureServer {
   });
 
   /// Answers one of the raw override hooks such as [listResponse]: a
-  /// generated message as its protojson, and anything else as the JSON it is.
+  /// generated message and raw bytes in the binary codec, and anything else
+  /// as the JSON it is.
   Future<void> _writeRaw(HttpRequest request, int status, Object body) =>
-      body is GeneratedMessage
-      ? _writeJson(
+      switch (body) {
+        final GeneratedMessage message => _writeProto(
           request,
           status,
-          _withInternalIds(body.deepCopy()).toProto3Json(),
-        )
-      : _writeJson(request, status, _withInternalIdsInJson(body));
+          _withInternalIds(message.deepCopy()).writeToBuffer(),
+        ),
+        final List<int> bytes => _writeProto(request, status, bytes),
+        _ => _writeJson(request, status, body),
+      };
 
   /// Answers [status] with the raw override [body] when a test set one, and
   /// as an unavailable dependency otherwise.
@@ -3905,6 +3918,17 @@ class ConnectFixtureServer {
   ) => body == null
       ? _writeUnavailable(request, status)
       : _writeRaw(request, status, body);
+
+  Future<void> _writeProto(
+    HttpRequest request,
+    int status,
+    List<int> body,
+  ) async {
+    request.response.statusCode = status;
+    request.response.headers.contentType = ContentType.parse(protoContentType);
+    request.response.add(body);
+    await request.response.close();
+  }
 
   Future<void> _writeJson(HttpRequest request, int status, Object? body) async {
     request.response.statusCode = status;
@@ -3952,25 +3976,6 @@ class ConnectFixtureServer {
     }
     return message;
   }
-
-  /// [body], raw JSON, with every record that names a public id also carrying
-  /// the internal id the API answers beside it.
-  static Object? _withInternalIdsInJson(Object? body) => switch (body) {
-    final Map<Object?, Object?> map => {
-      for (final entry in map.entries)
-        entry.key: _withInternalIdsInJson(entry.value),
-      if (map['publicId'] case final String publicId
-          when !map.containsKey('id'))
-        'id': internalIdOf(publicId),
-      if (map['targetPublicId'] case final String publicId
-          when !map.containsKey('targetId'))
-        'targetId': internalIdOf(publicId),
-    },
-    final List<Object?> list => [
-      for (final item in list) _withInternalIdsInJson(item),
-    ],
-    _ => body,
-  };
 }
 
 /// One account `CreateUser` opened on [ConnectFixtureServer].
@@ -4020,7 +4025,7 @@ class RecordedRequest {
   RecordedRequest({
     required this.path,
     required this.headers,
-    required this._json,
+    required this._body,
   });
 
   /// Request path, ending in the Connect procedure name.
@@ -4029,19 +4034,29 @@ class RecordedRequest {
   /// Request headers, under lower-cased names.
   final Map<String, String> headers;
 
-  /// The protojson body as it arrived, empty when the request carried none.
-  final Map<String, Object?> _json;
+  /// The binary body as it arrived, empty when the request carried none.
+  final Uint8List _body;
 
   /// Merges the body into [message], which is the request message of the
   /// procedure this request called, and returns it.
   ///
-  /// The merge is strict: a field the message does not define, or a value of
-  /// the wrong type, throws a [FormatException], so a client that sends what
-  /// `proto/` does not describe fails the test. A field the client set is
-  /// present on the message even when it holds its default, so `hasToken()`
-  /// tells a sent empty token from one left out.
+  /// The merge is strict: a body that does not decode, or a field the
+  /// message does not define, throws a [FormatException], so a client that
+  /// sends what `proto/` does not describe fails the test. A field the client
+  /// set is present on the message even when it holds its default, so
+  /// `hasToken()` tells a sent empty token from one left out.
   T decode<T extends GeneratedMessage>(T message) {
-    message.mergeFromProto3Json(_json);
+    try {
+      message.mergeFromBuffer(_body);
+    } on InvalidProtocolBufferException catch (error) {
+      throw FormatException(error.message);
+    }
+    if (message.unknownFields.isNotEmpty) {
+      throw FormatException(
+        '${message.info_.qualifiedMessageName} has no field '
+        '${message.unknownFields.asMap().keys.join(', ')}',
+      );
+    }
     return message;
   }
 }

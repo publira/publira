@@ -155,7 +155,7 @@ void main() {
       ),
     );
     expect(withIcon.imageRequestHeaders['x-forwarded-host'], 'localhost');
-    // protojson omits the empty list an account without an icon has.
+    // The wire format omits the empty list an account without an icon has.
     expect(withoutIcon.authorIconUrl, isNull);
   });
 

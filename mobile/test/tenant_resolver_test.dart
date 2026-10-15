@@ -9,10 +9,9 @@ import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 
-const _tenantId = '018f0e6a-1000-7000-8000-000000000001';
+import 'support/proto_response.dart';
 
-http.Response _answer(pb.GetTenantByDomainResponse response) =>
-    http.Response(jsonEncode(response.toProto3Json()), 200);
+const _tenantId = '018f0e6a-1000-7000-8000-000000000001';
 
 TenantResolver _resolverOver(MockClient httpClient) {
   return TenantResolver(
@@ -30,14 +29,14 @@ void main() {
     final resolver = _resolverOver(
       MockClient((request) async {
         sent = request;
-        return _answer(pb.GetTenantByDomainResponse(tenantId: _tenantId));
+        return protoResponse(pb.GetTenantByDomainResponse(tenantId: _tenantId));
       }),
     );
 
     expect(await resolver.resolve(), _tenantId);
     expect(sent.url.path, '/rpc/publira.v1.DomainService/GetTenantByDomain');
     expect(
-      pb.GetTenantByDomainRequest()..mergeFromProto3Json(jsonDecode(sent.body)),
+      pb.GetTenantByDomainRequest.fromBuffer(sent.bodyBytes),
       pb.GetTenantByDomainRequest(domains: ['localhost']),
     );
   });
@@ -47,7 +46,7 @@ void main() {
     final resolver = _resolverOver(
       MockClient((_) async {
         lookups++;
-        return _answer(pb.GetTenantByDomainResponse(tenantId: _tenantId));
+        return protoResponse(pb.GetTenantByDomainResponse(tenantId: _tenantId));
       }),
     );
 
@@ -63,7 +62,9 @@ void main() {
       final resolver = _resolverOver(
         MockClient((_) async {
           lookups++;
-          return _answer(pb.GetTenantByDomainResponse(tenantId: _tenantId));
+          return protoResponse(
+            pb.GetTenantByDomainResponse(tenantId: _tenantId),
+          );
         }),
       );
 
@@ -83,7 +84,7 @@ void main() {
       MockClient((_) async {
         lookups++;
         await released.future;
-        return _answer(pb.GetTenantByDomainResponse(tenantId: _tenantId));
+        return protoResponse(pb.GetTenantByDomainResponse(tenantId: _tenantId));
       }),
     );
 
@@ -107,7 +108,7 @@ void main() {
             503,
           );
         }
-        return _answer(pb.GetTenantByDomainResponse(tenantId: _tenantId));
+        return protoResponse(pb.GetTenantByDomainResponse(tenantId: _tenantId));
       }),
     );
 
@@ -126,14 +127,12 @@ void main() {
   });
 
   test('an answer without a usable id fails as a Connect error', () async {
-    for (final body in [
-      pb.GetTenantByDomainResponse().toProto3Json(),
-      pb.GetTenantByDomainResponse(tenantId: '   ').toProto3Json(),
-      // Not a string: no generated message can carry it.
-      const {'tenantId': 1},
+    for (final response in [
+      pb.GetTenantByDomainResponse(),
+      pb.GetTenantByDomainResponse(tenantId: '   '),
     ]) {
       final resolver = _resolverOver(
-        MockClient((_) async => http.Response(jsonEncode(body), 200)),
+        MockClient((_) async => protoResponse(response)),
       );
 
       await expectLater(
@@ -145,7 +144,7 @@ void main() {
             'internal',
           ),
         ),
-        reason: 'body $body',
+        reason: 'body $response',
       );
     }
   });
@@ -155,7 +154,7 @@ void main() {
     () async {
       final resolver = _resolverOver(
         MockClient(
-          (_) async => _answer(
+          (_) async => protoResponse(
             pb.GetTenantByDomainResponse(
               tenantId: _tenantId,
               defaultLocale: 'ja',
@@ -182,16 +181,12 @@ void main() {
         pb.GetTenantByDomainResponse(tenantId: _tenantId, defaultLocale: '  '),
       ]) {
         final resolver = _resolverOver(
-          MockClient((_) async => _answer(response)),
+          MockClient((_) async => protoResponse(response)),
         );
 
         await resolver.resolve();
 
-        expect(
-          resolver.defaultLocale.value,
-          isNull,
-          reason: 'body ${response.toProto3Json()}',
-        );
+        expect(resolver.defaultLocale.value, isNull, reason: 'body $response');
       }
     },
   );
@@ -199,7 +194,7 @@ void main() {
   test('the locales the tenant offers are kept for the app', () async {
     final resolver = _resolverOver(
       MockClient(
-        (_) async => _answer(
+        (_) async => protoResponse(
           pb.GetTenantByDomainResponse(
             tenantId: _tenantId,
             defaultLocale: 'ja',
@@ -234,7 +229,7 @@ void main() {
         ),
       ]) {
         final resolver = _resolverOver(
-          MockClient((_) async => _answer(response)),
+          MockClient((_) async => protoResponse(response)),
         );
 
         await resolver.resolve();
@@ -242,7 +237,7 @@ void main() {
         expect(
           resolver.supportedLocales.value,
           isNull,
-          reason: 'body ${response.toProto3Json()}',
+          reason: 'body $response',
         );
       }
     },

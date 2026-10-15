@@ -6,8 +6,8 @@ import 'package:publira/api/error_details.dart';
 import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
-import 'package:publira/api/proto_json.dart';
 import 'package:publira/api/tenant_resolver.dart';
+import 'package:publira/api/unknown_enum.dart';
 import 'package:publira/api/user_icon.dart';
 import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
@@ -98,7 +98,8 @@ class HttpAuthRepository implements AuthRepository {
       // Without it no app is known to take Apple's token; Google still is.
     }
     return SignInProviders(
-      // protojson sends an enabled provider with no field set as `{}`.
+      // The wire format sends an enabled provider with no field set as an
+      // empty message.
       apple: tenant.hasAppleSignIn(),
       appleBundleIdentifier: appleBundleIdentifier,
       appleServicesId: tenant.appleSignIn.servicesId.trim(),
@@ -278,7 +279,7 @@ class HttpAuthRepository implements AuthRepository {
           name: name,
           email: email,
           password: password,
-          // protojson reads an absent field as the empty string, which is what
+          // An absent field reads as the empty string, which is what
           // the API takes as a form that did not ask for a date.
           birthDate: birthDate.isEmpty ? null : birthDate,
           agreedPageVersionIds: agreedPageVersionIds,
@@ -460,7 +461,7 @@ class HttpAuthRepository implements AuthRepository {
     }
   }
 
-  /// [page] as one to agree to. protojson omits a role the tenant names
+  /// [page] as one to agree to. The wire format omits a role the tenant names
   /// nothing for, which reads as a page with every part empty.
   static LegalPage? _legalPage(pb.TenantLegalPage page) => LegalPage.fromParts(
     slug: page.slug,
@@ -525,8 +526,8 @@ class HttpAuthRepository implements AuthRepository {
   });
 
   /// Sends [send] for the account behind [session], both of whose answers
-  /// carry the setting the account holds afterwards. protojson omits a false,
-  /// so an absent field is a setting that is off.
+  /// carry the setting the account holds afterwards. The wire format omits a
+  /// false, so an absent field is a setting that is off.
   Future<bool> _notificationSettings(
     AuthSession session,
     Future<bool> Function(ConnectCallContext ctx, pb.TenantContext tenant) send,

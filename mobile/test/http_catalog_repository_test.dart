@@ -1,9 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/error_details.dart';
@@ -19,11 +17,23 @@ import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 
 import 'support/connect_fixture_server.dart';
+import 'support/proto_response.dart';
 
-/// [message] as the protojson object it goes out as, for a test that puts a
-/// value no generated message can hold in place of one of its fields.
-Map<String, Object?> protojsonOf(GeneratedMessage message) =>
-    message.toProto3Json()! as Map<String, Object?>;
+/// [message] answering its enum field [tagNumber] with a number no enum here
+/// names, the way an API that has grown a value answers this build. No
+/// generated enum holds such a number, so it goes out as the unknown field the
+/// decoder reads it into.
+T withUnnamedEnum<T extends GeneratedMessage>(T message, int tagNumber) =>
+    message..unknownFields.mergeVarintField(tagNumber, Int64(999));
+
+/// `Series.age_rating`.
+const _seriesAgeRatingField = 15;
+
+/// `GetEpisodeDetailResponse.access`.
+const _episodeAccessField = 4;
+
+/// `GetEpisodeDetailResponse.entitlement_source`.
+const _episodeEntitlementSourceField = 8;
 
 /// [genre], as a `Series` carries it, as `ListPublishedGenres` answers it,
 /// with the covers a test gives it.
@@ -96,7 +106,7 @@ void main() {
     final request = server.requestsOf(pb.ListPublishedSeriesRequest.new).single;
     expect(request.order, pb.SeriesOrder.SERIES_ORDER_TITLE_ASC);
     expect(request.limit, 20);
-    // protojson omits a default, and an omitted token is the first page.
+    // The wire format omits a default, and an omitted token is the first page.
     expect(request.hasToken(), isFalse);
   });
 
@@ -151,7 +161,7 @@ void main() {
         .single;
     expect(request.query, 'Kitchen');
     expect(request.limit, 20);
-    // protojson omits a default, and an omitted token is the first page.
+    // The wire format omits a default, and an omitted token is the first page.
     expect(request.hasToken(), isFalse);
   });
 
@@ -308,7 +318,8 @@ void main() {
       ageRating: SeriesAgeRating.all,
     );
 
-    // protojson omits an empty string, so the tenant-wide chart sends none.
+    // The wire format omits an empty string, so the tenant-wide chart sends
+    // none.
     expect(
       server
           .requestsOf(pb.ListRankedSeriesRequest.new)
@@ -630,31 +641,6 @@ void main() {
     ]);
   });
 
-  test('listSeries rejects a credits field that is not a list', () async {
-    // No generated message holds a string where a list belongs, so the body
-    // goes out raw.
-    server.listResponse = const {
-      'series': [
-        {
-          'publicId': ConnectFixtureServer.seedSeriesId,
-          'title': ConnectFixtureServer.seedSeriesTitle,
-          'creators': 'not a list',
-        },
-      ],
-    };
-
-    expect(
-      () => catalog.listSeries(),
-      throwsA(
-        isA<CatalogFailure>().having(
-          (error) => error.kind,
-          'kind',
-          CatalogFailureKind.unexpected,
-        ),
-      ),
-    );
-  });
-
   test('getSeries carries the credits of the series', () async {
     final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
 
@@ -724,21 +710,17 @@ void main() {
   });
 
   test('listSeries maps an unrecognized age rating as unknown', () async {
-    // No generated enum holds a name this build does not know, so the body
-    // goes out raw.
-    server.listResponse = {
-      'series': [
-        {
-          ...protojsonOf(
-            pb.Series(
-              publicId: ConnectFixtureServer.seedSeriesId,
-              title: ConnectFixtureServer.seedSeriesTitle,
-            ),
+    server.listResponse = pb.ListPublishedSeriesResponse(
+      series: [
+        withUnnamedEnum(
+          pb.Series(
+            publicId: ConnectFixtureServer.seedSeriesId,
+            title: ConnectFixtureServer.seedSeriesTitle,
           ),
-          'ageRating': 'SERIES_AGE_RATING_R20',
-        },
+          _seriesAgeRatingField,
+        ),
       ],
-    };
+    );
 
     final items = (await catalog.listSeries()).series;
 
@@ -1263,7 +1245,8 @@ void main() {
       expect(genres.first.imageRequestHeaders, {
         'x-forwarded-host': 'localhost',
       });
-      // protojson omits an empty repeated field, which is a genre with none.
+      // The wire format omits an empty repeated field, which is a genre with
+      // none.
       expect(genres.last.featuredSeries, isEmpty);
     },
   );
@@ -1302,7 +1285,8 @@ void main() {
         '${server.baseUrl}/images/genres/SeedGENRAAA1/portrait/600',
       );
       expect(eyeCatch.width, 600);
-      // protojson omits an empty repeated field, which is a genre with none.
+      // The wire format omits an empty repeated field, which is a genre with
+      // none.
       expect(genres.last.eyeCatchVariants, isEmpty);
     },
   );
@@ -1385,7 +1369,7 @@ void main() {
 
     final body = server.requestsOf(pb.ListPublishedSeriesRequest.new).single;
     expect(body.order, pb.SeriesOrder.SERIES_ORDER_PUBLISHED_AT_DESC);
-    // protojson omits a default, and an omitted filter keeps everything.
+    // The wire format omits a default, and an omitted filter keeps everything.
     expect(body.hasStatus(), isFalse);
     expect(body.hasHasFreeEpisodes(), isFalse);
     expect(body.hasToken(), isFalse);
@@ -1446,7 +1430,7 @@ void main() {
   });
 
   test('listSeries rejects a malformed success response', () async {
-    server.listResponse = const {'series': 'not a list'};
+    server.listResponse = undecodableBody;
 
     expect(
       () => catalog.listSeries(),
@@ -1576,18 +1560,15 @@ void main() {
       ))!.entitlementSource,
       EpisodeEntitlementSource.accessTicket,
     );
-    // protojson omits the zero value, and a name this build does not know is
-    // read the same way: the body still opens as entitled.
+    // The wire format omits the zero value, and a value this build does not
+    // know is read the same way: the body still opens as entitled.
     expect(
       (await read(entitled()))!.entitlementSource,
       EpisodeEntitlementSource.unspecified,
     );
-    // No generated enum holds a name this build does not know, so the body
-    // goes out raw.
-    final unknown = await read({
-      ...protojsonOf(entitled()),
-      'entitlementSource': 'EPISODE_ENTITLEMENT_SOURCE_GIFT',
-    });
+    final unknown = await read(
+      withUnnamedEnum(entitled(), _episodeEntitlementSourceField),
+    );
     expect(unknown!.access, EpisodeAccess.entitled);
     expect(unknown.entitlementSource, EpisodeEntitlementSource.unspecified);
   });
@@ -1653,7 +1634,8 @@ void main() {
     expect(detail.previousEpisode!.isFree, isTrue);
     expect(detail.nextEpisode!.title, 'Third');
     expect(detail.nextEpisode!.price, 500);
-    // protojson omits a false, so a paid neighbour arrives without the field.
+    // The wire format omits a false, so a paid neighbour arrives without the
+    // field.
     expect(detail.nextEpisode!.isFree, isFalse);
   });
 
@@ -1698,8 +1680,8 @@ void main() {
         detail.previousEpisode!.purchaseSurface,
         EpisodePurchaseSurface.app,
       );
-      // protojson omits unspecified, which is how every episode was sold before
-      // the setting existed.
+      // The wire format omits unspecified, which is how every episode was sold
+      // before the setting existed.
       expect(detail.nextEpisode!.purchaseSurface, EpisodePurchaseSurface.all);
     },
   );
@@ -1710,8 +1692,8 @@ void main() {
       ConnectFixtureServer.seedEpisodeId,
     );
 
-    // protojson omits an unset message, which is what the server sends where
-    // there is no episode on that side.
+    // The wire format omits an unset message, which is what the server sends
+    // where there is no episode on that side.
     expect(detail!.previousEpisode, isNull);
     expect(detail.nextEpisode, isNull);
     expect(detail.nextFreeEpisode, isNull);
@@ -1830,7 +1812,7 @@ void main() {
         ConnectFixtureServer.seedEpisodeId,
       );
 
-      // protojson omits unspecified and zero. Unspecified is the series
+      // The wire format omits unspecified and zero. Unspecified is the series
       // default of right to left; zero is pairing from the first page.
       expect(detail!.readingDirection, ReadingDirection.rtl);
       expect(detail.spreadStartIndex, 0);
@@ -1967,9 +1949,9 @@ void main() {
   });
 
   test(
-    'a tenant lookup answering with a non-string id is unexpected',
+    'a tenant lookup answering with a body that does not decode is unexpected',
     () async {
-      server.tenantResponse = const {'tenantId': 1};
+      server.tenantResponse = undecodableBody;
 
       expect(
         catalog.listSeries(),
@@ -2298,20 +2280,14 @@ void main() {
         timeout: const Duration(milliseconds: 20),
         httpClient: MockClient((request) async {
           if (request.url.path.endsWith('/GetTenantByDomain')) {
-            return http.Response(
-              jsonEncode(
-                pb.GetTenantByDomainResponse(
-                  tenantId: ConnectFixtureServer.defaultTenantId,
-                ).toProto3Json(),
+            return protoResponse(
+              pb.GetTenantByDomainResponse(
+                tenantId: ConnectFixtureServer.defaultTenantId,
               ),
-              200,
             );
           }
           await Future<void>.delayed(const Duration(seconds: 1));
-          return http.Response(
-            jsonEncode(pb.ListPublishedSeriesResponse().toProto3Json()),
-            200,
-          );
+          return protoResponse(pb.ListPublishedSeriesResponse());
         }),
       ),
     );
@@ -2398,8 +2374,8 @@ void main() {
   });
 
   test('getSeries reads omitted numbers as zero', () async {
-    // protojson omits a zero, so an episode that is first and free arrives
-    // without `orderIndex` and without `price`.
+    // The wire format omits a zero, so an episode that is first and free
+    // arrives without `orderIndex` and without `price`.
     server.detailResponse = pb.GetSeriesDetailResponse(
       series: pb.Series(
         publicId: ConnectFixtureServer.seedSeriesId,
@@ -2412,31 +2388,6 @@ void main() {
 
     expect(detail!.episodes.single.orderIndex, 0);
     expect(detail.episodes.single.price, 0);
-  });
-
-  test('getSeries rejects a non-integer orderIndex', () async {
-    server.detailResponse = {
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
-      'episodes': [
-        // A quoted number is how protojson may write an integer, so the value
-        // is one that is no number at all.
-        {'publicId': 'EP01', 'title': 'First', 'orderIndex': 'first'},
-      ],
-    };
-
-    expect(
-      () => catalog.getSeries(ConnectFixtureServer.seedSeriesId),
-      throwsA(
-        isA<CatalogFailure>().having(
-          (error) => error.kind,
-          'kind',
-          CatalogFailureKind.unexpected,
-        ),
-      ),
-    );
   });
 
   test('getSeries rejects an episode without a public id', () async {
@@ -2460,14 +2411,8 @@ void main() {
     );
   });
 
-  test('getSeries rejects an episodes field that is not a list', () async {
-    server.detailResponse = {
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
-      'episodes': 'not a list',
-    };
+  test('getSeries rejects a detail that does not decode', () async {
+    server.detailResponse = undecodableBody;
 
     expect(
       () => catalog.getSeries(ConnectFixtureServer.seedSeriesId),
@@ -2482,20 +2427,16 @@ void main() {
   });
 
   test('getEpisode reports an access value this build does not know', () async {
-    // No generated enum holds a name this build does not know, so the body
-    // goes out raw.
-    server.episodeResponse = {
-      ...protojsonOf(
-        pb.GetEpisodeDetailResponse(
-          episode: pb.Episode(publicId: 'EP', title: 'Newly gated'),
-          series: pb.Series(
-            publicId: ConnectFixtureServer.seedSeriesId,
-            title: ConnectFixtureServer.seedSeriesTitle,
-          ),
+    server.episodeResponse = withUnnamedEnum(
+      pb.GetEpisodeDetailResponse(
+        episode: pb.Episode(publicId: 'EP', title: 'Newly gated'),
+        series: pb.Series(
+          publicId: ConnectFixtureServer.seedSeriesId,
+          title: ConnectFixtureServer.seedSeriesTitle,
         ),
       ),
-      'access': 'EPISODE_ACCESS_SUBSCRIBED',
-    };
+      _episodeAccessField,
+    );
 
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
@@ -2938,7 +2879,7 @@ void main() {
 
         expect(progress.episode?.id, 'SeedEPSDAAA3');
         expect(progress.episode?.orderIndex, 3);
-        // protojson omits a false.
+        // The wire format omits a false.
         expect(progress.isFinished, isFalse);
         expect(progress.finishedEpisodeIds, {
           ConnectFixtureServer.seedEpisodeId,
@@ -3015,7 +2956,7 @@ void main() {
     test(
       'a member who reacted to no episode has no rating of the series',
       () async {
-        // protojson omits both zeros, which is the whole answer for them.
+        // The wire format omits both zeros, which is the whole answer for them.
         final rating = await signedIn.getMySeriesRating(
           ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
         );

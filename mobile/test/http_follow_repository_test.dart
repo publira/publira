@@ -242,7 +242,7 @@ void main() {
 
     final page = await repository().listMyFollows();
 
-    // protojson omits an empty repeated field, so the answer carries no
+    // The wire format omits an empty repeated field, so the answer carries no
     // `follows` key at all.
     expect(server.requestsTo('ListMyFollows'), hasLength(1));
     expect(page.follows, isEmpty);

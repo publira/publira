@@ -5,8 +5,8 @@ import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
-import 'package:publira/api/proto_json.dart';
 import 'package:publira/api/tenant_resolver.dart';
+import 'package:publira/api/unknown_enum.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/config.dart';
@@ -346,7 +346,7 @@ class HttpCatalogRepository implements CatalogRepository {
     return listRecommendedSeries(limit: limit, token: token);
   }
 
-  /// protojson omits an empty repeated field, which is how a tenant the
+  /// The wire format omits an empty repeated field, which is how a tenant the
   /// ranking batch has not run for yet arrives.
   List<RankedSeriesItem> _parseRankedSeries(List<pb.RankedSeries> ranked) {
     final items = ranked
@@ -512,7 +512,8 @@ class HttpCatalogRepository implements CatalogRepository {
       internalId: creator.id.trim(),
       name: creator.name.trim(),
       profileText: creator.profileText.trim(),
-      // protojson omits an empty string, which is a creator with no portrait.
+      // The wire format omits an empty string, which is a creator with no
+      // portrait.
       iconUrl: iconUrl.isEmpty ? null : config.imageUri(iconUrl),
       imageRequestHeaders: config.publicImageRequestHeaders,
       seriesCount: _count(
@@ -794,8 +795,9 @@ class HttpCatalogRepository implements CatalogRepository {
           surface: appClientSurface,
         ),
       );
-      // protojson omits an unset message, which is the answer for a reader who
-      // never opened the episode and for one who may no longer read it.
+      // The wire format omits an unset message, which is the answer for a
+      // reader who never opened the episode and for one who may no longer read
+      // it.
       if (!body.hasPosition()) {
         return null;
       }
@@ -939,8 +941,8 @@ class HttpCatalogRepository implements CatalogRepository {
         for (final id in body.finishedEpisodePublicIds)
           _requiredId(id, 'finishedEpisodePublicIds[]'),
       };
-      // protojson omits an unset message, which is the answer for a reader who
-      // has opened no episode of the series they can still read.
+      // The wire format omits an unset message, which is the answer for a
+      // reader who has opened no episode of the series they can still read.
       if (!body.hasProgress()) {
         return SeriesProgress(finishedEpisodeIds: finishedEpisodeIds);
       }
@@ -1138,12 +1140,12 @@ class HttpCatalogRepository implements CatalogRepository {
   static pb.TenantContext _tenant(String tenantId) =>
       pb.TenantContext(tenantId: tenantId);
 
-  /// [token] is left off an empty request the way protojson leaves off a
+  /// [token] is left off an empty request the way the wire format leaves off a
   /// default, which is what asks for the first page.
   static String? _pageToken(String token) => token.isEmpty ? null : token;
 
-  /// A page of series. protojson omits an empty string, which is how the last
-  /// page arrives.
+  /// A page of series. The wire format omits an empty string, which is how the
+  /// last page arrives.
   SeriesPage _seriesPage(List<pb.Series> series, String nextToken) {
     return SeriesPage(
       series: _parseSeriesList(series),
@@ -1163,8 +1165,8 @@ class HttpCatalogRepository implements CatalogRepository {
     return SeriesDetail(
       series: series.copyWith(episodeCount: episodes.length),
       episodes: episodes,
-      // protojson omits the unset message, which is how a series without the
-      // rule arrives.
+      // The wire format omits the unset message, which is how a series without
+      // the rule arrives.
       waitFree: body.hasWaitFree() ? _parseWaitFreeRule(body.waitFree) : null,
     );
   }
@@ -1181,7 +1183,7 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   SeriesItem _series(pb.Series series, String path) {
-    // protojson omits an unset message, which is an unlabelled series and
+    // The wire format omits an unset message, which is an unlabelled series and
     // reads as a label with empty fields.
     final label = series.label;
     return SeriesItem(
@@ -1218,8 +1220,8 @@ class HttpCatalogRepository implements CatalogRepository {
     };
   }
 
-  /// protojson omits the zero value, which is a series nobody rated. A rating
-  /// this build does not know is [SeriesAgeRating.unknown], so a future
+  /// The wire format omits the zero value, which is a series nobody rated. A
+  /// rating this build does not know is [SeriesAgeRating.unknown], so a future
   /// rating cannot open as unrestricted.
   SeriesAgeRating? _parseAgeRating(pb.Series series) {
     if (carriesUnknownEnum(series, _ageRatingField)) {
@@ -1272,7 +1274,7 @@ class HttpCatalogRepository implements CatalogRepository {
             id: creator.publicId.trim(),
             internalId: creator.id.trim(),
             name: creator.name.trim(),
-            // protojson omits an unset message, which is a credit written
+            // The wire format omits an unset message, which is a credit written
             // before the tenant curated any role, and names no role.
             roleName: creator.role.name.trim(),
           ),
@@ -1319,7 +1321,8 @@ class HttpCatalogRepository implements CatalogRepository {
       price: episode.price,
       purchaseSurface: _purchaseSurface(episode.purchaseAvailability),
       ratingCount: _count(episode.ratingCount.toInt(), '$path.ratingCount'),
-      // protojson omits an empty string, which is an episode no window holds.
+      // The wire format omits an empty string, which is an episode no window
+      // holds.
       freeUntil: DateTime.tryParse(episode.freeUntil.trim())?.toLocal(),
     );
   }
@@ -1383,7 +1386,7 @@ class HttpCatalogRepository implements CatalogRepository {
       ageRating: _parseAgeRating(series),
       creators: _parseCreators(episode.creators),
       readingDirection: _parseReadingDirection(episode.readingDirection),
-      // protojson omits a zero, which is pairing from the first page. A
+      // The wire format omits a zero, which is pairing from the first page. A
       // never-edited series answers 1, so the field is present then.
       spreadStartIndex: _count(
         episode.spreadStartIndex,
@@ -1394,8 +1397,8 @@ class HttpCatalogRepository implements CatalogRepository {
 
   /// One side of the episode, or `null` at that end of the series.
   ///
-  /// protojson omits an unset message, which is what the server sends where
-  /// there is no episode on that side, and [present] is then `false`. A
+  /// The wire format omits an unset message, which is what the server sends
+  /// where there is no episode on that side, and [present] is then `false`. A
   /// neighbour that names no episode is read the same way: nothing can be
   /// opened from it.
   EpisodeNeighbor? _neighbor(bool present, pb.EpisodeNeighbor neighbor) {
