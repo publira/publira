@@ -42,6 +42,21 @@ const (
 	// TenantSettingsServiceUpdateTenantCommentSettingsProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantCommentSettings RPC.
 	TenantSettingsServiceUpdateTenantCommentSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantCommentSettings"
+	// TenantSettingsServiceGetTenantReaderIconPolicyProcedure is the procedure name of the
+	// TenantSettingsService's GetTenantReaderIconPolicy RPC.
+	TenantSettingsServiceGetTenantReaderIconPolicyProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantReaderIconPolicy"
+	// TenantSettingsServiceUpdateTenantReaderIconPolicyProcedure is the procedure name of the
+	// TenantSettingsService's UpdateTenantReaderIconPolicy RPC.
+	TenantSettingsServiceUpdateTenantReaderIconPolicyProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantReaderIconPolicy"
+	// TenantSettingsServiceListReaderIconPresetsProcedure is the procedure name of the
+	// TenantSettingsService's ListReaderIconPresets RPC.
+	TenantSettingsServiceListReaderIconPresetsProcedure = "/publira.admin.v1.TenantSettingsService/ListReaderIconPresets"
+	// TenantSettingsServiceUploadReaderIconPresetProcedure is the procedure name of the
+	// TenantSettingsService's UploadReaderIconPreset RPC.
+	TenantSettingsServiceUploadReaderIconPresetProcedure = "/publira.admin.v1.TenantSettingsService/UploadReaderIconPreset"
+	// TenantSettingsServiceDeleteReaderIconPresetProcedure is the procedure name of the
+	// TenantSettingsService's DeleteReaderIconPreset RPC.
+	TenantSettingsServiceDeleteReaderIconPresetProcedure = "/publira.admin.v1.TenantSettingsService/DeleteReaderIconPreset"
 	// TenantSettingsServiceGetTenantAgeVerificationProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantAgeVerification RPC.
 	TenantSettingsServiceGetTenantAgeVerificationProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantAgeVerification"
@@ -133,6 +148,41 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantCommentSettings"),
 			Procedure:  TenantSettingsServiceUpdateTenantCommentSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantReaderIconPolicySpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantReaderIconPolicy"),
+			Procedure:  TenantSettingsServiceGetTenantReaderIconPolicyProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantReaderIconPolicySpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantReaderIconPolicy"),
+			Procedure:  TenantSettingsServiceUpdateTenantReaderIconPolicyProcedure,
+		}
+	})
+	tenantSettingsServiceListReaderIconPresetsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("ListReaderIconPresets"),
+			Procedure:  TenantSettingsServiceListReaderIconPresetsProcedure,
+		}
+	})
+	tenantSettingsServiceUploadReaderIconPresetSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UploadReaderIconPreset"),
+			Procedure:  TenantSettingsServiceUploadReaderIconPresetProcedure,
+		}
+	})
+	tenantSettingsServiceDeleteReaderIconPresetSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("DeleteReaderIconPreset"),
+			Procedure:  TenantSettingsServiceDeleteReaderIconPresetProcedure,
 		}
 	})
 	tenantSettingsServiceGetTenantAgeVerificationSpec = sync.OnceValue(func() connect.Spec {
@@ -264,6 +314,20 @@ type TenantSettingsServiceClient interface {
 	// Minimum role: tenant_admin.
 	UpdateTenantCommentSettings(context.Context, *v1.UpdateTenantCommentSettingsRequest) (*v1.UpdateTenantCommentSettingsResponse, error)
 	// Minimum role: tenant_auditor.
+	GetTenantReaderIconPolicy(context.Context, *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error)
+	// Minimum role: tenant_admin.
+	UpdateTenantReaderIconPolicy(context.Context, *v1.UpdateTenantReaderIconPolicyRequest) (*v1.UpdateTenantReaderIconPolicyResponse, error)
+	// Minimum role: tenant_auditor.
+	ListReaderIconPresets(context.Context, *v1.ListReaderIconPresetsRequest) (*v1.ListReaderIconPresetsResponse, error)
+	// failed_precondition, with the READER_ICON_PRESET_LIMIT reason, for a
+	// tenant that holds 50 presets already, and with STORAGE_NOT_CONFIGURED while
+	// the platform has no object store.
+	// Minimum role: tenant_admin.
+	UploadReaderIconPreset(context.Context, *v1.UploadReaderIconPresetRequest) (*v1.UploadReaderIconPresetResponse, error)
+	// not_found for a preset the tenant does not hold.
+	// Minimum role: tenant_admin.
+	DeleteReaderIconPreset(context.Context, *v1.DeleteReaderIconPresetRequest) (*v1.DeleteReaderIconPresetResponse, error)
+	// Minimum role: tenant_auditor.
 	GetTenantAgeVerification(context.Context, *v1.GetTenantAgeVerificationRequest) (*v1.GetTenantAgeVerificationResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantAgeVerification(context.Context, *v1.UpdateTenantAgeVerificationRequest) (*v1.UpdateTenantAgeVerificationResponse, error)
@@ -319,6 +383,20 @@ type TenantSettingsServiceHandler interface {
 	// Minimum role: tenant_admin.
 	UpdateTenantCommentSettings(context.Context, *v1.UpdateTenantCommentSettingsRequest) (*v1.UpdateTenantCommentSettingsResponse, error)
 	// Minimum role: tenant_auditor.
+	GetTenantReaderIconPolicy(context.Context, *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error)
+	// Minimum role: tenant_admin.
+	UpdateTenantReaderIconPolicy(context.Context, *v1.UpdateTenantReaderIconPolicyRequest) (*v1.UpdateTenantReaderIconPolicyResponse, error)
+	// Minimum role: tenant_auditor.
+	ListReaderIconPresets(context.Context, *v1.ListReaderIconPresetsRequest) (*v1.ListReaderIconPresetsResponse, error)
+	// failed_precondition, with the READER_ICON_PRESET_LIMIT reason, for a
+	// tenant that holds 50 presets already, and with STORAGE_NOT_CONFIGURED while
+	// the platform has no object store.
+	// Minimum role: tenant_admin.
+	UploadReaderIconPreset(context.Context, *v1.UploadReaderIconPresetRequest) (*v1.UploadReaderIconPresetResponse, error)
+	// not_found for a preset the tenant does not hold.
+	// Minimum role: tenant_admin.
+	DeleteReaderIconPreset(context.Context, *v1.DeleteReaderIconPresetRequest) (*v1.DeleteReaderIconPresetResponse, error)
+	// Minimum role: tenant_auditor.
 	GetTenantAgeVerification(context.Context, *v1.GetTenantAgeVerificationRequest) (*v1.GetTenantAgeVerificationResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantAgeVerification(context.Context, *v1.UpdateTenantAgeVerificationRequest) (*v1.UpdateTenantAgeVerificationResponse, error)
@@ -363,6 +441,11 @@ func RegisterTenantSettingsServiceHandler(server *connect.Server, svc TenantSett
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantDefaultLocaleSpec(), Handler: adapter.updateTenantDefaultLocale},
 		connect.Method{Spec: tenantSettingsServiceGetTenantCommentSettingsSpec(), Handler: adapter.getTenantCommentSettings},
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantCommentSettingsSpec(), Handler: adapter.updateTenantCommentSettings},
+		connect.Method{Spec: tenantSettingsServiceGetTenantReaderIconPolicySpec(), Handler: adapter.getTenantReaderIconPolicy},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantReaderIconPolicySpec(), Handler: adapter.updateTenantReaderIconPolicy},
+		connect.Method{Spec: tenantSettingsServiceListReaderIconPresetsSpec(), Handler: adapter.listReaderIconPresets},
+		connect.Method{Spec: tenantSettingsServiceUploadReaderIconPresetSpec(), Handler: adapter.uploadReaderIconPreset},
+		connect.Method{Spec: tenantSettingsServiceDeleteReaderIconPresetSpec(), Handler: adapter.deleteReaderIconPreset},
 		connect.Method{Spec: tenantSettingsServiceGetTenantAgeVerificationSpec(), Handler: adapter.getTenantAgeVerification},
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantAgeVerificationSpec(), Handler: adapter.updateTenantAgeVerification},
 		connect.Method{Spec: tenantSettingsServiceGetTenantPurchaseSettingsSpec(), Handler: adapter.getTenantPurchaseSettings},
@@ -407,6 +490,26 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantCommentSettings(contex
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantCommentSettings(context.Context, *v1.UpdateTenantCommentSettingsRequest) (*v1.UpdateTenantCommentSettingsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantReaderIconPolicy(context.Context, *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantReaderIconPolicy is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantReaderIconPolicy(context.Context, *v1.UpdateTenantReaderIconPolicyRequest) (*v1.UpdateTenantReaderIconPolicyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantReaderIconPolicy is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) ListReaderIconPresets(context.Context, *v1.ListReaderIconPresetsRequest) (*v1.ListReaderIconPresetsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.ListReaderIconPresets is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UploadReaderIconPreset(context.Context, *v1.UploadReaderIconPresetRequest) (*v1.UploadReaderIconPresetResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UploadReaderIconPreset is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) DeleteReaderIconPreset(context.Context, *v1.DeleteReaderIconPresetRequest) (*v1.DeleteReaderIconPresetResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.DeleteReaderIconPreset is not implemented")
 }
 
 func (UnimplementedTenantSettingsServiceHandler) GetTenantAgeVerification(context.Context, *v1.GetTenantAgeVerificationRequest) (*v1.GetTenantAgeVerificationResponse, error) {
@@ -520,6 +623,46 @@ func (c *tenantSettingsServiceClient) GetTenantCommentSettings(ctx context.Conte
 func (c *tenantSettingsServiceClient) UpdateTenantCommentSettings(ctx context.Context, req *v1.UpdateTenantCommentSettingsRequest) (*v1.UpdateTenantCommentSettingsResponse, error) {
 	var res v1.UpdateTenantCommentSettingsResponse
 	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantCommentSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantReaderIconPolicy(ctx context.Context, req *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error) {
+	var res v1.GetTenantReaderIconPolicyResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantReaderIconPolicySpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantReaderIconPolicy(ctx context.Context, req *v1.UpdateTenantReaderIconPolicyRequest) (*v1.UpdateTenantReaderIconPolicyResponse, error) {
+	var res v1.UpdateTenantReaderIconPolicyResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantReaderIconPolicySpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) ListReaderIconPresets(ctx context.Context, req *v1.ListReaderIconPresetsRequest) (*v1.ListReaderIconPresetsResponse, error) {
+	var res v1.ListReaderIconPresetsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceListReaderIconPresetsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UploadReaderIconPreset(ctx context.Context, req *v1.UploadReaderIconPresetRequest) (*v1.UploadReaderIconPresetResponse, error) {
+	var res v1.UploadReaderIconPresetResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUploadReaderIconPresetSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) DeleteReaderIconPreset(ctx context.Context, req *v1.DeleteReaderIconPresetRequest) (*v1.DeleteReaderIconPresetResponse, error) {
+	var res v1.DeleteReaderIconPresetResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceDeleteReaderIconPresetSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -721,6 +864,66 @@ func (h tenantSettingsServiceHandler) updateTenantCommentSettings(ctx context.Co
 		return err
 	}
 	res, err := h.svc.UpdateTenantCommentSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantReaderIconPolicy(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantReaderIconPolicyRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantReaderIconPolicy(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantReaderIconPolicy(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantReaderIconPolicyRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantReaderIconPolicy(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) listReaderIconPresets(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListReaderIconPresetsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListReaderIconPresets(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) uploadReaderIconPreset(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UploadReaderIconPresetRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UploadReaderIconPreset(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) deleteReaderIconPreset(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteReaderIconPresetRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteReaderIconPreset(ctx, &req)
 	if err != nil {
 		return err
 	}

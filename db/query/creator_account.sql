@@ -9,6 +9,7 @@ SELECT u.id,
     u.created_at,
     u.email_verified_at,
     u.icon_image_id,
+    u.icon_preset_id,
     COALESCE(
         (
             SELECT tur.role

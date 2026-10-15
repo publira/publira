@@ -35,11 +35,19 @@ message User {
   string email = 5;
   // The account's icon. Set where the public API answers with the caller's
   // own account as GetMe reads it — GetMe, UpdateMe, UploadMyIcon,
-  // DeleteMyIcon, Login and LoginWithIdToken — and empty wherever a User
-  // names someone else. The variant list is empty, and icon_image_updated_at with
-  // it, for an account that shows no icon.
+  // SelectMyIcon, DeleteMyIcon, Login and LoginWithIdToken — and empty
+  // wherever a User names someone else. The variant list is empty, and
+  // icon_image_updated_at with it, for an account that shows no icon.
+  //
+  // The icon is either one the reader uploaded or one of the tenant's presets
+  // (ReaderIconPreset), and the variants carry whichever it is, so a client
+  // renders both alike.
   string icon_image_updated_at = 6;
   repeated UserIconVariant icon_image_variants = 7;
+  // The ReaderIconPreset.id of the preset the account shows, under the same
+  // rule as icon_image_variants, so a preset picker can mark the one in use.
+  // Empty for an account that shows an upload or no icon.
+  string icon_preset_id = 8;
 }
 
 // One stored rendition of a reader's icon, in the shape the tenant's branding
@@ -504,6 +512,27 @@ enum SurfaceAvailability {
   SURFACE_AVAILABILITY_WEB = 2;
   // The app alone.
   SURFACE_AVAILABILITY_APP = 3;
+}
+
+// What a tenant lets a reader show as an icon (tenant_config.reader_icon_policy).
+enum ReaderIconPolicy {
+  READER_ICON_POLICY_UNSPECIFIED = 0;
+  // A reader uploads an image of their own. This is what a tenant that has
+  // never chosen gets.
+  READER_ICON_POLICY_UPLOAD = 1;
+  // A reader picks one of the tenant's presets and uploads nothing.
+  READER_ICON_POLICY_PRESET = 2;
+  // No reader shows an icon.
+  READER_ICON_POLICY_DISABLED = 3;
+}
+
+// An icon the tenant provides for its readers to pick. A reader's account
+// that shows it carries the same variants in User.icon_image_variants.
+message ReaderIconPreset {
+  string id = 1;
+  string created_at = 2;
+  // The stored renditions, largest first.
+  repeated UserIconVariant variants = 3;
 }
 
 // Which of a tenant's age ratings a reader has to prove an age for

@@ -47,6 +47,13 @@ const (
 	// ReasonProviderAlreadyLinked refuses linking a provider account to a
 	// reader who has an account of that provider linked already.
 	ReasonProviderAlreadyLinked = "PROVIDER_ALREADY_LINKED"
+	// ReasonReaderIconNotAllowed refuses a reader's icon change the tenant's
+	// reader icon policy does not allow: an upload under any policy but
+	// upload, and a preset under any but preset.
+	ReasonReaderIconNotAllowed = "READER_ICON_NOT_ALLOWED"
+	// ReasonReaderIconPresetLimit refuses adding a preset to a tenant that
+	// holds as many as it may.
+	ReasonReaderIconPresetLimit = "READER_ICON_PRESET_LIMIT"
 	// ReasonReaderCreditedOnEpisode refuses buying or rating an episode that
 	// credits a creator the reader's account is linked to.
 	ReasonReaderCreditedOnEpisode = "READER_CREDITED_ON_EPISODE"

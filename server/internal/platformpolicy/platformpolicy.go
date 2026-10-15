@@ -73,7 +73,8 @@ type Policy struct {
 	// reader keeps one per provider, so what this bounds is the refused ones,
 	// each of which verifies a token and reads the reader's links.
 	IdentityLink MinuteDay
-	// IconChange bounds the icon uploads and removals one reader may make.
+	// IconChange bounds the icon uploads, preset picks, and removals one reader
+	// may make.
 	// Each upload leaves an object in the bucket until the orphan sweep runs,
 	// so what this bounds is the objects one account can leave there.
 	IconChange MinuteDay

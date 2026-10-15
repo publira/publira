@@ -131,7 +131,7 @@ func newUpdateTenantConfigRequest(tenantID uuid.UUID) *publiraadminv1.AdminAuthS
 
 func tenantSiteCopyRow(tenantID uuid.UUID, now time.Time) *sqlmock.Rows {
 	return sqlmock.NewRows(tenantConfigColumns()).
-		AddRow(tenantID, "© Tenant", "A tenant that exists only in a test", now, now, "Read on", "disabled", int32(3), "single", "none", "all", nil, nil, nil, nil, nil, "{}", nil, nil, "external_checkout")
+		AddRow(tenantID, "© Tenant", "A tenant that exists only in a test", now, now, "Read on", "disabled", int32(3), "single", "none", "all", nil, nil, nil, nil, nil, "{}", nil, nil, "external_checkout", "upload")
 }
 
 // The public site reads the site copy through the cached tenant site entry, so

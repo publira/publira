@@ -55,6 +55,8 @@ abstract class AuthServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $2.UpdateMeRequest request);
   $async.Future<$2.UploadMyIconResponse> uploadMyIcon(
       $pb.ServerContext ctx, $2.UploadMyIconRequest request);
+  $async.Future<$2.SelectMyIconResponse> selectMyIcon(
+      $pb.ServerContext ctx, $2.SelectMyIconRequest request);
   $async.Future<$2.DeleteMyIconResponse> deleteMyIcon(
       $pb.ServerContext ctx, $2.DeleteMyIconRequest request);
   $async.Future<$2.DeleteMeResponse> deleteMe(
@@ -120,6 +122,8 @@ abstract class AuthServiceBase extends $pb.GeneratedService {
         return $2.UpdateMeRequest();
       case 'UploadMyIcon':
         return $2.UploadMyIconRequest();
+      case 'SelectMyIcon':
+        return $2.SelectMyIconRequest();
       case 'DeleteMyIcon':
         return $2.DeleteMyIconRequest();
       case 'DeleteMe':
@@ -191,6 +195,8 @@ abstract class AuthServiceBase extends $pb.GeneratedService {
         return updateMe(ctx, request as $2.UpdateMeRequest);
       case 'UploadMyIcon':
         return uploadMyIcon(ctx, request as $2.UploadMyIconRequest);
+      case 'SelectMyIcon':
+        return selectMyIcon(ctx, request as $2.SelectMyIconRequest);
       case 'DeleteMyIcon':
         return deleteMyIcon(ctx, request as $2.DeleteMyIconRequest);
       case 'DeleteMe':

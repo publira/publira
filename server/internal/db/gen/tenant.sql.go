@@ -103,7 +103,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 const CreateTenantConfig = `-- name: CreateTenantConfig :one
 INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)
 VALUES ($1, $2, $3, $4)
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
 type CreateTenantConfigParams struct {
@@ -142,6 +142,7 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfig
 		&i.IosTeamID,
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
+		&i.ReaderIconPolicy,
 	)
 	return i, err
 }
@@ -304,7 +305,7 @@ func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenan
 }
 
 const GetTenantConfigByTenantID = `-- name: GetTenantConfigByTenantID :one
-SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route
+SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 FROM tenant_config
 WHERE tenant_id = $1
 LIMIT 1
@@ -334,6 +335,7 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 		&i.IosTeamID,
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
+		&i.ReaderIconPolicy,
 	)
 	return i, err
 }
@@ -597,7 +599,7 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 }
 
 const LockTenantConfigByTenantID = `-- name: LockTenantConfigByTenantID :one
-SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route
+SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 FROM tenant_config
 WHERE tenant_id = $1
 FOR UPDATE
@@ -630,6 +632,7 @@ func (q *Queries) LockTenantConfigByTenantID(ctx context.Context, tenantID uuid.
 		&i.IosTeamID,
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
+		&i.ReaderIconPolicy,
 	)
 	return i, err
 }
@@ -672,7 +675,7 @@ const UpdateTenantConfig = `-- name: UpdateTenantConfig :one
 UPDATE tenant_config
 SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
 WHERE tenant_id = $1
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
 type UpdateTenantConfigParams struct {
@@ -711,6 +714,7 @@ func (q *Queries) UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfig
 		&i.IosTeamID,
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
+		&i.ReaderIconPolicy,
 	)
 	return i, err
 }
@@ -864,7 +868,7 @@ VALUES ($1, $2)
 ON CONFLICT (tenant_id) DO UPDATE
 SET age_verification = EXCLUDED.age_verification,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
 type UpsertTenantAgeVerificationParams struct {
@@ -899,6 +903,7 @@ func (q *Queries) UpsertTenantAgeVerification(ctx context.Context, arg UpsertTen
 		&i.IosTeamID,
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
+		&i.ReaderIconPolicy,
 	)
 	return i, err
 }
@@ -932,7 +937,7 @@ ON CONFLICT (tenant_id) DO UPDATE
 SET comment_mode = EXCLUDED.comment_mode,
     comment_auto_hide_report_threshold = EXCLUDED.comment_auto_hide_report_threshold,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
 type UpsertTenantCommentSettingsParams struct {
@@ -973,6 +978,7 @@ func (q *Queries) UpsertTenantCommentSettings(ctx context.Context, arg UpsertTen
 		&i.IosTeamID,
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
+		&i.ReaderIconPolicy,
 	)
 	return i, err
 }
@@ -988,7 +994,7 @@ ON CONFLICT (tenant_id) DO UPDATE
 SET terms_page_id = EXCLUDED.terms_page_id,
     privacy_page_id = EXCLUDED.privacy_page_id,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
 type UpsertTenantLegalPagesParams struct {
@@ -1023,6 +1029,7 @@ func (q *Queries) UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLe
 		&i.IosTeamID,
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
+		&i.ReaderIconPolicy,
 	)
 	return i, err
 }
@@ -1048,7 +1055,7 @@ SET android_application_id = EXCLUDED.android_application_id,
     ios_team_id = EXCLUDED.ios_team_id,
     ios_bundle_identifier = EXCLUDED.ios_bundle_identifier,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
 type UpsertTenantMobileAppAssociationParams struct {
@@ -1092,6 +1099,7 @@ func (q *Queries) UpsertTenantMobileAppAssociation(ctx context.Context, arg Upse
 		&i.IosTeamID,
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
+		&i.ReaderIconPolicy,
 	)
 	return i, err
 }
@@ -1109,7 +1117,7 @@ SET purchase_availability = EXCLUDED.purchase_availability,
     app_store_url = EXCLUDED.app_store_url,
     google_play_url = EXCLUDED.google_play_url,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
 type UpsertTenantPurchaseSettingsParams struct {
@@ -1151,6 +1159,7 @@ func (q *Queries) UpsertTenantPurchaseSettings(ctx context.Context, arg UpsertTe
 		&i.IosTeamID,
 		&i.IosBundleIdentifier,
 		&i.AppPurchaseRoute,
+		&i.ReaderIconPolicy,
 	)
 	return i, err
 }

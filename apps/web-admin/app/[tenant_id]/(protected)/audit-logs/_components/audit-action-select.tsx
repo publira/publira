@@ -333,6 +333,20 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "tenant_age_verification_updated",
             },
             {
+              label: t("admin.audit.actions.tenant_reader_icon_policy_updated"),
+              value: "tenant_reader_icon_policy_updated",
+            },
+            {
+              label: t(
+                "admin.audit.actions.tenant_reader_icon_preset_uploaded"
+              ),
+              value: "tenant_reader_icon_preset_uploaded",
+            },
+            {
+              label: t("admin.audit.actions.tenant_reader_icon_preset_deleted"),
+              value: "tenant_reader_icon_preset_deleted",
+            },
+            {
               label: t("admin.audit.actions.tenant_legal_pages_updated"),
               value: "tenant_legal_pages_updated",
             },

@@ -256,6 +256,57 @@ final $typed_data.Uint8List tenantGoogleSignInDescriptor = $convert.base64Decode
     'ChJUZW5hbnRHb29nbGVTaWduSW4SIgoNd2ViX2NsaWVudF9pZBgBIAEoCVILd2ViQ2xpZW50SW'
     'QSIgoNaW9zX2NsaWVudF9pZBgCIAEoCVILaW9zQ2xpZW50SWQ=');
 
+@$core.Deprecated('Use getTenantReaderIconPolicyRequestDescriptor instead')
+const GetTenantReaderIconPolicyRequest$json = {
+  '1': 'GetTenantReaderIconPolicyRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `GetTenantReaderIconPolicyRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getTenantReaderIconPolicyRequestDescriptor =
+    $convert.base64Decode(
+        'CiBHZXRUZW5hbnRSZWFkZXJJY29uUG9saWN5UmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdW'
+        'JsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudA==');
+
+@$core.Deprecated('Use getTenantReaderIconPolicyResponseDescriptor instead')
+const GetTenantReaderIconPolicyResponse$json = {
+  '1': 'GetTenantReaderIconPolicyResponse',
+  '2': [
+    {
+      '1': 'policy',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.types.v1.ReaderIconPolicy',
+      '10': 'policy'
+    },
+    {
+      '1': 'presets',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.ReaderIconPreset',
+      '10': 'presets'
+    },
+  ],
+};
+
+/// Descriptor for `GetTenantReaderIconPolicyResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getTenantReaderIconPolicyResponseDescriptor =
+    $convert.base64Decode(
+        'CiFHZXRUZW5hbnRSZWFkZXJJY29uUG9saWN5UmVzcG9uc2USOgoGcG9saWN5GAEgASgOMiIucH'
+        'VibGlyYS50eXBlcy52MS5SZWFkZXJJY29uUG9saWN5UgZwb2xpY3kSPAoHcHJlc2V0cxgCIAMo'
+        'CzIiLnB1YmxpcmEudHlwZXMudjEuUmVhZGVySWNvblByZXNldFIHcHJlc2V0cw==');
+
 @$core.Deprecated('Use getTenantMobileAppAssociationRequestDescriptor instead')
 const GetTenantMobileAppAssociationRequest$json = {
   '1': 'GetTenantMobileAppAssociationRequest',
@@ -368,6 +419,11 @@ const $core.Map<$core.String, $core.dynamic> TenantServiceBase$json = {
       '2': '.publira.v1.GetTenantMobileAppAssociationRequest',
       '3': '.publira.v1.GetTenantMobileAppAssociationResponse'
     },
+    {
+      '1': 'GetTenantReaderIconPolicy',
+      '2': '.publira.v1.GetTenantReaderIconPolicyRequest',
+      '3': '.publira.v1.GetTenantReaderIconPolicyResponse'
+    },
   ],
 };
 
@@ -390,6 +446,12 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
       GetTenantMobileAppAssociationResponse$json,
   '.publira.v1.TenantAndroidAppAssociation': TenantAndroidAppAssociation$json,
   '.publira.v1.TenantIosAppAssociation': TenantIosAppAssociation$json,
+  '.publira.v1.GetTenantReaderIconPolicyRequest':
+      GetTenantReaderIconPolicyRequest$json,
+  '.publira.v1.GetTenantReaderIconPolicyResponse':
+      GetTenantReaderIconPolicyResponse$json,
+  '.publira.types.v1.ReaderIconPreset': $0.ReaderIconPreset$json,
+  '.publira.types.v1.UserIconVariant': $0.UserIconVariant$json,
 };
 
 /// Descriptor for `TenantService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -399,4 +461,7 @@ final $typed_data.Uint8List tenantServiceDescriptor = $convert.base64Decode(
     'cxImLnB1YmxpcmEudjEuR2V0VGVuYW50TGVnYWxQYWdlc1JlcXVlc3QaJy5wdWJsaXJhLnYxLk'
     'dldFRlbmFudExlZ2FsUGFnZXNSZXNwb25zZRKEAQodR2V0VGVuYW50TW9iaWxlQXBwQXNzb2Np'
     'YXRpb24SMC5wdWJsaXJhLnYxLkdldFRlbmFudE1vYmlsZUFwcEFzc29jaWF0aW9uUmVxdWVzdB'
-    'oxLnB1YmxpcmEudjEuR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXNwb25zZQ==');
+    'oxLnB1YmxpcmEudjEuR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXNwb25zZRJ4ChlH'
+    'ZXRUZW5hbnRSZWFkZXJJY29uUG9saWN5EiwucHVibGlyYS52MS5HZXRUZW5hbnRSZWFkZXJJY2'
+    '9uUG9saWN5UmVxdWVzdBotLnB1YmxpcmEudjEuR2V0VGVuYW50UmVhZGVySWNvblBvbGljeVJl'
+    'c3BvbnNl');

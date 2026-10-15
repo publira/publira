@@ -1,7 +1,8 @@
 // Package usericon stores the icon a reader shows as their identity. It is the
 // one place an upload becomes a stored icon, so the public API, where a reader
-// sets their own, and the admin API, where staff act on a reader's account,
-// store it the same way and leave the same rows for the orphan sweep.
+// sets their own, and the admin API, where staff act on a reader's account or
+// add a preset for readers to pick, store it the same way and leave the same
+// rows for the orphan sweep.
 package usericon
 
 import (
@@ -12,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/storage"
 )
@@ -24,6 +26,9 @@ var ErrInvalidImage = errors.New("invalid icon image")
 // ErrAccountNotFound reports that the tenant holds no account by that id.
 var ErrAccountNotFound = errors.New("account not found")
 
+// ErrPresetNotFound reports that the tenant holds no preset by that id.
+var ErrPresetNotFound = errors.New("reader icon preset not found")
+
 // Querier is the generated set of queries setting and clearing an icon needs.
 // The caller hands in the queries of its own transaction, and of a connection
 // bound to the account's tenant, which the rows are subject to.
@@ -31,6 +36,13 @@ type Querier interface {
 	CreateUserImage(ctx context.Context, arg dbmodels.CreateUserImageParams) (dbmodels.UserImage, error)
 	CreateUserImageVariant(ctx context.Context, arg dbmodels.CreateUserImageVariantParams) (dbmodels.UserImageVariant, error)
 	SetUserIconImage(ctx context.Context, arg dbmodels.SetUserIconImageParams) (int64, error)
+	SetUserIconPreset(ctx context.Context, arg dbmodels.SetUserIconPresetParams) (int64, error)
+}
+
+// PresetQuerier is the generated set of queries storing a preset needs.
+type PresetQuerier interface {
+	CreateReaderIconPreset(ctx context.Context, arg dbmodels.CreateReaderIconPresetParams) (dbmodels.ReaderIconPreset, error)
+	CreateReaderIconPresetVariant(ctx context.Context, arg dbmodels.CreateReaderIconPresetVariantParams) (dbmodels.ReaderIconPresetVariant, error)
 }
 
 // Account names the account an icon belongs to. The public ids place its
@@ -118,10 +130,90 @@ func Set(ctx context.Context, q Querier, store storage.Provider, account Account
 	return imageID, nil
 }
 
-// Clear leaves the account with no icon. The image it showed stays in place,
+// StorePreset stores upload as one of the tenant's presets, returning the id
+// of the preset it was stored as. The upload is processed before anything is
+// written, so one that fails with ErrInvalidImage leaves nothing behind, and a
+// preset is cut the way a reader's own upload is, so a reader sees the same
+// square whichever of the two they show.
+//
+// The object is uploaded between two writes, with the consequences Set
+// describes: run inside a transaction, a failure after the upload leaves only
+// an object the orphan sweep reclaims.
+func StorePreset(ctx context.Context, q PresetQuerier, store storage.Provider, tenantID uuid.UUID, tenantPublicID string, upload Upload) (uuid.UUID, error) {
+	variant, err := imageproc.BuildUserIcon(upload.Data, upload.ContentType, upload.Crop)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("%w: %w", ErrInvalidImage, err)
+	}
+	if store == nil {
+		return uuid.Nil, storage.ErrNotConfigured
+	}
+
+	presetID, err := uuid.NewV7()
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if _, err := q.CreateReaderIconPreset(ctx, dbmodels.CreateReaderIconPresetParams{
+		ID:       presetID,
+		TenantID: tenantID,
+	}); err != nil {
+		return uuid.Nil, fmt.Errorf("create reader icon preset: %w", err)
+	}
+
+	uploaded, err := store.Upload(ctx, storage.UploadRequest{
+		ObjectKey:   presetObjectKey(tenantPublicID, presetID, variant),
+		ContentType: variant.ContentType,
+		Data:        variant.Data,
+	})
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("upload reader icon preset: %w", err)
+	}
+
+	variantID, err := uuid.NewV7()
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if _, err := q.CreateReaderIconPresetVariant(ctx, dbmodels.CreateReaderIconPresetVariantParams{
+		ID:                 variantID,
+		TenantID:           tenantID,
+		ReaderIconPresetID: presetID,
+		Label:              variant.Label,
+		StorageProvider:    uploaded.Provider,
+		ObjectKey:          uploaded.ObjectKey,
+		ContentType:        variant.ContentType,
+		FileSizeBytes:      uploaded.SizeBytes,
+		Width:              int32(variant.Width),
+		Height:             int32(variant.Height),
+	}); err != nil {
+		return uuid.Nil, fmt.Errorf("create reader icon preset variant: %w", err)
+	}
+	return presetID, nil
+}
+
+// SelectPreset elects one of the tenant's presets as the account's icon. An
+// upload the account showed is left for the orphan sweep, as a replaced one
+// is.
+func SelectPreset(ctx context.Context, q Querier, tenantID, userID, presetID uuid.UUID) error {
+	rows, err := q.SetUserIconPreset(ctx, dbmodels.SetUserIconPresetParams{
+		IconPresetID: uuid.NullUUID{UUID: presetID, Valid: true},
+		TenantID:     uuid.NullUUID{UUID: tenantID, Valid: true},
+		ID:           userID,
+	})
+	if err != nil {
+		if dberr.IsForeignKeyViolation(err) {
+			return ErrPresetNotFound
+		}
+		return fmt.Errorf("set user icon preset: %w", err)
+	}
+	if rows == 0 {
+		return ErrAccountNotFound
+	}
+	return nil
+}
+
+// Clear leaves the account with no icon. An image it showed stays in place,
 // elected by nothing, until the orphan sweep reclaims it; image-server stops
 // serving it at once, because it serves an account's icon only while the
-// account elects it.
+// account elects it. A preset it showed stays the tenant's.
 func Clear(ctx context.Context, q Querier, tenantID, userID uuid.UUID) error {
 	return elect(ctx, q, tenantID, userID, uuid.NullUUID{})
 }
@@ -146,4 +238,10 @@ func elect(ctx context.Context, q Querier, tenantID, userID uuid.UUID, imageID u
 // sweep reclaim it once no row names it.
 func objectKey(account Account, imageID uuid.UUID, variant imageproc.Variant) string {
 	return fmt.Sprintf("tenants/%s/users/%s/%s-%s%s", account.TenantPublicID, account.UserPublicID, imageID, variant.Label, variant.Extension)
+}
+
+// presetObjectKey is where the variant of a preset is stored, under the tenant
+// prefix the orphan sweep walks, which reclaims it once the preset is deleted.
+func presetObjectKey(tenantPublicID string, presetID uuid.UUID, variant imageproc.Variant) string {
+	return fmt.Sprintf("tenants/%s/reader-icon-presets/%s-%s%s", tenantPublicID, presetID, variant.Label, variant.Extension)
 }

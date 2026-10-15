@@ -305,8 +305,8 @@ type PlatformPolicy struct {
 	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
 	// when a request leaves it unset.
 	IdentityLink *MinuteDayLimit `protobuf:"bytes,13,opt,name=identity_link,json=identityLink,proto3" json:"identity_link,omitempty"`
-	// How often one reader may ask AuthService.UploadMyIcon or DeleteMyIcon to
-	// change their icon.
+	// How often one reader may ask AuthService.UploadMyIcon, SelectMyIcon or
+	// DeleteMyIcon to change their icon.
 	//
 	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
 	// when a request leaves it unset.

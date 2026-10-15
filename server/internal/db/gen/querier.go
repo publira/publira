@@ -112,12 +112,23 @@ type Querier interface {
 	// for the first to commit and then finds the instant it set, ahead of NOW().
 	// Two first claims meet on the primary key the same way.
 	ClaimWaitFreeTicket(ctx context.Context, arg ClaimWaitFreeTicketParams) (time.Time, error)
+	// ClearUploadedReaderIcons for a policy that allows no icon at all, which
+	// clears the presets accounts elected as well.
+	ClearAllReaderIcons(ctx context.Context, tenantID uuid.NullUUID) ([]uuid.UUID, error)
 	// The ticker job's write. It is what makes a boundary stop being due, so a run
 	// that was down over one still catches up instead of collecting it.
 	ClearAnnouncementPin(ctx context.Context, id uuid.UUID) error
 	// The episodes RedateEpisodesForSeriesPublication answered, once their
 	// announcements are queued: the outbox owns them from there.
 	ClearEpisodeAnnouncementsOwed(ctx context.Context, arg ClearEpisodeAnnouncementsOwedParams) error
+	// Leaves every account that shows the preset with no icon, answering the
+	// accounts it changed so the caller can name the comment lists that showed it.
+	// The foreign key would clear them on the delete too, but without saying which.
+	ClearReaderIconPresetElections(ctx context.Context, arg ClearReaderIconPresetElectionsParams) ([]uuid.UUID, error)
+	// Leaves every account of the tenant that shows an upload with no icon, for a
+	// policy that no longer allows one, answering the accounts it changed. The
+	// images are left for the orphan sweep.
+	ClearUploadedReaderIcons(ctx context.Context, tenantID uuid.NullUUID) ([]uuid.UUID, error)
 	ConsumeStorePurchaseIntent(ctx context.Context, arg ConsumeStorePurchaseIntentParams) error
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
@@ -144,6 +155,7 @@ type Querier interface {
 	CountPlatformUsers(ctx context.Context) (int32, error)
 	// For the tenant dashboard.
 	CountPublishedSeriesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
+	CountReaderIconPresets(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// For the tenant dashboard.
 	CountScheduledEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// Whether a genre may still be deleted. The refusal is the handler's, and this
@@ -300,6 +312,11 @@ type Querier interface {
 	// unique index can be the one that recognises it. A mail that came in with
 	// neither cannot be told from a new one and is stored each time.
 	CreateReaderContactMessageEntry(ctx context.Context, arg CreateReaderContactMessageEntryParams) (ContactMessageEntry, error)
+	// created_at is the moment of the insert rather than the transaction's start,
+	// which is what now() would give: the uploads of one tenant wait on each other
+	// for the tenant's lock, and the one that waited began first.
+	CreateReaderIconPreset(ctx context.Context, arg CreateReaderIconPresetParams) (ReaderIconPreset, error)
+	CreateReaderIconPresetVariant(ctx context.Context, arg CreateReaderIconPresetVariantParams) (ReaderIconPresetVariant, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
 	// role_id is cast to a plain uuid rather than left nullable like the column:
 	// the column admits NULL for the credits that predate roles, and a credit
@@ -380,6 +397,9 @@ type Querier interface {
 	DeletePlatformUserMfaTotp(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserPasswordResetTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
+	// The variants go with the row, and their objects are left for the orphan
+	// sweep, which deletes an object once no variant row names it.
+	DeleteReaderIconPreset(ctx context.Context, arg DeleteReaderIconPresetParams) (int64, error)
 	// Returns the creators the series credited, whose search documents the save
 	// has to re-read along with those it credits now.
 	DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) ([]uuid.UUID, error)
@@ -746,6 +766,10 @@ type Querier interface {
 	// joined within the tenant, so an account that was deleted after paying, whose
 	// purchase keeps no user, answers no address rather than no receipt.
 	GetPurchaseReceiptForTenant(ctx context.Context, arg GetPurchaseReceiptForTenantParams) (GetPurchaseReceiptForTenantRow, error)
+	// The stored object behind a preset, for image-server. A deleted preset answers
+	// no rows, so its URL stops answering at once rather than when the orphan sweep
+	// reclaims the object.
+	GetReaderIconPresetImageForTenant(ctx context.Context, arg GetReaderIconPresetImageForTenantParams) (GetReaderIconPresetImageForTenantRow, error)
 	// Whether the reader has agreed to each page the tenant names as its terms of
 	// service and its privacy policy, as far as reader_has_agreed_to_page asks. A
 	// role with no page, or whose page is not published, is agreed to: there is
@@ -918,6 +942,9 @@ type Querier interface {
 	// One account in the shape ListTenantReaders* returns. An account of another
 	// tenant is no rows.
 	GetTenantReaderByPublicID(ctx context.Context, arg GetTenantReaderByPublicIDParams) (GetTenantReaderByPublicIDRow, error)
+	// A tenant with no config row has no row here either, and lets readers upload,
+	// which is what the column's default says.
+	GetTenantReaderIconPolicy(ctx context.Context, tenantID uuid.UUID) (string, error)
 	// Returns no rows when the tenant has never saved an override.
 	GetTenantRetentionSettings(ctx context.Context, tenantID uuid.UUID) (TenantRetentionSetting, error)
 	GetTenantRoyaltyConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantRoyaltyConfig, error)
@@ -1464,6 +1491,10 @@ type Querier interface {
 	// The episodes whose public comment list shows this account as an author, which
 	// is every list a change to the account's icon leaves stale.
 	ListEpisodePublicIDsWithPublishedCommentsByUser(ctx context.Context, arg ListEpisodePublicIDsWithPublishedCommentsByUserParams) ([]string, error)
+	// ListEpisodePublicIDsWithPublishedCommentsByUser for every account a tenant
+	// change cleared the icon of at once: a change of the reader icon policy, or a
+	// deleted preset.
+	ListEpisodePublicIDsWithPublishedCommentsByUsers(ctx context.Context, arg ListEpisodePublicIDsWithPublishedCommentsByUsersParams) ([]string, error)
 	// ListEpisodeReadThroughDesc walked the other way, to build a previous page.
 	// The order it describes is the same one.
 	ListEpisodeReadThroughAsc(ctx context.Context, arg ListEpisodeReadThroughAscParams) ([]ListEpisodeReadThroughAscRow, error)
@@ -1990,6 +2021,11 @@ type Querier interface {
 	// ListRankedSeriesIDs walked the other way, to build a previous page. The
 	// order it describes is the same one.
 	ListRankedSeriesIDsReversed(ctx context.Context, arg ListRankedSeriesIDsReversedParams) ([]ListRankedSeriesIDsReversedRow, error)
+	// Every preset of the tenant with its stored variants, oldest preset first.
+	// created_at leads rather than the id: a UUIDv7 rises monotonically only
+	// within the process that made it, and uploads reach several, while
+	// created_at is read off the database's one clock.
+	ListReaderIconPresetVariants(ctx context.Context, tenantID uuid.UUID) ([]ListReaderIconPresetVariantsRow, error)
 	// The most recent draft and scheduled episodes, for the publish queue on the
 	// dashboard.
 	ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error)
@@ -2029,6 +2065,10 @@ type Querier interface {
 	// episode_images has no unreferenced state and so no delete here: an episode
 	// owns every image filed under it, and there is no column that elects one of
 	// them, so a row that exists is a row in use.
+	//
+	// reader_icon_presets has none either: a preset is the tenant's for as long as
+	// its row exists, whether or not any account shows it, and staff deleting it
+	// is what leaves its objects to the sweep.
 	//
 	// Expected plans (empty table may still seq-scan; SET enable_seqscan = off
 	// in the integration test to confirm the index is eligible):
@@ -2250,16 +2290,19 @@ type Querier interface {
 	// longer visible, or that the calling surface may not show, disappear from
 	// this member's list without revealing why.
 	ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUserFollowsByCreatedAtDescParams) ([]ListUserFollowsByCreatedAtDescRow, error)
-	// The stored variants of the given icon images, with the time each image was
-	// stored. A caller reads the ids off the accounts it is answering for, so one
-	// query covers a whole page of them; an id the tenant does not hold answers no
+	// The stored variants of the icon each of the given accounts elects now, with
+	// the time it was stored. An account's icon is either an image it uploaded or
+	// one of the tenant's presets, and preset says which. A caller reads the
+	// accounts off the page it is answering for, so one query covers all of them;
+	// an account that elects no icon, or one the tenant does not hold, answers no
 	// rows.
 	//
-	// An image no account elects any longer answers no rows either. The ids were
-	// read by an earlier statement, and an icon replaced since then is one
-	// image-server already refuses, so its URL would be a broken image in an
-	// answer the storefront may cache after the replacement's drop has passed.
-	ListUserIconImageVariantsByImageIDs(ctx context.Context, arg ListUserIconImageVariantsByImageIDsParams) ([]ListUserIconImageVariantsByImageIDsRow, error)
+	// The election is read here rather than taken from the statement that read
+	// the page. An icon changed in between would otherwise be answered as it was
+	// before the change, into an answer the storefront may cache after the
+	// change's drop has passed: a replaced upload as a URL image-server already
+	// refuses, and a preset the reader left as the icon they no longer show.
+	ListUserIconVariantsByUserIDs(ctx context.Context, arg ListUserIconVariantsByUserIDsParams) ([]ListUserIconVariantsByUserIDsRow, error)
 	ListUserIdentitiesForUser(ctx context.Context, arg ListUserIdentitiesForUserParams) ([]UserIdentity, error)
 	// The previous-page half of
 	// ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc.
@@ -2380,6 +2423,11 @@ type Querier interface {
 	// Reads the row for update, so the revision a save compares against cannot
 	// change between the comparison and the write.
 	LockPlatformWebPushConfig(ctx context.Context) (PlatformWebpushConfig, error)
+	// Locks a preset before it is deleted. An account electing it takes a key
+	// share on the row through its foreign key, so the lock waits for an election
+	// in flight to commit, and the clear that follows sees it; an election that
+	// arrives after the lock waits in turn and then finds the preset gone.
+	LockReaderIconPreset(ctx context.Context, arg LockReaderIconPresetParams) (uuid.UUID, error)
 	// A series as one row: locked, read, written, and listed for the console. The
 	// keyset scans behind the public series list are in published_series.sql.
 	// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
@@ -2414,6 +2462,21 @@ type Querier interface {
 	// tenant's currency (LockTenantCurrency), while letting other price writes of
 	// the same tenant go on.
 	LockTenantCurrencyShared(ctx context.Context, tenantID uuid.UUID) error
+	// Taken by a reader's icon change before it reads the policy, which is the
+	// next statement rather than this one: READ COMMITTED freezes a statement's
+	// snapshot when it starts, so a read waiting on the lock here would still see
+	// the policy as it was before the wait. The lock is on the tenant rather than
+	// its config row, which a tenant that has saved no setting does not have.
+	LockTenantForReaderIconChange(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
+	// Taken by a change of the tenant's reader icon settings: the policy, before
+	// it clears the icons the new policy no longer allows, and a preset upload,
+	// before it counts the presets the tenant holds. Against the share
+	// LockTenantForReaderIconChange takes, it lets a reader's icon change in
+	// flight commit before the clear reads the accounts, and makes one that
+	// arrives later wait and then read the new policy. NO KEY UPDATE rather than
+	// UPDATE, so it does not hold back the foreign key checks every write naming
+	// the tenant makes.
+	LockTenantForReaderIconSettings(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	// Lock the tenant row so concurrent writes to the tenant theme serialize: the
 	// branding image uploads and deletes (icon, logo), and the theme saves, each
 	// of which reads the theme first to decide what it changes. That read must be
@@ -2882,8 +2945,13 @@ type Querier interface {
 	// Elects an account's icon, or clears it when icon_image_id is NULL. The image
 	// it replaces is left for the orphan sweep rather than deleted here, so two
 	// uploads racing for the same account need no lock between them: whichever
-	// loses is only one more image nothing elects.
+	// loses is only one more image nothing elects. An account shows one icon, so
+	// either way the preset it elected is cleared too.
 	SetUserIconImage(ctx context.Context, arg SetUserIconImageParams) (int64, error)
+	// Elects one of the tenant's presets as the account's icon. An account shows
+	// one icon, so an upload it elected is cleared with it and left for the orphan
+	// sweep. A preset the tenant does not hold fails the foreign key.
+	SetUserIconPreset(ctx context.Context, arg SetUserIconPresetParams) (int64, error)
 	// Stores the refresh token an authorization code was exchanged for. No row is
 	// updated when the link went away while the code was being exchanged, or holds
 	// a token already, and the caller revokes the one it got instead.
@@ -3094,6 +3162,8 @@ type Querier interface {
 	// the store listings are written together because the console offers them as
 	// one card, and the listings are where an app-only purchase sends a reader.
 	UpsertTenantPurchaseSettings(ctx context.Context, arg UpsertTenantPurchaseSettingsParams) (TenantConfig, error)
+	// An upsert for the reason UpsertTenantCommentSettings gives.
+	UpsertTenantReaderIconPolicy(ctx context.Context, arg UpsertTenantReaderIconPolicyParams) (TenantConfig, error)
 	UpsertTenantRoyaltyConfig(ctx context.Context, arg UpsertTenantRoyaltyConfigParams) (TenantRoyaltyConfig, error)
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)

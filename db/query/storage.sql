@@ -11,6 +11,10 @@
 -- owns every image filed under it, and there is no column that elects one of
 -- them, so a row that exists is a row in use.
 --
+-- reader_icon_presets has none either: a preset is the tenant's for as long as
+-- its row exists, whether or not any account shows it, and staff deleting it
+-- is what leaves its objects to the sweep.
+--
 -- Expected plans (empty table may still seq-scan; SET enable_seqscan = off
 -- in the integration test to confirm the index is eligible):
 --   ListReferencedObjectKeys
@@ -39,7 +43,8 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
     OR EXISTS (SELECT 1 FROM genre_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM creator_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM episode_image_variants v WHERE v.object_key = c.object_key)
-    OR EXISTS (SELECT 1 FROM user_image_variants v WHERE v.object_key = c.object_key);
+    OR EXISTS (SELECT 1 FROM user_image_variants v WHERE v.object_key = c.object_key)
+    OR EXISTS (SELECT 1 FROM reader_icon_preset_variants v WHERE v.object_key = c.object_key);
 
 -- name: DeleteUnreferencedCreatorImages :execrows
 -- An upload points its creator at the new icon and leaves the previous

@@ -56,6 +56,7 @@ func tenantConfigColumnDefaults(tenantID uuid.UUID) dbmodels.TenantConfig {
 		PurchaseAvailability:           "all",
 		AppPurchaseRoute:               "external_checkout",
 		AndroidSha256CertFingerprints:  []string{},
+		ReaderIconPolicy:               "upload",
 	}
 }
 

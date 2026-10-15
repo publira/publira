@@ -95,6 +95,7 @@ type ResolverQuerier interface {
 type TenantScopedQuerier interface {
 	GetCreatorImageByIDForTenant(ctx context.Context, arg dbmodels.GetCreatorImageByIDForTenantParams) (dbmodels.GetCreatorImageByIDForTenantRow, error)
 	GetUserIconImageByIDForTenant(ctx context.Context, arg dbmodels.GetUserIconImageByIDForTenantParams) (dbmodels.GetUserIconImageByIDForTenantRow, error)
+	GetReaderIconPresetImageForTenant(ctx context.Context, arg dbmodels.GetReaderIconPresetImageForTenantParams) (dbmodels.GetReaderIconPresetImageForTenantRow, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg dbmodels.GetTenantImageVariantByTypeForTenantParams) (dbmodels.GetTenantImageVariantByTypeForTenantRow, error)
 	GetGenreImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetGenreImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetGenreImageVariantByTypeAndWidthForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error)
@@ -202,6 +203,7 @@ func NewHandler(public, admin SiteDB, logger *slog.Logger, tokens *auth.TokenMan
 	mux.HandleFunc("GET /images/series/{media_id}/{variant_type}/{width}", h.handleGetSeriesImage)
 	mux.HandleFunc("GET /images/tenants/{media_id}/{variant_type}", h.handleGetTenantImage)
 	mux.HandleFunc("GET /images/users/{media_id}", h.handleGetUserImage)
+	mux.HandleFunc("GET /images/reader-icon-presets/{media_id}", h.handleGetReaderIconPresetImage)
 	return &Server{mux: mux, origin: origin}, nil
 }
 
@@ -610,6 +612,37 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 // to every reader of a page beside what its account wrote, so it is not one
 // reader's to keep private.
 func (h *Handler) handleGetUserImage(w http.ResponseWriter, r *http.Request) {
+	h.serveReaderIcon(w, r, "user image", func(ctx context.Context, q TenantScopedQuerier, mediaID, tenantID uuid.UUID) (string, string, error) {
+		row, err := q.GetUserIconImageByIDForTenant(ctx, dbmodels.GetUserIconImageByIDForTenantParams{
+			ID:       mediaID,
+			TenantID: tenantID,
+		})
+		return row.ObjectKey, row.ContentType, err
+	})
+}
+
+// handleGetReaderIconPresetImage serves one of the tenant's reader icon
+// presets, as handleGetUserImage serves an upload: an account that shows the
+// preset carries this URL as its icon. A deleted preset stops being served at
+// once, rather than when the orphan sweep reclaims its object.
+func (h *Handler) handleGetReaderIconPresetImage(w http.ResponseWriter, r *http.Request) {
+	h.serveReaderIcon(w, r, "reader icon preset", func(ctx context.Context, q TenantScopedQuerier, mediaID, tenantID uuid.UUID) (string, string, error) {
+		row, err := q.GetReaderIconPresetImageForTenant(ctx, dbmodels.GetReaderIconPresetImageForTenantParams{
+			ReaderIconPresetID: mediaID,
+			TenantID:           tenantID,
+		})
+		return row.ObjectKey, row.ContentType, err
+	})
+}
+
+// serveReaderIcon serves the reader icon lookup finds for the request's
+// media id, resolved against the tenant whose host the request arrived on.
+func (h *Handler) serveReaderIcon(
+	w http.ResponseWriter,
+	r *http.Request,
+	what string,
+	lookup func(ctx context.Context, q TenantScopedQuerier, mediaID, tenantID uuid.UUID) (objectKey, contentType string, err error),
+) {
 	ctx := r.Context()
 
 	tenant, adminHost, ok := h.tenantFromHost(w, r)
@@ -631,27 +664,24 @@ func (h *Handler) handleGetUserImage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer cleanup()
 
-	imageRow, err := tenantQueries.GetUserIconImageByIDForTenant(ctx, dbmodels.GetUserIconImageByIDForTenantParams{
-		ID:       mediaID,
-		TenantID: tenant.ID,
-	})
+	objectKey, contentType, err := lookup(ctx, tenantQueries, mediaID, tenant.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "image not found", http.StatusNotFound)
 			return
 		}
-		h.logger.ErrorContext(ctx, "failed to load user image metadata", "error", err, "media_id", mediaID.String())
+		h.logger.ErrorContext(ctx, "failed to load "+what+" metadata", "error", err, "media_id", mediaID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	if strings.TrimSpace(imageRow.ObjectKey) == "" {
+	if strings.TrimSpace(objectKey) == "" {
 		http.Error(w, "image not found", http.StatusNotFound)
 		return
 	}
 
 	// The row is read; the conversion below runs without the connection.
 	cleanup()
-	h.serveConverted(w, r, adminHost, imageRow.ObjectKey, imageRow.ContentType, publicImageCacheControl, nil)
+	h.serveConverted(w, r, adminHost, objectKey, contentType, publicImageCacheControl, nil)
 }
 
 // handleGetTenantImage serves a tenant branding image — the logo or the

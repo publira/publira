@@ -144,10 +144,10 @@ type publicCommentPageRow struct {
 	createdAt      time.Time
 	authorPublicID string
 	authorName     string
-	// authorIconImageID is the icon the author's account elects, and NULL for
-	// one that shows none.
-	authorIconImageID uuid.NullUUID
-	creator           *publirav1.EpisodeCommentCreator
+	// authorID is the author's account, whose icon is read for the page in
+	// one query.
+	authorID uuid.UUID
+	creator  *publirav1.EpisodeCommentCreator
 }
 
 // episodeCommentCreator projects the credit a comment's author holds on its
@@ -188,14 +188,14 @@ func (s *apiServer) publicCommentPage(
 		}
 		for _, row := range rows {
 			mapped = append(mapped, publicCommentPageRow{
-				id:                row.ID,
-				publicID:          row.PublicID,
-				body:              row.Body,
-				createdAt:         row.CreatedAt,
-				authorPublicID:    row.AuthorPublicID,
-				authorName:        row.AuthorName,
-				authorIconImageID: row.AuthorIconImageID,
-				creator:           episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
+				id:             row.ID,
+				publicID:       row.PublicID,
+				body:           row.Body,
+				createdAt:      row.CreatedAt,
+				authorPublicID: row.AuthorPublicID,
+				authorName:     row.AuthorName,
+				authorID:       row.UserID,
+				creator:        episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
 			})
 		}
 		return mapped, nil
@@ -206,14 +206,14 @@ func (s *apiServer) publicCommentPage(
 	}
 	for _, row := range rows {
 		mapped = append(mapped, publicCommentPageRow{
-			id:                row.ID,
-			publicID:          row.PublicID,
-			body:              row.Body,
-			createdAt:         row.CreatedAt,
-			authorPublicID:    row.AuthorPublicID,
-			authorName:        row.AuthorName,
-			authorIconImageID: row.AuthorIconImageID,
-			creator:           episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
+			id:             row.ID,
+			publicID:       row.PublicID,
+			body:           row.Body,
+			createdAt:      row.CreatedAt,
+			authorPublicID: row.AuthorPublicID,
+			authorName:     row.AuthorName,
+			authorID:       row.UserID,
+			creator:        episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
 		})
 	}
 	return mapped, nil
@@ -257,13 +257,13 @@ func (s *apiServer) ListEpisodeComments(
 	// The icons of the page's authors are read in one query rather than joined
 	// into the page's: an icon has a row per stored variant, and the page is a
 	// row per comment.
-	iconImageIDs := make([]uuid.UUID, 0, len(rows))
+	authorIDs := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
-		if row.authorIconImageID.Valid && !slices.Contains(iconImageIDs, row.authorIconImageID.UUID) {
-			iconImageIDs = append(iconImageIDs, row.authorIconImageID.UUID)
+		if !slices.Contains(authorIDs, row.authorID) {
+			authorIDs = append(authorIDs, row.authorID)
 		}
 	}
-	icons, err := s.userIcons(ctx, s.queriesFor(ctx), tenant.ID, iconImageIDs)
+	icons, err := s.userIcons(ctx, s.queriesFor(ctx), tenant.ID, authorIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +278,7 @@ func (s *apiServer) ListEpisodeComments(
 			AuthorPublicId:          row.authorPublicID,
 			AuthorName:              row.authorName,
 			Creator:                 row.creator,
-			AuthorIconImageVariants: icons[row.authorIconImageID.UUID].Variants,
+			AuthorIconImageVariants: icons[row.authorID].Variants,
 		})
 	}
 

@@ -340,6 +340,21 @@ const settingsActionName = (action: string) => {
         <Message message="admin.audit.actions.tenant_age_verification_updated" />
       );
     }
+    case "tenant_reader_icon_policy_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_reader_icon_policy_updated" />
+      );
+    }
+    case "tenant_reader_icon_preset_uploaded": {
+      return (
+        <Message message="admin.audit.actions.tenant_reader_icon_preset_uploaded" />
+      );
+    }
+    case "tenant_reader_icon_preset_deleted": {
+      return (
+        <Message message="admin.audit.actions.tenant_reader_icon_preset_deleted" />
+      );
+    }
     case "tenant_legal_pages_updated": {
       return (
         <Message message="admin.audit.actions.tenant_legal_pages_updated" />
@@ -578,6 +593,16 @@ const settingTargetName = (targetType: string) => {
     }
     case "tenant_purchase_settings": {
       return <Message message="admin.audit.targets.tenant_purchase_settings" />;
+    }
+    case "tenant_reader_icon_policy": {
+      return (
+        <Message message="admin.audit.targets.tenant_reader_icon_policy" />
+      );
+    }
+    case "tenant_reader_icon_presets": {
+      return (
+        <Message message="admin.audit.targets.tenant_reader_icon_presets" />
+      );
     }
     case "tenant_retention": {
       return <Message message="admin.audit.targets.tenant_retention" />;

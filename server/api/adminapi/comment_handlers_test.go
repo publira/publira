@@ -63,7 +63,7 @@ func TestListCommentsReadsTheCreatorMarkWithThePage(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "tenant_id", "public_id", "episode_id", "user_id", "body", "status", "approved_by", "hidden_by", "hidden_reason",
 		"created_at", "updated_at", "published_at", "hidden_at", "withdrawn_at", "open_report_count",
-		"author_public_id", "author_name", "author_icon_image_id", "author_is_staff", "episode_public_id", "episode_title", "series_public_id", "series_title",
+		"author_public_id", "author_name", "author_is_staff", "episode_public_id", "episode_title", "series_public_id", "series_title",
 		"creator_id", "creator_public_id", "creator_name",
 	})
 	for _, comment := range []struct {
@@ -79,13 +79,14 @@ func TestListCommentsReadsTheCreatorMarkWithThePage(t *testing.T) {
 		rows.AddRow(
 			uuid.Must(uuid.NewV7()), tenantID, comment.publicID, uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), "A comment.", "published", nil, nil, nil,
 			now, now, now, nil, nil, int32(0),
-			comment.authorPublicID, comment.authorName, nil, false, "EPISODE00001", "Episode Title", "SERIES000001", "Series Title",
+			comment.authorPublicID, comment.authorName, false, "EPISODE00001", "Episode Title", "SERIES000001", "Series Title",
 			comment.creatorID, comment.creatorPublicID, comment.creatorName,
 		)
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeCommentsForModerationByCreatedAtDesc)).
 		WillReturnRows(rows)
 	expectCommentRetentionDefaults(mock, tenantID)
+	expectNoUserIcons(mock)
 
 	client := publiraadminv1connect.NewAdminCommentServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	res, err := client.ListComments(testutil.WithBearer(context.Background(), issueTestAdminToken(tenantID.String(), testUserPublicID, auth.RoleTenantAdmin)), &publiraadminv1.ListCommentsRequest{
@@ -116,9 +117,10 @@ func TestListCommentReportsReadsTheCreatorMarkWithThePage(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"report_id", "reason", "note", "report_status", "report_created_at", "resolved_at", "reporter_public_id", "reporter_name",
 		"id", "public_id", "body", "status", "hidden_reason", "created_at", "published_at", "hidden_at", "withdrawn_at", "open_report_count",
-		"author_public_id", "author_name", "author_icon_image_id", "author_is_staff", "episode_public_id", "episode_title", "series_public_id", "series_title",
+		"author_public_id", "author_name", "author_user_id", "author_is_staff", "episode_public_id", "episode_title", "series_public_id", "series_title",
 		"creator_id", "creator_public_id", "creator_name",
 	})
+	authorID := uuid.Must(uuid.NewV7())
 	for _, comment := range []struct {
 		publicID        string
 		creatorID       any
@@ -132,13 +134,14 @@ func TestListCommentReportsReadsTheCreatorMarkWithThePage(t *testing.T) {
 		rows.AddRow(
 			uuid.Must(uuid.NewV7()), "spam", nil, "open", now, nil, "REPORTER0001", "Reporter",
 			uuid.Must(uuid.NewV7()), comment.publicID, "A reported comment.", "published", nil, now, now, nil, nil, int32(1),
-			"AUTHOR000001", "Author", nil, false, "EPISODE00001", "Episode Title", "SERIES000001", "Series Title",
+			"AUTHOR000001", "Author", authorID, false, "EPISODE00001", "Episode Title", "SERIES000001", "Series Title",
 			comment.creatorID, comment.creatorPublicID, comment.creatorName,
 		)
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeCommentReportsForModerationByCreatedAtDesc)).
 		WillReturnRows(rows)
 	expectCommentRetentionDefaults(mock, tenantID)
+	expectNoUserIcons(mock)
 
 	client := publiraadminv1connect.NewAdminCommentServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	res, err := client.ListCommentReports(testutil.WithBearer(context.Background(), issueTestAdminToken(tenantID.String(), testUserPublicID, auth.RoleTenantAdmin)), &publiraadminv1.ListCommentReportsRequest{
@@ -156,4 +159,11 @@ func TestListCommentReportsReadsTheCreatorMarkWithThePage(t *testing.T) {
 	}
 
 	assertExpectations(t, mock)
+}
+
+// expectNoUserIcons answers the read of a page's author icons with none, for
+// a page whose authors show no icon.
+func expectNoUserIcons(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListUserIconVariantsByUserIDs)).
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "icon_id", "preset", "updated_at", "label", "content_type", "width", "height", "file_size_bytes"}))
 }

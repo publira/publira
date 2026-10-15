@@ -74,6 +74,7 @@ SELECT u.id,
     u.created_at,
     u.email_verified_at,
     u.icon_image_id,
+    u.icon_preset_id,
     COALESCE(
         (
             SELECT tur.role
@@ -113,6 +114,7 @@ type ListCreatorAccountsByCreatorIDRow struct {
 	CreatedAt       time.Time     `json:"created_at"`
 	EmailVerifiedAt sql.NullTime  `json:"email_verified_at"`
 	IconImageID     uuid.NullUUID `json:"icon_image_id"`
+	IconPresetID    uuid.NullUUID `json:"icon_preset_id"`
 	Role            string        `json:"role"`
 	LinkedAt        time.Time     `json:"linked_at"`
 }
@@ -137,6 +139,7 @@ func (q *Queries) ListCreatorAccountsByCreatorID(ctx context.Context, arg ListCr
 			&i.CreatedAt,
 			&i.EmailVerifiedAt,
 			&i.IconImageID,
+			&i.IconPresetID,
 			&i.Role,
 			&i.LinkedAt,
 		); err != nil {

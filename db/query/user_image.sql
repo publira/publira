@@ -28,9 +28,11 @@ RETURNING *;
 -- Elects an account's icon, or clears it when icon_image_id is NULL. The image
 -- it replaces is left for the orphan sweep rather than deleted here, so two
 -- uploads racing for the same account need no lock between them: whichever
--- loses is only one more image nothing elects.
+-- loses is only one more image nothing elects. An account shows one icon, so
+-- either way the preset it elected is cleared too.
 UPDATE users
-SET icon_image_id = sqlc.narg(icon_image_id)
+SET icon_image_id = sqlc.narg(icon_image_id),
+    icon_preset_id = NULL
 WHERE tenant_id = @tenant_id
     AND id = @id;
 
@@ -55,30 +57,52 @@ WHERE ui.id = $1
     AND ui.tenant_id = $2
 LIMIT 1;
 
--- name: ListUserIconImageVariantsByImageIDs :many
--- The stored variants of the given icon images, with the time each image was
--- stored. A caller reads the ids off the accounts it is answering for, so one
--- query covers a whole page of them; an id the tenant does not hold answers no
+-- name: ListUserIconVariantsByUserIDs :many
+-- The stored variants of the icon each of the given accounts elects now, with
+-- the time it was stored. An account's icon is either an image it uploaded or
+-- one of the tenant's presets, and preset says which. A caller reads the
+-- accounts off the page it is answering for, so one query covers all of them;
+-- an account that elects no icon, or one the tenant does not hold, answers no
 -- rows.
 --
--- An image no account elects any longer answers no rows either. The ids were
--- read by an earlier statement, and an icon replaced since then is one
--- image-server already refuses, so its URL would be a broken image in an
--- answer the storefront may cache after the replacement's drop has passed.
-SELECT ui.id AS user_image_id,
+-- The election is read here rather than taken from the statement that read
+-- the page. An icon changed in between would otherwise be answered as it was
+-- before the change, into an answer the storefront may cache after the
+-- change's drop has passed: a replaced upload as a URL image-server already
+-- refuses, and a preset the reader left as the icon they no longer show.
+SELECT u.id AS user_id,
+    ui.id AS icon_id,
+    false AS preset,
     ui.updated_at,
     uiv.label,
     uiv.content_type,
     uiv.width,
     uiv.height,
     uiv.file_size_bytes
-FROM user_images ui
-    JOIN users u ON u.tenant_id = ui.tenant_id
-        AND u.icon_image_id = ui.id
+FROM users u
+    JOIN user_images ui ON ui.tenant_id = u.tenant_id
+        AND ui.id = u.icon_image_id
     JOIN user_image_variants uiv ON uiv.tenant_id = ui.tenant_id
         AND uiv.user_image_id = ui.id
 WHERE ui.tenant_id = sqlc.arg('tenant_id')
-    AND ui.id = ANY(sqlc.arg('image_ids')::uuid[])
-ORDER BY ui.id,
-    uiv.width DESC,
-    uiv.label;
+    AND u.id = ANY(sqlc.arg('user_ids')::uuid[])
+UNION ALL
+SELECT u.id AS user_id,
+    p.id AS icon_id,
+    true AS preset,
+    p.created_at AS updated_at,
+    v.label,
+    v.content_type,
+    v.width,
+    v.height,
+    v.file_size_bytes
+FROM users u
+    JOIN reader_icon_presets p ON p.tenant_id = u.tenant_id
+        AND p.id = u.icon_preset_id
+    JOIN reader_icon_preset_variants v ON v.tenant_id = p.tenant_id
+        AND v.reader_icon_preset_id = p.id
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND u.id = ANY(sqlc.arg('user_ids')::uuid[])
+ORDER BY user_id,
+    width DESC,
+    label;

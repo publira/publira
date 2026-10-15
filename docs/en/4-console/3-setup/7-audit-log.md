@@ -33,7 +33,7 @@ The log cannot be exported, and its entries are never deleted. An entry keeps th
 | Royalties | Closing settings changed, months closed, and statements downloaded as CSV |
 | Staff | Members invited, invitations resent, canceled, and accepted, roles changed, and members removed |
 | Branding | The theme changed, and the logo and the icon uploaded and removed |
-| Settings | On the **General** tab, the public site display, the time zone, the default language, reader comments, age verification, the terms of service and privacy policy, and refused email addresses; on **Limits and retention**, community limits and retention periods |
+| Settings | On the **General** tab, the public site display, the time zone, the default language, reader comments, age verification, the terms of service and privacy policy, and refused email addresses; on **Limits and retention**, community limits and retention periods; and what readers may show as an icon, with the preset icons added and deleted |
 | Integrations | The mail settings and their tests, the payment provider's settings, **Where episodes are sold**, the mobile push credentials, the apps named under **App links**, and the sign-in providers |
 | Two-step verification | Staff setting it up, turning it off, regenerating recovery codes, and signing in with it or with a recovery code |
 

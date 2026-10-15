@@ -146,6 +146,23 @@ final $typed_data.Uint8List surfaceAvailabilityDescriptor = $convert.base64Decod
     'VEEAASHAoYU1VSRkFDRV9BVkFJTEFCSUxJVFlfQUxMEAESHAoYU1VSRkFDRV9BVkFJTEFCSUxJ'
     'VFlfV0VCEAISHAoYU1VSRkFDRV9BVkFJTEFCSUxJVFlfQVBQEAM=');
 
+@$core.Deprecated('Use readerIconPolicyDescriptor instead')
+const ReaderIconPolicy$json = {
+  '1': 'ReaderIconPolicy',
+  '2': [
+    {'1': 'READER_ICON_POLICY_UNSPECIFIED', '2': 0},
+    {'1': 'READER_ICON_POLICY_UPLOAD', '2': 1},
+    {'1': 'READER_ICON_POLICY_PRESET', '2': 2},
+    {'1': 'READER_ICON_POLICY_DISABLED', '2': 3},
+  ],
+};
+
+/// Descriptor for `ReaderIconPolicy`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List readerIconPolicyDescriptor = $convert.base64Decode(
+    'ChBSZWFkZXJJY29uUG9saWN5EiIKHlJFQURFUl9JQ09OX1BPTElDWV9VTlNQRUNJRklFRBAAEh'
+    '0KGVJFQURFUl9JQ09OX1BPTElDWV9VUExPQUQQARIdChlSRUFERVJfSUNPTl9QT0xJQ1lfUFJF'
+    'U0VUEAISHwobUkVBREVSX0lDT05fUE9MSUNZX0RJU0FCTEVEEAM=');
+
 @$core.Deprecated('Use ageVerificationDescriptor instead')
 const AgeVerification$json = {
   '1': 'AgeVerification',
@@ -199,6 +216,7 @@ const User$json = {
       '6': '.publira.types.v1.UserIconVariant',
       '10': 'iconImageVariants'
     },
+    {'1': 'icon_preset_id', '3': 8, '4': 1, '5': 9, '10': 'iconPresetId'},
   ],
 };
 
@@ -208,7 +226,8 @@ final $typed_data.Uint8List userDescriptor = $convert.base64Decode(
     'ISCgRyb2xlGAMgASgJUgRyb2xlEh0KCmJpcnRoX2RhdGUYBCABKAlSCWJpcnRoRGF0ZRIUCgVl'
     'bWFpbBgFIAEoCVIFZW1haWwSMQoVaWNvbl9pbWFnZV91cGRhdGVkX2F0GAYgASgJUhJpY29uSW'
     '1hZ2VVcGRhdGVkQXQSUQoTaWNvbl9pbWFnZV92YXJpYW50cxgHIAMoCzIhLnB1YmxpcmEudHlw'
-    'ZXMudjEuVXNlckljb25WYXJpYW50UhFpY29uSW1hZ2VWYXJpYW50cw==');
+    'ZXMudjEuVXNlckljb25WYXJpYW50UhFpY29uSW1hZ2VWYXJpYW50cxIkCg5pY29uX3ByZXNldF'
+    '9pZBgIIAEoCVIMaWNvblByZXNldElk');
 
 @$core.Deprecated('Use userIconVariantDescriptor instead')
 const UserIconVariant$json = {
@@ -927,3 +946,26 @@ final $typed_data.Uint8List pageVersionDescriptor = $convert.base64Decode(
     'Ymxpc2hBdBIdCgpjcmVhdGVkX2F0GAggASgJUgljcmVhdGVkQXQSIQoMcHVibGlzaGVkX2F0GA'
     'kgASgJUgtwdWJsaXNoZWRBdBIyChVhZ3JlZW1lbnRfcmVxdWlyZWRfYXQYCiABKAlSE2FncmVl'
     'bWVudFJlcXVpcmVkQXQ=');
+
+@$core.Deprecated('Use readerIconPresetDescriptor instead')
+const ReaderIconPreset$json = {
+  '1': 'ReaderIconPreset',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'created_at', '3': 2, '4': 1, '5': 9, '10': 'createdAt'},
+    {
+      '1': 'variants',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.UserIconVariant',
+      '10': 'variants'
+    },
+  ],
+};
+
+/// Descriptor for `ReaderIconPreset`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List readerIconPresetDescriptor = $convert.base64Decode(
+    'ChBSZWFkZXJJY29uUHJlc2V0Eg4KAmlkGAEgASgJUgJpZBIdCgpjcmVhdGVkX2F0GAIgASgJUg'
+    'ljcmVhdGVkQXQSPQoIdmFyaWFudHMYAyADKAsyIS5wdWJsaXJhLnR5cGVzLnYxLlVzZXJJY29u'
+    'VmFyaWFudFIIdmFyaWFudHM=');

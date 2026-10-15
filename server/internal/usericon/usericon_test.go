@@ -38,6 +38,14 @@ func (q *recordingQuerier) CreateUserImageVariant(_ context.Context, arg dbmodel
 	return dbmodels.UserImageVariant{ID: arg.ID}, nil
 }
 
+func (q *recordingQuerier) SetUserIconPreset(_ context.Context, arg dbmodels.SetUserIconPresetParams) (int64, error) {
+	q.calls = append(q.calls, "elect preset")
+	if !slices.Contains(q.accounts, arg.ID) {
+		return 0, nil
+	}
+	return 1, nil
+}
+
 func (q *recordingQuerier) SetUserIconImage(_ context.Context, arg dbmodels.SetUserIconImageParams) (int64, error) {
 	q.calls = append(q.calls, "elect")
 	q.elected = append(q.elected, arg)

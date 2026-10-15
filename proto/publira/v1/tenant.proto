@@ -130,6 +130,23 @@ message TenantGoogleSignIn {
   string ios_client_id = 2;
 }
 
+message GetTenantReaderIconPolicyRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// What a reader of the tenant may show as an icon, which decides the icon
+// field a settings screen offers: AuthService.UploadMyIcon under UPLOAD,
+// AuthService.SelectMyIcon with one of presets under PRESET, and none under
+// DISABLED. AuthService.DeleteMyIcon is accepted under every policy.
+message GetTenantReaderIconPolicyResponse {
+  // Never READER_ICON_POLICY_UNSPECIFIED: a tenant that has chosen nothing
+  // lets readers upload.
+  publira.types.v1.ReaderIconPolicy policy = 1;
+  // The presets a reader may pick, oldest first. Empty unless policy is
+  // READER_ICON_POLICY_PRESET.
+  repeated publira.types.v1.ReaderIconPreset presets = 2;
+}
+
 message GetTenantMobileAppAssociationRequest {
   publira.types.v1.TenantContext tenant = 1;
 }
@@ -160,4 +177,5 @@ service TenantService {
   rpc GetTenant(GetTenantRequest) returns (GetTenantResponse) {}
   rpc GetTenantLegalPages(GetTenantLegalPagesRequest) returns (GetTenantLegalPagesResponse) {}
   rpc GetTenantMobileAppAssociation(GetTenantMobileAppAssociationRequest) returns (GetTenantMobileAppAssociationResponse) {}
+  rpc GetTenantReaderIconPolicy(GetTenantReaderIconPolicyRequest) returns (GetTenantReaderIconPolicyResponse) {}
 }

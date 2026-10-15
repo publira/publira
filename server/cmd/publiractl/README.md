@@ -179,7 +179,7 @@ go -C server run ./cmd/publiractl policy show
 | `--wait-free-ticket-use-per-minute`, `--wait-free-ticket-use-per-day` | How many times one reader may ask to spend a wait-for-free ticket | 10, 100 |
 | `--legal-page-agreement-per-minute`, `--legal-page-agreement-per-day` | How many times one reader may send an agreement to the tenant's terms and privacy policy | 10, 50 |
 | `--identity-link-per-minute`, `--identity-link-per-day` | How many times one reader may ask to link an Apple or Google account to their account | 5, 20 |
-| `--icon-change-per-minute`, `--icon-change-per-day` | How many times one reader may upload or remove their icon | 5, 20 |
+| `--icon-change-per-minute`, `--icon-change-per-day` | How many times one reader may upload, pick, or remove their icon | 5, 20 |
 | `--login-attempts-per-account-per-minute`, `--login-attempts-per-account-per-day` | How many passwords may be tried at sign-in for one address, per tenant or for the Platform Console. A sign-in whose password is right clears the count | 5, 50 |
 | `--login-attempts-per-source-per-hour`, `--login-attempts-per-source-per-day` | How many sign-ins one origin may fail, across every address, tenant and console | 60, 300 |
 | `--mail-requests-per-address-per-hour`, `--mail-requests-per-address-per-day` | How much mail the forms that take an address may send one address | 5, 20 |
@@ -668,7 +668,7 @@ The structured log records the run's timestamp, the default period, how many ten
 
 Deletes the image rows nothing points at and the storage objects nothing names, across every tenant.
 
-The database is the authority over the bucket: an object no `*_image_variants` row names is garbage. A run has two halves, in this order. It deletes every `creator_images`, `genre_images`, `label_images`, `series_images`, `tenant_images`, and `user_images` row that its entity no longer points at, and then walks the bucket under `tenants/` a page at a time, asking the database which of the keys on that page any variant still names and deleting the rest. Nothing younger than `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS` is a candidate in either half, which is what keeps an upload still in flight out of range.
+The database is the authority over the bucket: an object no variant row — `*_image_variants` or `reader_icon_preset_variants` — names is garbage. A run has two halves, in this order. It deletes every `creator_images`, `genre_images`, `label_images`, `series_images`, `tenant_images`, and `user_images` row that its entity no longer points at, and then walks the bucket under `tenants/` a page at a time, asking the database which of the keys on that page any variant still names and deleting the rest. Nothing younger than `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS` is a candidate in either half, which is what keeps an upload still in flight out of range.
 
 Both a database and a bucket are needed. The bucket is the one saved in the platform's settings, read on the same connection; with none saved the run fails before deleting anything. For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
 

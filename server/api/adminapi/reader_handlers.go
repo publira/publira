@@ -20,7 +20,6 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantmembers"
@@ -73,10 +72,6 @@ func (filters readerListFilters) key() pagination.ListKey {
 // adminReader projects one account for the readers screen, with the icon it
 // shows out of icons, which userIcons read for the page it is on.
 func adminReader(row readerRow, icons map[uuid.UUID]protomapper.UserIcon) *publiraadminv1.AdminReader {
-	var iconVariants []*publirattypesv1.UserIconVariant
-	if row.IconImageID.Valid {
-		iconVariants = icons[row.IconImageID.UUID].Variants
-	}
 	return &publiraadminv1.AdminReader{
 		Id:                row.ID.String(),
 		PublicId:          row.PublicID,
@@ -87,7 +82,7 @@ func adminReader(row readerRow, icons map[uuid.UUID]protomapper.UserIcon) *publi
 		EmailVerifiedAt:   formatOptionalTime(row.EmailVerifiedAt),
 		BirthDate:         formatOptionalBirthDate(row.BirthDate),
 		Role:              row.Role,
-		IconImageVariants: iconVariants,
+		IconImageVariants: icons[row.ID].Variants,
 	}
 }
 
@@ -186,11 +181,11 @@ func (s *adminServer) ListReaders(
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
-	iconImageIDs := make([]uuid.UUID, 0, len(rows))
+	readerIDs := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
-		iconImageIDs = appendIconImageID(iconImageIDs, row.IconImageID)
+		readerIDs = appendIconUserID(readerIDs, row.ID)
 	}
-	icons, err := userIcons(ctx, s.queriesFor(ctx), tenant.ID, iconImageIDs)
+	icons, err := userIcons(ctx, s.queriesFor(ctx), tenant.ID, readerIDs)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list reader icons", err, "tenant_id", tenant.ID.String())
 	}

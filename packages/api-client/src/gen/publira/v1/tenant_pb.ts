@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { AgeVerification, AppPurchaseRoute, CommentMode, TenantContext, TenantTheme } from "../types/v1/types_pb";
+import type { AgeVerification, AppPurchaseRoute, CommentMode, ReaderIconPolicy, ReaderIconPreset, TenantContext, TenantTheme } from "../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/tenant.proto.
  */
 export const file_publira_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJDChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJdChpHZXRUZW5hbnRMZWdhbFBhZ2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGbG9jYWxlGAIgASgJIlIKD1RlbmFudExlZ2FsUGFnZRIMCgRzbHVnGAEgASgJEg0KBXRpdGxlGAIgASgJEhIKCnZlcnNpb25faWQYAyABKAkSDgoGbG9jYWxlGAQgASgJIoEBChtHZXRUZW5hbnRMZWdhbFBhZ2VzUmVzcG9uc2USLwoKdGVybXNfcGFnZRgBIAEoCzIbLnB1YmxpcmEudjEuVGVuYW50TGVnYWxQYWdlEjEKDHByaXZhY3lfcGFnZRgCIAEoCzIbLnB1YmxpcmEudjEuVGVuYW50TGVnYWxQYWdlIqMGChFHZXRUZW5hbnRSZXNwb25zZRIYChB0ZW5hbnRfcHVibGljX2lkGAEgASgJEhMKC3RlbmFudF9uYW1lGAIgASgJEhUKDXRlbmFudF9kb21haW4YAyABKAkSFgoOY29weXJpZ2h0X3RleHQYBCABKAkSGAoQc2l0ZV9kZXNjcmlwdGlvbhgFIAEoCRIUCgxzaXRlX3RhZ2xpbmUYBiABKAkSLAoFdGhlbWUYByABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lEhAKCHRpbWV6b25lGAggASgJEhYKDmRlZmF1bHRfbG9jYWxlGAkgASgJEhgKEGFjY2VwdHNfcGF5bWVudHMYCiABKAgSMwoMY29tbWVudF9tb2RlGAsgASgOMh0ucHVibGlyYS50eXBlcy52MS5Db21tZW50TW9kZRI7ChBhZ2VfdmVyaWZpY2F0aW9uGAwgASgOMiEucHVibGlyYS50eXBlcy52MS5BZ2VWZXJpZmljYXRpb24SIQoZd2ViX3B1c2hfdmFwaWRfcHVibGljX2tleRgNIAEoCRIVCg1hcHBfc3RvcmVfdXJsGA4gASgJEhcKD2dvb2dsZV9wbGF5X3VybBgPIAEoCRI+ChJhcHBfcHVyY2hhc2Vfcm91dGUYEiABKA4yIi5wdWJsaXJhLnR5cGVzLnYxLkFwcFB1cmNoYXNlUm91dGUSIgoaYWNjZXB0c19hcHBfc3RvcmVfcGF5bWVudHMYEyABKAgSJAocYWNjZXB0c19nb29nbGVfcGxheV9wYXltZW50cxgUIAEoCBI0Cg1hcHBsZV9zaWduX2luGBUgASgLMh0ucHVibGlyYS52MS5UZW5hbnRBcHBsZVNpZ25JbhI2Cg5nb29nbGVfc2lnbl9pbhgWIAEoCzIeLnB1YmxpcmEudjEuVGVuYW50R29vZ2xlU2lnbkluEhAKCGN1cnJlbmN5GBcgASgJEhkKEXN1cHBvcnRlZF9sb2NhbGVzGBggAygJSgQIEBARSgQIERASUgp0ZXJtc19wYWdlUgxwcml2YWN5X3BhZ2UiKAoRVGVuYW50QXBwbGVTaWduSW4SEwoLc2VydmljZXNfaWQYASABKAkiQgoSVGVuYW50R29vZ2xlU2lnbkluEhUKDXdlYl9jbGllbnRfaWQYASABKAkSFQoNaW9zX2NsaWVudF9pZBgCIAEoCSJXCiRHZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IlcKG1RlbmFudEFuZHJvaWRBcHBBc3NvY2lhdGlvbhIWCg5hcHBsaWNhdGlvbl9pZBgBIAEoCRIgChhzaGEyNTZfY2VydF9maW5nZXJwcmludHMYAiADKAkiRQoXVGVuYW50SW9zQXBwQXNzb2NpYXRpb24SDwoHdGVhbV9pZBgBIAEoCRIZChFidW5kbGVfaWRlbnRpZmllchgCIAEoCSKTAQolR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXNwb25zZRI4CgdhbmRyb2lkGAEgASgLMicucHVibGlyYS52MS5UZW5hbnRBbmRyb2lkQXBwQXNzb2NpYXRpb24SMAoDaW9zGAIgASgLMiMucHVibGlyYS52MS5UZW5hbnRJb3NBcHBBc3NvY2lhdGlvbjLOAgoNVGVuYW50U2VydmljZRJKCglHZXRUZW5hbnQSHC5wdWJsaXJhLnYxLkdldFRlbmFudFJlcXVlc3QaHS5wdWJsaXJhLnYxLkdldFRlbmFudFJlc3BvbnNlIgASaAoTR2V0VGVuYW50TGVnYWxQYWdlcxImLnB1YmxpcmEudjEuR2V0VGVuYW50TGVnYWxQYWdlc1JlcXVlc3QaJy5wdWJsaXJhLnYxLkdldFRlbmFudExlZ2FsUGFnZXNSZXNwb25zZSIAEoYBCh1HZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvbhIwLnB1YmxpcmEudjEuR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXF1ZXN0GjEucHVibGlyYS52MS5HZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvblJlc3BvbnNlIgBCS1pJZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJDChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJdChpHZXRUZW5hbnRMZWdhbFBhZ2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGbG9jYWxlGAIgASgJIlIKD1RlbmFudExlZ2FsUGFnZRIMCgRzbHVnGAEgASgJEg0KBXRpdGxlGAIgASgJEhIKCnZlcnNpb25faWQYAyABKAkSDgoGbG9jYWxlGAQgASgJIoEBChtHZXRUZW5hbnRMZWdhbFBhZ2VzUmVzcG9uc2USLwoKdGVybXNfcGFnZRgBIAEoCzIbLnB1YmxpcmEudjEuVGVuYW50TGVnYWxQYWdlEjEKDHByaXZhY3lfcGFnZRgCIAEoCzIbLnB1YmxpcmEudjEuVGVuYW50TGVnYWxQYWdlIqMGChFHZXRUZW5hbnRSZXNwb25zZRIYChB0ZW5hbnRfcHVibGljX2lkGAEgASgJEhMKC3RlbmFudF9uYW1lGAIgASgJEhUKDXRlbmFudF9kb21haW4YAyABKAkSFgoOY29weXJpZ2h0X3RleHQYBCABKAkSGAoQc2l0ZV9kZXNjcmlwdGlvbhgFIAEoCRIUCgxzaXRlX3RhZ2xpbmUYBiABKAkSLAoFdGhlbWUYByABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lEhAKCHRpbWV6b25lGAggASgJEhYKDmRlZmF1bHRfbG9jYWxlGAkgASgJEhgKEGFjY2VwdHNfcGF5bWVudHMYCiABKAgSMwoMY29tbWVudF9tb2RlGAsgASgOMh0ucHVibGlyYS50eXBlcy52MS5Db21tZW50TW9kZRI7ChBhZ2VfdmVyaWZpY2F0aW9uGAwgASgOMiEucHVibGlyYS50eXBlcy52MS5BZ2VWZXJpZmljYXRpb24SIQoZd2ViX3B1c2hfdmFwaWRfcHVibGljX2tleRgNIAEoCRIVCg1hcHBfc3RvcmVfdXJsGA4gASgJEhcKD2dvb2dsZV9wbGF5X3VybBgPIAEoCRI+ChJhcHBfcHVyY2hhc2Vfcm91dGUYEiABKA4yIi5wdWJsaXJhLnR5cGVzLnYxLkFwcFB1cmNoYXNlUm91dGUSIgoaYWNjZXB0c19hcHBfc3RvcmVfcGF5bWVudHMYEyABKAgSJAocYWNjZXB0c19nb29nbGVfcGxheV9wYXltZW50cxgUIAEoCBI0Cg1hcHBsZV9zaWduX2luGBUgASgLMh0ucHVibGlyYS52MS5UZW5hbnRBcHBsZVNpZ25JbhI2Cg5nb29nbGVfc2lnbl9pbhgWIAEoCzIeLnB1YmxpcmEudjEuVGVuYW50R29vZ2xlU2lnbkluEhAKCGN1cnJlbmN5GBcgASgJEhkKEXN1cHBvcnRlZF9sb2NhbGVzGBggAygJSgQIEBARSgQIERASUgp0ZXJtc19wYWdlUgxwcml2YWN5X3BhZ2UiKAoRVGVuYW50QXBwbGVTaWduSW4SEwoLc2VydmljZXNfaWQYASABKAkiQgoSVGVuYW50R29vZ2xlU2lnbkluEhUKDXdlYl9jbGllbnRfaWQYASABKAkSFQoNaW9zX2NsaWVudF9pZBgCIAEoCSJTCiBHZXRUZW5hbnRSZWFkZXJJY29uUG9saWN5UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQijAEKIUdldFRlbmFudFJlYWRlckljb25Qb2xpY3lSZXNwb25zZRIyCgZwb2xpY3kYASABKA4yIi5wdWJsaXJhLnR5cGVzLnYxLlJlYWRlckljb25Qb2xpY3kSMwoHcHJlc2V0cxgCIAMoCzIiLnB1YmxpcmEudHlwZXMudjEuUmVhZGVySWNvblByZXNldCJXCiRHZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IlcKG1RlbmFudEFuZHJvaWRBcHBBc3NvY2lhdGlvbhIWCg5hcHBsaWNhdGlvbl9pZBgBIAEoCRIgChhzaGEyNTZfY2VydF9maW5nZXJwcmludHMYAiADKAkiRQoXVGVuYW50SW9zQXBwQXNzb2NpYXRpb24SDwoHdGVhbV9pZBgBIAEoCRIZChFidW5kbGVfaWRlbnRpZmllchgCIAEoCSKTAQolR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXNwb25zZRI4CgdhbmRyb2lkGAEgASgLMicucHVibGlyYS52MS5UZW5hbnRBbmRyb2lkQXBwQXNzb2NpYXRpb24SMAoDaW9zGAIgASgLMiMucHVibGlyYS52MS5UZW5hbnRJb3NBcHBBc3NvY2lhdGlvbjLKAwoNVGVuYW50U2VydmljZRJKCglHZXRUZW5hbnQSHC5wdWJsaXJhLnYxLkdldFRlbmFudFJlcXVlc3QaHS5wdWJsaXJhLnYxLkdldFRlbmFudFJlc3BvbnNlIgASaAoTR2V0VGVuYW50TGVnYWxQYWdlcxImLnB1YmxpcmEudjEuR2V0VGVuYW50TGVnYWxQYWdlc1JlcXVlc3QaJy5wdWJsaXJhLnYxLkdldFRlbmFudExlZ2FsUGFnZXNSZXNwb25zZSIAEoYBCh1HZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvbhIwLnB1YmxpcmEudjEuR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXF1ZXN0GjEucHVibGlyYS52MS5HZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvblJlc3BvbnNlIgASegoZR2V0VGVuYW50UmVhZGVySWNvblBvbGljeRIsLnB1YmxpcmEudjEuR2V0VGVuYW50UmVhZGVySWNvblBvbGljeVJlcXVlc3QaLS5wdWJsaXJhLnYxLkdldFRlbmFudFJlYWRlckljb25Qb2xpY3lSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.GetTenantRequest
@@ -357,6 +357,56 @@ export const TenantGoogleSignInSchema: GenMessage<TenantGoogleSignIn> = /*@__PUR
   messageDesc(file_publira_v1_tenant, 6);
 
 /**
+ * @generated from message publira.v1.GetTenantReaderIconPolicyRequest
+ */
+export type GetTenantReaderIconPolicyRequest = Message<"publira.v1.GetTenantReaderIconPolicyRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.v1.GetTenantReaderIconPolicyRequest.
+ * Use `create(GetTenantReaderIconPolicyRequestSchema)` to create a new message.
+ */
+export const GetTenantReaderIconPolicyRequestSchema: GenMessage<GetTenantReaderIconPolicyRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_tenant, 7);
+
+/**
+ * What a reader of the tenant may show as an icon, which decides the icon
+ * field a settings screen offers: AuthService.UploadMyIcon under UPLOAD,
+ * AuthService.SelectMyIcon with one of presets under PRESET, and none under
+ * DISABLED. AuthService.DeleteMyIcon is accepted under every policy.
+ *
+ * @generated from message publira.v1.GetTenantReaderIconPolicyResponse
+ */
+export type GetTenantReaderIconPolicyResponse = Message<"publira.v1.GetTenantReaderIconPolicyResponse"> & {
+  /**
+   * Never READER_ICON_POLICY_UNSPECIFIED: a tenant that has chosen nothing
+   * lets readers upload.
+   *
+   * @generated from field: publira.types.v1.ReaderIconPolicy policy = 1;
+   */
+  policy: ReaderIconPolicy;
+
+  /**
+   * The presets a reader may pick, oldest first. Empty unless policy is
+   * READER_ICON_POLICY_PRESET.
+   *
+   * @generated from field: repeated publira.types.v1.ReaderIconPreset presets = 2;
+   */
+  presets: ReaderIconPreset[];
+};
+
+/**
+ * Describes the message publira.v1.GetTenantReaderIconPolicyResponse.
+ * Use `create(GetTenantReaderIconPolicyResponseSchema)` to create a new message.
+ */
+export const GetTenantReaderIconPolicyResponseSchema: GenMessage<GetTenantReaderIconPolicyResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_tenant, 8);
+
+/**
  * @generated from message publira.v1.GetTenantMobileAppAssociationRequest
  */
 export type GetTenantMobileAppAssociationRequest = Message<"publira.v1.GetTenantMobileAppAssociationRequest"> & {
@@ -371,7 +421,7 @@ export type GetTenantMobileAppAssociationRequest = Message<"publira.v1.GetTenant
  * Use `create(GetTenantMobileAppAssociationRequestSchema)` to create a new message.
  */
 export const GetTenantMobileAppAssociationRequestSchema: GenMessage<GetTenantMobileAppAssociationRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_tenant, 7);
+  messageDesc(file_publira_v1_tenant, 9);
 
 /**
  * The Android app the tenant's links open in, as assetlinks.json names it.
@@ -398,7 +448,7 @@ export type TenantAndroidAppAssociation = Message<"publira.v1.TenantAndroidAppAs
  * Use `create(TenantAndroidAppAssociationSchema)` to create a new message.
  */
 export const TenantAndroidAppAssociationSchema: GenMessage<TenantAndroidAppAssociation> = /*@__PURE__*/
-  messageDesc(file_publira_v1_tenant, 8);
+  messageDesc(file_publira_v1_tenant, 10);
 
 /**
  * The iOS app the tenant's links open in, which apple-app-site-association
@@ -423,7 +473,7 @@ export type TenantIosAppAssociation = Message<"publira.v1.TenantIosAppAssociatio
  * Use `create(TenantIosAppAssociationSchema)` to create a new message.
  */
 export const TenantIosAppAssociationSchema: GenMessage<TenantIosAppAssociation> = /*@__PURE__*/
-  messageDesc(file_publira_v1_tenant, 9);
+  messageDesc(file_publira_v1_tenant, 11);
 
 /**
  * A platform is absent where the tenant has no app on it, and nothing stands
@@ -448,7 +498,7 @@ export type GetTenantMobileAppAssociationResponse = Message<"publira.v1.GetTenan
  * Use `create(GetTenantMobileAppAssociationResponseSchema)` to create a new message.
  */
 export const GetTenantMobileAppAssociationResponseSchema: GenMessage<GetTenantMobileAppAssociationResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_tenant, 10);
+  messageDesc(file_publira_v1_tenant, 12);
 
 /**
  * @generated from service publira.v1.TenantService
@@ -477,6 +527,14 @@ export const TenantService: GenService<{
     methodKind: "unary";
     input: typeof GetTenantMobileAppAssociationRequestSchema;
     output: typeof GetTenantMobileAppAssociationResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.TenantService.GetTenantReaderIconPolicy
+   */
+  getTenantReaderIconPolicy: {
+    methodKind: "unary";
+    input: typeof GetTenantReaderIconPolicyRequestSchema;
+    output: typeof GetTenantReaderIconPolicyResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_v1_tenant, 0);

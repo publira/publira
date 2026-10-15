@@ -291,6 +291,41 @@ class SurfaceAvailability extends $pb.ProtobufEnum {
   const SurfaceAvailability._(super.value, super.name);
 }
 
+/// What a tenant lets a reader show as an icon (tenant_config.reader_icon_policy).
+class ReaderIconPolicy extends $pb.ProtobufEnum {
+  static const ReaderIconPolicy READER_ICON_POLICY_UNSPECIFIED =
+      ReaderIconPolicy._(
+          0, _omitEnumNames ? '' : 'READER_ICON_POLICY_UNSPECIFIED');
+
+  /// A reader uploads an image of their own. This is what a tenant that has
+  /// never chosen gets.
+  static const ReaderIconPolicy READER_ICON_POLICY_UPLOAD =
+      ReaderIconPolicy._(1, _omitEnumNames ? '' : 'READER_ICON_POLICY_UPLOAD');
+
+  /// A reader picks one of the tenant's presets and uploads nothing.
+  static const ReaderIconPolicy READER_ICON_POLICY_PRESET =
+      ReaderIconPolicy._(2, _omitEnumNames ? '' : 'READER_ICON_POLICY_PRESET');
+
+  /// No reader shows an icon.
+  static const ReaderIconPolicy READER_ICON_POLICY_DISABLED =
+      ReaderIconPolicy._(
+          3, _omitEnumNames ? '' : 'READER_ICON_POLICY_DISABLED');
+
+  static const $core.List<ReaderIconPolicy> values = <ReaderIconPolicy>[
+    READER_ICON_POLICY_UNSPECIFIED,
+    READER_ICON_POLICY_UPLOAD,
+    READER_ICON_POLICY_PRESET,
+    READER_ICON_POLICY_DISABLED,
+  ];
+
+  static final $core.List<ReaderIconPolicy?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static ReaderIconPolicy? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const ReaderIconPolicy._(super.value, super.name);
+}
+
 /// Which of a tenant's age ratings a reader has to prove an age for
 /// (tenant_config.age_verification). The values are the rungs of one ladder
 /// rather than a switch per rating: a tenant that gated `r15` while leaving

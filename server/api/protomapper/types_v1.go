@@ -463,30 +463,68 @@ func TenantImageURL(tenantImageID uuid.UUID, variantType string) string {
 // account carries it. The zero value is an account that shows none.
 type UserIcon struct {
 	UpdatedAt string
-	Variants  []*publirattypesv1.UserIconVariant
+	// PresetID is the id of the tenant's preset the icon is, and empty for an
+	// image the account uploaded.
+	PresetID string
+	Variants []*publirattypesv1.UserIconVariant
 }
 
-// UserIconsByImageID groups the stored variants of several icon images by the
-// image they belong to. The query returns them largest first, so nothing here
-// reorders them.
+// UserIconsByUserID groups the stored variants of the icons several accounts
+// elect by the account that elects them. The query returns them largest
+// first, so nothing here reorders them.
 //
-// Every variant is served at the image's one URL: image-server answers an
-// icon with its largest variant and scales it for each size a page asks for,
-// so the URL names the image rather than the rendition.
-func UserIconsByImageID(rows []dbmodels.ListUserIconImageVariantsByImageIDsRow) map[uuid.UUID]UserIcon {
+// Every variant is served at the icon's one URL: image-server answers an icon
+// with its largest variant and scales it for each size a page asks for, so the
+// URL names the icon rather than the rendition.
+func UserIconsByUserID(rows []dbmodels.ListUserIconVariantsByUserIDsRow) map[uuid.UUID]UserIcon {
 	icons := make(map[uuid.UUID]UserIcon)
 	for _, row := range rows {
-		icon := icons[row.UserImageID]
+		icon := icons[row.UserID]
 		icon.UpdatedAt = row.UpdatedAt.UTC().Format(time.RFC3339)
+		url := fmt.Sprintf("/images/users/%s", row.IconID.String())
+		if row.Preset {
+			icon.PresetID = row.IconID.String()
+			url = readerIconPresetURL(row.IconID)
+		}
 		icon.Variants = append(icon.Variants, &publirattypesv1.UserIconVariant{
 			Label:         row.Label,
-			Url:           fmt.Sprintf("/images/users/%s", row.UserImageID.String()),
+			Url:           url,
 			ContentType:   row.ContentType,
 			Width:         row.Width,
 			Height:        row.Height,
 			FileSizeBytes: row.FileSizeBytes,
 		})
-		icons[row.UserImageID] = icon
+		icons[row.UserID] = icon
 	}
 	return icons
+}
+
+// ReaderIconPresets groups the stored variants of a tenant's presets by
+// preset, in the order the query returns them: oldest preset first, and each
+// preset's variants largest first.
+func ReaderIconPresets(rows []dbmodels.ListReaderIconPresetVariantsRow) []*publirattypesv1.ReaderIconPreset {
+	presets := []*publirattypesv1.ReaderIconPreset{}
+	for _, row := range rows {
+		id := row.ReaderIconPresetID.String()
+		if len(presets) == 0 || presets[len(presets)-1].Id != id {
+			presets = append(presets, &publirattypesv1.ReaderIconPreset{
+				Id:        id,
+				CreatedAt: row.CreatedAt.UTC().Format(time.RFC3339),
+			})
+		}
+		preset := presets[len(presets)-1]
+		preset.Variants = append(preset.Variants, &publirattypesv1.UserIconVariant{
+			Label:         row.Label,
+			Url:           readerIconPresetURL(row.ReaderIconPresetID),
+			ContentType:   row.ContentType,
+			Width:         row.Width,
+			Height:        row.Height,
+			FileSizeBytes: row.FileSizeBytes,
+		})
+	}
+	return presets
+}
+
+func readerIconPresetURL(presetID uuid.UUID) string {
+	return fmt.Sprintf("/images/reader-icon-presets/%s", presetID.String())
 }

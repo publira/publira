@@ -876,6 +876,47 @@ final $typed_data.Uint8List deleteMyIconResponseDescriptor = $convert.base64Deco
     'ChREZWxldGVNeUljb25SZXNwb25zZRIqCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS'
     '5Vc2VyUgR1c2Vy');
 
+@$core.Deprecated('Use selectMyIconRequestDescriptor instead')
+const SelectMyIconRequest$json = {
+  '1': 'SelectMyIconRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'preset_id', '3': 2, '4': 1, '5': 9, '10': 'presetId'},
+  ],
+};
+
+/// Descriptor for `SelectMyIconRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List selectMyIconRequestDescriptor = $convert.base64Decode(
+    'ChNTZWxlY3RNeUljb25SZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudj'
+    'EuVGVuYW50Q29udGV4dFIGdGVuYW50EhsKCXByZXNldF9pZBgCIAEoCVIIcHJlc2V0SWQ=');
+
+@$core.Deprecated('Use selectMyIconResponseDescriptor instead')
+const SelectMyIconResponse$json = {
+  '1': 'SelectMyIconResponse',
+  '2': [
+    {
+      '1': 'user',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.User',
+      '10': 'user'
+    },
+  ],
+};
+
+/// Descriptor for `SelectMyIconResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List selectMyIconResponseDescriptor = $convert.base64Decode(
+    'ChRTZWxlY3RNeUljb25SZXNwb25zZRIqCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS'
+    '5Vc2VyUgR1c2Vy');
+
 @$core.Deprecated('Use deleteMeRequestDescriptor instead')
 const DeleteMeRequest$json = {
   '1': 'DeleteMeRequest',
@@ -1564,6 +1605,11 @@ const $core.Map<$core.String, $core.dynamic> AuthServiceBase$json = {
       '3': '.publira.v1.UploadMyIconResponse'
     },
     {
+      '1': 'SelectMyIcon',
+      '2': '.publira.v1.SelectMyIconRequest',
+      '3': '.publira.v1.SelectMyIconResponse'
+    },
+    {
       '1': 'DeleteMyIcon',
       '2': '.publira.v1.DeleteMyIconRequest',
       '3': '.publira.v1.DeleteMyIconResponse'
@@ -1676,6 +1722,8 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.UploadMyIconRequest': UploadMyIconRequest$json,
   '.publira.types.v1.ImageCropRect': $0.ImageCropRect$json,
   '.publira.v1.UploadMyIconResponse': UploadMyIconResponse$json,
+  '.publira.v1.SelectMyIconRequest': SelectMyIconRequest$json,
+  '.publira.v1.SelectMyIconResponse': SelectMyIconResponse$json,
   '.publira.v1.DeleteMyIconRequest': DeleteMyIconRequest$json,
   '.publira.v1.DeleteMyIconResponse': DeleteMyIconResponse$json,
   '.publira.v1.DeleteMeRequest': DeleteMeRequest$json,
@@ -1749,28 +1797,30 @@ final $typed_data.Uint8List authServiceDescriptor = $convert.base64Decode(
     'LnB1YmxpcmEudjEuR2V0TWVSZXNwb25zZRJFCghVcGRhdGVNZRIbLnB1YmxpcmEudjEuVXBkYX'
     'RlTWVSZXF1ZXN0GhwucHVibGlyYS52MS5VcGRhdGVNZVJlc3BvbnNlElEKDFVwbG9hZE15SWNv'
     'bhIfLnB1YmxpcmEudjEuVXBsb2FkTXlJY29uUmVxdWVzdBogLnB1YmxpcmEudjEuVXBsb2FkTX'
-    'lJY29uUmVzcG9uc2USUQoMRGVsZXRlTXlJY29uEh8ucHVibGlyYS52MS5EZWxldGVNeUljb25S'
-    'ZXF1ZXN0GiAucHVibGlyYS52MS5EZWxldGVNeUljb25SZXNwb25zZRJFCghEZWxldGVNZRIbLn'
-    'B1YmxpcmEudjEuRGVsZXRlTWVSZXF1ZXN0GhwucHVibGlyYS52MS5EZWxldGVNZVJlc3BvbnNl'
-    'EnIKF0dldE5vdGlmaWNhdGlvblNldHRpbmdzEioucHVibGlyYS52MS5HZXROb3RpZmljYXRpb2'
-    '5TZXR0aW5nc1JlcXVlc3QaKy5wdWJsaXJhLnYxLkdldE5vdGlmaWNhdGlvblNldHRpbmdzUmVz'
-    'cG9uc2USewoaVXBkYXRlTm90aWZpY2F0aW9uU2V0dGluZ3MSLS5wdWJsaXJhLnYxLlVwZGF0ZU'
-    '5vdGlmaWNhdGlvblNldHRpbmdzUmVxdWVzdBouLnB1YmxpcmEudjEuVXBkYXRlTm90aWZpY2F0'
-    'aW9uU2V0dGluZ3NSZXNwb25zZRJpChRHZXRWaWV3ZXJQcmVmZXJlbmNlcxInLnB1YmxpcmEudj'
-    'EuR2V0Vmlld2VyUHJlZmVyZW5jZXNSZXF1ZXN0GigucHVibGlyYS52MS5HZXRWaWV3ZXJQcmVm'
-    'ZXJlbmNlc1Jlc3BvbnNlEnIKF1VwZGF0ZVZpZXdlclByZWZlcmVuY2VzEioucHVibGlyYS52MS'
-    '5VcGRhdGVWaWV3ZXJQcmVmZXJlbmNlc1JlcXVlc3QaKy5wdWJsaXJhLnYxLlVwZGF0ZVZpZXdl'
-    'clByZWZlcmVuY2VzUmVzcG9uc2USWgoPR2V0QW5ub3VuY2VtZW50EiIucHVibGlyYS52MS5HZX'
-    'RBbm5vdW5jZW1lbnRSZXF1ZXN0GiMucHVibGlyYS52MS5HZXRBbm5vdW5jZW1lbnRSZXNwb25z'
-    'ZRJsChVHZXRQaW5uZWRBbm5vdW5jZW1lbnQSKC5wdWJsaXJhLnYxLkdldFBpbm5lZEFubm91bm'
-    'NlbWVudFJlcXVlc3QaKS5wdWJsaXJhLnYxLkdldFBpbm5lZEFubm91bmNlbWVudFJlc3BvbnNl'
-    'EmAKEUxpc3RBbm5vdW5jZW1lbnRzEiQucHVibGlyYS52MS5MaXN0QW5ub3VuY2VtZW50c1JlcX'
-    'Vlc3QaJS5wdWJsaXJhLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVzcG9uc2USbwoWTWFya0Fubm91'
-    'bmNlbWVudEFzUmVhZBIpLnB1YmxpcmEudjEuTWFya0Fubm91bmNlbWVudEFzUmVhZFJlcXVlc3'
-    'QaKi5wdWJsaXJhLnYxLk1hcmtBbm5vdW5jZW1lbnRBc1JlYWRSZXNwb25zZRJ7ChpNYXJrQWxs'
-    'QW5ub3VuY2VtZW50c0FzUmVhZBItLnB1YmxpcmEudjEuTWFya0FsbEFubm91bmNlbWVudHNBc1'
-    'JlYWRSZXF1ZXN0Gi4ucHVibGlyYS52MS5NYXJrQWxsQW5ub3VuY2VtZW50c0FzUmVhZFJlc3Bv'
-    'bnNlEnUKGEdldE15TGVnYWxQYWdlQWdyZWVtZW50cxIrLnB1YmxpcmEudjEuR2V0TXlMZWdhbF'
-    'BhZ2VBZ3JlZW1lbnRzUmVxdWVzdBosLnB1YmxpcmEudjEuR2V0TXlMZWdhbFBhZ2VBZ3JlZW1l'
-    'bnRzUmVzcG9uc2USYAoRQWdyZWVUb0xlZ2FsUGFnZXMSJC5wdWJsaXJhLnYxLkFncmVlVG9MZW'
-    'dhbFBhZ2VzUmVxdWVzdBolLnB1YmxpcmEudjEuQWdyZWVUb0xlZ2FsUGFnZXNSZXNwb25zZQ==');
+    'lJY29uUmVzcG9uc2USUQoMU2VsZWN0TXlJY29uEh8ucHVibGlyYS52MS5TZWxlY3RNeUljb25S'
+    'ZXF1ZXN0GiAucHVibGlyYS52MS5TZWxlY3RNeUljb25SZXNwb25zZRJRCgxEZWxldGVNeUljb2'
+    '4SHy5wdWJsaXJhLnYxLkRlbGV0ZU15SWNvblJlcXVlc3QaIC5wdWJsaXJhLnYxLkRlbGV0ZU15'
+    'SWNvblJlc3BvbnNlEkUKCERlbGV0ZU1lEhsucHVibGlyYS52MS5EZWxldGVNZVJlcXVlc3QaHC'
+    '5wdWJsaXJhLnYxLkRlbGV0ZU1lUmVzcG9uc2UScgoXR2V0Tm90aWZpY2F0aW9uU2V0dGluZ3MS'
+    'Ki5wdWJsaXJhLnYxLkdldE5vdGlmaWNhdGlvblNldHRpbmdzUmVxdWVzdBorLnB1YmxpcmEudj'
+    'EuR2V0Tm90aWZpY2F0aW9uU2V0dGluZ3NSZXNwb25zZRJ7ChpVcGRhdGVOb3RpZmljYXRpb25T'
+    'ZXR0aW5ncxItLnB1YmxpcmEudjEuVXBkYXRlTm90aWZpY2F0aW9uU2V0dGluZ3NSZXF1ZXN0Gi'
+    '4ucHVibGlyYS52MS5VcGRhdGVOb3RpZmljYXRpb25TZXR0aW5nc1Jlc3BvbnNlEmkKFEdldFZp'
+    'ZXdlclByZWZlcmVuY2VzEicucHVibGlyYS52MS5HZXRWaWV3ZXJQcmVmZXJlbmNlc1JlcXVlc3'
+    'QaKC5wdWJsaXJhLnYxLkdldFZpZXdlclByZWZlcmVuY2VzUmVzcG9uc2UScgoXVXBkYXRlVmll'
+    'd2VyUHJlZmVyZW5jZXMSKi5wdWJsaXJhLnYxLlVwZGF0ZVZpZXdlclByZWZlcmVuY2VzUmVxdW'
+    'VzdBorLnB1YmxpcmEudjEuVXBkYXRlVmlld2VyUHJlZmVyZW5jZXNSZXNwb25zZRJaCg9HZXRB'
+    'bm5vdW5jZW1lbnQSIi5wdWJsaXJhLnYxLkdldEFubm91bmNlbWVudFJlcXVlc3QaIy5wdWJsaX'
+    'JhLnYxLkdldEFubm91bmNlbWVudFJlc3BvbnNlEmwKFUdldFBpbm5lZEFubm91bmNlbWVudBIo'
+    'LnB1YmxpcmEudjEuR2V0UGlubmVkQW5ub3VuY2VtZW50UmVxdWVzdBopLnB1YmxpcmEudjEuR2'
+    'V0UGlubmVkQW5ub3VuY2VtZW50UmVzcG9uc2USYAoRTGlzdEFubm91bmNlbWVudHMSJC5wdWJs'
+    'aXJhLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVxdWVzdBolLnB1YmxpcmEudjEuTGlzdEFubm91bm'
+    'NlbWVudHNSZXNwb25zZRJvChZNYXJrQW5ub3VuY2VtZW50QXNSZWFkEikucHVibGlyYS52MS5N'
+    'YXJrQW5ub3VuY2VtZW50QXNSZWFkUmVxdWVzdBoqLnB1YmxpcmEudjEuTWFya0Fubm91bmNlbW'
+    'VudEFzUmVhZFJlc3BvbnNlEnsKGk1hcmtBbGxBbm5vdW5jZW1lbnRzQXNSZWFkEi0ucHVibGly'
+    'YS52MS5NYXJrQWxsQW5ub3VuY2VtZW50c0FzUmVhZFJlcXVlc3QaLi5wdWJsaXJhLnYxLk1hcm'
+    'tBbGxBbm5vdW5jZW1lbnRzQXNSZWFkUmVzcG9uc2USdQoYR2V0TXlMZWdhbFBhZ2VBZ3JlZW1l'
+    'bnRzEisucHVibGlyYS52MS5HZXRNeUxlZ2FsUGFnZUFncmVlbWVudHNSZXF1ZXN0GiwucHVibG'
+    'lyYS52MS5HZXRNeUxlZ2FsUGFnZUFncmVlbWVudHNSZXNwb25zZRJgChFBZ3JlZVRvTGVnYWxQ'
+    'YWdlcxIkLnB1YmxpcmEudjEuQWdyZWVUb0xlZ2FsUGFnZXNSZXF1ZXN0GiUucHVibGlyYS52MS'
+    '5BZ3JlZVRvTGVnYWxQYWdlc1Jlc3BvbnNl');

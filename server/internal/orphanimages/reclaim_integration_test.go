@@ -63,6 +63,16 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	seedEpisodeImage(t, env.DB, tenant.ID, episode.ID, liveEpisodePage)
 	liveReaderIcon := "tenants/TENANT001/users/READER000001/live-original.png"
 	seedUserImage(t, env.DB, tenant.ID, reader.ID, liveReaderIcon, true)
+	// A preset is the tenant's for as long as its row exists, whether or not
+	// any account shows it.
+	unpickedPreset := "tenants/TENANT001/reader-icon-presets/unpicked-original.png"
+	seedReaderIconPreset(t, env.DB, tenant.ID, unpickedPreset)
+
+	// The preset staff deleted: its variant row went with it, so nothing names
+	// its object any more.
+	deletedPreset := "tenants/TENANT001/reader-icon-presets/deleted-original.png"
+	deletedPresetID := seedReaderIconPreset(t, env.DB, tenant.ID, deletedPreset)
+	exec(t, env.DB, `DELETE FROM reader_icon_presets WHERE id = $1`, deletedPresetID)
 
 	// The image a replacement superseded: its row survived the swap, and
 	// nothing has pointed at it since.
@@ -88,7 +98,7 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	stored := []string{
 		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveGenreEyeCatch, liveTenantIcon,
 		liveEpisodePage, liveReaderIcon, supersededCreatorIcon, clearedGenreEyeCatch,
-		supersededReaderIcon, removedReaderIcon, abandonedObject,
+		supersededReaderIcon, removedReaderIcon, abandonedObject, unpickedPreset, deletedPreset,
 	}
 	for _, key := range stored {
 		if _, err := store.Upload(ctx, storage.UploadRequest{
@@ -132,8 +142,8 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	if result.RowCount != 4 {
 		t.Fatalf("row count = %d, want the superseded creator image, the cleared genre image, and the replaced and the removed reader icon", result.RowCount)
 	}
-	if result.DeletedCount != 5 {
-		t.Fatalf("deleted count = %d, want the superseded, the cleared, the replaced, the removed, and the abandoned object", result.DeletedCount)
+	if result.DeletedCount != 6 {
+		t.Fatalf("deleted count = %d, want the superseded, the cleared, the replaced, the removed, the deleted preset's, and the abandoned object", result.DeletedCount)
 	}
 	if result.ScannedCount != int64(len(stored)) {
 		t.Fatalf("scanned count = %d, want %d", result.ScannedCount, len(stored))
@@ -141,7 +151,7 @@ func TestReclaimerRunIntegration(t *testing.T) {
 
 	want := slices.Sorted(slices.Values([]string{
 		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveGenreEyeCatch, liveTenantIcon, liveEpisodePage,
-		liveReaderIcon,
+		liveReaderIcon, unpickedPreset,
 	}))
 	if got := listKeys(t, ctx, store); !slices.Equal(got, want) {
 		t.Fatalf("stored keys = %v, want %v", got, want)
@@ -340,6 +350,26 @@ func seedUserImage(t *testing.T, db *sql.DB, tenantID, userID uuid.UUID, objectK
 		exec(t, db, `UPDATE users SET icon_image_id = $1 WHERE id = $2`, imageID, userID)
 	}
 	return imageID
+}
+
+// seedReaderIconPreset stores one of the tenant's reader icon presets and its
+// single variant. Returns the reader_icon_presets id.
+func seedReaderIconPreset(t *testing.T, db *sql.DB, tenantID uuid.UUID, objectKey string) uuid.UUID {
+	t.Helper()
+
+	presetID := uuid.Must(uuid.NewV7())
+	exec(t, db, `
+		INSERT INTO reader_icon_presets (id, tenant_id)
+		VALUES ($1, $2)
+	`, presetID, tenantID)
+	exec(t, db, `
+		INSERT INTO reader_icon_preset_variants (
+			id, tenant_id, reader_icon_preset_id, label, storage_provider, object_key,
+			content_type, file_size_bytes, width, height
+		)
+		VALUES ($1, $2, $3, 'original', 's3', $4, 'image/png', 1024, 512, 512)
+	`, uuid.Must(uuid.NewV7()), tenantID, presetID, objectKey)
+	return presetID
 }
 
 // seedEpisodeImage stores one episode page image under a known object key. Its

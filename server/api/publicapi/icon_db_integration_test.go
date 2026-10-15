@@ -175,22 +175,18 @@ func TestDBUploadMyIconSetsReplacesAndRemovesTheReadersIcon(t *testing.T) {
 	if me := env.getMe(t, tenant, reader); iconURL(t, me.IconImageVariants) != second {
 		t.Fatalf("GetMe after the replacement = %v, want %s", me.IconImageVariants, second)
 	}
-	// A page that read the account before the replacement still holds the old
-	// image's id, and image-server refuses that image now, so the variants it
-	// asks for next answer nothing rather than a broken URL.
-	superseded, err := uuid.Parse(strings.TrimPrefix(first, "/images/users/"))
-	if err != nil {
-		t.Fatalf("icon URL %q names no image id: %v", first, err)
-	}
-	rows, err := dbmodels.New(env.PG.DB).ListUserIconImageVariantsByImageIDs(context.Background(), dbmodels.ListUserIconImageVariantsByImageIDsParams{
+	// A page that read the account before the replacement and asks for its
+	// icon afterwards is answered the replacement, never the image
+	// image-server now refuses.
+	rows, err := dbmodels.New(env.PG.DB).ListUserIconVariantsByUserIDs(context.Background(), dbmodels.ListUserIconVariantsByUserIDsParams{
 		TenantID: tenant.ID,
-		ImageIds: []uuid.UUID{superseded},
+		UserIds:  []uuid.UUID{reader.ID},
 	})
 	if err != nil {
-		t.Fatalf("ListUserIconImageVariantsByImageIDs: %v", err)
+		t.Fatalf("ListUserIconVariantsByUserIDs: %v", err)
 	}
-	if len(rows) != 0 {
-		t.Fatalf("variants of the replaced icon = %v, want none", rows)
+	if len(rows) != 1 || "/images/users/"+rows[0].IconID.String() != second {
+		t.Fatalf("icon variants read after the replacement = %v, want the one variant of %s", rows, second)
 	}
 
 	if removed := env.deleteMyIcon(t, tenant, reader); len(removed.IconImageVariants) != 0 || removed.IconImageUpdatedAt != "" {

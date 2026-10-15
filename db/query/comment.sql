@@ -61,7 +61,6 @@ SELECT c.id,
     c.user_id,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -103,7 +102,6 @@ SELECT c.id,
     c.user_id,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -144,6 +142,19 @@ FROM episode_comments c
         AND e.id = c.episode_id
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.user_id = sqlc.arg('user_id')
+    AND c.status = 'published'
+ORDER BY e.public_id;
+
+-- name: ListEpisodePublicIDsWithPublishedCommentsByUsers :many
+-- ListEpisodePublicIDsWithPublishedCommentsByUser for every account a tenant
+-- change cleared the icon of at once: a change of the reader icon policy, or a
+-- deleted preset.
+SELECT DISTINCT e.public_id
+FROM episode_comments c
+    JOIN episodes e ON e.tenant_id = c.tenant_id
+        AND e.id = c.episode_id
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND c.user_id = ANY(sqlc.arg('user_ids')::uuid[])
     AND c.status = 'published'
 ORDER BY e.public_id;
 
@@ -268,7 +279,6 @@ WHERE cc.id = credited_creator_of_account(
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -320,7 +330,6 @@ LIMIT sqlc.arg('limit');
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -384,7 +393,6 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur

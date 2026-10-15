@@ -646,6 +646,494 @@ func (x *UpdateTenantCommentSettingsResponse) GetAutoHideReportThreshold() uint3
 	return 0
 }
 
+type GetTenantReaderIconPolicyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantReaderIconPolicyRequest) Reset() {
+	*x = GetTenantReaderIconPolicyRequest{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantReaderIconPolicyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantReaderIconPolicyRequest) ProtoMessage() {}
+
+func (x *GetTenantReaderIconPolicyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantReaderIconPolicyRequest.ProtoReflect.Descriptor instead.
+func (*GetTenantReaderIconPolicyRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetTenantReaderIconPolicyRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+type GetTenantReaderIconPolicyResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Never READER_ICON_POLICY_UNSPECIFIED: a tenant that has saved nothing lets
+	// readers upload, and a stored value naming no policy fails this RPC.
+	Policy        v1.ReaderIconPolicy `protobuf:"varint,1,opt,name=policy,proto3,enum=publira.types.v1.ReaderIconPolicy" json:"policy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantReaderIconPolicyResponse) Reset() {
+	*x = GetTenantReaderIconPolicyResponse{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantReaderIconPolicyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantReaderIconPolicyResponse) ProtoMessage() {}
+
+func (x *GetTenantReaderIconPolicyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantReaderIconPolicyResponse.ProtoReflect.Descriptor instead.
+func (*GetTenantReaderIconPolicyResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetTenantReaderIconPolicyResponse) GetPolicy() v1.ReaderIconPolicy {
+	if x != nil {
+		return x.Policy
+	}
+	return v1.ReaderIconPolicy(0)
+}
+
+// Narrowing the policy clears the icons it no longer allows: PRESET leaves
+// every account that shows an upload with none, and DISABLED every account
+// that shows any icon. Widening it clears nothing.
+type UpdateTenantReaderIconPolicyRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// READER_ICON_POLICY_UNSPECIFIED is rejected.
+	Policy        v1.ReaderIconPolicy `protobuf:"varint,2,opt,name=policy,proto3,enum=publira.types.v1.ReaderIconPolicy" json:"policy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateTenantReaderIconPolicyRequest) Reset() {
+	*x = UpdateTenantReaderIconPolicyRequest{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTenantReaderIconPolicyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTenantReaderIconPolicyRequest) ProtoMessage() {}
+
+func (x *UpdateTenantReaderIconPolicyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTenantReaderIconPolicyRequest.ProtoReflect.Descriptor instead.
+func (*UpdateTenantReaderIconPolicyRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *UpdateTenantReaderIconPolicyRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UpdateTenantReaderIconPolicyRequest) GetPolicy() v1.ReaderIconPolicy {
+	if x != nil {
+		return x.Policy
+	}
+	return v1.ReaderIconPolicy(0)
+}
+
+type UpdateTenantReaderIconPolicyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Policy        v1.ReaderIconPolicy    `protobuf:"varint,1,opt,name=policy,proto3,enum=publira.types.v1.ReaderIconPolicy" json:"policy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateTenantReaderIconPolicyResponse) Reset() {
+	*x = UpdateTenantReaderIconPolicyResponse{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTenantReaderIconPolicyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTenantReaderIconPolicyResponse) ProtoMessage() {}
+
+func (x *UpdateTenantReaderIconPolicyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTenantReaderIconPolicyResponse.ProtoReflect.Descriptor instead.
+func (*UpdateTenantReaderIconPolicyResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *UpdateTenantReaderIconPolicyResponse) GetPolicy() v1.ReaderIconPolicy {
+	if x != nil {
+		return x.Policy
+	}
+	return v1.ReaderIconPolicy(0)
+}
+
+type ListReaderIconPresetsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReaderIconPresetsRequest) Reset() {
+	*x = ListReaderIconPresetsRequest{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReaderIconPresetsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReaderIconPresetsRequest) ProtoMessage() {}
+
+func (x *ListReaderIconPresetsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReaderIconPresetsRequest.ProtoReflect.Descriptor instead.
+func (*ListReaderIconPresetsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ListReaderIconPresetsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+// Every preset of the tenant, oldest first. A tenant holds at most 50, so the
+// list is never paged.
+type ListReaderIconPresetsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Presets       []*v1.ReaderIconPreset `protobuf:"bytes,1,rep,name=presets,proto3" json:"presets,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReaderIconPresetsResponse) Reset() {
+	*x = ListReaderIconPresetsResponse{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReaderIconPresetsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReaderIconPresetsResponse) ProtoMessage() {}
+
+func (x *ListReaderIconPresetsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReaderIconPresetsResponse.ProtoReflect.Descriptor instead.
+func (*ListReaderIconPresetsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ListReaderIconPresetsResponse) GetPresets() []*v1.ReaderIconPreset {
+	if x != nil {
+		return x.Presets
+	}
+	return nil
+}
+
+// The upload is held to what a reader's own icon upload is: an image/* of at
+// most 10 MiB, cut to a square of at least 128 px. Either refusal is
+// invalid_argument on icon_data, or on icon_crop when the rectangle is at
+// fault.
+type UploadReaderIconPresetRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	IconData []byte                 `protobuf:"bytes,2,opt,name=icon_data,json=iconData,proto3" json:"icon_data,omitempty"`
+	// Empty is detected from icon_data.
+	IconContentType string `protobuf:"bytes,3,opt,name=icon_content_type,json=iconContentType,proto3" json:"icon_content_type,omitempty"`
+	// Where in the upload the square icon is cut. Omitted, it is cut from the
+	// centre.
+	IconCrop      *v1.ImageCropRect `protobuf:"bytes,4,opt,name=icon_crop,json=iconCrop,proto3" json:"icon_crop,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UploadReaderIconPresetRequest) Reset() {
+	*x = UploadReaderIconPresetRequest{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadReaderIconPresetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadReaderIconPresetRequest) ProtoMessage() {}
+
+func (x *UploadReaderIconPresetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadReaderIconPresetRequest.ProtoReflect.Descriptor instead.
+func (*UploadReaderIconPresetRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *UploadReaderIconPresetRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UploadReaderIconPresetRequest) GetIconData() []byte {
+	if x != nil {
+		return x.IconData
+	}
+	return nil
+}
+
+func (x *UploadReaderIconPresetRequest) GetIconContentType() string {
+	if x != nil {
+		return x.IconContentType
+	}
+	return ""
+}
+
+func (x *UploadReaderIconPresetRequest) GetIconCrop() *v1.ImageCropRect {
+	if x != nil {
+		return x.IconCrop
+	}
+	return nil
+}
+
+type UploadReaderIconPresetResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Preset        *v1.ReaderIconPreset   `protobuf:"bytes,1,opt,name=preset,proto3" json:"preset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UploadReaderIconPresetResponse) Reset() {
+	*x = UploadReaderIconPresetResponse{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadReaderIconPresetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadReaderIconPresetResponse) ProtoMessage() {}
+
+func (x *UploadReaderIconPresetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadReaderIconPresetResponse.ProtoReflect.Descriptor instead.
+func (*UploadReaderIconPresetResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *UploadReaderIconPresetResponse) GetPreset() *v1.ReaderIconPreset {
+	if x != nil {
+		return x.Preset
+	}
+	return nil
+}
+
+// Deleting a preset leaves every account that shows it with no icon.
+type DeleteReaderIconPresetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PresetId      string                 `protobuf:"bytes,2,opt,name=preset_id,json=presetId,proto3" json:"preset_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteReaderIconPresetRequest) Reset() {
+	*x = DeleteReaderIconPresetRequest{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteReaderIconPresetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteReaderIconPresetRequest) ProtoMessage() {}
+
+func (x *DeleteReaderIconPresetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteReaderIconPresetRequest.ProtoReflect.Descriptor instead.
+func (*DeleteReaderIconPresetRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *DeleteReaderIconPresetRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *DeleteReaderIconPresetRequest) GetPresetId() string {
+	if x != nil {
+		return x.PresetId
+	}
+	return ""
+}
+
+type DeleteReaderIconPresetResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteReaderIconPresetResponse) Reset() {
+	*x = DeleteReaderIconPresetResponse{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteReaderIconPresetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteReaderIconPresetResponse) ProtoMessage() {}
+
+func (x *DeleteReaderIconPresetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteReaderIconPresetResponse.ProtoReflect.Descriptor instead.
+func (*DeleteReaderIconPresetResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{21}
+}
+
 type GetTenantAgeVerificationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -655,7 +1143,7 @@ type GetTenantAgeVerificationRequest struct {
 
 func (x *GetTenantAgeVerificationRequest) Reset() {
 	*x = GetTenantAgeVerificationRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[12]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -667,7 +1155,7 @@ func (x *GetTenantAgeVerificationRequest) String() string {
 func (*GetTenantAgeVerificationRequest) ProtoMessage() {}
 
 func (x *GetTenantAgeVerificationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[12]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -680,7 +1168,7 @@ func (x *GetTenantAgeVerificationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantAgeVerificationRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantAgeVerificationRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{12}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *GetTenantAgeVerificationRequest) GetTenant() *v1.TenantContext {
@@ -701,7 +1189,7 @@ type GetTenantAgeVerificationResponse struct {
 
 func (x *GetTenantAgeVerificationResponse) Reset() {
 	*x = GetTenantAgeVerificationResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[13]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -713,7 +1201,7 @@ func (x *GetTenantAgeVerificationResponse) String() string {
 func (*GetTenantAgeVerificationResponse) ProtoMessage() {}
 
 func (x *GetTenantAgeVerificationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[13]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -726,7 +1214,7 @@ func (x *GetTenantAgeVerificationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantAgeVerificationResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantAgeVerificationResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{13}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GetTenantAgeVerificationResponse) GetAgeVerification() v1.AgeVerification {
@@ -748,7 +1236,7 @@ type UpdateTenantAgeVerificationRequest struct {
 
 func (x *UpdateTenantAgeVerificationRequest) Reset() {
 	*x = UpdateTenantAgeVerificationRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[14]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -760,7 +1248,7 @@ func (x *UpdateTenantAgeVerificationRequest) String() string {
 func (*UpdateTenantAgeVerificationRequest) ProtoMessage() {}
 
 func (x *UpdateTenantAgeVerificationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[14]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -773,7 +1261,7 @@ func (x *UpdateTenantAgeVerificationRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use UpdateTenantAgeVerificationRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantAgeVerificationRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{14}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *UpdateTenantAgeVerificationRequest) GetTenant() *v1.TenantContext {
@@ -799,7 +1287,7 @@ type UpdateTenantAgeVerificationResponse struct {
 
 func (x *UpdateTenantAgeVerificationResponse) Reset() {
 	*x = UpdateTenantAgeVerificationResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[15]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -811,7 +1299,7 @@ func (x *UpdateTenantAgeVerificationResponse) String() string {
 func (*UpdateTenantAgeVerificationResponse) ProtoMessage() {}
 
 func (x *UpdateTenantAgeVerificationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[15]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -824,7 +1312,7 @@ func (x *UpdateTenantAgeVerificationResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use UpdateTenantAgeVerificationResponse.ProtoReflect.Descriptor instead.
 func (*UpdateTenantAgeVerificationResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{15}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *UpdateTenantAgeVerificationResponse) GetAgeVerification() v1.AgeVerification {
@@ -850,7 +1338,7 @@ type TenantPurchaseSettings struct {
 
 func (x *TenantPurchaseSettings) Reset() {
 	*x = TenantPurchaseSettings{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[16]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -862,7 +1350,7 @@ func (x *TenantPurchaseSettings) String() string {
 func (*TenantPurchaseSettings) ProtoMessage() {}
 
 func (x *TenantPurchaseSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[16]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -875,7 +1363,7 @@ func (x *TenantPurchaseSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantPurchaseSettings.ProtoReflect.Descriptor instead.
 func (*TenantPurchaseSettings) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{16}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *TenantPurchaseSettings) GetPurchaseAvailability() v1.SurfaceAvailability {
@@ -908,7 +1396,7 @@ type GetTenantPurchaseSettingsRequest struct {
 
 func (x *GetTenantPurchaseSettingsRequest) Reset() {
 	*x = GetTenantPurchaseSettingsRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[17]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -920,7 +1408,7 @@ func (x *GetTenantPurchaseSettingsRequest) String() string {
 func (*GetTenantPurchaseSettingsRequest) ProtoMessage() {}
 
 func (x *GetTenantPurchaseSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[17]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -933,7 +1421,7 @@ func (x *GetTenantPurchaseSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantPurchaseSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantPurchaseSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{17}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetTenantPurchaseSettingsRequest) GetTenant() *v1.TenantContext {
@@ -952,7 +1440,7 @@ type GetTenantPurchaseSettingsResponse struct {
 
 func (x *GetTenantPurchaseSettingsResponse) Reset() {
 	*x = GetTenantPurchaseSettingsResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[18]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -964,7 +1452,7 @@ func (x *GetTenantPurchaseSettingsResponse) String() string {
 func (*GetTenantPurchaseSettingsResponse) ProtoMessage() {}
 
 func (x *GetTenantPurchaseSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[18]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -977,7 +1465,7 @@ func (x *GetTenantPurchaseSettingsResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetTenantPurchaseSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantPurchaseSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{18}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetTenantPurchaseSettingsResponse) GetSettings() *TenantPurchaseSettings {
@@ -999,7 +1487,7 @@ type UpdateTenantPurchaseSettingsRequest struct {
 
 func (x *UpdateTenantPurchaseSettingsRequest) Reset() {
 	*x = UpdateTenantPurchaseSettingsRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[19]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1011,7 +1499,7 @@ func (x *UpdateTenantPurchaseSettingsRequest) String() string {
 func (*UpdateTenantPurchaseSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateTenantPurchaseSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[19]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1024,7 +1512,7 @@ func (x *UpdateTenantPurchaseSettingsRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use UpdateTenantPurchaseSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantPurchaseSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{19}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *UpdateTenantPurchaseSettingsRequest) GetTenant() *v1.TenantContext {
@@ -1050,7 +1538,7 @@ type UpdateTenantPurchaseSettingsResponse struct {
 
 func (x *UpdateTenantPurchaseSettingsResponse) Reset() {
 	*x = UpdateTenantPurchaseSettingsResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[20]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1062,7 +1550,7 @@ func (x *UpdateTenantPurchaseSettingsResponse) String() string {
 func (*UpdateTenantPurchaseSettingsResponse) ProtoMessage() {}
 
 func (x *UpdateTenantPurchaseSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[20]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1075,7 +1563,7 @@ func (x *UpdateTenantPurchaseSettingsResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use UpdateTenantPurchaseSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateTenantPurchaseSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{20}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *UpdateTenantPurchaseSettingsResponse) GetSettings() *TenantPurchaseSettings {
@@ -1101,7 +1589,7 @@ type TenantLegalPage struct {
 
 func (x *TenantLegalPage) Reset() {
 	*x = TenantLegalPage{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[21]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1113,7 +1601,7 @@ func (x *TenantLegalPage) String() string {
 func (*TenantLegalPage) ProtoMessage() {}
 
 func (x *TenantLegalPage) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[21]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1126,7 +1614,7 @@ func (x *TenantLegalPage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantLegalPage.ProtoReflect.Descriptor instead.
 func (*TenantLegalPage) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{21}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *TenantLegalPage) GetPageId() string {
@@ -1169,7 +1657,7 @@ type TenantLegalPages struct {
 
 func (x *TenantLegalPages) Reset() {
 	*x = TenantLegalPages{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[22]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1181,7 +1669,7 @@ func (x *TenantLegalPages) String() string {
 func (*TenantLegalPages) ProtoMessage() {}
 
 func (x *TenantLegalPages) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[22]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1194,7 +1682,7 @@ func (x *TenantLegalPages) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantLegalPages.ProtoReflect.Descriptor instead.
 func (*TenantLegalPages) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{22}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *TenantLegalPages) GetTermsPage() *TenantLegalPage {
@@ -1220,7 +1708,7 @@ type GetTenantLegalPagesRequest struct {
 
 func (x *GetTenantLegalPagesRequest) Reset() {
 	*x = GetTenantLegalPagesRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[23]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1232,7 +1720,7 @@ func (x *GetTenantLegalPagesRequest) String() string {
 func (*GetTenantLegalPagesRequest) ProtoMessage() {}
 
 func (x *GetTenantLegalPagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[23]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1245,7 +1733,7 @@ func (x *GetTenantLegalPagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantLegalPagesRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantLegalPagesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{23}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GetTenantLegalPagesRequest) GetTenant() *v1.TenantContext {
@@ -1264,7 +1752,7 @@ type GetTenantLegalPagesResponse struct {
 
 func (x *GetTenantLegalPagesResponse) Reset() {
 	*x = GetTenantLegalPagesResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[24]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1276,7 +1764,7 @@ func (x *GetTenantLegalPagesResponse) String() string {
 func (*GetTenantLegalPagesResponse) ProtoMessage() {}
 
 func (x *GetTenantLegalPagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[24]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1289,7 +1777,7 @@ func (x *GetTenantLegalPagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantLegalPagesResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantLegalPagesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{24}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *GetTenantLegalPagesResponse) GetPages() *TenantLegalPages {
@@ -1314,7 +1802,7 @@ type UpdateTenantLegalPagesRequest struct {
 
 func (x *UpdateTenantLegalPagesRequest) Reset() {
 	*x = UpdateTenantLegalPagesRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[25]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1326,7 +1814,7 @@ func (x *UpdateTenantLegalPagesRequest) String() string {
 func (*UpdateTenantLegalPagesRequest) ProtoMessage() {}
 
 func (x *UpdateTenantLegalPagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[25]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1339,7 +1827,7 @@ func (x *UpdateTenantLegalPagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTenantLegalPagesRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantLegalPagesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{25}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *UpdateTenantLegalPagesRequest) GetTenant() *v1.TenantContext {
@@ -1372,7 +1860,7 @@ type UpdateTenantLegalPagesResponse struct {
 
 func (x *UpdateTenantLegalPagesResponse) Reset() {
 	*x = UpdateTenantLegalPagesResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[26]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1384,7 +1872,7 @@ func (x *UpdateTenantLegalPagesResponse) String() string {
 func (*UpdateTenantLegalPagesResponse) ProtoMessage() {}
 
 func (x *UpdateTenantLegalPagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[26]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1397,7 +1885,7 @@ func (x *UpdateTenantLegalPagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTenantLegalPagesResponse.ProtoReflect.Descriptor instead.
 func (*UpdateTenantLegalPagesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{26}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *UpdateTenantLegalPagesResponse) GetPages() *TenantLegalPages {
@@ -1423,7 +1911,7 @@ type TenantAndroidAppAssociation struct {
 
 func (x *TenantAndroidAppAssociation) Reset() {
 	*x = TenantAndroidAppAssociation{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[27]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1435,7 +1923,7 @@ func (x *TenantAndroidAppAssociation) String() string {
 func (*TenantAndroidAppAssociation) ProtoMessage() {}
 
 func (x *TenantAndroidAppAssociation) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[27]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1448,7 +1936,7 @@ func (x *TenantAndroidAppAssociation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantAndroidAppAssociation.ProtoReflect.Descriptor instead.
 func (*TenantAndroidAppAssociation) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{27}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *TenantAndroidAppAssociation) GetApplicationId() string {
@@ -1481,7 +1969,7 @@ type TenantIosAppAssociation struct {
 
 func (x *TenantIosAppAssociation) Reset() {
 	*x = TenantIosAppAssociation{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[28]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1493,7 +1981,7 @@ func (x *TenantIosAppAssociation) String() string {
 func (*TenantIosAppAssociation) ProtoMessage() {}
 
 func (x *TenantIosAppAssociation) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[28]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1506,7 +1994,7 @@ func (x *TenantIosAppAssociation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantIosAppAssociation.ProtoReflect.Descriptor instead.
 func (*TenantIosAppAssociation) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{28}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *TenantIosAppAssociation) GetTeamId() string {
@@ -1535,7 +2023,7 @@ type TenantMobileAppAssociation struct {
 
 func (x *TenantMobileAppAssociation) Reset() {
 	*x = TenantMobileAppAssociation{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[29]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1547,7 +2035,7 @@ func (x *TenantMobileAppAssociation) String() string {
 func (*TenantMobileAppAssociation) ProtoMessage() {}
 
 func (x *TenantMobileAppAssociation) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[29]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1560,7 +2048,7 @@ func (x *TenantMobileAppAssociation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantMobileAppAssociation.ProtoReflect.Descriptor instead.
 func (*TenantMobileAppAssociation) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{29}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *TenantMobileAppAssociation) GetAndroid() *TenantAndroidAppAssociation {
@@ -1586,7 +2074,7 @@ type GetTenantMobileAppAssociationRequest struct {
 
 func (x *GetTenantMobileAppAssociationRequest) Reset() {
 	*x = GetTenantMobileAppAssociationRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[30]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1598,7 +2086,7 @@ func (x *GetTenantMobileAppAssociationRequest) String() string {
 func (*GetTenantMobileAppAssociationRequest) ProtoMessage() {}
 
 func (x *GetTenantMobileAppAssociationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[30]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1611,7 +2099,7 @@ func (x *GetTenantMobileAppAssociationRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use GetTenantMobileAppAssociationRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantMobileAppAssociationRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{30}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *GetTenantMobileAppAssociationRequest) GetTenant() *v1.TenantContext {
@@ -1630,7 +2118,7 @@ type GetTenantMobileAppAssociationResponse struct {
 
 func (x *GetTenantMobileAppAssociationResponse) Reset() {
 	*x = GetTenantMobileAppAssociationResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[31]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1642,7 +2130,7 @@ func (x *GetTenantMobileAppAssociationResponse) String() string {
 func (*GetTenantMobileAppAssociationResponse) ProtoMessage() {}
 
 func (x *GetTenantMobileAppAssociationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[31]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1655,7 +2143,7 @@ func (x *GetTenantMobileAppAssociationResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use GetTenantMobileAppAssociationResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantMobileAppAssociationResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{31}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *GetTenantMobileAppAssociationResponse) GetAssociation() *TenantMobileAppAssociation {
@@ -1679,7 +2167,7 @@ type UpdateTenantMobileAppAssociationRequest struct {
 
 func (x *UpdateTenantMobileAppAssociationRequest) Reset() {
 	*x = UpdateTenantMobileAppAssociationRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[32]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1691,7 +2179,7 @@ func (x *UpdateTenantMobileAppAssociationRequest) String() string {
 func (*UpdateTenantMobileAppAssociationRequest) ProtoMessage() {}
 
 func (x *UpdateTenantMobileAppAssociationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[32]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1704,7 +2192,7 @@ func (x *UpdateTenantMobileAppAssociationRequest) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use UpdateTenantMobileAppAssociationRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantMobileAppAssociationRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{32}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *UpdateTenantMobileAppAssociationRequest) GetTenant() *v1.TenantContext {
@@ -1730,7 +2218,7 @@ type UpdateTenantMobileAppAssociationResponse struct {
 
 func (x *UpdateTenantMobileAppAssociationResponse) Reset() {
 	*x = UpdateTenantMobileAppAssociationResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[33]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1742,7 +2230,7 @@ func (x *UpdateTenantMobileAppAssociationResponse) String() string {
 func (*UpdateTenantMobileAppAssociationResponse) ProtoMessage() {}
 
 func (x *UpdateTenantMobileAppAssociationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[33]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1755,7 +2243,7 @@ func (x *UpdateTenantMobileAppAssociationResponse) ProtoReflect() protoreflect.M
 
 // Deprecated: Use UpdateTenantMobileAppAssociationResponse.ProtoReflect.Descriptor instead.
 func (*UpdateTenantMobileAppAssociationResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{33}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *UpdateTenantMobileAppAssociationResponse) GetAssociation() *TenantMobileAppAssociation {
@@ -1793,7 +2281,7 @@ type TenantAppleSignInSettings struct {
 
 func (x *TenantAppleSignInSettings) Reset() {
 	*x = TenantAppleSignInSettings{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[34]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1805,7 +2293,7 @@ func (x *TenantAppleSignInSettings) String() string {
 func (*TenantAppleSignInSettings) ProtoMessage() {}
 
 func (x *TenantAppleSignInSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[34]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1818,7 +2306,7 @@ func (x *TenantAppleSignInSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantAppleSignInSettings.ProtoReflect.Descriptor instead.
 func (*TenantAppleSignInSettings) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{34}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *TenantAppleSignInSettings) GetEnabled() bool {
@@ -1895,7 +2383,7 @@ type TenantGoogleSignInSettings struct {
 
 func (x *TenantGoogleSignInSettings) Reset() {
 	*x = TenantGoogleSignInSettings{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[35]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1907,7 +2395,7 @@ func (x *TenantGoogleSignInSettings) String() string {
 func (*TenantGoogleSignInSettings) ProtoMessage() {}
 
 func (x *TenantGoogleSignInSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[35]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1920,7 +2408,7 @@ func (x *TenantGoogleSignInSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantGoogleSignInSettings.ProtoReflect.Descriptor instead.
 func (*TenantGoogleSignInSettings) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{35}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *TenantGoogleSignInSettings) GetEnabled() bool {
@@ -1961,7 +2449,7 @@ type TenantSignInSettings struct {
 
 func (x *TenantSignInSettings) Reset() {
 	*x = TenantSignInSettings{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[36]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1973,7 +2461,7 @@ func (x *TenantSignInSettings) String() string {
 func (*TenantSignInSettings) ProtoMessage() {}
 
 func (x *TenantSignInSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[36]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1986,7 +2474,7 @@ func (x *TenantSignInSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantSignInSettings.ProtoReflect.Descriptor instead.
 func (*TenantSignInSettings) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{36}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *TenantSignInSettings) GetApple() *TenantAppleSignInSettings {
@@ -2012,7 +2500,7 @@ type GetTenantSignInSettingsRequest struct {
 
 func (x *GetTenantSignInSettingsRequest) Reset() {
 	*x = GetTenantSignInSettingsRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[37]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2024,7 +2512,7 @@ func (x *GetTenantSignInSettingsRequest) String() string {
 func (*GetTenantSignInSettingsRequest) ProtoMessage() {}
 
 func (x *GetTenantSignInSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[37]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2037,7 +2525,7 @@ func (x *GetTenantSignInSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantSignInSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantSignInSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{37}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *GetTenantSignInSettingsRequest) GetTenant() *v1.TenantContext {
@@ -2056,7 +2544,7 @@ type GetTenantSignInSettingsResponse struct {
 
 func (x *GetTenantSignInSettingsResponse) Reset() {
 	*x = GetTenantSignInSettingsResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[38]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2068,7 +2556,7 @@ func (x *GetTenantSignInSettingsResponse) String() string {
 func (*GetTenantSignInSettingsResponse) ProtoMessage() {}
 
 func (x *GetTenantSignInSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[38]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2081,7 +2569,7 @@ func (x *GetTenantSignInSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantSignInSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantSignInSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{38}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *GetTenantSignInSettingsResponse) GetSettings() *TenantSignInSettings {
@@ -2110,7 +2598,7 @@ type AppleSignInSettingsUpdate struct {
 
 func (x *AppleSignInSettingsUpdate) Reset() {
 	*x = AppleSignInSettingsUpdate{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[39]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2122,7 +2610,7 @@ func (x *AppleSignInSettingsUpdate) String() string {
 func (*AppleSignInSettingsUpdate) ProtoMessage() {}
 
 func (x *AppleSignInSettingsUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[39]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2135,7 +2623,7 @@ func (x *AppleSignInSettingsUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AppleSignInSettingsUpdate.ProtoReflect.Descriptor instead.
 func (*AppleSignInSettingsUpdate) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{39}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *AppleSignInSettingsUpdate) GetEnabled() bool {
@@ -2193,7 +2681,7 @@ type GoogleSignInSettingsUpdate struct {
 
 func (x *GoogleSignInSettingsUpdate) Reset() {
 	*x = GoogleSignInSettingsUpdate{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[40]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2205,7 +2693,7 @@ func (x *GoogleSignInSettingsUpdate) String() string {
 func (*GoogleSignInSettingsUpdate) ProtoMessage() {}
 
 func (x *GoogleSignInSettingsUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[40]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2218,7 +2706,7 @@ func (x *GoogleSignInSettingsUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GoogleSignInSettingsUpdate.ProtoReflect.Descriptor instead.
 func (*GoogleSignInSettingsUpdate) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{40}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *GoogleSignInSettingsUpdate) GetEnabled() bool {
@@ -2256,7 +2744,7 @@ type UpdateTenantSignInSettingsRequest struct {
 
 func (x *UpdateTenantSignInSettingsRequest) Reset() {
 	*x = UpdateTenantSignInSettingsRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[41]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2268,7 +2756,7 @@ func (x *UpdateTenantSignInSettingsRequest) String() string {
 func (*UpdateTenantSignInSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateTenantSignInSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[41]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2281,7 +2769,7 @@ func (x *UpdateTenantSignInSettingsRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use UpdateTenantSignInSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantSignInSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{41}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *UpdateTenantSignInSettingsRequest) GetTenant() *v1.TenantContext {
@@ -2314,7 +2802,7 @@ type UpdateTenantSignInSettingsResponse struct {
 
 func (x *UpdateTenantSignInSettingsResponse) Reset() {
 	*x = UpdateTenantSignInSettingsResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[42]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2326,7 +2814,7 @@ func (x *UpdateTenantSignInSettingsResponse) String() string {
 func (*UpdateTenantSignInSettingsResponse) ProtoMessage() {}
 
 func (x *UpdateTenantSignInSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[42]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2339,7 +2827,7 @@ func (x *UpdateTenantSignInSettingsResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use UpdateTenantSignInSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateTenantSignInSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{42}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *UpdateTenantSignInSettingsResponse) GetSettings() *TenantSignInSettings {
@@ -2364,7 +2852,7 @@ type TenantRetentionOverrides struct {
 
 func (x *TenantRetentionOverrides) Reset() {
 	*x = TenantRetentionOverrides{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[43]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2376,7 +2864,7 @@ func (x *TenantRetentionOverrides) String() string {
 func (*TenantRetentionOverrides) ProtoMessage() {}
 
 func (x *TenantRetentionOverrides) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[43]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2389,7 +2877,7 @@ func (x *TenantRetentionOverrides) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantRetentionOverrides.ProtoReflect.Descriptor instead.
 func (*TenantRetentionOverrides) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{43}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *TenantRetentionOverrides) GetWithdrawnCommentDays() int32 {
@@ -2429,7 +2917,7 @@ type GetTenantRetentionSettingsRequest struct {
 
 func (x *GetTenantRetentionSettingsRequest) Reset() {
 	*x = GetTenantRetentionSettingsRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[44]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2441,7 +2929,7 @@ func (x *GetTenantRetentionSettingsRequest) String() string {
 func (*GetTenantRetentionSettingsRequest) ProtoMessage() {}
 
 func (x *GetTenantRetentionSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[44]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2454,7 +2942,7 @@ func (x *GetTenantRetentionSettingsRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetTenantRetentionSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantRetentionSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{44}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *GetTenantRetentionSettingsRequest) GetTenant() *v1.TenantContext {
@@ -2482,7 +2970,7 @@ type GetTenantRetentionSettingsResponse struct {
 
 func (x *GetTenantRetentionSettingsResponse) Reset() {
 	*x = GetTenantRetentionSettingsResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[45]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2494,7 +2982,7 @@ func (x *GetTenantRetentionSettingsResponse) String() string {
 func (*GetTenantRetentionSettingsResponse) ProtoMessage() {}
 
 func (x *GetTenantRetentionSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[45]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2507,7 +2995,7 @@ func (x *GetTenantRetentionSettingsResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GetTenantRetentionSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantRetentionSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{45}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *GetTenantRetentionSettingsResponse) GetOverrides() *TenantRetentionOverrides {
@@ -2556,7 +3044,7 @@ type UpdateTenantRetentionSettingsRequest struct {
 
 func (x *UpdateTenantRetentionSettingsRequest) Reset() {
 	*x = UpdateTenantRetentionSettingsRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[46]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2568,7 +3056,7 @@ func (x *UpdateTenantRetentionSettingsRequest) String() string {
 func (*UpdateTenantRetentionSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateTenantRetentionSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[46]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2581,7 +3069,7 @@ func (x *UpdateTenantRetentionSettingsRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use UpdateTenantRetentionSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantRetentionSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{46}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *UpdateTenantRetentionSettingsRequest) GetTenant() *v1.TenantContext {
@@ -2617,7 +3105,7 @@ type UpdateTenantRetentionSettingsResponse struct {
 
 func (x *UpdateTenantRetentionSettingsResponse) Reset() {
 	*x = UpdateTenantRetentionSettingsResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[47]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2629,7 +3117,7 @@ func (x *UpdateTenantRetentionSettingsResponse) String() string {
 func (*UpdateTenantRetentionSettingsResponse) ProtoMessage() {}
 
 func (x *UpdateTenantRetentionSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[47]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2642,7 +3130,7 @@ func (x *UpdateTenantRetentionSettingsResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use UpdateTenantRetentionSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateTenantRetentionSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{47}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *UpdateTenantRetentionSettingsResponse) GetOverrides() *TenantRetentionOverrides {
@@ -2688,7 +3176,7 @@ type TenantCommunityLimitOverrides struct {
 
 func (x *TenantCommunityLimitOverrides) Reset() {
 	*x = TenantCommunityLimitOverrides{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[48]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2700,7 +3188,7 @@ func (x *TenantCommunityLimitOverrides) String() string {
 func (*TenantCommunityLimitOverrides) ProtoMessage() {}
 
 func (x *TenantCommunityLimitOverrides) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[48]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2713,7 +3201,7 @@ func (x *TenantCommunityLimitOverrides) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantCommunityLimitOverrides.ProtoReflect.Descriptor instead.
 func (*TenantCommunityLimitOverrides) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{48}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *TenantCommunityLimitOverrides) GetCommentPost() *v11.MinuteDayLimit {
@@ -2774,7 +3262,7 @@ type GetTenantCommunityLimitSettingsRequest struct {
 
 func (x *GetTenantCommunityLimitSettingsRequest) Reset() {
 	*x = GetTenantCommunityLimitSettingsRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[49]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2786,7 +3274,7 @@ func (x *GetTenantCommunityLimitSettingsRequest) String() string {
 func (*GetTenantCommunityLimitSettingsRequest) ProtoMessage() {}
 
 func (x *GetTenantCommunityLimitSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[49]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2799,7 +3287,7 @@ func (x *GetTenantCommunityLimitSettingsRequest) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use GetTenantCommunityLimitSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantCommunityLimitSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{49}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *GetTenantCommunityLimitSettingsRequest) GetTenant() *v1.TenantContext {
@@ -2821,7 +3309,7 @@ type GetTenantCommunityLimitSettingsResponse struct {
 
 func (x *GetTenantCommunityLimitSettingsResponse) Reset() {
 	*x = GetTenantCommunityLimitSettingsResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[50]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2833,7 +3321,7 @@ func (x *GetTenantCommunityLimitSettingsResponse) String() string {
 func (*GetTenantCommunityLimitSettingsResponse) ProtoMessage() {}
 
 func (x *GetTenantCommunityLimitSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[50]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2846,7 +3334,7 @@ func (x *GetTenantCommunityLimitSettingsResponse) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use GetTenantCommunityLimitSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantCommunityLimitSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{50}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *GetTenantCommunityLimitSettingsResponse) GetOverrides() *TenantCommunityLimitOverrides {
@@ -2888,7 +3376,7 @@ type UpdateTenantCommunityLimitSettingsRequest struct {
 
 func (x *UpdateTenantCommunityLimitSettingsRequest) Reset() {
 	*x = UpdateTenantCommunityLimitSettingsRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[51]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2900,7 +3388,7 @@ func (x *UpdateTenantCommunityLimitSettingsRequest) String() string {
 func (*UpdateTenantCommunityLimitSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateTenantCommunityLimitSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[51]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2913,7 +3401,7 @@ func (x *UpdateTenantCommunityLimitSettingsRequest) ProtoReflect() protoreflect.
 
 // Deprecated: Use UpdateTenantCommunityLimitSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantCommunityLimitSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{51}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *UpdateTenantCommunityLimitSettingsRequest) GetTenant() *v1.TenantContext {
@@ -2949,7 +3437,7 @@ type UpdateTenantCommunityLimitSettingsResponse struct {
 
 func (x *UpdateTenantCommunityLimitSettingsResponse) Reset() {
 	*x = UpdateTenantCommunityLimitSettingsResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[52]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2961,7 +3449,7 @@ func (x *UpdateTenantCommunityLimitSettingsResponse) String() string {
 func (*UpdateTenantCommunityLimitSettingsResponse) ProtoMessage() {}
 
 func (x *UpdateTenantCommunityLimitSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[52]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2974,7 +3462,7 @@ func (x *UpdateTenantCommunityLimitSettingsResponse) ProtoReflect() protoreflect
 
 // Deprecated: Use UpdateTenantCommunityLimitSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateTenantCommunityLimitSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{52}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *UpdateTenantCommunityLimitSettingsResponse) GetOverrides() *TenantCommunityLimitOverrides {
@@ -3023,7 +3511,7 @@ type TenantEmailRejectionSettings struct {
 
 func (x *TenantEmailRejectionSettings) Reset() {
 	*x = TenantEmailRejectionSettings{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[53]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3035,7 +3523,7 @@ func (x *TenantEmailRejectionSettings) String() string {
 func (*TenantEmailRejectionSettings) ProtoMessage() {}
 
 func (x *TenantEmailRejectionSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[53]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3048,7 +3536,7 @@ func (x *TenantEmailRejectionSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantEmailRejectionSettings.ProtoReflect.Descriptor instead.
 func (*TenantEmailRejectionSettings) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{53}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *TenantEmailRejectionSettings) GetRejectDisposableDomains() bool {
@@ -3074,7 +3562,7 @@ type GetTenantEmailRejectionSettingsRequest struct {
 
 func (x *GetTenantEmailRejectionSettingsRequest) Reset() {
 	*x = GetTenantEmailRejectionSettingsRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[54]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3086,7 +3574,7 @@ func (x *GetTenantEmailRejectionSettingsRequest) String() string {
 func (*GetTenantEmailRejectionSettingsRequest) ProtoMessage() {}
 
 func (x *GetTenantEmailRejectionSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[54]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3099,7 +3587,7 @@ func (x *GetTenantEmailRejectionSettingsRequest) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use GetTenantEmailRejectionSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantEmailRejectionSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{54}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *GetTenantEmailRejectionSettingsRequest) GetTenant() *v1.TenantContext {
@@ -3121,7 +3609,7 @@ type GetTenantEmailRejectionSettingsResponse struct {
 
 func (x *GetTenantEmailRejectionSettingsResponse) Reset() {
 	*x = GetTenantEmailRejectionSettingsResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[55]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3133,7 +3621,7 @@ func (x *GetTenantEmailRejectionSettingsResponse) String() string {
 func (*GetTenantEmailRejectionSettingsResponse) ProtoMessage() {}
 
 func (x *GetTenantEmailRejectionSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[55]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3146,7 +3634,7 @@ func (x *GetTenantEmailRejectionSettingsResponse) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use GetTenantEmailRejectionSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantEmailRejectionSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{55}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *GetTenantEmailRejectionSettingsResponse) GetSettings() *TenantEmailRejectionSettings {
@@ -3177,7 +3665,7 @@ type UpdateTenantEmailRejectionSettingsRequest struct {
 
 func (x *UpdateTenantEmailRejectionSettingsRequest) Reset() {
 	*x = UpdateTenantEmailRejectionSettingsRequest{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[56]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3189,7 +3677,7 @@ func (x *UpdateTenantEmailRejectionSettingsRequest) String() string {
 func (*UpdateTenantEmailRejectionSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateTenantEmailRejectionSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[56]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3202,7 +3690,7 @@ func (x *UpdateTenantEmailRejectionSettingsRequest) ProtoReflect() protoreflect.
 
 // Deprecated: Use UpdateTenantEmailRejectionSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantEmailRejectionSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{56}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *UpdateTenantEmailRejectionSettingsRequest) GetTenant() *v1.TenantContext {
@@ -3229,7 +3717,7 @@ type UpdateTenantEmailRejectionSettingsResponse struct {
 
 func (x *UpdateTenantEmailRejectionSettingsResponse) Reset() {
 	*x = UpdateTenantEmailRejectionSettingsResponse{}
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[57]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3241,7 +3729,7 @@ func (x *UpdateTenantEmailRejectionSettingsResponse) String() string {
 func (*UpdateTenantEmailRejectionSettingsResponse) ProtoMessage() {}
 
 func (x *UpdateTenantEmailRejectionSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_tenant_proto_msgTypes[57]
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3254,7 +3742,7 @@ func (x *UpdateTenantEmailRejectionSettingsResponse) ProtoReflect() protoreflect
 
 // Deprecated: Use UpdateTenantEmailRejectionSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateTenantEmailRejectionSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{57}
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *UpdateTenantEmailRejectionSettingsResponse) GetSettings() *TenantEmailRejectionSettings {
@@ -3308,7 +3796,31 @@ const file_publira_admin_v1_tenant_proto_rawDesc = "" +
 	"\x1aauto_hide_report_threshold\x18\x03 \x01(\rR\x17autoHideReportThreshold\"\xa4\x01\n" +
 	"#UpdateTenantCommentSettingsResponse\x12@\n" +
 	"\fcomment_mode\x18\x01 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\x12;\n" +
-	"\x1aauto_hide_report_threshold\x18\x02 \x01(\rR\x17autoHideReportThreshold\"Z\n" +
+	"\x1aauto_hide_report_threshold\x18\x02 \x01(\rR\x17autoHideReportThreshold\"[\n" +
+	" GetTenantReaderIconPolicyRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"_\n" +
+	"!GetTenantReaderIconPolicyResponse\x12:\n" +
+	"\x06policy\x18\x01 \x01(\x0e2\".publira.types.v1.ReaderIconPolicyR\x06policy\"\x9a\x01\n" +
+	"#UpdateTenantReaderIconPolicyRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12:\n" +
+	"\x06policy\x18\x02 \x01(\x0e2\".publira.types.v1.ReaderIconPolicyR\x06policy\"b\n" +
+	"$UpdateTenantReaderIconPolicyResponse\x12:\n" +
+	"\x06policy\x18\x01 \x01(\x0e2\".publira.types.v1.ReaderIconPolicyR\x06policy\"W\n" +
+	"\x1cListReaderIconPresetsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"]\n" +
+	"\x1dListReaderIconPresetsResponse\x12<\n" +
+	"\apresets\x18\x01 \x03(\v2\".publira.types.v1.ReaderIconPresetR\apresets\"\xdf\x01\n" +
+	"\x1dUploadReaderIconPresetRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\ticon_data\x18\x02 \x01(\fR\biconData\x12*\n" +
+	"\x11icon_content_type\x18\x03 \x01(\tR\x0ficonContentType\x12<\n" +
+	"\ticon_crop\x18\x04 \x01(\v2\x1f.publira.types.v1.ImageCropRectR\biconCrop\"\\\n" +
+	"\x1eUploadReaderIconPresetResponse\x12:\n" +
+	"\x06preset\x18\x01 \x01(\v2\".publira.types.v1.ReaderIconPresetR\x06preset\"u\n" +
+	"\x1dDeleteReaderIconPresetRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tpreset_id\x18\x02 \x01(\tR\bpresetId\" \n" +
+	"\x1eDeleteReaderIconPresetResponse\"Z\n" +
 	"\x1fGetTenantAgeVerificationRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"p\n" +
 	" GetTenantAgeVerificationResponse\x12L\n" +
@@ -3472,14 +3984,19 @@ const file_publira_admin_v1_tenant_proto_rawDesc = "" +
 	"\bsettings\x18\x02 \x01(\v2..publira.admin.v1.TenantEmailRejectionSettingsR\bsettings\"\xc1\x01\n" +
 	"*UpdateTenantEmailRejectionSettingsResponse\x12J\n" +
 	"\bsettings\x18\x01 \x01(\v2..publira.admin.v1.TenantEmailRejectionSettingsR\bsettings\x12G\n" +
-	" disposable_domain_list_available\x18\x02 \x01(\bR\x1ddisposableDomainListAvailable2\xa3\x18\n" +
+	" disposable_domain_list_available\x18\x02 \x01(\bR\x1ddisposableDomainListAvailable2\xb8\x1d\n" +
 	"\x15TenantSettingsService\x12n\n" +
 	"\x11GetTenantTimezone\x12*.publira.admin.v1.GetTenantTimezoneRequest\x1a+.publira.admin.v1.GetTenantTimezoneResponse\"\x00\x12w\n" +
 	"\x14UpdateTenantTimezone\x12-.publira.admin.v1.UpdateTenantTimezoneRequest\x1a..publira.admin.v1.UpdateTenantTimezoneResponse\"\x00\x12}\n" +
 	"\x16GetTenantDefaultLocale\x12/.publira.admin.v1.GetTenantDefaultLocaleRequest\x1a0.publira.admin.v1.GetTenantDefaultLocaleResponse\"\x00\x12\x86\x01\n" +
 	"\x19UpdateTenantDefaultLocale\x122.publira.admin.v1.UpdateTenantDefaultLocaleRequest\x1a3.publira.admin.v1.UpdateTenantDefaultLocaleResponse\"\x00\x12\x83\x01\n" +
 	"\x18GetTenantCommentSettings\x121.publira.admin.v1.GetTenantCommentSettingsRequest\x1a2.publira.admin.v1.GetTenantCommentSettingsResponse\"\x00\x12\x8c\x01\n" +
-	"\x1bUpdateTenantCommentSettings\x124.publira.admin.v1.UpdateTenantCommentSettingsRequest\x1a5.publira.admin.v1.UpdateTenantCommentSettingsResponse\"\x00\x12\x83\x01\n" +
+	"\x1bUpdateTenantCommentSettings\x124.publira.admin.v1.UpdateTenantCommentSettingsRequest\x1a5.publira.admin.v1.UpdateTenantCommentSettingsResponse\"\x00\x12\x86\x01\n" +
+	"\x19GetTenantReaderIconPolicy\x122.publira.admin.v1.GetTenantReaderIconPolicyRequest\x1a3.publira.admin.v1.GetTenantReaderIconPolicyResponse\"\x00\x12\x8f\x01\n" +
+	"\x1cUpdateTenantReaderIconPolicy\x125.publira.admin.v1.UpdateTenantReaderIconPolicyRequest\x1a6.publira.admin.v1.UpdateTenantReaderIconPolicyResponse\"\x00\x12z\n" +
+	"\x15ListReaderIconPresets\x12..publira.admin.v1.ListReaderIconPresetsRequest\x1a/.publira.admin.v1.ListReaderIconPresetsResponse\"\x00\x12}\n" +
+	"\x16UploadReaderIconPreset\x12/.publira.admin.v1.UploadReaderIconPresetRequest\x1a0.publira.admin.v1.UploadReaderIconPresetResponse\"\x00\x12}\n" +
+	"\x16DeleteReaderIconPreset\x12/.publira.admin.v1.DeleteReaderIconPresetRequest\x1a0.publira.admin.v1.DeleteReaderIconPresetResponse\"\x00\x12\x83\x01\n" +
 	"\x18GetTenantAgeVerification\x121.publira.admin.v1.GetTenantAgeVerificationRequest\x1a2.publira.admin.v1.GetTenantAgeVerificationResponse\"\x00\x12\x8c\x01\n" +
 	"\x1bUpdateTenantAgeVerification\x124.publira.admin.v1.UpdateTenantAgeVerificationRequest\x1a5.publira.admin.v1.UpdateTenantAgeVerificationResponse\"\x00\x12\x86\x01\n" +
 	"\x19GetTenantPurchaseSettings\x122.publira.admin.v1.GetTenantPurchaseSettingsRequest\x1a3.publira.admin.v1.GetTenantPurchaseSettingsResponse\"\x00\x12\x8f\x01\n" +
@@ -3509,7 +4026,7 @@ func file_publira_admin_v1_tenant_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_tenant_proto_rawDescData
 }
 
-var file_publira_admin_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 58)
+var file_publira_admin_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 68)
 var file_publira_admin_v1_tenant_proto_goTypes = []any{
 	(*GetTenantTimezoneRequest)(nil),                   // 0: publira.admin.v1.GetTenantTimezoneRequest
 	(*GetTenantTimezoneResponse)(nil),                  // 1: publira.admin.v1.GetTenantTimezoneResponse
@@ -3523,183 +4040,217 @@ var file_publira_admin_v1_tenant_proto_goTypes = []any{
 	(*GetTenantCommentSettingsResponse)(nil),           // 9: publira.admin.v1.GetTenantCommentSettingsResponse
 	(*UpdateTenantCommentSettingsRequest)(nil),         // 10: publira.admin.v1.UpdateTenantCommentSettingsRequest
 	(*UpdateTenantCommentSettingsResponse)(nil),        // 11: publira.admin.v1.UpdateTenantCommentSettingsResponse
-	(*GetTenantAgeVerificationRequest)(nil),            // 12: publira.admin.v1.GetTenantAgeVerificationRequest
-	(*GetTenantAgeVerificationResponse)(nil),           // 13: publira.admin.v1.GetTenantAgeVerificationResponse
-	(*UpdateTenantAgeVerificationRequest)(nil),         // 14: publira.admin.v1.UpdateTenantAgeVerificationRequest
-	(*UpdateTenantAgeVerificationResponse)(nil),        // 15: publira.admin.v1.UpdateTenantAgeVerificationResponse
-	(*TenantPurchaseSettings)(nil),                     // 16: publira.admin.v1.TenantPurchaseSettings
-	(*GetTenantPurchaseSettingsRequest)(nil),           // 17: publira.admin.v1.GetTenantPurchaseSettingsRequest
-	(*GetTenantPurchaseSettingsResponse)(nil),          // 18: publira.admin.v1.GetTenantPurchaseSettingsResponse
-	(*UpdateTenantPurchaseSettingsRequest)(nil),        // 19: publira.admin.v1.UpdateTenantPurchaseSettingsRequest
-	(*UpdateTenantPurchaseSettingsResponse)(nil),       // 20: publira.admin.v1.UpdateTenantPurchaseSettingsResponse
-	(*TenantLegalPage)(nil),                            // 21: publira.admin.v1.TenantLegalPage
-	(*TenantLegalPages)(nil),                           // 22: publira.admin.v1.TenantLegalPages
-	(*GetTenantLegalPagesRequest)(nil),                 // 23: publira.admin.v1.GetTenantLegalPagesRequest
-	(*GetTenantLegalPagesResponse)(nil),                // 24: publira.admin.v1.GetTenantLegalPagesResponse
-	(*UpdateTenantLegalPagesRequest)(nil),              // 25: publira.admin.v1.UpdateTenantLegalPagesRequest
-	(*UpdateTenantLegalPagesResponse)(nil),             // 26: publira.admin.v1.UpdateTenantLegalPagesResponse
-	(*TenantAndroidAppAssociation)(nil),                // 27: publira.admin.v1.TenantAndroidAppAssociation
-	(*TenantIosAppAssociation)(nil),                    // 28: publira.admin.v1.TenantIosAppAssociation
-	(*TenantMobileAppAssociation)(nil),                 // 29: publira.admin.v1.TenantMobileAppAssociation
-	(*GetTenantMobileAppAssociationRequest)(nil),       // 30: publira.admin.v1.GetTenantMobileAppAssociationRequest
-	(*GetTenantMobileAppAssociationResponse)(nil),      // 31: publira.admin.v1.GetTenantMobileAppAssociationResponse
-	(*UpdateTenantMobileAppAssociationRequest)(nil),    // 32: publira.admin.v1.UpdateTenantMobileAppAssociationRequest
-	(*UpdateTenantMobileAppAssociationResponse)(nil),   // 33: publira.admin.v1.UpdateTenantMobileAppAssociationResponse
-	(*TenantAppleSignInSettings)(nil),                  // 34: publira.admin.v1.TenantAppleSignInSettings
-	(*TenantGoogleSignInSettings)(nil),                 // 35: publira.admin.v1.TenantGoogleSignInSettings
-	(*TenantSignInSettings)(nil),                       // 36: publira.admin.v1.TenantSignInSettings
-	(*GetTenantSignInSettingsRequest)(nil),             // 37: publira.admin.v1.GetTenantSignInSettingsRequest
-	(*GetTenantSignInSettingsResponse)(nil),            // 38: publira.admin.v1.GetTenantSignInSettingsResponse
-	(*AppleSignInSettingsUpdate)(nil),                  // 39: publira.admin.v1.AppleSignInSettingsUpdate
-	(*GoogleSignInSettingsUpdate)(nil),                 // 40: publira.admin.v1.GoogleSignInSettingsUpdate
-	(*UpdateTenantSignInSettingsRequest)(nil),          // 41: publira.admin.v1.UpdateTenantSignInSettingsRequest
-	(*UpdateTenantSignInSettingsResponse)(nil),         // 42: publira.admin.v1.UpdateTenantSignInSettingsResponse
-	(*TenantRetentionOverrides)(nil),                   // 43: publira.admin.v1.TenantRetentionOverrides
-	(*GetTenantRetentionSettingsRequest)(nil),          // 44: publira.admin.v1.GetTenantRetentionSettingsRequest
-	(*GetTenantRetentionSettingsResponse)(nil),         // 45: publira.admin.v1.GetTenantRetentionSettingsResponse
-	(*UpdateTenantRetentionSettingsRequest)(nil),       // 46: publira.admin.v1.UpdateTenantRetentionSettingsRequest
-	(*UpdateTenantRetentionSettingsResponse)(nil),      // 47: publira.admin.v1.UpdateTenantRetentionSettingsResponse
-	(*TenantCommunityLimitOverrides)(nil),              // 48: publira.admin.v1.TenantCommunityLimitOverrides
-	(*GetTenantCommunityLimitSettingsRequest)(nil),     // 49: publira.admin.v1.GetTenantCommunityLimitSettingsRequest
-	(*GetTenantCommunityLimitSettingsResponse)(nil),    // 50: publira.admin.v1.GetTenantCommunityLimitSettingsResponse
-	(*UpdateTenantCommunityLimitSettingsRequest)(nil),  // 51: publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest
-	(*UpdateTenantCommunityLimitSettingsResponse)(nil), // 52: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse
-	(*TenantEmailRejectionSettings)(nil),               // 53: publira.admin.v1.TenantEmailRejectionSettings
-	(*GetTenantEmailRejectionSettingsRequest)(nil),     // 54: publira.admin.v1.GetTenantEmailRejectionSettingsRequest
-	(*GetTenantEmailRejectionSettingsResponse)(nil),    // 55: publira.admin.v1.GetTenantEmailRejectionSettingsResponse
-	(*UpdateTenantEmailRejectionSettingsRequest)(nil),  // 56: publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest
-	(*UpdateTenantEmailRejectionSettingsResponse)(nil), // 57: publira.admin.v1.UpdateTenantEmailRejectionSettingsResponse
-	(*v1.TenantContext)(nil),                           // 58: publira.types.v1.TenantContext
-	(v1.CommentMode)(0),                                // 59: publira.types.v1.CommentMode
-	(v1.AgeVerification)(0),                            // 60: publira.types.v1.AgeVerification
-	(v1.SurfaceAvailability)(0),                        // 61: publira.types.v1.SurfaceAvailability
-	(SecretUpdateMode)(0),                              // 62: publira.admin.v1.SecretUpdateMode
-	(*v1.RetentionPeriods)(nil),                        // 63: publira.types.v1.RetentionPeriods
-	(*v11.MinuteDayLimit)(nil),                         // 64: publira.platform.v1.MinuteDayLimit
-	(*v11.HourDayLimit)(nil),                           // 65: publira.platform.v1.HourDayLimit
-	(*v11.CommunityLimitDefaults)(nil),                 // 66: publira.platform.v1.CommunityLimitDefaults
+	(*GetTenantReaderIconPolicyRequest)(nil),           // 12: publira.admin.v1.GetTenantReaderIconPolicyRequest
+	(*GetTenantReaderIconPolicyResponse)(nil),          // 13: publira.admin.v1.GetTenantReaderIconPolicyResponse
+	(*UpdateTenantReaderIconPolicyRequest)(nil),        // 14: publira.admin.v1.UpdateTenantReaderIconPolicyRequest
+	(*UpdateTenantReaderIconPolicyResponse)(nil),       // 15: publira.admin.v1.UpdateTenantReaderIconPolicyResponse
+	(*ListReaderIconPresetsRequest)(nil),               // 16: publira.admin.v1.ListReaderIconPresetsRequest
+	(*ListReaderIconPresetsResponse)(nil),              // 17: publira.admin.v1.ListReaderIconPresetsResponse
+	(*UploadReaderIconPresetRequest)(nil),              // 18: publira.admin.v1.UploadReaderIconPresetRequest
+	(*UploadReaderIconPresetResponse)(nil),             // 19: publira.admin.v1.UploadReaderIconPresetResponse
+	(*DeleteReaderIconPresetRequest)(nil),              // 20: publira.admin.v1.DeleteReaderIconPresetRequest
+	(*DeleteReaderIconPresetResponse)(nil),             // 21: publira.admin.v1.DeleteReaderIconPresetResponse
+	(*GetTenantAgeVerificationRequest)(nil),            // 22: publira.admin.v1.GetTenantAgeVerificationRequest
+	(*GetTenantAgeVerificationResponse)(nil),           // 23: publira.admin.v1.GetTenantAgeVerificationResponse
+	(*UpdateTenantAgeVerificationRequest)(nil),         // 24: publira.admin.v1.UpdateTenantAgeVerificationRequest
+	(*UpdateTenantAgeVerificationResponse)(nil),        // 25: publira.admin.v1.UpdateTenantAgeVerificationResponse
+	(*TenantPurchaseSettings)(nil),                     // 26: publira.admin.v1.TenantPurchaseSettings
+	(*GetTenantPurchaseSettingsRequest)(nil),           // 27: publira.admin.v1.GetTenantPurchaseSettingsRequest
+	(*GetTenantPurchaseSettingsResponse)(nil),          // 28: publira.admin.v1.GetTenantPurchaseSettingsResponse
+	(*UpdateTenantPurchaseSettingsRequest)(nil),        // 29: publira.admin.v1.UpdateTenantPurchaseSettingsRequest
+	(*UpdateTenantPurchaseSettingsResponse)(nil),       // 30: publira.admin.v1.UpdateTenantPurchaseSettingsResponse
+	(*TenantLegalPage)(nil),                            // 31: publira.admin.v1.TenantLegalPage
+	(*TenantLegalPages)(nil),                           // 32: publira.admin.v1.TenantLegalPages
+	(*GetTenantLegalPagesRequest)(nil),                 // 33: publira.admin.v1.GetTenantLegalPagesRequest
+	(*GetTenantLegalPagesResponse)(nil),                // 34: publira.admin.v1.GetTenantLegalPagesResponse
+	(*UpdateTenantLegalPagesRequest)(nil),              // 35: publira.admin.v1.UpdateTenantLegalPagesRequest
+	(*UpdateTenantLegalPagesResponse)(nil),             // 36: publira.admin.v1.UpdateTenantLegalPagesResponse
+	(*TenantAndroidAppAssociation)(nil),                // 37: publira.admin.v1.TenantAndroidAppAssociation
+	(*TenantIosAppAssociation)(nil),                    // 38: publira.admin.v1.TenantIosAppAssociation
+	(*TenantMobileAppAssociation)(nil),                 // 39: publira.admin.v1.TenantMobileAppAssociation
+	(*GetTenantMobileAppAssociationRequest)(nil),       // 40: publira.admin.v1.GetTenantMobileAppAssociationRequest
+	(*GetTenantMobileAppAssociationResponse)(nil),      // 41: publira.admin.v1.GetTenantMobileAppAssociationResponse
+	(*UpdateTenantMobileAppAssociationRequest)(nil),    // 42: publira.admin.v1.UpdateTenantMobileAppAssociationRequest
+	(*UpdateTenantMobileAppAssociationResponse)(nil),   // 43: publira.admin.v1.UpdateTenantMobileAppAssociationResponse
+	(*TenantAppleSignInSettings)(nil),                  // 44: publira.admin.v1.TenantAppleSignInSettings
+	(*TenantGoogleSignInSettings)(nil),                 // 45: publira.admin.v1.TenantGoogleSignInSettings
+	(*TenantSignInSettings)(nil),                       // 46: publira.admin.v1.TenantSignInSettings
+	(*GetTenantSignInSettingsRequest)(nil),             // 47: publira.admin.v1.GetTenantSignInSettingsRequest
+	(*GetTenantSignInSettingsResponse)(nil),            // 48: publira.admin.v1.GetTenantSignInSettingsResponse
+	(*AppleSignInSettingsUpdate)(nil),                  // 49: publira.admin.v1.AppleSignInSettingsUpdate
+	(*GoogleSignInSettingsUpdate)(nil),                 // 50: publira.admin.v1.GoogleSignInSettingsUpdate
+	(*UpdateTenantSignInSettingsRequest)(nil),          // 51: publira.admin.v1.UpdateTenantSignInSettingsRequest
+	(*UpdateTenantSignInSettingsResponse)(nil),         // 52: publira.admin.v1.UpdateTenantSignInSettingsResponse
+	(*TenantRetentionOverrides)(nil),                   // 53: publira.admin.v1.TenantRetentionOverrides
+	(*GetTenantRetentionSettingsRequest)(nil),          // 54: publira.admin.v1.GetTenantRetentionSettingsRequest
+	(*GetTenantRetentionSettingsResponse)(nil),         // 55: publira.admin.v1.GetTenantRetentionSettingsResponse
+	(*UpdateTenantRetentionSettingsRequest)(nil),       // 56: publira.admin.v1.UpdateTenantRetentionSettingsRequest
+	(*UpdateTenantRetentionSettingsResponse)(nil),      // 57: publira.admin.v1.UpdateTenantRetentionSettingsResponse
+	(*TenantCommunityLimitOverrides)(nil),              // 58: publira.admin.v1.TenantCommunityLimitOverrides
+	(*GetTenantCommunityLimitSettingsRequest)(nil),     // 59: publira.admin.v1.GetTenantCommunityLimitSettingsRequest
+	(*GetTenantCommunityLimitSettingsResponse)(nil),    // 60: publira.admin.v1.GetTenantCommunityLimitSettingsResponse
+	(*UpdateTenantCommunityLimitSettingsRequest)(nil),  // 61: publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest
+	(*UpdateTenantCommunityLimitSettingsResponse)(nil), // 62: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse
+	(*TenantEmailRejectionSettings)(nil),               // 63: publira.admin.v1.TenantEmailRejectionSettings
+	(*GetTenantEmailRejectionSettingsRequest)(nil),     // 64: publira.admin.v1.GetTenantEmailRejectionSettingsRequest
+	(*GetTenantEmailRejectionSettingsResponse)(nil),    // 65: publira.admin.v1.GetTenantEmailRejectionSettingsResponse
+	(*UpdateTenantEmailRejectionSettingsRequest)(nil),  // 66: publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest
+	(*UpdateTenantEmailRejectionSettingsResponse)(nil), // 67: publira.admin.v1.UpdateTenantEmailRejectionSettingsResponse
+	(*v1.TenantContext)(nil),                           // 68: publira.types.v1.TenantContext
+	(v1.CommentMode)(0),                                // 69: publira.types.v1.CommentMode
+	(v1.ReaderIconPolicy)(0),                           // 70: publira.types.v1.ReaderIconPolicy
+	(*v1.ReaderIconPreset)(nil),                        // 71: publira.types.v1.ReaderIconPreset
+	(*v1.ImageCropRect)(nil),                           // 72: publira.types.v1.ImageCropRect
+	(v1.AgeVerification)(0),                            // 73: publira.types.v1.AgeVerification
+	(v1.SurfaceAvailability)(0),                        // 74: publira.types.v1.SurfaceAvailability
+	(SecretUpdateMode)(0),                              // 75: publira.admin.v1.SecretUpdateMode
+	(*v1.RetentionPeriods)(nil),                        // 76: publira.types.v1.RetentionPeriods
+	(*v11.MinuteDayLimit)(nil),                         // 77: publira.platform.v1.MinuteDayLimit
+	(*v11.HourDayLimit)(nil),                           // 78: publira.platform.v1.HourDayLimit
+	(*v11.CommunityLimitDefaults)(nil),                 // 79: publira.platform.v1.CommunityLimitDefaults
 }
 var file_publira_admin_v1_tenant_proto_depIdxs = []int32{
-	58, // 0: publira.admin.v1.GetTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
-	58, // 1: publira.admin.v1.UpdateTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
-	58, // 2: publira.admin.v1.GetTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
-	58, // 3: publira.admin.v1.UpdateTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
-	58, // 4: publira.admin.v1.GetTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	59, // 5: publira.admin.v1.GetTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	58, // 6: publira.admin.v1.UpdateTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	59, // 7: publira.admin.v1.UpdateTenantCommentSettingsRequest.comment_mode:type_name -> publira.types.v1.CommentMode
-	59, // 8: publira.admin.v1.UpdateTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	58, // 9: publira.admin.v1.GetTenantAgeVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 10: publira.admin.v1.GetTenantAgeVerificationResponse.age_verification:type_name -> publira.types.v1.AgeVerification
-	58, // 11: publira.admin.v1.UpdateTenantAgeVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 12: publira.admin.v1.UpdateTenantAgeVerificationRequest.age_verification:type_name -> publira.types.v1.AgeVerification
-	60, // 13: publira.admin.v1.UpdateTenantAgeVerificationResponse.age_verification:type_name -> publira.types.v1.AgeVerification
-	61, // 14: publira.admin.v1.TenantPurchaseSettings.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	58, // 15: publira.admin.v1.GetTenantPurchaseSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	16, // 16: publira.admin.v1.GetTenantPurchaseSettingsResponse.settings:type_name -> publira.admin.v1.TenantPurchaseSettings
-	58, // 17: publira.admin.v1.UpdateTenantPurchaseSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	16, // 18: publira.admin.v1.UpdateTenantPurchaseSettingsRequest.settings:type_name -> publira.admin.v1.TenantPurchaseSettings
-	16, // 19: publira.admin.v1.UpdateTenantPurchaseSettingsResponse.settings:type_name -> publira.admin.v1.TenantPurchaseSettings
-	21, // 20: publira.admin.v1.TenantLegalPages.terms_page:type_name -> publira.admin.v1.TenantLegalPage
-	21, // 21: publira.admin.v1.TenantLegalPages.privacy_page:type_name -> publira.admin.v1.TenantLegalPage
-	58, // 22: publira.admin.v1.GetTenantLegalPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	22, // 23: publira.admin.v1.GetTenantLegalPagesResponse.pages:type_name -> publira.admin.v1.TenantLegalPages
-	58, // 24: publira.admin.v1.UpdateTenantLegalPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	22, // 25: publira.admin.v1.UpdateTenantLegalPagesResponse.pages:type_name -> publira.admin.v1.TenantLegalPages
-	27, // 26: publira.admin.v1.TenantMobileAppAssociation.android:type_name -> publira.admin.v1.TenantAndroidAppAssociation
-	28, // 27: publira.admin.v1.TenantMobileAppAssociation.ios:type_name -> publira.admin.v1.TenantIosAppAssociation
-	58, // 28: publira.admin.v1.GetTenantMobileAppAssociationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	29, // 29: publira.admin.v1.GetTenantMobileAppAssociationResponse.association:type_name -> publira.admin.v1.TenantMobileAppAssociation
-	58, // 30: publira.admin.v1.UpdateTenantMobileAppAssociationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	29, // 31: publira.admin.v1.UpdateTenantMobileAppAssociationRequest.association:type_name -> publira.admin.v1.TenantMobileAppAssociation
-	29, // 32: publira.admin.v1.UpdateTenantMobileAppAssociationResponse.association:type_name -> publira.admin.v1.TenantMobileAppAssociation
-	34, // 33: publira.admin.v1.TenantSignInSettings.apple:type_name -> publira.admin.v1.TenantAppleSignInSettings
-	35, // 34: publira.admin.v1.TenantSignInSettings.google:type_name -> publira.admin.v1.TenantGoogleSignInSettings
-	58, // 35: publira.admin.v1.GetTenantSignInSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	36, // 36: publira.admin.v1.GetTenantSignInSettingsResponse.settings:type_name -> publira.admin.v1.TenantSignInSettings
-	62, // 37: publira.admin.v1.AppleSignInSettingsUpdate.private_key_update_mode:type_name -> publira.admin.v1.SecretUpdateMode
-	58, // 38: publira.admin.v1.UpdateTenantSignInSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	39, // 39: publira.admin.v1.UpdateTenantSignInSettingsRequest.apple:type_name -> publira.admin.v1.AppleSignInSettingsUpdate
-	40, // 40: publira.admin.v1.UpdateTenantSignInSettingsRequest.google:type_name -> publira.admin.v1.GoogleSignInSettingsUpdate
-	36, // 41: publira.admin.v1.UpdateTenantSignInSettingsResponse.settings:type_name -> publira.admin.v1.TenantSignInSettings
-	58, // 42: publira.admin.v1.GetTenantRetentionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	43, // 43: publira.admin.v1.GetTenantRetentionSettingsResponse.overrides:type_name -> publira.admin.v1.TenantRetentionOverrides
-	63, // 44: publira.admin.v1.GetTenantRetentionSettingsResponse.platform_defaults:type_name -> publira.types.v1.RetentionPeriods
-	63, // 45: publira.admin.v1.GetTenantRetentionSettingsResponse.effective:type_name -> publira.types.v1.RetentionPeriods
-	58, // 46: publira.admin.v1.UpdateTenantRetentionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	43, // 47: publira.admin.v1.UpdateTenantRetentionSettingsRequest.overrides:type_name -> publira.admin.v1.TenantRetentionOverrides
-	43, // 48: publira.admin.v1.UpdateTenantRetentionSettingsResponse.overrides:type_name -> publira.admin.v1.TenantRetentionOverrides
-	63, // 49: publira.admin.v1.UpdateTenantRetentionSettingsResponse.platform_defaults:type_name -> publira.types.v1.RetentionPeriods
-	63, // 50: publira.admin.v1.UpdateTenantRetentionSettingsResponse.effective:type_name -> publira.types.v1.RetentionPeriods
-	64, // 51: publira.admin.v1.TenantCommunityLimitOverrides.comment_post:type_name -> publira.platform.v1.MinuteDayLimit
-	64, // 52: publira.admin.v1.TenantCommunityLimitOverrides.comment_report:type_name -> publira.platform.v1.MinuteDayLimit
-	64, // 53: publira.admin.v1.TenantCommunityLimitOverrides.episode_rating:type_name -> publira.platform.v1.MinuteDayLimit
-	65, // 54: publira.admin.v1.TenantCommunityLimitOverrides.contact_message_per_account:type_name -> publira.platform.v1.HourDayLimit
-	65, // 55: publira.admin.v1.TenantCommunityLimitOverrides.contact_message_per_client:type_name -> publira.platform.v1.HourDayLimit
-	64, // 56: publira.admin.v1.TenantCommunityLimitOverrides.viewer_preferences:type_name -> publira.platform.v1.MinuteDayLimit
-	58, // 57: publira.admin.v1.GetTenantCommunityLimitSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	48, // 58: publira.admin.v1.GetTenantCommunityLimitSettingsResponse.overrides:type_name -> publira.admin.v1.TenantCommunityLimitOverrides
-	66, // 59: publira.admin.v1.GetTenantCommunityLimitSettingsResponse.platform_defaults:type_name -> publira.platform.v1.CommunityLimitDefaults
-	66, // 60: publira.admin.v1.GetTenantCommunityLimitSettingsResponse.effective:type_name -> publira.platform.v1.CommunityLimitDefaults
-	58, // 61: publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	48, // 62: publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest.overrides:type_name -> publira.admin.v1.TenantCommunityLimitOverrides
-	48, // 63: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse.overrides:type_name -> publira.admin.v1.TenantCommunityLimitOverrides
-	66, // 64: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse.platform_defaults:type_name -> publira.platform.v1.CommunityLimitDefaults
-	66, // 65: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse.effective:type_name -> publira.platform.v1.CommunityLimitDefaults
-	58, // 66: publira.admin.v1.GetTenantEmailRejectionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	53, // 67: publira.admin.v1.GetTenantEmailRejectionSettingsResponse.settings:type_name -> publira.admin.v1.TenantEmailRejectionSettings
-	58, // 68: publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	53, // 69: publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest.settings:type_name -> publira.admin.v1.TenantEmailRejectionSettings
-	53, // 70: publira.admin.v1.UpdateTenantEmailRejectionSettingsResponse.settings:type_name -> publira.admin.v1.TenantEmailRejectionSettings
-	0,  // 71: publira.admin.v1.TenantSettingsService.GetTenantTimezone:input_type -> publira.admin.v1.GetTenantTimezoneRequest
-	2,  // 72: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:input_type -> publira.admin.v1.UpdateTenantTimezoneRequest
-	4,  // 73: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:input_type -> publira.admin.v1.GetTenantDefaultLocaleRequest
-	6,  // 74: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:input_type -> publira.admin.v1.UpdateTenantDefaultLocaleRequest
-	8,  // 75: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:input_type -> publira.admin.v1.GetTenantCommentSettingsRequest
-	10, // 76: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:input_type -> publira.admin.v1.UpdateTenantCommentSettingsRequest
-	12, // 77: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:input_type -> publira.admin.v1.GetTenantAgeVerificationRequest
-	14, // 78: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:input_type -> publira.admin.v1.UpdateTenantAgeVerificationRequest
-	17, // 79: publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings:input_type -> publira.admin.v1.GetTenantPurchaseSettingsRequest
-	19, // 80: publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings:input_type -> publira.admin.v1.UpdateTenantPurchaseSettingsRequest
-	23, // 81: publira.admin.v1.TenantSettingsService.GetTenantLegalPages:input_type -> publira.admin.v1.GetTenantLegalPagesRequest
-	25, // 82: publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages:input_type -> publira.admin.v1.UpdateTenantLegalPagesRequest
-	30, // 83: publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation:input_type -> publira.admin.v1.GetTenantMobileAppAssociationRequest
-	32, // 84: publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation:input_type -> publira.admin.v1.UpdateTenantMobileAppAssociationRequest
-	37, // 85: publira.admin.v1.TenantSettingsService.GetTenantSignInSettings:input_type -> publira.admin.v1.GetTenantSignInSettingsRequest
-	41, // 86: publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings:input_type -> publira.admin.v1.UpdateTenantSignInSettingsRequest
-	44, // 87: publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings:input_type -> publira.admin.v1.GetTenantRetentionSettingsRequest
-	46, // 88: publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings:input_type -> publira.admin.v1.UpdateTenantRetentionSettingsRequest
-	49, // 89: publira.admin.v1.TenantSettingsService.GetTenantCommunityLimitSettings:input_type -> publira.admin.v1.GetTenantCommunityLimitSettingsRequest
-	51, // 90: publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings:input_type -> publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest
-	54, // 91: publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings:input_type -> publira.admin.v1.GetTenantEmailRejectionSettingsRequest
-	56, // 92: publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings:input_type -> publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest
-	1,  // 93: publira.admin.v1.TenantSettingsService.GetTenantTimezone:output_type -> publira.admin.v1.GetTenantTimezoneResponse
-	3,  // 94: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:output_type -> publira.admin.v1.UpdateTenantTimezoneResponse
-	5,  // 95: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:output_type -> publira.admin.v1.GetTenantDefaultLocaleResponse
-	7,  // 96: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:output_type -> publira.admin.v1.UpdateTenantDefaultLocaleResponse
-	9,  // 97: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:output_type -> publira.admin.v1.GetTenantCommentSettingsResponse
-	11, // 98: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:output_type -> publira.admin.v1.UpdateTenantCommentSettingsResponse
-	13, // 99: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:output_type -> publira.admin.v1.GetTenantAgeVerificationResponse
-	15, // 100: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:output_type -> publira.admin.v1.UpdateTenantAgeVerificationResponse
-	18, // 101: publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings:output_type -> publira.admin.v1.GetTenantPurchaseSettingsResponse
-	20, // 102: publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings:output_type -> publira.admin.v1.UpdateTenantPurchaseSettingsResponse
-	24, // 103: publira.admin.v1.TenantSettingsService.GetTenantLegalPages:output_type -> publira.admin.v1.GetTenantLegalPagesResponse
-	26, // 104: publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages:output_type -> publira.admin.v1.UpdateTenantLegalPagesResponse
-	31, // 105: publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation:output_type -> publira.admin.v1.GetTenantMobileAppAssociationResponse
-	33, // 106: publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation:output_type -> publira.admin.v1.UpdateTenantMobileAppAssociationResponse
-	38, // 107: publira.admin.v1.TenantSettingsService.GetTenantSignInSettings:output_type -> publira.admin.v1.GetTenantSignInSettingsResponse
-	42, // 108: publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings:output_type -> publira.admin.v1.UpdateTenantSignInSettingsResponse
-	45, // 109: publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings:output_type -> publira.admin.v1.GetTenantRetentionSettingsResponse
-	47, // 110: publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings:output_type -> publira.admin.v1.UpdateTenantRetentionSettingsResponse
-	50, // 111: publira.admin.v1.TenantSettingsService.GetTenantCommunityLimitSettings:output_type -> publira.admin.v1.GetTenantCommunityLimitSettingsResponse
-	52, // 112: publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings:output_type -> publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse
-	55, // 113: publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings:output_type -> publira.admin.v1.GetTenantEmailRejectionSettingsResponse
-	57, // 114: publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings:output_type -> publira.admin.v1.UpdateTenantEmailRejectionSettingsResponse
-	93, // [93:115] is the sub-list for method output_type
-	71, // [71:93] is the sub-list for method input_type
-	71, // [71:71] is the sub-list for extension type_name
-	71, // [71:71] is the sub-list for extension extendee
-	0,  // [0:71] is the sub-list for field type_name
+	68,  // 0: publira.admin.v1.GetTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
+	68,  // 1: publira.admin.v1.UpdateTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
+	68,  // 2: publira.admin.v1.GetTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
+	68,  // 3: publira.admin.v1.UpdateTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
+	68,  // 4: publira.admin.v1.GetTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	69,  // 5: publira.admin.v1.GetTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	68,  // 6: publira.admin.v1.UpdateTenantCommentSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	69,  // 7: publira.admin.v1.UpdateTenantCommentSettingsRequest.comment_mode:type_name -> publira.types.v1.CommentMode
+	69,  // 8: publira.admin.v1.UpdateTenantCommentSettingsResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	68,  // 9: publira.admin.v1.GetTenantReaderIconPolicyRequest.tenant:type_name -> publira.types.v1.TenantContext
+	70,  // 10: publira.admin.v1.GetTenantReaderIconPolicyResponse.policy:type_name -> publira.types.v1.ReaderIconPolicy
+	68,  // 11: publira.admin.v1.UpdateTenantReaderIconPolicyRequest.tenant:type_name -> publira.types.v1.TenantContext
+	70,  // 12: publira.admin.v1.UpdateTenantReaderIconPolicyRequest.policy:type_name -> publira.types.v1.ReaderIconPolicy
+	70,  // 13: publira.admin.v1.UpdateTenantReaderIconPolicyResponse.policy:type_name -> publira.types.v1.ReaderIconPolicy
+	68,  // 14: publira.admin.v1.ListReaderIconPresetsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	71,  // 15: publira.admin.v1.ListReaderIconPresetsResponse.presets:type_name -> publira.types.v1.ReaderIconPreset
+	68,  // 16: publira.admin.v1.UploadReaderIconPresetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	72,  // 17: publira.admin.v1.UploadReaderIconPresetRequest.icon_crop:type_name -> publira.types.v1.ImageCropRect
+	71,  // 18: publira.admin.v1.UploadReaderIconPresetResponse.preset:type_name -> publira.types.v1.ReaderIconPreset
+	68,  // 19: publira.admin.v1.DeleteReaderIconPresetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	68,  // 20: publira.admin.v1.GetTenantAgeVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	73,  // 21: publira.admin.v1.GetTenantAgeVerificationResponse.age_verification:type_name -> publira.types.v1.AgeVerification
+	68,  // 22: publira.admin.v1.UpdateTenantAgeVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	73,  // 23: publira.admin.v1.UpdateTenantAgeVerificationRequest.age_verification:type_name -> publira.types.v1.AgeVerification
+	73,  // 24: publira.admin.v1.UpdateTenantAgeVerificationResponse.age_verification:type_name -> publira.types.v1.AgeVerification
+	74,  // 25: publira.admin.v1.TenantPurchaseSettings.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	68,  // 26: publira.admin.v1.GetTenantPurchaseSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	26,  // 27: publira.admin.v1.GetTenantPurchaseSettingsResponse.settings:type_name -> publira.admin.v1.TenantPurchaseSettings
+	68,  // 28: publira.admin.v1.UpdateTenantPurchaseSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	26,  // 29: publira.admin.v1.UpdateTenantPurchaseSettingsRequest.settings:type_name -> publira.admin.v1.TenantPurchaseSettings
+	26,  // 30: publira.admin.v1.UpdateTenantPurchaseSettingsResponse.settings:type_name -> publira.admin.v1.TenantPurchaseSettings
+	31,  // 31: publira.admin.v1.TenantLegalPages.terms_page:type_name -> publira.admin.v1.TenantLegalPage
+	31,  // 32: publira.admin.v1.TenantLegalPages.privacy_page:type_name -> publira.admin.v1.TenantLegalPage
+	68,  // 33: publira.admin.v1.GetTenantLegalPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	32,  // 34: publira.admin.v1.GetTenantLegalPagesResponse.pages:type_name -> publira.admin.v1.TenantLegalPages
+	68,  // 35: publira.admin.v1.UpdateTenantLegalPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	32,  // 36: publira.admin.v1.UpdateTenantLegalPagesResponse.pages:type_name -> publira.admin.v1.TenantLegalPages
+	37,  // 37: publira.admin.v1.TenantMobileAppAssociation.android:type_name -> publira.admin.v1.TenantAndroidAppAssociation
+	38,  // 38: publira.admin.v1.TenantMobileAppAssociation.ios:type_name -> publira.admin.v1.TenantIosAppAssociation
+	68,  // 39: publira.admin.v1.GetTenantMobileAppAssociationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	39,  // 40: publira.admin.v1.GetTenantMobileAppAssociationResponse.association:type_name -> publira.admin.v1.TenantMobileAppAssociation
+	68,  // 41: publira.admin.v1.UpdateTenantMobileAppAssociationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	39,  // 42: publira.admin.v1.UpdateTenantMobileAppAssociationRequest.association:type_name -> publira.admin.v1.TenantMobileAppAssociation
+	39,  // 43: publira.admin.v1.UpdateTenantMobileAppAssociationResponse.association:type_name -> publira.admin.v1.TenantMobileAppAssociation
+	44,  // 44: publira.admin.v1.TenantSignInSettings.apple:type_name -> publira.admin.v1.TenantAppleSignInSettings
+	45,  // 45: publira.admin.v1.TenantSignInSettings.google:type_name -> publira.admin.v1.TenantGoogleSignInSettings
+	68,  // 46: publira.admin.v1.GetTenantSignInSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	46,  // 47: publira.admin.v1.GetTenantSignInSettingsResponse.settings:type_name -> publira.admin.v1.TenantSignInSettings
+	75,  // 48: publira.admin.v1.AppleSignInSettingsUpdate.private_key_update_mode:type_name -> publira.admin.v1.SecretUpdateMode
+	68,  // 49: publira.admin.v1.UpdateTenantSignInSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	49,  // 50: publira.admin.v1.UpdateTenantSignInSettingsRequest.apple:type_name -> publira.admin.v1.AppleSignInSettingsUpdate
+	50,  // 51: publira.admin.v1.UpdateTenantSignInSettingsRequest.google:type_name -> publira.admin.v1.GoogleSignInSettingsUpdate
+	46,  // 52: publira.admin.v1.UpdateTenantSignInSettingsResponse.settings:type_name -> publira.admin.v1.TenantSignInSettings
+	68,  // 53: publira.admin.v1.GetTenantRetentionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	53,  // 54: publira.admin.v1.GetTenantRetentionSettingsResponse.overrides:type_name -> publira.admin.v1.TenantRetentionOverrides
+	76,  // 55: publira.admin.v1.GetTenantRetentionSettingsResponse.platform_defaults:type_name -> publira.types.v1.RetentionPeriods
+	76,  // 56: publira.admin.v1.GetTenantRetentionSettingsResponse.effective:type_name -> publira.types.v1.RetentionPeriods
+	68,  // 57: publira.admin.v1.UpdateTenantRetentionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	53,  // 58: publira.admin.v1.UpdateTenantRetentionSettingsRequest.overrides:type_name -> publira.admin.v1.TenantRetentionOverrides
+	53,  // 59: publira.admin.v1.UpdateTenantRetentionSettingsResponse.overrides:type_name -> publira.admin.v1.TenantRetentionOverrides
+	76,  // 60: publira.admin.v1.UpdateTenantRetentionSettingsResponse.platform_defaults:type_name -> publira.types.v1.RetentionPeriods
+	76,  // 61: publira.admin.v1.UpdateTenantRetentionSettingsResponse.effective:type_name -> publira.types.v1.RetentionPeriods
+	77,  // 62: publira.admin.v1.TenantCommunityLimitOverrides.comment_post:type_name -> publira.platform.v1.MinuteDayLimit
+	77,  // 63: publira.admin.v1.TenantCommunityLimitOverrides.comment_report:type_name -> publira.platform.v1.MinuteDayLimit
+	77,  // 64: publira.admin.v1.TenantCommunityLimitOverrides.episode_rating:type_name -> publira.platform.v1.MinuteDayLimit
+	78,  // 65: publira.admin.v1.TenantCommunityLimitOverrides.contact_message_per_account:type_name -> publira.platform.v1.HourDayLimit
+	78,  // 66: publira.admin.v1.TenantCommunityLimitOverrides.contact_message_per_client:type_name -> publira.platform.v1.HourDayLimit
+	77,  // 67: publira.admin.v1.TenantCommunityLimitOverrides.viewer_preferences:type_name -> publira.platform.v1.MinuteDayLimit
+	68,  // 68: publira.admin.v1.GetTenantCommunityLimitSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58,  // 69: publira.admin.v1.GetTenantCommunityLimitSettingsResponse.overrides:type_name -> publira.admin.v1.TenantCommunityLimitOverrides
+	79,  // 70: publira.admin.v1.GetTenantCommunityLimitSettingsResponse.platform_defaults:type_name -> publira.platform.v1.CommunityLimitDefaults
+	79,  // 71: publira.admin.v1.GetTenantCommunityLimitSettingsResponse.effective:type_name -> publira.platform.v1.CommunityLimitDefaults
+	68,  // 72: publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58,  // 73: publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest.overrides:type_name -> publira.admin.v1.TenantCommunityLimitOverrides
+	58,  // 74: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse.overrides:type_name -> publira.admin.v1.TenantCommunityLimitOverrides
+	79,  // 75: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse.platform_defaults:type_name -> publira.platform.v1.CommunityLimitDefaults
+	79,  // 76: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse.effective:type_name -> publira.platform.v1.CommunityLimitDefaults
+	68,  // 77: publira.admin.v1.GetTenantEmailRejectionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63,  // 78: publira.admin.v1.GetTenantEmailRejectionSettingsResponse.settings:type_name -> publira.admin.v1.TenantEmailRejectionSettings
+	68,  // 79: publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63,  // 80: publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest.settings:type_name -> publira.admin.v1.TenantEmailRejectionSettings
+	63,  // 81: publira.admin.v1.UpdateTenantEmailRejectionSettingsResponse.settings:type_name -> publira.admin.v1.TenantEmailRejectionSettings
+	0,   // 82: publira.admin.v1.TenantSettingsService.GetTenantTimezone:input_type -> publira.admin.v1.GetTenantTimezoneRequest
+	2,   // 83: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:input_type -> publira.admin.v1.UpdateTenantTimezoneRequest
+	4,   // 84: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:input_type -> publira.admin.v1.GetTenantDefaultLocaleRequest
+	6,   // 85: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:input_type -> publira.admin.v1.UpdateTenantDefaultLocaleRequest
+	8,   // 86: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:input_type -> publira.admin.v1.GetTenantCommentSettingsRequest
+	10,  // 87: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:input_type -> publira.admin.v1.UpdateTenantCommentSettingsRequest
+	12,  // 88: publira.admin.v1.TenantSettingsService.GetTenantReaderIconPolicy:input_type -> publira.admin.v1.GetTenantReaderIconPolicyRequest
+	14,  // 89: publira.admin.v1.TenantSettingsService.UpdateTenantReaderIconPolicy:input_type -> publira.admin.v1.UpdateTenantReaderIconPolicyRequest
+	16,  // 90: publira.admin.v1.TenantSettingsService.ListReaderIconPresets:input_type -> publira.admin.v1.ListReaderIconPresetsRequest
+	18,  // 91: publira.admin.v1.TenantSettingsService.UploadReaderIconPreset:input_type -> publira.admin.v1.UploadReaderIconPresetRequest
+	20,  // 92: publira.admin.v1.TenantSettingsService.DeleteReaderIconPreset:input_type -> publira.admin.v1.DeleteReaderIconPresetRequest
+	22,  // 93: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:input_type -> publira.admin.v1.GetTenantAgeVerificationRequest
+	24,  // 94: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:input_type -> publira.admin.v1.UpdateTenantAgeVerificationRequest
+	27,  // 95: publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings:input_type -> publira.admin.v1.GetTenantPurchaseSettingsRequest
+	29,  // 96: publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings:input_type -> publira.admin.v1.UpdateTenantPurchaseSettingsRequest
+	33,  // 97: publira.admin.v1.TenantSettingsService.GetTenantLegalPages:input_type -> publira.admin.v1.GetTenantLegalPagesRequest
+	35,  // 98: publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages:input_type -> publira.admin.v1.UpdateTenantLegalPagesRequest
+	40,  // 99: publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation:input_type -> publira.admin.v1.GetTenantMobileAppAssociationRequest
+	42,  // 100: publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation:input_type -> publira.admin.v1.UpdateTenantMobileAppAssociationRequest
+	47,  // 101: publira.admin.v1.TenantSettingsService.GetTenantSignInSettings:input_type -> publira.admin.v1.GetTenantSignInSettingsRequest
+	51,  // 102: publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings:input_type -> publira.admin.v1.UpdateTenantSignInSettingsRequest
+	54,  // 103: publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings:input_type -> publira.admin.v1.GetTenantRetentionSettingsRequest
+	56,  // 104: publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings:input_type -> publira.admin.v1.UpdateTenantRetentionSettingsRequest
+	59,  // 105: publira.admin.v1.TenantSettingsService.GetTenantCommunityLimitSettings:input_type -> publira.admin.v1.GetTenantCommunityLimitSettingsRequest
+	61,  // 106: publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings:input_type -> publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest
+	64,  // 107: publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings:input_type -> publira.admin.v1.GetTenantEmailRejectionSettingsRequest
+	66,  // 108: publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings:input_type -> publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest
+	1,   // 109: publira.admin.v1.TenantSettingsService.GetTenantTimezone:output_type -> publira.admin.v1.GetTenantTimezoneResponse
+	3,   // 110: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:output_type -> publira.admin.v1.UpdateTenantTimezoneResponse
+	5,   // 111: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:output_type -> publira.admin.v1.GetTenantDefaultLocaleResponse
+	7,   // 112: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:output_type -> publira.admin.v1.UpdateTenantDefaultLocaleResponse
+	9,   // 113: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:output_type -> publira.admin.v1.GetTenantCommentSettingsResponse
+	11,  // 114: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:output_type -> publira.admin.v1.UpdateTenantCommentSettingsResponse
+	13,  // 115: publira.admin.v1.TenantSettingsService.GetTenantReaderIconPolicy:output_type -> publira.admin.v1.GetTenantReaderIconPolicyResponse
+	15,  // 116: publira.admin.v1.TenantSettingsService.UpdateTenantReaderIconPolicy:output_type -> publira.admin.v1.UpdateTenantReaderIconPolicyResponse
+	17,  // 117: publira.admin.v1.TenantSettingsService.ListReaderIconPresets:output_type -> publira.admin.v1.ListReaderIconPresetsResponse
+	19,  // 118: publira.admin.v1.TenantSettingsService.UploadReaderIconPreset:output_type -> publira.admin.v1.UploadReaderIconPresetResponse
+	21,  // 119: publira.admin.v1.TenantSettingsService.DeleteReaderIconPreset:output_type -> publira.admin.v1.DeleteReaderIconPresetResponse
+	23,  // 120: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:output_type -> publira.admin.v1.GetTenantAgeVerificationResponse
+	25,  // 121: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:output_type -> publira.admin.v1.UpdateTenantAgeVerificationResponse
+	28,  // 122: publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings:output_type -> publira.admin.v1.GetTenantPurchaseSettingsResponse
+	30,  // 123: publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings:output_type -> publira.admin.v1.UpdateTenantPurchaseSettingsResponse
+	34,  // 124: publira.admin.v1.TenantSettingsService.GetTenantLegalPages:output_type -> publira.admin.v1.GetTenantLegalPagesResponse
+	36,  // 125: publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages:output_type -> publira.admin.v1.UpdateTenantLegalPagesResponse
+	41,  // 126: publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation:output_type -> publira.admin.v1.GetTenantMobileAppAssociationResponse
+	43,  // 127: publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation:output_type -> publira.admin.v1.UpdateTenantMobileAppAssociationResponse
+	48,  // 128: publira.admin.v1.TenantSettingsService.GetTenantSignInSettings:output_type -> publira.admin.v1.GetTenantSignInSettingsResponse
+	52,  // 129: publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings:output_type -> publira.admin.v1.UpdateTenantSignInSettingsResponse
+	55,  // 130: publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings:output_type -> publira.admin.v1.GetTenantRetentionSettingsResponse
+	57,  // 131: publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings:output_type -> publira.admin.v1.UpdateTenantRetentionSettingsResponse
+	60,  // 132: publira.admin.v1.TenantSettingsService.GetTenantCommunityLimitSettings:output_type -> publira.admin.v1.GetTenantCommunityLimitSettingsResponse
+	62,  // 133: publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings:output_type -> publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse
+	65,  // 134: publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings:output_type -> publira.admin.v1.GetTenantEmailRejectionSettingsResponse
+	67,  // 135: publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings:output_type -> publira.admin.v1.UpdateTenantEmailRejectionSettingsResponse
+	109, // [109:136] is the sub-list for method output_type
+	82,  // [82:109] is the sub-list for method input_type
+	82,  // [82:82] is the sub-list for extension type_name
+	82,  // [82:82] is the sub-list for extension extendee
+	0,   // [0:82] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_tenant_proto_init() }
@@ -3708,15 +4259,15 @@ func file_publira_admin_v1_tenant_proto_init() {
 		return
 	}
 	file_publira_admin_v1_email_proto_init()
-	file_publira_admin_v1_tenant_proto_msgTypes[43].OneofWrappers = []any{}
-	file_publira_admin_v1_tenant_proto_msgTypes[48].OneofWrappers = []any{}
+	file_publira_admin_v1_tenant_proto_msgTypes[53].OneofWrappers = []any{}
+	file_publira_admin_v1_tenant_proto_msgTypes[58].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_tenant_proto_rawDesc), len(file_publira_admin_v1_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   58,
+			NumMessages:   68,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
