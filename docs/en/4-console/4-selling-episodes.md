@@ -35,7 +35,7 @@ Once bought, the episode:
 - Opens on the site and in the tenant's app alike, for the same account, wherever it was bought.
 - Cannot be bought again while it is open. Once its reading period has ended, it can.
 
-**Download as CSV** on **Purchases** saves every purchase listed there, across all its pages and refunded ones included, as one CSV file.
+**Download as CSV** on **Purchases** saves every purchase listed there, across all its pages and refunded ones included, as one CSV file. In the tenant's app, **Export as CSV** on **Purchases** writes the same file and hands it to the device's share sheet, from which the reader saves or sends it.
 
 ### Free reading periods and Free if you wait
 

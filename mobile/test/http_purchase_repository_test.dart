@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/my_purchase.dart';
 import 'package:publira/purchase/http_purchase_repository.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -353,6 +354,48 @@ void main() {
       final request = server.requestsTo('ListMyPurchases').single;
       expect(request.headers['authorization'], 'Bearer $accessToken');
       expect(request.body['surface'], 'CLIENT_SURFACE_APP');
+      expect(request.body['limit'], myPurchasePageLimit);
+    });
+
+    test('reads what was refunded and when the purchase closed', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.myPurchases = [
+        {
+          ...purchase('purchase-refunded', active: false),
+          'refundedAmount': 500,
+          'refundedAt': '2026-01-11T12:00:00Z',
+          'revokedAt': '2026-01-11T12:00:00Z',
+        },
+        {
+          ...purchase('purchase-canceled', active: false),
+          'revokedAt': '2026-01-12T12:00:00Z',
+        },
+        purchase('purchase-active', active: true),
+      ];
+
+      final [refunded, canceled, active] =
+          (await repository().listMyPurchases()).purchases;
+
+      expect(refunded.refundedAmount, 500);
+      expect(refunded.refundedAt?.toUtc(), DateTime.utc(2026, 1, 11, 12));
+      expect(refunded.status, MyPurchaseStatus.refunded);
+      expect(canceled.refundedAmount, 0);
+      expect(canceled.refundedAt, isNull);
+      expect(canceled.revokedAt?.toUtc(), DateTime.utc(2026, 1, 12, 12));
+      expect(canceled.status, MyPurchaseStatus.canceled);
+      expect(active.revokedAt, isNull);
+      expect(active.status, MyPurchaseStatus.active);
+    });
+
+    test('asks for the page size it is given', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+
+      await repository().listMyPurchases(limit: myPurchasePageLimitMax);
+
+      expect(
+        server.requestsTo('ListMyPurchases').single.body['limit'],
+        myPurchasePageLimitMax,
+      );
     });
 
     test('walks the pages the API names', () async {

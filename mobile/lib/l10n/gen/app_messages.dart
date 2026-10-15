@@ -2126,6 +2126,11 @@ final class AppMessages {
     return _format('mobile.purchases.account_description');
   }
 
+  /// `mobile.purchases.canceled`
+  String get purchasesCanceled {
+    return _format('mobile.purchases.canceled');
+  }
+
   /// `mobile.purchases.empty`
   String get purchasesEmpty {
     return _format('mobile.purchases.empty');
@@ -2139,6 +2144,16 @@ final class AppMessages {
   /// `mobile.purchases.expired`
   String get purchasesExpired {
     return _format('mobile.purchases.expired');
+  }
+
+  /// `mobile.purchases.export_csv`
+  String get purchasesExportCsv {
+    return _format('mobile.purchases.export_csv');
+  }
+
+  /// `mobile.purchases.export_failed`
+  String get purchasesExportFailed {
+    return _format('mobile.purchases.export_failed');
   }
 
   /// `mobile.purchases.failed`
@@ -2169,6 +2184,11 @@ final class AppMessages {
   /// `mobile.purchases.readable_until`
   String purchasesReadableUntil({required String date}) {
     return _format('mobile.purchases.readable_until', {'date': date});
+  }
+
+  /// `mobile.purchases.refunded`
+  String get purchasesRefunded {
+    return _format('mobile.purchases.refunded');
   }
 
   /// `mobile.purchases.sign_in_prompt`
@@ -3524,16 +3544,20 @@ const _jaSources = <String, String>{
   'mobile.purchase.store_unavailable':
       'この端末では購入できません。ストアにサインインしているか、購入が制限されていないかを確認してください。',
   'mobile.purchases.account_description': 'この端末に保存していないものも含め、購入したエピソードを確認できます。',
+  'mobile.purchases.canceled': '取り消し済み',
   'mobile.purchases.empty':
       'まだエピソードを購入していません。購入したエピソードは、サインインしたどの端末でもここに表示されます。',
   'mobile.purchases.ended_at': '{\$date}に閲覧期限終了',
   'mobile.purchases.expired': '期限切れ',
+  'mobile.purchases.export_csv': 'CSVで書き出す',
+  'mobile.purchases.export_failed': '購入履歴を書き出せませんでした。もう一度お試しください。',
   'mobile.purchases.failed': '購入済み一覧を表示できませんでした。もう一度お試しください。',
   'mobile.purchases.no_expiry': '期限なし',
   'mobile.purchases.price': '購入価格{\$price}',
   'mobile.purchases.purchased_at': '{\$date}に購入',
   'mobile.purchases.readable': '閲覧可能',
   'mobile.purchases.readable_until': '{\$date}まで閲覧可能',
+  'mobile.purchases.refunded': '返金済み',
   'mobile.purchases.sign_in_prompt': 'サインインすると、購入したエピソードを確認できます。',
   'mobile.purchases.title': '購入済み一覧',
   'mobile.push.open': '開く',
@@ -4267,16 +4291,21 @@ const _enSources = <String, String>{
       'Purchases are not available on this device. Check that you are signed in to the store and that purchases are allowed.',
   'mobile.purchases.account_description':
       'Episodes you bought, including those not saved on this device.',
+  'mobile.purchases.canceled': 'Canceled',
   'mobile.purchases.empty':
       'You have not bought any episodes yet. Episodes you buy appear here on every device you sign in on.',
   'mobile.purchases.ended_at': 'Ended {\$date}',
   'mobile.purchases.expired': 'Expired',
+  'mobile.purchases.export_csv': 'Export as CSV',
+  'mobile.purchases.export_failed':
+      'Could not export your purchases. Try again.',
   'mobile.purchases.failed': 'Could not show your purchases. Try again.',
   'mobile.purchases.no_expiry': 'No expiry',
   'mobile.purchases.price': 'Paid {\$price}',
   'mobile.purchases.purchased_at': 'Purchased {\$date}',
   'mobile.purchases.readable': 'Readable',
   'mobile.purchases.readable_until': 'Readable until {\$date}',
+  'mobile.purchases.refunded': 'Refunded',
   'mobile.purchases.sign_in_prompt': 'Sign in to see the episodes you bought.',
   'mobile.purchases.title': 'Purchases',
   'mobile.push.open': 'Open',
@@ -4950,16 +4979,20 @@ const _koSources = <String, String>{
       '이 기기에서는 구매할 수 없습니다. 스토어에 로그인되어 있는지, 구매가 제한되어 있지 않은지 확인해 주세요.',
   'mobile.purchases.account_description':
       '이 기기에 저장하지 않은 것까지 포함해 구매한 에피소드를 확인할 수 있습니다.',
+  'mobile.purchases.canceled': '취소됨',
   'mobile.purchases.empty':
       '아직 구매한 에피소드가 없습니다. 구매한 에피소드는 로그인한 모든 기기에서 여기에 표시됩니다.',
   'mobile.purchases.ended_at': '{\$date}에 열람 기간 종료',
   'mobile.purchases.expired': '기한 만료',
+  'mobile.purchases.export_csv': 'CSV로 내보내기',
+  'mobile.purchases.export_failed': '구매 내역을 내보낼 수 없습니다. 다시 시도해 주세요.',
   'mobile.purchases.failed': '구매 목록을 표시할 수 없습니다. 다시 시도해 주세요.',
   'mobile.purchases.no_expiry': '기한 없음',
   'mobile.purchases.price': '구매 가격 {\$price}',
   'mobile.purchases.purchased_at': '{\$date}에 구매',
   'mobile.purchases.readable': '열람 가능',
   'mobile.purchases.readable_until': '{\$date}까지 열람 가능',
+  'mobile.purchases.refunded': '환불됨',
   'mobile.purchases.sign_in_prompt': '로그인하면 구매한 에피소드를 볼 수 있습니다.',
   'mobile.purchases.title': '구매 목록',
   'mobile.push.open': '열기',
@@ -5568,15 +5601,19 @@ const _zhHansSources = <String, String>{
   'mobile.purchase.start_failed': '无法开始购买。请稍后再试。',
   'mobile.purchase.store_unavailable': '此设备无法进行购买。请确认已登录商店且未限制购买。',
   'mobile.purchases.account_description': '查看您购买的章节，包括未保存在此设备上的章节。',
+  'mobile.purchases.canceled': '已取消',
   'mobile.purchases.empty': '您还没有购买任何章节。您购买的章节会显示在这里，在您登录的每台设备上都能看到。',
   'mobile.purchases.ended_at': '{\$date}阅读期限已结束',
   'mobile.purchases.expired': '已过期',
+  'mobile.purchases.export_csv': '导出CSV',
+  'mobile.purchases.export_failed': '无法导出您的购买记录。请重试。',
   'mobile.purchases.failed': '无法显示您的购买内容。请重试。',
   'mobile.purchases.no_expiry': '无期限',
   'mobile.purchases.price': '支付金额{\$price}',
   'mobile.purchases.purchased_at': '{\$date}购买',
   'mobile.purchases.readable': '可阅读',
   'mobile.purchases.readable_until': '可阅读至{\$date}',
+  'mobile.purchases.refunded': '已退款',
   'mobile.purchases.sign_in_prompt': '登录后即可查看您购买的章节。',
   'mobile.purchases.title': '已购买',
   'mobile.push.open': '打开',
@@ -6169,15 +6206,19 @@ const _zhHantSources = <String, String>{
   'mobile.purchase.start_failed': '無法開始購買。請稍後再試。',
   'mobile.purchase.store_unavailable': '此裝置無法進行購買。請確認已登入商店且未限制購買。',
   'mobile.purchases.account_description': '查看您購買的章節，包括未儲存在此裝置上的章節。',
+  'mobile.purchases.canceled': '已取消',
   'mobile.purchases.empty': '您還沒有購買任何章節。您購買的章節會顯示在這裡，在您登入的每台裝置上都能看到。',
   'mobile.purchases.ended_at': '{\$date}閱讀期限已結束',
   'mobile.purchases.expired': '已過期',
+  'mobile.purchases.export_csv': '匯出CSV',
+  'mobile.purchases.export_failed': '無法匯出您的購買紀錄。請重試。',
   'mobile.purchases.failed': '無法顯示您購買的內容。請重試。',
   'mobile.purchases.no_expiry': '無期限',
   'mobile.purchases.price': '支付金額{\$price}',
   'mobile.purchases.purchased_at': '{\$date}購買',
   'mobile.purchases.readable': '可閱讀',
   'mobile.purchases.readable_until': '可閱讀至{\$date}',
+  'mobile.purchases.refunded': '已退款',
   'mobile.purchases.sign_in_prompt': '登入後即可查看您購買的章節。',
   'mobile.purchases.title': '已購買',
   'mobile.push.open': '開啟',

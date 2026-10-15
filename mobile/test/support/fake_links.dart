@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:publira/links/external_browser.dart';
 import 'package:publira/links/incoming_links.dart';
@@ -51,6 +53,48 @@ class FakeShareSheet implements ShareSheet {
     this.title = title;
     this.text = text;
   }
+
+  /// The files [shareFile] was handed, in order.
+  final files = <SharedFile>[];
+
+  /// Thrown by [shareFile], standing in for a platform that cannot open the
+  /// sheet.
+  Exception? fileFailure;
+
+  @override
+  Future<void> shareFile({
+    required Uint8List bytes,
+    required String name,
+    required String mimeType,
+    required String title,
+  }) async {
+    final failure = fileFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    files.add(
+      SharedFile(bytes: bytes, name: name, mimeType: mimeType, title: title),
+    );
+  }
+}
+
+/// One file a [FakeShareSheet] was handed.
+class SharedFile {
+  const SharedFile({
+    required this.bytes,
+    required this.name,
+    required this.mimeType,
+    required this.title,
+  });
+
+  final Uint8List bytes;
+  final String name;
+  final String mimeType;
+  final String title;
+
+  /// [bytes] read as the UTF-8 text a CSV is written in. The decoder drops a
+  /// leading byte order mark, so a test reads that from [bytes].
+  String get text => utf8.decode(bytes);
 }
 
 /// A browser a test reads, so a link handed off can be asserted without

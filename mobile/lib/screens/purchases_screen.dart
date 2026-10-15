@@ -1,17 +1,22 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/layout/window_width.dart';
+import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/my_purchase.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_failure.dart';
+import 'package:publira/purchase/purchase_history_csv.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
+import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// How many rows before the end of the list the page under it is asked for,
 /// the same read-ahead the library's lists use.
@@ -21,29 +26,16 @@ const _readAheadRows = 5;
 /// API rather than from what this device keeps, so a purchase made on the
 /// site or on another device is here too.
 ///
-/// A row opens its episode, whether or not the purchase still does.
-class PurchasesScreen extends StatelessWidget {
+/// A row opens its episode, whether or not the purchase still does. The app
+/// bar exports the whole list as the CSV file the site downloads.
+class PurchasesScreen extends StatefulWidget {
   const PurchasesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: AutospacedText(AppMessages.of(context).purchasesTitle),
-      ),
-      body: const SafeArea(child: _PurchasesList()),
-    );
-  }
+  State<PurchasesScreen> createState() => _PurchasesScreenState();
 }
 
-class _PurchasesList extends StatefulWidget {
-  const _PurchasesList();
-
-  @override
-  State<_PurchasesList> createState() => _PurchasesListState();
-}
-
-class _PurchasesListState extends State<_PurchasesList> {
+class _PurchasesScreenState extends State<PurchasesScreen> {
   /// Every page read so far as one list, and `null` while the first is still
   /// in flight.
   List<MyPurchase>? _purchases;
@@ -71,6 +63,10 @@ class _PurchasesListState extends State<_PurchasesList> {
   /// The pull-to-refresh in progress, completed once the first page it asked
   /// for has answered.
   Completer<void>? _refreshing;
+
+  /// Whether the purchase history is being read for the export, which keeps
+  /// a second tap from starting another.
+  var _exporting = false;
 
   /// Reads the list again whenever the reader changes, because what was
   /// bought belongs to whoever holds the session.
@@ -129,6 +125,63 @@ class _PurchasesListState extends State<_PurchasesList> {
     unawaited(_read(++_reads, _nextToken));
   }
 
+  /// Reads every purchase afresh rather than the pages already on screen, so
+  /// the file holds the whole history as it stands, a refund recorded a
+  /// moment ago included, and hands it to the share sheet.
+  Future<void> _export() async {
+    final repository = PurchaseScope.repositoryOf(context);
+    final share = LinkScope.maybeOf(context)?.share;
+    if (repository == null || share == null || _exporting) {
+      return;
+    }
+    final messages = AppMessages.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    void reportFailure(String message) => messenger.showSnackBar(
+      SnackBar(
+        key: const ValueKey('purchases-export-failed'),
+        content: AutospacedText(message),
+      ),
+    );
+    final accessToken = _accessToken;
+    setState(() => _exporting = true);
+    try {
+      final purchases = <MyPurchase>[];
+      var token = '';
+      do {
+        final page = await repository.listMyPurchases(
+          token: token,
+          limit: myPurchasePageLimitMax,
+        );
+        // A reader who signed out or changed account meanwhile is not handed
+        // pages that belong to someone else.
+        if (!mounted || accessToken != _accessToken) {
+          return;
+        }
+        purchases.addAll(page.purchases);
+        token = page.nextToken;
+      } while (token.isNotEmpty);
+      await share.shareFile(
+        bytes: utf8.encode(renderPurchaseHistoryCsv(purchases)),
+        name: purchaseHistoryCsvName,
+        mimeType: 'text/csv',
+        title: messages.purchasesTitle,
+      );
+    } on PurchaseFailure catch (failure) {
+      reportFailure(switch (failure.kind) {
+        PurchaseFailureKind.network => messages.errorsRpcUnavailable,
+        PurchaseFailureKind.sessionExpired => messages.errorsRpcUnauthenticated,
+        _ => messages.purchasesExportFailed,
+      });
+    } on PlatformException {
+      // The share sheet could not be opened, so the file reached no one.
+      reportFailure(messages.purchasesExportFailed);
+    } finally {
+      if (mounted) {
+        setState(() => _exporting = false);
+      }
+    }
+  }
+
   Future<void> _read(int read, String token) async {
     final repository = PurchaseScope.repositoryOf(context);
     if (repository == null) {
@@ -169,6 +222,41 @@ class _PurchasesListState extends State<_PurchasesList> {
 
   @override
   Widget build(BuildContext context) {
+    final messages = AppMessages.of(context);
+    final purchases = _purchases;
+    final canExport =
+        LinkScope.maybeOf(context)?.share != null &&
+        _failure == null &&
+        purchases != null &&
+        purchases.isNotEmpty;
+    return Scaffold(
+      appBar: AppBar(
+        title: AutospacedText(messages.purchasesTitle),
+        actions: [
+          if (canExport)
+            AutospacedTooltip(
+              message: messages.purchasesExportCsv,
+              child: IconButton(
+                key: const ValueKey('purchases-export'),
+                onPressed: _exporting ? null : _export,
+                icon: _exporting
+                    ? const SizedBox.square(
+                        dimension: 24,
+                        child: Padding(
+                          padding: EdgeInsets.all(2),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : const Icon(Icons.file_download_outlined),
+              ),
+            ),
+        ],
+      ),
+      body: SafeArea(child: _buildList(context)),
+    );
+  }
+
+  Widget _buildList(BuildContext context) {
     final messages = AppMessages.of(context);
     if (!AuthScope.of(context).isSignedIn) {
       return CatalogMessage(
@@ -276,6 +364,7 @@ class _PurchaseRow extends StatelessWidget {
     final theme = Theme.of(context);
     final muted = theme.colorScheme.onSurfaceVariant;
     final expiresAt = purchase.expiresAt;
+    final status = purchase.status;
     final details = <String>[
       if (purchase.purchasedAt case final purchasedAt?)
         messages.purchasesPurchasedAt(
@@ -285,14 +374,20 @@ class _PurchaseRow extends StatelessWidget {
         messages.purchasesPrice(
           price: messages.formatPrice(purchase.price, purchase.currency),
         ),
-      if (expiresAt == null)
-        messages.purchasesNoExpiry
-      else if (purchase.isActive)
-        messages.purchasesReadableUntil(
-          date: messages.formatDateTime(expiresAt),
-        )
-      else
-        messages.purchasesEndedAt(date: messages.formatDateTime(expiresAt)),
+      // A refunded or canceled purchase closed before its reading period
+      // ran out, so neither the period nor its end says when it stopped.
+      ...switch (status) {
+        MyPurchaseStatus.refunded || MyPurchaseStatus.canceled => const [],
+        _ when expiresAt == null => [messages.purchasesNoExpiry],
+        MyPurchaseStatus.active => [
+          messages.purchasesReadableUntil(
+            date: messages.formatDateTime(expiresAt),
+          ),
+        ],
+        MyPurchaseStatus.expired => [
+          messages.purchasesEndedAt(date: messages.formatDateTime(expiresAt)),
+        ],
+      },
     ];
     final title = [
       '#${messages.formatInteger(purchase.orderIndex)}',
@@ -311,7 +406,7 @@ class _PurchaseRow extends StatelessWidget {
           details.join(' · '),
         ].join('\n'),
       ),
-      trailing: _PurchaseState(isActive: purchase.isActive),
+      trailing: _PurchaseState(status: status),
       onTap: () => context.pushInTab(
         AppRoutes.episodeViewerPath(purchase.seriesId, purchase.episodeId),
       ),
@@ -319,22 +414,32 @@ class _PurchaseRow extends StatelessWidget {
   }
 }
 
-/// Whether a purchase still opens its episode, in a word and in a colour, so
-/// an ended rental does not read as something the reader can open.
+/// Whether a purchase still opens its episode, and why not when it does not,
+/// in a word and in a colour, so an ended rental does not read as something
+/// the reader can open, nor a refund as a rental that ran out.
 class _PurchaseState extends StatelessWidget {
-  const _PurchaseState({required this.isActive});
+  const _PurchaseState({required this.status});
 
-  final bool isActive;
+  final MyPurchaseStatus status;
 
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     final colors = Theme.of(context).colorScheme;
+    final isActive = status == MyPurchaseStatus.active;
     return Chip(
-      key: ValueKey(isActive ? 'purchase-readable' : 'purchase-expired'),
-      label: AutospacedText(
-        isActive ? messages.purchasesReadable : messages.purchasesExpired,
-      ),
+      key: ValueKey(switch (status) {
+        MyPurchaseStatus.active => 'purchase-readable',
+        MyPurchaseStatus.expired => 'purchase-expired',
+        MyPurchaseStatus.refunded => 'purchase-refunded',
+        MyPurchaseStatus.canceled => 'purchase-canceled',
+      }),
+      label: AutospacedText(switch (status) {
+        MyPurchaseStatus.active => messages.purchasesReadable,
+        MyPurchaseStatus.expired => messages.purchasesExpired,
+        MyPurchaseStatus.refunded => messages.purchasesRefunded,
+        MyPurchaseStatus.canceled => messages.purchasesCanceled,
+      }),
       backgroundColor: isActive
           ? colors.primaryContainer
           : colors.surfaceContainerHighest,

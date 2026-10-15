@@ -29,9 +29,6 @@ class HttpPurchaseRepository implements PurchaseRepository {
   static const _confirmStoreProcedure =
       '/publira.v1.PurchaseService/ConfirmStorePurchase';
 
-  /// Rows one page asks for. The API caps this at 100 and falls back to 20.
-  static const pageSize = 20;
-
   final ConnectClient _client;
   final TenantResolver _tenants;
 
@@ -266,7 +263,10 @@ class HttpPurchaseRepository implements PurchaseRepository {
   }
 
   @override
-  Future<MyPurchasePage> listMyPurchases({String token = ''}) async {
+  Future<MyPurchasePage> listMyPurchases({
+    String token = '',
+    int limit = myPurchasePageLimit,
+  }) async {
     // Read once and sent explicitly, so a page is never answered for a reader
     // other than the one the list was opened for.
     final accessToken = _client.accessToken;
@@ -278,7 +278,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
       final body = await _client.unary(
         _listProcedure,
         {
-          'limit': pageSize,
+          'limit': limit,
           'surface': appClientSurface,
           'tenant': {'tenantId': tenantId},
           if (token.isNotEmpty) 'token': token,
@@ -340,8 +340,11 @@ class HttpPurchaseRepository implements PurchaseRepository {
       currency: _readString(json, 'currency'),
       // protojson omits a false, which is what every expired row arrives as.
       isActive: json['isActive'] == true,
+      refundedAmount: _readInt(json, 'refundedAmount'),
       purchasedAt: _readInstant(json, 'purchasedAt'),
       expiresAt: _readInstant(json, 'expiresAt'),
+      refundedAt: _readInstant(json, 'refundedAt'),
+      revokedAt: _readInstant(json, 'revokedAt'),
     );
   }
 

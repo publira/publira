@@ -439,7 +439,10 @@
         "routes": ["api/v1/my/purchases/csv"],
         "rpcs": ["ListMyPurchases"]
       },
-      "exception": "Not in the app yet: #4341."
+      "mobile": {
+        "routes": ["/account/purchases"],
+        "rpcs": ["ListMyPurchases"]
+      }
     },
     {
       "name": "Signing in",

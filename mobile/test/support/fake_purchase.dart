@@ -80,6 +80,9 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// its own index written out, the way the fixture server writes a cursor.
   List<List<MyPurchase>> pages;
 
+  /// The `limit` each call to [listMyPurchases] asked for, in order.
+  final List<int> limits = <int>[];
+
   /// Thrown by [listMyPurchases].
   PurchaseFailure? listFailure;
 
@@ -156,7 +159,11 @@ class FakePurchaseRepository implements PurchaseRepository {
   }
 
   @override
-  Future<MyPurchasePage> listMyPurchases({String token = ''}) async {
+  Future<MyPurchasePage> listMyPurchases({
+    String token = '',
+    int limit = myPurchasePageLimit,
+  }) async {
+    limits.add(limit);
     final failure = listFailure;
     if (failure != null) {
       throw failure;

@@ -11,8 +11,11 @@ class MyPurchase {
     required this.price,
     required this.currency,
     required this.isActive,
+    this.refundedAmount = 0,
     this.purchasedAt,
     this.expiresAt,
+    this.refundedAt,
+    this.revokedAt,
   });
 
   final String id;
@@ -38,6 +41,52 @@ class MyPurchase {
 
   /// `null` for a purchase that does not expire.
   final DateTime? expiresAt;
+
+  /// What has been refunded to the reader so far, in the same unit as
+  /// [price].
+  final int refundedAmount;
+
+  /// When the refunds reached [price], and `null` until they do.
+  final DateTime? refundedAt;
+
+  /// When the purchase stopped opening its episode before its reading period
+  /// ran out — refunded in full, disputed, or refunded by staff — and `null`
+  /// for one that never did.
+  final DateTime? revokedAt;
+
+  /// Why the purchase does or does not open its episode, decided the way the
+  /// site's purchase library decides it: a full refund first, then any other
+  /// revocation, and only then the reading period.
+  MyPurchaseStatus get status {
+    if (refundedAt != null) {
+      return MyPurchaseStatus.refunded;
+    }
+    if (revokedAt != null) {
+      return MyPurchaseStatus.canceled;
+    }
+    return isActive ? MyPurchaseStatus.active : MyPurchaseStatus.expired;
+  }
+}
+
+/// What the purchase library marks a purchase as, under the names the
+/// purchase history CSV writes in its `status` column.
+enum MyPurchaseStatus {
+  /// Still opens its episode.
+  active('active'),
+
+  /// Its reading period ran out.
+  expired('expired'),
+
+  /// Refunded in full.
+  refunded('refunded'),
+
+  /// Revoked with nothing refunded in full: a dispute, or a staff refund the
+  /// payment provider has not reported yet.
+  canceled('canceled');
+
+  const MyPurchaseStatus(this.wireName);
+
+  final String wireName;
 }
 
 /// One page of the reader's purchases, newest first, as
