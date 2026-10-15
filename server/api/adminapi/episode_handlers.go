@@ -313,6 +313,9 @@ func (s *adminServer) ListEpisodes(
 		episodes = append(episodes, episode)
 	}
 
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, episodes...); err != nil {
+		return nil, err
+	}
 	res := &publiraadminv1.ListEpisodesResponse{Episodes: episodes}
 	switch {
 	case len(rows) > 0:
@@ -387,6 +390,9 @@ func (s *adminServer) GetEpisode(
 
 	translations, err := s.episodeTranslations(ctx, tenant.ID, row.ID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, episode); err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.GetEpisodeResponse{
@@ -548,6 +554,9 @@ func (s *adminServer) ReorderEpisodes(
 		episodes = append(episodes, episode)
 	}
 
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, episodes...); err != nil {
+		return nil, err
+	}
 	return &publiraadminv1.ReorderEpisodesResponse{Episodes: episodes}, nil
 }
 
@@ -1250,6 +1259,9 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 	if _, err := episodePurchaseAvailability(mapped, ep.PurchaseAvailability, ep.ResolvedPurchaseAvailability); err != nil {
 		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", ep.PublicID)
 	}
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, mapped); err != nil {
+		return nil, err
+	}
 	return &publiraadminv1.UpdateEpisodePublishScheduleResponse{Episode: mapped}, nil
 }
 
@@ -1309,6 +1321,9 @@ func (s *adminServer) UpdateEpisodeTitle(
 	s.recordEpisodeUpdated(ctx, tenant.ID, updated.PublicID)
 	translations, err := s.episodeTranslations(ctx, tenant.ID, episodeID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, mapped); err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.UpdateEpisodeTitleResponse{Episode: mapped, Translations: translations}, nil
@@ -1380,6 +1395,9 @@ func (s *adminServer) UpdateEpisodePricing(
 		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
 	}
 	s.recordEpisodeUpdated(ctx, tenant.ID, updated.PublicID)
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, mapped); err != nil {
+		return nil, err
+	}
 	return &publiraadminv1.UpdateEpisodePricingResponse{Episode: mapped}, nil
 }
 
@@ -1495,6 +1513,9 @@ func (s *adminServer) UpdateEpisodeLayout(
 			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, mapped); err != nil {
+		return nil, err
+	}
 	return &publiraadminv1.UpdateEpisodeLayoutResponse{
 		Episode:          mapped,
 		ReadingDirection: readingDirection,
@@ -1570,6 +1591,9 @@ func (s *adminServer) UpdateEpisodeAvailability(
 			ClientIP:    clientip.FromContext(ctx),
 		})
 	}
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, mapped); err != nil {
+		return nil, err
+	}
 	return &publiraadminv1.UpdateEpisodeAvailabilityResponse{Episode: mapped}, nil
 }
 
@@ -1636,6 +1660,9 @@ func (s *adminServer) UpdateEpisodePurchaseAvailability(
 			Outcome:     auditlog.OutcomeSuccess,
 			ClientIP:    clientip.FromContext(ctx),
 		})
+	}
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, mapped); err != nil {
+		return nil, err
 	}
 	return &publiraadminv1.UpdateEpisodePurchaseAvailabilityResponse{
 		Episode:              mapped,

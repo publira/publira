@@ -532,6 +532,28 @@ func (s *apiServer) seriesEyeCatchVariantsByImageIDs(
 	return mapped, nil
 }
 
+// fillEpisodeEyeCatches puts each episode's own eye-catch onto it, with one
+// statement for all of them. An episode without one keeps both fields empty,
+// and the client draws its series' eye-catch in its place.
+func (s *apiServer) fillEpisodeEyeCatches(ctx context.Context, tenantID uuid.UUID, episodes ...*publirattypesv1.Episode) error {
+	if len(episodes) == 0 {
+		return nil
+	}
+	ids, err := protomapper.EpisodeIDs(episodes)
+	if err != nil {
+		return s.internalError(ctx, "episode response carries an id that is not one", err, "tenant_id", tenantID.String())
+	}
+	rows, err := s.queriesFor(ctx).ListEpisodeEyeCatchVariantsByEpisodeIDs(ctx, dbmodels.ListEpisodeEyeCatchVariantsByEpisodeIDsParams{
+		TenantID:   tenantID,
+		EpisodeIds: ids,
+	})
+	if err != nil {
+		return s.internalDBError(ctx, "failed to list episode eye catch variants", err, "tenant_id", tenantID.String())
+	}
+	protomapper.SetEpisodeEyeCatches(episodes, rows)
+	return nil
+}
+
 // labelDisplay is the part of a label every public list puts on the wire.
 // ListPublishedLabels and SearchPublishedLabels show a label the same way and
 // differ only in what they sort and page by, so the display half is shared and
@@ -1002,6 +1024,9 @@ func (s *apiServer) GetSeriesDetail(
 		}
 		res.WaitFree = waitFreeRuleFor(waitFree, episodeIDs)
 	}
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, res.Episodes...); err != nil {
+		return nil, err
+	}
 
 	return res, nil
 }
@@ -1241,6 +1266,9 @@ func (s *apiServer) GetEpisodeDetail(
 		for _, preview := range previews {
 			res.PreviewImages = append(res.PreviewImages, protomapper.EpisodePreviewImageFromRow(preview))
 		}
+	}
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, episode); err != nil {
+		return nil, err
 	}
 
 	return res, nil

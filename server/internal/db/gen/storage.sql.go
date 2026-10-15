@@ -29,6 +29,20 @@ func (q *Queries) DeleteUnreferencedCreatorImages(ctx context.Context, createdBe
 	return result.RowsAffected()
 }
 
+const DeleteUnreferencedEpisodeEyeCatchImages = `-- name: DeleteUnreferencedEpisodeEyeCatchImages :execrows
+DELETE FROM episode_eye_catch_images ei
+WHERE ei.created_at < $1
+    AND NOT EXISTS (SELECT 1 FROM episodes e WHERE e.eye_catch_image_id = ei.id)
+`
+
+func (q *Queries) DeleteUnreferencedEpisodeEyeCatchImages(ctx context.Context, createdBefore time.Time) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteUnreferencedEpisodeEyeCatchImages, createdBefore)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const DeleteUnreferencedGenreImages = `-- name: DeleteUnreferencedGenreImages :execrows
 DELETE FROM genre_images gi
 WHERE gi.created_at < $1
@@ -124,6 +138,7 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
     OR EXISTS (SELECT 1 FROM genre_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM creator_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM episode_image_variants v WHERE v.object_key = c.object_key)
+    OR EXISTS (SELECT 1 FROM episode_eye_catch_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM user_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM reader_icon_preset_variants v WHERE v.object_key = c.object_key)
 `
@@ -150,8 +165,8 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
 //
 //	ListReferencedObjectKeys
 //	  -> idx_<entity>_image_variants_object_key, once per variant table
-//	DeleteUnreferencedCreatorImages / ...GenreImages / ...LabelImages /
-//	...SeriesImages / ...TenantImages
+//	DeleteUnreferencedCreatorImages / ...EpisodeEyeCatchImages /
+//	...GenreImages / ...LabelImages / ...SeriesImages / ...TenantImages
 //	  -> no index; one anti-join per run over a table that holds one row per
 //	     entity image
 //	DeleteUnreferencedUserImages

@@ -332,6 +332,7 @@
         "episode_updated": "Episode updated",
         "episode_translation_deleted": "Episode translation deleted",
         "episode_image_uploaded": "Episode body image uploaded",
+        "episode_eye_catch_aspect_image_uploaded": "Episode cover image uploaded",
         "episode_credits_replaced": "Episode authors updated",
         "episode_credits_bulk_edited": "Authors edited across episodes",
         "episode_free_window_created": "Free reading period added",

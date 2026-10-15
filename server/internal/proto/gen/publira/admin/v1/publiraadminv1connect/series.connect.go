@@ -93,6 +93,15 @@ const (
 	// AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure is the procedure name of the
 	// AdminSeriesService's UploadSeriesEyeCatchAspectImage RPC.
 	AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure = "/publira.admin.v1.AdminSeriesService/UploadSeriesEyeCatchAspectImage"
+	// AdminSeriesServiceUploadEpisodeEyeCatchImageProcedure is the procedure name of the
+	// AdminSeriesService's UploadEpisodeEyeCatchImage RPC.
+	AdminSeriesServiceUploadEpisodeEyeCatchImageProcedure = "/publira.admin.v1.AdminSeriesService/UploadEpisodeEyeCatchImage"
+	// AdminSeriesServiceUploadEpisodeEyeCatchAspectImageProcedure is the procedure name of the
+	// AdminSeriesService's UploadEpisodeEyeCatchAspectImage RPC.
+	AdminSeriesServiceUploadEpisodeEyeCatchAspectImageProcedure = "/publira.admin.v1.AdminSeriesService/UploadEpisodeEyeCatchAspectImage"
+	// AdminSeriesServiceDeleteEpisodeEyeCatchImageProcedure is the procedure name of the
+	// AdminSeriesService's DeleteEpisodeEyeCatchImage RPC.
+	AdminSeriesServiceDeleteEpisodeEyeCatchImageProcedure = "/publira.admin.v1.AdminSeriesService/DeleteEpisodeEyeCatchImage"
 	// AdminSeriesServiceCreateEpisodeFreeWindowProcedure is the procedure name of the
 	// AdminSeriesService's CreateEpisodeFreeWindow RPC.
 	AdminSeriesServiceCreateEpisodeFreeWindowProcedure = "/publira.admin.v1.AdminSeriesService/CreateEpisodeFreeWindow"
@@ -281,6 +290,27 @@ var (
 			Procedure:  AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure,
 		}
 	})
+	adminSeriesServiceUploadEpisodeEyeCatchImageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UploadEpisodeEyeCatchImage"),
+			Procedure:  AdminSeriesServiceUploadEpisodeEyeCatchImageProcedure,
+		}
+	})
+	adminSeriesServiceUploadEpisodeEyeCatchAspectImageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UploadEpisodeEyeCatchAspectImage"),
+			Procedure:  AdminSeriesServiceUploadEpisodeEyeCatchAspectImageProcedure,
+		}
+	})
+	adminSeriesServiceDeleteEpisodeEyeCatchImageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("DeleteEpisodeEyeCatchImage"),
+			Procedure:  AdminSeriesServiceDeleteEpisodeEyeCatchImageProcedure,
+		}
+	})
 	adminSeriesServiceCreateEpisodeFreeWindowSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -400,6 +430,12 @@ type AdminSeriesServiceClient interface {
 	// Minimum role: tenant_editor.
 	UploadSeriesEyeCatchAspectImage(context.Context, *v1.UploadSeriesEyeCatchAspectImageRequest) (*v1.UploadSeriesEyeCatchAspectImageResponse, error)
 	// Minimum role: tenant_editor.
+	UploadEpisodeEyeCatchImage(context.Context, *v1.UploadEpisodeEyeCatchImageRequest) (*v1.UploadEpisodeEyeCatchImageResponse, error)
+	// Minimum role: tenant_editor.
+	UploadEpisodeEyeCatchAspectImage(context.Context, *v1.UploadEpisodeEyeCatchAspectImageRequest) (*v1.UploadEpisodeEyeCatchAspectImageResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteEpisodeEyeCatchImage(context.Context, *v1.DeleteEpisodeEyeCatchImageRequest) (*v1.DeleteEpisodeEyeCatchImageResponse, error)
+	// Minimum role: tenant_editor.
 	CreateEpisodeFreeWindow(context.Context, *v1.CreateEpisodeFreeWindowRequest) (*v1.CreateEpisodeFreeWindowResponse, error)
 	// Minimum role: tenant_editor.
 	CreateSeriesFreeWindows(context.Context, *v1.CreateSeriesFreeWindowsRequest) (*v1.CreateSeriesFreeWindowsResponse, error)
@@ -485,6 +521,12 @@ type AdminSeriesServiceHandler interface {
 	// Minimum role: tenant_editor.
 	UploadSeriesEyeCatchAspectImage(context.Context, *v1.UploadSeriesEyeCatchAspectImageRequest) (*v1.UploadSeriesEyeCatchAspectImageResponse, error)
 	// Minimum role: tenant_editor.
+	UploadEpisodeEyeCatchImage(context.Context, *v1.UploadEpisodeEyeCatchImageRequest) (*v1.UploadEpisodeEyeCatchImageResponse, error)
+	// Minimum role: tenant_editor.
+	UploadEpisodeEyeCatchAspectImage(context.Context, *v1.UploadEpisodeEyeCatchAspectImageRequest) (*v1.UploadEpisodeEyeCatchAspectImageResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteEpisodeEyeCatchImage(context.Context, *v1.DeleteEpisodeEyeCatchImageRequest) (*v1.DeleteEpisodeEyeCatchImageResponse, error)
+	// Minimum role: tenant_editor.
 	CreateEpisodeFreeWindow(context.Context, *v1.CreateEpisodeFreeWindowRequest) (*v1.CreateEpisodeFreeWindowResponse, error)
 	// Minimum role: tenant_editor.
 	CreateSeriesFreeWindows(context.Context, *v1.CreateSeriesFreeWindowsRequest) (*v1.CreateSeriesFreeWindowsResponse, error)
@@ -530,6 +572,9 @@ func RegisterAdminSeriesServiceHandler(server *connect.Server, svc AdminSeriesSe
 		connect.Method{Spec: adminSeriesServiceReplaceEpisodeCreditsSpec(), Handler: adapter.replaceEpisodeCredits},
 		connect.Method{Spec: adminSeriesServiceBulkEditEpisodeCreditsSpec(), Handler: adapter.bulkEditEpisodeCredits},
 		connect.Method{Spec: adminSeriesServiceUploadSeriesEyeCatchAspectImageSpec(), Handler: adapter.uploadSeriesEyeCatchAspectImage},
+		connect.Method{Spec: adminSeriesServiceUploadEpisodeEyeCatchImageSpec(), Handler: adapter.uploadEpisodeEyeCatchImage},
+		connect.Method{Spec: adminSeriesServiceUploadEpisodeEyeCatchAspectImageSpec(), Handler: adapter.uploadEpisodeEyeCatchAspectImage},
+		connect.Method{Spec: adminSeriesServiceDeleteEpisodeEyeCatchImageSpec(), Handler: adapter.deleteEpisodeEyeCatchImage},
 		connect.Method{Spec: adminSeriesServiceCreateEpisodeFreeWindowSpec(), Handler: adapter.createEpisodeFreeWindow},
 		connect.Method{Spec: adminSeriesServiceCreateSeriesFreeWindowsSpec(), Handler: adapter.createSeriesFreeWindows},
 		connect.Method{Spec: adminSeriesServiceListEpisodeFreeWindowsSpec(), Handler: adapter.listEpisodeFreeWindows},
@@ -634,6 +679,18 @@ func (UnimplementedAdminSeriesServiceHandler) BulkEditEpisodeCredits(context.Con
 
 func (UnimplementedAdminSeriesServiceHandler) UploadSeriesEyeCatchAspectImage(context.Context, *v1.UploadSeriesEyeCatchAspectImageRequest) (*v1.UploadSeriesEyeCatchAspectImageResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UploadSeriesEyeCatchAspectImage is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) UploadEpisodeEyeCatchImage(context.Context, *v1.UploadEpisodeEyeCatchImageRequest) (*v1.UploadEpisodeEyeCatchImageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UploadEpisodeEyeCatchImage is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) UploadEpisodeEyeCatchAspectImage(context.Context, *v1.UploadEpisodeEyeCatchAspectImageRequest) (*v1.UploadEpisodeEyeCatchAspectImageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UploadEpisodeEyeCatchAspectImage is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) DeleteEpisodeEyeCatchImage(context.Context, *v1.DeleteEpisodeEyeCatchImageRequest) (*v1.DeleteEpisodeEyeCatchImageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.DeleteEpisodeEyeCatchImage is not implemented")
 }
 
 func (UnimplementedAdminSeriesServiceHandler) CreateEpisodeFreeWindow(context.Context, *v1.CreateEpisodeFreeWindowRequest) (*v1.CreateEpisodeFreeWindowResponse, error) {
@@ -851,6 +908,30 @@ func (c *adminSeriesServiceClient) BulkEditEpisodeCredits(ctx context.Context, r
 func (c *adminSeriesServiceClient) UploadSeriesEyeCatchAspectImage(ctx context.Context, req *v1.UploadSeriesEyeCatchAspectImageRequest) (*v1.UploadSeriesEyeCatchAspectImageResponse, error) {
 	var res v1.UploadSeriesEyeCatchAspectImageResponse
 	if err := c.client.CallUnary(ctx, adminSeriesServiceUploadSeriesEyeCatchAspectImageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UploadEpisodeEyeCatchImage(ctx context.Context, req *v1.UploadEpisodeEyeCatchImageRequest) (*v1.UploadEpisodeEyeCatchImageResponse, error) {
+	var res v1.UploadEpisodeEyeCatchImageResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUploadEpisodeEyeCatchImageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UploadEpisodeEyeCatchAspectImage(ctx context.Context, req *v1.UploadEpisodeEyeCatchAspectImageRequest) (*v1.UploadEpisodeEyeCatchAspectImageResponse, error) {
+	var res v1.UploadEpisodeEyeCatchAspectImageResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUploadEpisodeEyeCatchAspectImageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) DeleteEpisodeEyeCatchImage(ctx context.Context, req *v1.DeleteEpisodeEyeCatchImageRequest) (*v1.DeleteEpisodeEyeCatchImageResponse, error) {
+	var res v1.DeleteEpisodeEyeCatchImageResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceDeleteEpisodeEyeCatchImageSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1192,6 +1273,42 @@ func (h adminSeriesServiceHandler) uploadSeriesEyeCatchAspectImage(ctx context.C
 		return err
 	}
 	res, err := h.svc.UploadSeriesEyeCatchAspectImage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) uploadEpisodeEyeCatchImage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UploadEpisodeEyeCatchImageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UploadEpisodeEyeCatchImage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) uploadEpisodeEyeCatchAspectImage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UploadEpisodeEyeCatchAspectImageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UploadEpisodeEyeCatchAspectImage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) deleteEpisodeEyeCatchImage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteEpisodeEyeCatchImageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteEpisodeEyeCatchImage(ctx, &req)
 	if err != nil {
 		return err
 	}

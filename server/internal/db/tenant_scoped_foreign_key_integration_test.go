@@ -214,6 +214,26 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 			args:       []any{first.genreID, second.genreImageID},
 		},
 		{
+			name:       "episode_eye_catch_images.episode_id",
+			constraint: "episode_eye_catch_images_tenant_episode_id_fkey",
+			statement:  `INSERT INTO episode_eye_catch_images (id, tenant_id, episode_id) VALUES ($1, $2, $3)`,
+			args:       []any{mustUUID(t), first.tenantID, second.episodeID},
+		},
+		{
+			name:       "episode_eye_catch_image_variants.episode_eye_catch_image_id",
+			constraint: "episode_eye_catch_image_variants_tenant_image_id_fkey",
+			statement: `INSERT INTO episode_eye_catch_image_variants
+				(id, tenant_id, episode_eye_catch_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
+				VALUES ($1, $2, $3, 'portrait-320', 'portrait', 's3', 'tenants/episode.webp', 'image/webp', 1, 320, 480)`,
+			args: []any{mustUUID(t), first.tenantID, second.episodeEyeCatchImageID},
+		},
+		{
+			name:       "episodes.eye_catch_image_id",
+			constraint: "episodes_tenant_eye_catch_image_id_fkey",
+			statement:  `UPDATE episodes SET eye_catch_image_id = $2 WHERE id = $1`,
+			args:       []any{first.episodeID, second.episodeEyeCatchImageID},
+		},
+		{
 			name:       "series.label_id",
 			constraint: "series_tenant_label_id_fkey",
 			statement:  `UPDATE series SET label_id = $2 WHERE id = $1`,
@@ -321,6 +341,7 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 		seeded.tenantID, seeded.tenantImageID)
 	mustExec(t, ctx, db, `UPDATE labels SET eye_catch_image_id = $2 WHERE id = $1`, seeded.labelID, seeded.labelImageID)
 	mustExec(t, ctx, db, `UPDATE genres SET eye_catch_image_id = $2 WHERE id = $1`, seeded.genreID, seeded.genreImageID)
+	mustExec(t, ctx, db, `UPDATE episodes SET eye_catch_image_id = $2 WHERE id = $1`, seeded.episodeID, seeded.episodeEyeCatchImageID)
 	mustExec(t, ctx, db, `UPDATE creators SET icon_image_id = $2 WHERE id = $1`, seeded.creatorID, seeded.creatorImageID)
 	mustExec(t, ctx, db, `UPDATE users SET icon_image_id = $2 WHERE id = $1`, seeded.userID, seeded.userImageID)
 	// An account shows one icon, so the preset is elected by an account of its
@@ -383,6 +404,13 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 			owner:    seeded.genreID,
 		},
 		{
+			name:     "episodes.eye_catch_image_id",
+			delete:   `DELETE FROM episode_eye_catch_images WHERE id = $1`,
+			deleted:  seeded.episodeEyeCatchImageID,
+			survivor: `SELECT tenant_id, eye_catch_image_id FROM episodes WHERE id = $1`,
+			owner:    seeded.episodeID,
+		},
+		{
 			name:     "series.eye_catch_image_id",
 			delete:   `DELETE FROM series_images WHERE id = $1`,
 			deleted:  seeded.seriesImageID,
@@ -427,26 +455,28 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 
 // One tenant holding a row of every kind the cases above pair across tenants.
 type foreignKeyTenant struct {
-	tenantID           uuid.UUID
-	userID             uuid.UUID
-	userImageID        uuid.UUID
-	readerIconPresetID uuid.UUID
-	seriesID           uuid.UUID
-	seriesImageID      uuid.UUID
-	episodeImageID     uuid.UUID
-	creatorID          uuid.UUID
-	creatorImageID     uuid.UUID
-	labelID            uuid.UUID
-	labelImageID       uuid.UUID
-	genreID            uuid.UUID
-	genreImageID       uuid.UUID
-	tenantImageID      uuid.UUID
-	pageID             uuid.UUID
-	pageTranslationID  uuid.UUID
-	pageVersionID      uuid.UUID
-	notificationID     uuid.UUID
-	announcementID     uuid.UUID
-	accessTicketID     uuid.UUID
+	tenantID               uuid.UUID
+	userID                 uuid.UUID
+	userImageID            uuid.UUID
+	readerIconPresetID     uuid.UUID
+	seriesID               uuid.UUID
+	seriesImageID          uuid.UUID
+	episodeID              uuid.UUID
+	episodeImageID         uuid.UUID
+	episodeEyeCatchImageID uuid.UUID
+	creatorID              uuid.UUID
+	creatorImageID         uuid.UUID
+	labelID                uuid.UUID
+	labelImageID           uuid.UUID
+	genreID                uuid.UUID
+	genreImageID           uuid.UUID
+	tenantImageID          uuid.UUID
+	pageID                 uuid.UUID
+	pageTranslationID      uuid.UUID
+	pageVersionID          uuid.UUID
+	notificationID         uuid.UUID
+	announcementID         uuid.UUID
+	accessTicketID         uuid.UUID
 }
 
 // seedForeignKeyTenant builds one whole tenant. prefix keeps the public ids
@@ -467,12 +497,16 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 		seeded.readerIconPresetID, seeded.tenantID)
 
 	episodeID := mustInsertEpisode(t, ctx, db, seeded.tenantID, prefix+"EPISODE01", prefix+" Episode")
+	seeded.episodeID = episodeID
 	mustQueryRow(t, ctx, db, `SELECT series_id FROM episodes WHERE id = $1`, &seeded.seriesID, episodeID)
 	seeded.seriesImageID = mustInsertSeriesImage(t, ctx, db, seeded.tenantID, seeded.seriesID)
 
 	seeded.episodeImageID = mustUUID(t)
 	mustExec(t, ctx, db, `INSERT INTO episode_images (id, tenant_id, episode_id) VALUES ($1, $2, $3)`,
 		seeded.episodeImageID, seeded.tenantID, episodeID)
+	seeded.episodeEyeCatchImageID = mustUUID(t)
+	mustExec(t, ctx, db, `INSERT INTO episode_eye_catch_images (id, tenant_id, episode_id) VALUES ($1, $2, $3)`,
+		seeded.episodeEyeCatchImageID, seeded.tenantID, episodeID)
 
 	seeded.creatorID = mustUUID(t)
 	mustExec(t, ctx, db, `INSERT INTO creators (id, tenant_id, public_id, name) VALUES ($1, $2, $3, $4)`,

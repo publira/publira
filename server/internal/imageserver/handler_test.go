@@ -65,6 +65,8 @@ type stubTenantQueries struct {
 	tenantParams     *dbmodels.GetTenantImageVariantByTypeForTenantParams
 	genre            dbmodels.GetGenreImageVariantByTypeAndWidthForTenantRow
 	genreKey         genreVariantKey
+	episodeEyeCatch  dbmodels.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantRow
+	episodeEyeKey    episodeEyeCatchVariantKey
 	series           dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow
 	label            dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow
 	userRef          dbmodels.GetUserByPublicIDForTenantRow
@@ -155,6 +157,28 @@ type genreVariantKey struct {
 	tenantID     uuid.UUID
 	variantType  string
 	width        int32
+}
+
+func (s stubTenantQueries) GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenant(_ context.Context, arg dbmodels.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantRow, error) {
+	requested := episodeEyeCatchVariantKey{
+		imageID:     arg.EpisodeEyeCatchImageID,
+		tenantID:    arg.TenantID,
+		variantType: arg.VariantType,
+		width:       arg.Width,
+	}
+	if s.episodeEyeCatch.ObjectKey == "" || requested != s.episodeEyeKey {
+		return dbmodels.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantRow{}, sql.ErrNoRows
+	}
+	return s.episodeEyeCatch, nil
+}
+
+// episodeEyeCatchVariantKey is the tuple the episode eye-catch variant query
+// filters on, matched exactly for the reason tenantVariantKey is.
+type episodeEyeCatchVariantKey struct {
+	imageID     uuid.UUID
+	tenantID    uuid.UUID
+	variantType string
+	width       int32
 }
 
 func (s stubTenantQueries) GetLabelImageVariantByTypeAndWidthForTenant(context.Context, dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error) {
@@ -1329,6 +1353,58 @@ func TestGenreImageServesTheStoredVariant(t *testing.T) {
 	}
 }
 
+// An episode eye-catch is addressed by image, ratio, and width, the way a
+// series' is, and only the variant stored under all three is served. It is a
+// route of its own, apart from the pages of the body under /images/episodes.
+func TestEpisodeEyeCatchImageServesTheStoredVariant(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("88888888-8888-8888-8888-888888888888")
+	queries := stubTenantQueries{
+		episodeEyeCatch: dbmodels.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantRow{
+			ObjectKey:   "tenants/acme/episode-eye-catches/EPISODE00001/portrait_600w.jpg",
+			ContentType: "image/jpeg",
+		},
+		episodeEyeKey: episodeEyeCatchVariantKey{
+			imageID:     mediaID,
+			tenantID:    tenantID,
+			variantType: "portrait",
+			width:       600,
+		},
+	}
+	store := &countingStore{objects: map[string]storedObject{
+		"tenants/acme/episode-eye-catches/EPISODE00001/portrait_600w.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+	}}
+	srv := newTestServer(t,
+		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+		stubFactory{q: queries},
+		store,
+	)
+
+	cases := []struct {
+		path string
+		want int
+	}{
+		{path: "/images/episode-eye-catches/" + mediaID.String() + "/portrait/600", want: http.StatusOK},
+		// The version query only keeps a cached response from being reused. The
+		// route still answers the ratio it names, whatever version is asked for.
+		{path: "/images/episode-eye-catches/" + mediaID.String() + "/portrait/600?v=11111111-1111-4111-8111-111111111111", want: http.StatusOK},
+		{path: "/images/episode-eye-catches/" + mediaID.String() + "/portrait/900", want: http.StatusNotFound},
+		{path: "/images/episode-eye-catches/" + mediaID.String() + "/square/600", want: http.StatusNotFound},
+		{path: "/images/episode-eye-catches/" + mediaID.String() + "/portrait/wide", want: http.StatusBadRequest},
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			req.Host = "example.test"
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+			if rec.Code != tc.want {
+				t.Fatalf("status = %d, want %d (body %q)", rec.Code, tc.want, rec.Body.String())
+			}
+		})
+	}
+}
+
 func TestTenantImageServesStoredIcon(t *testing.T) {
 	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	mediaID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
@@ -2016,6 +2092,7 @@ func TestImageRoutesRefuseASuspendedTenantUntilResumed(t *testing.T) {
 		"/images/creators/" + mediaID,
 		"/images/episodes/" + mediaID,
 		"/images/episodes/" + mediaID + "/preview",
+		"/images/episode-eye-catches/" + mediaID + "/square/320",
 		"/images/genres/" + mediaID + "/square/320",
 		"/images/labels/" + mediaID + "/square/320",
 		"/images/series/" + mediaID + "/square/320",

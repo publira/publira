@@ -10,6 +10,7 @@ export const auditActions = [
   "episode_updated",
   "episode_translation_deleted",
   "episode_image_uploaded",
+  "episode_eye_catch_aspect_image_uploaded",
   "episode_credits_replaced",
   "episode_credits_bulk_edited",
   "episode_free_window_created",

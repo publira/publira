@@ -411,6 +411,7 @@ func TestReorderEpisodesSuccess(t *testing.T) {
 		ExpectedEpisodeIds: []string{episodeTestID(1).String(), episodeTestID(2).String(), episodeTestID(3).String()},
 	}
 
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	resp, err := client.ReorderEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ReorderEpisodes: %v", err)
@@ -1083,6 +1084,7 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 				mock.ExpectCommit()
 				mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 					WillReturnResult(sqlmock.NewResult(0, 1))
+				expectNoEpisodeEyeCatches(mock, tenantID)
 			},
 			wantSuccess: true,
 		},
@@ -1156,6 +1158,7 @@ func TestUpdateEpisodePublishSchedulePublishesAtOnceWhenTheTimeHasPassed(t *test
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	resp, err := client.UpdateEpisodePublishSchedule(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateEpisodePublishScheduleRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId:   testEpisodeID.String(),
@@ -1192,6 +1195,7 @@ func TestUpdateEpisodePublishScheduleLeavesAPublishedEpisodeWhenTheTimeHasPassed
 	mock.ExpectCommit()
 	expectAdminAuditLogInsert(mock)
 
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	resp, err := client.UpdateEpisodePublishSchedule(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateEpisodePublishScheduleRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodeId:   testEpisodeID.String(),
@@ -1337,6 +1341,7 @@ func TestListEpisodesFirstPageReportsNextToken(t *testing.T) {
 
 	req := newListEpisodesRequest(tenantID)
 	req.Limit = 2
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	resp, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListEpisodes: %v", err)
@@ -1370,6 +1375,7 @@ func TestListEpisodesDefaultsToOnePageWithoutTokens(t *testing.T) {
 		WithArgs(tenantID, testSeriesID, uuid.NullUUID{}, false, sql.NullInt32{}, int32(21)).
 		WillReturnRows(addEpisodeRow(episodeColumns(), uuid.Must(uuid.NewV7()), "EP001", 1))
 
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	resp, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), newListEpisodesRequest(tenantID))
 	if err != nil {
 		t.Fatalf("ListEpisodes: %v", err)
@@ -1398,6 +1404,7 @@ func TestListEpisodesFollowsNextToken(t *testing.T) {
 	req := newListEpisodesRequest(tenantID)
 	req.Limit = 2
 	req.Token = encodeEpisodeTestToken(pagination.Forward, 2, boundaryID)
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	resp, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListEpisodes: %v", err)
@@ -1431,6 +1438,7 @@ func TestListEpisodesFollowsPreviousTokenBackwards(t *testing.T) {
 	req := newListEpisodesRequest(tenantID)
 	req.Limit = 2
 	req.Token = encodeEpisodeTestToken(pagination.Backward, 3, boundaryID)
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	resp, err := client.ListEpisodes(testutil.WithBearer(context.Background(), sessionToken), req)
 	if err != nil {
 		t.Fatalf("ListEpisodes: %v", err)
@@ -1511,6 +1519,7 @@ func TestListEpisodesEmptyPageKeepsAWayBack(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantRecoveryQuery)).
 				WithArgs(tenantID, testSeriesID, boundaryID, true, int32(2), int32(21)).
 				WillReturnRows(recoveryRows)
+			expectNoEpisodeEyeCatches(mock, tenantID)
 
 			recoveryReq := newListEpisodesRequest(tenantID)
 			recoveryReq.Token = recoveryToken
@@ -1762,6 +1771,9 @@ func TestAdminGetEpisode(t *testing.T) {
 				PublicId:       tc.publicID,
 			}
 
+			if tc.wantCode == 0 {
+				expectNoEpisodeEyeCatches(mock, tenantID)
+			}
 			resp, err := client.GetEpisode(testutil.WithBearer(context.Background(), sessionToken), req)
 			if tc.wantCode == 0 {
 				if err != nil {

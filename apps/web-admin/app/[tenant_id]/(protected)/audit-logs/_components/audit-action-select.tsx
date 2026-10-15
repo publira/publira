@@ -63,6 +63,12 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "episode_image_uploaded",
             },
             {
+              label: t(
+                "admin.audit.actions.episode_eye_catch_aspect_image_uploaded"
+              ),
+              value: "episode_eye_catch_aspect_image_uploaded",
+            },
+            {
               label: t("admin.audit.actions.episode_credits_replaced"),
               value: "episode_credits_replaced",
             },

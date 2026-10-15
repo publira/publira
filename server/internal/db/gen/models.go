@@ -224,6 +224,7 @@ type Episode struct {
 	SpreadStartIndex     sql.NullInt32  `json:"spread_start_index"`
 	Availability         sql.NullString `json:"availability"`
 	PurchaseAvailability sql.NullString `json:"purchase_availability"`
+	EyeCatchImageID      uuid.NullUUID  `json:"eye_catch_image_id"`
 }
 
 type EpisodeComment struct {
@@ -274,6 +275,29 @@ type EpisodeCreator struct {
 	Source       string        `json:"source"`
 	CreatedAt    time.Time     `json:"created_at"`
 	ShareBps     int32         `json:"share_bps"`
+}
+
+type EpisodeEyeCatchImage struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type EpisodeEyeCatchImageVariant struct {
+	ID                     uuid.UUID `json:"id"`
+	TenantID               uuid.UUID `json:"tenant_id"`
+	EpisodeEyeCatchImageID uuid.UUID `json:"episode_eye_catch_image_id"`
+	Label                  string    `json:"label"`
+	VariantType            string    `json:"variant_type"`
+	StorageProvider        string    `json:"storage_provider"`
+	ObjectKey              string    `json:"object_key"`
+	ContentType            string    `json:"content_type"`
+	FileSizeBytes          int64     `json:"file_size_bytes"`
+	Width                  int32     `json:"width"`
+	Height                 int32     `json:"height"`
+	CreatedAt              time.Time `json:"created_at"`
 }
 
 type EpisodeFollow struct {

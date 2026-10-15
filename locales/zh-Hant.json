@@ -332,6 +332,7 @@
         "episode_updated": "更新了章節",
         "episode_translation_deleted": "刪除了章節翻譯",
         "episode_image_uploaded": "上傳了章節正文圖片",
+        "episode_eye_catch_aspect_image_uploaded": "上傳了章節封面圖",
         "episode_credits_replaced": "更新了章節作者",
         "episode_credits_bulk_edited": "批次編輯了多個章節的作者",
         "episode_free_window_created": "新增了免費閱讀期間",

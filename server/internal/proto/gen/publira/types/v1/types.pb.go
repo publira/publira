@@ -1782,9 +1782,16 @@ type Episode struct {
 	// GetSeriesDetail lists, GetMySeriesProgress and ListMyRecentSeries. Empty
 	// on the console's reads, and in the lists that carry an episode as a link
 	// without a price.
-	FreeUntil     string `protobuf:"bytes,16,opt,name=free_until,json=freeUntil,proto3" json:"free_until,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	FreeUntil string `protobuf:"bytes,16,opt,name=free_until,json=freeUntil,proto3" json:"free_until,omitempty"`
+	// The episode's own eye-catch, in the shape Series carries one. Empty when
+	// the episode has none, which is not an error to show: the series' eye-catch
+	// stands in for it. Set on GetEpisodeDetail, on the episodes GetSeriesDetail
+	// lists, and on the console's episode reads and the episode writes that
+	// answer in their shape; empty elsewhere.
+	EyeCatchImageUpdatedAt string                   `protobuf:"bytes,17,opt,name=eye_catch_image_updated_at,json=eyeCatchImageUpdatedAt,proto3" json:"eye_catch_image_updated_at,omitempty"`
+	EyeCatchImageVariants  []*SeriesEyeCatchVariant `protobuf:"bytes,18,rep,name=eye_catch_image_variants,json=eyeCatchImageVariants,proto3" json:"eye_catch_image_variants,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Episode) Reset() {
@@ -1927,6 +1934,20 @@ func (x *Episode) GetFreeUntil() string {
 		return x.FreeUntil
 	}
 	return ""
+}
+
+func (x *Episode) GetEyeCatchImageUpdatedAt() string {
+	if x != nil {
+		return x.EyeCatchImageUpdatedAt
+	}
+	return ""
+}
+
+func (x *Episode) GetEyeCatchImageVariants() []*SeriesEyeCatchVariant {
+	if x != nil {
+		return x.EyeCatchImageVariants
+	}
+	return nil
 }
 
 type EpisodeImage struct {
@@ -2976,7 +2997,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x0erating_average\x18\x13 \x01(\x01R\rratingAverage\x12!\n" +
 	"\frating_count\x18\x14 \x01(\x03R\vratingCount\x12I\n" +
 	"\favailability\x18\x15 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\x12\x0e\n" +
-	"\x02id\x18\x16 \x01(\tR\x02idJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xb2\x05\n" +
+	"\x02id\x18\x16 \x01(\tR\x02idJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xd0\x06\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -2996,7 +3017,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x15purchase_availability\x18\x0e \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\x12\x0e\n" +
 	"\x02id\x18\x0f \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
-	"free_until\x18\x10 \x01(\tR\tfreeUntil\"\xd9\x01\n" +
+	"free_until\x18\x10 \x01(\tR\tfreeUntil\x12:\n" +
+	"\x1aeye_catch_image_updated_at\x18\x11 \x01(\tR\x16eyeCatchImageUpdatedAt\x12`\n" +
+	"\x18eye_catch_image_variants\x18\x12 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +
@@ -3210,14 +3233,15 @@ var file_publira_types_v1_types_proto_depIdxs = []int32{
 	3,  // 14: publira.types.v1.Episode.reading_direction:type_name -> publira.types.v1.ReadingDirection
 	7,  // 15: publira.types.v1.Episode.availability:type_name -> publira.types.v1.SurfaceAvailability
 	7,  // 16: publira.types.v1.Episode.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	24, // 17: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	24, // 18: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	12, // 19: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	17, // 17: publira.types.v1.Episode.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	24, // 18: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	24, // 19: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	12, // 20: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }

@@ -53,6 +53,11 @@ const catalogActionName = (action: string) => {
     case "episode_image_uploaded": {
       return <Message message="admin.audit.actions.episode_image_uploaded" />;
     }
+    case "episode_eye_catch_aspect_image_uploaded": {
+      return (
+        <Message message="admin.audit.actions.episode_eye_catch_aspect_image_uploaded" />
+      );
+    }
     case "episode_credits_replaced": {
       return <Message message="admin.audit.actions.episode_credits_replaced" />;
     }

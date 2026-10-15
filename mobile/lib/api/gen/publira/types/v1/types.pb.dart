@@ -1542,6 +1542,8 @@ class Episode extends $pb.GeneratedMessage {
     SurfaceAvailability? purchaseAvailability,
     $core.String? id,
     $core.String? freeUntil,
+    $core.String? eyeCatchImageUpdatedAt,
+    $core.Iterable<SeriesEyeCatchVariant>? eyeCatchImageVariants,
   }) {
     final result = Episode._();
     if (publicId != null) result.publicId = publicId;
@@ -1562,6 +1564,10 @@ class Episode extends $pb.GeneratedMessage {
       result.purchaseAvailability = purchaseAvailability;
     if (id != null) result.id = id;
     if (freeUntil != null) result.freeUntil = freeUntil;
+    if (eyeCatchImageUpdatedAt != null)
+      result.eyeCatchImageUpdatedAt = eyeCatchImageUpdatedAt;
+    if (eyeCatchImageVariants != null)
+      result.eyeCatchImageVariants.addAll(eyeCatchImageVariants);
     return result;
   }
 
@@ -1599,6 +1605,10 @@ class Episode extends $pb.GeneratedMessage {
         enumValues: SurfaceAvailability.values)
     ..aOS(15, _omitFieldNames ? '' : 'id')
     ..aOS(16, _omitFieldNames ? '' : 'freeUntil')
+    ..aOS(17, _omitFieldNames ? '' : 'eyeCatchImageUpdatedAt')
+    ..pPM<SeriesEyeCatchVariant>(
+        18, _omitFieldNames ? '' : 'eyeCatchImageVariants',
+        subBuilder: SeriesEyeCatchVariant.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1802,6 +1812,23 @@ class Episode extends $pb.GeneratedMessage {
   $core.bool hasFreeUntil() => $_has(15);
   @$pb.TagNumber(16)
   void clearFreeUntil() => $_clearField(16);
+
+  /// The episode's own eye-catch, in the shape Series carries one. Empty when
+  /// the episode has none, which is not an error to show: the series' eye-catch
+  /// stands in for it. Set on GetEpisodeDetail, on the episodes GetSeriesDetail
+  /// lists, and on the console's episode reads and the episode writes that
+  /// answer in their shape; empty elsewhere.
+  @$pb.TagNumber(17)
+  $core.String get eyeCatchImageUpdatedAt => $_getSZ(16);
+  @$pb.TagNumber(17)
+  set eyeCatchImageUpdatedAt($core.String value) => $_setString(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasEyeCatchImageUpdatedAt() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearEyeCatchImageUpdatedAt() => $_clearField(17);
+
+  @$pb.TagNumber(18)
+  $pb.PbList<SeriesEyeCatchVariant> get eyeCatchImageVariants => $_getList(17);
 }
 
 class EpisodeImage extends $pb.GeneratedMessage {

@@ -440,6 +440,7 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 			"id", "tenant_id", "episode_id", "display_order", "created_at",
 			"content_type", "file_size_bytes", "width", "height",
 		}))
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	recorded := forbidEpisodeViewEventInsert(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
